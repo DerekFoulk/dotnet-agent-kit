@@ -1,8 +1,16 @@
 #Requires -Version 7.0
-#Requires -Modules @{ ModuleName = 'powershell-yaml'; ModuleVersion = '0.4.12' }
 <#
 .SYNOPSIS
     Fails when any kit rule lacks a traceable source or an enforcement entry (brief §7, checkpoint §2).
+
+.DESCRIPTION
+    Reads the YAML front matter of every docs/standards/*.md file. Each rule needs id, statement, layer,
+    status, sources and enforcement. Each source is "owner, YYYY-MM-DD", "ADR-NNNN" (an existing file in
+    docs/adr) or "<URL>, retrieved YYYY-MM-DD". Enforcement "advisory" needs a reason. Ids are unique.
+    Exit code: 0 when every rule is traceable, otherwise 1.
+
+.EXAMPLE
+    ./tools/Test-RuleSources.ps1
 #>
 [CmdletBinding()]
 param(
@@ -12,6 +20,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Not '#Requires -Modules': in PowerShell 7.6.9, a module loaded that way turns the script's 'exit 1' into 0
+# when run with -File, which would make this check pass in CI no matter what it finds.
+Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
 
 $script:RequiredFields = 'id', 'statement', 'layer', 'status', 'sources', 'enforcement'
 $script:AllowedValues = [ordered]@{
@@ -129,10 +141,37 @@ function Get-RuleSourceProblem {
     }
 }
 
+# Prints every problem and returns 0 when every rule is traceable, otherwise 1.
 function Invoke-RuleSourceCheck {
     param(
         [Parameter(Mandatory)] [string] $StandardsPath,
         [Parameter(Mandatory)] [string] $AdrPath
     )
-    -1
+
+    $problems = @(Get-RuleSourceProblem -StandardsPath $StandardsPath -AdrPath $AdrPath)
+    foreach ($problem in $problems) {
+        $where = if ($problem.RuleId) { "$($problem.File) $($problem.RuleId)" } else { $problem.File }
+        Write-Host "  $where`: $($problem.Message)" -ForegroundColor Red
+    }
+
+    if ($problems) {
+        Write-Host "`n$($problems.Count) rule problem(s) in $StandardsPath." -ForegroundColor Red
+        return 1
+    }
+
+    $ruleCount = 0
+    foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File) {
+        $ruleCount += @((Read-FrontMatter -Path $file.FullName)['rules']).Count
+    }
+    $noun = if ($ruleCount -eq 1) { 'rule' } else { 'rules' }
+    Write-Host "$ruleCount $noun, all traceable to a source and an enforcement." -ForegroundColor Green
+    0
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    $repoRoot = Split-Path -Path $PSScriptRoot -Parent
+    if (-not $StandardsPath) { $StandardsPath = Join-Path $repoRoot 'docs' 'standards' }
+    if (-not $AdrPath) { $AdrPath = Join-Path $repoRoot 'docs' 'adr' }
+    exit (Invoke-RuleSourceCheck -StandardsPath $StandardsPath -AdrPath $AdrPath)
 }
