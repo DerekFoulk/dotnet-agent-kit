@@ -5,8 +5,9 @@
 
 .DESCRIPTION
     For each docs/standards/*.md, writes its accepted rules as one-line statements to:
-      .claude/rules/<topic>.md (+ <topic>-scoped.md with paths:)          Claude Code
-      .github/instructions/<topic>.instructions.md (+ -scoped, applyTo:)  Copilot
+      .claude/rules/<topic>.md                         Claude Code, always loaded (rules with paths **)
+      .claude/rules/<topic>-<rule-id>.md               Claude Code, loaded by paths: (one per distinct path set)
+      .github/instructions/<topic>[-<rule-id>].instructions.md   Copilot, the same split with applyTo:
     Also writes .github/copilot-instructions.md as a copy of AGENTS.md, because Visual Studio reads that
     file but doesn't document reading AGENTS.md. Proposed and retired rules aren't in force, so they're
     left out. Generated files carry a marker; generated files no standard produces any more are removed.
@@ -19,7 +20,7 @@
 
 .EXAMPLE
     ./tools/Build-AgentRules.ps1 -Check
-    What CI runs: fails if the committed files don't match the sources.
+    Fails if the committed files don't match the sources (CI runs this from build step 4).
 #>
 [CmdletBinding()]
 param(
@@ -73,12 +74,21 @@ function Get-AgentRuleFile {
             [pscustomobject]@{ Path = ".claude/rules/$topic.md"; Content = $body }
             [pscustomobject]@{ Path = ".github/instructions/$topic.instructions.md"; Content = "---`napplyTo: '**'`n---`n$body" }
         }
-        if ($scoped) {
-            $paths = @($scoped | ForEach-Object { $_['paths'] } | Select-Object -Unique)
-            $body = ConvertTo-RuleBody -SourceName $file.Name -Title $title -Rules $scoped
+        # One file per distinct set of paths, so each rule loads only where it applies. A group is named
+        # after its first rule, which keeps file names stable when other rules change.
+        $groups = [ordered]@{}
+        foreach ($rule in $scoped) {
+            $key = (@($rule['paths']) | Sort-Object -Unique) -join "`n"
+            if (-not $groups.Contains($key)) { $groups[$key] = [System.Collections.Generic.List[object]]::new() }
+            $groups[$key].Add($rule)
+        }
+        foreach ($group in $groups.Values) {
+            $name = "$topic-$("$($group[0]['id'])".ToLowerInvariant())"
+            $paths = @($group[0]['paths'] | ForEach-Object { "$_" -replace "'", "''" })
+            $body = ConvertTo-RuleBody -SourceName $file.Name -Title $title -Rules $group
             $pathLines = ($paths | ForEach-Object { "  - '$_'" }) -join "`n"
-            [pscustomobject]@{ Path = ".claude/rules/$topic-scoped.md"; Content = "---`npaths:`n$pathLines`n---`n$body" }
-            [pscustomobject]@{ Path = ".github/instructions/$topic-scoped.instructions.md"; Content = "---`napplyTo: '$($paths -join ',')'`n---`n$body" }
+            [pscustomobject]@{ Path = ".claude/rules/$name.md"; Content = "---`npaths:`n$pathLines`n---`n$body" }
+            [pscustomobject]@{ Path = ".github/instructions/$name.instructions.md"; Content = "---`napplyTo: '$($paths -join ',')'`n---`n$body" }
         }
     }
 }
@@ -110,12 +120,13 @@ function Invoke-AgentRuleBuild {
     $expected += Get-CopilotInstructionsFile -AgentsPath (Join-Path $RepoRoot 'AGENTS.md')
     $expectedPaths = @($expected | ForEach-Object Path)
 
-    $drift = [System.Collections.Generic.List[string]]::new()
+    # Each entry: what -Check reports, and what a build reports after fixing it.
+    $drift = [System.Collections.Generic.List[pscustomobject]]::new()
     foreach ($file in $expected) {
         $target = Join-Path $RepoRoot $file.Path
         $current = if (Test-Path -Path $target) { (Get-Content -Path $target -Raw) -replace "`r`n", "`n" } else { $null }
         if ($current -cne $file.Content) {
-            $drift.Add($file.Path)
+            $drift.Add([pscustomobject]@{ Check = "out of date: $($file.Path)"; Build = "updated: $($file.Path)" })
             if (-not $Check) {
                 New-Item -ItemType Directory -Path (Split-Path -Path $target -Parent) -Force | Out-Null
                 Set-Content -Path $target -Value $file.Content -NoNewline
@@ -132,7 +143,7 @@ function Invoke-AgentRuleBuild {
             $relative = [System.IO.Path]::GetRelativePath($RepoRoot, $existing.FullName) -replace '\\', '/'
             if ($relative -in $expectedPaths) { continue }
             if ((Get-Content -Path $existing.FullName -Raw) -match [regex]::Escape($markerStart)) {
-                $drift.Add("$relative (stale)")
+                $drift.Add([pscustomobject]@{ Check = "stale: $relative"; Build = "removed: $relative" })
                 if (-not $Check) {
                     Remove-Item -Path $existing.FullName
                 }
@@ -141,8 +152,8 @@ function Invoke-AgentRuleBuild {
     }
 
     if ($Check) {
-        foreach ($path in $drift) {
-            Write-Host "  out of date: $path" -ForegroundColor Red
+        foreach ($entry in $drift) {
+            Write-Host "  $($entry.Check)" -ForegroundColor Red
         }
         if ($drift.Count -gt 0) {
             Write-Host "`n$($drift.Count) generated file(s) out of date. Run ./tools/Build-AgentRules.ps1 and commit the result." -ForegroundColor Red
@@ -152,8 +163,8 @@ function Invoke-AgentRuleBuild {
         return 0
     }
 
-    foreach ($path in $drift) {
-        Write-Host "  updated: $path" -ForegroundColor Cyan
+    foreach ($entry in $drift) {
+        Write-Host "  $($entry.Build)" -ForegroundColor Cyan
     }
     Write-Host "$($expected.Count) generated files written ($($drift.Count) changed)." -ForegroundColor Green
     0
