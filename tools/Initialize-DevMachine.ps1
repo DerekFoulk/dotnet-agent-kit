@@ -3,7 +3,7 @@
     Checks this machine for the dotnet-agent-kit toolchain and, with -Install, installs what's missing.
 
 .DESCRIPTION
-    Required: PowerShell 7, Pester 6 (runs the kit's script tests), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
+    Required: PowerShell 7, Pester 6 (runs the kit's script tests), powershell-yaml (reads rule metadata), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
     Later in the build: VS Code with the PowerShell extension, Docker.
 
     Nothing is installed unless you pass -Install; each install command is shown first, and -WhatIf
@@ -115,14 +115,25 @@ function Test-DotNetSdk {
     Test-SdkSatisfiesPin -Installed $installed -Pinned $Pinned -RollForward $RollForward
 }
 
-# Asks PowerShell 7 itself: Windows PowerShell 5.1 reads a different module folder, and the tests run in 7.
-function Test-PesterModule {
-    param([Parameter(Mandatory)] [string] $MinimumVersion)
+# Asks PowerShell 7 itself: Windows PowerShell 5.1 reads a different module folder, and the kit's scripts run in 7.
+function Test-PwshModule {
+    param(
+        [Parameter(Mandatory)] [string] $Name,
+        [Parameter(Mandatory)] [string] $MinimumVersion
+    )
     if (-not (Test-CommandAvailable -Name 'pwsh')) {
         return $false
     }
-    $probe = "if (Get-Module -ListAvailable -Name Pester | Where-Object Version -GE ([version] '$MinimumVersion')) { exit 0 } else { exit 1 }"
-    (Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-Command', $probe).ExitCode -eq 0
+    $moduleQuery = "if (Get-Module -ListAvailable -Name $Name | Where-Object Version -GE ([version] '$MinimumVersion')) { exit 0 } else { exit 1 }"
+    (Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-Command', $moduleQuery).ExitCode -eq 0
+}
+
+function Get-PwshModuleInstallCommand {
+    param(
+        [Parameter(Mandatory)] [string] $Name,
+        [Parameter(Mandatory)] [string] $Version
+    )
+    "pwsh -NoProfile -Command `"Install-PSResource -Name $Name -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository`""
 }
 
 function Test-VsCodeExtension {
@@ -158,9 +169,10 @@ function Get-DevMachineCheck {
 
     New-DevMachineCheck -Name 'PowerShell 7' -Required $true -Test { Test-CommandAvailable -Name 'pwsh' } `
         -InstallCommand 'winget install --id Microsoft.PowerShell --exact'
-    New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PesterModule -MinimumVersion '6.0.0' } `
-        -InstallCommand 'pwsh -NoProfile -Command "Install-PSResource -Name Pester -Version 6.2.0 -Scope CurrentUser -Repository PSGallery -TrustRepository"'
-    New-DevMachineCheck -Name 'powershell-yaml' -Required $true -Test { $null } -InstallCommand 'stub'
+    New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PwshModule -Name 'Pester' -MinimumVersion '6.0.0' } `
+        -InstallCommand (Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0')
+    New-DevMachineCheck -Name 'powershell-yaml' -Required $true -Test { Test-PwshModule -Name 'powershell-yaml' -MinimumVersion '0.4.12' } `
+        -InstallCommand (Get-PwshModuleInstallCommand -Name 'powershell-yaml' -Version '0.4.12')
     New-DevMachineCheck -Name 'Git' -Required $true -Test { Test-CommandAvailable -Name 'git' } `
         -InstallCommand 'winget install --id Git.Git --exact'
     New-DevMachineCheck -Name 'GitHub CLI' -Required $true -Test { Test-CommandAvailable -Name 'gh' } `
