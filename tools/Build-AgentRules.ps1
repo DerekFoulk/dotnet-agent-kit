@@ -57,9 +57,12 @@ function Get-AgentRuleFile {
     param([Parameter(Mandatory)] [string] $StandardsPath)
 
     foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
+        # A standard that lost its front matter or rules key is an editing mistake, not "no rules": skipping
+        # it would delete its generated files as stale. Fail instead (Invoke-AgentRuleBuild catches this
+        # before writing anything).
         $frontMatter = Read-FrontMatter -Path $file.FullName
         if ($null -eq $frontMatter -or -not $frontMatter.Contains('rules')) {
-            continue
+            throw "docs/standards/$($file.Name) has no YAML front matter with a 'rules' key; fix it before generating."
         }
         $topic = $file.BaseName
         $title = (Read-MarkdownBody -Path $file.FullName) -split "`n" | Where-Object { $_ -match '^# ' } | Select-Object -First 1
@@ -116,8 +119,16 @@ function Invoke-AgentRuleBuild {
     # change; resolve it through PowerShell first, or every generated file looks stale and gets deleted.
     $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).ProviderPath
 
-    $expected = @(Get-AgentRuleFile -StandardsPath (Join-Path $RepoRoot 'docs' 'standards'))
-    $expected += Get-CopilotInstructionsFile -AgentsPath (Join-Path $RepoRoot 'AGENTS.md')
+    # Everything is built in memory first, so an invalid source stops the run before any write or delete.
+    try {
+        $expected = @(Get-AgentRuleFile -StandardsPath (Join-Path $RepoRoot 'docs' 'standards'))
+        $expected += Get-CopilotInstructionsFile -AgentsPath (Join-Path $RepoRoot 'AGENTS.md')
+    }
+    catch {
+        Write-Host "  $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "`nNothing was written or removed." -ForegroundColor Red
+        return 1
+    }
     $expectedPaths = @($expected | ForEach-Object Path)
 
     # Each entry: what -Check reports, and what a build reports after fixing it.
@@ -142,7 +153,10 @@ function Invoke-AgentRuleBuild {
         foreach ($existing in Get-ChildItem -Path $directory -Filter '*.md' -File -Recurse) {
             $relative = [System.IO.Path]::GetRelativePath($RepoRoot, $existing.FullName) -replace '\\', '/'
             if ($relative -in $expectedPaths) { continue }
-            if ((Get-Content -Path $existing.FullName -Raw) -match [regex]::Escape($markerStart)) {
+            # Ownership comes only from the marker as the first line of the content (after any front matter),
+            # so a hand-written file that quotes the marker as an example is never removed.
+            $firstLine = ((Read-MarkdownBody -Path $existing.FullName) -split "`r?`n")[0]
+            if ($firstLine.StartsWith($markerStart, [System.StringComparison]::Ordinal)) {
                 $drift.Add([pscustomobject]@{ Check = "stale: $relative"; Build = "removed: $relative" })
                 if (-not $Check) {
                     Remove-Item -Path $existing.FullName
