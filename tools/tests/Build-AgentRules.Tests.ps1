@@ -162,6 +162,37 @@ Describe 'Build-AgentRules.ps1' {
             $handWritten | Should -Exist
         }
 
+        It 'with -Check, returns 1 for an edit that only changes letter case, and a build repairs it' {
+            $root = New-Repo
+            Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
+            $rule = Join-Path $root '.claude' 'rules' 'git.md'
+            Set-Content -Path $rule -Value ((Get-Content -Path $rule -Raw) -creplace 'GIT-', 'git-') -NoNewline
+
+            Invoke-AgentRuleBuild -RepoRoot $root -Check | Should -Be 1
+            Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
+
+            Get-Content -Path $rule -Raw | Should -MatchExactly 'GIT-001'
+        }
+
+        It 'resolves a relative -RepoRoot against the PowerShell location, not the process directory' {
+            $root = New-Repo
+            Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
+            $processDirectory = [Environment]::CurrentDirectory
+            try {
+                [Environment]::CurrentDirectory = $env:TEMP
+                Push-Location -Path (Split-Path -Path $root -Parent)
+
+                Invoke-AgentRuleBuild -RepoRoot (Split-Path -Path $root -Leaf) -Check | Should -Be 0
+                Invoke-AgentRuleBuild -RepoRoot (Split-Path -Path $root -Leaf) | Should -Be 0
+            }
+            finally {
+                Pop-Location
+                [Environment]::CurrentDirectory = $processDirectory
+            }
+
+            Join-Path $root '.claude' 'rules' 'git.md' | Should -Exist
+        }
+
         It 'exits 1 when run as a script with -Check and a file has drifted' {
             $root = New-Repo
             Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
