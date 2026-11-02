@@ -43,3 +43,90 @@ Describe 'Get-PinnedSdk' {
         (Get-PinnedSdk -GlobalJsonPath $path).RollForward | Should -Be 'latestPatch'
     }
 }
+
+Describe 'Get-DevMachineCheck' {
+    BeforeAll {
+        Set-Content -Path (Join-Path $TestDrive 'global.json') -Value '{ "sdk": { "version": "10.0.403", "rollForward": "latestPatch" } }'
+
+        function Get-Check([string] $Name) {
+            Get-DevMachineCheck -RepoRoot $TestDrive | Where-Object Name -EQ $Name
+        }
+    }
+
+    It 'lists the full toolchain in order, required tools first' {
+        $checks = Get-DevMachineCheck -RepoRoot $TestDrive
+
+        $checks.Name | Should -Be @(
+            'PowerShell 7', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403', 'Claude Code',
+            'VS Code', 'VS Code PowerShell extension', 'Docker'
+        )
+        @($checks | Where-Object Required).Count | Should -Be 6
+    }
+
+    It 'installs the exact pinned SDK version' {
+        (Get-Check '.NET SDK 10.0.403').InstallCommand | Should -Be 'winget install --id Microsoft.DotNet.SDK.10 --exact --version 10.0.403'
+    }
+
+    It 'leaves GitHub sign-in to the owner, with no install command' {
+        $check = Get-Check 'GitHub CLI signed in'
+
+        $check.InstallCommand | Should -BeNullOrEmpty
+        $check.ManualAction | Should -BeLike '*gh auth login*'
+    }
+
+    Context 'probes' {
+        It '<Name> passes when its command is on PATH' -ForEach @(
+            @{ Name = 'PowerShell 7'; Command = 'pwsh' }
+            @{ Name = 'Git'; Command = 'git' }
+            @{ Name = 'GitHub CLI'; Command = 'gh' }
+            @{ Name = 'Claude Code'; Command = 'claude' }
+            @{ Name = 'VS Code'; Command = 'code' }
+            @{ Name = 'Docker'; Command = 'docker' }
+        ) {
+            Mock Test-CommandAvailable { $true } -ParameterFilter { $Name -eq $Command }
+            Mock Test-CommandAvailable { $false }
+
+            & (Get-Check $Name).Test | Should -BeTrue
+        }
+
+        It '<Name> fails when its command is missing' -ForEach @(
+            @{ Name = 'PowerShell 7' }, @{ Name = 'Git' }, @{ Name = 'GitHub CLI' }, @{ Name = 'GitHub CLI signed in' },
+            @{ Name = '.NET SDK 10.0.403' }, @{ Name = 'Claude Code' }, @{ Name = 'VS Code' },
+            @{ Name = 'VS Code PowerShell extension' }, @{ Name = 'Docker' }
+        ) {
+            Mock Test-CommandAvailable { $false }
+
+            & (Get-Check $Name).Test | Should -BeFalse
+        }
+
+        It 'GitHub sign-in is <Expected> when gh auth status exits <ExitCode>' -ForEach @(
+            @{ ExitCode = 0; Expected = $true }
+            @{ ExitCode = 1; Expected = $false }
+        ) {
+            Mock Test-CommandAvailable { $true }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = $ExitCode; Output = @() } } -ParameterFilter { $FilePath -eq 'gh' -and ($Arguments -join ' ') -eq 'auth status' }
+
+            & (Get-Check 'GitHub CLI signed in').Test | Should -Be $Expected
+        }
+
+        It 'the SDK check is <Expected> when dotnet lists <Listed>' -ForEach @(
+            @{ Listed = @('9.0.320 [C:\Program Files\dotnet\sdk]', '10.0.404 [C:\Program Files\dotnet\sdk]'); Expected = $true }
+            @{ Listed = @('10.0.500 [C:\Program Files\dotnet\sdk]'); Expected = $false }
+        ) {
+            Mock Test-CommandAvailable { $true }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = 0; Output = $Listed } } -ParameterFilter { $FilePath -eq 'dotnet' -and ($Arguments -join ' ') -eq '--list-sdks' }
+
+            & (Get-Check '.NET SDK 10.0.403').Test | Should -Be $Expected
+        }
+
+        It 'the PowerShell extension check is <Expected> when VS Code lists <Listed>' -ForEach @(
+            @{ Listed = @('github.copilot', 'ms-vscode.powershell'); Expected = $true }
+            @{ Listed = @('github.copilot'); Expected = $false }
+        ) {
+            Mock Test-CommandAvailable { $true }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = 0; Output = $Listed } } -ParameterFilter { $FilePath -eq 'code' -and ($Arguments -join ' ') -eq '--list-extensions' }
+
+            & (Get-Check 'VS Code PowerShell extension').Test | Should -Be $Expected
+        }
+    }
+}

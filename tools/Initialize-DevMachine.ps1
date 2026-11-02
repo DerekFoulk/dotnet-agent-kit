@@ -49,3 +49,25 @@ function Get-PinnedSdk {
     }
     [pscustomobject]@{ Version = $sdk.version; RollForward = $rollForward }
 }
+
+function Test-CommandAvailable {
+    param([Parameter(Mandatory)] [string] $Name)
+    [bool] (Get-Command -Name $Name -ErrorAction SilentlyContinue)
+}
+
+function Invoke-Native {
+    param(
+        [Parameter(Mandatory)] [string] $FilePath,
+        [string[]] $Arguments = @()
+    )
+    $output = & $FilePath @Arguments 2>&1
+    [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = @($output | ForEach-Object { "$_" }) }
+}
+
+function Get-DevMachineCheck {
+    param([Parameter(Mandatory)] [string] $RepoRoot)
+    $names = 'PowerShell 7', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403', 'Claude Code', 'VS Code', 'VS Code PowerShell extension', 'Docker'
+    foreach ($name in $names) {
+        [pscustomobject]@{ Name = $name; Required = $false; Test = { $null }; InstallCommand = 'stub'; ManualAction = $null }
+    }
+}
