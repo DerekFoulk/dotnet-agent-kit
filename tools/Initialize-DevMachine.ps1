@@ -34,11 +34,16 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [switch] $Install,
-    [string] $RepoRoot = (Split-Path -Path $PSScriptRoot -Parent)
+    [string] $RepoRoot
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Windows PowerShell 5.1 doesn't set $PSScriptRoot inside parameter defaults, so default it here.
+if (-not $RepoRoot) {
+    $RepoRoot = Split-Path -Path $PSScriptRoot -Parent
+}
 
 # True when an installed SDK satisfies the global.json pin. SDK patch numbers carry the feature band
 # in their hundreds (10.0.403 is band 4, patch 3); latestPatch accepts a newer patch in the same band only.
