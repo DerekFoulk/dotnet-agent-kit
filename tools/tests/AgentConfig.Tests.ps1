@@ -28,7 +28,7 @@ Describe 'Agent configuration' {
             @{ Path = './**/*.key' }, @{ Path = './**/*.snk' }, @{ Path = '~/.ssh/**' },
             @{ Path = '~/AppData/Roaming/Microsoft/UserSecrets/**' }
         ) {
-            Get-RuleList 'deny' | Should -Contain "Read($Path)"
+            (Get-RuleList 'deny') -ccontains "Read($Path)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
         }
 
         It 'denies <Command> in both Bash and PowerShell' -ForEach @(
@@ -43,8 +43,8 @@ Describe 'Agent configuration' {
             # Merging past branch protection.
             @{ Command = 'gh pr merge * --admin*' }
         ) {
-            Get-RuleList 'deny' | Should -Contain "Bash($Command)"
-            Get-RuleList 'deny' | Should -Contain "PowerShell($Command)"
+            (Get-RuleList 'deny') -ccontains "Bash($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
+            (Get-RuleList 'deny') -ccontains "PowerShell($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
         }
 
         It 'asks before <Command> in both Bash and PowerShell' -ForEach @(
@@ -63,14 +63,14 @@ Describe 'Agent configuration' {
             @{ Command = 'git switch * --discard-changes*' }, @{ Command = 'git switch -C *' },
             @{ Command = 'git checkout -- *' }, @{ Command = 'git checkout -f*' }, @{ Command = 'git restore *' }
         ) {
-            Get-RuleList 'ask' | Should -Contain "Bash($Command)"
-            Get-RuleList 'ask' | Should -Contain "PowerShell($Command)"
+            (Get-RuleList 'ask') -ccontains "Bash($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
+            (Get-RuleList 'ask') -ccontains "PowerShell($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
         }
 
         It 'asks before PowerShell module installs (<Command>)' -ForEach @(
             @{ Command = 'Install-PSResource *' }, @{ Command = 'Install-Module *' }
         ) {
-            Get-RuleList 'ask' | Should -Contain "PowerShell($Command)"
+            (Get-RuleList 'ask') -ccontains "PowerShell($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
         }
 
         It 'asks before editing <Path>' -ForEach @(
@@ -79,7 +79,7 @@ Describe 'Agent configuration' {
             @{ Path = './.github/workflows/**' }, @{ Path = './.github/dependabot.yml' },
             @{ Path = './.claude/settings.json' }, @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' }
         ) {
-            Get-RuleList 'ask' | Should -Contain "Edit($Path)"
+            (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
         }
     }
 
