@@ -239,7 +239,13 @@ function Initialize-DevMachine {
         foreach ($result in $installable) {
             if ($PSCmdlet.ShouldProcess($result.Name, $result.InstallCommand)) {
                 Write-Host "`nInstalling $($result.Name): $($result.InstallCommand)" -ForegroundColor Cyan
-                Invoke-InstallCommand -Command $result.InstallCommand
+                try {
+                    Invoke-InstallCommand -Command $result.InstallCommand
+                }
+                catch {
+                    # Typically a tool installed earlier in this run that isn't on PATH until a new window.
+                    Write-Host "  $($result.Name) install failed: $($_.Exception.Message)" -ForegroundColor Red
+                }
             }
         }
         if ($installable) {
