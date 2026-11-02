@@ -1,0 +1,14 @@
+<Project>
+
+  <!-- Central package management: versions live here only; transitive pinning lets this file fix transitive versions too. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <!-- Referenced by every project (build-time only, never shipped as a dependency). -->
+  <ItemGroup>
+    <GlobalPackageReference Include="MinVer" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
