@@ -3,7 +3,7 @@
     Checks this machine for the dotnet-agent-kit toolchain and, with -Install, installs what's missing.
 
 .DESCRIPTION
-    Required: PowerShell 7, Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
+    Required: PowerShell 7, Pester 6 (runs the kit's script tests), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
     Later in the build: VS Code with the PowerShell extension, Docker.
 
     Nothing is installed unless you pass -Install; each install command is shown first, and -WhatIf
@@ -115,6 +115,16 @@ function Test-DotNetSdk {
     Test-SdkSatisfiesPin -Installed $installed -Pinned $Pinned -RollForward $RollForward
 }
 
+# Asks PowerShell 7 itself: Windows PowerShell 5.1 reads a different module folder, and the tests run in 7.
+function Test-PesterModule {
+    param([Parameter(Mandatory)] [string] $MinimumVersion)
+    if (-not (Test-CommandAvailable -Name 'pwsh')) {
+        return $false
+    }
+    $probe = "if (Get-Module -ListAvailable -Name Pester | Where-Object Version -GE ([version] '$MinimumVersion')) { exit 0 } else { exit 1 }"
+    (Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-Command', $probe).ExitCode -eq 0
+}
+
 function Test-VsCodeExtension {
     param([Parameter(Mandatory)] [string] $Id)
     (Test-CommandAvailable -Name 'code') -and (Invoke-Native -FilePath 'code' -Arguments '--list-extensions').Output -contains $Id
@@ -148,7 +158,8 @@ function Get-DevMachineCheck {
 
     New-DevMachineCheck -Name 'PowerShell 7' -Required $true -Test { Test-CommandAvailable -Name 'pwsh' } `
         -InstallCommand 'winget install --id Microsoft.PowerShell --exact'
-    New-DevMachineCheck -Name 'Pester 6' -Required $false -Test { $null } -InstallCommand 'stub'
+    New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PesterModule -MinimumVersion '6.0.0' } `
+        -InstallCommand 'pwsh -NoProfile -Command "Install-PSResource -Name Pester -Version 6.2.0 -Scope CurrentUser -Repository PSGallery -TrustRepository"'
     New-DevMachineCheck -Name 'Git' -Required $true -Test { Test-CommandAvailable -Name 'git' } `
         -InstallCommand 'winget install --id Git.Git --exact'
     New-DevMachineCheck -Name 'GitHub CLI' -Required $true -Test { Test-CommandAvailable -Name 'gh' } `
