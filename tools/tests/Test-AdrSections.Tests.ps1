@@ -96,4 +96,36 @@ Describe 'Test-AdrSections.ps1' {
             Get-Problem | Should -BeNullOrEmpty
         }
     }
+
+    Context 'header' {
+        It 'accepts status <Status>' -ForEach @(
+            @{ Status = 'Proposed' }, @{ Status = 'Accepted' }, @{ Status = 'Rejected' },
+            @{ Status = 'Deprecated' }, @{ Status = 'Superseded by ADR-0012' }
+        ) {
+            New-Adr -Status $Status
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports <Case>' -ForEach @(
+            @{ Case = 'a status outside the allowed list'; Arguments = @{ Status = 'Done' }; Expected = "*status 'Done'*" }
+            @{ Case = 'a date that is not YYYY-MM-DD'; Arguments = @{ Date = '2026-13-01' }; Expected = "*date '2026-13-01'*" }
+            @{ Case = 'a missing Status line'; Arguments = @{ Omit = 'Status' }; Expected = '*Status*missing*' }
+            @{ Case = 'a missing Date line'; Arguments = @{ Omit = 'Date' }; Expected = '*Date*missing*' }
+            @{ Case = 'a title number that differs from the file name'; Arguments = @{ Number = '0008' }; Expected = '*title*ADR-0007*' }
+        ) {
+            New-Adr @Arguments
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike $Expected
+        }
+
+        It 'reports a file name that is not NNNN-title.md' {
+            New-Adr -FileName 'github-flow.md'
+
+            Get-Message | Should -BeLike '*file name*NNNN-*'
+        }
+    }
 }
