@@ -1,6 +1,35 @@
 <#
 .SYNOPSIS
     Checks this machine for the dotnet-agent-kit toolchain and, with -Install, installs what's missing.
+
+.DESCRIPTION
+    Required: PowerShell 7, Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
+    Later in the build: VS Code with the PowerShell extension, Docker.
+
+    Nothing is installed unless you pass -Install; each install command is shown first, and -WhatIf
+    shows them without running them. GitHub sign-in is always yours to do (gh auth login): this script
+    never handles credentials.
+
+    Runs on Windows PowerShell 5.1 too, so a new machine can find out that it needs PowerShell 7.
+    Exit code: 0 when every required tool is ready, otherwise 1.
+
+.PARAMETER Install
+    Install each missing tool with winget (Claude Code with its official installer), one at a time.
+
+.PARAMETER RepoRoot
+    The repo whose global.json names the SDK to check. Defaults to this script's repo.
+
+.EXAMPLE
+    ./tools/Initialize-DevMachine.ps1
+    Check only.
+
+.EXAMPLE
+    ./tools/Initialize-DevMachine.ps1 -Install -WhatIf
+    Show what would be installed, without installing.
+
+.EXAMPLE
+    ./tools/Initialize-DevMachine.ps1 -Install
+    Install what's missing, then open a new PowerShell window and run the check again.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -158,13 +187,59 @@ function Invoke-DevMachineCheck {
 
 function Invoke-InstallCommand {
     param([Parameter(Mandatory)] [string] $Command)
+    Invoke-Expression -Command $Command
 }
 
+# Runs every check, prints the results and, with -Install, installs what's missing one tool at a time.
+# Returns 0 when every required tool is ready, otherwise 1.
 function Initialize-DevMachine {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)] [string] $RepoRoot,
         [switch] $Install
     )
-    -1
+
+    $labels = @{ ok = '[ok]     '; missing = '[missing]'; later = '[later]  '; action = '[action] ' }
+    $colors = @{ ok = 'Green'; missing = 'Red'; later = 'Yellow'; action = 'Red' }
+
+    Write-Host "`nChecking the dotnet-agent-kit toolchain on $env:COMPUTERNAME..." -ForegroundColor Cyan
+    $results = @(Get-DevMachineCheck -RepoRoot $RepoRoot | ForEach-Object { Invoke-DevMachineCheck -Check $_ })
+    foreach ($result in $results) {
+        $line = "  $($labels[$result.Status]) $($result.Name)"
+        if ($result.Status -in 'missing', 'later') {
+            $line += "  ->  $($result.InstallCommand)"
+        }
+        elseif ($result.Status -eq 'action') {
+            $line += "  ->  $($result.ManualAction)"
+        }
+        Write-Host $line -ForegroundColor $colors[$result.Status]
+    }
+
+    $notReady = @($results | Where-Object { $_.Required -and $_.Status -ne 'ok' })
+
+    if ($Install) {
+        $installable = @($results | Where-Object { $_.Status -in 'missing', 'later' })
+        foreach ($result in $installable) {
+            if ($PSCmdlet.ShouldProcess($result.Name, $result.InstallCommand)) {
+                Write-Host "`nInstalling $($result.Name): $($result.InstallCommand)" -ForegroundColor Cyan
+                Invoke-InstallCommand -Command $result.InstallCommand
+            }
+        }
+        if ($installable) {
+            Write-Host "`nOpen a new PowerShell window so new tools are on PATH, then run this script again to confirm." -ForegroundColor Yellow
+        }
+    }
+    elseif ($notReady) {
+        Write-Host "`nFix the items above, or run again with -Install to install the missing tools." -ForegroundColor Red
+    }
+    else {
+        Write-Host "`nAll required tools are ready." -ForegroundColor Green
+    }
+
+    if ($notReady) { 1 } else { 0 }
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    exit (Initialize-DevMachine -RepoRoot $RepoRoot -Install:$Install)
 }
