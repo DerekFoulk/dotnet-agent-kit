@@ -24,7 +24,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
             Copy-Item -Path (Join-Path $PSScriptRoot 'fixtures' $Fixture '*') -Destination $workspace -Recurse
 
             git -C $workspace init --quiet --initial-branch main
-            git -C $workspace add --all
+            git -C $workspace -c core.autocrlf=false add --all
             git -C $workspace -c user.name=fixture -c user.email=fixture@example.invalid commit --quiet --message fixture
             git -C $workspace tag v1.2.3
             $workspace
