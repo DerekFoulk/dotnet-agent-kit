@@ -261,3 +261,20 @@ Describe 'Initialize-DevMachine.ps1 as a script' -Tag 'Machine' {
         $output | Should -Match 'EXIT=3 OUTPUT=.*probe-error'
     }
 }
+
+Describe 'Invoke-InstallCommand' {
+    # Real native commands, no mocks: winget and friends report failure by exit code, not by throwing.
+    It 'throws when the installer exits nonzero, naming the exit code' {
+        { Invoke-InstallCommand -Command 'pwsh -NoProfile -Command "exit 5"' } | Should -Throw '*exit code 5*'
+    }
+
+    It 'does not throw when the installer succeeds' {
+        { Invoke-InstallCommand -Command 'pwsh -NoProfile -Command "exit 0"' } | Should -Not -Throw
+    }
+
+    It 'ignores an exit code left over from an earlier command when the installer runs no native command' {
+        $global:LASTEXITCODE = 7
+
+        { Invoke-InstallCommand -Command 'Get-Date | Out-Null' } | Should -Not -Throw
+    }
+}
