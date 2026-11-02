@@ -2,6 +2,16 @@
 <#
 .SYNOPSIS
     Fails when any ADR is missing a required section (brief §5, checkpoint §3).
+
+.DESCRIPTION
+    Checks every docs/adr/NNNN-short-title.md except the 0000 template: a "# ADR-NNNN: <title>" line that
+    matches the file number; "- **Status:** " (Proposed, Accepted, Rejected, Deprecated or Superseded by
+    ADR-NNNN) and "- **Date:** YYYY-MM-DD" lines; non-empty Context, Options, Recommendation, Decision,
+    Consequences, Pillars affected and Sources sections; and at least two "### " options, each with
+    Trade-offs, Reversibility and Risk. Exit code: 0 when every ADR is complete, otherwise 1.
+
+.EXAMPLE
+    ./tools/Test-AdrSections.ps1
 #>
 [CmdletBinding()]
 param(
@@ -109,7 +119,28 @@ function Get-AdrSectionProblem {
     }
 }
 
+# Prints every problem and returns 0 when every ADR is complete, otherwise 1.
 function Invoke-AdrSectionCheck {
     param([Parameter(Mandatory)] [string] $AdrPath)
-    -1
+
+    $problems = @(Get-AdrSectionProblem -AdrPath $AdrPath)
+    foreach ($problem in $problems) {
+        Write-Host "  $($problem.File): $($problem.Message)" -ForegroundColor Red
+    }
+
+    if ($problems) {
+        Write-Host "`n$($problems.Count) ADR problem(s) in $AdrPath." -ForegroundColor Red
+        return 1
+    }
+
+    $adrCount = @(Get-ChildItem -Path $AdrPath -Filter '*.md' -File | Where-Object Name -NotLike '0000-*').Count
+    $noun = if ($adrCount -eq 1) { 'ADR' } else { 'ADRs' }
+    Write-Host "$adrCount $noun, all complete." -ForegroundColor Green
+    0
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    if (-not $AdrPath) { $AdrPath = Join-Path (Split-Path -Path $PSScriptRoot -Parent) 'docs' 'adr' }
+    exit (Invoke-AdrSectionCheck -AdrPath $AdrPath)
 }
