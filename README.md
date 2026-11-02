@@ -12,6 +12,7 @@ Work in progress (v0.1).
 |---|---|---|
 | PowerShell 7 | Every kit script, and CI | Yes |
 | Pester 6 | The kit's script tests | Yes |
+| powershell-yaml | Reading rule metadata in `docs/standards` | Yes |
 | Git | Everything | Yes |
 | GitHub CLI, signed in | Cloning this private repo, PRs | Yes |
 | .NET SDK named in `global.json` | Building | Yes |
@@ -47,6 +48,19 @@ Add `-WhatIf` first if you want to see the install commands without running them
 ```
 
 The exit code is 0 when every required tool is ready and 1 otherwise, so agents and CI can use it as a gate.
+
+## Standards and decisions
+
+- **`docs/standards/`**: one file per topic. Each rule sits in the file's YAML front matter with its `id`, `statement`, `why`, `layer` (floor, owner or outside), `status` (proposed, accepted or retired), `sources` and `enforcement`. A `proposed` rule isn't in force until the owner accepts it.
+- **`docs/adr/`**: Architecture Decision Records. ADR numbers match the brief's decision numbers (D8 is ADR-0008). New ones start from `docs/adr/0000-template.md`.
+- **`docs/sources.md`** lists practitioner sources. **`docs/corrections-log.md`** records owner corrections and what each became.
+
+Two checks keep these honest. Each exits 0 when clean and 1 otherwise:
+
+```powershell
+./tools/Test-RuleSources.ps1   # every rule has a valid source (owner + date, ADR, or URL + retrieval date) and an enforcement
+./tools/Test-AdrSections.ps1   # every ADR has its required sections and at least two options with trade-offs
+```
 
 ## Run the tests
 
