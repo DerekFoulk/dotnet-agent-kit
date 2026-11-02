@@ -16,7 +16,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0018"]
-    enforcement: "advisory: until the plan-checklist skill and reviewer agent check plans (build step 3)"
+    enforcement: "advisory: the start-work and plan-checklist skills require a test list and the reviewer agent checks for it; no tool can judge a plan"
     scope: core
     paths: ["**"]
   - id: TST-003

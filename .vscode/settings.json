@@ -1,0 +1,5 @@
+{
+  // .github/copilot-instructions.md is a generated copy of AGENTS.md (tools/Build-AgentRules.ps1), so
+  // VS Code would otherwise attach the same instructions twice to every Copilot request.
+  "chat.useAgentsMdFile": false
+}

@@ -52,7 +52,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-10-26"]
-    enforcement: "advisory: a judgment call; the reviewer agent flags deferred cheap fixes (build step 3)"
+    enforcement: "advisory: a judgment call; the reviewer agent flags deferred cheap fixes"
     scope: core
     paths: ["**"]
 ---

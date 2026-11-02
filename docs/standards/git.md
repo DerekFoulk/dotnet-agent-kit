@@ -7,7 +7,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-10-26", "ADR-0007"]
-    enforcement: "advisory: until the ruleset merge-method rule and repo merge settings (build step 4)"
+    enforcement: "ruleset: main protection allows merge commits only (pull_request rule, allowed_merge_methods merge)"
     scope: core
     paths: ["**"]
   - id: GIT-002
@@ -16,7 +16,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-10-26", "ADR-0007"]
-    enforcement: "advisory: until the main-branch ruleset requires pull requests (build step 4)"
+    enforcement: "ruleset: main protection requires a pull request"
     scope: core
     paths: ["**"]
   - id: GIT-003
@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: proposed
     sources: ["ADR-0007", "ADR-0010"]
-    enforcement: "advisory: until the main-branch ruleset and agent permission config (build steps 3 and 4)"
+    enforcement: "ruleset: main protection blocks force-pushes and deletion and requires a pull request; merging only when told is advisory, backed by the gh pr merge ask rule in .claude/settings.json"
     scope: core
     paths: ["**"]
   - id: GIT-004

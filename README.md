@@ -62,6 +62,31 @@ Two checks keep these honest. Each exits 0 when clean and 1 otherwise:
 ./tools/Test-AdrSections.ps1   # every ADR has its required sections and at least two options with trade-offs
 ```
 
+## Agent layer
+
+| File | Read by | Written by |
+|---|---|---|
+| `AGENTS.md` | Claude Code (through `CLAUDE.md`), the Copilot coding agent. VS Code can read it too, but this repo turns that off (`.vscode/settings.json`) because VS Code already gets the same text from `.github/copilot-instructions.md` | Hand |
+| `CLAUDE.md` | Claude Code; imports `AGENTS.md` | Hand |
+| `.github/copilot-instructions.md` | Visual Studio, VS Code, Copilot on GitHub | Generated copy of `AGENTS.md` |
+| `.claude/rules/*.md` | Claude Code (and VS Code Claude sessions), loaded by path | Generated from `docs/standards` |
+| `.github/instructions/*.instructions.md` | Copilot, loaded by `applyTo` | Generated from `docs/standards` |
+| `.claude/skills/*/SKILL.md` | Claude Code, Visual Studio, VS Code | Hand |
+| `.claude/agents/reviewer.md` | Claude Code | Hand |
+| `.claude/settings.json` | Claude Code: permissions | Hand, owner-approved |
+| `.mcp.json`, `.vscode/mcp.json` | Claude Code and Visual Studio; VS Code | Hand |
+
+The generated files carry only **accepted** rules. After editing a standard or `AGENTS.md`, regenerate them and commit the result:
+
+```powershell
+./tools/Build-AgentRules.ps1          # regenerate
+./tools/Build-AgentRules.ps1 -Check   # exit 1 if any generated file is missing, hand-edited or stale
+```
+
+Two things need a one-time step per user:
+- **Visual Studio:** it loads the instruction files only when an option is ticked. Microsoft's docs place it under Tools > Options > All Settings > GitHub > Copilot > Copilot Chat: "Enable custom instructions to be loaded from .github/copilot-instructions.md files and added to requests".
+- **Claude Code:** it asks once before connecting to the Microsoft Learn server in `.mcp.json`. Its permission allow rules apply only after you trust the folder.
+
 ## Run the tests
 
 ```powershell

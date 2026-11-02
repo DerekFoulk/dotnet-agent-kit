@@ -16,7 +16,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: until the finish-work skill and reviewer agent (build step 3); scored on practice tasks"
+    enforcement: "advisory: the finish-work skill and reviewer agent ask for evidence; scored on practice tasks"
     scope: core
     paths: ["**"]
   - id: DOD-003
@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0010"]
-    enforcement: "advisory: until the reviewer agent (build step 3)"
+    enforcement: "advisory: the reviewer agent exists (.claude/agents/reviewer.md); running it is a finish-work step no tool enforces"
     scope: core
     paths: ["**"]
   - id: DOD-004
@@ -34,14 +34,14 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: until .github/pull_request_template.md and the PR checks (build steps 3 and 4)"
+    enforcement: "advisory: .github/pull_request_template.md pre-fills every PR; a PR check comes in build step 4"
     scope: core
     paths: ["**"]
 ---
 
 # Definition of done
 
-Done means verified, with the evidence shown. The `finish-work` skill (build step 3) walks through this list before a PR is opened.
+Done means verified, with the evidence shown. The `finish-work` skill (`.claude/skills/finish-work/SKILL.md`) walks through this list before a PR is opened.
 
 ## Pending ratification
 

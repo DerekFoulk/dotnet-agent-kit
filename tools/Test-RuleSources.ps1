@@ -24,26 +24,12 @@ $ErrorActionPreference = 'Stop'
 # Not '#Requires -Modules': in PowerShell 7.6.9, a module loaded that way turns the script's 'exit 1' into 0
 # when run with -File, which would make this check pass in CI no matter what it finds.
 Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 
 $script:RequiredFields = 'id', 'statement', 'layer', 'status', 'sources', 'enforcement'
 $script:AllowedValues = [ordered]@{
     layer  = 'floor', 'owner', 'outside'
     status = 'proposed', 'accepted', 'retired'
-}
-
-# Returns the YAML front matter of a Markdown file (between the opening and closing --- lines), or $null.
-function Read-FrontMatter {
-    param([Parameter(Mandatory)] [string] $Path)
-
-    $lines = @(Get-Content -Path $Path)
-    if ($lines.Count -eq 0 -or $lines[0].Trim() -ne '---') {
-        return $null
-    }
-    $end = [array]::IndexOf($lines, '---', 1)
-    if ($end -lt 0) {
-        return $null
-    }
-    ConvertFrom-Yaml -Yaml ($lines[1..($end - 1)] -join "`n")
 }
 
 function New-Problem {
