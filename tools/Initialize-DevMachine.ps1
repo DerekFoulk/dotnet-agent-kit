@@ -60,7 +60,11 @@ function Test-SdkSatisfiesPin {
 
     $pin = [version] $Pinned
     foreach ($candidate in $Installed) {
-        $version = [version] $candidate
+        # Preview and RC SDKs (10.0.100-rc.2...) never satisfy the pin: global.json sets allowPrerelease false.
+        $version = $null
+        if (-not [version]::TryParse($candidate, [ref] $version)) {
+            continue
+        }
         if ($RollForward -eq 'disable') {
             if ($version -eq $pin) { return $true }
             continue
