@@ -12,6 +12,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $script:RequiredSections = 'Context', 'Options', 'Recommendation', 'Decision', 'Consequences', 'Pillars affected', 'Sources'
+$script:StatusPattern = '(Proposed|Accepted|Rejected|Deprecated|Superseded by ADR-\d{4})'
 
 function New-Problem {
     param([string] $File, [string] $Message)
@@ -48,6 +49,37 @@ function Get-AdrSectionProblem {
     foreach ($file in $files) {
         $lines = @(Get-Content -Path $file.FullName)
         $sections = Get-AdrSection -Lines $lines
+
+        if ($file.Name -notmatch '^(\d{4})-[a-z0-9-]+\.md$') {
+            New-Problem -File $file.Name -Message "file name must be NNNN-short-title.md"
+        }
+        else {
+            $number = $Matches[1]
+            if (-not ($lines | Where-Object { $_ -match "^# ADR-${number}: \S" })) {
+                New-Problem -File $file.Name -Message "title must read '# ADR-${number}: <title>'"
+            }
+        }
+
+        $status = $lines | Where-Object { $_ -match '^- \*\*Status:\*\* ' } | Select-Object -First 1
+        if (-not $status) {
+            New-Problem -File $file.Name -Message "the '- **Status:** ' line is missing"
+        }
+        elseif ($status -notmatch "^- \*\*Status:\*\* $script:StatusPattern\s*$") {
+            $value = $status -replace '^- \*\*Status:\*\* ', ''
+            New-Problem -File $file.Name -Message "status '$value' must be Proposed, Accepted, Rejected, Deprecated or 'Superseded by ADR-NNNN'"
+        }
+
+        $date = $lines | Where-Object { $_ -match '^- \*\*Date:\*\* ' } | Select-Object -First 1
+        if (-not $date) {
+            New-Problem -File $file.Name -Message "the '- **Date:** ' line is missing"
+        }
+        else {
+            $value = ($date -replace '^- \*\*Date:\*\* ', '').Trim()
+            $parsed = [datetime]::MinValue
+            if (-not [datetime]::TryParseExact($value, 'yyyy-MM-dd', [cultureinfo]::InvariantCulture, 'None', [ref] $parsed)) {
+                New-Problem -File $file.Name -Message "date '$value' must be YYYY-MM-DD"
+            }
+        }
 
         foreach ($name in $script:RequiredSections) {
             if (-not $sections.Contains($name)) {
