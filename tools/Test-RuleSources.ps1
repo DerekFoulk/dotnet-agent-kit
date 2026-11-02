@@ -128,3 +128,11 @@ function Get-RuleSourceProblem {
         }
     }
 }
+
+function Invoke-RuleSourceCheck {
+    param(
+        [Parameter(Mandatory)] [string] $StandardsPath,
+        [Parameter(Mandatory)] [string] $AdrPath
+    )
+    -1
+}

@@ -158,4 +158,34 @@ Describe 'Test-RuleSources.ps1' {
             $problems[0].Message | Should -BeLike '*GIT-001*git.md*'
         }
     }
+
+    Context 'runner' {
+        BeforeEach {
+            Mock Write-Host {}
+        }
+
+        It 'returns 0 and says so when every rule is traceable' {
+            New-StandardsFile
+
+            Invoke-RuleSourceCheck -StandardsPath $script:standards -AdrPath $script:adr | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*1 rule*traceable*' }
+        }
+
+        It 'returns 1 and prints each problem with its file and rule id' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ sources = @('owner') })
+
+            Invoke-RuleSourceCheck -StandardsPath $script:standards -AdrPath $script:adr | Should -Be 1
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*git.md*GIT-001*owner, YYYY-MM-DD*' }
+        }
+
+        It 'exits 1 when run as a script against a broken rule' {
+            New-StandardsFile -Rules @(New-Rule -Remove 'enforcement')
+            $script = Join-Path $PSScriptRoot '..' 'Test-RuleSources.ps1'
+
+            $output = pwsh -NoProfile -File $script -StandardsPath $script:standards -AdrPath $script:adr 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1 -Because $output
+            $output | Should -Match 'enforcement'
+        }
+    }
 }
