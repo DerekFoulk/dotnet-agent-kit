@@ -22,44 +22,64 @@ Describe 'Agent configuration' {
     }
 
     Context '.claude/settings.json permissions' {
-        It 'denies <Rule>' -ForEach @(
-            @{ Rule = 'Read(./.env)' }
-            @{ Rule = 'Read(./.env.*)' }
-            @{ Rule = 'Read(~/.ssh/**)' }
-            @{ Rule = 'Bash(git push --force *)' }
-            @{ Rule = 'PowerShell(git push --force *)' }
-            @{ Rule = 'Bash(git push * main)' }
-            @{ Rule = 'PowerShell(git push * main)' }
-            @{ Rule = 'Bash(git * --no-verify*)' }
-            @{ Rule = 'PowerShell(git * --no-verify*)' }
+        # Rules match command text, so they're best effort; GitHub rulesets on main are the real guard.
+        It 'denies reading <Path>' -ForEach @(
+            @{ Path = './.env' }, @{ Path = './.env.*' }, @{ Path = './**/*.pfx' }, @{ Path = './**/*.pem' },
+            @{ Path = './**/*.key' }, @{ Path = './**/*.snk' }, @{ Path = '~/.ssh/**' },
+            @{ Path = '~/AppData/Roaming/Microsoft/UserSecrets/**' }
         ) {
-            Get-RuleList 'deny' | Should -Contain $Rule
+            Get-RuleList 'deny' | Should -Contain "Read($Path)"
         }
 
-        It 'asks before <Rule>' -ForEach @(
-            @{ Rule = 'Bash(gh pr merge *)' }
-            @{ Rule = 'PowerShell(gh pr merge *)' }
-            @{ Rule = 'Edit(./Directory.Packages.props)' }
-            @{ Rule = 'Edit(./.github/workflows/**)' }
-            @{ Rule = 'Edit(./.claude/settings.json)' }
-            @{ Rule = 'PowerShell(Install-PSResource *)' }
-            @{ Rule = 'PowerShell(winget install *)' }
-            # Initialize-DevMachine -Install installs software; the ./tools/* allow rule must not cover it.
-            @{ Rule = 'Bash(*Initialize-DevMachine*-Install*)' }
-            @{ Rule = 'PowerShell(*Initialize-DevMachine*-Install*)' }
-            # Commands that can destroy work.
-            @{ Rule = 'Bash(git reset --hard *)' }
-            @{ Rule = 'PowerShell(git reset --hard *)' }
-            @{ Rule = 'Bash(git clean *)' }
-            @{ Rule = 'PowerShell(git clean *)' }
-            @{ Rule = 'Bash(git branch -D *)' }
-            @{ Rule = 'PowerShell(git branch -D *)' }
-            @{ Rule = 'Bash(git push * --delete *)' }
-            @{ Rule = 'PowerShell(git push * --delete *)' }
-            @{ Rule = 'Bash(git push * :*)' }
-            @{ Rule = 'PowerShell(git push * :*)' }
+        It 'denies <Command> in both Bash and PowerShell' -ForEach @(
+            # Force-push, including --force-with-lease, short flags and +refspecs.
+            @{ Command = 'git push --force*' }, @{ Command = 'git push -f *' }, @{ Command = 'git push * --force*' },
+            @{ Command = 'git push * -f' }, @{ Command = 'git push * -f *' }, @{ Command = 'git push * +*' }
+            # Push to main.
+            @{ Command = 'git push * main' }, @{ Command = 'git push * HEAD:main' }, @{ Command = 'git push * *:main' },
+            @{ Command = 'git push * refs/heads/main' }, @{ Command = 'git push * *:refs/heads/main' }
+            # Skipping hooks.
+            @{ Command = 'git * --no-verify*' }, @{ Command = 'git commit -n*' }, @{ Command = 'git commit * -n*' }
+            # Merging past branch protection.
+            @{ Command = 'gh pr merge * --admin*' }
         ) {
-            Get-RuleList 'ask' | Should -Contain $Rule
+            Get-RuleList 'deny' | Should -Contain "Bash($Command)"
+            Get-RuleList 'deny' | Should -Contain "PowerShell($Command)"
+        }
+
+        It 'asks before <Command> in both Bash and PowerShell' -ForEach @(
+            # Merging, repo settings and other GitHub writes.
+            @{ Command = 'gh pr merge *' }, @{ Command = 'gh repo edit *' }, @{ Command = 'gh api * -X *' },
+            @{ Command = 'gh api * --method *' }, @{ Command = 'gh api * -f *' }, @{ Command = 'gh api * -F *' },
+            @{ Command = 'gh api * --field *' }, @{ Command = 'gh api * --raw-field *' }, @{ Command = 'gh api * --input *' }
+            # Dependencies and installs. -I* catches -Install and its prefixes (-Ins), which PowerShell accepts.
+            @{ Command = 'dotnet add * package *' }, @{ Command = 'winget install *' }, @{ Command = '*Initialize-DevMachine*-I*' }
+            # Commands that can destroy work.
+            @{ Command = 'git reset --hard *' }, @{ Command = 'git clean *' }, @{ Command = 'git branch -D *' },
+            @{ Command = 'git push * --delete *' }, @{ Command = 'git push * -d *' }, @{ Command = 'git push * :*' },
+            @{ Command = 'git push --mirror*' }, @{ Command = 'git push * --mirror*' },
+            @{ Command = 'git push --prune*' }, @{ Command = 'git push * --prune*' },
+            @{ Command = 'git switch -f*' }, @{ Command = 'git switch * -f*' }, @{ Command = 'git switch --discard-changes*' },
+            @{ Command = 'git switch * --discard-changes*' }, @{ Command = 'git switch -C *' },
+            @{ Command = 'git checkout -- *' }, @{ Command = 'git checkout -f*' }, @{ Command = 'git restore *' }
+        ) {
+            Get-RuleList 'ask' | Should -Contain "Bash($Command)"
+            Get-RuleList 'ask' | Should -Contain "PowerShell($Command)"
+        }
+
+        It 'asks before PowerShell module installs (<Command>)' -ForEach @(
+            @{ Command = 'Install-PSResource *' }, @{ Command = 'Install-Module *' }
+        ) {
+            Get-RuleList 'ask' | Should -Contain "PowerShell($Command)"
+        }
+
+        It 'asks before editing <Path>' -ForEach @(
+            @{ Path = './**/Directory.Packages.props' }, @{ Path = './**/Directory.Build.props' },
+            @{ Path = './nuget.config' }, @{ Path = './global.json' }, @{ Path = './.config/dotnet-tools.json' },
+            @{ Path = './.github/workflows/**' }, @{ Path = './.github/dependabot.yml' },
+            @{ Path = './.claude/settings.json' }, @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' }
+        ) {
+            Get-RuleList 'ask' | Should -Contain "Edit($Path)"
         }
     }
 
