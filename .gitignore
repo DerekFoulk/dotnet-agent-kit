@@ -390,6 +390,8 @@ FodyWeavers.xsd
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+# Kit: VS Code's MCP server config is shared with the repo (ADR-0017).
+!.vscode/mcp.json
 *.code-workspace
 
 # Local History for Visual Studio Code
