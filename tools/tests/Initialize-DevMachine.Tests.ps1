@@ -243,4 +243,21 @@ Describe 'Initialize-DevMachine.ps1 as a script' -Tag 'Machine' {
         $output | Should -Match 'Checking the dotnet-agent-kit toolchain'
         $LASTEXITCODE | Should -BeIn 0, 1 -Because $output
     }
+
+    # A probe such as `gh auth status` writes to stderr when it fails. In 5.1, with $ErrorActionPreference = 'Stop',
+    # captured native stderr becomes a terminating error unless Invoke-Native allows it.
+    It 'Invoke-Native in Windows PowerShell 5.1 returns the exit code and stderr of a failing command' -Skip:(-not (Get-Command -Name 'powershell.exe' -ErrorAction SilentlyContinue)) {
+        $script = Join-Path $PSScriptRoot '..' 'Initialize-DevMachine.ps1'
+        $driver = Join-Path $TestDrive 'Invoke-NativeDriver.ps1'
+        Set-Content -Path $driver -Value @"
+`$ErrorActionPreference = 'Stop'
+. '$script'
+`$result = Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-Command', '[Console]::Error.WriteLine(''probe-error''); exit 3'
+"EXIT=`$(`$result.ExitCode) OUTPUT=`$(`$result.Output -join '|')"
+"@
+
+        $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $driver 2>&1 | Out-String
+
+        $output | Should -Match 'EXIT=3 OUTPUT=.*probe-error'
+    }
 }
