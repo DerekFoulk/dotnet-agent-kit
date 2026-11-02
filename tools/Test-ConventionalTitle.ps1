@@ -4,7 +4,11 @@
     Fails when a PR title or a commit subject isn't a Conventional Commit (GIT-004, ADR-0006, ADR-0022).
 #>
 [CmdletBinding()]
-param()
+param(
+    [string] $Title,
+    [string] $RepoPath = '.',
+    [string] $Range
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -22,4 +26,9 @@ function Get-TitleProblem {
         return $null
     }
     "'$Title' isn't a Conventional Commit: '<type>(<optional scope>)!: <description>', where type is one of $($script:Types -join ', ')"
+}
+
+function Invoke-ConventionalTitleCheck {
+    param([string] $Title, [string] $RepoPath = '.', [string] $Range)
+    -1
 }

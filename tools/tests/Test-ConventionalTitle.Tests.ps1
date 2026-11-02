@@ -29,4 +29,50 @@ Describe 'Test-ConventionalTitle.ps1' {
             Get-TitleProblem -Title $Title | Should -BeLike '*Conventional Commit*'
         }
     }
+
+    Context 'runner' {
+        BeforeAll {
+            # A small repo: main has one commit; the branch adds a good, a bad and a merge commit.
+            $script:repo = Join-Path $TestDrive 'repo'
+            New-Item -ItemType Directory -Path $script:repo | Out-Null
+            function Invoke-Git { git -C $script:repo -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false @args 2>&1 | Out-Null }
+            Invoke-Git init --quiet --initial-branch main
+            Invoke-Git commit --quiet --allow-empty --message 'chore: initial'
+            Invoke-Git switch --quiet -c work
+            Invoke-Git commit --quiet --allow-empty --message 'feat: a good subject'
+            Invoke-Git commit --quiet --allow-empty --message 'a bad subject'
+            Invoke-Git switch --quiet main
+            Invoke-Git switch --quiet -c side
+            Invoke-Git commit --quiet --allow-empty --message 'fix: on the side'
+            Invoke-Git switch --quiet work
+            Invoke-Git merge --quiet --no-ff side --message "Merge branch 'side' into work"
+        }
+
+        BeforeEach {
+            Mock Write-Host {}
+        }
+
+        It 'returns <Expected> for the title <Title>' -ForEach @(
+            @{ Title = 'feat: add tags'; Expected = 0 }
+            @{ Title = 'Add tags'; Expected = 1 }
+        ) {
+            Invoke-ConventionalTitleCheck -Title $Title | Should -Be $Expected
+        }
+
+        It 'checks every commit subject in a range, skipping merge commits' {
+            Invoke-ConventionalTitleCheck -RepoPath $script:repo -Range 'main..work' | Should -Be 1
+
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like "*'a bad subject'*" } -Times 1 -Exactly
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like "*Merge branch*" } -Times 0 -Exactly
+        }
+
+        It 'exits 1 when run as a script with a bad title' {
+            $script = Join-Path $PSScriptRoot '..' 'Test-ConventionalTitle.ps1'
+
+            $output = pwsh -NoProfile -File $script -Title 'Add tags' 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1 -Because $output
+            $output | Should -Match 'Conventional Commit'
+        }
+    }
 }
