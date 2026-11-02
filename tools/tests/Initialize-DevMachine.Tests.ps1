@@ -146,3 +146,61 @@ Describe 'Invoke-DevMachineCheck' {
         $result.Name | Should -Be 'Tool'
     }
 }
+
+Describe 'Initialize-DevMachine' {
+    BeforeAll {
+        function New-FakeCheck([string] $Name, [bool] $Required, [bool] $Passes, [string] $Install, [string] $Manual) {
+            New-DevMachineCheck -Name $Name -Required $Required -Test ([scriptblock]::Create("`$$Passes")) -InstallCommand $Install -ManualAction $Manual
+        }
+    }
+
+    BeforeEach {
+        Mock Write-Host {}
+        Mock Invoke-InstallCommand {}
+    }
+
+    Context 'a required tool is missing' {
+        BeforeEach {
+            Mock Get-DevMachineCheck {
+                New-FakeCheck -Name 'Present' -Required $true -Passes $true -Install 'install present'
+                New-FakeCheck -Name 'Needed' -Required $true -Passes $false -Install 'install needed'
+                New-FakeCheck -Name 'Sign-in' -Required $true -Passes $false -Manual 'sign in yourself'
+                New-FakeCheck -Name 'Later' -Required $false -Passes $false -Install 'install later'
+            }
+        }
+
+        It 'returns 1 and installs nothing without -Install' {
+            Initialize-DevMachine -RepoRoot $TestDrive | Should -Be 1
+            Should -Invoke Invoke-InstallCommand -Times 0
+        }
+
+        It 'shows each missing tool with the command that installs it' {
+            Initialize-DevMachine -RepoRoot $TestDrive | Out-Null
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*`[missing`]*Needed*install needed*' }
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*`[action`]*Sign-in*sign in yourself*' }
+        }
+
+        It 'with -Install, installs each failing tool that has an install command, in order' {
+            $script:installed = @()
+            Mock Invoke-InstallCommand { $script:installed += $Command }
+
+            Initialize-DevMachine -RepoRoot $TestDrive -Install | Should -Be 1
+
+            $script:installed | Should -Be @('install needed', 'install later')
+        }
+
+        It 'with -Install -WhatIf, installs nothing' {
+            Initialize-DevMachine -RepoRoot $TestDrive -Install -WhatIf | Should -Be 1
+            Should -Invoke Invoke-InstallCommand -Times 0
+        }
+    }
+
+    It 'returns 0 when only optional tools are missing' {
+        Mock Get-DevMachineCheck {
+            New-FakeCheck -Name 'Present' -Required $true -Passes $true -Install 'install present'
+            New-FakeCheck -Name 'Later' -Required $false -Passes $false -Install 'install later'
+        }
+
+        Initialize-DevMachine -RepoRoot $TestDrive | Should -Be 0
+    }
+}

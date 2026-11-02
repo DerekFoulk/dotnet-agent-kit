@@ -155,3 +155,16 @@ function Invoke-DevMachineCheck {
         ManualAction   = $Check.ManualAction
     }
 }
+
+function Invoke-InstallCommand {
+    param([Parameter(Mandatory)] [string] $Command)
+}
+
+function Initialize-DevMachine {
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)] [string] $RepoRoot,
+        [switch] $Install
+    )
+    -1
+}
