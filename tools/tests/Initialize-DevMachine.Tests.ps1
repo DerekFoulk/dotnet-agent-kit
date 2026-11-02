@@ -203,6 +203,17 @@ Describe 'Initialize-DevMachine' {
             $script:installed | Should -Be @('install needed', 'install later')
         }
 
+        It 'with -Install, reports a failed install and carries on with the rest' {
+            $script:installed = @()
+            Mock Invoke-InstallCommand { $script:installed += $Command; throw 'pwsh is not on PATH yet' } -ParameterFilter { $Command -eq 'install needed' }
+            Mock Invoke-InstallCommand { $script:installed += $Command }
+
+            Initialize-DevMachine -RepoRoot $TestDrive -Install | Should -Be 1
+
+            $script:installed | Should -Be @('install needed', 'install later')
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*Needed*failed*pwsh is not on PATH yet*' }
+        }
+
         It 'with -Install -WhatIf, installs nothing' {
             Initialize-DevMachine -RepoRoot $TestDrive -Install -WhatIf | Should -Be 1
             Should -Invoke Invoke-InstallCommand -Times 0
