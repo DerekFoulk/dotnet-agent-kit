@@ -34,7 +34,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0005", "ADR-0008"]
-    enforcement: "advisory: an architecture choice; the reviewer agent checks for the ADR (build step 3)"
+    enforcement: "advisory: an architecture choice; the reviewer agent checks for the ADR"
     scope: core
     paths: ["**"]
   - id: ARC-005
@@ -52,7 +52,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0016"]
-    enforcement: "advisory: until the plan-checklist skill and reviewer agent (build step 3)"
+    enforcement: "advisory: the plan-checklist skill lists the pillars and the reviewer agent checks plans; no tool can judge a plan"
     scope: core
     paths: ["**"]
   - id: ARC-007

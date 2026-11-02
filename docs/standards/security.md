@@ -16,7 +16,7 @@ rules:
     layer: floor
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: until agent permission config denies secret files (build step 3); behavior is scored on practice tasks"
+    enforcement: "claude settings: Read denies for secret files in .claude/settings.json; not printing or storing secrets is advisory, scored on practice tasks"
     scope: core
     paths: ["**"]
   - id: SEC-003
@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: until agent permission config (build step 3); GitHub enforces the rest through rulesets (build step 4)"
+    enforcement: "claude settings: .claude/settings.json asks before merging, repo-settings edits, packages, installs and build, CI or agent config edits; the rest is advisory (ADR-0026)"
     scope: core
     paths: ["**"]
   - id: SEC-004
@@ -34,7 +34,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0017"]
-    enforcement: "advisory: until the MCP files are generated from the kit and checked for drift (build step 3)"
+    enforcement: "check: tools/tests/AgentConfig.Tests.ps1 pins the configured MCP servers; the allowlist policy itself is advisory"
     scope: core
     paths: [".mcp.json", ".vscode/mcp.json"]
   - id: SEC-005

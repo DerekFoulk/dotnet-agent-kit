@@ -46,7 +46,7 @@ Details and sources: `docs/standards/communication.md`.
   Co-Authored-By: ...
   ```
 
-- Never push to `main`, force-push, or skip hooks. Merge a PR only when the owner says so for that PR.
+- Never push to `main`, force-push, or skip hooks. Merge a PR only when the owner says so for that PR. GitHub's "main protection" ruleset rejects direct pushes, force-pushes and deletion of `main`, and allows merge commits only.
 - Before pushing to a PR's branch or reporting on a PR, check that it's still open (`gh pr view <n> --json state`). The owner merges on his own schedule. If it's merged, put new commits on a fresh branch and open a new PR.
 
 ## Ask before
@@ -60,6 +60,8 @@ Ask the owner first before you:
 - do anything that can't be undone.
 
 Never read, print or store secrets. Sign-in is always the owner's step.
+
+**When a permission rule or prompt blocks something legitimate, stop and tell the owner.** Don't rephrase the command, move it into a script or split it up to get past the rule (ADR-0026). The rule may be wrong, but changing it is the owner's call.
 
 ## Commands
 
