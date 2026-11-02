@@ -2,7 +2,7 @@
 topic: architecture
 rules:
   - id: ARC-001
-    statement: "Web apps use Clean Architecture in one deployable app; each distinct business area is a module with Domain, Application, Infrastructure, Presentation and Contracts projects, and Application code is grouped by feature."
+    statement: "Web apps use Clean Architecture in one deployable app; each distinct business area is a module with Domain, Application, Infrastructure, Presentation and Contracts projects, and Application code is grouped by feature; a project can deviate by ADR."
     why: "Compiler-enforced boundaries keep change local, and a well-bounded module can later become its own service."
     layer: owner
     status: accepted
