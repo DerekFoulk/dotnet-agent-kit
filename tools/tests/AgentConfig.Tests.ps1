@@ -25,7 +25,8 @@ Describe 'Agent configuration' {
         # ADR-0026: only rules that match a path or a precise command. Pushes are guarded by the GitHub
         # ruleset on main, not by matching command text. Comparisons are case-sensitive, like flags.
         It 'denies reading <Path>' -ForEach @(
-            @{ Path = './.env' }, @{ Path = './.env.*' }, @{ Path = './**/*.pfx' }, @{ Path = './**/*.pem' },
+            @{ Path = './.env' }, @{ Path = './.env.*' }, @{ Path = './**/.env' }, @{ Path = './**/.env.*' },
+            @{ Path = './**/*.pfx' }, @{ Path = './**/*.pem' },
             @{ Path = './**/*.key' }, @{ Path = './**/*.snk' }, @{ Path = '~/.ssh/**' },
             @{ Path = '~/AppData/Roaming/Microsoft/UserSecrets/**' }
         ) {
@@ -63,15 +64,15 @@ Describe 'Agent configuration' {
             @((Get-RuleList 'deny') + (Get-RuleList 'ask')) -match 'git push' | Should -BeNullOrEmpty
         }
 
-        It 'allows only the safe forms of git switch (<Rule>)' -ForEach @(
-            @{ Rule = 'Bash(git switch -c *)' }, @{ Rule = 'PowerShell(git switch -c *)' },
+        It 'allows git switch only as the exact command <Rule>' -ForEach @(
             @{ Rule = 'Bash(git switch main)' }, @{ Rule = 'PowerShell(git switch main)' }
         ) {
             (Get-RuleList 'allow') -ccontains $Rule | Should -BeTrue
         }
 
-        It 'does not allow every git switch, which would let a forced switch discard work silently' {
-            @(Get-RuleList 'allow') -match 'git switch \*' | Should -BeNullOrEmpty
+        # Any wildcard also accepts --discard-changes or -f, which drop uncommitted work: those must prompt.
+        It 'has no wildcard allow rule for git switch' {
+            @(Get-RuleList 'allow') -match 'git switch .*\*' | Should -BeNullOrEmpty
         }
     }
 
