@@ -16,6 +16,9 @@ Describe 'Test-SdkSatisfiesPin' {
         @{ Installed = @('10.0.404'); RollForward = 'disable'; Expected = $false }
         @{ Installed = @('10.0.403'); RollForward = 'disable'; Expected = $true }
         @{ Installed = @(); RollForward = 'latestPatch'; Expected = $false }
+        @{ Installed = @('10.0.100-rc.2.25502.107', '10.0.403'); RollForward = 'latestPatch'; Expected = $true }
+        @{ Installed = @('10.0.403-preview.1.25500.1'); RollForward = 'latestPatch'; Expected = $false }
+        @{ Installed = @('11.0.100-preview.7.26401.1'); RollForward = 'disable'; Expected = $false }
     ) {
         Test-SdkSatisfiesPin -Installed $Installed -Pinned '10.0.403' -RollForward $RollForward | Should -Be $Expected
     }
