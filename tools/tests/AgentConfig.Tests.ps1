@@ -22,55 +22,32 @@ Describe 'Agent configuration' {
     }
 
     Context '.claude/settings.json permissions' {
-        # Rules match command text, so they're best effort; GitHub rulesets on main are the real guard.
+        # ADR-0026: only rules that match a path or a precise command. Pushes are guarded by the GitHub
+        # ruleset on main, not by matching command text. Comparisons are case-sensitive, like flags.
         It 'denies reading <Path>' -ForEach @(
             @{ Path = './.env' }, @{ Path = './.env.*' }, @{ Path = './**/*.pfx' }, @{ Path = './**/*.pem' },
             @{ Path = './**/*.key' }, @{ Path = './**/*.snk' }, @{ Path = '~/.ssh/**' },
             @{ Path = '~/AppData/Roaming/Microsoft/UserSecrets/**' }
         ) {
-            (Get-RuleList 'deny') -ccontains "Read($Path)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
-        }
-
-        It 'denies <Command> in both Bash and PowerShell' -ForEach @(
-            # Force-push, including --force-with-lease, short flags and +refspecs.
-            @{ Command = 'git push --force*' }, @{ Command = 'git push -f *' }, @{ Command = 'git push * --force*' },
-            @{ Command = 'git push * -f' }, @{ Command = 'git push * -f *' }, @{ Command = 'git push * +*' }
-            # Push to main.
-            @{ Command = 'git push * main' }, @{ Command = 'git push * HEAD:main' }, @{ Command = 'git push * *:main' },
-            @{ Command = 'git push * refs/heads/main' }, @{ Command = 'git push * *:refs/heads/main' }
-            # Skipping hooks.
-            @{ Command = 'git * --no-verify*' }, @{ Command = 'git commit -n*' }, @{ Command = 'git commit * -n*' }
-            # Merging past branch protection.
-            @{ Command = 'gh pr merge * --admin*' }
-        ) {
-            (Get-RuleList 'deny') -ccontains "Bash($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
-            (Get-RuleList 'deny') -ccontains "PowerShell($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
+            (Get-RuleList 'deny') -ccontains "Read($Path)" | Should -BeTrue
         }
 
         It 'asks before <Command> in both Bash and PowerShell' -ForEach @(
-            # Merging, repo settings and other GitHub writes.
-            @{ Command = 'gh pr merge *' }, @{ Command = 'gh repo edit *' }, @{ Command = 'gh api * -X *' },
-            @{ Command = 'gh api * --method *' }, @{ Command = 'gh api * -f *' }, @{ Command = 'gh api * -F *' },
-            @{ Command = 'gh api * --field *' }, @{ Command = 'gh api * --raw-field *' }, @{ Command = 'gh api * --input *' }
+            # The owner's decisions: merging and repo settings.
+            @{ Command = 'gh pr merge *' }, @{ Command = 'gh repo edit *' }
             # Dependencies and installs. -I* catches -Install and its prefixes (-Ins), which PowerShell accepts.
             @{ Command = 'dotnet add * package *' }, @{ Command = 'winget install *' }, @{ Command = '*Initialize-DevMachine*-I*' }
-            # Commands that can destroy work.
-            @{ Command = 'git reset --hard *' }, @{ Command = 'git clean *' }, @{ Command = 'git branch -D *' },
-            @{ Command = 'git push * --delete *' }, @{ Command = 'git push * -d *' }, @{ Command = 'git push * :*' },
-            @{ Command = 'git push --mirror*' }, @{ Command = 'git push * --mirror*' },
-            @{ Command = 'git push --prune*' }, @{ Command = 'git push * --prune*' },
-            @{ Command = 'git switch -f*' }, @{ Command = 'git switch * -f*' }, @{ Command = 'git switch --discard-changes*' },
-            @{ Command = 'git switch * --discard-changes*' }, @{ Command = 'git switch -C *' },
-            @{ Command = 'git checkout -- *' }, @{ Command = 'git checkout -f*' }, @{ Command = 'git restore *' }
+            # The two commands that destroy local work and that an agent rarely needs.
+            @{ Command = 'git reset --hard *' }, @{ Command = 'git clean *' }
         ) {
-            (Get-RuleList 'ask') -ccontains "Bash($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
-            (Get-RuleList 'ask') -ccontains "PowerShell($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
+            (Get-RuleList 'ask') -ccontains "Bash($Command)" | Should -BeTrue
+            (Get-RuleList 'ask') -ccontains "PowerShell($Command)" | Should -BeTrue
         }
 
         It 'asks before PowerShell module installs (<Command>)' -ForEach @(
             @{ Command = 'Install-PSResource *' }, @{ Command = 'Install-Module *' }
         ) {
-            (Get-RuleList 'ask') -ccontains "PowerShell($Command)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
+            (Get-RuleList 'ask') -ccontains "PowerShell($Command)" | Should -BeTrue
         }
 
         It 'asks before editing <Path>' -ForEach @(
@@ -79,7 +56,22 @@ Describe 'Agent configuration' {
             @{ Path = './.github/workflows/**' }, @{ Path = './.github/dependabot.yml' },
             @{ Path = './.claude/settings.json' }, @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' }
         ) {
-            (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue -Because 'rules are case-sensitive: -f and -F are different flags'
+            (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
+        }
+
+        It 'leaves pushes to the GitHub ruleset: no deny or ask rule matches git push' {
+            @((Get-RuleList 'deny') + (Get-RuleList 'ask')) -match 'git push' | Should -BeNullOrEmpty
+        }
+
+        It 'allows only the safe forms of git switch (<Rule>)' -ForEach @(
+            @{ Rule = 'Bash(git switch -c *)' }, @{ Rule = 'PowerShell(git switch -c *)' },
+            @{ Rule = 'Bash(git switch main)' }, @{ Rule = 'PowerShell(git switch main)' }
+        ) {
+            (Get-RuleList 'allow') -ccontains $Rule | Should -BeTrue
+        }
+
+        It 'does not allow every git switch, which would let a forced switch discard work silently' {
+            @(Get-RuleList 'allow') -match 'git switch \*' | Should -BeNullOrEmpty
         }
     }
 
