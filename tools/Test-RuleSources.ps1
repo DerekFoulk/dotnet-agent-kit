@@ -14,6 +14,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $script:RequiredFields = 'id', 'statement', 'layer', 'status', 'sources', 'enforcement'
+$script:AllowedValues = [ordered]@{
+    layer  = 'floor', 'owner', 'outside'
+    status = 'proposed', 'accepted', 'retired'
+}
 
 # Returns the YAML front matter of a Markdown file (between the opening and closing --- lines), or $null.
 function Read-FrontMatter {
@@ -78,6 +82,7 @@ function Get-RuleSourceProblem {
         [Parameter(Mandatory)] [string] $AdrPath
     )
 
+    $seen = @{}
     foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
         $frontMatter = Read-FrontMatter -Path $file.FullName
         if ($null -eq $frontMatter) {
@@ -95,6 +100,22 @@ function Get-RuleSourceProblem {
                 if (-not $rule.Contains($field) -or -not (Test-Present $rule[$field])) {
                     New-Problem -File $file.Name -RuleId $ruleId -Message "is missing '$field'"
                 }
+            }
+            if ($ruleId) {
+                if ($seen.ContainsKey($ruleId)) {
+                    New-Problem -File $file.Name -RuleId $ruleId -Message "id '$ruleId' is already used in $($seen[$ruleId])"
+                }
+                else {
+                    $seen[$ruleId] = $file.Name
+                }
+            }
+            foreach ($field in $script:AllowedValues.Keys) {
+                if ($rule.Contains($field) -and (Test-Present $rule[$field]) -and "$($rule[$field])" -notin $script:AllowedValues[$field]) {
+                    New-Problem -File $file.Name -RuleId $ruleId -Message "$field '$($rule[$field])' must be one of: $($script:AllowedValues[$field] -join ', ')"
+                }
+            }
+            if ($rule.Contains('enforcement') -and "$($rule['enforcement'])" -match '^advisory\b' -and "$($rule['enforcement'])" -notmatch '^advisory:\s*\S') {
+                New-Problem -File $file.Name -RuleId $ruleId -Message "advisory enforcement needs a reason: 'advisory: <reason>'"
             }
             if ($rule.Contains('sources')) {
                 foreach ($source in @($rule['sources'])) {
