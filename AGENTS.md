@@ -1,0 +1,97 @@
+# Agent instructions: dotnet-agent-kit
+
+This repo is **dotnet-agent-kit**, a versioned engineering method for .NET repos and coding agents. It holds rules with sources and enforcement, checks, agent instructions and templates. The kit applies its own rules here.
+
+## Whose rules win
+
+1. **Floor:** legal, safety, security, privacy and license compliance. Never overridden.
+2. **Owner:** what the owner (Derek) stated or ratified, including accepted ADRs.
+3. **Outside authorities:** Microsoft Learn, the Azure Well-Architected Framework, OWASP and similar. The more specific source wins; a real conflict goes to an ADR.
+
+Anything an agent suggests is **proposed** until the owner accepts it. Rules marked `status: proposed` in `docs/standards/` aren't in force.
+
+## How to work
+
+Each task runs through these steps, in order. The skills in `.claude/skills/` walk through them; their names are in brackets.
+
+1. **Plan** (`start-work`, `plan-checklist`). State the goal, approach, files touched, and a **test list** (the behaviors to cover). Cover the five Well-Architected pillars: reliability; security, with a short threat model for anything touching data or sign-in; cost; operational excellence, including observability; performance. Add accessibility, data, and docs/ADRs. The owner approves non-trivial plans before work starts.
+2. **Red** (`tdd-cycle`). Turn one item from the test list into a failing test. It must fail on an assertion, not on a crash or a missing type. Commit it.
+3. **Green.** Make the full suite pass. Commit.
+4. **Refactor** on green, then repeat from step 2 until the list is empty. Never convert the whole list into tests up front.
+5. **Decide** (`write-adr`). A significant technical choice gets an ADR in `docs/adr/`, made from the template, with at least two options and a recommendation.
+6. **Verify and hand over** (`finish-work`). Run every check, get an independent review from the `reviewer` agent, then open the PR with the template.
+
+## Talking to the owner
+
+- Lead with one recommendation and a one-line reason. List options only when the answer depends on his personal preference.
+- On first use, explain any term, tool or document he hasn't used himself, in plain words with an example. Refer to documents by path.
+- When he answers a batch of questions, restate them with his answers as a table.
+- Say in one line what a command does, then run it yourself. Don't hand him commands you can run.
+- Describe a button or screen only after confirming it exists (current docs or a screenshot).
+- Make cheap improvements now instead of deferring them.
+- Report done only with evidence: commands run, counts, links. Say "not verified" wherever something wasn't.
+
+Details and sources: `docs/standards/communication.md`.
+
+## Git
+
+- GitHub Flow: one short-lived branch per task, merged into `main` by a pull request **with a merge commit**. Never squash or rebase-merge.
+- Commit subjects and PR titles are Conventional Commits: `feat:`, `fix:`, `test:`, `refactor:`, `docs:` or `chore:`, with `!` for a breaking change.
+- Mark a test-first commit with the trailer `TDD: red` and the commit that makes it pass with `TDD: green`. Put the trailer in the message's **final paragraph**, together with `Co-Authored-By:`:
+
+  ```text
+  test: reject empty titles
+
+  TDD: red
+  Co-Authored-By: ...
+  ```
+
+- Never push to `main`, force-push, or skip hooks. Merge a PR only when the owner says so for that PR.
+- Before pushing to a PR's branch or reporting on a PR, check that it's still open (`gh pr view <n> --json state`). The owner merges on his own schedule. If it's merged, put new commits on a fresh branch and open a new PR.
+
+## Ask before
+
+Ask the owner first before you:
+- add a dependency (a package in `Directory.Packages.props`, a PowerShell module, a GitHub Action);
+- use anything that costs money;
+- change CI, repo settings or rulesets;
+- act outside this repo or on cloud resources;
+- add a connector (MCP server);
+- do anything that can't be undone.
+
+Never read, print or store secrets. Sign-in is always the owner's step.
+
+## Commands
+
+| What | Command |
+|---|---|
+| Check this machine's toolchain | `./tools/Initialize-DevMachine.ps1` |
+| All script tests (Pester 6) | `Invoke-Pester -Path ./tools/tests` |
+| Every rule has a source and an enforcement | `./tools/Test-RuleSources.ps1` |
+| Every ADR has its required sections | `./tools/Test-AdrSections.ps1` |
+| Regenerate agent rule files after editing a standard or this file | `./tools/Build-AgentRules.ps1` |
+| Check generated files are current | `./tools/Build-AgentRules.ps1 -Check` |
+| Build | `dotnet build` |
+
+Scripts target PowerShell 7 (`pwsh`). Every script and check gets Pester tests, written first.
+
+## Where things are
+
+| Path | What |
+|---|---|
+| `docs/standards/` | One file per topic. Rules sit in YAML front matter with `id`, `statement`, `layer`, `status`, `sources` and `enforcement` |
+| `docs/adr/` | Decisions. ADR numbers match the brief's decision numbers (D8 is ADR-0008) |
+| `docs/corrections-log.md` | Every owner correction and what it became |
+| `.claude/skills/` | The workflow skills, read by Claude Code, Visual Studio and VS Code |
+| `.claude/agents/reviewer.md` | The independent reviewer |
+| `tools/` | PowerShell 7 scripts, with tests in `tools/tests/` |
+
+**Generated files, don't edit:** `.claude/rules/`, `.github/instructions/` and `.github/copilot-instructions.md`. Change the source (`docs/standards/` or this file), run `./tools/Build-AgentRules.ps1`, and commit both.
+
+## Done means
+
+- The build has zero warnings and every test passes.
+- Every check passes: rule sources, ADR sections, and generated files current.
+- Docs and ADRs are updated in the same PR.
+- The `reviewer` agent has reviewed the change, and its findings are fixed or answered.
+- The PR uses `.github/pull_request_template.md`, including the red→green evidence table.
