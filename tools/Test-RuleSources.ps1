@@ -43,6 +43,35 @@ function Test-Present {
     $true
 }
 
+function Test-IsoDate {
+    param([string] $Text)
+    $parsed = [datetime]::MinValue
+    [datetime]::TryParseExact($Text, 'yyyy-MM-dd', [cultureinfo]::InvariantCulture, 'None', [ref] $parsed)
+}
+
+# A source is one of: "owner, YYYY-MM-DD", "ADR-NNNN" (an existing ADR file), or "<URL>, retrieved YYYY-MM-DD".
+# Returns the problem message, or $null when the source is valid.
+function Get-SourceProblem {
+    param(
+        [Parameter(Mandatory)] [string] $Source,
+        [Parameter(Mandatory)] [string] $AdrPath
+    )
+
+    if ($Source -match '^owner\b') {
+        if ($Source -match '^owner, (\S+)$' -and (Test-IsoDate $Matches[1])) { return $null }
+        return "source '$Source' must read 'owner, YYYY-MM-DD'"
+    }
+    if ($Source -match '^ADR-(\d{4})$') {
+        if (Get-ChildItem -Path $AdrPath -Filter "$($Matches[1])-*.md" -File) { return $null }
+        return "source '$Source' not found in $AdrPath"
+    }
+    if ($Source -match '^https?://') {
+        if ($Source -match '^https?://\S+, retrieved (\S+)$' -and (Test-IsoDate $Matches[1])) { return $null }
+        return "outside source '$Source' needs ', retrieved YYYY-MM-DD'"
+    }
+    "source '$Source' is not a recognized source (owner, ADR or URL)"
+}
+
 function Get-RuleSourceProblem {
     param(
         [Parameter(Mandatory)] [string] $StandardsPath,
@@ -65,6 +94,14 @@ function Get-RuleSourceProblem {
             foreach ($field in $script:RequiredFields) {
                 if (-not $rule.Contains($field) -or -not (Test-Present $rule[$field])) {
                     New-Problem -File $file.Name -RuleId $ruleId -Message "is missing '$field'"
+                }
+            }
+            if ($rule.Contains('sources')) {
+                foreach ($source in @($rule['sources'])) {
+                    $message = Get-SourceProblem -Source "$source" -AdrPath $AdrPath
+                    if ($message) {
+                        New-Problem -File $file.Name -RuleId $ruleId -Message $message
+                    }
                 }
             }
         }
