@@ -74,3 +74,11 @@ function Get-CopilotInstructionsFile {
     $content = ($script:GeneratedMarker -f 'AGENTS.md') + "`n`n" + $agents.TrimEnd("`n") + "`n"
     [pscustomobject]@{ Path = '.github/copilot-instructions.md'; Content = $content }
 }
+
+function Invoke-AgentRuleBuild {
+    param(
+        [Parameter(Mandatory)] [string] $RepoRoot,
+        [switch] $Check
+    )
+    -1
+}
