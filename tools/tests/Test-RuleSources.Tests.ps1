@@ -66,19 +66,19 @@ Describe 'Test-RuleSources.ps1' {
         It 'reports an empty sources list' {
             New-StandardsFile -Rules @(New-Rule -Override @{ sources = @() })
 
-            (Get-Problem).Message | Should -BeLike '*sources*'
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*sources*'
         }
 
         It 'reports a standards file with no front matter' {
             Set-Content -Path (Join-Path $script:standards 'loose.md') -Value '# No front matter'
 
-            (Get-Problem).Message | Should -BeLike '*front matter*'
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*front matter*'
         }
 
         It 'reports a standards file whose front matter has no rules' {
             Set-Content -Path (Join-Path $script:standards 'empty.md') -Value "---`ntopic: empty`n---`n"
 
-            (Get-Problem).Message | Should -BeLike '*no rules*'
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*no rules*'
         }
     }
 
@@ -108,6 +108,54 @@ Describe 'Test-RuleSources.ps1' {
             $problems.Count | Should -Be 1
             $problems[0].RuleId | Should -Be 'GIT-001'
             $problems[0].Message | Should -BeLike $Expected
+        }
+    }
+
+    Context 'values' {
+        It 'accepts layer <Layer> and status <Status>' -ForEach @(
+            @{ Layer = 'floor'; Status = 'proposed' }
+            @{ Layer = 'owner'; Status = 'accepted' }
+            @{ Layer = 'outside'; Status = 'retired' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ layer = $Layer; status = $Status })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports <Field> <Value>' -ForEach @(
+            @{ Field = 'layer'; Value = 'team' }
+            @{ Field = 'status'; Value = 'draft' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ $Field = $Value })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike "*$Field*$Value*"
+        }
+
+        It 'accepts advisory enforcement with a reason' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = 'advisory: no tool can check this' })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports advisory enforcement with no reason (<Enforcement>)' -ForEach @(
+            @{ Enforcement = 'advisory' }
+            @{ Enforcement = 'advisory:' }
+            @{ Enforcement = 'advisory:   ' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = $Enforcement })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*advisory*reason*'
+        }
+
+        It 'reports a rule id used twice, across files' {
+            New-StandardsFile -Name 'git'
+            New-StandardsFile -Name 'testing'
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].File | Should -Be 'testing.md'
+            $problems[0].Message | Should -BeLike '*GIT-001*git.md*'
         }
     }
 }
