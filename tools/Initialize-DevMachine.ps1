@@ -211,7 +211,14 @@ function Invoke-DevMachineCheck {
 
 function Invoke-InstallCommand {
     param([Parameter(Mandatory)] [string] $Command)
+
+    # Installers report failure by exit code, not by throwing. Reset it first, so a leftover code from an
+    # earlier command can't fail an install that runs no native command (irm ... | iex).
+    $global:LASTEXITCODE = 0
     Invoke-Expression -Command $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "'$Command' failed with exit code $LASTEXITCODE."
+    }
 }
 
 # Runs every check, prints the results and, with -Install, installs what's missing one tool at a time.
