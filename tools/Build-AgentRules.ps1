@@ -64,3 +64,8 @@ function Get-AgentRuleFile {
         }
     }
 }
+
+function Get-CopilotInstructionsFile {
+    param([Parameter(Mandatory)] [string] $AgentsPath)
+    [pscustomobject]@{ Path = ''; Content = '' }
+}
