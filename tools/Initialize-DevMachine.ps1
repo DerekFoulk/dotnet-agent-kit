@@ -148,6 +148,7 @@ function Get-DevMachineCheck {
 
     New-DevMachineCheck -Name 'PowerShell 7' -Required $true -Test { Test-CommandAvailable -Name 'pwsh' } `
         -InstallCommand 'winget install --id Microsoft.PowerShell --exact'
+    New-DevMachineCheck -Name 'Pester 6' -Required $false -Test { $null } -InstallCommand 'stub'
     New-DevMachineCheck -Name 'Git' -Required $true -Test { Test-CommandAvailable -Name 'git' } `
         -InstallCommand 'winget install --id Git.Git --exact'
     New-DevMachineCheck -Name 'GitHub CLI' -Required $true -Test { Test-CommandAvailable -Name 'gh' } `
