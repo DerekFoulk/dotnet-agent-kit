@@ -128,4 +128,23 @@ Describe 'Test-AdrSections.ps1' {
             Get-Message | Should -BeLike '*file name*NNNN-*'
         }
     }
+
+    Context 'options' {
+        It 'reports fewer than two options, because a rejected option must be recorded' {
+            New-Adr -Options (New-Option 'Option 1: Merge commits')
+
+            Get-Message | Should -BeLike '*at least two options*'
+        }
+
+        It 'reports an option with no <Field>' -ForEach @(
+            @{ Field = 'Trade-offs' }, @{ Field = 'Reversibility' }, @{ Field = 'Risk' }
+        ) {
+            New-Adr -Options ((New-Option 'Option 1: Merge commits') + "`n`n" + (New-Option 'Option 2: Squash merges' -Skip $Field))
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*Option 2: Squash merges*$Field*"
+        }
+    }
 }
