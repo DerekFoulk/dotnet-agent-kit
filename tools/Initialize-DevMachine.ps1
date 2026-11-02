@@ -98,6 +98,9 @@ function Invoke-Native {
         [Parameter(Mandatory)] [string] $FilePath,
         [string[]] $Arguments = @()
     )
+    # In Windows PowerShell 5.1, captured native stderr is an error record that 'Stop' would make terminating.
+    # Probes write to stderr when they fail (gh auth status), so keep it as output and judge by the exit code.
+    $ErrorActionPreference = 'Continue'
     $output = & $FilePath @Arguments 2>&1
     [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = @($output | ForEach-Object { "$_" }) }
 }
