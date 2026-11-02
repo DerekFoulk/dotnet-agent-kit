@@ -102,6 +102,10 @@ function Invoke-AgentRuleBuild {
         [switch] $Check
     )
 
+    # .NET path APIs resolve a relative path against the process directory, which Set-Location doesn't
+    # change; resolve it through PowerShell first, or every generated file looks stale and gets deleted.
+    $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).ProviderPath
+
     $expected = @(Get-AgentRuleFile -StandardsPath (Join-Path $RepoRoot 'docs' 'standards'))
     $expected += Get-CopilotInstructionsFile -AgentsPath (Join-Path $RepoRoot 'AGENTS.md')
     $expectedPaths = @($expected | ForEach-Object Path)
@@ -110,7 +114,7 @@ function Invoke-AgentRuleBuild {
     foreach ($file in $expected) {
         $target = Join-Path $RepoRoot $file.Path
         $current = if (Test-Path -Path $target) { (Get-Content -Path $target -Raw) -replace "`r`n", "`n" } else { $null }
-        if ($current -ne $file.Content) {
+        if ($current -cne $file.Content) {
             $drift.Add($file.Path)
             if (-not $Check) {
                 New-Item -ItemType Directory -Path (Split-Path -Path $target -Parent) -Force | Out-Null
