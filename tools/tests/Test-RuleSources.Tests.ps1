@@ -56,7 +56,7 @@ Describe 'Test-RuleSources.ps1' {
         ) {
             New-StandardsFile -Rules @(New-Rule -Remove $Field)
 
-            $problems = Get-Problem
+            $problems = @(Get-Problem)
 
             $problems.Count | Should -Be 1
             $problems[0].Message | Should -BeLike "*$Field*"
@@ -79,6 +79,35 @@ Describe 'Test-RuleSources.ps1' {
             Set-Content -Path (Join-Path $script:standards 'empty.md') -Value "---`ntopic: empty`n---`n"
 
             (Get-Problem).Message | Should -BeLike '*no rules*'
+        }
+    }
+
+    Context 'sources' {
+        It 'accepts the source <Source>' -ForEach @(
+            @{ Source = 'owner, 2026-10-26' }
+            @{ Source = 'ADR-0007' }
+            @{ Source = 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ sources = @($Source) })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports the source <Source> (<Reason>)' -ForEach @(
+            @{ Source = 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview'; Reason = 'outside source with no retrieval date'; Expected = '*retrieved*' }
+            @{ Source = 'https://example.com/x, retrieved last week'; Reason = 'retrieval date not a date'; Expected = '*retrieved*' }
+            @{ Source = 'owner'; Reason = 'owner with no date'; Expected = '*owner, YYYY-MM-DD*' }
+            @{ Source = 'owner, 2026-13-45'; Reason = 'owner with an impossible date'; Expected = '*owner, YYYY-MM-DD*' }
+            @{ Source = 'ADR-0099'; Reason = 'ADR that does not exist'; Expected = '*ADR-0099*not found*' }
+            @{ Source = 'a blog I read'; Reason = 'unrecognized form'; Expected = '*not a recognized source*' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ sources = @($Source) })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].RuleId | Should -Be 'GIT-001'
+            $problems[0].Message | Should -BeLike $Expected
         }
     }
 }
