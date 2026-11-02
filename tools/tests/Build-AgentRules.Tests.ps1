@@ -45,17 +45,41 @@ Describe 'Build-AgentRules.ps1' {
             $content | Should -Match '(?m)^- GIT-002: Use GitHub Flow\.$'
         }
 
-        It 'writes path-scoped rules to .claude/rules/TOPIC-scoped.md with the union of their paths' {
+        It 'writes each path-scoped rule to .claude/rules/TOPIC-ID.md with only its own paths' {
             New-StandardsFile -Topic 'code-style' -Title 'Code style' -Rules @(
                 (New-Rule -Id 'STY-001' -Statement 'Follow the baseline.' -Paths @('**/*.cs', '.editorconfig'))
                 (New-Rule -Id 'STY-002' -Statement 'Never use var.' -Paths @('**/*.cs'))
             )
 
-            $content = (Get-File '.claude/rules/code-style-scoped.md').Content
+            $first = (Get-File '.claude/rules/code-style-sty-001.md').Content
+            $second = (Get-File '.claude/rules/code-style-sty-002.md').Content
 
-            $content | Should -Match "(?s)^---`npaths:`n  - '\*\*/\*\.cs'`n  - '\.editorconfig'`n---`n"
-            $content | Should -Match '(?m)^- STY-002: Never use var\.$'
+            $first | Should -Match "(?s)^---`npaths:`n  - '\*\*/\*\.cs'`n  - '\.editorconfig'`n---`n"
+            $first | Should -Match '(?m)^- STY-001: Follow the baseline\.$'
+            $first | Should -Not -Match 'STY-002'
+            $second | Should -Match "(?s)^---`npaths:`n  - '\*\*/\*\.cs'`n---`n"
+            $second | Should -Match '(?m)^- STY-002: Never use var\.$'
             Get-AgentRuleFile -StandardsPath $script:standards | Where-Object Path -EQ '.claude/rules/code-style.md' | Should -BeNullOrEmpty
+        }
+
+        It 'groups path-scoped rules with the same paths into one file, named after the first' {
+            New-StandardsFile -Topic 'testing' -Title 'Testing' -Rules @(
+                (New-Rule -Id 'TST-003' -Statement 'Every kind.' -Paths @('**/*.csproj', 'tests/**'))
+                (New-Rule -Id 'TST-007' -Statement 'Same paths.' -Paths @('tests/**', '**/*.csproj'))
+            )
+
+            $content = (Get-File '.claude/rules/testing-tst-003.md').Content
+
+            $content | Should -Match '(?m)^- TST-003: Every kind\.$'
+            $content | Should -Match '(?m)^- TST-007: Same paths\.$'
+            Get-AgentRuleFile -StandardsPath $script:standards | Where-Object Path -EQ '.claude/rules/testing-tst-007.md' | Should -BeNullOrEmpty
+        }
+
+        It 'escapes a single quote in a path' {
+            New-StandardsFile -Topic 'git' -Title 'Git' -Rules @((New-Rule -Id 'GIT-009' -Statement 'Odd path.' -Paths @("docs/it's/**")))
+
+            (Get-File '.claude/rules/git-git-009.md').Content | Should -Match "(?m)^  - 'docs/it''s/\*\*'$"
+            (Get-File '.github/instructions/git-git-009.instructions.md').Content | Should -Match "(?m)^applyTo: 'docs/it''s/\*\*'$"
         }
 
         It 'leaves out rules that are <Status>, because only accepted rules are in force' -ForEach @(
@@ -160,6 +184,7 @@ Describe 'Build-AgentRules.ps1' {
 
             $stale | Should -Not -Exist
             $handWritten | Should -Exist
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*removed: .claude/rules/old-topic.md*' }
         }
 
         It 'with -Check, returns 1 for an edit that only changes letter case, and a build repairs it' {
@@ -221,7 +246,7 @@ Describe 'Build-AgentRules.ps1' {
                 (New-Rule -Id 'STY-001' -Statement 'Baseline.' -Paths @('**/*.cs', '.editorconfig'))
             )
 
-            (Get-File '.github/instructions/code-style-scoped.instructions.md').Content | Should -Match "(?s)^---`napplyTo: '\*\*/\*\.cs,\.editorconfig'`n---`n"
+            (Get-File '.github/instructions/code-style-sty-001.instructions.md').Content | Should -Match "(?s)^---`napplyTo: '\*\*/\*\.cs,\.editorconfig'`n---`n"
         }
     }
 }
