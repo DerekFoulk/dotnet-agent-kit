@@ -214,8 +214,9 @@ function Invoke-InstallCommand {
 
     # Installers report failure by exit code, not by throwing. Reset it first, so a leftover code from an
     # earlier command can't fail an install that runs no native command (irm ... | iex).
+    # Their output goes to the host, so callers get only what they return themselves.
     $global:LASTEXITCODE = 0
-    Invoke-Expression -Command $Command
+    Invoke-Expression -Command $Command | Out-Host
     if ($LASTEXITCODE -ne 0) {
         throw "'$Command' failed with exit code $LASTEXITCODE."
     }
