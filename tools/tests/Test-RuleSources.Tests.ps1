@@ -96,6 +96,8 @@ Describe 'Test-RuleSources.ps1' {
         It 'reports the source <Source> (<Reason>)' -ForEach @(
             @{ Source = 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview'; Reason = 'outside source with no retrieval date'; Expected = '*retrieved*' }
             @{ Source = 'https://example.com/x, retrieved last week'; Reason = 'retrieval date not a date'; Expected = '*retrieved*' }
+            @{ Source = 'https:///missing-host, retrieved 2026-11-01'; Reason = 'URL with no host'; Expected = '*not a valid http(s) URL*' }
+            @{ Source = 'https://exa`mple.com/x, retrieved 2026-11-01'; Reason = 'URL with an invalid host'; Expected = '*not a valid http(s) URL*' }
             @{ Source = 'owner'; Reason = 'owner with no date'; Expected = '*owner, YYYY-MM-DD*' }
             @{ Source = 'owner, 2026-13-45'; Reason = 'owner with an impossible date'; Expected = '*owner, YYYY-MM-DD*' }
             @{ Source = 'ADR-0099'; Reason = 'ADR that does not exist'; Expected = '*ADR-0099*not found*' }
