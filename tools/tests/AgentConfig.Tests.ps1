@@ -44,6 +44,20 @@ Describe 'Agent configuration' {
             @{ Rule = 'Edit(./.claude/settings.json)' }
             @{ Rule = 'PowerShell(Install-PSResource *)' }
             @{ Rule = 'PowerShell(winget install *)' }
+            # Initialize-DevMachine -Install installs software; the ./tools/* allow rule must not cover it.
+            @{ Rule = 'Bash(*Initialize-DevMachine*-Install*)' }
+            @{ Rule = 'PowerShell(*Initialize-DevMachine*-Install*)' }
+            # Commands that can destroy work.
+            @{ Rule = 'Bash(git reset --hard *)' }
+            @{ Rule = 'PowerShell(git reset --hard *)' }
+            @{ Rule = 'Bash(git clean *)' }
+            @{ Rule = 'PowerShell(git clean *)' }
+            @{ Rule = 'Bash(git branch -D *)' }
+            @{ Rule = 'PowerShell(git branch -D *)' }
+            @{ Rule = 'Bash(git push * --delete *)' }
+            @{ Rule = 'PowerShell(git push * --delete *)' }
+            @{ Rule = 'Bash(git push * :*)' }
+            @{ Rule = 'PowerShell(git push * :*)' }
         ) {
             Get-RuleList 'ask' | Should -Contain $Rule
         }
