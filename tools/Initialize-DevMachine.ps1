@@ -131,3 +131,8 @@ function Get-DevMachineCheck {
     New-DevMachineCheck -Name 'Docker' -Required $false -Test { Test-CommandAvailable -Name 'docker' } `
         -InstallCommand 'winget install --id Docker.DockerDesktop --exact'
 }
+
+function Invoke-DevMachineCheck {
+    param([Parameter(Mandatory)] [pscustomobject] $Check)
+    [pscustomobject]@{ Name = $null; Required = $Check.Required; Status = $null; InstallCommand = $Check.InstallCommand; ManualAction = $Check.ManualAction }
+}

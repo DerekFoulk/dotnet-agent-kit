@@ -130,3 +130,19 @@ Describe 'Get-DevMachineCheck' {
         }
     }
 }
+
+Describe 'Invoke-DevMachineCheck' {
+    It 'reports <Status> for a <Kind> check that <Outcome>' -ForEach @(
+        @{ Kind = 'required'; Outcome = 'passes'; Required = $true; Passes = $true; Install = 'x'; Manual = $null; Status = 'ok' }
+        @{ Kind = 'required'; Outcome = 'fails'; Required = $true; Passes = $false; Install = 'x'; Manual = $null; Status = 'missing' }
+        @{ Kind = 'optional'; Outcome = 'fails'; Required = $false; Passes = $false; Install = 'x'; Manual = $null; Status = 'later' }
+        @{ Kind = 'manual'; Outcome = 'fails'; Required = $true; Passes = $false; Install = $null; Manual = 'do it'; Status = 'action' }
+    ) {
+        $check = New-DevMachineCheck -Name 'Tool' -Required $Required -Test ([scriptblock]::Create("`$$Passes")) -InstallCommand $Install -ManualAction $Manual
+
+        $result = Invoke-DevMachineCheck -Check $check
+
+        $result.Status | Should -Be $Status
+        $result.Name | Should -Be 'Tool'
+    }
+}
