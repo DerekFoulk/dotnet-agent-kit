@@ -63,9 +63,18 @@ Describe 'Test-RedGreenOrder.ps1' {
 
         It 'reads the trailer, the older body line, and no marker, oldest first, skipping merge commits' {
             $commits = @(Get-TddCommit -RepoPath $script:repo -Range 'main..work')
+            $markers = @{}
+            foreach ($commit in $commits) { $markers[$commit.Subject] = "$($commit.Marker)" }
 
-            ($commits | ForEach-Object Subject) | Should -Be @('test: trailer red', 'feat: legacy green', 'docs: no marker', 'test: side red')
-            ($commits | ForEach-Object { "$($_.Marker)" }) | Should -Be @('red', 'green', '', 'red')
+            $commits.Count | Should -Be 4 -Because 'the merge commit is skipped'
+            $markers['test: trailer red'] | Should -Be 'red'
+            $markers['feat: legacy green'] | Should -Be 'green'
+            $markers['docs: no marker'] | Should -Be ''
+            $markers['test: side red'] | Should -Be 'red'
+            # Commits on one line keep their order; where the side branch's commit lands among them isn't
+            # defined when they share a timestamp.
+            $mainLine = @($commits | Where-Object Subject -NE 'test: side red' | ForEach-Object Subject)
+            $mainLine | Should -Be @('test: trailer red', 'feat: legacy green', 'docs: no marker')
         }
     }
 
