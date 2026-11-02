@@ -82,8 +82,17 @@ function Get-SourceProblem {
         return "source '$Source' not found in $AdrPath"
     }
     if ($Source -match '^https?://') {
-        if ($Source -match '^https?://\S+, retrieved (\S+)$' -and (Test-IsoDate $Matches[1])) { return $null }
-        return "outside source '$Source' needs ', retrieved YYYY-MM-DD'"
+        if ($Source -notmatch '^(https?://\S+), retrieved (\S+)$' -or -not (Test-IsoDate $Matches[2])) {
+            return "outside source '$Source' needs ', retrieved YYYY-MM-DD'"
+        }
+        $uri = $null
+        if (-not [uri]::TryCreate($Matches[1], [UriKind]::Absolute, [ref] $uri) -or
+            $uri.Scheme -notin 'http', 'https' -or
+            [string]::IsNullOrEmpty($uri.Host) -or
+            [uri]::CheckHostName($uri.Host) -eq [UriHostNameType]::Unknown) {
+            return "outside source '$Source' is not a valid http(s) URL"
+        }
+        return $null
     }
     "source '$Source' is not a recognized source (owner, ADR or URL)"
 }

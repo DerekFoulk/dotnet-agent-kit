@@ -2,8 +2,8 @@
 topic: supply-chain
 rules:
   - id: SUP-001
-    statement: "Every project restores with a package lock file, and CI restores in locked mode."
-    why: "CI restores exactly what was tested, and a tampered package fails its hash check."
+    statement: "Every project restores with a package lock file, and CI restores in locked mode; the one exception is a project that pulls in SDK-implicit packages (trimming, AOT, Blazor WebAssembly), which may set RestorePackagesWithLockFile to false with a comment citing ADR-0020 until the SDK fixes dotnet/sdk#38200."
+    why: "CI restores exactly what was tested, and a tampered package fails its hash check; SDK-implicit packages change with every SDK patch, so their lock files churn (ADR-0020). Central package management still pins those projects' versions."
     layer: owner
     status: accepted
     sources: ["ADR-0020"]
