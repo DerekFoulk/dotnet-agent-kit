@@ -134,5 +134,24 @@ function Get-DevMachineCheck {
 
 function Invoke-DevMachineCheck {
     param([Parameter(Mandatory)] [pscustomobject] $Check)
-    [pscustomobject]@{ Name = $null; Required = $Check.Required; Status = $null; InstallCommand = $Check.InstallCommand; ManualAction = $Check.ManualAction }
+
+    # ok: present. action: only the owner can fix it. missing: required now. later: needed in a later build step.
+    $status = 'later'
+    if (& $Check.Test) {
+        $status = 'ok'
+    }
+    elseif (-not $Check.InstallCommand) {
+        $status = 'action'
+    }
+    elseif ($Check.Required) {
+        $status = 'missing'
+    }
+
+    [pscustomobject]@{
+        Name           = $Check.Name
+        Required       = $Check.Required
+        Status         = $status
+        InstallCommand = $Check.InstallCommand
+        ManualAction   = $Check.ManualAction
+    }
 }
