@@ -108,3 +108,8 @@ function Get-AdrSectionProblem {
         }
     }
 }
+
+function Invoke-AdrSectionCheck {
+    param([Parameter(Mandatory)] [string] $AdrPath)
+    -1
+}
