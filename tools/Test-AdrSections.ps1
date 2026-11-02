@@ -12,6 +12,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $script:RequiredSections = 'Context', 'Options', 'Recommendation', 'Decision', 'Consequences', 'Pillars affected', 'Sources'
+$script:OptionFields = 'Trade-offs', 'Reversibility', 'Risk'
 $script:StatusPattern = '(Proposed|Accepted|Rejected|Deprecated|Superseded by ADR-\d{4})'
 
 function New-Problem {
@@ -87,6 +88,22 @@ function Get-AdrSectionProblem {
             }
             elseif (-not $sections[$name]) {
                 New-Problem -File $file.Name -Message "section '$name' is empty"
+            }
+        }
+
+        if ($sections.Contains('Options') -and $sections['Options']) {
+            # Each "### " option records its trade-offs, reversibility and risk (WAF, brief §5).
+            $options = @($sections['Options'] -split '(?m)^(?=### )' | Where-Object { $_ -match '^### ' })
+            if ($options.Count -lt 2) {
+                New-Problem -File $file.Name -Message 'Options needs at least two options (### headings), so the rejected one is recorded'
+            }
+            foreach ($option in $options) {
+                $title = (($option -split "`n")[0] -replace '^### ', '').Trim()
+                foreach ($field in $script:OptionFields) {
+                    if ($option -notmatch "(?m)^- \*\*${field}:\*\* \S") {
+                        New-Problem -File $file.Name -Message "option '$title' is missing '- **${field}:** '"
+                    }
+                }
             }
         }
     }
