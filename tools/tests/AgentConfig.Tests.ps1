@@ -77,7 +77,8 @@ Describe 'Agent configuration' {
     }
 
     Context 'reviewer agent' {
-        It 'has no tool that edits files' {
+        # It keeps Bash and PowerShell to run the gates, so it's read-only by instruction for the shell.
+        It 'has no Edit or Write tool' {
             $path = Join-Path $repoRoot '.claude' 'agents' 'reviewer.md'
             $frontMatter = Read-FrontMatter -Path $path
             $tools = @("$($frontMatter['tools'])" -split '\s*,\s*')
@@ -90,7 +91,10 @@ Describe 'Agent configuration' {
     }
 
     Context 'skills' {
-        It 'has the <Skill> skill, named after its folder, with a description under 1,536 characters' -ForEach @(
+        # Claude Code truncates description + when_to_use at 1,536 characters. The reviewer recalled a
+        # 1,024 cap in the Agent Skills spec that Visual Studio and VS Code follow (not verified), so the
+        # test uses the stricter number.
+        It 'has the <Skill> skill, named after its folder, with a description under 1,024 characters' -ForEach @(
             @{ Skill = 'start-work' }, @{ Skill = 'plan-checklist' }, @{ Skill = 'tdd-cycle' },
             @{ Skill = 'write-adr' }, @{ Skill = 'finish-work' }
         ) {
@@ -100,7 +104,7 @@ Describe 'Agent configuration' {
 
             $frontMatter['name'] | Should -Be $Skill
             "$($frontMatter['description'])".Length | Should -BeGreaterThan 0
-            "$($frontMatter['description'])".Length | Should -BeLessThan 1536
+            "$($frontMatter['description'])".Length | Should -BeLessThan 1024
         }
     }
 }

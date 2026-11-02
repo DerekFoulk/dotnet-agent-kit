@@ -66,7 +66,7 @@ Two checks keep these honest. Each exits 0 when clean and 1 otherwise:
 
 | File | Read by | Written by |
 |---|---|---|
-| `AGENTS.md` | Claude Code (through `CLAUDE.md`), VS Code, the Copilot coding agent | Hand |
+| `AGENTS.md` | Claude Code (through `CLAUDE.md`), the Copilot coding agent. VS Code can read it too, but this repo turns that off (`.vscode/settings.json`) because VS Code already gets the same text from `.github/copilot-instructions.md` | Hand |
 | `CLAUDE.md` | Claude Code; imports `AGENTS.md` | Hand |
 | `.github/copilot-instructions.md` | Visual Studio, VS Code, Copilot on GitHub | Generated copy of `AGENTS.md` |
 | `.claude/rules/*.md` | Claude Code (and VS Code Claude sessions), loaded by path | Generated from `docs/standards` |

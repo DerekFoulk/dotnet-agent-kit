@@ -19,7 +19,8 @@ Invoke-Pester -Path ./tools/tests          # all pass
 
 Then confirm:
 - Docs and ADRs are updated for the change.
-- Every red commit has a green commit after it, and git reads both trailers (`git log --format='%h %s %(trailers:key=TDD,valueonly)'`).
+- Every red commit has a green commit after it, and git reads both trailers (`git log --reverse --format='%h %s | %(trailers:key=TDD,valueonly)' main..HEAD`).
+- Each red failed on an assertion, and each green passes from a clean checkout. Check that every new file is tracked (`git status --short --ignored`); an ignored config file passes locally and fails everywhere else.
 - Anything you didn't verify is listed as "not verified".
 
 ## 2. Independent review
