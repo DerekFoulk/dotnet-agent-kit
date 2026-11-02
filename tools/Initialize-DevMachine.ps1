@@ -60,7 +60,11 @@ function Test-SdkSatisfiesPin {
 
     $pin = [version] $Pinned
     foreach ($candidate in $Installed) {
-        $version = [version] $candidate
+        # Preview and RC SDKs (10.0.100-rc.2...) never satisfy the pin: global.json sets allowPrerelease false.
+        $version = $null
+        if (-not [version]::TryParse($candidate, [ref] $version)) {
+            continue
+        }
         if ($RollForward -eq 'disable') {
             if ($version -eq $pin) { return $true }
             continue
@@ -94,6 +98,9 @@ function Invoke-Native {
         [Parameter(Mandatory)] [string] $FilePath,
         [string[]] $Arguments = @()
     )
+    # In Windows PowerShell 5.1, captured native stderr is an error record that 'Stop' would make terminating.
+    # Probes write to stderr when they fail (gh auth status), so keep it as output and judge by the exit code.
+    $ErrorActionPreference = 'Continue'
     $output = & $FilePath @Arguments 2>&1
     [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = @($output | ForEach-Object { "$_" }) }
 }
@@ -217,7 +224,15 @@ function Invoke-DevMachineCheck {
 
 function Invoke-InstallCommand {
     param([Parameter(Mandatory)] [string] $Command)
-    Invoke-Expression -Command $Command
+
+    # Installers report failure by exit code, not by throwing. Reset it first, so a leftover code from an
+    # earlier command can't fail an install that runs no native command (irm ... | iex).
+    # Their output goes to the host, so callers get only what they return themselves.
+    $global:LASTEXITCODE = 0
+    Invoke-Expression -Command $Command | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        throw "'$Command' failed with exit code $LASTEXITCODE."
+    }
 }
 
 # Runs every check, prints the results and, with -Install, installs what's missing one tool at a time.

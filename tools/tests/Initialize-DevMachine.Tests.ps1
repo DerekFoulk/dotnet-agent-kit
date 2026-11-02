@@ -16,6 +16,9 @@ Describe 'Test-SdkSatisfiesPin' {
         @{ Installed = @('10.0.404'); RollForward = 'disable'; Expected = $false }
         @{ Installed = @('10.0.403'); RollForward = 'disable'; Expected = $true }
         @{ Installed = @(); RollForward = 'latestPatch'; Expected = $false }
+        @{ Installed = @('10.0.100-rc.2.25502.107', '10.0.403'); RollForward = 'latestPatch'; Expected = $true }
+        @{ Installed = @('10.0.403-preview.1.25500.1'); RollForward = 'latestPatch'; Expected = $false }
+        @{ Installed = @('11.0.100-preview.7.26401.1'); RollForward = 'disable'; Expected = $false }
     ) {
         Test-SdkSatisfiesPin -Installed $Installed -Pinned '10.0.403' -RollForward $RollForward | Should -Be $Expected
     }
@@ -245,5 +248,57 @@ Describe 'Initialize-DevMachine.ps1 as a script' -Tag 'Machine' {
 
         $output | Should -Match 'Checking the dotnet-agent-kit toolchain'
         $LASTEXITCODE | Should -BeIn 0, 1 -Because $output
+    }
+
+    # A probe such as `gh auth status` writes to stderr when it fails. In 5.1, with $ErrorActionPreference = 'Stop',
+    # captured native stderr becomes a terminating error unless Invoke-Native allows it.
+    It 'Invoke-Native in Windows PowerShell 5.1 returns the exit code and stderr of a failing command' -Skip:(-not (Get-Command -Name 'powershell.exe' -ErrorAction SilentlyContinue)) {
+        $script = Join-Path $PSScriptRoot '..' 'Initialize-DevMachine.ps1'
+        $driver = Join-Path $TestDrive 'Invoke-NativeDriver.ps1'
+        Set-Content -Path $driver -Value @"
+`$ErrorActionPreference = 'Stop'
+. '$script'
+`$result = Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-Command', '[Console]::Error.WriteLine(''probe-error''); exit 3'
+"EXIT=`$(`$result.ExitCode) OUTPUT=`$(`$result.Output -join '|')"
+"@
+
+        $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $driver 2>&1 | Out-String
+
+        $output | Should -Match 'EXIT=3 OUTPUT=.*probe-error'
+    }
+}
+
+Describe 'Invoke-InstallCommand' {
+    # Real native commands, no mocks: winget and friends report failure by exit code, not by throwing.
+    It 'throws when the installer exits nonzero, naming the exit code' {
+        { Invoke-InstallCommand -Command 'pwsh -NoProfile -Command "exit 5"' } | Should -Throw '*exit code 5*'
+    }
+
+    It 'does not throw when the installer succeeds' {
+        { Invoke-InstallCommand -Command 'pwsh -NoProfile -Command "exit 0"' } | Should -Not -Throw
+    }
+
+    It 'ignores an exit code left over from an earlier command when the installer runs no native command' {
+        $global:LASTEXITCODE = 7
+
+        { Invoke-InstallCommand -Command 'Get-Date | Out-Null' } | Should -Not -Throw
+    }
+
+    It 'shows installer output on the host instead of returning it' {
+        $returned = @(Invoke-InstallCommand -Command 'pwsh -NoProfile -Command "''installer-noise''"' 6>$null)
+
+        $returned.Count | Should -Be 0
+    }
+
+    It 'leaves Initialize-DevMachine -Install returning only its exit status' {
+        Mock Write-Host {}
+        Mock Get-DevMachineCheck {
+            New-DevMachineCheck -Name 'Noisy' -Required $true -Test { $false } -InstallCommand 'pwsh -NoProfile -Command "''installer-noise''"'
+        }
+
+        $returned = @(Initialize-DevMachine -RepoRoot $TestDrive -Install 6>$null)
+
+        $returned.Count | Should -Be 1 -Because "got: $($returned -join ', ')"
+        $returned[0] | Should -Be 1
     }
 }
