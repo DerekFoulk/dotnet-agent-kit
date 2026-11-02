@@ -57,14 +57,17 @@ Describe 'Get-DevMachineCheck' {
         $checks = Get-DevMachineCheck -RepoRoot $TestDrive
 
         $checks.Name | Should -Be @(
-            'PowerShell 7', 'Pester 6', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403', 'Claude Code',
-            'VS Code', 'VS Code PowerShell extension', 'Docker'
+            'PowerShell 7', 'Pester 6', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403',
+            'Claude Code', 'VS Code', 'VS Code PowerShell extension', 'Docker'
         )
-        @($checks | Where-Object Required).Count | Should -Be 7
+        @($checks | Where-Object Required).Count | Should -Be 8
     }
 
-    It 'installs Pester for the current user through PowerShell 7' {
-        (Get-Check 'Pester 6').InstallCommand | Should -Be 'pwsh -NoProfile -Command "Install-PSResource -Name Pester -Version 6.2.0 -Scope CurrentUser -Repository PSGallery -TrustRepository"'
+    It 'installs <Name> for the current user through PowerShell 7' -ForEach @(
+        @{ Name = 'Pester 6'; Module = 'Pester'; Version = '6.2.0' }
+        @{ Name = 'powershell-yaml'; Module = 'powershell-yaml'; Version = '0.4.12' }
+    ) {
+        (Get-Check $Name).InstallCommand | Should -Be "pwsh -NoProfile -Command `"Install-PSResource -Name $Module -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository`""
     }
 
     It 'installs the exact pinned SDK version' {
@@ -94,7 +97,7 @@ Describe 'Get-DevMachineCheck' {
         }
 
         It '<Name> fails when its command is missing' -ForEach @(
-            @{ Name = 'PowerShell 7' }, @{ Name = 'Pester 6' }, @{ Name = 'Git' }, @{ Name = 'GitHub CLI' }, @{ Name = 'GitHub CLI signed in' },
+            @{ Name = 'PowerShell 7' }, @{ Name = 'Pester 6' }, @{ Name = 'powershell-yaml' }, @{ Name = 'Git' }, @{ Name = 'GitHub CLI' }, @{ Name = 'GitHub CLI signed in' },
             @{ Name = '.NET SDK 10.0.403' }, @{ Name = 'Claude Code' }, @{ Name = 'VS Code' },
             @{ Name = 'VS Code PowerShell extension' }, @{ Name = 'Docker' }
         ) {
@@ -123,14 +126,17 @@ Describe 'Get-DevMachineCheck' {
             & (Get-Check '.NET SDK 10.0.403').Test | Should -Be $Expected
         }
 
-        It 'the Pester check is <Expected> when PowerShell 7 reports exit code <ExitCode>' -ForEach @(
-            @{ ExitCode = 0; Expected = $true }
-            @{ ExitCode = 1; Expected = $false }
+        It 'the <Name> check is <Expected> when PowerShell 7 reports exit code <ExitCode>' -ForEach @(
+            @{ Name = 'Pester 6'; ProbePattern = '*Pester*6.0.0*'; ExitCode = 0; Expected = $true }
+            @{ Name = 'Pester 6'; ProbePattern = '*Pester*6.0.0*'; ExitCode = 1; Expected = $false }
+            @{ Name = 'powershell-yaml'; ProbePattern = '*powershell-yaml*0.4.12*'; ExitCode = 0; Expected = $true }
+            @{ Name = 'powershell-yaml'; ProbePattern = '*powershell-yaml*0.4.12*'; ExitCode = 1; Expected = $false }
         ) {
             Mock Test-CommandAvailable { $true }
-            Mock Invoke-Native { [pscustomobject]@{ ExitCode = $ExitCode; Output = @() } } -ParameterFilter { $FilePath -eq 'pwsh' -and ($Arguments -join ' ') -like '*Pester*6.0.0*' }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = $ExitCode; Output = @() } } -ParameterFilter { $FilePath -eq 'pwsh' -and ($Arguments -join ' ') -like $ProbePattern }
 
-            & (Get-Check 'Pester 6').Test | Should -Be $Expected
+            & (Get-Check $Name).Test | Should -Be $Expected
         }
 
         It 'the PowerShell extension check is <Expected> when VS Code lists <Listed>' -ForEach @(

@@ -160,6 +160,7 @@ function Get-DevMachineCheck {
         -InstallCommand 'winget install --id Microsoft.PowerShell --exact'
     New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PesterModule -MinimumVersion '6.0.0' } `
         -InstallCommand 'pwsh -NoProfile -Command "Install-PSResource -Name Pester -Version 6.2.0 -Scope CurrentUser -Repository PSGallery -TrustRepository"'
+    New-DevMachineCheck -Name 'powershell-yaml' -Required $true -Test { $null } -InstallCommand 'stub'
     New-DevMachineCheck -Name 'Git' -Required $true -Test { Test-CommandAvailable -Name 'git' } `
         -InstallCommand 'winget install --id Git.Git --exact'
     New-DevMachineCheck -Name 'GitHub CLI' -Required $true -Test { Test-CommandAvailable -Name 'gh' } `
