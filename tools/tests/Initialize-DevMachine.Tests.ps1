@@ -204,3 +204,15 @@ Describe 'Initialize-DevMachine' {
         Initialize-DevMachine -RepoRoot $TestDrive | Should -Be 0
     }
 }
+
+Describe 'Initialize-DevMachine.ps1 as a script' -Tag 'Machine' {
+    # Runs the real, read-only check: a new machine starts in Windows PowerShell 5.1, before PowerShell 7 exists.
+    It 'runs its check in Windows PowerShell 5.1' -Skip:(-not (Get-Command -Name 'powershell.exe' -ErrorAction SilentlyContinue)) {
+        $script = Join-Path $PSScriptRoot '..' 'Initialize-DevMachine.ps1'
+
+        $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script 2>&1 | Out-String
+
+        $output | Should -Match 'Checking the dotnet-agent-kit toolchain'
+        $LASTEXITCODE | Should -BeIn 0, 1 -Because $output
+    }
+}
