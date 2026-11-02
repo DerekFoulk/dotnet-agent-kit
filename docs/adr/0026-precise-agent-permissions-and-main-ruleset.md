@@ -43,7 +43,7 @@ Accepted as recommended (owner, 2026-11-02). The ruleset "main protection" was c
 ## Consequences
 
 - `.claude/settings.json` has no rule that matches `git push`; `tools/tests/AgentConfig.Tests.ps1` keeps it that way.
-- `git switch` is allowed only as `git switch -c <branch>` and `git switch main`, so a forced switch prompts.
+- `git switch` is allowed only as the exact command `git switch main`. Any wildcard, even `git switch -c *`, would also accept `--discard-changes` or `-f`, so every other switch prompts (Copilot review on PR 4).
 - When a permission rule blocks a legitimate action, the agent stops and tells the owner; it doesn't rephrase or relocate the command to get past the rule (`AGENTS.md`).
 - Build step 4 adds required status checks to the ruleset once CI exists.
 - GIT-001, GIT-002 and GIT-003 are now enforced by the ruleset rather than advisory.
