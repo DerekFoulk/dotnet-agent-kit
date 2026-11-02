@@ -277,4 +277,22 @@ Describe 'Invoke-InstallCommand' {
 
         { Invoke-InstallCommand -Command 'Get-Date | Out-Null' } | Should -Not -Throw
     }
+
+    It 'shows installer output on the host instead of returning it' {
+        $returned = @(Invoke-InstallCommand -Command 'pwsh -NoProfile -Command "''installer-noise''"' 6>$null)
+
+        $returned.Count | Should -Be 0
+    }
+
+    It 'leaves Initialize-DevMachine -Install returning only its exit status' {
+        Mock Write-Host {}
+        Mock Get-DevMachineCheck {
+            New-DevMachineCheck -Name 'Noisy' -Required $true -Test { $false } -InstallCommand 'pwsh -NoProfile -Command "''installer-noise''"'
+        }
+
+        $returned = @(Initialize-DevMachine -RepoRoot $TestDrive -Install 6>$null)
+
+        $returned.Count | Should -Be 1 -Because "got: $($returned -join ', ')"
+        $returned[0] | Should -Be 1
+    }
 }
