@@ -61,9 +61,25 @@ Describe 'Get-DevMachineCheck' {
 
         $checks.Name | Should -Be @(
             'PowerShell 7', 'Pester 6', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403',
-            'Claude Code', 'VS Code', 'VS Code PowerShell extension', 'Docker'
+            'Claude Code', 'Git commit-msg hook', 'VS Code', 'VS Code PowerShell extension', 'Docker'
         )
-        @($checks | Where-Object Required).Count | Should -Be 8
+        @($checks | Where-Object Required).Count | Should -Be 9
+    }
+
+    It 'turns the commit-msg hook on for this clone only' {
+        (Get-Check 'Git commit-msg hook').InstallCommand | Should -Be "git -C '$TestDrive' config core.hooksPath .githooks"
+    }
+
+    It 'the hook check is <Expected> when core.hooksPath is <Value>' -ForEach @(
+        @{ Value = '.githooks'; Expected = $true }
+        @{ Value = ''; Expected = $false }
+        @{ Value = '.husky'; Expected = $false }
+    ) {
+        Mock Test-CommandAvailable { $true }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = $(if ($Value) { 0 } else { 1 }); Output = @($Value) } } -ParameterFilter { $FilePath -eq 'git' -and ($Arguments -join ' ') -like '* config --get core.hooksPath' }
+
+        & (Get-Check 'Git commit-msg hook').Test | Should -Be $Expected
     }
 
     It 'installs <Name> for the current user through PowerShell 7' -ForEach @(
@@ -101,7 +117,7 @@ Describe 'Get-DevMachineCheck' {
 
         It '<Name> fails when its command is missing' -ForEach @(
             @{ Name = 'PowerShell 7' }, @{ Name = 'Pester 6' }, @{ Name = 'powershell-yaml' }, @{ Name = 'Git' }, @{ Name = 'GitHub CLI' }, @{ Name = 'GitHub CLI signed in' },
-            @{ Name = '.NET SDK 10.0.403' }, @{ Name = 'Claude Code' }, @{ Name = 'VS Code' },
+            @{ Name = '.NET SDK 10.0.403' }, @{ Name = 'Claude Code' }, @{ Name = 'Git commit-msg hook' }, @{ Name = 'VS Code' },
             @{ Name = 'VS Code PowerShell extension' }, @{ Name = 'Docker' }
         ) {
             Mock Test-CommandAvailable { $false }
