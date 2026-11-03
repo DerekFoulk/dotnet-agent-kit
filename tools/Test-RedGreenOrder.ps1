@@ -42,14 +42,17 @@ function Get-RedGreenProblem {
     }
 }
 
-# Returns each non-merge commit in the range, oldest first, with its TDD marker: the git trailer, or
+# Returns each of the branch's own non-merge commits in the range, oldest first, with its TDD marker: the git trailer, or
 # for commits made before 2026-11-02 a "TDD: red|green" line in the body (it sat in its own paragraph,
 # so git doesn't read it as a trailer).
 function Get-TddCommit {
     param([Parameter(Mandatory)] [string] $RepoPath, [Parameter(Mandatory)] [string] $Range)
 
     $format = '%h%x1f%s%x1f%cI%x1f%(trailers:key=TDD,valueonly,separator=%x2C)%x1f%b%x1e'
-    $log = (git -C $RepoPath log --reverse --no-merges "--format=$format" $Range) -join "`n"
+    # --first-parent reads only the branch's own line. Commits merged in from another branch were checked
+    # on that branch's pull request, and walking them by date interleaves the two lines, so one branch's
+    # green could close another branch's red.
+    $log = (git -C $RepoPath log --first-parent --reverse --no-merges "--format=$format" $Range) -join "`n"
     if ($LASTEXITCODE -ne 0) { throw "git log failed for range '$Range' in $RepoPath." }
 
     foreach ($record in $log -split "`u{1e}") {
