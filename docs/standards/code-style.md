@@ -34,7 +34,7 @@ rules:
     layer: owner
     status: proposed
     sources: ["ADR-0009"]
-    enforcement: "build: TreatWarningsAsErrors; tools/tests/BuildConfig.Tests.ps1"
+    enforcement: "build: TreatWarningsAsErrors (compiler and NuGet warnings) and MSBuildTreatWarningsAsErrors (MSBuild task warnings); tools/tests/BuildConfig.Tests.ps1"
     scope: core
     paths: ["Directory.Build.props"]
   - id: STY-005
