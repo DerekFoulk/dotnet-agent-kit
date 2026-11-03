@@ -91,4 +91,17 @@ function Get-ReviewThread {
     }
 }
 
-Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread
+function Resolve-ReviewThread {
+    param(
+        [Parameter(Mandatory)] [string] $Repository,
+        [Parameter(Mandatory)] [int] $Number,
+        [Parameter(Mandatory)] [string] $ThreadId,
+        [Parameter(Mandatory)] [long] $CommentId,
+        [Parameter(Mandatory)] [ValidateSet('ADDRESSED', 'WONT_FIX', 'INVALID')] [string] $Reason,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Evidence,
+        [switch] $OwnerApproved
+    )
+    [pscustomobject]@{ ReplyUrl = $null; Resolved = $false }
+}
+
+Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Resolve-ReviewThread
