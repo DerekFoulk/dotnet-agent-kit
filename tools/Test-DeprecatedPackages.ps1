@@ -5,8 +5,9 @@
 
 .DESCRIPTION
     `dotnet list package --deprecated` exits 0 even when it lists deprecated packages, so this script reads
-    its JSON output and fails instead. Restore first: a project that was never restored produces the same
-    output as a clean one, so this script fails when a listed project has no obj/project.assets.json.
+    its JSON output and fails instead. The command restores each project itself; when that restore fails it
+    exits 1 and reports "problems" with no "projects" list, and this script fails on that too, so a broken
+    restore can't pass as "nothing deprecated".
 
 .EXAMPLE
     ./tools/Test-DeprecatedPackages.ps1 -Path dotnet-agent-kit.slnx
@@ -31,6 +32,7 @@ function Get-DeprecatedPackage {
     param([Parameter(Mandatory)] [string] $Json)
 
     $report = $Json | ConvertFrom-Json -AsHashtable
+    if (-not $report.ContainsKey('projects')) { return }
     foreach ($project in @($report['projects'])) {
         if ($null -eq $project -or -not $project.ContainsKey('frameworks')) { continue }
         foreach ($framework in @($project['frameworks'])) {
@@ -50,24 +52,24 @@ function Get-DeprecatedPackage {
     }
 }
 
-# Prints each deprecated package and returns 0 when there are none, otherwise 1. A listed project with
-# no restore output also fails: `dotnet list package` reports it exactly like a clean project.
+# Prints each problem and returns 0 only when dotnet list succeeded, reported no problems, and listed no
+# deprecated package; otherwise 1.
 function Invoke-DeprecatedPackageCheck {
     param([Parameter(Mandatory)] [string] $Json, [int] $ExitCode = 0)
 
     $report = $Json | ConvertFrom-Json -AsHashtable
-    $projects = @($report['projects'] | Where-Object { $null -ne $_ })
-    if ($projects.Count -eq 0) {
-        Write-Host 'No deprecated packages: the solution has no projects yet.' -ForegroundColor Green
-        return 0
-    }
-
     $problems = [System.Collections.Generic.List[string]]::new()
-    foreach ($project in $projects) {
-        $assets = Join-Path (Split-Path -Path $project['path'] -Parent) 'obj' 'project.assets.json'
-        if (-not (Test-Path -Path $assets)) {
-            $problems.Add("$($project['path']) is not restored, so its packages weren't checked. Run dotnet restore first.")
+
+    if ($report.ContainsKey('problems')) {
+        foreach ($problem in @($report['problems'])) {
+            $problems.Add("dotnet list package reported ($($problem['level'])): $($problem['text'])")
         }
+    }
+    if ($ExitCode -ne 0) {
+        $problems.Add("dotnet list package exited with code $ExitCode, so the packages weren't checked.")
+    }
+    if (-not $report.ContainsKey('projects')) {
+        $problems.Add('dotnet list package returned no project list, so the packages weren''t checked.')
     }
     foreach ($package in @(Get-DeprecatedPackage -Json $Json)) {
         $instead = if ($package.Alternative) { "; use $($package.Alternative) instead" } else { '' }
@@ -78,8 +80,14 @@ function Invoke-DeprecatedPackageCheck {
         Write-Host "  $problem" -ForegroundColor Red
     }
     if ($problems.Count -gt 0) {
-        Write-Host "`n$($problems.Count) deprecated-package problem(s). A preview or deprecated package needs an ADR (SUP-007)." -ForegroundColor Red
+        Write-Host "`n$($problems.Count) deprecated-package problem(s). A deprecated package needs replacing, or an ADR (SUP-007)." -ForegroundColor Red
         return 1
+    }
+
+    $projects = @($report['projects'] | Where-Object { $null -ne $_ })
+    if ($projects.Count -eq 0) {
+        Write-Host 'No deprecated packages: the solution has no projects yet.' -ForegroundColor Green
+        return 0
     }
     Write-Host "$($projects.Count) project(s), no deprecated packages." -ForegroundColor Green
     0
@@ -87,12 +95,14 @@ function Invoke-DeprecatedPackageCheck {
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
+    $exitCode = 0
     $json = if ($JsonFile) {
         Get-Content -Path $JsonFile -Raw
     }
     else {
-        # This command never fails on deprecated packages by itself, which is why this script exists.
-        (dotnet list $Path package --deprecated --format json) -join "`n"
+        $output = (dotnet list $Path package --deprecated --format json) -join "`n"
+        $exitCode = $LASTEXITCODE
+        $output
     }
-    exit (Invoke-DeprecatedPackageCheck -Json $json)
+    exit (Invoke-DeprecatedPackageCheck -Json $json -ExitCode $exitCode)
 }
