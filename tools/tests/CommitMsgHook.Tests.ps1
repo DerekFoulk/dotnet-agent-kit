@@ -43,6 +43,8 @@ Describe 'commit-msg hook' {
             @{ Message = "feat: add tags`n`nTDD: green`nCo-Authored-By: A <a@example.invalid>`n" }
             @{ Message = "fix(api): keep one bookmark per URL`n" }
             @{ Message = "revert: feat: add tags`n" }
+            # git revert's own subject is valid when the reverted commit's was (Get-TitleProblem).
+            @{ Message = "Revert `"feat: add tags`"`n`nThis reverts commit abc.`n" }
         ) {
             (Invoke-Hook $Message).ExitCode | Should -Be 0
         }
@@ -55,17 +57,13 @@ Describe 'commit-msg hook' {
         }
 
         It 'rejects a subject CI would reject even though git wrote it (<Message>)' -ForEach @(
-            @{ Message = "Revert `"feat: add tags`"`n`nThis reverts commit abc.`n" }
+            @{ Message = "Revert `"add tags`"`n" }
             @{ Message = "fixup! feat: add tags`n" }
             @{ Message = "squash! feat: add tags`n" }
             @{ Message = "amend! feat: add tags`n" }
             @{ Message = "Merge branch 'side' into work`n" }
         ) {
             (Invoke-Hook $Message).ExitCode | Should -Be 1
-        }
-
-        It 'suggests revert: for a git revert subject' {
-            (Invoke-Hook "Revert `"feat: add tags`"`n").Output | Should -Match 'revert: '
         }
 
         It 'checks the first line that is not blank or a comment' {
@@ -86,18 +84,20 @@ Describe 'commit-msg hook' {
             git -C $repo log --format=%s | Should -Be 'feat: add tags'
         }
 
-        It 'blocks git revert''s own subject, which CI would reject' {
+        # git revert doesn't run the commit-msg hook at all, so the hook can't police its subject; instead
+        # CI accepts git's revert form for a Conventional commit, and this checks the two agree.
+        It 'lets git revert of a Conventional commit through, and CI accepts its subject too' {
             $repo = New-HookedRepo
-            # A real change: reverting an empty commit fails on its own, which would hide the hook's part.
+            # A real change: reverting an empty commit fails on its own.
             Set-Content -Path (Join-Path $repo 'tags.txt') -Value 'tags'
             Invoke-InRepo $repo add tags.txt | Out-Null
             Invoke-InRepo $repo commit --quiet --message 'feat: add tags' | Out-Null
 
             $revert = Invoke-InRepo $repo revert --no-edit HEAD
+            $ci = pwsh -NoProfile -File (Join-Path $script:repoRoot 'tools' 'Test-ConventionalTitle.ps1') -RepoPath $repo -Range 'HEAD~1..HEAD' 2>&1 | Out-String
 
-            $revert.ExitCode | Should -Not -Be 0 -Because $revert.Output
-            $revert.Output | Should -Match 'Conventional Commit'
-            git -C $repo log -1 --format=%s | Should -Be 'feat: add tags'
+            $revert.ExitCode | Should -Be 0 -Because $revert.Output
+            $LASTEXITCODE | Should -Be 0 -Because $ci
         }
 
         It 'allows a real merge commit, which CI skips' {

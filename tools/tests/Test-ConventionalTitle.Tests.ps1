@@ -14,6 +14,8 @@ Describe 'Test-ConventionalTitle.ps1' {
             @{ Title = 'chore(deps): bump MinVer to 8.0.1' }
             @{ Title = 'ci: run the kit checks on every PR' }
             @{ Title = 'refactor: share front-matter reading' }
+            # git revert's default subject, recognized by Conventional Commits parsers.
+            @{ Title = 'Revert "feat: add the bookmark tag endpoint"' }
         ) {
             Get-TitleProblem -Title $Title | Should -BeNullOrEmpty
         }
@@ -25,6 +27,8 @@ Describe 'Test-ConventionalTitle.ps1' {
             @{ Title = 'feat:add tags'; Reason = 'no space after the colon' }
             @{ Title = 'feat: '; Reason = 'empty description' }
             @{ Title = 'feat(): add tags'; Reason = 'empty scope' }
+            @{ Title = 'Revert "add tags"'; Reason = 'revert of a non-Conventional subject' }
+            @{ Title = 'Revert feat: add tags'; Reason = 'revert without quotes' }
         ) {
             Get-TitleProblem -Title $Title | Should -BeLike '*Conventional Commit*'
         }
