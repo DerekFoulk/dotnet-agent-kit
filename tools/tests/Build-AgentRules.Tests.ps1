@@ -242,7 +242,8 @@ Describe 'Build-AgentRules.ps1' {
             Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
             $processDirectory = [Environment]::CurrentDirectory
             try {
-                [Environment]::CurrentDirectory = $env:TEMP
+                # GetTempPath works on every OS; $env:TEMP is unset on Linux runners.
+                [Environment]::CurrentDirectory = [System.IO.Path]::GetTempPath()
                 Push-Location -Path (Split-Path -Path $root -Parent)
 
                 Invoke-AgentRuleBuild -RepoRoot (Split-Path -Path $root -Leaf) -Check | Should -Be 0
