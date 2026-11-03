@@ -13,6 +13,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Midnight Pacific on 2026-11-02. Commits made before it carried "TDD: red|green" in its own paragraph,
+# which git doesn't read as a trailer; the first real trailer commit (c779b47) landed at 23:42 on
+# 2026-11-01 Pacific, and everything after the fix uses the trailer.
+$script:TrailerCutoff = [datetimeoffset]::Parse('2026-11-02T00:00:00-08:00', [cultureinfo]::InvariantCulture)
+
 # Walks the commits oldest first. A red opens a cycle; a green closes every open red (several reds may
 # share one green, for example when a second test refines the first before the code exists). A green
 # with nothing open, a red still open at the end, and any value other than red or green are problems.
@@ -43,15 +48,18 @@ function Get-RedGreenProblem {
 function Get-TddCommit {
     param([Parameter(Mandatory)] [string] $RepoPath, [Parameter(Mandatory)] [string] $Range)
 
-    $format = '%h%x1f%s%x1f%(trailers:key=TDD,valueonly,separator=%x2C)%x1f%b%x1e'
+    $format = '%h%x1f%s%x1f%cI%x1f%(trailers:key=TDD,valueonly,separator=%x2C)%x1f%b%x1e'
     $log = (git -C $RepoPath log --reverse --no-merges "--format=$format" $Range) -join "`n"
     if ($LASTEXITCODE -ne 0) { throw "git log failed for range '$Range' in $RepoPath." }
 
     foreach ($record in $log -split "`u{1e}") {
         if (-not $record.Trim()) { continue }
-        $hash, $subject, $trailer, $body = $record.TrimStart("`n") -split "`u{1f}", 4
+        $hash, $subject, $committed, $trailer, $body = $record.TrimStart("`n") -split "`u{1f}", 5
         $marker = $trailer.Trim()
-        if (-not $marker -and $body -match '(?m)^TDD:\s*(\S+)\s*$') {
+        # The body-line fallback is for history only: newer commits must carry a real trailer (GIT-005).
+        # [ \t]* keeps "TDD:" and its value on one line.
+        $isLegacy = [datetimeoffset]::Parse($committed, [cultureinfo]::InvariantCulture) -lt $script:TrailerCutoff
+        if (-not $marker -and $isLegacy -and $body -match '(?m)^TDD:[ \t]*(\S+)[ \t]*$') {
             $marker = $Matches[1]
         }
         [pscustomobject]@{ Hash = $hash; Subject = $subject; Marker = $marker }
