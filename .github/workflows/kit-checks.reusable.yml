@@ -1,5 +1,5 @@
 # The kit's own checks: script tests, rule sources, ADR sections, generated-file drift, and on pull
-# requests the PR title, commit subjects and red-to-green order.
+# requests the commit subjects and red-to-green order. The PR title has its own workflow (pr-title.yml).
 name: Kit checks (reusable)
 
 on:
@@ -22,6 +22,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # the commit checks read the PR's history
+          persist-credentials: false
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
@@ -49,14 +50,7 @@ jobs:
       - name: Generated agent files are current
         run: ./tools/Build-AgentRules.ps1 -Check
 
-      # The title comes in through an environment variable, never inline in the script, so a PR title
-      # can't inject commands.
-      - name: PR title is a Conventional Commit
-        if: github.event_name == 'pull_request'
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: ./tools/Test-ConventionalTitle.ps1 -Title $env:PR_TITLE
-
+      # The PR title is checked in pr-title.yml, which also runs when the title is edited.
       - name: Commit subjects are Conventional Commits
         if: github.event_name == 'pull_request'
         env:

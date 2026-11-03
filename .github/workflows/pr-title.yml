@@ -1,0 +1,28 @@
+# The PR title becomes the merge commit's subject (ADR-0022), so it must be a Conventional Commit at merge
+# time, not only when CI last ran. This small workflow also runs when the PR is edited, so a renamed PR
+# is re-checked without re-running the rest of CI.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: PR title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The title comes in through an environment variable, never inline in the script, so a PR title
+      # can't inject commands.
+      - name: PR title is a Conventional Commit
+        shell: pwsh
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: ./tools/Test-ConventionalTitle.ps1 -Title $env:PR_TITLE
