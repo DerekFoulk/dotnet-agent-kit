@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <!-- A warning from an MSBuild task, not the compiler: TreatWarningsAsErrors doesn't cover it. -->
+  <Target Name="EmitKitWarning" BeforeTargets="Build">
+    <Warning Code="KIT0001" Text="A warning from an MSBuild task." />
+  </Target>
+
+</Project>
