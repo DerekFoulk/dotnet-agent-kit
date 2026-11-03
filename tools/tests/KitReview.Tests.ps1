@@ -187,6 +187,73 @@ Describe 'KitReview.psm1' {
                 Should -Invoke Invoke-Gh -ParameterFilter { $joined = $args -join ' '; $joined -like '*owner=DerekFoulk*' -and $joined -like '*name=dotnet-agent-kit*' -and $joined -like '*number=5*' }
             }
         }
+
+        # gh -F converts numbers, true, false and null, so a repository named "2048" would reach GitHub as
+        # an Int and fail; owner and name go as strings (-f), the PR number as a typed value (-F).
+        It 'sends owner and name as strings, and the number as a typed value' {
+            InModuleScope KitReview -Parameters @{ Json = $script:threadsJson } {
+                param($Json)
+                $script:ghArgs = $null
+                Mock Invoke-Gh { $script:ghArgs = @($args); $Json }
+
+                Get-ReviewThread -Repository 'octocat/2048' -Number 5 | Out-Null
+
+                $script:ghArgs[$script:ghArgs.IndexOf('owner=octocat') - 1] | Should -BeExactly '-f'
+                $script:ghArgs[$script:ghArgs.IndexOf('name=2048') - 1] | Should -BeExactly '-f'
+                $script:ghArgs[$script:ghArgs.IndexOf('number=5') - 1] | Should -BeExactly '-F'
+            }
+        }
+
+        It 'returns every comment, so a reply from the owner is seen' {
+            $json = '{ "data": { "repository": { "pullRequest": { "reviewThreads": { "pageInfo": { "hasNextPage": false }, "nodes": [
+  { "id": "PRRT_1", "isResolved": false, "isOutdated": false, "path": "a.ps1", "line": 3,
+    "comments": { "nodes": [
+      { "databaseId": 11, "author": { "login": "copilot-pull-request-reviewer" }, "body": "Rename this." },
+      { "databaseId": 12, "author": { "login": "DerekFoulk" }, "body": "Keep it; won''t fix." } ] } }
+] } } } } }'
+            InModuleScope KitReview -Parameters @{ Json = $json } {
+                param($Json)
+                Mock Invoke-Gh { $Json }
+
+                $thread = Get-ReviewThread -Repository 'o/r' -Number 5
+
+                $thread.CommentId | Should -Be 11 -Because 'replies go to the first comment'
+                $thread.Comments.Count | Should -Be 2
+                $thread.Comments[1].Author | Should -Be 'DerekFoulk'
+                $thread.Comments[1].Body | Should -Be "Keep it; won't fix."
+            }
+        }
+
+        It 'names a comment author whose account was deleted, rather than failing' {
+            $json = '{ "data": { "repository": { "pullRequest": { "reviewThreads": { "pageInfo": { "hasNextPage": false }, "nodes": [
+  { "id": "PRRT_1", "isResolved": false, "isOutdated": false, "path": "a.ps1", "line": 3,
+    "comments": { "nodes": [ { "databaseId": 11, "author": null, "body": "An old finding." } ] } }
+] } } } } }'
+            InModuleScope KitReview -Parameters @{ Json = $json } {
+                param($Json)
+                Mock Invoke-Gh { $Json }
+
+                (Get-ReviewThread -Repository 'o/r' -Number 5).Author | Should -Be '(deleted account)'
+            }
+        }
+
+        It 'refuses to return a partial list when there are more than 100 threads' {
+            $json = '{ "data": { "repository": { "pullRequest": { "reviewThreads": { "pageInfo": { "hasNextPage": true }, "nodes": [] } } } } }'
+            InModuleScope KitReview -Parameters @{ Json = $json } {
+                param($Json)
+                Mock Invoke-Gh { $Json }
+
+                { Get-ReviewThread -Repository 'o/r' -Number 5 } | Should -Throw '*100*'
+            }
+        }
+
+        It 'says so when the pull request does not exist' {
+            InModuleScope KitReview {
+                Mock Invoke-Gh { '{ "data": { "repository": { "pullRequest": null } } }' }
+
+                { Get-ReviewThread -Repository 'o/r' -Number 999 } | Should -Throw '*999*not found*'
+            }
+        }
     }
 
     Context 'Resolve-ReviewThread' {

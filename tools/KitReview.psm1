@@ -100,6 +100,7 @@ function Get-ReviewThread {
             CommentId  = [long] $first['databaseId']
             Author     = $first['author']['login']
             Body       = $first['body']
+            Comments   = @()
         }
     }
 }
