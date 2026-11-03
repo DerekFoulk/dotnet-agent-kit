@@ -189,10 +189,10 @@ function Resolve-ReviewThread {
     if ($Reason -eq 'WONT_FIX' -and -not $OwnerApproved) {
         throw "Won't fix leaves a valid finding unfixed, which is the owner's call: get the owner's OK, then pass -OwnerApproved."
     }
-    $state = Invoke-Gh pr view $Number --repo $Repository --json state --jq .state
-    if ("$state".Trim() -ne 'OPEN') {
-        throw "Pull request #$Number is not open ($("$state".Trim())); put new commits on a fresh branch instead (docs/corrections-log.md)."
+    if ($Thread.IsResolved) {
+        throw "Thread $($Thread.ThreadId) is already resolved; read the threads again with Get-OpenFinding."
     }
+    Assert-PullRequestOpen -Repository $Repository -Number $Number
 
     # The reply goes first, so a thread is never resolved without its evidence.
     $label = @{ ADDRESSED = 'addressed'; WONT_FIX = "won't fix"; INVALID = 'incorrect' }[$Reason]
@@ -208,14 +208,35 @@ function Resolve-ReviewThread {
     }
 }
 
+# Posts a reply without resolving anything: in -Thread when given, otherwise as a pull request comment
+# (for a summary issue that has no thread). Use it to leave a finding open with a recommendation for the
+# owner, or to answer a question.
 function Add-ReviewReply {
     param(
         [Parameter(Mandatory)] [string] $Repository,
         [Parameter(Mandatory)] [int] $Number,
-        [psobject] $Thread,
+        [ValidateScript({ $_.CommentId }, ErrorMessage = 'Pass a thread from Get-ReviewThread or Get-OpenFinding.')] [psobject] $Thread,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Body
     )
-    [pscustomobject]@{ Url = $null }
+
+    if ([string]::IsNullOrWhiteSpace($Body)) {
+        throw 'The reply is empty.'
+    }
+    Assert-PullRequestOpen -Repository $Repository -Number $Number
+
+    $endpoint = if ($Thread) { "repos/$Repository/pulls/$Number/comments/$($Thread.CommentId)/replies" } else { "repos/$Repository/issues/$Number/comments" }
+    $posted = Invoke-Gh api -X POST $endpoint -f "body=$($Body.Trim())" | ConvertFrom-Json -AsHashtable
+    [pscustomobject]@{ Url = $posted['html_url'] }
+}
+
+# Writing to a merged or closed pull request helps no one; new commits belong on a fresh branch.
+function Assert-PullRequestOpen {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+
+    $state = "$(Invoke-Gh pr view $Number --repo $Repository --json state --jq .state)".Trim()
+    if ($state -ne 'OPEN') {
+        throw "Pull request #$Number is not open ($state); put new commits on a fresh branch instead (docs/corrections-log.md)."
+    }
 }
 
 Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewThread, Add-ReviewReply
