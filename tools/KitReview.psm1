@@ -101,7 +101,31 @@ function Resolve-ReviewThread {
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Evidence,
         [switch] $OwnerApproved
     )
-    [pscustomobject]@{ ReplyUrl = $null; Resolved = $false }
+
+    # Every refusal happens before anything changes on GitHub.
+    if ([string]::IsNullOrWhiteSpace($Evidence)) {
+        throw 'A resolution needs evidence: the fixing commits, or what disproved the finding.'
+    }
+    if ($Reason -eq 'WONT_FIX' -and -not $OwnerApproved) {
+        throw "Won't fix leaves a valid finding unfixed, which is the owner's call: get the owner's OK, then pass -OwnerApproved."
+    }
+    $state = Invoke-Gh pr view $Number --repo $Repository --json state --jq .state
+    if ("$state".Trim() -ne 'OPEN') {
+        throw "Pull request #$Number is not open ($("$state".Trim())); put new commits on a fresh branch instead (docs/corrections-log.md)."
+    }
+
+    # The reply goes first, so a thread is never resolved without its evidence.
+    $label = @{ ADDRESSED = 'addressed'; WONT_FIX = "won't fix"; INVALID = 'incorrect' }[$Reason]
+    $body = "Resolution: $label. $($Evidence.Trim())"
+    $reply = Invoke-Gh api -X POST "repos/$Repository/pulls/$Number/comments/$CommentId/replies" -f "body=$body" | ConvertFrom-Json -AsHashtable
+
+    $mutation = 'mutation($id: ID!, $reason: PullRequestReviewThreadResolutionReason) { resolveReviewThread(input: {threadId: $id, resolutionReason: $reason}) { thread { isResolved } } }'
+    $resolved = Invoke-Gh api graphql -f "query=$mutation" -f "id=$ThreadId" -f "reason=$Reason" | ConvertFrom-Json -AsHashtable
+
+    [pscustomobject]@{
+        ReplyUrl = $reply['html_url']
+        Resolved = [bool] $resolved['data']['resolveReviewThread']['thread']['isResolved']
+    }
 }
 
 Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Resolve-ReviewThread
