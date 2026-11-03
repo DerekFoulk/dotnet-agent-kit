@@ -32,6 +32,11 @@ function Get-TitleProblem {
     if ($Title -cmatch $script:TitlePattern) {
         return $null
     }
+    # git revert writes 'Revert "<original subject>"' and never runs the commit-msg hook. Conventional
+    # Commits parsers recognize that form, so it's valid when the reverted subject was.
+    if ($Title -cmatch '^Revert "(.+)"$' -and -not (Get-TitleProblem -Title $Matches[1])) {
+        return $null
+    }
     "'$Title' isn't a Conventional Commit: '<type>(<optional scope>)!: <description>', where type is one of $($script:Types -join ', ')"
 }
 

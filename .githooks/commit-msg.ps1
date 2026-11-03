@@ -4,9 +4,11 @@
     The commit-msg hook: rejects a commit whose subject isn't a Conventional Commit (GIT-004, ADR-0027).
 
 .DESCRIPTION
-    Uses the same rule as CI (Get-TitleProblem in tools/Test-ConventionalTitle.ps1). A bad subject that
-    reaches CI can only be fixed by rewriting history, so the hook stops it before the commit exists.
-    Subjects git writes itself (merges, reverts, fixup!/squash!/amend!) are skipped.
+    Uses the same rule as CI (Get-TitleProblem in tools/Test-ConventionalTitle.ps1), and must never accept a
+    subject CI rejects: a bad subject that reaches CI can only be fixed by rewriting history. CI skips only
+    real merge commits, so this hook skips only a merge in progress (git sets MERGE_HEAD), never a subject
+    that merely looks like one. fixup!/squash!/amend! subjects are rejected. git revert never runs this
+    hook; its 'Revert "<subject>"' form is valid in the shared rule when the reverted subject was.
 #>
 param([Parameter(Mandatory)] [string] $MessageFile)
 
@@ -15,13 +17,19 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '..' 'tools' 'Test-ConventionalTitle.ps1')
 
+# A merge commit in progress: CI skips merge commits (git log --no-merges), so the hook does too.
+git rev-parse -q --verify MERGE_HEAD *> $null
+if ($LASTEXITCODE -eq 0) {
+    exit 0
+}
+
 # git's editor template adds comment lines (#) and may leave blank lines before the subject.
-$subject = Get-Content -Path $MessageFile |
+$subject = Get-Content -LiteralPath $MessageFile |
     Where-Object { $_.Trim() -and -not $_.StartsWith('#') } |
     Select-Object -First 1
 
-if (-not $subject -or $subject -match '^(Merge |Revert "|fixup! |squash! |amend! )') {
-    exit 0
+if (-not $subject) {
+    exit 0 # git itself aborts a commit with an empty message
 }
 
 $problem = Get-TitleProblem -Title $subject
