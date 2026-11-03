@@ -80,6 +80,11 @@ function Invoke-ConventionalTitleCheck {
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
+    # Checking nothing must not look like a pass (a CI step with a missing value, for example).
+    if (-not $PSBoundParameters.ContainsKey('Title') -and -not $Range) {
+        Write-Host 'Nothing to check: pass -Title, -Range, or both.' -ForegroundColor Red
+        exit 1
+    }
     $arguments = @{ RepoPath = $RepoPath }
     if ($PSBoundParameters.ContainsKey('Title')) { $arguments['Title'] = $Title }
     if ($Range) { $arguments['Range'] = $Range }
