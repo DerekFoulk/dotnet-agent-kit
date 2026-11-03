@@ -56,7 +56,7 @@ function ConvertFrom-CopilotReviewBody {
 }
 
 # Copilot's latest review on the pull request, with its summary read; nothing if Copilot hasn't reviewed.
-# Copilot may update one review in place, so Commit is where it started, not necessarily the latest push.
+# Commit is the commit Copilot reviewed, which can be behind the branch head.
 function Get-CopilotReview {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 

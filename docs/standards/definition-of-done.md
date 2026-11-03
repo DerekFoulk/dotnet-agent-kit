@@ -43,7 +43,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-03", "ADR-0028"]
-    enforcement: "advisory: the address-review skill and tools/KitReview.psm1 (which refuses won't fix without -OwnerApproved) guide it; the main ruleset doesn't yet require conversations resolved before merging"
+    enforcement: "advisory: the address-review skill and tools/KitReview.psm1 guide it; the module refuses won't fix without -OwnerApproved, a switch it takes on trust; the main ruleset doesn't yet require conversations resolved before merging"
     scope: core
     paths: ["**"]
 ---

@@ -9,15 +9,15 @@ GitHub Copilot reviews every pull request in kit repos and posts a summary ("Cha
 
 Facts that shape the design (checked 2026-11-03):
 - GitHub's GraphQL `resolveReviewThread` takes a `resolutionReason` of `ADDRESSED`, `WONT_FIX` or `INVALID` (read from the live API schema). The API has no field to read a reason back.
-- Copilot keeps one review per pull request and updates it in place, so its findings can refer to commits older than the branch head.
+- On PRs 1–5, Copilot left one review per pull request, and its findings could refer to commits older than the branch head. Whether a re-review adds a new review or updates the old one isn't confirmed, so the module reads the latest.
 - Copilot's summary can list an issue that has no inline thread.
-- An agent can only react if something wakes it. The Claude Code desktop app has a PR monitor that wakes a session when review comments, CI failures or merge conflicts arrive. The owner approves turning it on.
+- An agent can only react if something wakes it. The Claude Code desktop app offers a PR monitor. Its tool description says it wakes a session when review comments, CI failures or merge conflicts arrive; that hasn't been observed on a kit PR yet. The owner approves turning it on.
 
 ## Options
 
 ### Option 1: A skill and a tested module, woken by the app's PR monitor
 
-- **Trade-offs:** `.claude/skills/address-review` carries the procedure, read by Claude Code, Visual Studio and VS Code. `tools/KitReview.psm1` reads Copilot's verdict and threads, and resolves a thread only after replying with evidence, refusing a closed PR, an empty reply, or won't fix without the owner's OK. In Claude Code the monitor wakes the session; other tools run the skill when pointed at a review. It needs a running session; no review is handled while nothing runs.
+- **Trade-offs:** `.claude/skills/address-review` carries the procedure, read by Claude Code, Visual Studio and VS Code. `tools/KitReview.psm1` lists what's open, combining Copilot's summary with every thread, and resolves a thread only after replying with evidence. It refuses a closed PR, an already-resolved thread, an empty reply, or won't fix without the owner's OK. In Claude Code the monitor wakes the session; other tools run the skill when pointed at a review. It needs a running session; no review is handled while nothing runs.
 - **Reversibility:** Easy. A skill, a module and an instruction.
 - **Risk:** Low. The kit's own discipline (test-first, evidence, owner's call on won't fix) applies to every fix.
 
@@ -50,9 +50,9 @@ Accepted as recommended (owner, 2026-11-03).
 ## Consequences
 
 - `AGENTS.md` adds step 7, "Answer the review"; `finish-work` turns on the PR monitor and hands each review to `address-review`.
-- `tools/KitReview.psm1` (`Get-CopilotReview`, `Get-ReviewThread`, `Resolve-ReviewThread`) is the one way agents read and resolve review threads.
+- `tools/KitReview.psm1` (`Get-CopilotReview`, `Get-ReviewThread`, `Get-OpenFinding`, `Resolve-ReviewThread`, `Add-ReviewReply`) is the one way agents read, answer and resolve review threads.
 - DOD-005 records the rule. It stays advisory unless the ruleset requires conversations resolved before merging, which is a separate decision for the owner.
-- "Won't fix" is never an agent's decision alone: the module refuses it without `-OwnerApproved`.
+- "Won't fix" is never an agent's decision alone. The module refuses it without `-OwnerApproved`, but it can't check that the owner really approved, so that switch is a safeguard taken on trust, backed by the skill and the reviewer agent.
 
 ## Pillars affected
 
@@ -62,3 +62,5 @@ Reliability: every reported problem gets checked, and fixed test-first if real. 
 
 - owner, 2026-11-03
 - https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/manage-pull-requests, retrieved 2026-11-03
+- Claude Code desktop app, PR-monitor tool description (auto-fix), read 2026-11-03
+- GitHub GraphQL schema, `PullRequestReviewThreadResolutionReason`, read from the live API 2026-11-03

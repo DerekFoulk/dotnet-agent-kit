@@ -79,7 +79,7 @@ Never read, print or store secrets. Sign-in is always the owner's step.
 | PR title and commit subjects are Conventional Commits | `./tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD` |
 | Every red commit is made green | `./tools/Test-RedGreenOrder.ps1 -Range origin/main..HEAD` |
 | No deprecated NuGet packages | `./tools/Test-DeprecatedPackages.ps1 -Path dotnet-agent-kit.slnx` |
-| Read a PR's Copilot review and open threads; resolve a thread | `Import-Module ./tools/KitReview.psm1`, then `Get-CopilotReview`, `Get-ReviewThread -Unresolved`, `Resolve-ReviewThread` (see the `address-review` skill) |
+| List a PR's open review findings; reply; resolve a thread | `Import-Module ./tools/KitReview.psm1`, then `Get-OpenFinding`, `Add-ReviewReply`, `Resolve-ReviewThread` (see the `address-review` skill) |
 | Build | `dotnet build` |
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request, plus a gitleaks secret scan. The "main protection" ruleset requires them to pass.

@@ -41,7 +41,7 @@ If a PR already exists for this branch, run `gh pr view <n> --json state,mergedA
 - Use `.github/pull_request_template.md` and fill in the red→green table from `git log`.
 - List the decisions the owner must make and any `proposed` rules he must ratify.
 - Don't merge. The owner merges, or tells you to for that PR.
-- **Watch for reviews.** In the Claude Code desktop app, turn on the PR monitor ("Auto-fix") for the new PR; the owner approves it. The app then wakes the session when a review, a CI failure or a merge conflict arrives. When a review lands, from Copilot or a person, run `address-review`. In other tools, check `Get-CopilotReview` (tools/KitReview.psm1) before reporting on the PR.
+- **Watch for reviews.** In the Claude Code desktop app, turn on the PR monitor with auto-fix for the new PR; the owner approves it. Per the app's tool description, the app then wakes the session when a review, a CI failure or a merge conflict arrives. When a review lands, from Copilot or a person, run `address-review`. In other tools, run `Get-OpenFinding` (tools/KitReview.psm1) before reporting on the PR.
 
 ## 5. Report
 
