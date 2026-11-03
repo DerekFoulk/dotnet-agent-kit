@@ -2,17 +2,38 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # The commit-msg hook (ADR-0027): the same Conventional Commit rule as CI, applied before a commit exists,
-# because a bad subject found by CI can only be fixed by rewriting history.
+# because a bad subject found by CI can only be fixed by rewriting history. It must never accept a
+# subject CI rejects. CI skips only real merge commits, so the hook skips only a merge in progress.
 
 Describe 'commit-msg hook' {
     BeforeAll {
-        $script:hooks = (Resolve-Path (Join-Path $PSScriptRoot '..' '..' '.githooks')).Path
-        $script:hookScript = Join-Path $script:hooks 'commit-msg.ps1'
+        $script:repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        $script:hookScript = Join-Path $script:repoRoot '.githooks' 'commit-msg.ps1'
 
         function Invoke-Hook([string] $Message) {
             $file = Join-Path $TestDrive "msg-$(New-Guid).txt"
             Set-Content -Path $file -Value $Message -NoNewline
             $output = pwsh -NoProfile -File $script:hookScript $file 2>&1 | Out-String
+            [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
+        }
+
+        # A repo set up the way people do it: the hook files committed in .githooks and tools, and a
+        # relative core.hooksPath.
+        function New-HookedRepo {
+            $repo = Join-Path $TestDrive "repo-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $repo '.githooks'), (Join-Path $repo 'tools') | Out-Null
+            Copy-Item -Path (Join-Path $script:repoRoot '.githooks' '*') -Destination (Join-Path $repo '.githooks')
+            Copy-Item -Path (Join-Path $script:repoRoot 'tools' 'Test-ConventionalTitle.ps1') -Destination (Join-Path $repo 'tools')
+            git -C $repo init --quiet --initial-branch main 2>&1 | Out-Null
+            git -C $repo config core.hooksPath .githooks
+            git -C $repo config user.name t
+            git -C $repo config user.email t@example.invalid
+            git -C $repo config commit.gpgsign false
+            $repo
+        }
+
+        function Invoke-InRepo([string] $Repo) {
+            $output = git -C $Repo @args 2>&1 | Out-String
             [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
         }
     }
@@ -21,6 +42,7 @@ Describe 'commit-msg hook' {
         It 'accepts <Message>' -ForEach @(
             @{ Message = "feat: add tags`n`nTDD: green`nCo-Authored-By: A <a@example.invalid>`n" }
             @{ Message = "fix(api): keep one bookmark per URL`n" }
+            @{ Message = "revert: feat: add tags`n" }
         ) {
             (Invoke-Hook $Message).ExitCode | Should -Be 0
         }
@@ -32,13 +54,18 @@ Describe 'commit-msg hook' {
             $result.Output | Should -Match 'Conventional Commit'
         }
 
-        It 'skips a subject git writes itself (<Message>)' -ForEach @(
-            @{ Message = "Merge branch 'side' into work`n" }
+        It 'rejects a subject CI would reject even though git wrote it (<Message>)' -ForEach @(
             @{ Message = "Revert `"feat: add tags`"`n`nThis reverts commit abc.`n" }
             @{ Message = "fixup! feat: add tags`n" }
             @{ Message = "squash! feat: add tags`n" }
+            @{ Message = "amend! feat: add tags`n" }
+            @{ Message = "Merge branch 'side' into work`n" }
         ) {
-            (Invoke-Hook $Message).ExitCode | Should -Be 0
+            (Invoke-Hook $Message).ExitCode | Should -Be 1
+        }
+
+        It 'suggests revert: for a git revert subject' {
+            (Invoke-Hook "Revert `"feat: add tags`"`n").Output | Should -Match 'revert: '
         }
 
         It 'checks the first line that is not blank or a comment' {
@@ -47,19 +74,43 @@ Describe 'commit-msg hook' {
         }
     }
 
-    Context 'through git' {
+    Context 'through git, with a relative core.hooksPath' {
         It 'blocks a commit with a bad subject and allows a good one' {
-            $repo = Join-Path $TestDrive "repo-$(New-Guid)"
-            New-Item -ItemType Directory -Path $repo | Out-Null
-            git -C $repo init --quiet --initial-branch main 2>&1 | Out-Null
-            $commit = { param($Subject) git -C $repo -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false -c "core.hooksPath=$($script:hooks)" commit --quiet --allow-empty --message $Subject 2>&1 | Out-String; $LASTEXITCODE }
+            $repo = New-HookedRepo
 
-            $bad = & $commit 'add tags'
-            $good = & $commit 'feat: add tags'
+            $bad = Invoke-InRepo $repo commit --quiet --allow-empty --message 'add tags'
+            $good = Invoke-InRepo $repo commit --quiet --allow-empty --message 'feat: add tags'
 
-            $bad[-1] | Should -Not -Be 0 -Because ($bad -join '')
-            $good[-1] | Should -Be 0 -Because ($good -join '')
+            $bad.ExitCode | Should -Not -Be 0 -Because $bad.Output
+            $good.ExitCode | Should -Be 0 -Because $good.Output
             git -C $repo log --format=%s | Should -Be 'feat: add tags'
+        }
+
+        It 'blocks git revert''s own subject, which CI would reject' {
+            $repo = New-HookedRepo
+            # A real change: reverting an empty commit fails on its own, which would hide the hook's part.
+            Set-Content -Path (Join-Path $repo 'tags.txt') -Value 'tags'
+            Invoke-InRepo $repo add tags.txt | Out-Null
+            Invoke-InRepo $repo commit --quiet --message 'feat: add tags' | Out-Null
+
+            $revert = Invoke-InRepo $repo revert --no-edit HEAD
+
+            $revert.ExitCode | Should -Not -Be 0 -Because $revert.Output
+            $revert.Output | Should -Match 'Conventional Commit'
+            git -C $repo log -1 --format=%s | Should -Be 'feat: add tags'
+        }
+
+        It 'allows a real merge commit, which CI skips' {
+            $repo = New-HookedRepo
+            Invoke-InRepo $repo commit --quiet --allow-empty --message 'chore: initial' | Out-Null
+            Invoke-InRepo $repo switch --quiet -c side | Out-Null
+            Invoke-InRepo $repo commit --quiet --allow-empty --message 'feat: on the side' | Out-Null
+            Invoke-InRepo $repo switch --quiet main | Out-Null
+
+            $merge = Invoke-InRepo $repo merge --no-ff side --message "Merge branch 'side'"
+
+            $merge.ExitCode | Should -Be 0 -Because $merge.Output
+            git -C $repo log -1 --format=%s | Should -Be "Merge branch 'side'"
         }
     }
 }
