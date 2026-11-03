@@ -70,7 +70,7 @@ rules:
     layer: owner
     status: proposed
     sources: ["owner, 2026-11-01"]
-    enforcement: "check: every action in .github/workflows is pinned by commit SHA and .github/dependabot.yml updates them; no CI check verifies the pins yet"
+    enforcement: "advisory: every action in .github/workflows is pinned by commit SHA and .github/dependabot.yml updates them, but GitHub's SHA-pinning requirement is off and no CI check verifies the pins"
     scope: core
     paths: [".github/**"]
 ---

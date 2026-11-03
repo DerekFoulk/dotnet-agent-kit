@@ -37,7 +37,8 @@ Accepted as recommended (owner, 2026-11-03).
 
 ## Consequences
 
-- `.githooks/commit-msg` (a `sh` wrapper, stored executable and with LF line endings) runs `.githooks/commit-msg.ps1`, which skips the subjects git writes itself (merges, reverts, fixup!/squash!/amend!).
+- `.githooks/commit-msg` (a `sh` wrapper, stored executable and with LF line endings) runs `.githooks/commit-msg.ps1`. It must never accept a subject CI rejects, so it skips only a real merge in progress (git sets `MERGE_HEAD`), as CI skips merge commits, and rejects `fixup!`/`squash!`/`amend!` subjects.
+- `git revert` never runs the commit-msg hook (checked 2026-11-03). Its default `Revert "<subject>"` is accepted by the shared rule, in the hook and in CI, when the reverted subject is a Conventional Commit.
 - `tools/Initialize-DevMachine.ps1` reports the hook as a required item and turns it on with `-Install`.
 - ADR-0024's pre-commit secret scan isn't built; the CI gitleaks scan of the full history is the secret check.
 

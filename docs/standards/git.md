@@ -29,12 +29,12 @@ rules:
     scope: core
     paths: ["**"]
   - id: GIT-004
-    statement: "Commit subjects and PR titles are Conventional Commits (feat:, fix:, test:, refactor:, docs:, chore:; ! or BREAKING CHANGE for a major change)."
+    statement: "Commit subjects and PR titles are Conventional Commits, with type feat, fix, docs, style, refactor, perf, test, build, ci, chore or revert; ! or BREAKING CHANGE marks a major change. git revert's own 'Revert \"<subject>\"' form is accepted when the reverted subject is."
     why: "Commit types drive automatic versions (ADR-0019), and the merge commit message is the PR title (ADR-0022)."
     layer: owner
     status: accepted
     sources: ["ADR-0006", "ADR-0022", "ADR-0027"]
-    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-ConventionalTitle.ps1 on the PR title and every commit subject; the commit-msg hook (.githooks, ADR-0027) applies the same rule before each commit"
+    enforcement: "ci: pr-title.yml checks the PR title, re-run when it's edited; kit-checks.reusable.yml checks every commit subject; the commit-msg hook (.githooks, ADR-0027) applies the same rule before each commit"
     scope: core
     paths: ["**"]
   - id: GIT-005
@@ -43,7 +43,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01", "ADR-0006"]
-    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-RedGreenOrder.ps1 on every pull request"
+    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-RedGreenOrder.ps1 on the branch's own commits in every pull request; commits made after 2026-11-02 count only with a real trailer"
     scope: core
     paths: ["**"]
 ---
