@@ -1,0 +1,4 @@
+#!/bin/sh
+# Checks the commit subject is a Conventional Commit before the commit exists (GIT-004, ADR-0027).
+# Enable once per clone: git config core.hooksPath .githooks (Initialize-DevMachine -Install offers it).
+exec pwsh -NoProfile -File "$(dirname "$0")/commit-msg.ps1" "$1"

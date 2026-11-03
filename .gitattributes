@@ -5,5 +5,7 @@
 *.psm1 text eol=crlf
 *.psd1 text eol=crlf
 *.sh   text eol=lf
+# Git hooks run under sh, which a CR on the #! line breaks.
+.githooks/commit-msg text eol=lf
 *.yml  text eol=lf
 *.yaml text eol=lf
