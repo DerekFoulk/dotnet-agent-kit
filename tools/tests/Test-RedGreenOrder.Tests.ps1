@@ -94,6 +94,36 @@ Describe 'Test-RedGreenOrder.ps1' {
         }
     }
 
+    Context 'branches merged together' {
+        # Work paused on one branch for a fix on another, then both merged: by date the other branch's
+        # green lands between this branch's red and green. Each line of history must be read as a unit.
+        It 'does not let one branch''s green close another branch''s red' {
+            $repo = Join-Path $TestDrive "interleaved-$(New-Guid)"
+            New-Item -ItemType Directory -Path $repo | Out-Null
+            function Invoke-GitAt([string] $Date) {
+                $env:GIT_COMMITTER_DATE = $Date
+                $env:GIT_AUTHOR_DATE = $Date
+                try { git -C $repo -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false @args 2>&1 | Out-Null }
+                finally { $env:GIT_COMMITTER_DATE = $null; $env:GIT_AUTHOR_DATE = $null }
+            }
+            Invoke-GitAt '2026-11-03T10:00:00-08:00' init --quiet --initial-branch main
+            Invoke-GitAt '2026-11-03T10:00:00-08:00' commit --quiet --allow-empty --message 'chore: initial'
+            Invoke-GitAt '2026-11-03T10:00:00-08:00' switch --quiet -c work
+            Invoke-GitAt '2026-11-03T10:01:00-08:00' commit --quiet --allow-empty --message 'test: work red' --message 'TDD: red'
+            Invoke-GitAt '2026-11-03T10:01:00-08:00' switch --quiet main
+            Invoke-GitAt '2026-11-03T10:01:00-08:00' switch --quiet -c fix
+            Invoke-GitAt '2026-11-03T10:02:00-08:00' commit --quiet --allow-empty --message 'test: fix red' --message 'TDD: red'
+            Invoke-GitAt '2026-11-03T10:03:00-08:00' commit --quiet --allow-empty --message 'fix: fix green' --message 'TDD: green'
+            Invoke-GitAt '2026-11-03T10:03:00-08:00' switch --quiet work
+            Invoke-GitAt '2026-11-03T10:04:00-08:00' merge --quiet --no-ff fix --message 'Merge fix'
+            Invoke-GitAt '2026-11-03T10:05:00-08:00' commit --quiet --allow-empty --message 'feat: work green' --message 'TDD: green'
+
+            $commits = @(Get-TddCommit -RepoPath $repo -Range 'main..work')
+
+            @(Get-RedGreenProblem -Commits $commits) | Should -BeNullOrEmpty
+        }
+    }
+
     Context 'runner' {
         BeforeEach {
             Mock Write-Host {}
