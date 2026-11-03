@@ -30,13 +30,25 @@ function ConvertFrom-CopilotReviewBody {
         $count = [int] $Matches[1]
     }
 
+    # Only the bullets inside the "N open issues" block are issues; the rest of the summary (such as
+    # "What changed in this PR") can hold ordinary links.
+    $inIssues = $false
     $issues = @(foreach ($line in $Body -split "`r?`n") {
-            if ($line -notmatch '^- ') { continue }
+            if ($line -match '<strong>\d+ open issues?</strong>') { $inIssues = $true; continue }
+            if ($inIssues -and $line -match '</details>') { break }
+            if (-not $inIssues -or $line -notmatch '^- ') { continue }
+
             $severity = if ($line -match 'alt="(\w+) severity"') { $Matches[1] } else { $null }
-            if ($line -notmatch '\[([^\]]+)\]\(([^)]+)\)') { continue }
-            $title = $Matches[1]
-            $link = $Matches[2]
-            $commentId = if ($link -match '#discussion_r(\d+)') { [long] $Matches[1] } else { $null }
+            $text = ($line -replace '^- ', '' -replace '(?s)<picture>.*?</picture>', '' -replace '\s+·\s+\w+\s*$', '').Trim()
+            $title = $text
+            $link = $null
+            $commentId = $null
+            # Greedy, so a title may itself contain brackets ("Handle `a[0]` indexing").
+            if ($text -match '^\[(.+)\]\((https?://[^)\s]+)\)$') {
+                $title = $Matches[1]
+                $link = $Matches[2]
+                if ($link -match '#discussion_r(\d+)$') { $commentId = [long] $Matches[1] }
+            }
             [pscustomobject]@{ Severity = $severity; Title = $title; CommentId = $commentId; Link = $link }
         })
 
@@ -64,7 +76,7 @@ function Get-CopilotReview {
         Verdict        = $summary.Verdict
         OpenIssueCount = $summary.OpenIssueCount
         Issues         = $summary.Issues
-        Body           = $null
+        Body           = "$($latest['body'])"
     }
 }
 
