@@ -80,27 +80,50 @@ function Get-CopilotReview {
     }
 }
 
-# The pull request's review threads (up to 100), each with its first comment: the finding itself.
+# GitHub returns a null author for a deleted account.
+function Get-AuthorLogin {
+    param($Author)
+    if ($null -eq $Author) { '(deleted account)' } else { $Author['login'] }
+}
+
+# The pull request's review threads, each with every comment: the first is the finding, the rest are
+# replies (an owner's "keep this" included). Refuses to return a partial list past 100 threads.
 function Get-ReviewThread {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $Unresolved)
 
     $owner, $name = $Repository -split '/', 2
-    $query = 'query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { reviewThreads(first: 100) { nodes { id isResolved isOutdated path line comments(first: 1) { nodes { databaseId author { login } body } } } } } } }'
-    $response = Invoke-Gh api graphql -f "query=$query" -F "owner=$owner" -F "name=$name" -F "number=$Number" | ConvertFrom-Json -AsHashtable
+    $query = 'query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { id isResolved isOutdated path line comments(first: 100) { nodes { databaseId author { login } body } } } } } } }'
+    # -f sends a string; -F would turn a repository named "2048" into a number. The PR number is an Int.
+    $response = Invoke-Gh api graphql -f "query=$query" -f "owner=$owner" -f "name=$name" -F "number=$Number" | ConvertFrom-Json -AsHashtable
 
-    foreach ($node in @($response['data']['repository']['pullRequest']['reviewThreads']['nodes'])) {
+    $pullRequest = $response['data']['repository']['pullRequest']
+    if ($null -eq $pullRequest) {
+        throw "Pull request #$Number not found in $Repository."
+    }
+    $threads = $pullRequest['reviewThreads']
+    if ($threads.ContainsKey('pageInfo') -and $threads['pageInfo'] -and $threads['pageInfo']['hasNextPage']) {
+        throw "Pull request #$Number has more than 100 review threads; this module reads at most 100, so it won't return a partial list."
+    }
+
+    foreach ($node in @($threads['nodes'])) {
         if ($Unresolved -and $node['isResolved']) { continue }
-        $first = @($node['comments']['nodes'])[0]
+        $comments = @(foreach ($comment in @($node['comments']['nodes'])) {
+                [pscustomobject]@{
+                    CommentId = [long] $comment['databaseId']
+                    Author    = Get-AuthorLogin $comment['author']
+                    Body      = $comment['body']
+                }
+            })
         [pscustomobject]@{
             ThreadId   = $node['id']
             IsResolved = [bool] $node['isResolved']
             IsOutdated = [bool] $node['isOutdated']
             Path       = $node['path']
             Line       = $node['line']
-            CommentId  = [long] $first['databaseId']
-            Author     = $first['author']['login']
-            Body       = $first['body']
-            Comments   = @()
+            CommentId  = $comments[0].CommentId
+            Author     = $comments[0].Author
+            Body       = $comments[0].Body
+            Comments   = $comments
         }
     }
 }
