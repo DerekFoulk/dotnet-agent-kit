@@ -170,12 +170,13 @@ function Get-OpenFinding {
     }
 }
 
+# Replies to a thread with the evidence, then resolves it. -Thread is an object from Get-ReviewThread
+# (or a finding's .Thread from Get-OpenFinding), so the thread and the comment replied to always match.
 function Resolve-ReviewThread {
     param(
         [Parameter(Mandatory)] [string] $Repository,
         [Parameter(Mandatory)] [int] $Number,
-        [Parameter(Mandatory)] [string] $ThreadId,
-        [Parameter(Mandatory)] [long] $CommentId,
+        [Parameter(Mandatory)] [ValidateScript({ $_.ThreadId -and $_.CommentId }, ErrorMessage = 'Pass a thread from Get-ReviewThread or Get-OpenFinding.')] [psobject] $Thread,
         [Parameter(Mandatory)] [ValidateSet('ADDRESSED', 'WONT_FIX', 'INVALID')] [string] $Reason,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Evidence,
         [switch] $OwnerApproved
@@ -196,10 +197,10 @@ function Resolve-ReviewThread {
     # The reply goes first, so a thread is never resolved without its evidence.
     $label = @{ ADDRESSED = 'addressed'; WONT_FIX = "won't fix"; INVALID = 'incorrect' }[$Reason]
     $body = "Resolution: $label. $($Evidence.Trim())"
-    $reply = Invoke-Gh api -X POST "repos/$Repository/pulls/$Number/comments/$CommentId/replies" -f "body=$body" | ConvertFrom-Json -AsHashtable
+    $reply = Invoke-Gh api -X POST "repos/$Repository/pulls/$Number/comments/$($Thread.CommentId)/replies" -f "body=$body" | ConvertFrom-Json -AsHashtable
 
     $mutation = 'mutation($id: ID!, $reason: PullRequestReviewThreadResolutionReason) { resolveReviewThread(input: {threadId: $id, resolutionReason: $reason}) { thread { isResolved } } }'
-    $resolved = Invoke-Gh api graphql -f "query=$mutation" -f "id=$ThreadId" -f "reason=$Reason" | ConvertFrom-Json -AsHashtable
+    $resolved = Invoke-Gh api graphql -f "query=$mutation" -f "id=$($Thread.ThreadId)" -f "reason=$Reason" | ConvertFrom-Json -AsHashtable
 
     [pscustomobject]@{
         ReplyUrl = $reply['html_url']

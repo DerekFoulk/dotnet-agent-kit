@@ -323,6 +323,7 @@ Describe 'KitReview.psm1' {
             InModuleScope KitReview {
                 $script:calls = [System.Collections.Generic.List[string]]::new()
                 $script:prState = 'OPEN'
+                $script:openThread = [pscustomobject]@{ ThreadId = 'PRRT_1'; CommentId = 7; IsResolved = $false }
                 Mock Invoke-Gh {
                     $joined = $args -join ' '
                     $script:calls.Add($joined)
@@ -336,7 +337,7 @@ Describe 'KitReview.psm1' {
 
         It 'posts the reply first, then resolves the thread with the reason' {
             InModuleScope KitReview {
-                $result = Resolve-ReviewThread -Repository 'o/r' -Number 5 -ThreadId 'PRRT_1' -CommentId 4452246621 -Reason ADDRESSED -Evidence 'Fixed in dd98eba (red 59ab976).'
+                $result = Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread ([pscustomobject]@{ ThreadId = 'PRRT_1'; CommentId = 4452246621; IsResolved = $false }) -Reason ADDRESSED -Evidence 'Fixed in dd98eba (red 59ab976).'
 
                 $result.Resolved | Should -BeTrue
                 $result.ReplyUrl | Should -Be 'https://github.com/o/r/pull/5#discussion_r1'
@@ -355,7 +356,7 @@ Describe 'KitReview.psm1' {
         ) {
             InModuleScope KitReview -Parameters @{ Reason = $Reason; Prefix = $Prefix } {
                 param($Reason, $Prefix)
-                Resolve-ReviewThread -Repository 'o/r' -Number 5 -ThreadId 'PRRT_1' -CommentId 7 -Reason $Reason -Evidence 'The evidence.' | Out-Null
+                Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason $Reason -Evidence 'The evidence.' | Out-Null
 
                 $reply = $script:calls | Where-Object { $_ -like '*/replies*' }
                 $reply | Should -BeLike "*body=$Prefix The evidence.*"
@@ -371,7 +372,7 @@ Describe 'KitReview.psm1' {
                 param($State, $Reason, $Evidence, $Approved, $Expected)
                 $script:prState = $State
 
-                { Resolve-ReviewThread -Repository 'o/r' -Number 5 -ThreadId 'PRRT_1' -CommentId 7 -Reason $Reason -Evidence $Evidence -OwnerApproved:$Approved } | Should -Throw $Expected
+                { Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason $Reason -Evidence $Evidence -OwnerApproved:$Approved } | Should -Throw $Expected
 
                 @($script:calls | Where-Object { $_ -like '*/replies*' -or $_ -like 'api graphql*' }).Count | Should -Be 0
             }
@@ -379,7 +380,7 @@ Describe 'KitReview.psm1' {
 
         It "resolves as won't fix when the owner approved it" {
             InModuleScope KitReview {
-                $result = Resolve-ReviewThread -Repository 'o/r' -Number 5 -ThreadId 'PRRT_1' -CommentId 7 -Reason WONT_FIX -Evidence 'Out of scope; the owner agreed on 2026-11-03.' -OwnerApproved
+                $result = Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason WONT_FIX -Evidence 'Out of scope; the owner agreed on 2026-11-03.' -OwnerApproved
 
                 $result.Resolved | Should -BeTrue
                 ($script:calls | Where-Object { $_ -like '*/replies*' }) | Should -BeLike "*Resolution: won't fix.*"
