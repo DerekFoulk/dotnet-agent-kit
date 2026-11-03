@@ -76,21 +76,18 @@ Describe 'Test-RedGreenOrder.ps1' {
             @{ Subject = 'test: trailer red'; Expected = 'red' }
             @{ Subject = 'feat: new body line'; Expected = '' }
             @{ Subject = 'docs: no marker'; Expected = '' }
-            @{ Subject = 'test: side red'; Expected = 'red' }
         ) {
             $commit = Get-TddCommit -RepoPath $script:repo -Range 'main..work' | Where-Object Subject -EQ $Subject
 
             "$($commit.Marker)" | Should -Be $Expected
         }
 
-        It 'returns commits oldest first and skips merge commits' {
+        # A branch's own commits are its first-parent line. Commits merged in from another branch were
+        # checked on that branch's own pull request.
+        It 'returns the branch''s own commits oldest first, skipping merge commits and merged-in branches' {
             $commits = @(Get-TddCommit -RepoPath $script:repo -Range 'main..work')
 
-            $commits.Count | Should -Be 7 -Because 'the merge commit is skipped'
-            # Commits on one line keep their order; where the side branch's commit lands among them isn't
-            # defined when they share a timestamp.
-            $workLine = @($commits | Where-Object Subject -NE 'test: side red' | ForEach-Object Subject)
-            $workLine | Should -Be @('test: legacy red', 'feat: legacy green', 'test: split marker', 'test: trailer red', 'feat: new body line', 'docs: no marker')
+            ($commits | ForEach-Object Subject) | Should -Be @('test: legacy red', 'feat: legacy green', 'test: split marker', 'test: trailer red', 'feat: new body line', 'docs: no marker')
         }
     }
 
