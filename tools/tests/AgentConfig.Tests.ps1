@@ -109,7 +109,7 @@ Describe 'Agent configuration' {
         # test uses the stricter number.
         It 'has the <Skill> skill, named after its folder, with a description under 1,024 characters' -ForEach @(
             @{ Skill = 'start-work' }, @{ Skill = 'plan-checklist' }, @{ Skill = 'tdd-cycle' },
-            @{ Skill = 'write-adr' }, @{ Skill = 'finish-work' }
+            @{ Skill = 'write-adr' }, @{ Skill = 'finish-work' }, @{ Skill = 'address-review' }
         ) {
             $path = Join-Path $repoRoot '.claude' 'skills' $Skill 'SKILL.md'
             $path | Should -Exist
