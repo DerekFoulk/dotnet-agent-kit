@@ -34,6 +34,28 @@ No active review issues are reported for the rule-source validation and standard
 <details>
 <summary><strong>What changed in this PR</strong></summary>
 '@
+    # Edge cases none of PRs 1-5 had: a title with brackets, an issue with no thread link, and a link
+    # in the "What changed" part, which is not an issue.
+    $script:edgeBody = @'
+<!-- ccr-overview-v2 -->
+
+### 🟡 Changes recommended
+
+Two issues.
+
+<details open>
+<summary><strong>2 open issues</strong></summary>
+
+- <picture><img src="x" alt="Low severity" width="62" height="18" align="texttop"></picture> [Handle `a[0]` indexing](https://github.com/o/r/pull/9#discussion_r111) · New
+- <picture><img src="x" alt="Medium severity" width="62" height="18" align="texttop"></picture> Summary-only issue with no thread · New
+</details>
+
+<details>
+<summary><strong>What changed in this PR</strong></summary>
+
+- Follows the [GitHub docs](https://docs.github.com/x) for rulesets.
+</details>
+'@
 }
 
 Describe 'KitReview.psm1' {
@@ -41,6 +63,7 @@ Describe 'KitReview.psm1' {
         Import-Module -Name (Join-Path $PSScriptRoot '..' 'KitReview.psm1') -Force
         $script:changesBody = $changesBody
         $script:approvalBody = $approvalBody
+        $script:edgeBody = $edgeBody
     }
 
     Context 'ConvertFrom-CopilotReviewBody' {
@@ -63,6 +86,18 @@ Describe 'KitReview.psm1' {
             $summary.Verdict | Should -Be 'Approval recommended'
             $summary.OpenIssueCount | Should -Be 0
             @($summary.Issues).Count | Should -Be 0
+        }
+
+        It 'reads only the open-issue list: a title with brackets, an issue with no thread, and no links from elsewhere' {
+            $summary = ConvertFrom-CopilotReviewBody -Body $script:edgeBody
+
+            $summary.OpenIssueCount | Should -Be 2
+            @($summary.Issues).Count | Should -Be 2
+            $summary.Issues[0].Title | Should -Be 'Handle `a[0]` indexing'
+            $summary.Issues[0].CommentId | Should -Be 111
+            $summary.Issues[1].Title | Should -Be 'Summary-only issue with no thread'
+            $summary.Issues[1].CommentId | Should -BeNullOrEmpty
+            $summary.Issues[1].Severity | Should -Be 'Medium'
         }
 
         It 'reports an unknown verdict as Unknown rather than guessing' {
@@ -88,6 +123,7 @@ Describe 'KitReview.psm1' {
                 $review.Commit | Should -Be 'bbbbbbb2'
                 $review.Verdict | Should -Be 'Changes recommended'
                 $review.OpenIssueCount | Should -Be 2
+                $review.Body | Should -Be $Body -Because 'the skill reads an issue with no thread from the summary text'
             }
         }
 
@@ -96,6 +132,7 @@ Describe 'KitReview.psm1' {
                 Mock Invoke-Gh { '[{ "id": 3, "user": { "login": "DerekFoulk" }, "state": "COMMENTED", "submitted_at": "2026-11-03T10:00:00Z", "commit_id": "c", "body": "" }]' }
 
                 Get-CopilotReview -Repository 'DerekFoulk/dotnet-agent-kit' -Number 5 | Should -BeNullOrEmpty
+                Should -Invoke Invoke-Gh -Times 1 -Exactly
             }
         }
     }

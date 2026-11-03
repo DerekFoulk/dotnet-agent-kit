@@ -64,6 +64,7 @@ function Get-CopilotReview {
         Verdict        = $summary.Verdict
         OpenIssueCount = $summary.OpenIssueCount
         Issues         = $summary.Issues
+        Body           = $null
     }
 }
 
