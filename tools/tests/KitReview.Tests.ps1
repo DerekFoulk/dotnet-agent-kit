@@ -100,6 +100,19 @@ Describe 'KitReview.psm1' {
             $summary.Issues[1].Severity | Should -Be 'Medium'
         }
 
+        It 'keeps the thread link when the status after the title is "<Status>"' -ForEach @(
+            @{ Status = 'New' }
+            @{ Status = 'Still open' }
+            @{ Status = 'Re-opened' }
+        ) {
+            $body = "<strong>1 open issue</strong>`n`n- <picture><img alt=`"High severity`"></picture> [Title](https://github.com/o/r/pull/9#discussion_r111) · $Status`n</details>"
+
+            $issue = (ConvertFrom-CopilotReviewBody -Body $body).Issues[0]
+
+            $issue.Title | Should -Be 'Title'
+            $issue.CommentId | Should -Be 111
+        }
+
         It 'reports an unknown verdict as Unknown rather than guessing' {
             (ConvertFrom-CopilotReviewBody -Body 'Some other review text.').Verdict | Should -Be 'Unknown'
         }
@@ -123,7 +136,16 @@ Describe 'KitReview.psm1' {
                 $review.Commit | Should -Be 'bbbbbbb2'
                 $review.Verdict | Should -Be 'Changes recommended'
                 $review.OpenIssueCount | Should -Be 2
-                $review.Body | Should -Be $Body -Because 'the skill reads an issue with no thread from the summary text'
+                $review.Body | Should -Be $Body -Because 'the agent can read the summary in full'
+            }
+        }
+
+        It 'skips a review by a deleted account rather than failing' {
+            InModuleScope KitReview {
+                Mock Invoke-Gh { '[{ "id": 1, "user": null, "submitted_at": "2026-11-03T08:00:00Z", "commit_id": "a", "body": "" }, { "id": 2, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-03T09:00:00Z", "commit_id": "b", "body": "" }]' }
+
+                { $script:review = Get-CopilotReview -Repository 'o/r' -Number 5 } | Should -Not -Throw
+                $script:review.ReviewId | Should -Be 2
             }
         }
 
@@ -247,6 +269,33 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        It 'refuses to return a partial thread when it has more than 100 comments' {
+            $json = '{ "data": { "repository": { "pullRequest": { "reviewThreads": { "pageInfo": { "hasNextPage": false }, "nodes": [
+  { "id": "PRRT_1", "isResolved": false, "isOutdated": false, "path": "a.ps1", "line": 3,
+    "comments": { "pageInfo": { "hasNextPage": true }, "nodes": [ { "databaseId": 11, "author": { "login": "a" }, "body": "x" } ] } }
+] } } } } }'
+            InModuleScope KitReview -Parameters @{ Json = $json } {
+                param($Json)
+                Mock Invoke-Gh { $Json }
+
+                { Get-ReviewThread -Repository 'o/r' -Number 5 } | Should -Throw '*100 comments*'
+            }
+        }
+
+        It 'handles a thread with no comments rather than failing' {
+            $json = '{ "data": { "repository": { "pullRequest": { "reviewThreads": { "pageInfo": { "hasNextPage": false }, "nodes": [
+  { "id": "PRRT_1", "isResolved": false, "isOutdated": false, "path": "a.ps1", "line": 3, "comments": { "nodes": [] } }
+] } } } } }'
+            InModuleScope KitReview -Parameters @{ Json = $json } {
+                param($Json)
+                Mock Invoke-Gh { $Json }
+
+                { $script:empty = Get-ReviewThread -Repository 'o/r' -Number 5 } | Should -Not -Throw
+                $script:empty.ThreadId | Should -Be 'PRRT_1'
+                $script:empty.CommentId | Should -BeNullOrEmpty
+            }
+        }
+
         It 'says so when the pull request does not exist' {
             InModuleScope KitReview {
                 Mock Invoke-Gh { '{ "data": { "repository": { "pullRequest": null } } }' }
@@ -303,6 +352,14 @@ Describe 'KitReview.psm1' {
                 Get-OpenFinding -Repository 'o/r' -Number 5 | Out-Null
 
                 Should -Invoke Get-ReviewThread -Times 1 -Exactly -ParameterFilter { -not $Unresolved }
+            }
+        }
+
+        It "names Copilot the same way for an issue with or without a thread" {
+            InModuleScope KitReview {
+                $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
+
+                $findings[1].Author | Should -Be $findings[0].Author
             }
         }
 
@@ -418,6 +475,15 @@ Describe 'KitReview.psm1' {
 
                     $result.Url | Should -Be 'https://github.com/o/r/pull/5#issuecomment-9'
                     ($script:calls | Where-Object { $_ -like '*repos/o/r/issues/5/comments*' }) | Should -BeLike '*body=Summary issue "C": fixed in abc1234.*'
+                }
+            }
+
+            It "posts a pull request comment for a finding whose Thread is empty" {
+                InModuleScope KitReview {
+                    $finding = [pscustomobject]@{ Title = 'C'; Thread = $null }
+
+                    { $script:posted = Add-ReviewReply -Repository 'o/r' -Number 5 -Thread $finding.Thread -Body 'Fixed in abc1234.' } | Should -Not -Throw
+                    $script:posted.Url | Should -Be 'https://github.com/o/r/pull/5#issuecomment-9'
                 }
             }
 
