@@ -82,6 +82,8 @@ Never read, print or store secrets. Sign-in is always the owner's step.
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request, plus a gitleaks secret scan. The "main protection" ruleset requires them to pass.
 
+The commit-msg hook in `.githooks/` rejects a commit whose subject isn't a Conventional Commit, because only a history rewrite can fix one later (ADR-0027). `./tools/Initialize-DevMachine.ps1` reports whether it's on for this clone. If the hook rejects a commit, fix the subject; never skip the hook.
+
 Scripts target PowerShell 7 (`pwsh`). Every script and check gets Pester tests, written first.
 
 ## Where things are

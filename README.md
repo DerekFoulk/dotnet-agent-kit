@@ -17,6 +17,7 @@ Work in progress (v0.1).
 | GitHub CLI, signed in | Cloning this private repo, PRs | Yes |
 | .NET SDK named in `global.json` | Building | Yes |
 | Claude Code | Agent sessions | Yes |
+| Git commit-msg hook (this clone) | Rejecting non-Conventional commit subjects before they're committed (ADR-0027) | Yes |
 | VS Code + PowerShell extension | Running scripts yourself (ISE Mode, D11) | Later |
 | Docker | Testcontainers in the sample solution | Later |
 

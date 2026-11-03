@@ -33,8 +33,8 @@ rules:
     why: "Commit types drive automatic versions (ADR-0019), and the merge commit message is the PR title (ADR-0022)."
     layer: owner
     status: accepted
-    sources: ["ADR-0006", "ADR-0022"]
-    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-ConventionalTitle.ps1 on the PR title and every commit subject"
+    sources: ["ADR-0006", "ADR-0022", "ADR-0027"]
+    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-ConventionalTitle.ps1 on the PR title and every commit subject; the commit-msg hook (.githooks, ADR-0027) applies the same rule before each commit"
     scope: core
     paths: ["**"]
   - id: GIT-005

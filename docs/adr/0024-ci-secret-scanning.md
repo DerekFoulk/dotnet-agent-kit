@@ -38,7 +38,7 @@ Accepted as recommended (owner, 2026-11-01).
 ## Consequences
 
 - `dotnet-ci.reusable.yml` runs a secret scanner on every PR (build step 4).
-- A pre-commit hook runs the same scanner locally.
+- ~~A pre-commit hook runs the same scanner locally.~~ Not built: ADR-0027 (2026-11-03) keeps secret scanning in CI only, because a local scan needs Docker Desktop running for every commit.
 - GitHub secret scanning stays off for these repos.
 
 ## Pillars affected
