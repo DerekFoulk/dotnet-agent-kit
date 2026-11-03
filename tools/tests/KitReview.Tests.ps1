@@ -256,6 +256,67 @@ Describe 'KitReview.psm1' {
         }
     }
 
+    Context 'Get-OpenFinding' {
+        BeforeEach {
+            # Copilot's summary lists three issues; the PR has four threads. Issue B's thread is resolved,
+            # issue C has no thread, and two threads come from a person: one open, one resolved.
+            InModuleScope KitReview {
+                Mock Get-CopilotReview {
+                    [pscustomobject]@{
+                        Verdict = 'Changes recommended'; OpenIssueCount = 3; Body = 'summary'
+                        Issues  = @(
+                            [pscustomobject]@{ Severity = 'High'; Title = 'A'; CommentId = 1; Link = 'https://github.com/o/r/pull/5#discussion_r1' }
+                            [pscustomobject]@{ Severity = 'Medium'; Title = 'B'; CommentId = 2; Link = 'https://github.com/o/r/pull/5#discussion_r2' }
+                            [pscustomobject]@{ Severity = 'Low'; Title = 'C'; CommentId = $null; Link = $null }
+                        )
+                    }
+                }
+                Mock Get-ReviewThread {
+                    foreach ($t in @(
+                            @{ Id = 'T1'; CommentId = 1; Resolved = $false; Author = 'copilot-pull-request-reviewer'; Body = 'Finding A.' }
+                            @{ Id = 'T2'; CommentId = 2; Resolved = $true; Author = 'copilot-pull-request-reviewer'; Body = 'Finding B.' }
+                            @{ Id = 'T3'; CommentId = 3; Resolved = $false; Author = 'DerekFoulk'; Body = 'Why this name?' }
+                            @{ Id = 'T4'; CommentId = 4; Resolved = $true; Author = 'DerekFoulk'; Body = 'Typo.' }
+                        )) {
+                        $comments = @([pscustomobject]@{ CommentId = $t.CommentId; Author = $t.Author; Body = $t.Body })
+                        [pscustomobject]@{ ThreadId = $t.Id; IsResolved = $t.Resolved; IsOutdated = $false; Path = 'a.ps1'; Line = 1; CommentId = $t.CommentId; Author = $t.Author; Body = $t.Body; Comments = $comments }
+                    }
+                }
+            }
+        }
+
+        It 'lists each summary issue whose thread is open, each issue with no thread, and open threads from people' {
+            InModuleScope KitReview {
+                $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
+
+                ($findings | ForEach-Object { if ($_.Thread) { $_.Thread.ThreadId } else { $_.Title } }) | Should -Be @('T1', 'C', 'T3')
+                $findings[0].Title | Should -Be 'A'
+                $findings[0].Severity | Should -Be 'High'
+                $findings[1].Thread | Should -BeNullOrEmpty -Because 'issue C has no thread, so it is answered in a PR comment'
+                $findings[2].Author | Should -Be 'DerekFoulk'
+                $findings[2].Body | Should -Be 'Why this name?'
+            }
+        }
+
+        It 'reads every thread, resolved ones too, to know which summary issues are already answered' {
+            InModuleScope KitReview {
+                Get-OpenFinding -Repository 'o/r' -Number 5 | Out-Null
+
+                Should -Invoke Get-ReviewThread -Times 1 -Exactly -ParameterFilter { -not $Unresolved }
+            }
+        }
+
+        It 'lists only open threads when Copilot has not reviewed' {
+            InModuleScope KitReview {
+                Mock Get-CopilotReview { }
+
+                $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
+
+                ($findings | ForEach-Object { $_.Thread.ThreadId }) | Should -Be @('T1', 'T3')
+            }
+        }
+    }
+
     Context 'Resolve-ReviewThread' {
         BeforeEach {
             # Answers like GitHub: the PR's state, the posted reply's URL, the resolved thread. Records each call.

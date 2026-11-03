@@ -128,6 +128,10 @@ function Get-ReviewThread {
     }
 }
 
+function Get-OpenFinding {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+}
+
 function Resolve-ReviewThread {
     param(
         [Parameter(Mandatory)] [string] $Repository,
@@ -165,4 +169,4 @@ function Resolve-ReviewThread {
     }
 }
 
-Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Resolve-ReviewThread
+Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewThread
