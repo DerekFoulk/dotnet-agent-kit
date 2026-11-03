@@ -49,10 +49,18 @@ Describe 'Test-RedGreenOrder.ps1' {
             Invoke-Git init --quiet --initial-branch main
             Invoke-Git commit --quiet --allow-empty --message 'chore: initial'
             Invoke-Git switch --quiet -c work
+            # The older form, from before the trailer fix: TDD in its own paragraph, so git doesn't read it
+            # as a trailer. Only commits made before then get this fallback.
+            $env:GIT_COMMITTER_DATE = '2026-11-01T10:00:00-08:00'
+            Invoke-Git commit --quiet --allow-empty --message 'test: legacy red' --message 'TDD: red' --message 'Co-Authored-By: A <a@example.invalid>'
+            Invoke-Git commit --quiet --allow-empty --message 'feat: legacy green' --message 'TDD: green' --message 'Co-Authored-By: A <a@example.invalid>'
+            # Old, but "TDD:" and "red" sit in separate paragraphs: not a marker.
+            Invoke-Git commit --quiet --allow-empty --message 'test: split marker' --message 'TDD:' --message 'red'
+            $env:GIT_COMMITTER_DATE = $null
             # A real trailer: TDD shares the final paragraph with Co-Authored-By.
             Invoke-Git commit --quiet --allow-empty --message 'test: trailer red' --message "TDD: red`nCo-Authored-By: A <a@example.invalid>"
-            # The older form: TDD in its own paragraph, so git doesn't read it as a trailer.
-            Invoke-Git commit --quiet --allow-empty --message 'feat: legacy green' --message 'TDD: green' --message 'Co-Authored-By: A <a@example.invalid>'
+            # New, with TDD in an earlier paragraph: not a trailer, and too new for the fallback.
+            Invoke-Git commit --quiet --allow-empty --message 'feat: new body line' --message 'TDD: green' --message 'A later paragraph.'
             Invoke-Git commit --quiet --allow-empty --message 'docs: no marker'
             Invoke-Git switch --quiet main
             Invoke-Git switch --quiet -c side
@@ -61,20 +69,28 @@ Describe 'Test-RedGreenOrder.ps1' {
             Invoke-Git merge --quiet --no-ff side --message 'Merge side'
         }
 
-        It 'reads the trailer, the older body line, and no marker, oldest first, skipping merge commits' {
-            $commits = @(Get-TddCommit -RepoPath $script:repo -Range 'main..work')
-            $markers = @{}
-            foreach ($commit in $commits) { $markers[$commit.Subject] = "$($commit.Marker)" }
+        It 'reads <Subject> as "<Expected>"' -ForEach @(
+            @{ Subject = 'test: legacy red'; Expected = 'red' }
+            @{ Subject = 'feat: legacy green'; Expected = 'green' }
+            @{ Subject = 'test: split marker'; Expected = '' }
+            @{ Subject = 'test: trailer red'; Expected = 'red' }
+            @{ Subject = 'feat: new body line'; Expected = '' }
+            @{ Subject = 'docs: no marker'; Expected = '' }
+            @{ Subject = 'test: side red'; Expected = 'red' }
+        ) {
+            $commit = Get-TddCommit -RepoPath $script:repo -Range 'main..work' | Where-Object Subject -EQ $Subject
 
-            $commits.Count | Should -Be 4 -Because 'the merge commit is skipped'
-            $markers['test: trailer red'] | Should -Be 'red'
-            $markers['feat: legacy green'] | Should -Be 'green'
-            $markers['docs: no marker'] | Should -Be ''
-            $markers['test: side red'] | Should -Be 'red'
+            "$($commit.Marker)" | Should -Be $Expected
+        }
+
+        It 'returns commits oldest first and skips merge commits' {
+            $commits = @(Get-TddCommit -RepoPath $script:repo -Range 'main..work')
+
+            $commits.Count | Should -Be 7 -Because 'the merge commit is skipped'
             # Commits on one line keep their order; where the side branch's commit lands among them isn't
             # defined when they share a timestamp.
-            $mainLine = @($commits | Where-Object Subject -NE 'test: side red' | ForEach-Object Subject)
-            $mainLine | Should -Be @('test: trailer red', 'feat: legacy green', 'docs: no marker')
+            $workLine = @($commits | Where-Object Subject -NE 'test: side red' | ForEach-Object Subject)
+            $workLine | Should -Be @('test: legacy red', 'feat: legacy green', 'test: split marker', 'test: trailer red', 'feat: new body line', 'docs: no marker')
         }
     }
 
