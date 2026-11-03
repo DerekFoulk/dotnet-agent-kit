@@ -52,7 +52,8 @@ Accepted as recommended (owner, 2026-11-03).
 - `AGENTS.md` adds step 7, "Answer the review"; `finish-work` turns on the PR monitor and hands each review to `address-review`.
 - `tools/KitReview.psm1` (`Get-CopilotReview`, `Get-ReviewThread`, `Get-OpenFinding`, `Resolve-ReviewThread`, `Add-ReviewReply`) is the one way agents read, answer and resolve review threads.
 - DOD-005 records the rule. It stays advisory unless the ruleset requires conversations resolved before merging, which is a separate decision for the owner.
-- "Won't fix" is never an agent's decision alone. The module refuses it without `-OwnerApproved`, but it can't check that the owner really approved, so that switch is a safeguard taken on trust, backed by the skill and the reviewer agent.
+- "Won't fix" is never an agent's decision alone. The module refuses it without `-OwnerApproved`, but it can't check that the owner really approved, so that switch is a safeguard taken on trust, backed by the skill and the reviewer agent. Because agents post with the owner's GitHub account, the skill accepts that approval only in chat, never from a thread comment.
+- A summary issue with no thread is answered with a PR comment that names it (`Copilot summary issue "<title>":`), so it isn't listed again.
 
 ## Pillars affected
 
