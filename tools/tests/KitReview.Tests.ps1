@@ -317,9 +317,10 @@ Describe 'KitReview.psm1' {
         }
     }
 
-    Context 'Resolve-ReviewThread' {
+    Context 'Writing to GitHub' {
         BeforeEach {
-            # Answers like GitHub: the PR's state, the posted reply's URL, the resolved thread. Records each call.
+            # Answers like GitHub: the PR's state, a posted reply or PR comment's URL, the resolved thread.
+            # Records each call.
             InModuleScope KitReview {
                 $script:calls = [System.Collections.Generic.List[string]]::new()
                 $script:prState = 'OPEN'
@@ -329,61 +330,109 @@ Describe 'KitReview.psm1' {
                     $script:calls.Add($joined)
                     if ($joined -like 'pr view*') { return $script:prState }
                     if ($joined -like '*/replies*') { return '{ "html_url": "https://github.com/o/r/pull/5#discussion_r1" }' }
+                    if ($joined -like '*/issues/5/comments*') { return '{ "html_url": "https://github.com/o/r/pull/5#issuecomment-9" }' }
                     if ($joined -like 'api graphql*') { return '{ "data": { "resolveReviewThread": { "thread": { "isResolved": true } } } }' }
                     throw "unexpected gh call: $joined"
                 }
             }
         }
 
-        It 'posts the reply first, then resolves the thread with the reason' {
-            InModuleScope KitReview {
-                $result = Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread ([pscustomobject]@{ ThreadId = 'PRRT_1'; CommentId = 4452246621; IsResolved = $false }) -Reason ADDRESSED -Evidence 'Fixed in dd98eba (red 59ab976).'
+        Context 'Resolve-ReviewThread' {
+            It 'posts the reply first, then resolves the thread with the reason' {
+                InModuleScope KitReview {
+                    $result = Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread ([pscustomobject]@{ ThreadId = 'PRRT_1'; CommentId = 4452246621; IsResolved = $false }) -Reason ADDRESSED -Evidence 'Fixed in dd98eba (red 59ab976).'
 
-                $result.Resolved | Should -BeTrue
-                $result.ReplyUrl | Should -Be 'https://github.com/o/r/pull/5#discussion_r1'
-                $replyIndex = $script:calls.FindIndex({ param($c) $c -like '*comments/4452246621/replies*' })
-                $resolveIndex = $script:calls.FindIndex({ param($c) $c -like 'api graphql*resolveReviewThread*' })
-                $replyIndex | Should -BeGreaterThan -1
-                $resolveIndex | Should -BeGreaterThan $replyIndex
-                $script:calls[$resolveIndex] | Should -BeLike '*reason=ADDRESSED*'
-                $script:calls[$resolveIndex] | Should -BeLike '*id=PRRT_1*'
+                    $result.Resolved | Should -BeTrue
+                    $result.ReplyUrl | Should -Be 'https://github.com/o/r/pull/5#discussion_r1'
+                    $replyIndex = $script:calls.FindIndex({ param($c) $c -like '*comments/4452246621/replies*' })
+                    $resolveIndex = $script:calls.FindIndex({ param($c) $c -like 'api graphql*resolveReviewThread*' })
+                    $replyIndex | Should -BeGreaterThan -1
+                    $resolveIndex | Should -BeGreaterThan $replyIndex
+                    $script:calls[$resolveIndex] | Should -BeLike '*reason=ADDRESSED*'
+                    $script:calls[$resolveIndex] | Should -BeLike '*id=PRRT_1*'
+                }
+            }
+
+            It 'starts the reply with the resolution: <Reason> reads "<Prefix>"' -ForEach @(
+                @{ Reason = 'ADDRESSED'; Prefix = 'Resolution: addressed.' }
+                @{ Reason = 'INVALID'; Prefix = 'Resolution: incorrect.' }
+            ) {
+                InModuleScope KitReview -Parameters @{ Reason = $Reason; Prefix = $Prefix } {
+                    param($Reason, $Prefix)
+                    Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason $Reason -Evidence 'The evidence.' | Out-Null
+
+                    $reply = $script:calls | Where-Object { $_ -like '*/replies*' }
+                    $reply | Should -BeLike "*body=$Prefix The evidence.*"
+                }
+            }
+
+            It 'refuses <Case>, and changes nothing on GitHub' -ForEach @(
+                @{ Case = 'a pull request that is no longer open'; State = 'MERGED'; Reason = 'ADDRESSED'; Evidence = 'Fixed.'; Approved = $false; Expected = '*not open*' }
+                @{ Case = 'an empty reply'; State = 'OPEN'; Reason = 'ADDRESSED'; Evidence = '   '; Approved = $false; Expected = '*evidence*' }
+                @{ Case = "won't fix without the owner's OK"; State = 'OPEN'; Reason = 'WONT_FIX'; Evidence = 'Out of scope.'; Approved = $false; Expected = '*owner*' }
+            ) {
+                InModuleScope KitReview -Parameters @{ State = $State; Reason = $Reason; Evidence = $Evidence; Approved = $Approved; Expected = $Expected } {
+                    param($State, $Reason, $Evidence, $Approved, $Expected)
+                    $script:prState = $State
+
+                    { Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason $Reason -Evidence $Evidence -OwnerApproved:$Approved } | Should -Throw $Expected
+
+                    @($script:calls | Where-Object { $_ -like '*/replies*' -or $_ -like 'api graphql*' }).Count | Should -Be 0
+                }
+            }
+
+            It "resolves as won't fix when the owner approved it" {
+                InModuleScope KitReview {
+                    $result = Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason WONT_FIX -Evidence 'Out of scope; the owner agreed on 2026-11-03.' -OwnerApproved
+
+                    $result.Resolved | Should -BeTrue
+                    ($script:calls | Where-Object { $_ -like '*/replies*' }) | Should -BeLike "*Resolution: won't fix.*"
+                }
+            }
+
+            It 'refuses a thread that is already resolved, and changes nothing on GitHub' {
+                InModuleScope KitReview {
+                    $resolved = [pscustomobject]@{ ThreadId = 'PRRT_1'; CommentId = 7; IsResolved = $true }
+
+                    { Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $resolved -Reason ADDRESSED -Evidence 'Fixed.' } | Should -Throw '*already resolved*'
+
+                    @($script:calls | Where-Object { $_ -like '*/replies*' -or $_ -like 'api graphql*' }).Count | Should -Be 0
+                }
             }
         }
 
-        It 'starts the reply with the resolution: <Reason> reads "<Prefix>"' -ForEach @(
-            @{ Reason = 'ADDRESSED'; Prefix = 'Resolution: addressed.' }
-            @{ Reason = 'INVALID'; Prefix = 'Resolution: incorrect.' }
-        ) {
-            InModuleScope KitReview -Parameters @{ Reason = $Reason; Prefix = $Prefix } {
-                param($Reason, $Prefix)
-                Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason $Reason -Evidence 'The evidence.' | Out-Null
+        Context 'Add-ReviewReply' {
+            It 'replies in the thread and leaves it open' {
+                InModuleScope KitReview {
+                    $result = Add-ReviewReply -Repository 'o/r' -Number 5 -Thread $script:openThread -Body 'I recommend not fixing this: out of scope. Owner, your call.'
 
-                $reply = $script:calls | Where-Object { $_ -like '*/replies*' }
-                $reply | Should -BeLike "*body=$Prefix The evidence.*"
+                    $result.Url | Should -Be 'https://github.com/o/r/pull/5#discussion_r1'
+                    ($script:calls | Where-Object { $_ -like '*comments/7/replies*' }) | Should -BeLike '*body=I recommend not fixing this*'
+                    @($script:calls | Where-Object { $_ -like 'api graphql*' }).Count | Should -Be 0 -Because 'only the owner decides to leave a finding unfixed'
+                }
             }
-        }
 
-        It 'refuses <Case>, and changes nothing on GitHub' -ForEach @(
-            @{ Case = 'a pull request that is no longer open'; State = 'MERGED'; Reason = 'ADDRESSED'; Evidence = 'Fixed.'; Approved = $false; Expected = '*not open*' }
-            @{ Case = 'an empty reply'; State = 'OPEN'; Reason = 'ADDRESSED'; Evidence = '   '; Approved = $false; Expected = '*evidence*' }
-            @{ Case = "won't fix without the owner's OK"; State = 'OPEN'; Reason = 'WONT_FIX'; Evidence = 'Out of scope.'; Approved = $false; Expected = '*owner*' }
-        ) {
-            InModuleScope KitReview -Parameters @{ State = $State; Reason = $Reason; Evidence = $Evidence; Approved = $Approved; Expected = $Expected } {
-                param($State, $Reason, $Evidence, $Approved, $Expected)
-                $script:prState = $State
+            It 'answers a summary issue that has no thread with a pull request comment' {
+                InModuleScope KitReview {
+                    $result = Add-ReviewReply -Repository 'o/r' -Number 5 -Body 'Summary issue "C": fixed in abc1234.'
 
-                { Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason $Reason -Evidence $Evidence -OwnerApproved:$Approved } | Should -Throw $Expected
-
-                @($script:calls | Where-Object { $_ -like '*/replies*' -or $_ -like 'api graphql*' }).Count | Should -Be 0
+                    $result.Url | Should -Be 'https://github.com/o/r/pull/5#issuecomment-9'
+                    ($script:calls | Where-Object { $_ -like '*repos/o/r/issues/5/comments*' }) | Should -BeLike '*body=Summary issue "C": fixed in abc1234.*'
+                }
             }
-        }
 
-        It "resolves as won't fix when the owner approved it" {
-            InModuleScope KitReview {
-                $result = Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason WONT_FIX -Evidence 'Out of scope; the owner agreed on 2026-11-03.' -OwnerApproved
+            It 'refuses <Case>, and changes nothing on GitHub' -ForEach @(
+                @{ Case = 'a pull request that is no longer open'; State = 'CLOSED'; Body = 'Fixed.'; Expected = '*not open*' }
+                @{ Case = 'an empty reply'; State = 'OPEN'; Body = ' '; Expected = '*empty*' }
+            ) {
+                InModuleScope KitReview -Parameters @{ State = $State; Body = $Body; Expected = $Expected } {
+                    param($State, $Body, $Expected)
+                    $script:prState = $State
 
-                $result.Resolved | Should -BeTrue
-                ($script:calls | Where-Object { $_ -like '*/replies*' }) | Should -BeLike "*Resolution: won't fix.*"
+                    { Add-ReviewReply -Repository 'o/r' -Number 5 -Thread $script:openThread -Body $Body } | Should -Throw $Expected
+
+                    @($script:calls | Where-Object { $_ -like '*/replies*' -or $_ -like '*/issues/*' -or $_ -like 'api graphql*' }).Count | Should -Be 0
+                }
             }
         }
     }

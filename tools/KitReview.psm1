@@ -208,4 +208,14 @@ function Resolve-ReviewThread {
     }
 }
 
-Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewThread
+function Add-ReviewReply {
+    param(
+        [Parameter(Mandatory)] [string] $Repository,
+        [Parameter(Mandatory)] [int] $Number,
+        [psobject] $Thread,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Body
+    )
+    [pscustomobject]@{ Url = $null }
+}
+
+Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewThread, Add-ReviewReply
