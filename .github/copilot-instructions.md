@@ -22,6 +22,7 @@ Each task runs through these steps, in order. The skills in `.claude/skills/` wa
 4. **Refactor** on green, then repeat from step 2 until the list is empty. Never convert the whole list into tests up front.
 5. **Decide** (`write-adr`). A significant technical choice gets an ADR in `docs/adr/`, made from the template, with at least two options and a recommendation.
 6. **Verify and hand over** (`finish-work`). Run every check, get an independent review from the `reviewer` agent, then open the PR with the template.
+7. **Answer the review** (`address-review`). When a review lands on the PR, from GitHub Copilot or a person, check every finding against the current code. Fix the real ones test-first and push. Reply to each thread with the evidence, and resolve it as addressed or incorrect. Leave a finding you'd recommend not fixing open, with your recommendation, for the owner: "won't fix" is his call. Do this again for each re-review.
 
 ## Talking to the owner
 
@@ -78,6 +79,7 @@ Never read, print or store secrets. Sign-in is always the owner's step.
 | PR title and commit subjects are Conventional Commits | `./tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD` |
 | Every red commit is made green | `./tools/Test-RedGreenOrder.ps1 -Range origin/main..HEAD` |
 | No deprecated NuGet packages | `./tools/Test-DeprecatedPackages.ps1 -Path dotnet-agent-kit.slnx` |
+| Read a PR's Copilot review and open threads; resolve a thread | `Import-Module ./tools/KitReview.psm1`, then `Get-CopilotReview`, `Get-ReviewThread -Unresolved`, `Resolve-ReviewThread` (see the `address-review` skill) |
 | Build | `dotnet build` |
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request, plus a gitleaks secret scan. The "main protection" ruleset requires them to pass.

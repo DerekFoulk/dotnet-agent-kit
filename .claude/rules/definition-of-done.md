@@ -5,3 +5,4 @@
 - DOD-002: Report done only with evidence (commands run, counts, links), and state "not verified" wherever something wasn't.
 - DOD-003: Before the owner reviews, an independent read-only reviewer that hasn't seen the work runs the gates and reports ranked findings.
 - DOD-004: Every PR uses the PR template, including the red-to-green evidence table.
+- DOD-005: Every review finding on a PR is checked against the code and answered with evidence; a fixed or already-fixed one is resolved as addressed, a wrong one as incorrect, and one left unfixed as won't fix only with the owner's OK.
