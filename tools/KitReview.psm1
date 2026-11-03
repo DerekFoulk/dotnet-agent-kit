@@ -151,11 +151,18 @@ function Get-OpenFinding {
 
     $review = Get-CopilotReview -Repository $Repository -Number $Number
     $issues = if ($review) { @($review.Issues) } else { @() }
+    $prComments = $null
     foreach ($issue in $issues) {
         $thread = if ($null -ne $issue.CommentId) { $byComment[[long] $issue.CommentId] } else { $null }
         if ($thread) {
             [void] $listed.Add($thread.ThreadId)
             if ($thread.IsResolved) { continue }
+        }
+        else {
+            # No thread to resolve: it's answered once a PR comment names it (Add-ReviewReply -IssueTitle).
+            if ($null -eq $prComments) { $prComments = @(Get-PullRequestCommentBody -Repository $Repository -Number $Number) }
+            $prefix = Get-SummaryAnswerPrefix -Title $issue.Title
+            if (@($prComments | Where-Object { $_.StartsWith($prefix, [StringComparison]::Ordinal) }).Count) { continue }
         }
         [pscustomobject]@{
             Severity = $issue.Severity
@@ -232,19 +239,33 @@ function Add-ReviewReply {
     if ($Thread -and -not ($Thread.PSObject.Properties['CommentId'] -and $Thread.CommentId)) {
         throw 'Pass a thread from Get-ReviewThread or Get-OpenFinding, or no -Thread for a pull request comment.'
     }
+    if ($Thread -and $IssueTitle) {
+        throw '-IssueTitle is for a summary issue with no thread; a reply in a thread already points at its finding.'
+    }
     if ([string]::IsNullOrWhiteSpace($Body)) {
         throw 'The reply is empty.'
     }
     Assert-PullRequestOpen -Repository $Repository -Number $Number
 
+    $text = $Body.Trim()
+    if ($IssueTitle) { $text = "$(Get-SummaryAnswerPrefix -Title $IssueTitle) $text" }
     $endpoint = if ($Thread) { "repos/$Repository/pulls/$Number/comments/$($Thread.CommentId)/replies" } else { "repos/$Repository/issues/$Number/comments" }
-    $posted = Invoke-Gh api -X POST $endpoint -f "body=$($Body.Trim())" | ConvertFrom-Json -AsHashtable
+    $posted = Invoke-Gh api -X POST $endpoint -f "body=$text" | ConvertFrom-Json -AsHashtable
     [pscustomobject]@{ Url = $posted['html_url'] }
 }
 
+# The text of every comment in the pull request's conversation (not the review threads).
 function Get-PullRequestCommentBody {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
-    @()
+
+    $comments = Invoke-Gh api --paginate "repos/$Repository/issues/$Number/comments" | ConvertFrom-Json -AsHashtable
+    foreach ($comment in @($comments)) { "$($comment['body'])" }
+}
+
+# How a PR comment names the summary issue it answers, so Get-OpenFinding can tell it was answered.
+function Get-SummaryAnswerPrefix {
+    param([Parameter(Mandatory)] [string] $Title)
+    "Copilot summary issue `"$Title`":"
 }
 
 # Writing to a merged or closed pull request helps no one; new commits belong on a fresh branch.
