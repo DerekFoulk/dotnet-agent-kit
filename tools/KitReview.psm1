@@ -67,4 +67,8 @@ function Get-CopilotReview {
     }
 }
 
-Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview
+function Get-ReviewThread {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $Unresolved)
+}
+
+Export-ModuleMember -Function Invoke-Gh, ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread

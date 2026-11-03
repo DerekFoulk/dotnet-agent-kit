@@ -91,11 +91,63 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        It 'returns nothing when Copilot has not reviewed' {
+        It 'returns nothing when Copilot has not reviewed (and never calls GitHub twice)' {
             InModuleScope KitReview {
                 Mock Invoke-Gh { '[{ "id": 3, "user": { "login": "DerekFoulk" }, "state": "COMMENTED", "submitted_at": "2026-11-03T10:00:00Z", "commit_id": "c", "body": "" }]' }
 
                 Get-CopilotReview -Repository 'DerekFoulk/dotnet-agent-kit' -Number 5 | Should -BeNullOrEmpty
+            }
+        }
+    }
+
+    Context 'Get-ReviewThread' {
+        BeforeAll {
+            # The shape of GitHub's GraphQL reviewThreads response (PR 5, 2026-11-03).
+            $script:threadsJson = '{ "data": { "repository": { "pullRequest": { "reviewThreads": { "nodes": [
+  { "id": "PRRT_resolved", "isResolved": true, "isOutdated": false, "path": ".github/workflows/ci.yml", "line": 5,
+    "comments": { "nodes": [ { "databaseId": 4452246590, "author": { "login": "copilot-pull-request-reviewer" }, "body": "Include edited." } ] } },
+  { "id": "PRRT_open", "isResolved": false, "isOutdated": true, "path": "tools/Test-DeprecatedPackages.ps1", "line": null,
+    "comments": { "nodes": [ { "databaseId": 4452246657, "author": { "login": "copilot-pull-request-reviewer" }, "body": "Reject a nonzero exit code." } ] } }
+] } } } } }'
+        }
+
+        It 'maps each thread to its id, state, file, first comment and author' {
+            InModuleScope KitReview -Parameters @{ Json = $script:threadsJson } {
+                param($Json)
+                Mock Invoke-Gh { $Json }
+
+                $threads = @(Get-ReviewThread -Repository 'DerekFoulk/dotnet-agent-kit' -Number 5)
+
+                $threads.Count | Should -Be 2
+                $threads[1].ThreadId | Should -Be 'PRRT_open'
+                $threads[1].IsResolved | Should -BeFalse
+                $threads[1].IsOutdated | Should -BeTrue
+                $threads[1].Path | Should -Be 'tools/Test-DeprecatedPackages.ps1'
+                $threads[1].CommentId | Should -Be 4452246657
+                $threads[1].Author | Should -Be 'copilot-pull-request-reviewer'
+                $threads[1].Body | Should -Be 'Reject a nonzero exit code.'
+            }
+        }
+
+        It 'returns only unresolved threads with -Unresolved' {
+            InModuleScope KitReview -Parameters @{ Json = $script:threadsJson } {
+                param($Json)
+                Mock Invoke-Gh { $Json }
+
+                $threads = @(Get-ReviewThread -Repository 'DerekFoulk/dotnet-agent-kit' -Number 5 -Unresolved)
+
+                ($threads | ForEach-Object ThreadId) | Should -Be @('PRRT_open')
+            }
+        }
+
+        It 'asks GitHub for the named repository and pull request' {
+            InModuleScope KitReview -Parameters @{ Json = $script:threadsJson } {
+                param($Json)
+                Mock Invoke-Gh { $Json }
+
+                Get-ReviewThread -Repository 'DerekFoulk/dotnet-agent-kit' -Number 5 | Out-Null
+
+                Should -Invoke Invoke-Gh -ParameterFilter { $joined = $args -join ' '; $joined -like '*owner=DerekFoulk*' -and $joined -like '*name=dotnet-agent-kit*' -and $joined -like '*number=5*' }
             }
         }
     }
