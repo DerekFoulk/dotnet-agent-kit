@@ -128,8 +128,46 @@ function Get-ReviewThread {
     }
 }
 
+# Everything on the pull request still waiting for an answer, in this order:
+# - each issue in Copilot's latest summary whose thread is unresolved;
+# - each summary issue with no thread (Thread is $null): answer it in a PR comment;
+# - each other unresolved thread, such as a person's comment or an older Copilot finding.
+# Copilot's summary can lag behind its threads, so a summary issue whose thread is resolved is left out.
 function Get-OpenFinding {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+
+    $threads = @(Get-ReviewThread -Repository $Repository -Number $Number)
+    $byComment = @{}
+    foreach ($thread in $threads) { $byComment[[long] $thread.CommentId] = $thread }
+    $listed = [System.Collections.Generic.HashSet[string]]::new()
+
+    $review = Get-CopilotReview -Repository $Repository -Number $Number
+    $issues = if ($review) { @($review.Issues) } else { @() }
+    foreach ($issue in $issues) {
+        $thread = if ($null -ne $issue.CommentId) { $byComment[[long] $issue.CommentId] } else { $null }
+        if ($thread) {
+            [void] $listed.Add($thread.ThreadId)
+            if ($thread.IsResolved) { continue }
+        }
+        [pscustomobject]@{
+            Severity = $issue.Severity
+            Title    = $issue.Title
+            Author   = if ($thread) { $thread.Author } else { $script:CopilotLogin }
+            Body     = if ($thread) { $thread.Body } else { $null }
+            Thread   = $thread
+        }
+    }
+
+    foreach ($thread in $threads) {
+        if ($thread.IsResolved -or $listed.Contains($thread.ThreadId)) { continue }
+        [pscustomobject]@{
+            Severity = $null
+            Title    = $null
+            Author   = $thread.Author
+            Body     = $thread.Body
+            Thread   = $thread
+        }
+    }
 }
 
 function Resolve-ReviewThread {
