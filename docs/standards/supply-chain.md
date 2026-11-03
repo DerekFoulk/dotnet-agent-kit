@@ -61,7 +61,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0016"]
-    enforcement: "advisory: until tools/Test-DeprecatedPackages.ps1 runs in CI (build step 4)"
+    enforcement: "ci: dotnet-ci.reusable.yml runs tools/Test-DeprecatedPackages.ps1; preview packages are advisory (the reviewer agent checks for the ADR)"
     scope: core
     paths: ["Directory.Packages.props"]
   - id: SUP-008
@@ -70,7 +70,7 @@ rules:
     layer: owner
     status: proposed
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: until the workflows and dependabot.yml land (build step 4)"
+    enforcement: "check: every action in .github/workflows is pinned by commit SHA and .github/dependabot.yml updates them; no CI check verifies the pins yet"
     scope: core
     paths: [".github/**"]
 ---

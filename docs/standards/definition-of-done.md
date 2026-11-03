@@ -34,7 +34,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: .github/pull_request_template.md pre-fills every PR; a PR check comes in build step 4"
+    enforcement: "advisory: .github/pull_request_template.md pre-fills every PR and the reviewer agent checks the evidence table; no CI check reads PR descriptions"
     scope: core
     paths: ["**"]
 ---

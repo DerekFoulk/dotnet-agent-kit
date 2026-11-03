@@ -34,7 +34,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0006", "ADR-0022"]
-    enforcement: "advisory: until the commit-message and PR-title checks (build step 4)"
+    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-ConventionalTitle.ps1 on the PR title and every commit subject"
     scope: core
     paths: ["**"]
   - id: GIT-005
@@ -43,7 +43,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01", "ADR-0006"]
-    enforcement: "advisory: until tools/Test-RedGreenOrder.ps1 runs in CI (build step 4)"
+    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-RedGreenOrder.ps1 on every pull request"
     scope: core
     paths: ["**"]
 ---

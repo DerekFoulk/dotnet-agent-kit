@@ -75,7 +75,12 @@ Never read, print or store secrets. Sign-in is always the owner's step.
 | Every ADR has its required sections | `./tools/Test-AdrSections.ps1` |
 | Regenerate agent rule files after editing a standard or this file | `./tools/Build-AgentRules.ps1` |
 | Check generated files are current | `./tools/Build-AgentRules.ps1 -Check` |
+| PR title and commit subjects are Conventional Commits | `./tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD` |
+| Every red commit is made green | `./tools/Test-RedGreenOrder.ps1 -Range origin/main..HEAD` |
+| No deprecated NuGet packages (restore first) | `./tools/Test-DeprecatedPackages.ps1 -Path dotnet-agent-kit.slnx` |
 | Build | `dotnet build` |
+
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request, plus a gitleaks secret scan. The "main protection" ruleset requires them to pass.
 
 Scripts target PowerShell 7 (`pwsh`). Every script and check gets Pester tests, written first.
 

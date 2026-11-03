@@ -87,6 +87,17 @@ Two things need a one-time step per user:
 - **Visual Studio:** it loads the instruction files only when an option is ticked. Microsoft's docs place it under Tools > Options > All Settings > GitHub > Copilot > Copilot Chat: "Enable custom instructions to be loaded from .github/copilot-instructions.md files and added to requests".
 - **Claude Code:** it asks once before connecting to the Microsoft Learn server in `.mcp.json`. Its permission allow rules apply only after you trust the folder.
 
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`. It calls two reusable workflows that other repos can call once they adopt the kit:
+
+| Workflow | What it checks |
+|---|---|
+| `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build, a format check, tests, and deprecated packages. These run once the solution has projects (step 6). It also runs a gitleaks secret scan of the full git history |
+| `kit-checks.reusable.yml` | All Pester tests, rule sources, ADR sections, generated-file drift, and on pull requests the PR title, commit subjects and red→green order |
+
+Each action is pinned by commit SHA, and the gitleaks image by digest. `.github/dependabot.yml` keeps NuGet packages, the actions and the `global.json` SDK pin current; bump the gitleaks image by hand. The "main protection" ruleset on GitHub requires a pull request, allows merge commits only, and blocks force-pushes and deletion of `main`.
+
 ## Run the tests
 
 ```powershell

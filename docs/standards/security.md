@@ -7,7 +7,7 @@ rules:
     layer: floor
     status: accepted
     sources: ["ADR-0024"]
-    enforcement: "advisory: until the CI secret scanner and pre-commit hook (build step 4)"
+    enforcement: "ci: dotnet-ci.reusable.yml scans the full git history with gitleaks on every pull request and push to main"
     scope: core
     paths: ["**"]
   - id: SEC-002

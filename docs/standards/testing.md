@@ -7,7 +7,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-10-26", "ADR-0018"]
-    enforcement: "advisory: until tools/Test-RedGreenOrder.ps1 runs in CI (build step 4)"
+    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-RedGreenOrder.ps1; failing on an assertion, not a crash, is advisory"
     scope: core
     paths: ["**"]
   - id: TST-002
@@ -34,7 +34,7 @@ rules:
     layer: owner
     status: proposed
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: until the coverage gate (build step 4) and nightly mutation run (after v0.1)"
+    enforcement: "advisory: until the coverage gate (with the first test projects, build step 6) and the nightly mutation run (after v0.1)"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
@@ -52,7 +52,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01", "ADR-0011"]
-    enforcement: "advisory: until CI runs Pester and the red-green order check (build step 4)"
+    enforcement: "ci: kit-checks.reusable.yml runs every Pester test and the red-to-green order check"
     scope: core
     paths: ["tools/**"]
 ---
