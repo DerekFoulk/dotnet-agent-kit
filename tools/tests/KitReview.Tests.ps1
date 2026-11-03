@@ -331,6 +331,18 @@ Describe 'KitReview.psm1' {
                         [pscustomobject]@{ ThreadId = $t.Id; IsResolved = $t.Resolved; IsOutdated = $false; Path = 'a.ps1'; Line = 1; CommentId = $t.CommentId; Author = $t.Author; Body = $t.Body; Comments = $comments }
                     }
                 }
+                Mock Get-PullRequestCommentBody { @('Looks good to me.') }
+            }
+        }
+
+        It 'leaves out a summary issue with no thread once a PR comment has answered it' {
+            InModuleScope KitReview {
+                Mock Get-PullRequestCommentBody { @('Looks good to me.', 'Copilot summary issue "C": addressed in abc1234.') }
+
+                $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
+
+                ($findings | ForEach-Object { $_.Title }) | Should -Not -Contain 'C'
+                $findings.Count | Should -Be 2
             }
         }
 
@@ -475,6 +487,14 @@ Describe 'KitReview.psm1' {
 
                     $result.Url | Should -Be 'https://github.com/o/r/pull/5#issuecomment-9'
                     ($script:calls | Where-Object { $_ -like '*repos/o/r/issues/5/comments*' }) | Should -BeLike '*body=Summary issue "C": fixed in abc1234.*'
+                }
+            }
+
+            It 'marks a PR comment with the summary issue it answers, so it is not listed again' {
+                InModuleScope KitReview {
+                    Add-ReviewReply -Repository 'o/r' -Number 5 -IssueTitle 'C' -Body 'Addressed in abc1234.' | Out-Null
+
+                    ($script:calls | Where-Object { $_ -like '*repos/o/r/issues/5/comments*' }) | Should -BeLike '*body=Copilot summary issue "C": Addressed in abc1234.*'
                 }
             }
 

@@ -224,6 +224,7 @@ function Add-ReviewReply {
         [Parameter(Mandatory)] [string] $Repository,
         [Parameter(Mandatory)] [int] $Number,
         [AllowNull()] [psobject] $Thread,
+        [string] $IssueTitle,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Body
     )
 
@@ -239,6 +240,11 @@ function Add-ReviewReply {
     $endpoint = if ($Thread) { "repos/$Repository/pulls/$Number/comments/$($Thread.CommentId)/replies" } else { "repos/$Repository/issues/$Number/comments" }
     $posted = Invoke-Gh api -X POST $endpoint -f "body=$($Body.Trim())" | ConvertFrom-Json -AsHashtable
     [pscustomobject]@{ Url = $posted['html_url'] }
+}
+
+function Get-PullRequestCommentBody {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+    @()
 }
 
 # Writing to a merged or closed pull request helps no one; new commits belong on a fresh branch.
