@@ -70,6 +70,15 @@ Describe 'Test-ConventionalTitle.ps1' {
             Should -Invoke Write-Host -ParameterFilter { "$Object" -like "*Merge branch*" } -Times 0 -Exactly
         }
 
+        It 'exits 1 as a script given nothing to check, rather than passing on zero titles' {
+            $script = Join-Path $PSScriptRoot '..' 'Test-ConventionalTitle.ps1'
+
+            $output = pwsh -NoProfile -File $script 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1 -Because $output
+            $output | Should -Match '-Title|-Range'
+        }
+
         It 'exits 1 when run as a script with a bad title' {
             $script = Join-Path $PSScriptRoot '..' 'Test-ConventionalTitle.ps1'
 
