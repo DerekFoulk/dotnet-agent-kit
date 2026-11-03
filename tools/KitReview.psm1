@@ -4,7 +4,9 @@
 
 Set-StrictMode -Version Latest
 
+# Copilot's login: REST adds [bot], GraphQL doesn't.
 $script:CopilotLogin = 'copilot-pull-request-reviewer[bot]'
+$script:CopilotGraphQLLogin = 'copilot-pull-request-reviewer'
 
 function Invoke-Gh {
     $output = gh @args
@@ -39,7 +41,7 @@ function ConvertFrom-CopilotReviewBody {
             if (-not $inIssues -or $line -notmatch '^- ') { continue }
 
             $severity = if ($line -match 'alt="(\w+) severity"') { $Matches[1] } else { $null }
-            $text = ($line -replace '^- ', '' -replace '(?s)<picture>.*?</picture>', '' -replace '\s+·\s+\w+\s*$', '').Trim()
+            $text = ($line -replace '^- ', '' -replace '(?s)<picture>.*?</picture>', '' -replace '\s+·\s+[^·()\[\]]*$', '').Trim()
             $title = $text
             $link = $null
             $commentId = $null
@@ -61,7 +63,7 @@ function Get-CopilotReview {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
     $reviews = Invoke-Gh api --paginate "repos/$Repository/pulls/$Number/reviews" | ConvertFrom-Json -AsHashtable
-    $latest = @($reviews | Where-Object { $_['user']['login'] -eq $script:CopilotLogin }) |
+    $latest = @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin }) |
         Sort-Object { [datetimeoffset] $_['submitted_at'] } |
         Select-Object -Last 1
     if (-not $latest) {
@@ -92,7 +94,7 @@ function Get-ReviewThread {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $Unresolved)
 
     $owner, $name = $Repository -split '/', 2
-    $query = 'query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { id isResolved isOutdated path line comments(first: 100) { nodes { databaseId author { login } body } } } } } } }'
+    $query = 'query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { id isResolved isOutdated path line comments(first: 100) { pageInfo { hasNextPage } nodes { databaseId author { login } body } } } } } } }'
     # -f sends a string; -F would turn a repository named "2048" into a number. The PR number is an Int.
     $response = Invoke-Gh api graphql -f "query=$query" -f "owner=$owner" -f "name=$name" -F "number=$Number" | ConvertFrom-Json -AsHashtable
 
@@ -107,6 +109,10 @@ function Get-ReviewThread {
 
     foreach ($node in @($threads['nodes'])) {
         if ($Unresolved -and $node['isResolved']) { continue }
+        $page = $node['comments']['pageInfo']
+        if ($page -and $page['hasNextPage']) {
+            throw "Thread $($node['id']) has more than 100 comments; this module reads at most 100, so it won't return a partial thread."
+        }
         $comments = @(foreach ($comment in @($node['comments']['nodes'])) {
                 [pscustomobject]@{
                     CommentId = [long] $comment['databaseId']
@@ -114,15 +120,17 @@ function Get-ReviewThread {
                     Body      = $comment['body']
                 }
             })
+        # A thread whose only comment was deleted has none; it has nothing to reply to.
+        $first = if ($comments.Count) { $comments[0] } else { [pscustomobject]@{ CommentId = $null; Author = $null; Body = $null } }
         [pscustomobject]@{
             ThreadId   = $node['id']
             IsResolved = [bool] $node['isResolved']
             IsOutdated = [bool] $node['isOutdated']
             Path       = $node['path']
             Line       = $node['line']
-            CommentId  = $comments[0].CommentId
-            Author     = $comments[0].Author
-            Body       = $comments[0].Body
+            CommentId  = $first.CommentId
+            Author     = $first.Author
+            Body       = $first.Body
             Comments   = $comments
         }
     }
@@ -152,7 +160,7 @@ function Get-OpenFinding {
         [pscustomobject]@{
             Severity = $issue.Severity
             Title    = $issue.Title
-            Author   = if ($thread) { $thread.Author } else { $script:CopilotLogin }
+            Author   = if ($thread) { $thread.Author } else { $script:CopilotGraphQLLogin }
             Body     = if ($thread) { $thread.Body } else { $null }
             Thread   = $thread
         }
@@ -215,10 +223,14 @@ function Add-ReviewReply {
     param(
         [Parameter(Mandatory)] [string] $Repository,
         [Parameter(Mandatory)] [int] $Number,
-        [ValidateScript({ $_.CommentId }, ErrorMessage = 'Pass a thread from Get-ReviewThread or Get-OpenFinding.')] [psobject] $Thread,
+        [AllowNull()] [psobject] $Thread,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Body
     )
 
+    # An empty -Thread (a finding with no thread) means a PR comment; any other thread needs a comment to reply to.
+    if ($Thread -and -not ($Thread.PSObject.Properties['CommentId'] -and $Thread.CommentId)) {
+        throw 'Pass a thread from Get-ReviewThread or Get-OpenFinding, or no -Thread for a pull request comment.'
+    }
     if ([string]::IsNullOrWhiteSpace($Body)) {
         throw 'The reply is empty.'
     }
