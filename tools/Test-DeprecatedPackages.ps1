@@ -53,7 +53,7 @@ function Get-DeprecatedPackage {
 # Prints each deprecated package and returns 0 when there are none, otherwise 1. A listed project with
 # no restore output also fails: `dotnet list package` reports it exactly like a clean project.
 function Invoke-DeprecatedPackageCheck {
-    param([Parameter(Mandatory)] [string] $Json)
+    param([Parameter(Mandatory)] [string] $Json, [int] $ExitCode = 0)
 
     $report = $Json | ConvertFrom-Json -AsHashtable
     $projects = @($report['projects'] | Where-Object { $null -ne $_ })
