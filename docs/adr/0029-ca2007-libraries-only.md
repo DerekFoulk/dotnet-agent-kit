@@ -17,7 +17,7 @@ The spike also flagged CA1303 (localizable literals). The owner kept CA1303 on.
 
 - **Trade-offs:** Libraries, which may run under any caller's context, still get `ConfigureAwait(false)` everywhere. App and test code stays free of calls that change nothing there. Test projects are libraries to the compiler, so they need their own rule: CA2007 is off in any folder whose name ends in `Tests`, following the kit's test project names (`*.Tests`, `IntegrationTests`, `FunctionalTests`).
 - **Reversibility:** Easy: two settings in the root `.editorconfig`.
-- **Risk:** Low. A test project in a folder not named `*Tests` would still get CA2007 warnings, which is noise, not a hidden bug.
+- **Risk:** Low. A test project in a folder not named `*Tests` would still get CA2007 warnings, which is noise, not a hidden bug. The reverse case: a shipped library in a folder ending in `Tests` (say, a published `Contoso.Tests` helper) would lose CA2007; name such a library otherwise. Test projects that build as executables (xUnit v3, MSTest runner) are already exempt through `output_kind`.
 
 ### Option 2: Keep CA2007 everywhere
 

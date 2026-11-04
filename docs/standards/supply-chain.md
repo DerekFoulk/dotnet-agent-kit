@@ -47,8 +47,8 @@ rules:
     scope: core
     paths: ["global.json"]
   - id: SUP-006
-    statement: "Builds take their version only from git tags through MinVer; the one version record outside tags is release-please's .release-please-manifest.json, which no build reads."
-    why: "Release tags are the single source of version numbers (ADR-0019); release-please needs its manifest to propose the next version (ADR-0022)."
+    statement: "Builds take their version only from git tags through MinVer; the only version records outside tags are the ones release-please writes, .release-please-manifest.json and CHANGELOG.md, and no build reads them."
+    why: "Release tags are the single source of version numbers (ADR-0019); release-please needs its manifest to propose the next version, and writes each release's notes to CHANGELOG.md (ADR-0022)."
     layer: owner
     status: accepted
     sources: ["ADR-0019", "ADR-0022", "owner, 2026-11-04"]

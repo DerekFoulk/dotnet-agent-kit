@@ -17,7 +17,7 @@ The generated projects were deleted after measuring; the steps above reproduce t
 
 **Bare templates:** 3 warnings (IDE0008 ×2, CA1303 ×1).
 
-**With the sample code (about 200 lines of C#): 31 distinct warnings**, about one per 6–7 lines.
+**With the sample code (about 200 lines of C# in all: the ~150 added lines plus the templates' own): 31 distinct warnings**, about one per 6–7 lines.
 
 | Rule | Count | What it asks for | Verdict |
 |---|---|---|---|

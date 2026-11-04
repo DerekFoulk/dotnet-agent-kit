@@ -35,6 +35,7 @@ Accepted as recommended (owner, 2026-11-01).
 - `Directory.Build.props` sets `EnforceCodeStyleInBuild`, `AnalysisLevel latest-all` and `TreatWarningsAsErrors`.
 - `tools/tests/BuildConfig.Tests.ps1` proves that violations fail the build.
 - The step-5 spike measures `latest-all` noise; each opt-out needs an ADR.
+- **Spike result (2026-11-04):** workable. 31 warnings in about 200 lines of ordinary code, nearly all pointing to real fixes; CA2007 is limited to libraries by ADR-0029, and CA1303 stays on (owner). Step 6 re-measures on the sample solution. Details: `spikes/latest-all/README.md`.
 - A repo's `.editorconfig` overrides settings shipped in a package, so the sync step owns it and CI flags local changes.
 
 ## Pillars affected

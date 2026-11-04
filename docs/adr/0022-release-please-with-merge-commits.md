@@ -43,7 +43,7 @@ Accepted as recommended (owner, 2026-11-01).
   - The release PR's CI runs: a PR opened with `GITHUB_TOKEN` gets `pull_request` runs that wait for approval and block the merge. `release.yml` approves those runs, and only those, so no personal access token is stored. This needs the repo setting "Allow GitHub Actions to create and approve pull requests" (owner's OK).
   - Release notes: commit-based notes list a PR's own commits as well as its merge commit, so entries repeat. `changelog-type: github` lists merged PRs instead, one line per PR title.
   - `initial-version: 0.1.0`, since the first release otherwise defaults to 1.0.0.
-  - release-please keeps the current version in `.release-please-manifest.json`; SUP-006 is reworded to allow that one record, which no build reads.
+  - release-please keeps the current version in `.release-please-manifest.json` and writes each release's notes, headed by its version, to `CHANGELOG.md`. SUP-006 is reworded to allow those two records, which no build reads.
 - `tools/tests/ReleaseConfig.Tests.ps1` checks `release.yml` and the config.
 
 ## Pillars affected

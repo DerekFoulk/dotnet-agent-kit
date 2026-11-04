@@ -10,6 +10,7 @@
 
 | Run | What I did | Result |
 |---|---|---|
+| 0 | Pushed the setup commit | The first `release` run failed: a step read `fromJSON` of release-please's empty `pr` output, and GitHub evaluates a skipped step's `env` too. Fixed by passing the raw output and parsing it with `jq` inside the step. `ci.yml` also failed to load: an unquoted `run:` value containing `: `. Both fixed in PR 1 |
 | 1 | Merged PR 1, `feat: add a greeter`, whose branch held a `fix:` and a `feat:` commit | release-please opened release PR 2, `chore(main): release 1.0.0` |
 | 2 | Release PR 2's CI | The `pull_request` CI run was created but waited for approval (`action_required`), because the PR was opened with `GITHUB_TOKEN`. The PR stayed blocked, even after a `workflow_dispatch` run reported passing `build` and `PR title` checks on the same commit. Approving the waiting run let it pass and unblocked the PR |
 | 3 | Merged PR 3: the release workflow approves its own release PR's waiting run, and `initial-version: 0.1.0` | The release PR became `release 0.1.0`; the workflow approved its CI run and the PR turned CLEAN with no one touching it |
