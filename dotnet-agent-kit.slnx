@@ -1,2 +1,17 @@
 <Solution>
+  <Folder Name="/sample/" />
+  <Folder Name="/sample/src/">
+    <Project Path="sample/src/Bookmarks.Api/Bookmarks.Api.csproj" />
+    <Project Path="sample/src/Bookmarks.Application/Bookmarks.Application.csproj" />
+    <Project Path="sample/src/Bookmarks.Contracts/Bookmarks.Contracts.csproj" />
+    <Project Path="sample/src/Bookmarks.Domain/Bookmarks.Domain.csproj" />
+    <Project Path="sample/src/Bookmarks.Infrastructure/Bookmarks.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/sample/tests/">
+    <Project Path="sample/tests/Bookmarks.Application.Tests/Bookmarks.Application.Tests.csproj" />
+    <Project Path="sample/tests/Bookmarks.Architecture.Tests/Bookmarks.Architecture.Tests.csproj" />
+    <Project Path="sample/tests/Bookmarks.Domain.Tests/Bookmarks.Domain.Tests.csproj" />
+    <Project Path="sample/tests/Bookmarks.FunctionalTests/Bookmarks.FunctionalTests.csproj" />
+    <Project Path="sample/tests/Bookmarks.IntegrationTests/Bookmarks.IntegrationTests.csproj" />
+  </Folder>
 </Solution>
