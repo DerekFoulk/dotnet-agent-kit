@@ -164,6 +164,14 @@ csharp_space_between_method_declaration_parameter_list_parentheses = false
 csharp_space_between_parentheses = false
 csharp_space_between_square_brackets = false
 
+# ADR-0029: CA2007 (ConfigureAwait) applies to class libraries only. Microsoft advises suppressing it
+# for application code: https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007
+dotnet_code_quality.CA2007.output_kind = DynamicallyLinkedLibrary
+
+# ADR-0029: test projects are libraries too, but they're application code for CA2007's purposes.
+[{*Tests/**.cs,**/*Tests/**.cs}]
+dotnet_diagnostic.CA2007.severity = none
+
 # XML project and build files
 [*.{csproj,vbproj,proj,nativeproj,locproj,props,targets,config,nuspec}]
 indent_size = 2

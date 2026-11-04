@@ -79,6 +79,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
         It 'allows an await without ConfigureAwait in <Description>' -ForEach @(
             @{ Fixture = 'AwaitInApp'; Project = ''; Description = 'an app' }
             @{ Fixture = 'AwaitInTests'; Project = 'Widgets.Tests'; Description = 'a test project (a library in a *Tests folder)' }
+            @{ Fixture = 'AwaitInNestedTests'; Project = 'tests/Widgets.Tests'; Description = 'a test project nested under tests/' }
         ) {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture) -Project $Project
 
