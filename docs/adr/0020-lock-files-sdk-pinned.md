@@ -32,7 +32,7 @@ Accepted as recommended (owner, 2026-11-01).
 ## Consequences
 
 - `Directory.Build.props` sets `RestorePackagesWithLockFile`, and `RestoreLockedMode` when `CI=true` (since build step 1).
-- Dependency updates regenerate lock files in the same PR. Dependabot misses projects affected through project references, so a workflow refreshes lock files on Dependabot PRs (build step 4).
+- Dependency updates regenerate lock files in the same PR. Dependabot misses projects affected through project references, so a workflow refreshes lock files on Dependabot PRs. Deferred from build step 4 to build step 6, when the first lock files exist; until then Dependabot NuGet PRs may fail the locked restore.
 - A one-command fix script restores lock files when CI flags a mismatch.
 
 ## Pillars affected

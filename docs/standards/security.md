@@ -7,7 +7,7 @@ rules:
     layer: floor
     status: accepted
     sources: ["ADR-0024"]
-    enforcement: "advisory: until the CI secret scanner and pre-commit hook (build step 4)"
+    enforcement: "ci: dotnet-ci.reusable.yml scans the full git history with gitleaks on every pull request and push to main"
     scope: core
     paths: ["**"]
   - id: SEC-002
@@ -50,4 +50,4 @@ rules:
 
 # Security
 
-Floor rules (security, privacy, license compliance) are never overridden (brief §4). The kit's repos are private and personally owned, so GitHub secret scanning isn't available. A CI scanner and a pre-commit hook are the protection instead (ADR-0024).
+Floor rules (security, privacy, license compliance) are never overridden (brief §4). The kit's repos are private and personally owned, so GitHub secret scanning isn't available. The gitleaks scan of the full git history in CI is the protection instead (ADR-0024, ADR-0027).

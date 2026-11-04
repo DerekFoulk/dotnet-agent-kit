@@ -43,7 +43,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0016"]
-    enforcement: "check: tools/Test-AdrSections.ps1 (runs in CI from build step 4)"
+    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-AdrSections.ps1"
     scope: core
     paths: ["docs/adr/**"]
   - id: ARC-006

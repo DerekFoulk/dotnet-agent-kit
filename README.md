@@ -17,6 +17,7 @@ Work in progress (v0.1).
 | GitHub CLI, signed in | Cloning this private repo, PRs | Yes |
 | .NET SDK named in `global.json` | Building | Yes |
 | Claude Code | Agent sessions | Yes |
+| Git commit-msg hook (this clone) | Rejecting non-Conventional commit subjects before they're committed (ADR-0027) | Yes |
 | VS Code + PowerShell extension | Running scripts yourself (ISE Mode, D11) | Later |
 | Docker | Testcontainers in the sample solution | Later |
 
@@ -86,6 +87,18 @@ The generated files carry only **accepted** rules. After editing a standard or `
 Two things need a one-time step per user:
 - **Visual Studio:** it loads the instruction files only when an option is ticked. Microsoft's docs place it under Tools > Options > All Settings > GitHub > Copilot > Copilot Chat: "Enable custom instructions to be loaded from .github/copilot-instructions.md files and added to requests".
 - **Claude Code:** it asks once before connecting to the Microsoft Learn server in `.mcp.json`. Its permission allow rules apply only after you trust the folder.
+
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`. It calls two reusable workflows that other repos can call once they adopt the kit:
+
+| Workflow | What it checks |
+|---|---|
+| `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build, a format check, tests, and deprecated packages. These run once the solution has projects (step 6). It also runs a gitleaks secret scan of the full git history |
+| `kit-checks.reusable.yml` | All Pester tests, rule sources, ADR sections, generated-file drift, and on pull requests the commit subjects and red→green order (the branch's own commits) |
+| `pr-title.yml` | The PR title is a Conventional Commit. It also runs when the PR is edited, because the title becomes the merge commit's subject |
+
+Each action is pinned by commit SHA, and the gitleaks image by digest. `.github/dependabot.yml` keeps NuGet packages, the actions and the `global.json` SDK pin current; bump the gitleaks image by hand. The "main protection" ruleset on GitHub requires a pull request and these checks to pass ("dotnet / Build, test and package checks", "dotnet / Secret scan (gitleaks)", "kit / Kit checks", "PR title"). It allows merge commits only, and blocks force-pushes and deletion of `main`. It doesn't require a branch to be up to date with `main` before merging, so the merge result itself isn't re-tested; with merge commits that's a deliberate trade against rebuilding after every merge.
 
 ## Run the tests
 

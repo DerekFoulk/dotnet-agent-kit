@@ -4,5 +4,5 @@
 
 - GIT-001: Pull requests merge into main with a merge commit; squash and rebase merges are disabled.
 - GIT-002: Work on short-lived branches from main (GitHub Flow) and merge through a pull request.
-- GIT-004: Commit subjects and PR titles are Conventional Commits (feat:, fix:, test:, refactor:, docs:, chore:; ! or BREAKING CHANGE for a major change).
+- GIT-004: Commit subjects and PR titles are Conventional Commits, with type feat, fix, docs, style, refactor, perf, test, build, ci, chore or revert; ! or BREAKING CHANGE marks a major change. git revert's own 'Revert "<subject>"' form is accepted when the reverted subject is.
 - GIT-005: A test-first commit carries the trailer 'TDD: red' and the commit that makes it pass carries 'TDD: green', in the message's final paragraph.

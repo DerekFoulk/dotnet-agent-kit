@@ -148,6 +148,16 @@ function Test-VsCodeExtension {
     (Test-CommandAvailable -Name 'code') -and (Invoke-Native -FilePath 'code' -Arguments '--list-extensions').Output -contains $Id
 }
 
+# The commit-msg hook (.githooks/, ADR-0027) runs only when this clone's core.hooksPath points at it.
+function Test-GitHooksPath {
+    param([Parameter(Mandatory)] [string] $RepoRoot)
+    if (-not (Test-CommandAvailable -Name 'git')) {
+        return $false
+    }
+    $result = Invoke-Native -FilePath 'git' -Arguments '-C', $RepoRoot, 'config', '--get', 'core.hooksPath'
+    $result.ExitCode -eq 0 -and ("$($result.Output)".Trim() -eq '.githooks')
+}
+
 function New-DevMachineCheck {
     param(
         [Parameter(Mandatory)] [string] $Name,
@@ -190,6 +200,9 @@ function Get-DevMachineCheck {
         -InstallCommand "winget install --id Microsoft.DotNet.SDK.$($sdkVersion.Major) --exact --version $sdkVersion"
     New-DevMachineCheck -Name 'Claude Code' -Required $true -Test { Test-CommandAvailable -Name 'claude' } `
         -InstallCommand 'irm https://claude.ai/install.ps1 | iex'
+    $hookTest = [scriptblock]::Create("Test-GitHooksPath -RepoRoot '$($RepoRoot -replace "'", "''")'")
+    New-DevMachineCheck -Name 'Git commit-msg hook' -Required $true -Test $hookTest `
+        -InstallCommand "git -C '$($RepoRoot -replace "'", "''")' config core.hooksPath .githooks"
     New-DevMachineCheck -Name 'VS Code' -Required $false -Test { Test-CommandAvailable -Name 'code' } `
         -InstallCommand 'winget install --id Microsoft.VisualStudioCode --exact'
     New-DevMachineCheck -Name 'VS Code PowerShell extension' -Required $false -Test { Test-VsCodeExtension -Id 'ms-vscode.powershell' } `

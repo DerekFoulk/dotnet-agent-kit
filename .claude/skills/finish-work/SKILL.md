@@ -15,7 +15,11 @@ Invoke-Pester -Path ./tools/tests          # all pass
 ./tools/Test-RuleSources.ps1               # exit 0
 ./tools/Test-AdrSections.ps1               # exit 0
 ./tools/Build-AgentRules.ps1 -Check        # exit 0; if not, run it without -Check and commit
+./tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD   # exit 0
+./tools/Test-RedGreenOrder.ps1 -Range origin/main..HEAD       # exit 0
 ```
+
+CI runs the same checks on the PR; a local pass first saves a round trip.
 
 Then confirm:
 - Docs and ADRs are updated for the change.

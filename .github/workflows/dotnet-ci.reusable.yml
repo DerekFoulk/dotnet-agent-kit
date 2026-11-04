@@ -1,0 +1,84 @@
+# .NET gates for any repo that uses the kit: locked restore with NuGet audit, build with zero warnings,
+# format check, tests, deprecated packages, and a secret scan of the whole history.
+# Called by ci.yml; other repos call it with a pinned ref once they adopt the kit.
+name: .NET CI (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      solution:
+        description: Solution file to build (.slnx).
+        type: string
+        default: dotnet-agent-kit.slnx
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet:
+    name: Build, test and package checks
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      # Through the environment, never pasted into a script, so the name can't break quoting.
+      SOLUTION: ${{ inputs.solution }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # MinVer reads version tags from history
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      # An empty solution only warns "no project to restore", which would fail the zero-warnings gate.
+      # The .NET steps start running when the first project is added (build step 6).
+      - name: Count projects
+        id: projects
+        shell: pwsh
+        run: |
+          $count = ([xml](Get-Content -LiteralPath $env:SOLUTION -Raw)).SelectNodes('//Project').Count
+          "count=$count" >> $env:GITHUB_OUTPUT
+          "Projects in ${env:SOLUTION}: $count"
+
+      # NuGetAudit and TreatWarningsAsErrors (Directory.Build.props) make a known vulnerability fail here.
+      - name: Restore (locked)
+        if: steps.projects.outputs.count != '0'
+        run: dotnet restore "$SOLUTION" --locked-mode
+
+      - name: Build (zero warnings)
+        if: steps.projects.outputs.count != '0'
+        run: dotnet build "$SOLUTION" --no-restore --configuration Release
+
+      - name: Format check
+        if: steps.projects.outputs.count != '0'
+        run: dotnet format "$SOLUTION" --verify-no-changes --no-restore
+
+      - name: Test
+        if: steps.projects.outputs.count != '0'
+        run: dotnet test "$SOLUTION" --no-build --configuration Release
+
+      - name: Deprecated packages
+        shell: pwsh
+        run: ./tools/Test-DeprecatedPackages.ps1 -Path $env:SOLUTION
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # scan every commit, not just the latest tree
+          persist-credentials: false # nothing in .git for the container to read
+
+      # The gitleaks CLI (MIT) from its official image, pinned by digest (ADR-0024). The GIT_CONFIG_*
+      # variables mark the mounted checkout as safe for git inside the container.
+      - name: Scan the full git history
+        run: >-
+          docker run --rm
+          -v "$GITHUB_WORKSPACE:/repo"
+          -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo
+          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git /repo --redact --verbose

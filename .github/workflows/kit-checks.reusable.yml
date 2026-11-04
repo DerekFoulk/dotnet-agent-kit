@@ -1,0 +1,64 @@
+# The kit's own checks: script tests, rule sources, ADR sections, generated-file drift, and on pull
+# requests the commit subjects and red-to-green order. The PR title has its own workflow (pr-title.yml).
+name: Kit checks (reusable)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  kit:
+    name: Kit checks
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the commit checks read the PR's history
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json # BuildConfig.Tests.ps1 builds fixture projects
+
+      - name: Install PowerShell modules
+        run: |
+          Install-PSResource -Name Pester -Version 6.2.0 -Scope CurrentUser -Repository PSGallery -TrustRepository
+          Install-PSResource -Name powershell-yaml -Version 0.4.12 -Scope CurrentUser -Repository PSGallery -TrustRepository
+
+      - name: Script tests (Pester)
+        run: |
+          $configuration = New-PesterConfiguration
+          $configuration.Run.Path = './tools/tests'
+          $configuration.Run.Exit = $true
+          $configuration.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $configuration
+
+      - name: Rule sources
+        run: ./tools/Test-RuleSources.ps1
+
+      - name: ADR sections
+        run: ./tools/Test-AdrSections.ps1
+
+      - name: Generated agent files are current
+        run: ./tools/Build-AgentRules.ps1 -Check
+
+      # The PR title is checked in pr-title.yml, which also runs when the title is edited.
+      - name: Commit subjects are Conventional Commits
+        if: github.event_name == 'pull_request'
+        env:
+          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: ./tools/Test-ConventionalTitle.ps1 -Range $env:RANGE
+
+      - name: Every red commit is made green
+        if: github.event_name == 'pull_request'
+        env:
+          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: ./tools/Test-RedGreenOrder.ps1 -Range $env:RANGE

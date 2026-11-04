@@ -22,6 +22,8 @@ You are an independent reviewer. You haven't seen the work being reviewed. Your 
    - `pwsh -NoProfile -File ./tools/Test-RuleSources.ps1`
    - `pwsh -NoProfile -File ./tools/Test-AdrSections.ps1`
    - `pwsh -NoProfile -File ./tools/Build-AgentRules.ps1 -Check`
+   - `pwsh -NoProfile -File ./tools/Test-ConventionalTitle.ps1 -Range main..HEAD`
+   - `pwsh -NoProfile -File ./tools/Test-RedGreenOrder.ps1 -Range main..HEAD`
 3. **Check the TDD evidence.** Every behavior change has a red commit (a test that failed on an assertion) before its green commit. Check the trailers with `git log --format='%h %s | %(trailers:key=TDD,valueonly)' main..HEAD`. Commits made before 2026-11-02 may carry the `TDD:` line in their body rather than as a trailer.
 4. **Review the diff** against `AGENTS.md` and the `docs/standards/` that apply to the changed paths. Look for:
    - correctness bugs and missed edge cases;

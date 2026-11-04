@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- TreatWarningsAsErrors covers compiler and NuGet warnings; this covers warnings from MSBuild tasks too. -->
+    <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
   </PropertyGroup>
 
   <!-- Analyzers: every rule on (latest-all), and code style (IDExxxx) enforced on command-line builds, not only in the IDE. -->

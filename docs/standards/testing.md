@@ -7,7 +7,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-10-26", "ADR-0018"]
-    enforcement: "advisory: until tools/Test-RedGreenOrder.ps1 runs in CI (build step 4)"
+    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-RedGreenOrder.ps1, which checks the order of commits marked red or green; a change committed with no marker, and a red that crashed instead of failing an assertion, still pass, so test-first itself is advisory"
     scope: core
     paths: ["**"]
   - id: TST-002
@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-10-25", "owner, 2026-10-26"]
-    enforcement: "advisory: until coverage gates and architecture tests run on the sample solution (build steps 4 and 6)"
+    enforcement: "advisory: until coverage gates and architecture tests run on the sample solution (build step 6)"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
@@ -34,7 +34,7 @@ rules:
     layer: owner
     status: proposed
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: until the coverage gate (build step 4) and nightly mutation run (after v0.1)"
+    enforcement: "advisory: until the coverage gate (with the first test projects, build step 6) and the nightly mutation run (after v0.1)"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
@@ -52,7 +52,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01", "ADR-0011"]
-    enforcement: "advisory: until CI runs Pester and the red-green order check (build step 4)"
+    enforcement: "advisory: CI runs every Pester test (kit-checks.reusable.yml), but no check shows that each script has tests or that they were written first"
     scope: core
     paths: ["tools/**"]
 ---

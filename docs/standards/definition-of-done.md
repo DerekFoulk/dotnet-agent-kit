@@ -7,7 +7,7 @@ rules:
     layer: owner
     status: proposed
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: until required CI checks on main (build step 4)"
+    enforcement: "ruleset: main protection requires the dotnet and kit CI checks to pass before merging; updating docs and ADRs in the same PR is advisory"
     scope: core
     paths: ["**"]
   - id: DOD-002
@@ -34,7 +34,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: .github/pull_request_template.md pre-fills every PR; a PR check comes in build step 4"
+    enforcement: "advisory: .github/pull_request_template.md pre-fills every PR and the reviewer agent checks the evidence table; no CI check reads PR descriptions"
     scope: core
     paths: ["**"]
 ---
