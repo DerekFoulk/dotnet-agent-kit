@@ -30,11 +30,11 @@ rules:
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
     statement: "Coverage gates: 100% line coverage for pure domain assemblies, 95% for application assemblies, 90% overall; mutation score 85% (nightly)."
-    why: "Thresholds approved in one project's plan; proposed here as kit defaults."
+    why: "Thresholds approved in one project's plan, then ratified as kit defaults."
     layer: owner
-    status: proposed
-    sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: until the coverage gate (with the first test projects, build step 6) and the nightly mutation run (after v0.1)"
+    status: accepted
+    sources: ["owner, 2026-11-01", "owner, 2026-11-04"]
+    enforcement: "ci: tools/Test-CoverageGate.ps1 in dotnet-ci.reusable.yml fails a build below the line-coverage minimums (tools/tests/Test-CoverageGate.Tests.ps1); the mutation score stays advisory until the nightly Stryker run (after v0.1)"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
@@ -61,6 +61,6 @@ rules:
 
 Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which kinds of test each part of an app gets. "Acceptance test" names a purpose, not a kind of test: a test written from a requirement, usually at the functional or UI level. It's tagged with its requirement rather than given its own folder.
 
-## Pending ratification
+## Coverage
 
-TST-004's thresholds were approved in one project's plan. They stay `proposed` until you accept them as kit defaults.
+`dotnet test --coverage --coverage-output-format cobertura --results-directory <dir>` writes one Cobertura report per test project (Microsoft.Testing.Extensions.CodeCoverage, on Microsoft Testing Platform via `global.json`). `./tools/Test-CoverageGate.ps1 -Path <dir>` merges them and applies TST-004. It leaves out test assemblies and generated files (`*.g.cs`, `*.generated.cs`, anything under `obj/`), and it fails when it finds no report.

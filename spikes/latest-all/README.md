@@ -38,3 +38,19 @@ The generated projects were deleted after measuring; the steps above reproduce t
 - **CA1303.** Microsoft: safe to suppress when "the code library will not be localized". Source: [CA1303](https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1303), retrieved 2026-11-04.
 
 Each opt-out needs an ADR (STY-003). The owner decides them in the step 5 PR; step 6 re-measures on the sample solution, including test projects, which this spike didn't cover because they need packages.
+
+## Step 6 re-measure: the bookmarks sample (2026-11-04)
+
+The sample (`sample/`: 6 production and 5 test projects, ~120 lines of production code, ~330 lines of tests) was written test-first under the full kit settings. These are the analyzer errors that stopped a build or `dotnet format --verify-no-changes` along the way, by rule:
+
+| Rule | Where | What it asked for | Verdict |
+|---|---|---|---|
+| CA1707 | Tests (5) | No underscores in test method names (`Create_rejects_a_blank_title`) | **Decision for the owner** (below) |
+| CA1507 | Tests (2) | `nameof` instead of a string literal that matches a parameter name | Keep; renaming the parameter avoids it |
+| CA1054 | Tests (1) | `Uri` instead of a string parameter named `url` | Keep; renaming the parameter avoids it |
+| CA2000 | Tests (1) | Dispose the factory `WithWebHostBuilder` replaced | Keep; a real leak |
+| IDE1006 | Tests (3) | `s_` prefix on a static field | Keep; enforced by `dotnet format`, not the build |
+| CA1822, CA1823 | Red-commit stubs (5) | Stubs that ignore their fields | Keep; the stubs touch their fields (`_ = (...)`) |
+| CA1716 | Release spike (1) | A namespace that is a keyword in another language (`Lib`) | Keep |
+
+**Conclusion:** `latest-all` stays workable on a real solution; production code needed no opt-out beyond ADR-0029. The one open question is CA1707 in tests. Microsoft's unit-testing guide names tests `Add_SingleNumber_ReturnsSameNumber` (method, scenario, expected result), which CA1707 rejects; its ASP.NET Core architecture guide uses names without underscores (`CallsImageServiceWithId`). The sample uses names without underscores for now. Sources: [Unit testing best practices](https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices) and [Test ASP.NET Core MVC apps](https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/test-asp-net-core-mvc-apps), retrieved 2026-11-04.
