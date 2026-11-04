@@ -18,7 +18,7 @@ $findings = Get-OpenFinding   -Repository <owner/repo> -Number <pr>
 `Get-OpenFinding` combines Copilot's latest summary, people's reviews and every review thread. It returns what still needs an answer, each with `Severity`, `Title`, `Author`, `Body`, `ReviewId` and `Thread`:
 - each summary issue whose thread is unresolved;
 - each summary issue with no thread (`Thread` is empty), until it's resolved for that review (step 4);
-- each person's latest review that requests changes or has a body, other than the PR author's, likewise;
+- each person's latest review that requests changes or has a body, other than your own (the GitHub account gh is signed in with), likewise;
 - each other unresolved thread, such as a person's comment or an older Copilot finding.
 
 A thread with no comments is left out: it has nothing to reply to.
@@ -54,7 +54,7 @@ Resolve-ReviewFinding -Repository <owner/repo> -Number <pr> -Finding $finding `
 ```
 
 - **A finding with a thread:** the reply goes first, starting "Resolution: addressed." (or "incorrect.", or "won't fix."). Then the thread is resolved with that reason.
-- **A finding without a thread:** a PR comment starting `Answer to review <id>, "<title>": Resolution: addressed.` `Get-OpenFinding` counts it as answered only when the PR's author posted it, for that same review. So a later review that raises the same issue is listed again, and a comment that isn't a final resolution hides nothing.
+- **A finding without a thread:** a PR comment starting `Answer to review <id>, "<title>": Resolution: addressed.` `Get-OpenFinding` counts it as answered only when the signed-in account posted it, for that same review, even on a PR someone else opened. So a later review that raises the same issue is listed again, and a comment that isn't a final resolution hides nothing.
 - `Resolve-ReviewFinding` refuses a closed PR, a thread that is already resolved, an empty `-Evidence`, and `WONT_FIX` without `-OwnerApproved`. These checks run before anything is written.
 - `-OwnerApproved` is a promise, not a proof: the module can't check it. Pass it only after the owner has said "won't fix" for that finding **in chat**.
 - "Already resolved" is checked on the thread object you pass in, not GitHub's live state. If a resolve fails after its reply was posted, run `Get-OpenFinding` again before retrying, and expect the retry to post a second reply.

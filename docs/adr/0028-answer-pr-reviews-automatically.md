@@ -53,7 +53,7 @@ Accepted as recommended (owner, 2026-11-03).
 - `tools/KitReview.psm1` (`Get-CopilotReview`, `Get-ReviewThread`, `Get-OpenFinding`, `Resolve-ReviewFinding`, `Resolve-ReviewThread`, `Add-ReviewReply`) is the one way agents read, answer and resolve review findings.
 - DOD-005 records the rule. It stays advisory unless the ruleset requires conversations resolved before merging, which is a separate decision for the owner.
 - "Won't fix" is never an agent's decision alone. The module refuses it without `-OwnerApproved`, but it can't check that the owner really approved, so that switch is a safeguard taken on trust, backed by the skill and the reviewer agent. Because agents post with the owner's GitHub account, the skill accepts that approval only in chat, never from a thread comment.
-- A finding with no thread (a Copilot summary issue, or a person's review body) is answered with a PR comment naming its review and title and giving a final resolution (`Answer to review <id>, "<title>": Resolution: ...`). Only such a comment from the PR's author, for that review, counts.
+- A finding with no thread (a Copilot summary issue, or a person's review body) is answered with a PR comment naming its review and title and giving a final resolution (`Answer to review <id>, "<title>": Resolution: ...`). Only such a comment from the account gh is signed in with (the one agents post with), for that review, counts; it isn't the PR's author, since Dependabot or a teammate may have opened the PR.
 
 ## Pillars affected
 
