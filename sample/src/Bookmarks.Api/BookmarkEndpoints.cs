@@ -1,21 +1,23 @@
 using Bookmarks.Application.Features.Bookmarks;
 using Bookmarks.Contracts;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Bookmarks.Api;
 
-/// <summary>The bookmarks HTTP API.</summary>
+/// <summary>The bookmarks HTTP API. Typed results let OpenAPI describe every response.</summary>
 internal static class BookmarkEndpoints
 {
     public static IEndpointRouteBuilder MapBookmarks(this IEndpointRouteBuilder app)
     {
         RouteGroupBuilder bookmarks = app.MapGroup("/bookmarks").WithTags("Bookmarks");
-        bookmarks.MapPost("/", CreateAsync).WithName("CreateBookmark");
+        bookmarks.MapPost("/", CreateAsync).WithName("CreateBookmark").ProducesProblem(StatusCodes.Status400BadRequest);
         bookmarks.MapGet("/{id:guid}", GetAsync).WithName("GetBookmark");
         bookmarks.MapGet("/", ListAsync).WithName("ListBookmarks");
         return app;
     }
 
-    private static async Task<IResult> CreateAsync(CreateBookmarkRequest request, BookmarkService service, CancellationToken cancellationToken)
+    private static async Task<Results<Created<BookmarkResponse>, Conflict, ProblemHttpResult>> CreateAsync(
+        CreateBookmarkRequest request, BookmarkService service, CancellationToken cancellationToken)
     {
         AddBookmarkResult result;
         try
@@ -32,12 +34,13 @@ internal static class BookmarkEndpoints
             : TypedResults.Conflict();
     }
 
-    private static async Task<IResult> GetAsync(Guid id, BookmarkService service, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<BookmarkResponse>, NotFound>> GetAsync(
+        Guid id, BookmarkService service, CancellationToken cancellationToken)
     {
         BookmarkResponse? bookmark = await service.GetAsync(id, cancellationToken);
         return bookmark is null ? TypedResults.NotFound() : TypedResults.Ok(bookmark);
     }
 
-    private static async Task<IResult> ListAsync(BookmarkService service, CancellationToken cancellationToken) =>
+    private static async Task<Ok<IReadOnlyList<BookmarkResponse>>> ListAsync(BookmarkService service, CancellationToken cancellationToken) =>
         TypedResults.Ok(await service.ListAsync(cancellationToken));
 }
