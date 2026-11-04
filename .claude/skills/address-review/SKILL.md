@@ -15,10 +15,13 @@ $review   = Get-CopilotReview -Repository <owner/repo> -Number <pr>   # verdict,
 $findings = Get-OpenFinding   -Repository <owner/repo> -Number <pr>
 ```
 
-`Get-OpenFinding` combines Copilot's latest summary with every review thread, and returns what still needs an answer:
-- each summary issue whose thread is unresolved (`Severity`, `Title`, `Thread`);
-- each summary issue with no thread (`Thread` is empty) that no PR comment has answered yet. It has nothing to resolve, so you answer it with a PR comment (step 4);
+`Get-OpenFinding` combines Copilot's latest summary, people's reviews and every review thread. It returns what still needs an answer, each with `Severity`, `Title`, `Author`, `Body`, `ReviewId` and `Thread`:
+- each summary issue whose thread is unresolved;
+- each summary issue with no thread (`Thread` is empty), until it's resolved for that review (step 4);
+- each person's latest review that requests changes or has a body, other than the PR author's, likewise;
 - each other unresolved thread, such as a person's comment or an older Copilot finding.
+
+A thread with no comments is left out: it has nothing to reply to.
 
 A summary issue whose thread is already resolved is left out. **If `Get-OpenFinding` returns nothing, report that and stop**, whatever the verdict says: Copilot doesn't update its summary when threads are resolved, so "Changes recommended" can stay after every finding is answered.
 
@@ -45,21 +48,22 @@ Reproduce before deciding either way. A "fix" for a finding that was never real 
 
 ## 4. Answer each finding
 
-For a finding with a thread, reply and resolve:
-
 ```powershell
-Resolve-ReviewThread -Repository <owner/repo> -Number <pr> -Thread $finding.Thread `
+Resolve-ReviewFinding -Repository <owner/repo> -Number <pr> -Finding $finding `
     -Reason ADDRESSED -Evidence 'Fixed in <green commit> (red <red commit>): <one line on what changed>.'
 ```
 
-- The reply goes first, starting "Resolution: addressed." (or "incorrect.", or "won't fix."). Then the thread is resolved with that reason.
-- `Resolve-ReviewThread` refuses a closed PR, a thread that is already resolved, an empty `-Evidence`, and `WONT_FIX` without `-OwnerApproved`. These checks run before anything is written.
+- **A finding with a thread:** the reply goes first, starting "Resolution: addressed." (or "incorrect.", or "won't fix."). Then the thread is resolved with that reason.
+- **A finding without a thread:** a PR comment starting `Answer to review <id>, "<title>": Resolution: addressed.` `Get-OpenFinding` counts it as answered only when the PR's author posted it, for that same review. So a later review that raises the same issue is listed again, and a comment that isn't a final resolution hides nothing.
+- `Resolve-ReviewFinding` refuses a closed PR, a thread that is already resolved, an empty `-Evidence`, and `WONT_FIX` without `-OwnerApproved`. These checks run before anything is written.
 - `-OwnerApproved` is a promise, not a proof: the module can't check it. Pass it only after the owner has said "won't fix" for that finding **in chat**.
 - "Already resolved" is checked on the thread object you pass in, not GitHub's live state. If a resolve fails after its reply was posted, run `Get-OpenFinding` again before retrying, and expect the retry to post a second reply.
 
 To reply without resolving, use `Add-ReviewReply`:
 - leave a finding open with a recommendation: `Add-ReviewReply -Repository <owner/repo> -Number <pr> -Thread $finding.Thread -Body '...'`;
-- answer a summary issue that has no thread, as a PR comment: `Add-ReviewReply -Repository <owner/repo> -Number <pr> -IssueTitle $finding.Title -Body 'Resolution: addressed. <evidence>.'`. The comment starts with `Copilot summary issue "<title>":`, which is how `Get-OpenFinding` knows it's answered. Write it by hand only in that exact form.
+- answer a question in the PR's conversation: `Add-ReviewReply -Repository <owner/repo> -Number <pr> -Body '...'`.
+
+`Add-ReviewReply` never marks a finding as answered; only `Resolve-ReviewFinding` does.
 
 ## 5. Report
 
