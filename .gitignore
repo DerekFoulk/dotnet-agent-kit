@@ -485,3 +485,6 @@ $RECYCLE.BIN/
 
 # The sample API's local SQLite database
 sample/**/bookmarks.db*
+
+# Contract test output to review (see ContractTests.cs)
+*.received.json
