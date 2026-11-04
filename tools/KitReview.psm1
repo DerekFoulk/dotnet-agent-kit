@@ -267,6 +267,14 @@ function Get-PullRequestCommentBody {
     foreach ($comment in @($comments)) { "$($comment['body'])" }
 }
 
+function Get-PullRequestComment { param([string] $Repository, [int] $Number) }
+function Get-PullRequestAuthor { param([string] $Repository, [int] $Number) }
+function Get-PullRequestReview { param([string] $Repository, [int] $Number) }
+function Resolve-ReviewFinding {
+    param([string] $Repository, [int] $Number, [psobject] $Finding, [string] $Reason, [string] $Evidence, [switch] $OwnerApproved)
+    [pscustomobject]@{ ReplyUrl = $null; Resolved = $false }
+}
+
 # How a PR comment names the summary issue it answers, so Get-OpenFinding can tell it was answered.
 function Get-SummaryAnswerPrefix {
     param([Parameter(Mandatory)] [string] $Title)

@@ -322,7 +322,7 @@ Describe 'KitReview.psm1' {
             InModuleScope KitReview {
                 Mock Get-CopilotReview {
                     [pscustomobject]@{
-                        Verdict = 'Changes recommended'; OpenIssueCount = 3; Body = 'summary'
+                        ReviewId = 50; Verdict = 'Changes recommended'; OpenIssueCount = 3; Body = 'summary'
                         Issues  = @(
                             [pscustomobject]@{ Severity = 'High'; Title = 'A'; CommentId = 1; Link = 'https://github.com/o/r/pull/5#discussion_r1' }
                             [pscustomobject]@{ Severity = 'Medium'; Title = 'B'; CommentId = 2; Link = 'https://github.com/o/r/pull/5#discussion_r2' }
@@ -341,18 +341,71 @@ Describe 'KitReview.psm1' {
                         [pscustomobject]@{ ThreadId = $t.Id; IsResolved = $t.Resolved; IsOutdated = $false; Path = 'a.ps1'; Line = 1; CommentId = $t.CommentId; Author = $t.Author; Body = $t.Body; Comments = $comments }
                     }
                 }
-                Mock Get-PullRequestCommentBody { @('Looks good to me.') }
+                Mock Get-PullRequestCommentBody { @() }
+                # The PR's author is the account agents post with; its comments are the PR side's answers.
+                Mock Get-PullRequestAuthor { 'DerekFoulk' }
+                Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'mallory'; Body = 'Looks good to me.' } }
+                Mock Get-PullRequestReview { }
             }
         }
 
-        It 'leaves out a summary issue with no thread once a PR comment has answered it' {
+        It 'leaves out a summary issue with no thread once the PR author has resolved it for that review' {
             InModuleScope KitReview {
-                Mock Get-PullRequestCommentBody { @('Looks good to me.', 'Copilot summary issue "C": addressed in abc1234.') }
+                Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'DerekFoulk'; Body = 'Answer to review 50, "C": Resolution: addressed. Fixed in abc1234.' } }
 
                 $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
 
                 ($findings | ForEach-Object { $_.Title }) | Should -Not -Contain 'C'
                 $findings.Count | Should -Be 2
+            }
+        }
+
+        It 'keeps a summary issue whose only answer is <Case>' -ForEach @(
+            @{ Case = 'for an older review'; Author = 'DerekFoulk'; Body = 'Answer to review 49, "C": Resolution: addressed. Fixed in abc1234.' }
+            @{ Case = 'from someone other than the PR author'; Author = 'mallory'; Body = 'Answer to review 50, "C": Resolution: addressed. Fixed.' }
+            @{ Case = 'not a final resolution'; Author = 'DerekFoulk'; Body = 'Answer to review 50, "C": I recommend not fixing this. Owner, your call.' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Author = $Author; Body = $Body } {
+                param($Author, $Body)
+                $script:answer = [pscustomobject]@{ Author = $Author; Body = $Body }
+                Mock Get-PullRequestComment { $script:answer }
+
+                $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
+
+                ($findings | ForEach-Object { $_.Title }) | Should -Contain 'C'
+            }
+        }
+
+        It "lists each person's latest review that requests changes or comments, except the PR author's" {
+            InModuleScope KitReview {
+                Mock Get-PullRequestReview {
+                    @{ id = 60; user = @{ login = 'alice' }; state = 'CHANGES_REQUESTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'Please split this function.' }
+                    @{ id = 61; user = @{ login = 'bob' }; state = 'COMMENTED'; submitted_at = '2026-11-03T09:00:00Z'; body = 'Rename it.' }
+                    @{ id = 62; user = @{ login = 'bob' }; state = 'APPROVED'; submitted_at = '2026-11-03T11:00:00Z'; body = '' }
+                    @{ id = 63; user = @{ login = 'DerekFoulk' }; state = 'COMMENTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'Agent note.' }
+                    @{ id = 64; user = @{ login = 'copilot-pull-request-reviewer[bot]' }; state = 'COMMENTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'summary' }
+                    @{ id = 65; user = $null; state = 'CHANGES_REQUESTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'Gone.' }
+                    @{ id = 66; user = @{ login = 'carol' }; state = 'COMMENTED'; submitted_at = '2026-11-03T10:00:00Z'; body = '' }
+                }
+
+                $people = @(Get-OpenFinding -Repository 'o/r' -Number 5 | Where-Object { -not $_.Thread -and $_.Title -ne 'C' })
+
+                $people.Count | Should -Be 1
+                $people[0].Author | Should -Be 'alice'
+                $people[0].Title | Should -Be 'Review by alice'
+                $people[0].Body | Should -Be 'Please split this function.'
+                $people[0].ReviewId | Should -Be 60
+            }
+        }
+
+        It "leaves out a person's review once the PR author has resolved it" {
+            InModuleScope KitReview {
+                Mock Get-PullRequestReview { @{ id = 60; user = @{ login = 'alice' }; state = 'CHANGES_REQUESTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'Please split this function.' } }
+                Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'DerekFoulk'; Body = 'Answer to review 60, "Review by alice": Resolution: addressed. Split in abc1234.' } }
+
+                $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
+
+                ($findings | ForEach-Object { $_.Title }) | Should -Not -Contain 'Review by alice'
             }
         }
 
@@ -407,13 +460,15 @@ Describe 'KitReview.psm1' {
         }
     }
 
-    Context 'Get-PullRequestCommentBody' {
-        It 'reads every page of conversation comments, one per line' {
+    Context 'Get-PullRequestComment' {
+        It 'reads every page of conversation comments, one per line, with each author' {
             InModuleScope KitReview {
-                Mock Invoke-Gh { "{ `"body`": `"first`" }`n{ `"body`": `"second`" }" }
+                Mock Invoke-Gh { "{ `"user`": { `"login`": `"alice`" }, `"body`": `"first`" }`n{ `"user`": null, `"body`": `"second`" }" }
 
-                { $script:bodies = @(Get-PullRequestCommentBody -Repository 'o/r' -Number 5) } | Should -Not -Throw
-                $script:bodies | Should -Be @('first', 'second')
+                $comments = @(Get-PullRequestComment -Repository 'o/r' -Number 5)
+
+                ($comments | ForEach-Object { $_.Body }) | Should -Be @('first', 'second')
+                ($comments | ForEach-Object { $_.Author }) | Should -Be @('alice', '(deleted account)')
                 Should -Invoke Invoke-Gh -ParameterFilter { $args -contains '--jq' -and $args -contains '.[]' }
             }
         }
@@ -508,6 +563,42 @@ Describe 'KitReview.psm1' {
                     { Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $resolved -Reason ADDRESSED -Evidence 'Fixed.' } | Should -Throw '*already resolved*'
 
                     @($script:calls | Where-Object { $_ -like '*/replies*' -or $_ -like 'api graphql*' }).Count | Should -Be 0
+                }
+            }
+        }
+
+        Context 'Resolve-ReviewFinding' {
+            It 'answers a finding with no thread in a PR comment that names its review and resolution' {
+                InModuleScope KitReview {
+                    $finding = [pscustomobject]@{ Title = 'C'; ReviewId = 50; Thread = $null }
+
+                    $result = Resolve-ReviewFinding -Repository 'o/r' -Number 5 -Finding $finding -Reason ADDRESSED -Evidence 'Fixed in abc1234.'
+
+                    $result.ReplyUrl | Should -Be 'https://github.com/o/r/pull/5#issuecomment-9'
+                    ($script:calls | Where-Object { $_ -like '*repos/o/r/issues/5/comments*' }) | Should -BeLike '*body=Answer to review 50, "C": Resolution: addressed. Fixed in abc1234.'
+                    @($script:calls | Where-Object { $_ -like 'api graphql*' }).Count | Should -Be 0
+                }
+            }
+
+            It 'answers a finding with a thread by replying in it and resolving it' {
+                InModuleScope KitReview {
+                    $finding = [pscustomobject]@{ Title = 'A'; ReviewId = 50; Thread = $script:openThread }
+
+                    $result = Resolve-ReviewFinding -Repository 'o/r' -Number 5 -Finding $finding -Reason INVALID -Evidence 'The test at line 9 shows it.'
+
+                    $result.Resolved | Should -BeTrue
+                    ($script:calls | Where-Object { $_ -like '*comments/7/replies*' }) | Should -BeLike '*body=Resolution: incorrect. The test at line 9 shows it.*'
+                    ($script:calls | Where-Object { $_ -like 'api graphql*' }) | Should -BeLike '*reason=INVALID*'
+                }
+            }
+
+            It "refuses won't fix without the owner's OK for a finding with no thread, and writes nothing" {
+                InModuleScope KitReview {
+                    $finding = [pscustomobject]@{ Title = 'C'; ReviewId = 50; Thread = $null }
+
+                    { Resolve-ReviewFinding -Repository 'o/r' -Number 5 -Finding $finding -Reason WONT_FIX -Evidence 'Out of scope.' } | Should -Throw '*owner*'
+
+                    @($script:calls | Where-Object { $_ -like '*/issues/*' -or $_ -like 'api graphql*' }).Count | Should -Be 0
                 }
             }
         }
