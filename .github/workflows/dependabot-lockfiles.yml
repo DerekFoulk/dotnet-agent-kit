@@ -14,9 +14,10 @@ permissions:
   contents: write
   actions: write
 
-# A newer run for the same PR (Dependabot rebased) replaces an older one.
+# A newer Dependabot run for the same PR (Dependabot rebased) replaces an older one. The actor is in the
+# group so the lock-file commit's own runs (actor github-actions[bot]) never cancel the refresher.
 concurrency:
-  group: dependabot-lockfiles-${{ github.head_ref }}
+  group: dependabot-lockfiles-${{ github.head_ref }}-${{ github.actor }}
   cancel-in-progress: true
 
 jobs:
