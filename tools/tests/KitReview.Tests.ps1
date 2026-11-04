@@ -341,7 +341,6 @@ Describe 'KitReview.psm1' {
                         [pscustomobject]@{ ThreadId = $t.Id; IsResolved = $t.Resolved; IsOutdated = $false; Path = 'a.ps1'; Line = 1; CommentId = $t.CommentId; Author = $t.Author; Body = $t.Body; Comments = $comments }
                     }
                 }
-                Mock Get-PullRequestCommentBody { @() }
                 # The PR's author is the account agents post with; its comments are the PR side's answers.
                 Mock Get-PullRequestAuthor { 'DerekFoulk' }
                 Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'mallory'; Body = 'Looks good to me.' } }
@@ -620,14 +619,6 @@ Describe 'KitReview.psm1' {
 
                     $result.Url | Should -Be 'https://github.com/o/r/pull/5#issuecomment-9'
                     ($script:calls | Where-Object { $_ -like '*repos/o/r/issues/5/comments*' }) | Should -BeLike '*body=Summary issue "C": fixed in abc1234.*'
-                }
-            }
-
-            It 'marks a PR comment with the summary issue it answers, so it is not listed again' {
-                InModuleScope KitReview {
-                    Add-ReviewReply -Repository 'o/r' -Number 5 -IssueTitle 'C' -Body 'Addressed in abc1234.' | Out-Null
-
-                    ($script:calls | Where-Object { $_ -like '*repos/o/r/issues/5/comments*' }) | Should -BeLike '*body=Copilot summary issue "C": Addressed in abc1234.*'
                 }
             }
 

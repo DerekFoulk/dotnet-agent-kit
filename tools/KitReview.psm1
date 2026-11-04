@@ -63,7 +63,7 @@ function ConvertFrom-CopilotReviewBody {
 function Get-CopilotReview {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
-    $reviews = Get-GhList -Endpoint "repos/$Repository/pulls/$Number/reviews"
+    $reviews = @(Get-PullRequestReview -Repository $Repository -Number $Number)
     $latest = @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin }) |
         Sort-Object { [datetimeoffset] $_['submitted_at'] } |
         Select-Object -Last 1
@@ -139,38 +139,75 @@ function Get-ReviewThread {
 
 # Everything on the pull request still waiting for an answer, in this order:
 # - each issue in Copilot's latest summary whose thread is unresolved;
-# - each summary issue with no thread (Thread is $null): answer it in a PR comment;
+# - each summary issue with no thread (Thread is $null), until the PR author resolves it for that review;
+# - each person's latest review that requests changes or has a body (Thread is $null), likewise;
 # - each other unresolved thread, such as a person's comment or an older Copilot finding.
 # Copilot's summary can lag behind its threads, so a summary issue whose thread is resolved is left out.
+# Each finding has Severity, Title, Author, Body, ReviewId and Thread; answer it with Resolve-ReviewFinding.
 function Get-OpenFinding {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
     $threads = @(Get-ReviewThread -Repository $Repository -Number $Number)
     $byComment = @{}
-    foreach ($thread in $threads) { $byComment[[long] $thread.CommentId] = $thread }
+    foreach ($thread in $threads) { if ($null -ne $thread.CommentId) { $byComment[[long] $thread.CommentId] = $thread } }
     $listed = [System.Collections.Generic.HashSet[string]]::new()
+
+    # A finding with no thread is answered once the PR author (the account agents post with) posts a
+    # final resolution for it and for that review: see Resolve-ReviewFinding.
+    $cache = @{ Answers = $null }
+    $isAnswered = {
+        param($ReviewId, $Title)
+        if ($null -eq $cache.Answers) {
+            $prAuthor = Get-PullRequestAuthor -Repository $Repository -Number $Number
+            $cache.Answers = @(Get-PullRequestComment -Repository $Repository -Number $Number |
+                    Where-Object { $_.Author -eq $prAuthor } | ForEach-Object { "$($_.Body)" })
+        }
+        $prefix = Get-AnswerPrefix -ReviewId $ReviewId -Title $Title
+        [bool] @($cache.Answers | Where-Object { $_.StartsWith($prefix, [StringComparison]::Ordinal) }).Count
+    }
 
     $review = Get-CopilotReview -Repository $Repository -Number $Number
     $issues = if ($review) { @($review.Issues) } else { @() }
-    $prComments = $null
     foreach ($issue in $issues) {
         $thread = if ($null -ne $issue.CommentId) { $byComment[[long] $issue.CommentId] } else { $null }
         if ($thread) {
             [void] $listed.Add($thread.ThreadId)
             if ($thread.IsResolved) { continue }
         }
-        else {
-            # No thread to resolve: it's answered once a PR comment names it (Add-ReviewReply -IssueTitle).
-            if ($null -eq $prComments) { $prComments = @(Get-PullRequestCommentBody -Repository $Repository -Number $Number) }
-            $prefix = Get-SummaryAnswerPrefix -Title $issue.Title
-            if (@($prComments | Where-Object { $_.StartsWith($prefix, [StringComparison]::Ordinal) }).Count) { continue }
-        }
+        elseif (& $isAnswered $review.ReviewId $issue.Title) { continue }
         [pscustomobject]@{
             Severity = $issue.Severity
             Title    = $issue.Title
             Author   = if ($thread) { $thread.Author } else { $script:CopilotGraphQLLogin }
             Body     = if ($thread) { $thread.Body } else { $null }
+            ReviewId = $review.ReviewId
             Thread   = $thread
+        }
+    }
+
+    # People's review bodies. The PR author's own reviews are left out: agents post with that account,
+    # and the owner's decisions come in chat.
+    $prAuthor = $null
+    $latest = @(Get-PullRequestReview -Repository $Repository -Number $Number) |
+        Where-Object { $_['user'] -and $_['user']['login'] -ne $script:CopilotLogin } |
+        Group-Object { $_['user']['login'] } |
+        ForEach-Object { $_.Group | Sort-Object { [datetimeoffset] $_['submitted_at'] } | Select-Object -Last 1 }
+    foreach ($personReview in @($latest)) {
+        $login = $personReview['user']['login']
+        $body = "$($personReview['body'])".Trim()
+        $asks = $personReview['state'] -eq 'CHANGES_REQUESTED' -or ($personReview['state'] -eq 'COMMENTED' -and $body)
+        if (-not $asks) { continue }
+        if ($null -eq $prAuthor) { $prAuthor = Get-PullRequestAuthor -Repository $Repository -Number $Number }
+        if ($login -eq $prAuthor) { continue }
+        $title = "Review by $login"
+        if (& $isAnswered $personReview['id'] $title) { continue }
+        [pscustomobject]@{
+            Severity = $null
+            Title    = $title
+            Author   = $login
+            Body     = $body
+            ReviewId = $personReview['id']
+            Thread   = $null
         }
     }
 
@@ -182,6 +219,7 @@ function Get-OpenFinding {
             Title    = $null
             Author   = $thread.Author
             Body     = $thread.Body
+            ReviewId = $null
             Thread   = $thread
         }
     }
@@ -228,15 +266,14 @@ function Resolve-ReviewThread {
     }
 }
 
-# Posts a reply without resolving anything: in -Thread when given, otherwise as a pull request comment
-# (for a summary issue that has no thread). Use it to leave a finding open with a recommendation for the
-# owner, or to answer a question.
+# Posts a reply without resolving anything: in -Thread when given, otherwise as a pull request comment.
+# Use it to leave a finding open with a recommendation for the owner, or to answer a question. It never
+# marks a finding as answered; Resolve-ReviewFinding does that.
 function Add-ReviewReply {
     param(
         [Parameter(Mandatory)] [string] $Repository,
         [Parameter(Mandatory)] [int] $Number,
         [AllowNull()] [psobject] $Thread,
-        [string] $IssueTitle,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Body
     )
 
@@ -244,41 +281,77 @@ function Add-ReviewReply {
     if ($Thread -and -not ($Thread.PSObject.Properties['CommentId'] -and $Thread.CommentId)) {
         throw 'Pass a thread from Get-ReviewThread or Get-OpenFinding, or no -Thread for a pull request comment.'
     }
-    if ($Thread -and $IssueTitle) {
-        throw '-IssueTitle is for a summary issue with no thread; a reply in a thread already points at its finding.'
-    }
     if ([string]::IsNullOrWhiteSpace($Body)) {
         throw 'The reply is empty.'
     }
     Assert-PullRequestOpen -Repository $Repository -Number $Number
 
-    $text = $Body.Trim()
-    if ($IssueTitle) { $text = "$(Get-SummaryAnswerPrefix -Title $IssueTitle) $text" }
     $endpoint = if ($Thread) { "repos/$Repository/pulls/$Number/comments/$($Thread.CommentId)/replies" } else { "repos/$Repository/issues/$Number/comments" }
-    $posted = Invoke-Gh api -X POST $endpoint -f "body=$text" | ConvertFrom-Json -AsHashtable
+    $posted = Invoke-Gh api -X POST $endpoint -f "body=$($Body.Trim())" | ConvertFrom-Json -AsHashtable
     [pscustomobject]@{ Url = $posted['html_url'] }
 }
 
-# The text of every comment in the pull request's conversation (not the review threads).
-function Get-PullRequestCommentBody {
+# Answers any finding from Get-OpenFinding with a final resolution. A finding with a thread gets a
+# reply and a resolved thread (Resolve-ReviewThread). One without a thread gets a PR comment starting
+# 'Answer to review <id>, "<title>": Resolution: ...', which is how Get-OpenFinding knows it's answered.
+function Resolve-ReviewFinding {
+    param(
+        [Parameter(Mandatory)] [string] $Repository,
+        [Parameter(Mandatory)] [int] $Number,
+        [Parameter(Mandatory)] [psobject] $Finding,
+        [Parameter(Mandatory)] [ValidateSet('ADDRESSED', 'WONT_FIX', 'INVALID')] [string] $Reason,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Evidence,
+        [switch] $OwnerApproved
+    )
+
+    if ($Finding.Thread) {
+        return Resolve-ReviewThread -Repository $Repository -Number $Number -Thread $Finding.Thread -Reason $Reason -Evidence $Evidence -OwnerApproved:$OwnerApproved
+    }
+
+    # Every refusal happens before anything changes on GitHub.
+    $Reason = $Reason.ToUpperInvariant()
+    if ([string]::IsNullOrWhiteSpace($Evidence)) {
+        throw 'A resolution needs evidence: the fixing commits, or what disproved the finding.'
+    }
+    if ($Reason -eq 'WONT_FIX' -and -not $OwnerApproved) {
+        throw "Won't fix leaves a valid finding unfixed, which is the owner's call: get the owner's OK, then pass -OwnerApproved."
+    }
+    if (-not $Finding.ReviewId -or -not $Finding.Title) {
+        throw 'A finding without a thread needs its ReviewId and Title: pass a finding from Get-OpenFinding.'
+    }
+    Assert-PullRequestOpen -Repository $Repository -Number $Number
+
+    $label = @{ ADDRESSED = 'addressed'; WONT_FIX = "won't fix"; INVALID = 'incorrect' }[$Reason]
+    $body = "$(Get-AnswerPrefix -ReviewId $Finding.ReviewId -Title $Finding.Title)$label. $($Evidence.Trim())"
+    $posted = Invoke-Gh api -X POST "repos/$Repository/issues/$Number/comments" -f "body=$body" | ConvertFrom-Json -AsHashtable
+    [pscustomobject]@{ ReplyUrl = $posted['html_url']; Resolved = $true }
+}
+
+# Every comment in the pull request's conversation (not the review threads), with its author.
+function Get-PullRequestComment {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
-    $comments = Get-GhList -Endpoint "repos/$Repository/issues/$Number/comments"
-    foreach ($comment in @($comments)) { "$($comment['body'])" }
+    foreach ($comment in @(Get-GhList -Endpoint "repos/$Repository/issues/$Number/comments")) {
+        [pscustomobject]@{ Author = Get-AuthorLogin $comment['user']; Body = "$($comment['body'])" }
+    }
 }
 
-function Get-PullRequestComment { param([string] $Repository, [int] $Number) }
-function Get-PullRequestAuthor { param([string] $Repository, [int] $Number) }
-function Get-PullRequestReview { param([string] $Repository, [int] $Number) }
-function Resolve-ReviewFinding {
-    param([string] $Repository, [int] $Number, [psobject] $Finding, [string] $Reason, [string] $Evidence, [switch] $OwnerApproved)
-    [pscustomobject]@{ ReplyUrl = $null; Resolved = $false }
+# Every review on the pull request, as GitHub's REST API returns it.
+function Get-PullRequestReview {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+    Get-GhList -Endpoint "repos/$Repository/pulls/$Number/reviews"
 }
 
-# How a PR comment names the summary issue it answers, so Get-OpenFinding can tell it was answered.
-function Get-SummaryAnswerPrefix {
-    param([Parameter(Mandatory)] [string] $Title)
-    "Copilot summary issue `"$Title`":"
+# The login that opened the pull request: the account agents post with.
+function Get-PullRequestAuthor {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+    "$(Invoke-Gh pr view $Number --repo $Repository --json author --jq .author.login)".Trim()
+}
+
+# How a PR comment names the finding it resolves: its review, its title, and that it's final.
+function Get-AnswerPrefix {
+    param([Parameter(Mandatory)] $ReviewId, [Parameter(Mandatory)] [string] $Title)
+    "Answer to review $ReviewId, `"$Title`": Resolution: "
 }
 
 # Every item of a paginated REST list. --jq '.[]' prints one item per line whatever the gh version;
@@ -301,4 +374,4 @@ function Assert-PullRequestOpen {
     }
 }
 
-Export-ModuleMember -Function ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewThread, Add-ReviewReply
+Export-ModuleMember -Function ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewFinding, Resolve-ReviewThread, Add-ReviewReply
