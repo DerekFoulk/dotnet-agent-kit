@@ -31,13 +31,22 @@ jobs:
       # only those: pull_request runs waiting for approval on the release PR's own head commit. (A fork
       # PR could reuse release-please's branch name, but not this repo's commit.) This repo has two
       # pull_request workflows (ci.yml, pr-title.yml), so it keeps looking for about 90 seconds.
+      # release-please reports no PR when the release PR didn't change (for example, a rerun on the
+      # same commit), so fall back to the open release PR: opened by GitHub Actions, labelled
+      # "autorelease: pending", on release-please's branch. With none open, there's nothing to do.
       - name: Approve CI on the release PR
-        if: ${{ steps.release.outputs.pr }}
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ steps.release.outputs.pr }}
         run: |
-          number="$(echo "$PR" | jq -r .number)"
+          number="$(echo "$PR" | jq -r '.number // empty' 2>/dev/null || true)"
+          if [ -z "$number" ]; then
+            number="$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --author app/github-actions --label "autorelease: pending" --json number,headRefName --jq '[.[] | select(.headRefName == "release-please--branches--main")][0].number // empty')"
+          fi
+          if [ -z "$number" ]; then
+            echo "No open release PR; nothing to approve."
+            exit 0
+          fi
           sha="$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)"
           echo "Release PR #$number, head commit $sha"
           approved=0
