@@ -348,6 +348,8 @@ function Get-PullRequestAuthor {
     "$(Invoke-Gh pr view $Number --repo $Repository --json author --jq .author.login)".Trim()
 }
 
+function Get-SignedInLogin { }
+
 # How a PR comment names the finding it resolves: its review, its title, and that it's final.
 function Get-AnswerPrefix {
     param([Parameter(Mandatory)] $ReviewId, [Parameter(Mandatory)] [string] $Title)

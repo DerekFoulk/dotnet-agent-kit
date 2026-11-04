@@ -343,6 +343,7 @@ Describe 'KitReview.psm1' {
                 }
                 # The PR's author is the account agents post with; its comments are the PR side's answers.
                 Mock Get-PullRequestAuthor { 'DerekFoulk' }
+                Mock Get-SignedInLogin { 'DerekFoulk' }
                 Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'mallory'; Body = 'Looks good to me.' } }
                 Mock Get-PullRequestReview { }
             }
@@ -394,6 +395,33 @@ Describe 'KitReview.psm1' {
                 $people[0].Title | Should -Be 'Review by alice'
                 $people[0].Body | Should -Be 'Please split this function.'
                 $people[0].ReviewId | Should -Be 60
+            }
+        }
+
+        # On a PR someone else opened (Dependabot, a teammate), the agent still posts as the signed-in account.
+        It 'counts answers from the signed-in account on a PR someone else opened' {
+            InModuleScope KitReview {
+                Mock Get-PullRequestAuthor { 'dependabot[bot]' }
+                Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'DerekFoulk'; Body = 'Answer to review 50, "C": Resolution: addressed. Fixed in abc1234.' } }
+
+                $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
+
+                ($findings | ForEach-Object { $_.Title }) | Should -Not -Contain 'C'
+            }
+        }
+
+        It "lists a review by the PR's author when someone else opened it, and leaves out the signed-in account's own" {
+            InModuleScope KitReview {
+                Mock Get-PullRequestAuthor { 'alice' }
+                Mock Get-PullRequestReview {
+                    @{ id = 70; user = @{ login = 'alice' }; state = 'COMMENTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'I left a question on the design.' }
+                    @{ id = 71; user = @{ login = 'DerekFoulk' }; state = 'COMMENTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'Agent note.' }
+                }
+
+                $titles = @(Get-OpenFinding -Repository 'o/r' -Number 5 | ForEach-Object { $_.Title })
+
+                $titles | Should -Contain 'Review by alice'
+                $titles | Should -Not -Contain 'Review by DerekFoulk'
             }
         }
 
