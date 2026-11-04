@@ -2,6 +2,7 @@
 # The "chore(deps)" prefix makes each PR title a Conventional Commit, which CI requires.
 # Not covered: the gitleaks image in dotnet-ci.reusable.yml is pinned inside a run command, so bump it
 # by hand with its release.
+# NuGet PRs: dependabot-lockfiles.yml refreshes the lock files Dependabot misses (dependabot-core#13950).
 version: 2
 updates:
   - package-ecosystem: nuget
