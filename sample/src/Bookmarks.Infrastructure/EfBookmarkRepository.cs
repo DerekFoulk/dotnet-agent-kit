@@ -1,5 +1,6 @@
 using Bookmarks.Application.Features.Bookmarks;
 using Bookmarks.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bookmarks.Infrastructure;
 
@@ -8,27 +9,18 @@ public sealed class EfBookmarkRepository(BookmarksDbContext db) : IBookmarkRepos
 {
     private readonly BookmarksDbContext _db = db;
 
-    public Task<Bookmark?> FindAsync(Guid id, CancellationToken cancellationToken)
-    {
-        _ = (_db, id, cancellationToken);
-        return Task.FromResult<Bookmark?>(null);
-    }
+    public Task<Bookmark?> FindAsync(Guid id, CancellationToken cancellationToken) =>
+        _db.Bookmarks.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
-    public Task<Bookmark?> FindByUrlAsync(Uri url, CancellationToken cancellationToken)
-    {
-        _ = (_db, url, cancellationToken);
-        return Task.FromResult<Bookmark?>(null);
-    }
+    public Task<Bookmark?> FindByUrlAsync(Uri url, CancellationToken cancellationToken) =>
+        _db.Bookmarks.AsNoTracking().FirstOrDefaultAsync(b => b.Url == url, cancellationToken);
 
-    public Task<IReadOnlyList<Bookmark>> ListAsync(CancellationToken cancellationToken)
-    {
-        _ = (_db, cancellationToken);
-        return Task.FromResult<IReadOnlyList<Bookmark>>([]);
-    }
+    public async Task<IReadOnlyList<Bookmark>> ListAsync(CancellationToken cancellationToken) =>
+        await _db.Bookmarks.AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
 
-    public Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken)
+    public async Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken)
     {
-        _ = (_db, bookmark, cancellationToken);
-        return Task.CompletedTask;
+        _db.Bookmarks.Add(bookmark);
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }
