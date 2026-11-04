@@ -127,7 +127,7 @@ Describe 'KitReview.psm1' {
                         @{ id = 1; user = @{ login = 'copilot-pull-request-reviewer[bot]' }; state = 'COMMENTED'; submitted_at = '2026-11-03T08:00:00Z'; commit_id = 'aaaaaaa1'; body = 'old' }
                         @{ id = 2; user = @{ login = 'copilot-pull-request-reviewer[bot]' }; state = 'COMMENTED'; submitted_at = '2026-11-03T09:00:00Z'; commit_id = 'bbbbbbb2'; body = $Body }
                         @{ id = 3; user = @{ login = 'DerekFoulk' }; state = 'COMMENTED'; submitted_at = '2026-11-03T10:00:00Z'; commit_id = 'ccccccc3'; body = '' }
-                    ) | ConvertTo-Json -Depth 5
+                    ) | ConvertTo-Json -Depth 5 -Compress
                 }
 
                 $review = Get-CopilotReview -Repository 'DerekFoulk/dotnet-agent-kit' -Number 5
@@ -149,6 +149,16 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Older gh versions print one JSON array per page; --jq '.[]' prints one item per line on any version.
+        It 'reads every page of reviews, one review per line, whatever the gh version' {
+            InModuleScope KitReview {
+                Mock Invoke-Gh { "{ `"id`": 1, `"user`": { `"login`": `"copilot-pull-request-reviewer[bot]`" }, `"submitted_at`": `"2026-11-03T08:00:00Z`", `"commit_id`": `"a`", `"body`": `"`" }`n{ `"id`": 2, `"user`": { `"login`": `"copilot-pull-request-reviewer[bot]`" }, `"submitted_at`": `"2026-11-03T09:00:00Z`", `"commit_id`": `"b`", `"body`": `"`" }" }
+
+                { $script:review = Get-CopilotReview -Repository 'o/r' -Number 5 } | Should -Not -Throw
+                $script:review.ReviewId | Should -Be 2
+                Should -Invoke Invoke-Gh -ParameterFilter { $args -contains '--paginate' -and $args -contains '--jq' -and $args -contains '.[]' }
+            }
+        }
         It 'returns nothing when Copilot has not reviewed (and never calls GitHub twice)' {
             InModuleScope KitReview {
                 Mock Invoke-Gh { '[{ "id": 3, "user": { "login": "DerekFoulk" }, "state": "COMMENTED", "submitted_at": "2026-11-03T10:00:00Z", "commit_id": "c", "body": "" }]' }
@@ -375,6 +385,17 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        It 'leaves out an open thread with no comments, since it has nothing to reply to' {
+            InModuleScope KitReview {
+                Mock Get-CopilotReview { }
+                Mock Get-ReviewThread {
+                    [pscustomobject]@{ ThreadId = 'T9'; IsResolved = $false; IsOutdated = $false; Path = 'a.ps1'; Line = 1; CommentId = $null; Author = $null; Body = $null; Comments = @() }
+                }
+
+                @(Get-OpenFinding -Repository 'o/r' -Number 5).Count | Should -Be 0
+            }
+        }
+
         It 'lists only open threads when Copilot has not reviewed' {
             InModuleScope KitReview {
                 Mock Get-CopilotReview { }
@@ -382,6 +403,18 @@ Describe 'KitReview.psm1' {
                 $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
 
                 ($findings | ForEach-Object { $_.Thread.ThreadId }) | Should -Be @('T1', 'T3')
+            }
+        }
+    }
+
+    Context 'Get-PullRequestCommentBody' {
+        It 'reads every page of conversation comments, one per line' {
+            InModuleScope KitReview {
+                Mock Invoke-Gh { "{ `"body`": `"first`" }`n{ `"body`": `"second`" }" }
+
+                { $script:bodies = @(Get-PullRequestCommentBody -Repository 'o/r' -Number 5) } | Should -Not -Throw
+                $script:bodies | Should -Be @('first', 'second')
+                Should -Invoke Invoke-Gh -ParameterFilter { $args -contains '--jq' -and $args -contains '.[]' }
             }
         }
     }
@@ -447,6 +480,15 @@ Describe 'KitReview.psm1' {
                     { Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason $Reason -Evidence $Evidence -OwnerApproved:$Approved } | Should -Throw $Expected
 
                     @($script:calls | Where-Object { $_ -like '*/replies*' -or $_ -like 'api graphql*' }).Count | Should -Be 0
+                }
+            }
+
+            # ValidateSet ignores case, but GitHub's enum doesn't: a lowercase reason would fail after the reply posts.
+            It 'sends the reason in capitals even when it is given in lowercase' {
+                InModuleScope KitReview {
+                    Resolve-ReviewThread -Repository 'o/r' -Number 5 -Thread $script:openThread -Reason 'addressed' -Evidence 'Fixed.' | Out-Null
+
+                    ($script:calls | Where-Object { $_ -like 'api graphql*' }) | Should -MatchExactly 'reason=ADDRESSED'
                 }
             }
 
