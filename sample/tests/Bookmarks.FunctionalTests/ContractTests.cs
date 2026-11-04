@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -34,5 +34,8 @@ public sealed class ContractTests : IDisposable
 
     public void Dispose() => _host.Dispose();
 
-    private static string SourceDirectory([CallerFilePath] string path = "") => Path.GetDirectoryName(path)!;
+    // The project folder, recorded at build time (see the .csproj). [CallerFilePath] is mapped to /_/ in CI builds.
+    private static string SourceDirectory() =>
+        typeof(ContractTests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .Single(attribute => attribute.Key == "ProjectDirectory").Value!;
 }

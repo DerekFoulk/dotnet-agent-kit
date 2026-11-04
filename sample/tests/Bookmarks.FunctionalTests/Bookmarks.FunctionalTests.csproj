@@ -4,6 +4,11 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
+  <!-- The contract test finds its snapshot here. [CallerFilePath] won't do: CI builds map source paths to /_/. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="ProjectDirectory" Value="$(MSBuildProjectDirectory)" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bookmarks.Api\Bookmarks.Api.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
