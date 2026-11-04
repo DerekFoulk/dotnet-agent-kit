@@ -59,6 +59,19 @@ Describe 'Release configuration' {
             $workflowText | Should -Match '--commit "\$sha"'
         }
 
+        # release-please returns no PR when the release PR is unchanged, so a rerun on the same commit
+        # must still find the open release PR (Copilot review, PR 9).
+        It "finds the open release PR when release-please reports none, and only one opened by GitHub Actions" {
+            $approve = @($workflow['jobs']['release-please']['steps'] | Where-Object { $_['name'] -eq 'Approve CI on the release PR' })[0]
+
+            $approve | Should -Not -BeNullOrEmpty
+            "$($approve['if'])" | Should -Not -Match 'steps\.release\.outputs\.pr' -Because 'the step must also run when the output is empty'
+            $approve['run'] | Should -Match 'gh pr list'
+            $approve['run'] | Should -Match '--author app/github-actions'
+            $approve['run'] | Should -Match '--label "autorelease: pending"'
+            $approve['run'] | Should -Match 'release-please--branches--main'
+        }
+
         # If GitHub ever stops creating the waiting runs, the release PR would block with no signal.
         It 'fails when the release PR has no CI run at all, instead of warning' {
             $workflowText | Should -Match '::error::'
