@@ -7,7 +7,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0020"]
-    enforcement: "build: RestorePackagesWithLockFile, RestoreLockedMode when CI=true; tools/tests/BuildConfig.Tests.ps1"
+    enforcement: "build: RestorePackagesWithLockFile, RestoreLockedMode when CI=true; tools/tests/BuildConfig.Tests.ps1; ci: dependabot-lockfiles.yml refreshes the lock files Dependabot misses on its NuGet PRs (tools/tests/DependabotLockfiles.Tests.ps1)"
     scope: core
     paths: ["**/*.csproj", "**/packages.lock.json", "Directory.Build.props"]
   - id: SUP-002
