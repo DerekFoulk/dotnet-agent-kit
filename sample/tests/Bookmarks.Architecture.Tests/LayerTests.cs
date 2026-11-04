@@ -38,6 +38,9 @@ public sealed class LayerTests
     public void InfrastructureDoesNotDependOnTheApi() =>
         Layer(s_infrastructure).Should().NotDependOnAny(Layer(s_api)).Check(s_architecture);
 
+    // On Linux, CI's coverage collector rewrites each assembly and injects tracker types
+    // (Microsoft.CodeCoverage.Instrumentation.*); they aren't part of any layer.
     private static GivenTypesConjunction Layer(params Assembly[] assemblies) =>
-        Types().That().ResideInAssembly(assemblies[0], assemblies[1..]);
+        Types().That().ResideInAssembly(assemblies[0], assemblies[1..])
+            .And().DoNotResideInNamespaceMatching(@"^Microsoft\.CodeCoverage(\.|$)");
 }
