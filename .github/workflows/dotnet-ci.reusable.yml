@@ -1,6 +1,7 @@
 # .NET gates for any repo that uses the kit: locked restore with NuGet audit, build with zero warnings,
-# format check, tests, deprecated packages, and a secret scan of the whole history.
-# Called by ci.yml; other repos call it with a pinned ref once they adopt the kit.
+# format check, tests with a coverage gate, deprecated packages, and a secret scan of the whole history.
+# Called by ci.yml. It runs the kit's tools/ scripts from the caller's checkout and needs global.json's
+# test runner set to Microsoft.Testing.Platform, so another repo adopting it needs both (kit/core, later).
 name: .NET CI (reusable)
 
 on:

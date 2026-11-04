@@ -41,7 +41,7 @@ Each opt-out needs an ADR (STY-003). The owner decides them in the step 5 PR; st
 
 ## Step 6 re-measure: the bookmarks sample (2026-11-04)
 
-The sample (`sample/`: 6 production and 5 test projects, ~120 lines of production code, ~330 lines of tests) was written test-first under the full kit settings. These are the analyzer errors that stopped a build or `dotnet format --verify-no-changes` along the way, by rule:
+The sample (`sample/`: 5 production and 5 test projects, ~190 non-blank lines of production code, ~330 lines of tests) was written test-first under the full kit settings. These are the analyzer errors that stopped a build or `dotnet format --verify-no-changes` along the way, by rule:
 
 | Rule | Where | What it asked for | Verdict |
 |---|---|---|---|

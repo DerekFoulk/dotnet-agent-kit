@@ -27,8 +27,10 @@ One module in Clean Architecture (ARC-001):
 From the repo root:
 
 ```powershell
+# The gate merges every report under TestResults, so start from an empty folder.
+if (Test-Path TestResults) { Remove-Item -Recurse TestResults }
 dotnet test --coverage --coverage-output-format cobertura --results-directory TestResults
-./tools/Test-CoverageGate.ps1 -Path TestResults
+./tools/Test-CoverageGate.ps1 -Path TestResults -Solution dotnet-agent-kit.slnx
 dotnet run --project sample/src/Bookmarks.Api
 ```
 

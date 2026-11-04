@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-10-25", "owner, 2026-10-26"]
-    enforcement: "advisory: until coverage gates and architecture tests run on the sample solution (build step 6)"
+    enforcement: "ci: the sample's unit, integration, functional, contract and architecture test projects run in dotnet-ci.reusable.yml; advisory for the rest: mutation runs nightly after v0.1, UI tests apply only to apps with a UI, and a production project without its own test project (the sample's Contracts, Infrastructure, Api) is covered by the shared IntegrationTests and FunctionalTests"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
