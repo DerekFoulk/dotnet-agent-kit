@@ -1,4 +1,5 @@
 using Bookmarks.Contracts;
+using Bookmarks.Domain;
 
 namespace Bookmarks.Application.Features.Bookmarks;
 
@@ -11,21 +12,32 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
     private readonly IBookmarkRepository _repository = repository;
     private readonly TimeProvider _timeProvider = timeProvider;
 
-    public Task<AddBookmarkResult> AddAsync(CreateBookmarkRequest request, CancellationToken cancellationToken)
+    public async Task<AddBookmarkResult> AddAsync(CreateBookmarkRequest request, CancellationToken cancellationToken)
     {
-        _ = (_repository, _timeProvider, request, cancellationToken);
-        return Task.FromResult(new AddBookmarkResult(null, false));
+        ArgumentNullException.ThrowIfNull(request);
+        Bookmark? existing = await _repository.FindByUrlAsync(request.Url, cancellationToken).ConfigureAwait(false);
+        if (existing is not null)
+        {
+            return new AddBookmarkResult(null, AlreadyExists: true);
+        }
+
+        Bookmark bookmark = Bookmark.Create(request.Url, request.Title, _timeProvider.GetUtcNow());
+        await _repository.AddAsync(bookmark, cancellationToken).ConfigureAwait(false);
+        return new AddBookmarkResult(ToResponse(bookmark), AlreadyExists: false);
     }
 
-    public Task<BookmarkResponse?> GetAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<BookmarkResponse?> GetAsync(Guid id, CancellationToken cancellationToken)
     {
-        _ = (_repository, id, cancellationToken);
-        return Task.FromResult<BookmarkResponse?>(null);
+        Bookmark? bookmark = await _repository.FindAsync(id, cancellationToken).ConfigureAwait(false);
+        return bookmark is null ? null : ToResponse(bookmark);
     }
 
-    public Task<IReadOnlyList<BookmarkResponse>> ListAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<BookmarkResponse>> ListAsync(CancellationToken cancellationToken)
     {
-        _ = (_repository, cancellationToken);
-        return Task.FromResult<IReadOnlyList<BookmarkResponse>>([]);
+        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
+        return [.. bookmarks.Select(ToResponse)];
     }
+
+    private static BookmarkResponse ToResponse(Bookmark bookmark) =>
+        new(bookmark.Id, bookmark.Url, bookmark.Title, bookmark.CreatedAt);
 }
