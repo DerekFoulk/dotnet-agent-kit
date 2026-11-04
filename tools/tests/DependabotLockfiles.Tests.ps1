@@ -39,9 +39,12 @@ Describe 'dependabot-lockfiles.yml' {
         $checkout['with']['ref'] | Should -Be '${{ github.event.pull_request.head.sha }}'
     }
 
-    It 'lets a newer run for the same PR replace an older one' {
+    # The group includes the actor: the lock-file commit's own runs (actor github-actions[bot]) must not
+    # cancel the refresher while it's still approving (Copilot review, PR 12).
+    It "lets a newer Dependabot run for the same PR replace an older one, and nothing else" {
         $workflow.ContainsKey('concurrency') | Should -BeTrue
         $workflow['concurrency']['group'] | Should -Match 'github\.head_ref'
+        $workflow['concurrency']['group'] | Should -Match 'github\.actor'
         $workflow['concurrency']['cancel-in-progress'] | Should -BeTrue
     }
 
