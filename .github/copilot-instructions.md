@@ -81,6 +81,7 @@ Never read, print or store secrets. Sign-in is always the owner's step.
 | No deprecated NuGet packages | `./tools/Test-DeprecatedPackages.ps1 -Path dotnet-agent-kit.slnx` |
 | List a PR's open review findings; reply; resolve a thread | `Import-Module ./tools/KitReview.psm1`, then `Get-OpenFinding`, `Resolve-ReviewFinding`, `Add-ReviewReply` (see the `address-review` skill) |
 | Build | `dotnet build` |
+| .NET tests with coverage, then the coverage gate (TST-004) | Delete `TestResults` first (the gate merges every report it finds), then `dotnet test --coverage --coverage-output-format cobertura --results-directory TestResults` and `./tools/Test-CoverageGate.ps1 -Path TestResults -Solution dotnet-agent-kit.slnx` |
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request, plus a gitleaks secret scan. The "main protection" ruleset requires them to pass.
 

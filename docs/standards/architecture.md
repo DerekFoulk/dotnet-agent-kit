@@ -7,7 +7,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0008"]
-    enforcement: "advisory: until ArchUnitNET architecture tests run on the sample solution (build step 6)"
+    enforcement: "ci: sample/tests/Bookmarks.Architecture.Tests (LayerTests, ArchUnitNET) fails when a layer depends outward; the module's project set and grouping by feature are advisory, checked by the reviewer agent"
     scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-002
@@ -16,7 +16,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0008"]
-    enforcement: "advisory: until ArchUnitNET architecture tests run on the sample solution (build step 6)"
+    enforcement: "advisory: the sample has one module, so there's nothing to check yet; an ArchUnitNET test comes with the first app that has two"
     scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-003
@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0008"]
-    enforcement: "advisory: until ArchUnitNET architecture tests run on the sample solution (build step 6)"
+    enforcement: "ci: sample/tests/Bookmarks.Architecture.Tests (SharedLibraryTests) fails when Domain, Contracts or Application references an ASP.NET Core, EF Core, MAUI or WPF assembly"
     scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-004
@@ -61,7 +61,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0016"]
-    enforcement: "advisory: until an architecture test or CI path check forbids references to spikes/ (build step 6)"
+    enforcement: "advisory: spikes/ holds only write-ups so far, nothing code can reference; a CI path check comes when a spike keeps code"
     scope: core
     paths: ["spikes/**"]
   - id: ARC-008

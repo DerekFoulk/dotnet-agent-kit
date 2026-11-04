@@ -1,6 +1,7 @@
 # .NET gates for any repo that uses the kit: locked restore with NuGet audit, build with zero warnings,
-# format check, tests, deprecated packages, and a secret scan of the whole history.
-# Called by ci.yml; other repos call it with a pinned ref once they adopt the kit.
+# format check, tests with a coverage gate, deprecated packages, and a secret scan of the whole history.
+# Called by ci.yml. It runs the kit's tools/ scripts from the caller's checkout and needs global.json's
+# test runner set to Microsoft.Testing.Platform, so another repo adopting it needs both (kit/core, later).
 name: .NET CI (reusable)
 
 on:
@@ -48,17 +49,26 @@ jobs:
         if: steps.projects.outputs.count != '0'
         run: dotnet restore "$SOLUTION" --locked-mode
 
+      # -warnaserror also fails warnings raised outside any project, such as NuGet's solution-level ones,
+      # which Directory.Build.props can't reach (owner, 2026-11-04).
       - name: Build (zero warnings)
         if: steps.projects.outputs.count != '0'
-        run: dotnet build "$SOLUTION" --no-restore --configuration Release
+        run: dotnet build "$SOLUTION" --no-restore --configuration Release -warnaserror
 
       - name: Format check
         if: steps.projects.outputs.count != '0'
         run: dotnet format "$SOLUTION" --verify-no-changes --no-restore
 
-      - name: Test
+      # Microsoft Testing Platform (global.json) runs every test project; each writes a Cobertura report.
+      - name: Test with coverage
         if: steps.projects.outputs.count != '0'
-        run: dotnet test "$SOLUTION" --no-build --configuration Release
+        run: dotnet test --solution "$SOLUTION" --no-build --configuration Release --coverage --coverage-output-format cobertura --results-directory "$RUNNER_TEMP/test-results"
+
+      # TST-004: 100% line coverage for *.Domain, 95% for *.Application, 90% overall.
+      - name: Coverage gate
+        if: steps.projects.outputs.count != '0'
+        shell: pwsh
+        run: ./tools/Test-CoverageGate.ps1 -Path "$env:RUNNER_TEMP/test-results" -Solution $env:SOLUTION
 
       - name: Deprecated packages
         shell: pwsh
