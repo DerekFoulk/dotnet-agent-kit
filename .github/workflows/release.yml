@@ -1,0 +1,47 @@
+name: release
+
+# release-please keeps a release PR open with the next version and its notes; merging it tags vX.Y.Z
+# and publishes a GitHub Release. MinVer builds take their version from that tag (ADR-0019, ADR-0022).
+# Proven end to end in spikes/release-please/README.md.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+
+      # The release PR is opened or updated with GITHUB_TOKEN, so its pull_request CI runs are created
+      # but wait for approval, which keeps the required checks from reporting. Approve those runs, and
+      # only those: pull_request runs waiting for approval on release-please's own branch.
+      - name: Approve CI on the release PR
+        if: ${{ steps.release.outputs.pr }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.release.outputs.pr }}
+        run: |
+          branch="$(echo "$PR" | jq -r .headBranchName)"
+          approved=0
+          for attempt in 1 2 3 4 5 6 7 8 9; do
+            ids="$(gh run list --repo "$GITHUB_REPOSITORY" --branch "$branch" --event pull_request --status action_required --json databaseId --jq '.[].databaseId')"
+            for id in $ids; do
+              echo "Approving run $id on $branch"
+              gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve"
+              approved=$((approved + 1))
+            done
+            sleep 10
+          done
+          echo "Approved $approved run(s) on $branch"
+          if [ "$approved" -eq 0 ]; then
+            echo "::warning::No pull_request run was waiting for approval on $branch"
+          fi
