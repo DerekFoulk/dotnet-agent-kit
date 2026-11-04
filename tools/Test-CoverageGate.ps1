@@ -73,7 +73,7 @@ function Get-CoverageSummary {
 
 # Prints each assembly against its minimum, then the overall total. Returns 0 when all pass, else 1.
 function Invoke-CoverageGate {
-    param([Parameter(Mandatory)] [string] $Path)
+    param([Parameter(Mandatory)] [string] $Path, [string] $Solution)
 
     $summary = @(Get-CoverageSummary -Path $Path)
     if ($summary.Count -eq 0) {

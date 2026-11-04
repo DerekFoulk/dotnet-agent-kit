@@ -99,6 +99,28 @@ Describe 'Test-CoverageGate.ps1' {
             $text | Should -BeLike $Expected
         }
 
+        # Rounding for display must not decide the result: 2000/2001 is 99.95%, below 100%.
+        It 'compares the exact coverage, not the rounded figure' {
+            $dir = Join-Path $TestDrive 'rounding'
+            New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'd.cs'; Lines = Get-Lines 2000 1 }) } | Out-Null
+
+            Invoke-CoverageGate -Path $dir 6>$null | Should -Be 1
+        }
+
+        # A production project that no test loads isn't in any report; the solution says it should be.
+        It 'fails when a production project in the solution has no coverage at all' {
+            $dir = Join-Path $TestDrive 'missing'
+            New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'd.cs'; Lines = Get-Lines 10 0 }) } | Out-Null
+            $solution = Join-Path $TestDrive 'Missing.slnx'
+            Set-Content -LiteralPath $solution -Value '<Solution><Project Path="src/Bookmarks.Domain/Bookmarks.Domain.csproj" /><Project Path="src/Bookmarks.Worker/Bookmarks.Worker.csproj" /><Project Path="tests/Bookmarks.Domain.Tests/Bookmarks.Domain.Tests.csproj" /></Solution>'
+
+            $output = Invoke-CoverageGate -Path $dir -Solution $solution 6>&1
+            $exitCode = @($output | Where-Object { $_ -is [int] })[-1]
+
+            $exitCode | Should -Be 1
+            ($output | Where-Object { $_ -isnot [int] }) -join "`n" | Should -BeLike '*Bookmarks.Worker*no coverage*'
+        }
+
         It 'fails when there is no coverage report, instead of passing an empty run' {
             $dir = Join-Path $TestDrive 'none'
             New-Item -ItemType Directory -Path $dir | Out-Null
