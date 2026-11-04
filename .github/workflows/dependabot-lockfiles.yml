@@ -3,19 +3,23 @@ name: dependabot lock files
 # Dependabot updates the lock file of the project that references a package, but not the lock files of
 # projects that get it through a project reference under central package management
 # (dependabot-core#13950). Locked restore in CI then fails. On Dependabot's NuGet PRs this workflow
-# refreshes every lock file and pushes them to the PR. Its commit is made with GITHUB_TOKEN, so the PR's
-# CI runs for it are expected to wait for approval, as the release PR's do (spikes/release-please); it
-# approves them. If that ever doesn't happen, close and reopen the PR so CI runs (README, "CI").
+# refreshes every lock file and pushes them to the PR.
+#
+# Two jobs, so the write token never shares a runner with code from the PR: "refresh" runs restore
+# (which evaluates the PR's MSBuild files) with a read-only token and uploads only the lock files;
+# "push" never sets up .NET, validates the files, commits, pushes and approves CI.
+#
+# The push is made with GITHUB_TOKEN, so the PR's CI runs for it are expected to wait for approval, as
+# the release PR's do (spikes/release-please); "push" approves them. If that ever doesn't happen, close
+# and reopen the PR so CI runs (README, "CI").
 on:
   pull_request:
 
-# Dependabot-triggered runs get a read-only token unless the workflow asks for more.
 permissions:
-  contents: write
-  actions: write
+  contents: read
 
 # A newer Dependabot run for the same PR (Dependabot rebased) replaces an older one. The actor is in the
-# group so the lock-file commit's own runs (actor github-actions[bot]) never cancel the refresher.
+# group so the lock-file commit's own runs (actor github-actions[bot]) never cancel this one.
 concurrency:
   group: dependabot-lockfiles-${{ github.head_ref }}-${{ github.actor }}
   cancel-in-progress: true
@@ -26,12 +30,14 @@ jobs:
     # Dependabot's own NuGet PR, from a branch in this repo (not a fork), triggered by Dependabot.
     if: github.actor == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'dependabot/nuget/')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.collect.outputs.changed }}
     env:
       DOTNET_NOLOGO: 'true'
       DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
     steps:
-      # The exact commit this run is for; a later push to the branch is never swept in, and the push
-      # below is rejected if the branch moved on.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -42,25 +48,98 @@ jobs:
           global-json-file: global.json
 
       # --force-evaluate rewrites every lock file; locked mode (on when CI=true) would refuse that. The
-      # NuGet audit is CI's job, not this refresh's. No token here: restore runs the PR's MSBuild files.
+      # NuGet audit is CI's job, not this refresh's.
       - name: Refresh the lock files
         run: dotnet restore dotnet-agent-kit.slnx --force-evaluate -p:RestoreLockedMode=false -p:NuGetAudit=false
 
+      # Copy only the changed lock files, at their repo paths, into a folder to upload.
       # '*packages.lock.json' matches at any depth, the root and new files included.
-      - name: Commit and push changed lock files
+      - name: Collect changed lock files
+        id: collect
+        run: |
+          changed="$(git status --porcelain -- '*packages.lock.json' | cut -c4-)"
+          if [ -z "$changed" ]; then
+            echo "Every lock file is already current."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/lockfiles"
+          while IFS= read -r file; do
+            mkdir -p "$RUNNER_TEMP/lockfiles/$(dirname "$file")"
+            cp -- "$file" "$RUNNER_TEMP/lockfiles/$file"
+            echo "Changed: $file"
+          done <<< "$changed"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.collect.outputs.changed == 'true'
+        with:
+          name: lockfiles
+          path: ${{ runner.temp }}/lockfiles
+          retention-days: 1
+          if-no-files-found: error
+
+  push:
+    name: Push refreshed lock files
+    needs: refresh
+    if: needs.refresh.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lockfiles
+          path: ${{ runner.temp }}/lockfiles
+
+      # Trust nothing from the refresh job: every file must be a packages.lock.json beside an existing
+      # project, with no ".." in its path, no links, and lock-file JSON. Then copy them into place.
+      - name: Validate and place the lock files
+        run: |
+          cd "$RUNNER_TEMP/lockfiles"
+          if [ -n "$(find . ! -type f ! -type d)" ]; then
+            echo "::error::The artifact holds something other than regular files"
+            exit 1
+          fi
+          while IFS= read -r file; do
+            case "$file" in
+              *..*) echo "::error::Rejected path with '..': $file"; exit 1 ;;
+              ./packages.lock.json|*/packages.lock.json) ;;
+              *) echo "::error::Rejected a file that isn't packages.lock.json: $file"; exit 1 ;;
+            esac
+            dir="$(dirname "$file")"
+            if ! ls "$GITHUB_WORKSPACE/$dir"/*.csproj > /dev/null 2>&1; then
+              echo "::error::No project beside $file"
+              exit 1
+            fi
+            if ! jq -e 'has("version") and has("dependencies")' "$file" > /dev/null; then
+              echo "::error::Not a NuGet lock file: $file"
+              exit 1
+            fi
+            cp -- "$file" "$GITHUB_WORKSPACE/$file"
+            echo "Placed: $file"
+          done < <(find . -type f)
+
+      - name: Commit and push
         id: push
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.head_ref }}
         run: |
-          if [ -z "$(git status --porcelain -- '*packages.lock.json')" ]; then
-            echo "Every lock file is already current."
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- '*packages.lock.json'
+          if git diff --cached --quiet; then
+            echo "Nothing to commit after validation."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           git commit --quiet -m "chore(deps): refresh NuGet lock files"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
