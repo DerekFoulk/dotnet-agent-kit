@@ -4,7 +4,9 @@
 # Dependabot updates the lock file of the project that references a package, but not the lock files of
 # projects that get it through a project reference under central package management
 # (dependabot-core#13950), so locked restore fails in CI. The workflow refreshes them on Dependabot's
-# NuGet PRs (research notes §3, checkpoint §1).
+# NuGet PRs (research notes §3, checkpoint §1). Restore runs code from the PR, so it runs in a job with
+# a read-only token; a second job that never runs restored code validates and pushes the lock files
+# (Copilot review, PR 12).
 
 Describe 'dependabot-lockfiles.yml' {
     BeforeAll {
@@ -12,8 +14,15 @@ Describe 'dependabot-lockfiles.yml' {
         $path = Join-Path $PSScriptRoot '..' '..' '.github' 'workflows' 'dependabot-lockfiles.yml'
         $text = if (Test-Path $path) { Get-Content -Raw $path } else { '' }
         $workflow = if ($text) { ConvertFrom-Yaml $text } else { @{} }
-        $job = if ($workflow.ContainsKey('jobs')) { @($workflow['jobs'].Values)[0] } else { @{} }
-        $run = (@($job['steps']) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
+        $jobs = if ($workflow.ContainsKey('jobs')) { $workflow['jobs'] } else { @{} }
+        $refresh = if ($jobs.ContainsKey('refresh')) { $jobs['refresh'] } else { @{} }
+        $push = if ($jobs.ContainsKey('push')) { $jobs['push'] } else { @{} }
+
+        function Get-RunText([hashtable] $Job) {
+            (@($Job['steps']) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
+        }
+        $refreshRun = Get-RunText $refresh
+        $pushRun = Get-RunText $push
     }
 
     It 'runs on pull requests only' {
@@ -24,23 +33,15 @@ Describe 'dependabot-lockfiles.yml' {
     }
 
     It "only acts on Dependabot's own NuGet PRs in this repo (every condition must hold)" {
-        $conditions = "$($job['if'])" -split '\s*&&\s*'
+        $conditions = "$($refresh['if'])" -split '\s*&&\s*'
 
-        "$($job['if'])" | Should -Not -Match '\|\|'
+        "$($refresh['if'])" | Should -Not -Match '\|\|'
         $conditions | Should -Contain "github.actor == 'dependabot[bot]'"
         $conditions | Should -Contain "github.event.pull_request.user.login == 'dependabot[bot]'"
         $conditions | Should -Contain 'github.event.pull_request.head.repo.full_name == github.repository'
         $conditions | Should -Contain "startsWith(github.head_ref, 'dependabot/nuget/')"
     }
 
-    It 'checks out the exact commit the run was for, so a later push is never swept in' {
-        $checkout = @($job['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })[0]
-
-        $checkout['with']['ref'] | Should -Be '${{ github.event.pull_request.head.sha }}'
-    }
-
-    # The group includes the actor: the lock-file commit's own runs (actor github-actions[bot]) must not
-    # cancel the refresher while it's still approving (Copilot review, PR 12).
     It "lets a newer Dependabot run for the same PR replace an older one, and nothing else" {
         $workflow.ContainsKey('concurrency') | Should -BeTrue
         $workflow['concurrency']['group'] | Should -Match 'github\.head_ref'
@@ -48,50 +49,80 @@ Describe 'dependabot-lockfiles.yml' {
         $workflow['concurrency']['cancel-in-progress'] | Should -BeTrue
     }
 
-    It 'gives the write token only to the steps that push or approve, not to the restore' {
-        @($job['env'].Keys) | Should -Not -Contain 'GH_TOKEN'
-        $restore = @($job['steps'] | Where-Object { "$($_['run'])" -match 'dotnet restore' })[0]
-        @($restore['env'].Keys) | Should -Not -Contain 'GH_TOKEN'
+    It 'gives the workflow a read-only token by default' {
+        $workflow['permissions'] | Should -Not -BeNullOrEmpty
+        @($workflow['permissions'].Keys) | Should -Be @('contents')
+        $workflow['permissions']['contents'] | Should -Be 'read'
     }
 
-    It 'counts root and new lock files as changes too' {
-        $run | Should -Match "git status --porcelain -- '\*packages\.lock\.json'"
+    Context 'refresh job: runs restore with a read-only token' {
+        It 'has only read access' {
+            $refresh['permissions'] | Should -Not -BeNullOrEmpty
+            @($refresh['permissions'].Keys) | Should -Be @('contents')
+            $refresh['permissions']['contents'] | Should -Be 'read'
+        }
+
+        It 'checks out the exact commit the run was for, without keeping the token' {
+            $checkout = @($refresh['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })[0]
+
+            $checkout['with']['ref'] | Should -Be '${{ github.event.pull_request.head.sha }}'
+            $checkout['with']['persist-credentials'] | Should -BeFalse
+        }
+
+        It 'refreshes every lock file, without the NuGet audit, which CI runs anyway' {
+            $refreshRun | Should -Match 'dotnet restore .*--force-evaluate'
+            $refreshRun | Should -Match '-p:NuGetAudit=false'
+        }
+
+        It 'counts root and new lock files as changes, and uploads only lock files' {
+            $refreshRun | Should -Match "git status --porcelain -- '\*packages\.lock\.json'"
+            $upload = @($refresh['steps'] | Where-Object { "$($_['uses'])" -like 'actions/upload-artifact@*' })[0]
+            $upload | Should -Not -BeNullOrEmpty
+            $refresh['outputs']['changed'] | Should -Not -BeNullOrEmpty
+        }
     }
 
-    It 'refreshes without the NuGet audit, which CI runs anyway' {
-        $run | Should -Match 'dotnet restore .*-p:NuGetAudit=false'
+    Context 'push job: holds the write token and never runs restored code' {
+        It 'runs after the refresh, only when lock files changed' {
+            $push['needs'] | Should -Be 'refresh'
+            "$($push['if'])" | Should -Match "needs\.refresh\.outputs\.changed == 'true'"
+        }
+
+        It 'asks for only the permissions it needs: push the lock files, approve the CI runs' {
+            @($push['permissions'].Keys | Sort-Object) | Should -Be @('actions', 'contents')
+            @($push['permissions'].Values | Select-Object -Unique) | Should -Be @('write')
+        }
+
+        It 'never sets up .NET or runs dotnet' {
+            $push.ContainsKey('steps') | Should -BeTrue
+            @($push['steps'] | Where-Object { "$($_['uses'])" -like 'actions/setup-dotnet@*' }).Count | Should -Be 0
+            $pushRun | Should -Not -Match '\bdotnet\b'
+        }
+
+        It 'validates every downloaded file before using it' {
+            $pushRun | Should -Match 'packages\.lock\.json'
+            $pushRun | Should -Match '\*\.csproj'
+            $pushRun | Should -Match '\.\.'
+            $pushRun | Should -Match 'jq -e'
+        }
+
+        It 'commits only lock files, with a Conventional subject' {
+            $pushRun | Should -Match "git add -- '\*packages\.lock\.json'"
+            $pushRun | Should -Match 'git commit .*-m "chore\(deps\): refresh NuGet lock files"'
+        }
+
+        It "approves the CI runs its commit leaves waiting, and fails if CI didn't start or still waits" {
+            $pushRun | Should -Match '--commit "\$sha"'
+            $pushRun | Should -Match '--status action_required'
+            $pushRun | Should -Match 'actions/runs/\$id/approve'
+            $pushRun | Should -Match '--workflow ci\.yml'
+            $pushRun | Should -Match 'still waiting for approval'
+        }
     }
 
-    It "fails when CI is still waiting for approval, or never started, after it's done" {
-        $run | Should -Match '--status action_required'
-        $run | Should -Match '--workflow ci\.yml'
-        $run | Should -Match 'still waiting for approval'
-    }
-
-    It 'asks for only the permissions it needs: push the lock files, approve the CI runs' {
-        $permissions = $workflow['permissions']
-
-        $permissions | Should -Not -BeNullOrEmpty
-        @($permissions.Keys | Sort-Object) | Should -Be @('actions', 'contents')
-        @($permissions.Values | Select-Object -Unique) | Should -Be @('write')
-    }
-
-    It 'uses no stored secret and never leaves the token in the checkout' {
+    It 'uses no stored secret' {
         $text | Should -Not -BeNullOrEmpty
         $text | Should -Not -Match 'secrets\.'
-        $text | Should -Match 'persist-credentials: false'
-    }
-
-    It 'refreshes every lock file and commits only lock files, with a Conventional subject' {
-        $run | Should -Match 'dotnet restore .*--force-evaluate'
-        $run | Should -Match "git add -- '\*packages\.lock\.json'"
-        $run | Should -Match 'git commit .*-m "chore\(deps\): refresh NuGet lock files"'
-    }
-
-    It 'approves the CI runs its commit leaves waiting, for that commit only' {
-        $run | Should -Match '--commit "\$sha"'
-        $run | Should -Match '--status action_required'
-        $run | Should -Match 'actions/runs/\$id/approve'
     }
 
     It 'pins every action to a full commit SHA (SUP-008)' {
