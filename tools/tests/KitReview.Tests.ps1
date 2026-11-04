@@ -341,15 +341,14 @@ Describe 'KitReview.psm1' {
                         [pscustomobject]@{ ThreadId = $t.Id; IsResolved = $t.Resolved; IsOutdated = $false; Path = 'a.ps1'; Line = 1; CommentId = $t.CommentId; Author = $t.Author; Body = $t.Body; Comments = $comments }
                     }
                 }
-                # The PR's author is the account agents post with; its comments are the PR side's answers.
-                Mock Get-PullRequestAuthor { 'DerekFoulk' }
+                # The signed-in account is the one agents post with; its comments are the PR side's answers.
                 Mock Get-SignedInLogin { 'DerekFoulk' }
                 Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'mallory'; Body = 'Looks good to me.' } }
                 Mock Get-PullRequestReview { }
             }
         }
 
-        It 'leaves out a summary issue with no thread once the PR author has resolved it for that review' {
+        It 'leaves out a summary issue with no thread once the signed-in account has resolved it for that review' {
             InModuleScope KitReview {
                 Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'DerekFoulk'; Body = 'Answer to review 50, "C": Resolution: addressed. Fixed in abc1234.' } }
 
@@ -362,7 +361,7 @@ Describe 'KitReview.psm1' {
 
         It 'keeps a summary issue whose only answer is <Case>' -ForEach @(
             @{ Case = 'for an older review'; Author = 'DerekFoulk'; Body = 'Answer to review 49, "C": Resolution: addressed. Fixed in abc1234.' }
-            @{ Case = 'from someone other than the PR author'; Author = 'mallory'; Body = 'Answer to review 50, "C": Resolution: addressed. Fixed.' }
+            @{ Case = 'from someone other than the signed-in account'; Author = 'mallory'; Body = 'Answer to review 50, "C": Resolution: addressed. Fixed.' }
             @{ Case = 'not a final resolution'; Author = 'DerekFoulk'; Body = 'Answer to review 50, "C": I recommend not fixing this. Owner, your call.' }
         ) {
             InModuleScope KitReview -Parameters @{ Author = $Author; Body = $Body } {
@@ -376,7 +375,7 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        It "lists each person's latest review that requests changes or comments, except the PR author's" {
+        It "lists each person's latest review that requests changes or comments, except the signed-in account's" {
             InModuleScope KitReview {
                 Mock Get-PullRequestReview {
                     @{ id = 60; user = @{ login = 'alice' }; state = 'CHANGES_REQUESTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'Please split this function.' }
@@ -401,7 +400,6 @@ Describe 'KitReview.psm1' {
         # On a PR someone else opened (Dependabot, a teammate), the agent still posts as the signed-in account.
         It 'counts answers from the signed-in account on a PR someone else opened' {
             InModuleScope KitReview {
-                Mock Get-PullRequestAuthor { 'dependabot[bot]' }
                 Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'DerekFoulk'; Body = 'Answer to review 50, "C": Resolution: addressed. Fixed in abc1234.' } }
 
                 $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
@@ -410,9 +408,8 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        It "lists a review by the PR's author when someone else opened it, and leaves out the signed-in account's own" {
+        It "lists a review by someone who opened the PR, and leaves out the signed-in account's own" {
             InModuleScope KitReview {
-                Mock Get-PullRequestAuthor { 'alice' }
                 Mock Get-PullRequestReview {
                     @{ id = 70; user = @{ login = 'alice' }; state = 'COMMENTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'I left a question on the design.' }
                     @{ id = 71; user = @{ login = 'DerekFoulk' }; state = 'COMMENTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'Agent note.' }
@@ -425,7 +422,7 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        It "leaves out a person's review once the PR author has resolved it" {
+        It "leaves out a person's review once the signed-in account has resolved it" {
             InModuleScope KitReview {
                 Mock Get-PullRequestReview { @{ id = 60; user = @{ login = 'alice' }; state = 'CHANGES_REQUESTED'; submitted_at = '2026-11-03T10:00:00Z'; body = 'Please split this function.' } }
                 Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'DerekFoulk'; Body = 'Answer to review 60, "Review by alice": Resolution: addressed. Split in abc1234.' } }

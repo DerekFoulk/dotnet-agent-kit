@@ -139,7 +139,7 @@ function Get-ReviewThread {
 
 # Everything on the pull request still waiting for an answer, in this order:
 # - each issue in Copilot's latest summary whose thread is unresolved;
-# - each summary issue with no thread (Thread is $null), until the PR author resolves it for that review;
+# - each summary issue with no thread (Thread is $null), until the signed-in account resolves it for that review;
 # - each person's latest review that requests changes or has a body (Thread is $null), likewise;
 # - each other unresolved thread, such as a person's comment or an older Copilot finding.
 # Copilot's summary can lag behind its threads, so a summary issue whose thread is resolved is left out.
@@ -152,15 +152,15 @@ function Get-OpenFinding {
     foreach ($thread in $threads) { if ($null -ne $thread.CommentId) { $byComment[[long] $thread.CommentId] = $thread } }
     $listed = [System.Collections.Generic.HashSet[string]]::new()
 
-    # A finding with no thread is answered once the PR author (the account agents post with) posts a
+    # A finding with no thread is answered once the signed-in account (the one agents post with) posts a
     # final resolution for it and for that review: see Resolve-ReviewFinding.
     $cache = @{ Answers = $null }
     $isAnswered = {
         param($ReviewId, $Title)
         if ($null -eq $cache.Answers) {
-            $prAuthor = Get-PullRequestAuthor -Repository $Repository -Number $Number
+            $self = Get-SignedInLogin
             $cache.Answers = @(Get-PullRequestComment -Repository $Repository -Number $Number |
-                    Where-Object { $_.Author -eq $prAuthor } | ForEach-Object { "$($_.Body)" })
+                    Where-Object { $_.Author -eq $self } | ForEach-Object { "$($_.Body)" })
         }
         $prefix = Get-AnswerPrefix -ReviewId $ReviewId -Title $Title
         [bool] @($cache.Answers | Where-Object { $_.StartsWith($prefix, [StringComparison]::Ordinal) }).Count
@@ -185,9 +185,9 @@ function Get-OpenFinding {
         }
     }
 
-    # People's review bodies. The PR author's own reviews are left out: agents post with that account,
+    # People's review bodies. The signed-in account's own reviews are left out: agents post with it,
     # and the owner's decisions come in chat.
-    $prAuthor = $null
+    $self = $null
     $latest = @(Get-PullRequestReview -Repository $Repository -Number $Number) |
         Where-Object { $_['user'] -and $_['user']['login'] -ne $script:CopilotLogin } |
         Group-Object { $_['user']['login'] } |
@@ -197,8 +197,8 @@ function Get-OpenFinding {
         $body = "$($personReview['body'])".Trim()
         $asks = $personReview['state'] -eq 'CHANGES_REQUESTED' -or ($personReview['state'] -eq 'COMMENTED' -and $body)
         if (-not $asks) { continue }
-        if ($null -eq $prAuthor) { $prAuthor = Get-PullRequestAuthor -Repository $Repository -Number $Number }
-        if ($login -eq $prAuthor) { continue }
+        if ($null -eq $self) { $self = Get-SignedInLogin }
+        if ($login -eq $self) { continue }
         $title = "Review by $login"
         if (& $isAnswered $personReview['id'] $title) { continue }
         [pscustomobject]@{
@@ -342,13 +342,10 @@ function Get-PullRequestReview {
     Get-GhList -Endpoint "repos/$Repository/pulls/$Number/reviews"
 }
 
-# The login that opened the pull request: the account agents post with.
-function Get-PullRequestAuthor {
-    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
-    "$(Invoke-Gh pr view $Number --repo $Repository --json author --jq .author.login)".Trim()
+# The GitHub account gh is signed in with: the one agents post with, whoever opened the pull request.
+function Get-SignedInLogin {
+    "$(Invoke-Gh api user --jq .login)".Trim()
 }
-
-function Get-SignedInLogin { }
 
 # How a PR comment names the finding it resolves: its review, its title, and that it's final.
 function Get-AnswerPrefix {
