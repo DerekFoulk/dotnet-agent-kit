@@ -8,6 +8,7 @@
     <Project Path="sample/src/Bookmarks.Infrastructure/Bookmarks.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/sample/tests/">
+    <Project Path="sample/tests/Bookmarks.Application.Tests/Bookmarks.Application.Tests.csproj" />
     <Project Path="sample/tests/Bookmarks.Domain.Tests/Bookmarks.Domain.Tests.csproj" />
   </Folder>
 </Solution>
