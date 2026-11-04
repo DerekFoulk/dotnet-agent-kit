@@ -4,7 +4,8 @@ name: dependabot lock files
 # projects that get it through a project reference under central package management
 # (dependabot-core#13950). Locked restore in CI then fails. On Dependabot's NuGet PRs this workflow
 # refreshes every lock file and pushes them to the PR. Its commit is made with GITHUB_TOKEN, so the PR's
-# CI runs for it wait for approval (spikes/release-please/README.md); it approves those runs.
+# CI runs for it are expected to wait for approval, as the release PR's do (spikes/release-please); it
+# approves them. If that ever doesn't happen, close and reopen the PR so CI runs (README, "CI").
 on:
   pull_request:
 
@@ -13,70 +14,78 @@ permissions:
   contents: write
   actions: write
 
+# A newer run for the same PR (Dependabot rebased) replaces an older one.
+concurrency:
+  group: dependabot-lockfiles-${{ github.head_ref }}
+  cancel-in-progress: true
+
 jobs:
   refresh:
     name: Refresh NuGet lock files
-    if: github.actor == 'dependabot[bot]' && startsWith(github.head_ref, 'dependabot/nuget/')
+    # Dependabot's own NuGet PR, from a branch in this repo (not a fork), triggered by Dependabot.
+    if: github.actor == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'dependabot/nuget/')
     runs-on: ubuntu-latest
     env:
       DOTNET_NOLOGO: 'true'
       DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
-      # Through the environment, never pasted into a script.
-      HEAD_REF: ${{ github.head_ref }}
-      GH_TOKEN: ${{ github.token }}
     steps:
+      # The exact commit this run is for; a later push to the branch is never swept in, and the push
+      # below is rejected if the branch moved on.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
-      # --force-evaluate rewrites every lock file; locked mode (on when CI=true) would refuse that.
+      # --force-evaluate rewrites every lock file; locked mode (on when CI=true) would refuse that. The
+      # NuGet audit is CI's job, not this refresh's. No token here: restore runs the PR's MSBuild files.
       - name: Refresh the lock files
-        run: dotnet restore dotnet-agent-kit.slnx --force-evaluate -p:RestoreLockedMode=false
+        run: dotnet restore dotnet-agent-kit.slnx --force-evaluate -p:RestoreLockedMode=false -p:NuGetAudit=false
 
+      # '*packages.lock.json' matches at any depth, the root and new files included.
       - name: Commit and push changed lock files
         id: push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
-          if git diff --quiet -- '**/packages.lock.json'; then
+          if [ -z "$(git status --porcelain -- '*packages.lock.json')" ]; then
             echo "Every lock file is already current."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- '**/packages.lock.json'
+          git add -- '*packages.lock.json'
           git commit --quiet -m "chore(deps): refresh NuGet lock files"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${HEAD_REF}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       # The pushed commit's pull_request runs wait for approval; approve those, for this commit only.
+      # Then fail if CI (ci.yml) never started for it or anything is still waiting: the PR would be stuck.
       - name: Approve CI for the new commit
         if: steps.push.outputs.pushed == 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.push.outputs.sha }}
         run: |
           sha="$SHA"
-          approved=0
           for attempt in 1 2 3 4 5 6 7 8 9; do
             ids="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --status action_required --json databaseId --jq '.[].databaseId')"
             for id in $ids; do
               echo "Approving run $id"
-              if gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve"; then
-                approved=$((approved + 1))
-              else
-                echo "::warning::Could not approve run $id"
-              fi
+              gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve" || echo "::warning::Could not approve run $id"
             done
             sleep 10
           done
-          runs="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --json databaseId --jq 'length')"
-          echo "Approved $approved run(s); $runs pull_request run(s) on $sha"
-          if [ "$runs" -eq 0 ]; then
-            echo "::error::The lock-file commit $sha has no pull_request CI run; the PR can't pass its required checks"
+          ci="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --workflow ci.yml --json databaseId --jq 'length')"
+          waiting="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --status action_required --json databaseId --jq 'length')"
+          echo "ci.yml runs on $sha: $ci; still waiting for approval: $waiting"
+          if [ "$ci" -eq 0 ] || [ "$waiting" -gt 0 ]; then
+            echo "::error::CI for the lock-file commit $sha never started or is still waiting for approval; close and reopen the PR to run it"
             exit 1
           fi
