@@ -53,6 +53,17 @@ Describe 'Release configuration' {
             $workflowText | Should -Match 'headBranchName'
             $workflowText | Should -Match 'actions/runs/\$id/approve'
         }
+
+        # A fork PR can use the same branch name; only the release PR's own head commit identifies it.
+        It "approves only runs for the release PR's head commit, not every run on a branch of that name" {
+            $workflowText | Should -Match 'headRefOid'
+            $workflowText | Should -Match '--commit "\$sha"'
+        }
+
+        # If GitHub ever stops creating the waiting runs, the release PR would block with no signal.
+        It 'fails when the release PR has no CI run at all, instead of warning' {
+            $workflowText | Should -Match '::error::'
+        }
     }
 
     Context 'release-please config' {
