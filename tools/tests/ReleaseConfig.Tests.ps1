@@ -47,10 +47,9 @@ Describe 'Release configuration' {
         }
 
         # A release PR opened with GITHUB_TOKEN gets pull_request runs that wait for approval.
-        It "approves only the waiting pull_request runs on release-please's own branch" {
+        It "approves only the release PR's pull_request runs that are waiting for approval" {
             $workflowText | Should -Match '--event pull_request'
             $workflowText | Should -Match '--status action_required'
-            $workflowText | Should -Match 'headBranchName'
             $workflowText | Should -Match 'actions/runs/\$id/approve'
         }
 

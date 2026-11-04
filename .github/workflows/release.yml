@@ -3,10 +3,15 @@ name: release
 # release-please keeps a release PR open with the next version and its notes; merging it tags vX.Y.Z
 # and publishes a GitHub Release. MinVer builds take their version from that tag (ADR-0019, ADR-0022).
 # Proven end to end in spikes/release-please/README.md.
+# Building and publishing a release belongs in this workflow, after release-please reports
+# release_created (tags made with GITHUB_TOKEN start no other workflows; spike finding 7). The kit
+# has no projects to build yet; step 6 adds the sample solution.
 on:
   push:
     branches: [main]
 
+# release-please needs contents, pull-requests and issues (labels); the approval step needs actions.
+# There's one job, so these are its permissions.
 permissions:
   contents: write
   pull-requests: write
@@ -23,25 +28,36 @@ jobs:
 
       # The release PR is opened or updated with GITHUB_TOKEN, so its pull_request CI runs are created
       # but wait for approval, which keeps the required checks from reporting. Approve those runs, and
-      # only those: pull_request runs waiting for approval on release-please's own branch.
+      # only those: pull_request runs waiting for approval on the release PR's own head commit. (A fork
+      # PR could reuse release-please's branch name, but not this repo's commit.) This repo has two
+      # pull_request workflows (ci.yml, pr-title.yml), so it keeps looking for about 90 seconds.
       - name: Approve CI on the release PR
         if: ${{ steps.release.outputs.pr }}
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ steps.release.outputs.pr }}
         run: |
-          branch="$(echo "$PR" | jq -r .headBranchName)"
+          number="$(echo "$PR" | jq -r .number)"
+          sha="$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)"
+          echo "Release PR #$number, head commit $sha"
           approved=0
           for attempt in 1 2 3 4 5 6 7 8 9; do
-            ids="$(gh run list --repo "$GITHUB_REPOSITORY" --branch "$branch" --event pull_request --status action_required --json databaseId --jq '.[].databaseId')"
+            ids="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --status action_required --json databaseId --jq '.[].databaseId')"
             for id in $ids; do
-              echo "Approving run $id on $branch"
-              gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve"
-              approved=$((approved + 1))
+              echo "Approving run $id"
+              # A run cancelled since the list (ci.yml cancels superseded runs) can't be approved; go on.
+              if gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve"; then
+                approved=$((approved + 1))
+              else
+                echo "::warning::Could not approve run $id"
+              fi
             done
             sleep 10
           done
-          echo "Approved $approved run(s) on $branch"
-          if [ "$approved" -eq 0 ]; then
-            echo "::warning::No pull_request run was waiting for approval on $branch"
+          runs="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --json databaseId --jq 'length')"
+          echo "Approved $approved run(s); $runs pull_request run(s) on $sha"
+          # No run at all means the release PR can't pass its required checks; say so loudly.
+          if [ "$runs" -eq 0 ]; then
+            echo "::error::Release PR #$number has no pull_request CI run; it can't pass its required checks (see spikes/release-please/README.md)"
+            exit 1
           fi
