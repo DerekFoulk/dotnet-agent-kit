@@ -39,6 +39,12 @@ Accepted as recommended (owner, 2026-11-01).
 
 - `kit-checks.reusable.yml` checks PR titles (build step 4); the merge-commit-message setting changes only with the owner's OK.
 - Build step 5 spikes the release flow before `release.yml` is relied on.
+- **Spike result (2026-11-04), in a throwaway repo:** Option 1 works. Release PR → `v0.1.0` and `v0.2.0` tags and GitHub Releases → MinVer built the matching version each time. Details: `spikes/release-please/README.md`. What it changed, each decided by the owner on 2026-11-04:
+  - The release PR's CI runs: a PR opened with `GITHUB_TOKEN` gets `pull_request` runs that wait for approval and block the merge. `release.yml` approves those runs, and only those, so no personal access token is stored. This needs the repo setting "Allow GitHub Actions to create and approve pull requests" (owner's OK).
+  - Release notes: commit-based notes list a PR's own commits as well as its merge commit, so entries repeat. `changelog-type: github` lists merged PRs instead, one line per PR title.
+  - `initial-version: 0.1.0`, since the first release otherwise defaults to 1.0.0.
+  - release-please keeps the current version in `.release-please-manifest.json` and writes each release's notes, headed by its version, to `CHANGELOG.md`. SUP-006 is reworded to allow those two records, which no build reads.
+- `tools/tests/ReleaseConfig.Tests.ps1` checks `release.yml` and the config.
 
 ## Pillars affected
 
@@ -48,3 +54,5 @@ Operational Excellence: automated releases without giving up the history ADR-000
 
 - owner, 2026-11-01
 - https://github.com/googleapis/release-please, retrieved 2026-11-01
+- owner, 2026-11-04
+- https://docs.github.com/en/actions/concepts/security/github_token, retrieved 2026-11-04

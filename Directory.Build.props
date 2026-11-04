@@ -25,7 +25,7 @@
     <NuGetAuditLevel>low</NuGetAuditLevel>
   </PropertyGroup>
 
-  <!-- Versioning: MinVer reads the latest vX.Y.Z tag; no version is stored in any file. -->
+  <!-- Versioning: MinVer reads the latest vX.Y.Z tag; no build reads a version from a file (SUP-006). -->
   <PropertyGroup>
     <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>

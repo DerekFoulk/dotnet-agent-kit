@@ -33,6 +33,7 @@ Accepted as recommended (owner, 2026-11-01).
 
 - Skills live in `.claude/skills/` only (build step 3).
 - The build step 5 spike checks the Copilot coding agent; if it doesn't read the folder, the sync step copies skills to `.github/skills/`.
+- **Spike result (2026-11-04):** it does. GitHub's docs list `.claude/skills` as a project skills folder, and in a live run (issue #7, draft PR #8) the coding agent listed all six kit skills at their `.claude/skills/` paths and quoted `write-adr` word for word. No copy is needed. Details: `spikes/copilot-skills/README.md`.
 
 ## Pillars affected
 
@@ -43,3 +44,4 @@ Operational Excellence: one source for every tool.
 - owner, 2026-11-01
 - https://code.claude.com/docs/en/skills, retrieved 2026-11-01
 - https://devblogs.microsoft.com/visualstudio/agent-skills-in-visual-studio, retrieved 2026-11-01
+- https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills, retrieved 2026-11-04
