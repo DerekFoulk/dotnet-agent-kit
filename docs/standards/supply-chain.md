@@ -47,14 +47,14 @@ rules:
     scope: core
     paths: ["global.json"]
   - id: SUP-006
-    statement: "Versions come from git tags through MinVer; no version number is stored in any file."
-    why: "Release tags are the single source of version numbers (ADR-0019)."
+    statement: "Builds take their version only from git tags through MinVer; the one version record outside tags is release-please's .release-please-manifest.json, which no build reads."
+    why: "Release tags are the single source of version numbers (ADR-0019); release-please needs its manifest to propose the next version (ADR-0022)."
     layer: owner
     status: accepted
-    sources: ["ADR-0019"]
-    enforcement: "build: MinVer global package reference with tag prefix v; tools/tests/BuildConfig.Tests.ps1"
+    sources: ["ADR-0019", "ADR-0022", "owner, 2026-11-04"]
+    enforcement: "build: MinVer global package reference with tag prefix v; tools/tests/BuildConfig.Tests.ps1 (version from the tag) and tools/tests/ReleaseConfig.Tests.ps1 (release-please config)"
     scope: core
-    paths: ["Directory.Build.props", "Directory.Packages.props"]
+    paths: ["Directory.Build.props", "Directory.Packages.props", "release-please-config.json", ".release-please-manifest.json"]
   - id: SUP-007
     statement: "Deprecated packages fail CI; a preview package needs an ADR."
     why: "The Well-Architected Framework asks architects to avoid deprecated components and assess preview features."
