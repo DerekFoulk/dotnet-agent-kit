@@ -63,7 +63,7 @@ function ConvertFrom-CopilotReviewBody {
 function Get-CopilotReview {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
-    $reviews = Invoke-Gh api --paginate "repos/$Repository/pulls/$Number/reviews" | ConvertFrom-Json -AsHashtable
+    $reviews = Get-GhList -Endpoint "repos/$Repository/pulls/$Number/reviews"
     $latest = @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin }) |
         Sort-Object { [datetimeoffset] $_['submitted_at'] } |
         Select-Object -Last 1
@@ -175,7 +175,8 @@ function Get-OpenFinding {
     }
 
     foreach ($thread in $threads) {
-        if ($thread.IsResolved -or $listed.Contains($thread.ThreadId)) { continue }
+        # A thread with no comments has nothing to reply to, so it can't be answered here.
+        if ($thread.IsResolved -or $listed.Contains($thread.ThreadId) -or $null -eq $thread.CommentId) { continue }
         [pscustomobject]@{
             Severity = $null
             Title    = $null
@@ -209,6 +210,9 @@ function Resolve-ReviewThread {
         throw "Thread $($Thread.ThreadId) is already resolved; read the threads again with Get-OpenFinding."
     }
     Assert-PullRequestOpen -Repository $Repository -Number $Number
+
+    # ValidateSet ignores case, but GitHub's enum doesn't.
+    $Reason = $Reason.ToUpperInvariant()
 
     # The reply goes first, so a thread is never resolved without its evidence.
     $label = @{ ADDRESSED = 'addressed'; WONT_FIX = "won't fix"; INVALID = 'incorrect' }[$Reason]
@@ -259,7 +263,7 @@ function Add-ReviewReply {
 function Get-PullRequestCommentBody {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
-    $comments = Invoke-Gh api --paginate "repos/$Repository/issues/$Number/comments" | ConvertFrom-Json -AsHashtable
+    $comments = Get-GhList -Endpoint "repos/$Repository/issues/$Number/comments"
     foreach ($comment in @($comments)) { "$($comment['body'])" }
 }
 
@@ -267,6 +271,16 @@ function Get-PullRequestCommentBody {
 function Get-SummaryAnswerPrefix {
     param([Parameter(Mandatory)] [string] $Title)
     "Copilot summary issue `"$Title`":"
+}
+
+# Every item of a paginated REST list. --jq '.[]' prints one item per line whatever the gh version;
+# older versions print one JSON array per page, which doesn't parse as a whole.
+function Get-GhList {
+    param([Parameter(Mandatory)] [string] $Endpoint)
+
+    foreach ($line in ((Invoke-Gh api --paginate $Endpoint --jq '.[]') -split "`r?`n")) {
+        if ($line.Trim()) { $line | ConvertFrom-Json -AsHashtable }
+    }
 }
 
 # Writing to a merged or closed pull request helps no one; new commits belong on a fresh branch.
