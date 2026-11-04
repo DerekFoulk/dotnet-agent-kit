@@ -49,6 +49,34 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task FindPicksTheRightBookmarkAmongSeveral()
+    {
+        Bookmark first = Bookmark.Create(new Uri("https://example.com/a"), "A", s_now);
+        Bookmark second = Bookmark.Create(new Uri("https://example.com/b"), "B", s_now);
+        await SaveAsync(first);
+        await SaveAsync(second);
+
+        await using BookmarksDbContext db = new(_options);
+        EfBookmarkRepository repository = new(db);
+
+        (await repository.FindAsync(second.Id, TestContext.Current.CancellationToken))!.Title.Should().Be("B");
+        (await repository.FindAsync(Guid.NewGuid(), TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task FindByUrlPicksTheRightBookmarkAmongSeveral()
+    {
+        await SaveAsync(Bookmark.Create(new Uri("https://example.com/a"), "A", s_now));
+        await SaveAsync(Bookmark.Create(new Uri("https://example.com/b"), "B", s_now));
+
+        await using BookmarksDbContext db = new(_options);
+        EfBookmarkRepository repository = new(db);
+
+        (await repository.FindByUrlAsync(new Uri("https://example.com/b"), TestContext.Current.CancellationToken))!.Title.Should().Be("B");
+        (await repository.FindByUrlAsync(new Uri("https://example.com/c"), TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task ListReturnsEverySavedBookmark()
     {
         await SaveAsync(Bookmark.Create(new Uri("https://example.com/a"), "A", s_now));

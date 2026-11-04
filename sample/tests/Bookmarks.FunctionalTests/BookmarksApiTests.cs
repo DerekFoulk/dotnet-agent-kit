@@ -34,6 +34,7 @@ public sealed class BookmarksApiTests : IDisposable
     {
         CreateBookmarkRequest request = new(new Uri("https://example.com/a"), "A");
         using HttpResponseMessage first = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
 
         using HttpResponseMessage second = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
 
