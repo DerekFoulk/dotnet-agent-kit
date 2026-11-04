@@ -23,9 +23,46 @@ Describe 'dependabot-lockfiles.yml' {
         @($on.Keys) | Should -Be @('pull_request')
     }
 
-    It "only acts on Dependabot's NuGet PRs" {
-        "$($job['if'])" | Should -Match "github\.actor == 'dependabot\[bot\]'"
-        "$($job['if'])" | Should -Match "startsWith\(github\.head_ref, 'dependabot/nuget/'\)"
+    It "only acts on Dependabot's own NuGet PRs in this repo (every condition must hold)" {
+        $conditions = "$($job['if'])" -split '\s*&&\s*'
+
+        "$($job['if'])" | Should -Not -Match '\|\|'
+        $conditions | Should -Contain "github.actor == 'dependabot[bot]'"
+        $conditions | Should -Contain "github.event.pull_request.user.login == 'dependabot[bot]'"
+        $conditions | Should -Contain 'github.event.pull_request.head.repo.full_name == github.repository'
+        $conditions | Should -Contain "startsWith(github.head_ref, 'dependabot/nuget/')"
+    }
+
+    It 'checks out the exact commit the run was for, so a later push is never swept in' {
+        $checkout = @($job['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })[0]
+
+        $checkout['with']['ref'] | Should -Be '${{ github.event.pull_request.head.sha }}'
+    }
+
+    It 'lets a newer run for the same PR replace an older one' {
+        $workflow.ContainsKey('concurrency') | Should -BeTrue
+        $workflow['concurrency']['group'] | Should -Match 'github\.head_ref'
+        $workflow['concurrency']['cancel-in-progress'] | Should -BeTrue
+    }
+
+    It 'gives the write token only to the steps that push or approve, not to the restore' {
+        @($job['env'].Keys) | Should -Not -Contain 'GH_TOKEN'
+        $restore = @($job['steps'] | Where-Object { "$($_['run'])" -match 'dotnet restore' })[0]
+        @($restore['env'].Keys) | Should -Not -Contain 'GH_TOKEN'
+    }
+
+    It 'counts root and new lock files as changes too' {
+        $run | Should -Match "git status --porcelain -- '\*packages\.lock\.json'"
+    }
+
+    It 'refreshes without the NuGet audit, which CI runs anyway' {
+        $run | Should -Match 'dotnet restore .*-p:NuGetAudit=false'
+    }
+
+    It "fails when CI is still waiting for approval, or never started, after it's done" {
+        $run | Should -Match '--status action_required'
+        $run | Should -Match '--workflow ci\.yml'
+        $run | Should -Match 'still waiting for approval'
     }
 
     It 'asks for only the permissions it needs: push the lock files, approve the CI runs' {
@@ -44,7 +81,7 @@ Describe 'dependabot-lockfiles.yml' {
 
     It 'refreshes every lock file and commits only lock files, with a Conventional subject' {
         $run | Should -Match 'dotnet restore .*--force-evaluate'
-        $run | Should -Match "git add -- '\*\*/packages\.lock\.json'"
+        $run | Should -Match "git add -- '\*packages\.lock\.json'"
         $run | Should -Match 'git commit .*-m "chore\(deps\): refresh NuGet lock files"'
     }
 
