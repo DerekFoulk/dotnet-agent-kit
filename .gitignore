@@ -482,3 +482,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# The sample API's local SQLite database
+sample/**/bookmarks.db*

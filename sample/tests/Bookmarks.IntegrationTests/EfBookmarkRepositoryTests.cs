@@ -8,7 +8,7 @@ namespace Bookmarks.IntegrationTests;
 /// <summary>The repository against a real SQLite database, held in memory for the test's lifetime.</summary>
 public sealed class EfBookmarkRepositoryTests : IDisposable
 {
-    private static readonly DateTimeOffset Now = new(2026, 11, 4, 12, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset s_now = new(2026, 11, 4, 12, 0, 0, TimeSpan.Zero);
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly DbContextOptions<BookmarksDbContext> _options;
 
@@ -23,7 +23,7 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     [Fact]
     public async Task AddThenFindReturnsTheSameBookmark()
     {
-        Bookmark bookmark = Bookmark.Create(new Uri("https://example.com/a"), "A", Now);
+        Bookmark bookmark = Bookmark.Create(new Uri("https://example.com/a"), "A", s_now);
         await SaveAsync(bookmark);
 
         await using BookmarksDbContext db = new(_options);
@@ -32,13 +32,13 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         found.Should().NotBeNull();
         found!.Url.Should().Be(bookmark.Url);
         found.Title.Should().Be("A");
-        found.CreatedAt.Should().Be(Now);
+        found.CreatedAt.Should().Be(s_now);
     }
 
     [Fact]
     public async Task FindByUrlFindsTheSavedUrl()
     {
-        Bookmark bookmark = Bookmark.Create(new Uri("https://example.com/a"), "A", Now);
+        Bookmark bookmark = Bookmark.Create(new Uri("https://example.com/a"), "A", s_now);
         await SaveAsync(bookmark);
 
         await using BookmarksDbContext db = new(_options);
@@ -51,8 +51,8 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     [Fact]
     public async Task ListReturnsEverySavedBookmark()
     {
-        await SaveAsync(Bookmark.Create(new Uri("https://example.com/a"), "A", Now));
-        await SaveAsync(Bookmark.Create(new Uri("https://example.com/b"), "B", Now.AddMinutes(1)));
+        await SaveAsync(Bookmark.Create(new Uri("https://example.com/a"), "A", s_now));
+        await SaveAsync(Bookmark.Create(new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
 
         await using BookmarksDbContext db = new(_options);
         IReadOnlyList<Bookmark> all = await new EfBookmarkRepository(db).ListAsync(TestContext.Current.CancellationToken);
