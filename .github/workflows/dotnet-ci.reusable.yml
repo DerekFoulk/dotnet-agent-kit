@@ -67,7 +67,7 @@ jobs:
       - name: Coverage gate
         if: steps.projects.outputs.count != '0'
         shell: pwsh
-        run: ./tools/Test-CoverageGate.ps1 -Path "$env:RUNNER_TEMP/test-results"
+        run: ./tools/Test-CoverageGate.ps1 -Path "$env:RUNNER_TEMP/test-results" -Solution $env:SOLUTION
 
       - name: Deprecated packages
         shell: pwsh

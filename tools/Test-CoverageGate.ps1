@@ -17,7 +17,8 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Path = 'TestResults'
+    [string] $Path = 'TestResults',
+    [string] $Solution
 )
 
 Set-StrictMode -Version Latest
@@ -66,12 +67,20 @@ function Get-CoverageSummary {
                 Package = $_.Name
                 Covered = $covered
                 Total   = $_.Count
-                Percent = [math]::Round(100 * $covered / $_.Count, 1)
+                # For display only; Test-CoverageMinimum compares exact counts.
+                Percent = [math]::Round(100 * $covered / $_.Count, 2)
             }
         }
 }
 
-# Prints each assembly against its minimum, then the overall total. Returns 0 when all pass, else 1.
+# Exact check: covered/total is at least minimum%, with no rounding.
+function Test-CoverageMinimum {
+    param([int] $Covered, [int] $Total, [double] $Minimum)
+    $Covered * 100 -ge $Minimum * $Total
+}
+
+# Prints each assembly against its minimum, then the overall total. With -Solution, every production
+# project in it must appear in the reports. Returns 0 when all pass, else 1.
 function Invoke-CoverageGate {
     param([Parameter(Mandatory)] [string] $Path, [string] $Solution)
 
@@ -82,22 +91,36 @@ function Invoke-CoverageGate {
     }
 
     $failed = $false
+
+    # A production project that no test loads isn't in any report, so it would drop out silently.
+    if ($Solution) {
+        $expected = ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project') |
+            ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.GetAttribute('Path')) } |
+            Where-Object { $_ -notlike '*Tests' }
+        foreach ($name in $expected) {
+            if ($summary.Package -notcontains $name) {
+                $failed = $true
+                Write-Host ('{0,-32} FAIL: no coverage at all; no test loads it' -f $name)
+            }
+        }
+    }
+
     foreach ($row in $summary) {
         $rule = $script:CoverageRules | Where-Object { $row.Package -like $_.Pattern } | Select-Object -First 1
         $minimum = if ($rule) { $rule.Minimum } else { $null }
-        $status = if ($null -eq $minimum) { 'counted in overall' } elseif ($row.Percent -ge $minimum) { "ok (minimum $minimum%)" } else { $failed = $true; "FAIL: minimum $minimum%" }
+        $status = if ($null -eq $minimum) { 'counted in overall' } elseif (Test-CoverageMinimum -Covered $row.Covered -Total $row.Total -Minimum $minimum) { "ok (minimum $minimum%)" } else { $failed = $true; "FAIL: minimum $minimum%" }
         Write-Host ('{0,-32} {1,6}% ({2}/{3} lines)  {4}' -f $row.Package, $row.Percent, $row.Covered, $row.Total, $status)
     }
 
     $covered = ($summary | Measure-Object Covered -Sum).Sum
     $total = ($summary | Measure-Object Total -Sum).Sum
-    $overall = [math]::Round(100 * $covered / $total, 1)
-    $overallStatus = if ($overall -ge $script:OverallMinimum) { "ok (minimum $($script:OverallMinimum)%)" } else { $failed = $true; "FAIL: minimum $($script:OverallMinimum)%" }
+    $overall = [math]::Round(100 * $covered / $total, 2)
+    $overallStatus = if (Test-CoverageMinimum -Covered $covered -Total $total -Minimum $script:OverallMinimum) { "ok (minimum $($script:OverallMinimum)%)" } else { $failed = $true; "FAIL: minimum $($script:OverallMinimum)%" }
     Write-Host ('{0,-32} {1,6}% ({2}/{3} lines)  {4}' -f 'overall', $overall, $covered, $total, $overallStatus)
 
     if ($failed) { 1 } else { 0 }
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
-    exit (Invoke-CoverageGate -Path $Path)
+    exit (Invoke-CoverageGate -Path $Path -Solution $Solution)
 }
