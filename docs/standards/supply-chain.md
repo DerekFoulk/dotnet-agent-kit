@@ -70,7 +70,7 @@ rules:
     layer: owner
     status: proposed
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: every action in .github/workflows is pinned by commit SHA and .github/dependabot.yml updates them, but GitHub's SHA-pinning requirement is off and no CI check verifies the pins"
+    enforcement: "advisory: every action in .github/workflows is pinned by commit SHA and .github/dependabot.yml updates them; Pester tests check the pins in the release, Dependabot lock-file and shared app workflows, but GitHub's SHA-pinning requirement is off and the other workflows' pins aren't checked"
     scope: core
     paths: [".github/**"]
 ---

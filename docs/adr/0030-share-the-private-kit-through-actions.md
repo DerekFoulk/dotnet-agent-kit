@@ -5,6 +5,8 @@
 
 ## Context
 
+ADR-0012 chose a `dotnet new` template, a NuGet config package and a sync step, with v0.1 copying `kit/core` by hand. This ADR amends it for a private kit.
+
 The owner wants the kit packaged and self-updating: one command per new app, and kit updates reaching each app repo as pull requests, with as little maintenance as possible. He chose to keep the kit repo private and to try that first (owner, 2026-11-04).
 
 A private repo limits sharing. An app repo's workflow token can't read another private repo: checking out the kit at a shared workflow's commit failed with "Repository not found" (`spikes/kit-sharing/README.md`, run 2). A private NuGet feed (GitHub Packages) would need a token on every machine, in every app repo and for Dependabot, and tokens expire.
@@ -49,7 +51,9 @@ Accepted (owner, 2026-11-04: packaged and self-updating, kit private; owner, 202
 
 - The kit repo's Actions access is "Accessible from repositories owned by DerekFoulk" (turned on 2026-11-04).
 - `.github/actions/kit-tools` returns the kit's folder; shared workflows use it as `uses: $/.github/actions/kit-tools` and never run a caller's `./tools`. `tools/tests/SharedCi.Tests.ps1` checks that.
-- App repos call the shared workflows at a kit tag (README, "Using the kit's CI from an app repo").
+- App repos call the shared workflows pinned by the full commit SHA of a kit release, with the version in a comment, like any other action (SUP-008). A tag can be moved; a SHA can't. The sync job (PR D3) moves the pin to each new release (README, "Using the kit's CI from an app repo").
+- The shared workflows assume the app has the kit's build files (`global.json`, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig`, lock files); `New-KitApp` creates them and the sync job keeps them current.
+- ADR-0012 is amended: build config travels with the synced files rather than a NuGet package, and `New-KitApp` plus the sync job replace the hand copy.
 - PR D2 (`New-KitApp`) and PR D3 (the sync job) build on this. If the private route fails, Option 4 is the fallback the owner named.
 
 ## Pillars affected
