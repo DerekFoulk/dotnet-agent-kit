@@ -57,11 +57,32 @@ Describe 'Shared CI for app repos' {
             $workflow.Text | Should -Match 'steps\.kit\.outputs\.path'
         }
 
+        # A value from the event pasted into a script could inject commands; values come in through env.
+        It 'never pastes a ${{ }} value into a run: script' {
+            $runs = @(Get-Steps $workflow.Yaml | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] })
+
+            $runs.Count | Should -BeGreaterThan 0
+            $runs | Should -Not -Match '\$\{\{'
+        }
+
         It 'pins every external action to a full commit SHA (SUP-008)' {
             # Real uses: lines only, not the example calls in the header comments.
             $uses = @([regex]::Matches($workflow.Text, '(?m)^\s*(?:-\s*)?uses: (\S+)') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notlike '$/*' })
 
             $uses | Should -Match '@[0-9a-f]{40}$'
+        }
+    }
+
+    Context 'dotnet-ci.reusable.yml input' {
+        # An app that left out the solution would get the kit's own default and fail obscurely.
+        It 'requires the caller to name its solution, and the kit''s own CI does' {
+            $on = if ($dotnet.Yaml.ContainsKey('on')) { $dotnet.Yaml['on'] } elseif ($dotnet.Yaml.ContainsKey($true)) { $dotnet.Yaml[$true] } else { @{} }
+            $solution = $on['workflow_call']['inputs']['solution']
+
+            $solution['required'] | Should -BeTrue
+            $solution.ContainsKey('default') | Should -BeFalse
+            $ci = Read-Yaml '.github/workflows/ci.yml'
+            $ci.Yaml['jobs']['dotnet']['with']['solution'] | Should -Be 'dotnet-agent-kit.slnx'
         }
     }
 
@@ -93,6 +114,15 @@ Describe 'Shared CI for app repos' {
         It 'checks the PR''s commit subjects and red-to-green order' {
             $run | Should -Match 'Test-ConventionalTitle\.ps1"? -Range \$env:RANGE'
             $run | Should -Match 'Test-RedGreenOrder\.ps1"? -Range \$env:RANGE'
+        }
+
+        # Called from another event, the PR steps would all skip and "App checks" would pass having
+        # checked nothing (review of PR D1).
+        It 'fails when called from an event it can''t check' {
+            $guard = @(Get-Steps $app.Yaml | Where-Object { "$($_['if'])" -match "github\.event_name != 'pull_request'" -and "$($_['if'])" -match "github\.event_name != 'push'" })
+
+            $guard.Count | Should -Be 1
+            $guard[0]['run'] | Should -Match 'exit 1'
         }
 
         It 'checks ADR sections in the app''s own docs/adr, when it has one' {
