@@ -58,7 +58,8 @@ Describe 'Shared CI for app repos' {
         }
 
         It 'pins every external action to a full commit SHA (SUP-008)' {
-            $uses = @([regex]::Matches($workflow.Text, 'uses: (\S+)') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notlike '$/*' })
+            # Real uses: lines only, not the example calls in the header comments.
+            $uses = @([regex]::Matches($workflow.Text, '(?m)^\s*(?:-\s*)?uses: (\S+)') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notlike '$/*' })
 
             $uses | Should -Match '@[0-9a-f]{40}$'
         }
