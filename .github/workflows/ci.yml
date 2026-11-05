@@ -16,6 +16,8 @@ concurrency:
 jobs:
   dotnet:
     uses: ./.github/workflows/dotnet-ci.reusable.yml
+    with:
+      solution: dotnet-agent-kit.slnx
 
   kit:
     uses: ./.github/workflows/kit-checks.reusable.yml

@@ -20,6 +20,16 @@ jobs:
       run:
         shell: pwsh
     steps:
+      # From any other event the PR steps below would all skip, and "App checks" would pass having
+      # checked nothing.
+      - name: Supported event
+        if: github.event_name != 'pull_request' && github.event_name != 'push'
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          "::error::App checks run on pull_request and push, not $env:EVENT; nothing would be checked."
+          exit 1
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # the commit checks read the PR's history

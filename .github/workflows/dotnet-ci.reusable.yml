@@ -12,7 +12,7 @@ on:
       solution:
         description: Solution file to build (.slnx).
         type: string
-        default: dotnet-agent-kit.slnx
+        required: true
 
 permissions:
   contents: read
