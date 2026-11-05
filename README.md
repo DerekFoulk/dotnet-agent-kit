@@ -107,6 +107,33 @@ Two more workflows act rather than check:
 
 Both push with the workflow's own token, so CI on the PR they create or update waits for approval, and they approve it. If a release or Dependabot PR is ever stuck with no checks reporting, close and reopen it: that runs CI as you. Expect the first CI run on each Dependabot NuGet PR to fail locked restore; the lock-file commit replaces it. Once that commit is on the branch, Dependabot may stop rebasing the PR on its own; comment `@dependabot rebase` on it, and the workflow adds the lock files again.
 
+### Using the kit's CI from an app repo
+
+An app repo calls the kit's shared workflows at a kit version tag; nothing from the kit's `tools/` is copied into it. This works while the kit repo stays private: its Actions access setting allows repositories owned by DerekFoulk, and the shared workflows fetch the kit's scripts through the `kit-tools` action (`uses: $/.github/actions/kit-tools`), which GitHub downloads at the shared workflow's own commit with no token (`spikes/kit-sharing/README.md`).
+
+```yaml
+# .github/workflows/ci.yml in an app repo
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  dotnet:
+    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/dotnet-ci.reusable.yml@v0.1.0
+    with:
+      solution: MyApp.slnx
+  app:
+    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/app-checks.reusable.yml@v0.1.0
+```
+
+| Shared workflow | What it checks in the app |
+|---|---|
+| `dotnet-ci.reusable.yml` | The .NET gates and the secret scan above. The app's `global.json` must select Microsoft Testing Platform |
+| `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr` |
+
 Each action is pinned by commit SHA, and the gitleaks image by digest. `.github/dependabot.yml` keeps NuGet packages, the actions and the `global.json` SDK pin current; bump the gitleaks image by hand. The "main protection" ruleset on GitHub requires a pull request and these checks to pass ("dotnet / Build, test and package checks", "dotnet / Secret scan (gitleaks)", "kit / Kit checks", "PR title"). It allows merge commits only, and blocks force-pushes and deletion of `main`. It doesn't require a branch to be up to date with `main` before merging, so the merge result itself isn't re-tested; with merge commits that's a deliberate trade against rebuilding after every merge.
 
 ## Run the tests
