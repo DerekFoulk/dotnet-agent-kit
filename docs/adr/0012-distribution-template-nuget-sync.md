@@ -40,6 +40,7 @@ Accepted as recommended (owner, 2026-11-01).
 - v0.1 copies `kit/core` by hand; the sync step, the template and the NuGet package follow in that order (brief §9).
 - CI jobs ship as reusable GitHub Actions workflows called with a pinned ref.
 - An optional GitHub template repo may still exist for convenience.
+- **Amended by ADR-0030 (2026-11-05):** with the kit kept private, build config travels with the synced files instead of a NuGet package (a private feed would need tokens everywhere), and the hand copy is replaced by `New-KitApp` and a sync job, both fetching the kit through GitHub Actions. The reusable workflows called with a pinned ref stand as decided here.
 
 ## Pillars affected
 

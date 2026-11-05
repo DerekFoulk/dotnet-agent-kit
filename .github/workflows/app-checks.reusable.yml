@@ -1,0 +1,73 @@
+# Checks for an app repo that uses the kit, called at a kit version tag:
+#   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/app-checks.reusable.yml@v0.1.0
+# On pull requests: the PR title, the commit subjects and red-to-green order (the PR's own commits).
+# Always: ADR sections, when the app has docs/adr. The kit's scripts come from the kit at the same
+# version (kit-tools), so the app needs no copy of them. Call it on pull_request with the "edited" type
+# too, so a renamed PR is re-checked.
+name: App checks (reusable)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: App checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      # From any other event the PR steps below would all skip, and "App checks" would pass having
+      # checked nothing.
+      - name: Supported event
+        if: github.event_name != 'pull_request' && github.event_name != 'push'
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          "::error::App checks run on pull_request and push, not $env:EVENT; nothing would be checked."
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the commit checks read the PR's history
+          persist-credentials: false
+
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      # The title comes in through an environment variable, never inline, so it can't inject commands.
+      - name: PR title is a Conventional Commit
+        if: github.event_name == 'pull_request'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: '& "$env:KIT/tools/Test-ConventionalTitle.ps1" -Title $env:PR_TITLE'
+
+      - name: Commit subjects are Conventional Commits
+        if: github.event_name == 'pull_request'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: '& "$env:KIT/tools/Test-ConventionalTitle.ps1" -Range $env:RANGE'
+
+      - name: Every red commit is made green
+        if: github.event_name == 'pull_request'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: '& "$env:KIT/tools/Test-RedGreenOrder.ps1" -Range $env:RANGE'
+
+      - name: ADR sections
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $adr = Join-Path $env:GITHUB_WORKSPACE 'docs/adr'
+          if (Test-Path $adr) {
+            & "$env:KIT/tools/Test-AdrSections.ps1" -AdrPath $adr
+          }
+          else {
+            'No docs/adr in this repo; nothing to check.'
+          }

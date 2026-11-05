@@ -1,7 +1,9 @@
 # .NET gates for any repo that uses the kit: locked restore with NuGet audit, build with zero warnings,
 # format check, tests with a coverage gate, deprecated packages, and a secret scan of the whole history.
-# Called by ci.yml. It runs the kit's tools/ scripts from the caller's checkout and needs global.json's
-# test runner set to Microsoft.Testing.Platform, so another repo adopting it needs both (kit/core, later).
+# Called by this repo's ci.yml, and by app repos at a kit version tag:
+#   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/dotnet-ci.reusable.yml@v0.1.0
+# The kit's scripts come from the kit at the same version (kit-tools), so an app needs no copy of them.
+# The app's global.json must set the test runner to Microsoft.Testing.Platform.
 name: .NET CI (reusable)
 
 on:
@@ -10,7 +12,7 @@ on:
       solution:
         description: Solution file to build (.slnx).
         type: string
-        default: dotnet-agent-kit.slnx
+        required: true
 
 permissions:
   contents: read
@@ -33,6 +35,10 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+
+      # The kit's scripts, at this workflow's own commit (spikes/kit-sharing).
+      - id: kit
+        uses: $/.github/actions/kit-tools
 
       # An empty solution only warns "no project to restore", which would fail the zero-warnings gate.
       # The .NET steps start running when the first project is added (build step 6).
@@ -68,11 +74,15 @@ jobs:
       - name: Coverage gate
         if: steps.projects.outputs.count != '0'
         shell: pwsh
-        run: ./tools/Test-CoverageGate.ps1 -Path "$env:RUNNER_TEMP/test-results" -Solution $env:SOLUTION
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-CoverageGate.ps1" -Path "$env:RUNNER_TEMP/test-results" -Solution $env:SOLUTION'
 
       - name: Deprecated packages
         shell: pwsh
-        run: ./tools/Test-DeprecatedPackages.ps1 -Path $env:SOLUTION
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:SOLUTION'
 
   secrets:
     name: Secret scan (gitleaks)

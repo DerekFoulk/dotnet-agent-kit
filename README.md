@@ -109,6 +109,51 @@ Both push with the workflow's own token, so CI on the PR they create or update w
 
 Each action is pinned by commit SHA, and the gitleaks image by digest. `.github/dependabot.yml` keeps NuGet packages, the actions and the `global.json` SDK pin current; bump the gitleaks image by hand. The "main protection" ruleset on GitHub requires a pull request and these checks to pass ("dotnet / Build, test and package checks", "dotnet / Secret scan (gitleaks)", "kit / Kit checks", "PR title"). It allows merge commits only, and blocks force-pushes and deletion of `main`. It doesn't require a branch to be up to date with `main` before merging, so the merge result itself isn't re-tested; with merge commits that's a deliberate trade against rebuilding after every merge.
 
+### Using the kit's CI from an app repo
+
+An app repo calls the kit's shared workflows; nothing from the kit's `tools/` is copied into it. This works while the kit repo stays private: its Actions access setting allows repositories owned by DerekFoulk, and the shared workflows fetch the kit's scripts through the `kit-tools` action (`uses: $/.github/actions/kit-tools`), which GitHub downloads at the shared workflow's own commit with no token (`spikes/kit-sharing/README.md`, ADR-0030).
+
+Pin the kit like any other action (SUP-008): by the full commit SHA of a kit release, with the version in a comment. `v0.1.0` is the first release, once release PR 10 merges; until then there's no tag to pin. Two small caller workflows keep a renamed PR from rebuilding the whole app:
+
+```yaml
+# .github/workflows/ci.yml in an app repo: the .NET gates
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  dotnet:
+    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/dotnet-ci.reusable.yml@<commit SHA> # v0.1.0
+    with:
+      solution: MyApp.slnx
+```
+
+```yaml
+# .github/workflows/app-checks.yml in an app repo: also runs when the PR is edited
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  app:
+    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/app-checks.reusable.yml@<commit SHA> # v0.1.0
+```
+
+| Shared workflow | What it checks in the app |
+|---|---|
+| `dotnet-ci.reusable.yml` | Restore, build, format, tests with coverage, the coverage gate, deprecated packages, and the secret scan. `solution` is required |
+| `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`. Called from any other event, it fails rather than pass having checked nothing |
+
+The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig`, and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the sync job (PR D3) keeps them current.
+
 ## Run the tests
 
 ```powershell

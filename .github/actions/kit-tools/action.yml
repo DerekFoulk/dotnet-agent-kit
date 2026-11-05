@@ -1,0 +1,22 @@
+name: kit tools
+description: >-
+  Makes the kit's scripts available to a workflow. GitHub downloads this whole repo to use the action,
+  so its tools/ folder is on the runner. A kit shared workflow calls it as `uses: $/.github/actions/kit-tools`,
+  which resolves to the kit at the shared workflow's own commit, with no token (spikes/kit-sharing).
+outputs:
+  path:
+    description: The kit's root folder on the runner (run scripts as <path>/tools/<script>.ps1).
+    value: ${{ steps.locate.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - id: locate
+      shell: bash
+      run: |
+        kit="$(cd "$GITHUB_ACTION_PATH/../../.." && pwd)"
+        if [ ! -d "$kit/tools" ]; then
+          echo "::error::No tools/ folder in the kit download at $kit"
+          exit 1
+        fi
+        echo "Kit scripts: $kit/tools"
+        echo "path=$kit" >> "$GITHUB_OUTPUT"
