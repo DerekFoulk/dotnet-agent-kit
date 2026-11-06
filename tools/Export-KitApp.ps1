@@ -19,7 +19,8 @@ param(
     [string] $Name,
     [string] $Destination,
     [string] $KitRef,
-    [string] $KitRoot
+    [string] $KitRoot,
+    [string] $KitVersion
 )
 
 Set-StrictMode -Version Latest
@@ -74,6 +75,37 @@ function Get-KitAppFileMap {
     foreach ($tool in $script:KitTools) {
         [pscustomobject]@{ Kind = 'Copy'; Source = "tools/$tool"; Target = ".kit/tools/$tool" }
     }
+
+    # The app's own files, rendered from templates/app. App.slnx takes the app's name.
+    $templates = @(git -C $KitRoot ls-tree -r --name-only $Commit -- templates/app)
+    if ($LASTEXITCODE -ne 0) { throw "git ls-tree failed for templates/app at $Commit." }
+    foreach ($file in $templates) {
+        $target = $file.Substring('templates/app/'.Length)
+        if ($target -eq 'App.slnx') { $target = "$Name.slnx" }
+        [pscustomobject]@{ Kind = 'Template'; Source = $file; Target = $target }
+    }
+}
+
+# The kit AGENTS.md sections every repo shares, from "Whose rules win" up to the kit's own Commands.
+function Get-KitAgentsSection {
+    param([Parameter(Mandatory)] [string] $AgentsText)
+
+    $match = [regex]::Match($AgentsText, '(?ms)^## Whose rules win\r?\n.*?(?=^## Commands\r?$)')
+    if (-not $match.Success) { throw "The kit's AGENTS.md has no sections from '## Whose rules win' to '## Commands'." }
+    $match.Value.TrimEnd()
+}
+
+function Get-KitVersionLabel {
+    param(
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [Parameter(Mandatory)] [string] $KitRef,
+        [Parameter(Mandatory)] [string] $Commit
+    )
+
+    if ($KitRef -match '^v\d+\.\d+\.\d+') { return $KitRef }
+    $tag = (git -C $KitRoot describe --tags --exact-match $Commit 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -eq 0 -and $tag) { return $tag }
+    'unreleased'
 }
 
 function Export-KitApp {
@@ -81,21 +113,42 @@ function Export-KitApp {
         [Parameter(Mandatory)] [string] $Name,
         [Parameter(Mandatory)] [string] $Destination,
         [Parameter(Mandatory)] [string] $KitRef,
-        [Parameter(Mandatory)] [string] $KitRoot
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [string] $KitVersion
     )
 
     $commit = (git -C $KitRoot rev-parse --verify --quiet "$KitRef^{commit}" | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
+    if (-not $KitVersion) { $KitVersion = Get-KitVersionLabel -KitRoot $KitRoot -KitRef $KitRef -Commit $commit }
 
     $checkout = Join-Path ([IO.Path]::GetTempPath()) "kit-export-$([guid]::NewGuid().ToString('N'))"
     git -C $KitRoot worktree add --quiet --detach $checkout $commit
     if ($LASTEXITCODE -ne 0) { throw "Couldn't check out $commit from $KitRoot." }
     try {
+        $values = @{
+            Name          = $Name
+            KitCommit     = $commit
+            KitVersion    = $KitVersion
+            KitSections   = Get-KitAgentsSection -AgentsText ([IO.File]::ReadAllText((Join-Path $checkout 'AGENTS.md')))
+        }
+
         New-Item -ItemType Directory -Force -Path $Destination | Out-Null
         foreach ($entry in Get-KitAppFileMap -KitRoot $KitRoot -Commit $commit -Name $Name) {
+            $source = Join-Path $checkout $entry.Source
             $target = Join-Path $Destination $entry.Target
             New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-            Copy-Item -LiteralPath (Join-Path $checkout $entry.Source) -Destination $target
+            if ($entry.Kind -eq 'Template') {
+                $text = [regex]::Replace([IO.File]::ReadAllText($source), '\{\{([A-Za-z]+)\}\}', {
+                        param($match)
+                        $key = $match.Groups[1].Value
+                        if (-not $values.ContainsKey($key)) { throw "Unknown placeholder {{$key}} in $($entry.Source)." }
+                        $values[$key]
+                    })
+                [IO.File]::WriteAllText($target, $text, [Text.UTF8Encoding]::new($false))
+            }
+            else {
+                Copy-Item -LiteralPath $source -Destination $target
+            }
         }
     }
     finally {
@@ -106,7 +159,7 @@ function Export-KitApp {
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $KitRoot) { $KitRoot = Split-Path -Path $PSScriptRoot -Parent }
     try {
-        Export-KitApp -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
+        Export-KitApp -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot -KitVersion $KitVersion
     }
     catch {
         Write-Host $_.Exception.Message -ForegroundColor Red
