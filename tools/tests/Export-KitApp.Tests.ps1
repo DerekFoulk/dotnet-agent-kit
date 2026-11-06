@@ -113,6 +113,37 @@ Describe 'Export-KitApp' {
         $appAgents | Should -Match '<!-- kit:end -->'
     }
 
+    It 'writes a manifest of the kit version and every kit-managed file, with its SHA-256' {
+        $manifestPath = Join-Path $app '.kit/manifest.json'
+        Test-Path -LiteralPath $manifestPath | Should -BeTrue -Because 'the sync job reads .kit/manifest.json'
+        $manifest = Get-Content -Raw $manifestPath | ConvertFrom-Json -AsHashtable
+
+        $manifest['kitRepository'] | Should -Be 'DerekFoulk/dotnet-agent-kit'
+        $manifest['kitCommit'] | Should -Be $commit
+        $manifest['kitVersion'] | Should -Be 'unreleased'
+
+        $listed = @{}
+        foreach ($file in $manifest['files']) { $listed[$file['path']] = $file }
+        $kitOwned = @($map | Where-Object { $_.Owner -eq 'Kit' } | ForEach-Object { $_.Target })
+        $kitOwned | Should -Contain '.github/workflows/ci.yml'
+        foreach ($path in $kitOwned) {
+            $listed.ContainsKey($path) | Should -BeTrue -Because "$path is kit-managed"
+            $actual = (Get-FileHash -LiteralPath (Join-Path $app $path) -Algorithm SHA256).Hash.ToLowerInvariant()
+            $listed[$path]['sha256'] | Should -Be $actual -Because "$path's hash should match the exported file"
+        }
+
+        # The app owns these from the start; the sync job never touches them.
+        foreach ($path in 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md') {
+            $listed.ContainsKey($path) | Should -BeFalse -Because "$path belongs to the app"
+        }
+
+        # AGENTS.md is the app's, except the block between kit:begin and kit:end.
+        $block = [regex]::Match((Get-Content -Raw (Join-Path $app 'AGENTS.md')), '(?s)<!-- kit:begin.*?<!-- kit:end -->').Value
+        $blockHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($block))).ToLowerInvariant()
+        $listed['AGENTS.md']['block'] | Should -Be 'kit'
+        $listed['AGENTS.md']['sha256'] | Should -Be $blockHash
+    }
+
     It 'includes the build files, agent files, rules, notices and tools an app needs' {
         $targets = @($map | ForEach-Object { $_.Target })
 
