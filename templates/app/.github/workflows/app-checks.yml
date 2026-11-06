@@ -1,0 +1,17 @@
+# {{Name}}'s process checks, from dotnet-agent-kit's shared workflow: the PR title, commit subjects,
+# red-to-green order and ADR sections. It also runs when the PR is edited, because the title becomes the
+# merge commit's subject. Pinned like ci.yml.
+name: App checks
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/app-checks.reusable.yml@{{KitCommit}} # {{KitVersion}}

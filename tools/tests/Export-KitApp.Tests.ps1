@@ -24,6 +24,9 @@ Describe 'Export-KitApp' {
         git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m 'chore: kit fixture'
         $commit = (git -C $kit rev-parse HEAD).Trim()
 
+        # An edit nobody committed must not reach an app.
+        Add-Content -LiteralPath (Join-Path $kit '.editorconfig') -Value '# uncommitted-edit-marker'
+
         $app = Join-Path $TestDrive 'app'
         & $script -Name 'Contoso.Orders' -Destination $app -KitRef $commit -KitRoot $kit
         $exportExit = $LASTEXITCODE
@@ -57,7 +60,60 @@ Describe 'Export-KitApp' {
         }
     }
 
-    It 'includes the build files, agent files, rules, notices and templates an app needs' {
+    It 'ignores an edit in the kit that isn''t committed' {
+        Get-Content -Raw (Join-Path $app '.editorconfig') | Should -Not -Match 'uncommitted-edit-marker'
+    }
+
+    It 'renders the app''s own files from the templates, with no placeholder left' {
+        foreach ($path in 'AGENTS.md', 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md',
+            '.github/workflows/ci.yml', '.github/workflows/app-checks.yml', '.github/dependabot.yml') {
+            Test-Path -LiteralPath (Join-Path $app $path) | Should -BeTrue -Because "$path comes from templates/app"
+        }
+        Get-Content -Raw (Join-Path $app 'README.md') | Should -Match '# Contoso\.Orders'
+
+        # ${{ github.ref }} in a workflow is GitHub's syntax, not a template placeholder.
+        $leftovers = Get-ChildItem -LiteralPath $app -Recurse -File | Select-String -Pattern '\{\{[A-Za-z]+\}\}'
+        @($leftovers | ForEach-Object { "$($_.Path):$($_.LineNumber)" }) | Should -BeNullOrEmpty
+    }
+
+    It 'pins both caller workflows to the kit commit, with the version in a comment, and names the solution' {
+        foreach ($path in '.github/workflows/ci.yml', '.github/workflows/app-checks.yml') {
+            Test-Path -LiteralPath (Join-Path $app $path) | Should -BeTrue -Because "$path should be exported"
+        }
+        $ci = Get-Content -Raw (Join-Path $app '.github/workflows/ci.yml')
+        $checks = Get-Content -Raw (Join-Path $app '.github/workflows/app-checks.yml')
+
+        $ci | Should -Match ([regex]::Escape("uses: DerekFoulk/dotnet-agent-kit/.github/workflows/dotnet-ci.reusable.yml@$commit # unreleased"))
+        $ci | Should -Match 'solution: Contoso\.Orders\.slnx'
+        $checks | Should -Match ([regex]::Escape("uses: DerekFoulk/dotnet-agent-kit/.github/workflows/app-checks.reusable.yml@$commit # unreleased"))
+    }
+
+    It 'starts with a solution that has no projects' {
+        Test-Path -LiteralPath (Join-Path $app 'Contoso.Orders.slnx') | Should -BeTrue -Because 'the solution should be exported'
+        $solution = [xml](Get-Content -Raw (Join-Path $app 'Contoso.Orders.slnx'))
+
+        $solution.DocumentElement.Name | Should -Be 'Solution'
+        $solution.SelectNodes('//Project').Count | Should -Be 0
+    }
+
+    It 'copies the kit''s shared AGENTS.md sections word for word into the app''s kit block' {
+        function Get-Section([string] $Text, [string] $Title) {
+            $match = [regex]::Match($Text, "(?ms)^## $([regex]::Escape($Title))\r?\n.*?(?=^## |^<!-- kit:end|\z)")
+            $match.Success | Should -BeTrue -Because "'## $Title' should be there"
+            $match.Value.TrimEnd()
+        }
+        Test-Path -LiteralPath (Join-Path $app 'AGENTS.md') | Should -BeTrue -Because 'AGENTS.md should be exported'
+        $kitAgents = Get-Content -Raw (Join-Path $checkout 'AGENTS.md')
+        $appAgents = Get-Content -Raw (Join-Path $app 'AGENTS.md')
+
+        foreach ($title in 'Whose rules win', 'How to work', 'Talking to the owner', 'Git', 'Ask before') {
+            Get-Section $appAgents $title | Should -Be (Get-Section $kitAgents $title)
+        }
+        $appAgents | Should -Match '<!-- kit:begin'
+        $appAgents | Should -Match '<!-- kit:end -->'
+    }
+
+    It 'includes the build files, agent files, rules, notices and tools an app needs' {
         $targets = @($map | ForEach-Object { $_.Target })
 
         foreach ($path in '.editorconfig', 'global.json', 'nuget.config', 'Directory.Build.props', 'tests/Directory.Build.props',
