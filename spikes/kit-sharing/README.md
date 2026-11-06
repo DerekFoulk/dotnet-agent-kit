@@ -1,5 +1,7 @@
 # Spike: sharing the private kit with private app repos (step 6, PR D)
 
+> **Later (2026-11-05):** the kit was made public (ADR-0031), so the access setting below no longer matters. The `$/.github/actions/kit-tools` route this spike found is still how shared workflows reach the kit's scripts at their own version.
+
 **Question:** the owner wants the kit packaged and self-updating, with the kit repo kept private. Can another private repo use the kit's scripts and CI with no token to create, store or renew?
 
 **Date:** 2026-11-05. **Where:** the kit repo (throwaway branch `spike/kit-action`, deleted after) and the throwaway private repo `DerekFoulk/kit-spike-release` (branches `spike/use-kit` and `spike/use-kit-2`, deleted after).

@@ -1,6 +1,6 @@
 # ADR-0013: Keep the kit repo private
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0031
 - **Date:** 2026-11-01
 
 ## Context
@@ -33,6 +33,7 @@ Decided by the owner: private, named `dotnet-agent-kit` (owner, 2026-11-01).
 
 - The repo is `DerekFoulk/dotnet-agent-kit`, private.
 - Features missing on private personal repos are replaced in the kit itself (ADR-0023, ADR-0024).
+- **Superseded by ADR-0031 (2026-11-05):** the owner made the kit public, with no license, so that its CI and any public app's CI are free.
 
 ## Pillars affected
 

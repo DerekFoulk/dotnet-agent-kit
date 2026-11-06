@@ -50,4 +50,4 @@ rules:
 
 # Security
 
-Floor rules (security, privacy, license compliance) are never overridden (brief §4). The kit's repos are private and personally owned, so GitHub secret scanning isn't available. The gitleaks scan of the full git history in CI is the protection instead (ADR-0024, ADR-0027).
+Floor rules (security, privacy, license compliance) are never overridden (brief §4). GitHub secret scanning isn't available on private repos owned by a personal account, so the gitleaks scan of the full git history in CI is the protection on every repo (ADR-0024, ADR-0027). The kit itself is public (ADR-0031), where GitHub's secret scanning also runs for free.
