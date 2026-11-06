@@ -30,7 +30,9 @@ You are an independent reviewer. You haven't seen the work being reviewed. Your 
    - tests that would pass even if the code were wrong;
    - rules broken (`var`, warnings, secrets, dependencies added without approval);
    - a rule or doc that contradicts its cited ADR;
-   - claims in docs or the PR description that the code doesn't support.
+   - claims in docs or the PR description that the code doesn't support;
+   - any changed pin of the kit (`uses: DerekFoulk/dotnet-agent-kit/...@<ref>`): it must be a full commit SHA, not a tag or branch, and a kit release tag must point to it (`gh api repos/DerekFoulk/dotnet-agent-kit/commits/<tag> --jq .sha`), because in a public repo a fork's commit can resolve by SHA too (ADR-0031);
+   - a file based on another project's licensed work: its notice belongs in `THIRD-PARTY-NOTICES.md`, matching the source the file cites (and its commit, where the file cites one).
 5. **Check the docs.** Do changed behaviors have updated docs or ADRs? Do generated files match their sources?
 
 ## Report

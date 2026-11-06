@@ -4,7 +4,7 @@ A versioned, vendor-neutral engineering method for .NET: rules, enforcement, age
 
 Work in progress (v0.1).
 
-This repo is public so its CI, and the CI of any public app that uses it, runs free (ADR-0031). It isn't licensed for reuse: all rights reserved. A few files are based on Microsoft's MIT-licensed work; their notices are in `THIRD-PARTY-NOTICES.md`.
+This repo is public so its CI, and the CI of any public app that uses it, runs free (ADR-0031). It isn't licensed for reuse: all rights reserved. A few files are based on the .NET projects' MIT-licensed work; their notices are in `THIRD-PARTY-NOTICES.md`.
 
 ## Set up a machine
 
@@ -117,7 +117,7 @@ An app repo, public or private, calls the kit's shared workflows; nothing from t
 
 The kit's repo name must stay as it is once an app pins it: GitHub doesn't redirect calls to an action in a renamed repo (and very likely not to its reusable workflows), so every app's CI would fail with "repository not found".
 
-Trust a pin only when a kit release tag points to that SHA. In a public repo, a SHA from someone's fork can also resolve, so check it: `gh api repos/DerekFoulk/dotnet-agent-kit/commits/v0.1.0 --jq .sha` prints the commit the tag points to (ADR-0031).
+Trust a pin only when a kit release tag points to that SHA. In a public repo, a SHA from someone's fork can also resolve ([GitHub's guidance](https://docs.github.com/en/actions/reference/security/secure-use): "verify it is from the action's repository and not a repository fork"), so check it: `gh api repos/DerekFoulk/dotnet-agent-kit/commits/v0.1.0 --jq .sha` prints the commit the tag points to (ADR-0031).
 
 Pin the kit like any other action (SUP-008): by the full commit SHA of a kit release, with the version in a comment. `v0.1.0` is the first release, once release PR 10 merges; until then there's no tag to pin. Two small caller workflows keep a renamed PR from rebuilding the whole app:
 
@@ -158,7 +158,7 @@ jobs:
 | `dotnet-ci.reusable.yml` | Restore, build, format, tests with coverage, the coverage gate, deprecated packages, and the secret scan. `solution` is required |
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`. Called from any other event, it fails rather than pass having checked nothing |
 
-The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig`, and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the sync job (PR D3) keeps them current.
+The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the sync job (PR D3) keeps them current.
 
 ## Run the tests
 
