@@ -55,6 +55,7 @@ Accepted (owner, 2026-11-04: packaged and self-updating, kit private; owner, 202
 - The shared workflows assume the app has the kit's build files (`global.json`, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig`, lock files); `New-KitApp` creates them and the sync job keeps them current.
 - ADR-0012 is amended: build config travels with the synced files rather than a NuGet package, and `New-KitApp` plus the sync job replace the hand copy.
 - PR D2 (`New-KitApp`) and PR D3 (the sync job) build on this. If the private route fails, Option 4 is the fallback the owner named.
+- **Amended by ADR-0031 (2026-11-05):** the owner made the kit public (Option 4), to make CI free for the kit and for public apps. Any repo can now call the shared workflows, so the Actions access setting no longer matters; the `kit-tools` action and `$/` stay, because they keep a shared workflow's scripts at its own version.
 
 ## Pillars affected
 

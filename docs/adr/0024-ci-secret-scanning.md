@@ -40,6 +40,7 @@ Accepted as recommended (owner, 2026-11-01).
 - `dotnet-ci.reusable.yml` runs a secret scanner on every PR (build step 4).
 - ~~A pre-commit hook runs the same scanner locally.~~ Not built: ADR-0027 (2026-11-03) keeps secret scanning in CI only, because a local scan needs Docker Desktop running for every commit.
 - GitHub secret scanning stays off for these repos.
+- **Amended by ADR-0031 (2026-11-05):** the kit repo is public, where GitHub secret scanning runs for free. The CI gitleaks scan stays the required check for every repo, and the only scan on private app repos.
 
 ## Pillars affected
 
