@@ -47,7 +47,12 @@ $script:KitTools = @(
     'KitFrontMatter.psm1'
 )
 
-# Lists what goes where: Source is a path in the kit, Target a path in the app.
+# Templates the app owns from the start: the sync job never changes them.
+$script:AppOwnedTemplates = @('README.md', 'App.slnx', 'docs/corrections-log.md')
+
+# Lists what goes where: Source is a path in the kit, Target a path in the app. Owner says who changes
+# the file later: Kit (the sync job replaces it), KitBlock (only the kit:begin..kit:end block is the
+# kit's) or App.
 function Get-KitAppFileMap {
     param(
         [Parameter(Mandatory)] [string] $KitRoot,
@@ -62,27 +67,28 @@ function Get-KitAppFileMap {
     foreach ($path in $script:KitCopies) {
         if ($path.EndsWith('/')) {
             foreach ($file in $inFolders | Where-Object { $_.StartsWith($path) }) {
-                [pscustomobject]@{ Kind = 'Copy'; Source = $file; Target = $file }
+                [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = $file; Target = $file }
             }
         }
         else {
-            [pscustomobject]@{ Kind = 'Copy'; Source = $path; Target = $path }
+            [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = $path; Target = $path }
         }
     }
     foreach ($source in $script:KitMoves.Keys) {
-        [pscustomobject]@{ Kind = 'Copy'; Source = $source; Target = $script:KitMoves[$source] }
+        [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = $source; Target = $script:KitMoves[$source] }
     }
     foreach ($tool in $script:KitTools) {
-        [pscustomobject]@{ Kind = 'Copy'; Source = "tools/$tool"; Target = ".kit/tools/$tool" }
+        [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = "tools/$tool"; Target = ".kit/tools/$tool" }
     }
 
     # The app's own files, rendered from templates/app. App.slnx takes the app's name.
     $templates = @(git -C $KitRoot ls-tree -r --name-only $Commit -- templates/app)
     if ($LASTEXITCODE -ne 0) { throw "git ls-tree failed for templates/app at $Commit." }
     foreach ($file in $templates) {
-        $target = $file.Substring('templates/app/'.Length)
-        if ($target -eq 'App.slnx') { $target = "$Name.slnx" }
-        [pscustomobject]@{ Kind = 'Template'; Source = $file; Target = $target }
+        $relative = $file.Substring('templates/app/'.Length)
+        $owner = if ($relative -eq 'AGENTS.md') { 'KitBlock' } elseif ($relative -in $script:AppOwnedTemplates) { 'App' } else { 'Kit' }
+        $target = if ($relative -eq 'App.slnx') { "$Name.slnx" } else { $relative }
+        [pscustomobject]@{ Kind = 'Template'; Owner = $owner; Source = $file; Target = $target }
     }
 }
 
@@ -93,6 +99,39 @@ function Get-KitAgentsSection {
     $match = [regex]::Match($AgentsText, '(?ms)^## Whose rules win\r?\n.*?(?=^## Commands\r?$)')
     if (-not $match.Success) { throw "The kit's AGENTS.md has no sections from '## Whose rules win' to '## Commands'." }
     $match.Value.TrimEnd()
+}
+
+# .kit/manifest.json: the kit version an app was made from and every file the kit manages in it, with
+# its SHA-256, so the sync job (PR D3) knows what it may replace and can tell when someone edited one.
+function Write-KitManifest {
+    param(
+        [Parameter(Mandatory)] [string] $Destination,
+        [Parameter(Mandatory)] [object[]] $Map,
+        [Parameter(Mandatory)] [string] $Commit,
+        [Parameter(Mandatory)] [string] $KitVersion
+    )
+
+    $files = foreach ($entry in $Map | Where-Object { $_.Owner -ne 'App' } | Sort-Object Target) {
+        $path = Join-Path $Destination $entry.Target
+        if ($entry.Owner -eq 'KitBlock') {
+            $block = [regex]::Match([IO.File]::ReadAllText($path), '(?s)<!-- kit:begin.*?<!-- kit:end -->')
+            if (-not $block.Success) { throw "$($entry.Target) has no kit:begin..kit:end block." }
+            $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($block.Value)))
+            [ordered]@{ path = $entry.Target; block = 'kit'; sha256 = $hash.ToLowerInvariant() }
+        }
+        else {
+            [ordered]@{ path = $entry.Target; sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() }
+        }
+    }
+    $manifest = [ordered]@{
+        kitRepository = 'DerekFoulk/dotnet-agent-kit'
+        kitVersion    = $KitVersion
+        kitCommit     = $Commit
+        files         = @($files)
+    }
+    $json = ($manifest | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
+    New-Item -ItemType Directory -Force -Path (Join-Path $Destination '.kit') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $Destination '.kit/manifest.json'), "$json`n", [Text.UTF8Encoding]::new($false))
 }
 
 function Get-KitVersionLabel {
@@ -133,7 +172,8 @@ function Export-KitApp {
         }
 
         New-Item -ItemType Directory -Force -Path $Destination | Out-Null
-        foreach ($entry in Get-KitAppFileMap -KitRoot $KitRoot -Commit $commit -Name $Name) {
+        $map = @(Get-KitAppFileMap -KitRoot $KitRoot -Commit $commit -Name $Name)
+        foreach ($entry in $map) {
             $source = Join-Path $checkout $entry.Source
             $target = Join-Path $Destination $entry.Target
             New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
@@ -150,6 +190,7 @@ function Export-KitApp {
                 Copy-Item -LiteralPath $source -Destination $target
             }
         }
+        Write-KitManifest -Destination $Destination -Map $map -Commit $commit -KitVersion $KitVersion
     }
     finally {
         git -C $KitRoot worktree remove --force $checkout
