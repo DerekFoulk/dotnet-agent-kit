@@ -1,5 +1,5 @@
-# Checks for an app repo that uses the kit, called at a kit version tag:
-#   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/app-checks.reusable.yml@v0.1.0
+# Checks for an app repo that uses the kit, pinned to the commit a kit release tag points to:
+#   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/app-checks.reusable.yml@<commit SHA> # v0.1.0
 # On pull requests: the PR title, the commit subjects and red-to-green order (the PR's own commits).
 # Always: ADR sections, when the app has docs/adr. The kit's scripts come from the kit at the same
 # version (kit-tools), so the app needs no copy of them. Call it on pull_request with the "edited" type
