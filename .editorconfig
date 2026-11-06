@@ -11,6 +11,8 @@
 #
 # Left out (repo-specific to dotnet/runtime): the .NET Foundation file header, xUnit1051, the CA2025
 # workaround for one runtime file, and the IDE0031/IDE0071 netstandard workarounds.
+#
+# Both sources are MIT-licensed; their notices are in THIRD-PARTY-NOTICES.md, which travels with this file.
 
 root = true
 
@@ -98,6 +100,7 @@ csharp_prefer_static_local_function = true:warning
 csharp_prefer_simple_using_statement = false:none
 csharp_style_prefer_switch_expression = true:warning
 dotnet_style_readonly_field = true:warning
+# (docs): the next two come from dotnet/docs, not dotnet/runtime
 dotnet_code_quality_unused_parameters = non_public:warning
 csharp_style_namespace_declarations = file_scoped:warning
 

@@ -52,9 +52,9 @@ Accepted (owner, 2026-11-05: "I think we should make this repo public"; no licen
 - The owner switches the visibility right after this PR merges (a repo setting he changes or tells the agent to change); the Actions access setting stays on until then, for the private route. Afterwards:
   - check what GitHub turned on (secret scanning, push protection) and record it; turning on anything more is a settings change that needs his OK;
   - watch the next release PR and the next Dependabot NuGet PR, and confirm their CI runs still wait for approval and get approved: that behaviour was proven only on private repos;
-  - the owner chooses the "Approval for running fork pull request workflows" level (Settings › Actions › General); the recommendation is all outside contributors.
-- An app's pin of the kit is trusted only when a kit release tag points to that SHA (`gh api repos/DerekFoulk/dotnet-agent-kit/commits/vX.Y.Z --jq .sha`). The sync job (PR D3) checks this before moving a pin, and the reviewer checks any pin a PR changes.
-- Files based on licensed projects keep those projects' notices in `THIRD-PARTY-NOTICES.md`: `.editorconfig` (dotnet/runtime and dotnet/docs, MIT) and `.gitignore` (dotnet/sdk, MIT). `New-KitApp` and the sync job copy that file with them, and so will anything copied later, such as skills from `dotnet/skills` (MIT).
+  - the owner chooses the "Approval for running fork pull request workflows from contributors" option (Settings › Actions › General); the recommendation is "Require approval for all external contributors".
+- An app's pin of the kit is trusted only when a kit release tag points to that SHA (`gh api repos/DerekFoulk/dotnet-agent-kit/commits/vX.Y.Z --jq .sha`); GitHub's guidance is to "verify it is from the action's repository and not a repository fork". The reviewer agent checks any pin a PR changes (`.claude/agents/reviewer.md`), and the sync job (PR D3) must check it before moving a pin.
+- Files based on licensed projects keep those projects' notices in `THIRD-PARTY-NOTICES.md`: `.editorconfig` (dotnet/runtime and dotnet/docs, MIT) and `.gitignore` (dotnet/sdk, MIT). `New-KitApp` (PR D2) and the sync job (PR D3) must copy that file with them; the README and ADR-0030 list it among the files an app gets. Anything copied later, such as skills from `dotnet/skills` (MIT), adds its notice there.
 - `New-KitApp` (PR D2) lets each app be public or private; private stays the default.
 - ADR-0023 (manual production promotion, because environment reviewers need a public repo or a paid plan) stays as decided for private apps; a public app could use environment reviewers instead.
 - The repo is never renamed once an app pins it: GitHub "will not redirect calls to an action hosted by a renamed repository" ("repository not found"), and reusable workflows very likely behave the same (the page doesn't say). The owner kept the name.
@@ -72,3 +72,5 @@ Cost Optimization: CI is free for the kit and for public apps. Security: everyth
 - https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository, retrieved 2026-11-05
 - https://docs.github.com/en/code-security/secret-scanning/introduction/about-secret-scanning, retrieved 2026-11-05
 - https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository, retrieved 2026-11-05
+- https://docs.github.com/en/actions/reference/security/secure-use, retrieved 2026-11-06 (pinning by SHA, and forks)
+- https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository, retrieved 2026-11-06 (fork pull request approval)
