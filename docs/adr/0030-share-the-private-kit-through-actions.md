@@ -59,7 +59,7 @@ Accepted (owner, 2026-11-04: packaged and self-updating, kit private; owner, 202
 
 ## Pillars affected
 
-Operational Excellence: app repos get CI and kit updates without hand copying or token renewals. Security: no tokens or secrets; the access setting exposes the kit only to the owner's repos and their collaborators.
+Operational Excellence: app repos get CI and kit updates without hand copying or token renewals. Security: no tokens or secrets; the access setting exposes the kit only to the owner's repos and their collaborators (until ADR-0031 made the kit public).
 
 ## Sources
 

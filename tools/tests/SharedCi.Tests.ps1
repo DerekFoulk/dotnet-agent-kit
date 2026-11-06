@@ -2,9 +2,10 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # Shared CI for app repos (step 6, PR D1; spikes/kit-sharing/README.md). App repos call the kit's shared
-# workflows at a version tag. The kit is private, so those workflows can't check the kit out; they reach
-# its scripts through `uses: $/.github/actions/kit-tools`, which GitHub downloads at the shared
-# workflow's own commit with no token.
+# workflows pinned to a kit release. They reach the kit's scripts through
+# `uses: $/.github/actions/kit-tools`, which GitHub downloads at the shared workflow's own commit, so an
+# app always runs the scripts of the version it pins. (The kit was private when this was built, so a
+# checkout of the kit wasn't possible; ADR-0031 made it public, and $/ still keeps the versions matched.)
 
 Describe 'Shared CI for app repos' {
     BeforeAll {

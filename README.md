@@ -4,7 +4,7 @@ A versioned, vendor-neutral engineering method for .NET: rules, enforcement, age
 
 Work in progress (v0.1).
 
-This repo is public so its CI, and the CI of any public app that uses it, runs free (ADR-0031). It isn't licensed for reuse: all rights reserved.
+This repo is public so its CI, and the CI of any public app that uses it, runs free (ADR-0031). It isn't licensed for reuse: all rights reserved. A few files are based on Microsoft's MIT-licensed work; their notices are in `THIRD-PARTY-NOTICES.md`.
 
 ## Set up a machine
 
@@ -115,7 +115,9 @@ Each action is pinned by commit SHA, and the gitleaks image by digest. `.github/
 
 An app repo, public or private, calls the kit's shared workflows; nothing from the kit's `tools/` is copied into it. The shared workflows fetch the kit's scripts through the `kit-tools` action (`uses: $/.github/actions/kit-tools`), which GitHub downloads at the shared workflow's own commit, so an app pinned to a version runs that version's scripts (`spikes/kit-sharing/README.md`, ADR-0030). The kit is public (ADR-0031), so no access setting or token is involved. Each repo pays for its own CI minutes: a public app's runs are free, while a private app's count against its owner's included Actions usage.
 
-The kit's repo name must stay as it is once an app pins it: GitHub doesn't redirect Actions calls after a rename, so every app's CI would fail with "repository not found".
+The kit's repo name must stay as it is once an app pins it: GitHub doesn't redirect calls to an action in a renamed repo (and very likely not to its reusable workflows), so every app's CI would fail with "repository not found".
+
+Trust a pin only when a kit release tag points to that SHA. In a public repo, a SHA from someone's fork can also resolve, so check it: `gh api repos/DerekFoulk/dotnet-agent-kit/commits/v0.1.0 --jq .sha` prints the commit the tag points to (ADR-0031).
 
 Pin the kit like any other action (SUP-008): by the full commit SHA of a kit release, with the version in a comment. `v0.1.0` is the first release, once release PR 10 merges; until then there's no tag to pin. Two small caller workflows keep a renamed PR from rebuilding the whole app:
 
