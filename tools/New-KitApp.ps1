@@ -49,6 +49,17 @@ function Get-KitAppRepoRequest {
     $request
 }
 
+# The kit's newest release tag (vX.Y.Z), compared as versions, so v0.10.0 is newer than v0.9.0.
+function Get-KitLatestRelease {
+    param([Parameter(Mandatory)] [string] $KitRoot)
+
+    $releases = @(git -C $KitRoot tag --list 'v*' | Where-Object { $_ -cmatch '^v\d+\.\d+\.\d+$' })
+    if (-not $releases) {
+        throw "The kit at $KitRoot has no release tag (vX.Y.Z) yet. Pass -KitRef with the kit commit or tag to start from."
+    }
+    $releases | Sort-Object { [version] $_.Substring(1) } | Select-Object -Last 1
+}
+
 # Calls gh, failing with its output when it fails.
 function Invoke-KitGhChecked {
     param(
@@ -76,7 +87,7 @@ function New-KitApp {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)] [string] $Name,
-        [Parameter(Mandatory)] [string] $KitRef,
+        [string] $KitRef,
         [Parameter(Mandatory)] [string] $Destination,
         [Parameter(Mandatory)] [string] $KitRoot,
         [switch] $Public
@@ -92,6 +103,7 @@ function New-KitApp {
     if ((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count -gt 0) {
         throw "$Destination isn't empty. Choose a new or empty folder, so no existing file is overwritten."
     }
+    if (-not $KitRef) { $KitRef = Get-KitLatestRelease -KitRoot $KitRoot }
     $commit = (git -C $KitRoot rev-parse --verify --quiet "$KitRef^{commit}" | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
     $signIn = Invoke-KitGh -Arguments 'auth', 'status'
