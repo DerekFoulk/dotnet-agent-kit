@@ -263,6 +263,22 @@ Describe 'New-KitApp run' {
         }
     }
 
+    Context 'run as a command' {
+        It 'exits 1 with the reason when it refuses' {
+            $output = pwsh -NoProfile -File $script -Name '1Bad' -KitRoot $kit 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 1
+            $output | Should -Match 'dotted \.NET name'
+        }
+
+        It 'defaults the folder to one named after the app, next to the kit' {
+            $sibling = Join-Path (Split-Path $kit -Parent) 'Sibling.Orders'
+            New-Item -ItemType File -Force -Path (Join-Path $sibling 'keep.txt') | Out-Null
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'sibling-remote.git')
+            { New-KitApp -Name 'Sibling.Orders' -KitRef $commit -KitRoot $kit 6>$null } |
+                Should -Throw "*$([WildcardPattern]::Escape($sibling)) isn't empty*"
+        }
+    }
+
     Context 'a step that fails' {
         BeforeAll {
             $app = Join-Path $TestDrive 'Failing.Orders'
