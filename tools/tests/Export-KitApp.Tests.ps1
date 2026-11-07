@@ -232,6 +232,39 @@ Describe 'Export-KitApp' {
         @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain 'Directory.Packages.props'
     }
 
+    # PowerShell's location and the process's current directory differ; .NET file calls use the latter.
+    It 'writes a relative destination under PowerShell''s current location, all in one place' {
+        $parent = Join-Path $TestDrive 'relative-parent'
+        New-Item -ItemType Directory -Path $parent | Out-Null
+        Push-Location $parent
+        try {
+            & $script -Name 'Contoso.Orders' -Destination 'rel-app' -KitRef $commit -KitRoot $kit 6>&1 | Out-Null
+            $exit = $LASTEXITCODE
+        }
+        finally { Pop-Location }
+
+        $exit | Should -Be 0
+        foreach ($path in 'Directory.Packages.props', '.kit/manifest.json', 'AGENTS.md', '.claude/rules/git.md') {
+            Test-Path -LiteralPath (Join-Path $parent 'rel-app' $path) | Should -BeTrue -Because "$path should be in the relative destination"
+        }
+    }
+
+    It 'removes the folder it created when the export fails partway, so a rerun can start clean' {
+        # A kit commit without the "Sample app" label fails after the copying has started.
+        git -C $kit switch -q -c no-sample-label
+        $props = Join-Path $kit 'Directory.Packages.props'
+        (Get-Content -Raw $props) -replace 'ItemGroup Label="Sample app"', 'ItemGroup' | Set-Content -LiteralPath $props -NoNewline
+        git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m 'chore: no label' -- Directory.Packages.props
+        git -C $kit switch -q main
+        $target = Join-Path $TestDrive 'partial'
+
+        $output = & $script -Name 'Contoso.Orders' -Destination $target -KitRef 'no-sample-label' -KitRoot $kit 6>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 1
+        $output | Should -Match 'Sample app'
+        Test-Path -LiteralPath $target | Should -BeFalse -Because 'a half-written app would block the rerun'
+    }
+
     It 'refuses a destination that already has files, and leaves them alone' {
         $busy = Join-Path $TestDrive 'busy'
         New-Item -ItemType Directory -Path $busy | Out-Null
