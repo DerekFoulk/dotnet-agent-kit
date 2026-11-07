@@ -55,7 +55,9 @@ Describe 'Agent configuration' {
             @{ Path = './**/Directory.Packages.props' }, @{ Path = './**/Directory.Build.props' },
             @{ Path = './nuget.config' }, @{ Path = './global.json' }, @{ Path = './.config/dotnet-tools.json' },
             @{ Path = './.github/workflows/**' }, @{ Path = './.github/dependabot.yml' },
-            @{ Path = './.claude/settings.json' }, @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' }
+            @{ Path = './.claude/settings.json' }, @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' },
+            # An app's kit-managed scripts and manifest (ADR-0032): the sync job changes them, not a hand edit.
+            @{ Path = './.kit/**' }
         ) {
             (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
         }
@@ -66,6 +68,14 @@ Describe 'Agent configuration' {
 
         It 'allows git switch only as the exact command <Rule>' -ForEach @(
             @{ Rule = 'Bash(git switch main)' }, @{ Rule = 'PowerShell(git switch main)' }
+        ) {
+            (Get-RuleList 'allow') -ccontains $Rule | Should -BeTrue
+        }
+
+        # An app repo has the kit's scripts in .kit/tools (ADR-0032); the kit has them in tools.
+        It 'allows running the kit''s scripts with <Rule>' -ForEach @(
+            @{ Rule = 'PowerShell(./tools/*)' }, @{ Rule = 'PowerShell(pwsh -NoProfile -File ./tools/*)' }
+            @{ Rule = 'PowerShell(./.kit/tools/*)' }, @{ Rule = 'PowerShell(pwsh -NoProfile -File ./.kit/tools/*)' }
         ) {
             (Get-RuleList 'allow') -ccontains $Rule | Should -BeTrue
         }

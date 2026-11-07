@@ -13,6 +13,8 @@
       "PowerShell(Invoke-Pester *)",
       "PowerShell(./tools/*)",
       "PowerShell(pwsh -NoProfile -File ./tools/*)",
+      "PowerShell(./.kit/tools/*)",
+      "PowerShell(pwsh -NoProfile -File ./.kit/tools/*)",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git switch main)",
@@ -53,7 +55,8 @@
       "Edit(./.github/dependabot.yml)",
       "Edit(./.claude/settings.json)",
       "Edit(./.mcp.json)",
-      "Edit(./.vscode/mcp.json)"
+      "Edit(./.vscode/mcp.json)",
+      "Edit(./.kit/**)"
     ],
     "deny": [
       "Read(./.env)",

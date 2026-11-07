@@ -1,0 +1,15 @@
+# Keeps {{Name}}'s NuGet packages current. The "chore(deps)" prefix makes each PR title a Conventional
+# Commit, which CI requires.
+# The kit's sync job moves the kit pin (DerekFoulk/dotnet-agent-kit) and the global.json SDK pin with each
+# kit release, so they aren't listed here (ADR-0032). This file is the app's: add an ecosystem when the app
+# adds one of its own, such as github-actions for its own workflows, and check any kit pin Dependabot
+# proposes against a kit release tag before merging (ADR-0031).
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
