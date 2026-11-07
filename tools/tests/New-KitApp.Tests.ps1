@@ -203,6 +203,32 @@ Describe 'New-KitApp run' {
         }
     }
 
+    Context 'the default kit version' {
+        BeforeAll {
+            $tagged = Join-Path $TestDrive 'tagged'
+            git init -q -b main $tagged
+            git -C $tagged commit -q --allow-empty -m 'chore: one'
+            git -C $tagged tag v0.9.0
+            git -C $tagged commit -q --allow-empty -m 'chore: two'
+            git -C $tagged tag v0.10.0 # newer than v0.9.0 by version, older by name
+            git -C $tagged tag v1.0.0-rc.1 # not a release
+            git -C $tagged tag spike
+        }
+
+        It 'is the newest release tag, compared as versions' {
+            Get-Command Get-KitLatestRelease -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+            Get-KitLatestRelease -KitRoot $tagged | Should -Be 'v0.10.0'
+        }
+
+        It 'is an error naming -KitRef when the kit has no release tag, before any change' {
+            $app = Join-Path $TestDrive 'Untagged.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'untagged-remote.git')
+            { New-KitApp -Name 'Untagged.Orders' -Destination $app -KitRoot $kit 6>$null } | Should -Throw '*-KitRef*'
+            Get-WriteCall | Should -BeNullOrEmpty
+            Test-Path -LiteralPath $app | Should -BeFalse
+        }
+    }
+
     Context 'a step that fails' {
         BeforeAll {
             $app = Join-Path $TestDrive 'Failing.Orders'
