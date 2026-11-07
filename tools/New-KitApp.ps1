@@ -85,13 +85,24 @@ function New-KitApp {
     $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination)
     $KitRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($KitRoot)
 
-    # Checks first. They only read, so they run with -WhatIf too.
+    # Checks first. They only read, so they run with -WhatIf too, and a refusal leaves nothing behind.
+    # Export-KitApp's name check, loaded in a child scope so its parameters don't replace this function's.
+    $assertName = & { . (Join-Path $PSScriptRoot 'Export-KitApp.ps1'); ${function:Assert-KitAppName} }
+    & $assertName -Name $Name
+    if ((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count -gt 0) {
+        throw "$Destination isn't empty. Choose a new or empty folder, so no existing file is overwritten."
+    }
     $commit = (git -C $KitRoot rev-parse --verify --quiet "$KitRef^{commit}" | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
-    Invoke-KitGhChecked -Arguments 'auth', 'status' | Out-Null
+    $signIn = Invoke-KitGh -Arguments 'auth', 'status'
+    if ($signIn.ExitCode -ne 0) {
+        throw "gh isn't signed in to GitHub: $($signIn.Output)`nSigning in is your step: run 'gh auth login', then run this again."
+    }
     $owner = Invoke-KitGhChecked -Arguments 'api', 'user', '--jq', '.login'
     $repo = "$owner/$Name"
-    Invoke-KitGh -Arguments 'api', "repos/$repo" | Out-Null
+    $existing = Invoke-KitGh -Arguments 'api', "repos/$repo"
+    if ($existing.ExitCode -eq 0) { throw "$repo already exists. New-KitApp only creates new repos, so it never changes an existing one's settings." }
+    if ($existing.Output -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Output)" }
     # The settings and ruleset come from the same kit commit as the files.
     $settingsText = git -C $KitRoot show "${commit}:templates/github/repo.json" | Out-String
     $rulesetText = git -C $KitRoot show "${commit}:templates/github/main-protection.json" | Out-String
