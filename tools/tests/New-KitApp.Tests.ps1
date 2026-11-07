@@ -216,7 +216,7 @@ Describe 'New-KitApp run' {
         }
     }
 
-    # Public is the default: CI is free on public repos, macOS included, and GitHub Free enforces rulesets only
+    # Public is the default: CI is free on public repos, macOS included, and GitHub Free offers rulesets only
     # on public repos (owner, 2026-11-07).
     Context 'a public app, the default' {
         BeforeAll {
@@ -388,6 +388,7 @@ Describe 'New-KitApp run' {
 
             $LASTEXITCODE | Should -Be 0 -Because $output
             $output | Should -Match "Add the 'main protection' ruleset" -Because 'the run reached its steps'
+            $output | Should -Match 'fixture-owner/Command\.Orders' -Because 'the fake gh answered, not a real sign-in'
             ($output -match 'Make the repo public') | Should -Be $Public
             Test-Path -LiteralPath $folder | Should -BeFalse -Because '-WhatIf changes nothing'
         }
