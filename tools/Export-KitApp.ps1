@@ -214,10 +214,11 @@ function Export-KitApp {
     if ($Name -cnotmatch '^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$') {
         throw "The app name '$Name' isn't a dotted .NET name such as Contoso.Orders: letters and digits, each part starting with a letter."
     }
-    # Windows reserves device names, with any extension: Con.Orders.slnx can't be created there.
+    # Windows reserves device names such as Con and Nul. Current Windows 11 accepts Con.Orders.slnx, but a
+    # bare Con folder fails, and older Windows and some tools refuse the name with an extension too.
     $device = @($Name.Split('.') | Where-Object { $_ -match '^(?i:con|prn|aux|nul|com[1-9]|lpt[1-9])$' })
     if ($device) {
-        throw "The app name '$Name' contains '$($device[0])', a Windows device name, which can't be a file name on Windows."
+        throw "The app name '$Name' contains '$($device[0])', a Windows device name, which Windows and some tools refuse as a file or folder name."
     }
     if ((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count -gt 0) {
         throw "$Destination isn't empty. Export into a new or empty folder, so no existing file is overwritten."

@@ -1,8 +1,9 @@
 # ADR-NNNN: <short decision title>
 
 <!--
-Copy to docs/adr/NNNN-short-title.md, using the next free number. tools/Test-AdrSections.ps1 checks
-every section below; this template is the one file it skips.
+Copy to docs/adr/NNNN-short-title.md, using the next free number. The ADR sections check
+(Test-AdrSections.ps1, in AGENTS.md's Commands table) checks every section below; this template is the
+one file it skips.
 Status: Proposed, Accepted, Rejected, Deprecated, or "Superseded by ADR-NNNN".
 -->
 
