@@ -66,6 +66,9 @@ function Get-ScorecardProblem {
             if (-not $rules.Contains("$ruleId")) {
                 New-Problem -Area $areaId -Message "names rule $ruleId, which no standard in $StandardsPath has"
             }
+            elseif ($rules["$ruleId"].Status -eq 'retired') {
+                New-Problem -Area $areaId -Message "names rule $ruleId, which is retired"
+            }
         }
     }
 }
