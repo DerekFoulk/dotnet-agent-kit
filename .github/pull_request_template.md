@@ -14,11 +14,11 @@
 
 <!-- Paste the result of each. Write "not verified" for anything you didn't run. -->
 
-- [ ] `dotnet build`: zero warnings
-- [ ] `Invoke-Pester -Path ./tools/tests`: all pass
-- [ ] `./tools/Test-RuleSources.ps1`: exit 0
-- [ ] `./tools/Test-AdrSections.ps1`: exit 0
-- [ ] `./tools/Build-AgentRules.ps1 -Check`: exit 0
+<!-- Every command in AGENTS.md's Commands table, with this repo's paths: one line each. -->
+
+- [ ] Build: zero warnings
+- [ ] Every test suite: all pass (with the coverage gate, where the table has one)
+- [ ] Every check in the table: exit 0 (generated files current, ADR sections, and the rest)
 - [ ] Independent review by the `reviewer` agent: findings fixed or answered below
 
 ## For the owner
