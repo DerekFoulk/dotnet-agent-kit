@@ -165,5 +165,15 @@ Describe 'New-KitApp run' {
             $writes[1].Pushed | Should -BeTrue -Because 'the ruleset would reject the first push'
             ($writes[1].Input | ConvertFrom-Json).name | Should -Be 'main protection'
         }
+
+        It 'stores the commit hook as executable, which git on Linux and macOS needs to run it' {
+            # Windows doesn't record the executable bit, so the first commit has to set it (ADR-0032).
+            (git -C $remote ls-tree main .githooks/commit-msg) | Should -Match '^100755 '
+            (git -C $remote ls-tree main .githooks/commit-msg.ps1) | Should -Match '^100644 '
+        }
+
+        It 'names the kit version in the first commit, which is the only one' {
+            @(git -C $remote log --format=%s main) | Should -Be @('chore: start from dotnet-agent-kit unreleased')
+        }
     }
 }
