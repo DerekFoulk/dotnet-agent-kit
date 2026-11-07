@@ -263,6 +263,23 @@ Describe 'New-KitApp run' {
         }
     }
 
+    Context 'a kit version from before New-KitApp' {
+        It 'refuses it before any change, since it has no GitHub settings to apply' {
+            git -C $kit switch -q -c no-github-settings
+            git -C $kit rm -q -r templates/github
+            git -C $kit commit -q -m 'chore: no github settings'
+            $old = (git -C $kit rev-parse HEAD).Trim()
+            git -C $kit switch -q main
+            $app = Join-Path $TestDrive 'Old.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'old-remote.git')
+
+            { New-KitApp -Name 'Old.Orders' -KitRef $old -Destination $app -KitRoot $kit 6>$null } |
+                Should -Throw '*has no templates/github/repo.json*'
+            Get-WriteCall | Should -BeNullOrEmpty
+            Test-Path -LiteralPath $app | Should -BeFalse
+        }
+    }
+
     Context 'run as a command' {
         It 'exits 1 with the reason when it refuses' {
             $output = pwsh -NoProfile -File $script -Name '1Bad' -KitRoot $kit 2>&1 | Out-String
