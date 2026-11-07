@@ -70,6 +70,14 @@ Describe 'Agent configuration' {
             (Get-RuleList 'allow') -ccontains $Rule | Should -BeTrue
         }
 
+        # An app repo has the kit's scripts in .kit/tools (ADR-0032); the kit has them in tools.
+        It 'allows running the kit''s scripts with <Rule>' -ForEach @(
+            @{ Rule = 'PowerShell(./tools/*)' }, @{ Rule = 'PowerShell(pwsh -NoProfile -File ./tools/*)' }
+            @{ Rule = 'PowerShell(./.kit/tools/*)' }, @{ Rule = 'PowerShell(pwsh -NoProfile -File ./.kit/tools/*)' }
+        ) {
+            (Get-RuleList 'allow') -ccontains $Rule | Should -BeTrue
+        }
+
         # Any wildcard also accepts --discard-changes or -f, which drop uncommitted work: those must prompt.
         It 'has no wildcard allow rule for git switch' {
             @(Get-RuleList 'allow') -match 'git switch .*\*' | Should -BeNullOrEmpty
