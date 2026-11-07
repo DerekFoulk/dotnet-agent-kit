@@ -162,6 +162,40 @@ Describe 'Export-KitApp' {
         }
     }
 
+    It 'refuses a destination that already has files, and leaves them alone' {
+        $busy = Join-Path $TestDrive 'busy'
+        New-Item -ItemType Directory -Path $busy | Out-Null
+        Set-Content -LiteralPath (Join-Path $busy 'keep.txt') -Value 'mine'
+
+        $output = & $script -Name 'Contoso.Orders' -Destination $busy -KitRef $commit -KitRoot $kit 6>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 1
+        $output | Should -Match 'isn''t empty'
+        @(Get-ChildItem -LiteralPath $busy -Force).Name | Should -Be @('keep.txt')
+    }
+
+    It 'refuses a name that isn''t a dotted .NET name, before writing anything' {
+        foreach ($bad in 'Contoso Orders', '1Orders', 'Contoso..Orders', '../escape', '') {
+            $target = Join-Path $TestDrive "bad-$([guid]::NewGuid().ToString('N'))"
+
+            $output = & $script -Name $bad -Destination $target -KitRef $commit -KitRoot $kit 6>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1 -Because "'$bad' isn't a valid app name"
+            $output | Should -Match 'name' -Because "the message should say the name is the problem for '$bad'"
+            Test-Path -LiteralPath $target | Should -BeFalse -Because "nothing should be written for '$bad'"
+        }
+    }
+
+    It 'refuses a kit ref that isn''t a commit or tag, before writing anything' {
+        $target = Join-Path $TestDrive 'unknown-ref'
+
+        $output = & $script -Name 'Contoso.Orders' -Destination $target -KitRef 'v9.9.9-nope' -KitRoot $kit 6>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 1
+        $output | Should -Match 'v9\.9\.9-nope'
+        Test-Path -LiteralPath $target | Should -BeFalse
+    }
+
     It 'includes the build files, agent files, rules, notices and tools an app needs' {
         $targets = @($map | ForEach-Object { $_.Target })
 
