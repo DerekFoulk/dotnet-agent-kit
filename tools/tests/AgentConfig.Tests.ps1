@@ -55,7 +55,9 @@ Describe 'Agent configuration' {
             @{ Path = './**/Directory.Packages.props' }, @{ Path = './**/Directory.Build.props' },
             @{ Path = './nuget.config' }, @{ Path = './global.json' }, @{ Path = './.config/dotnet-tools.json' },
             @{ Path = './.github/workflows/**' }, @{ Path = './.github/dependabot.yml' },
-            @{ Path = './.claude/settings.json' }, @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' }
+            @{ Path = './.claude/settings.json' }, @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' },
+            # An app's kit-managed scripts and manifest (ADR-0032): the sync job changes them, not a hand edit.
+            @{ Path = './.kit/**' }
         ) {
             (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
         }
