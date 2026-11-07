@@ -136,7 +136,12 @@ Describe 'New-KitApp run' {
     }
 
     AfterAll {
-        foreach ($key in $savedEnv.Keys) { [Environment]::SetEnvironmentVariable($key, $savedEnv[$key]) }
+        # PowerShell passes $null to a .NET string parameter as '', which would leave an empty GIT_AUTHOR_NAME
+        # behind and break the next test file's commits, so an unset variable is removed instead.
+        foreach ($key in $savedEnv.Keys) {
+            if ($null -eq $savedEnv[$key]) { Remove-Item -LiteralPath "env:$key" -ErrorAction SilentlyContinue }
+            else { Set-Item -LiteralPath "env:$key" -Value $savedEnv[$key] }
+        }
     }
 
     Context 'a private app' {
