@@ -162,8 +162,10 @@ function New-KitApp {
                 Invoke-KitGit -Path $Destination -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
             }
         }
-        [pscustomobject]@{ Description = "Create the $(if ($Public) { 'public' } else { 'private' }) repo with the kit's merge settings"; Action = {
-                $request = Get-KitAppRepoRequest -Name $RepoName -SettingsText $settingsText -Public:$Public | ConvertTo-Json
+        # Always private at first: a public app is made public only once main is pushed and protected, so a
+        # failure before then leaves a private repo.
+        [pscustomobject]@{ Description = "Create the private repo with the kit's merge settings"; Action = {
+                $request = Get-KitAppRepoRequest -Name $RepoName -SettingsText $settingsText | ConvertTo-Json
                 $created = Invoke-KitGhChecked -Arguments 'api', 'user/repos', '--method', 'POST', '--input', '-' -InputText $request | ConvertFrom-Json
             }
         }
@@ -180,6 +182,10 @@ function New-KitApp {
         # A public repo gets what the kit has (README, "GitHub settings on this repo"): secret scanning and push
         # protection, free on public repos, and no fork PR runs until the owner approves it (ADR-0031).
         if ($Public) {
+            [pscustomobject]@{ Description = 'Make the repo public'; Action = {
+                    Invoke-KitGhChecked -Arguments 'api', "repos/$repo", '--method', 'PATCH', '--input', '-' -InputText '{ "private": false }' | Out-Null
+                }
+            }
             [pscustomobject]@{ Description = 'Turn on secret scanning and push protection, and require approval for fork PRs'; Action = {
                     $publicSettings = $publicText | ConvertFrom-Json
                     $security = @{ security_and_analysis = $publicSettings.security_and_analysis } | ConvertTo-Json -Depth 4
