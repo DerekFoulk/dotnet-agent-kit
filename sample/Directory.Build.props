@@ -1,6 +1,6 @@
 <Project>
 
-  <!-- The kit's root settings apply to the sample too. -->
+  <!-- The repo's root settings apply here too. An app gets this file as tests/Directory.Build.props (ADR-0032). -->
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <!-- Test projects: xUnit v3 on Microsoft Testing Platform (global.json), with code coverage. -->
