@@ -118,6 +118,7 @@ function New-KitApp {
     # The settings and ruleset come from the same kit commit as the files.
     $settingsText = git -C $KitRoot show "${commit}:templates/github/repo.json" | Out-String
     $rulesetText = git -C $KitRoot show "${commit}:templates/github/main-protection.json" | Out-String
+    $publicText = git -C $KitRoot show "${commit}:templates/github/public.json" | Out-String
 
     # The steps, in order. Each runs in this function's scope (dot-sourced), so later steps see what earlier
     # ones set. -WhatIf lists them instead.
@@ -149,6 +150,18 @@ function New-KitApp {
         # After the push: before it, the ruleset would reject the first push.
         [pscustomobject]@{ Description = "Add the 'main protection' ruleset"; Action = {
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
+            }
+        }
+        # A public repo gets what the kit has (README, "GitHub settings on this repo"): secret scanning and push
+        # protection, free on public repos, and no fork PR runs until the owner approves it (ADR-0031).
+        if ($Public) {
+            [pscustomobject]@{ Description = 'Turn on secret scanning and push protection, and require approval for fork PRs'; Action = {
+                    $publicSettings = $publicText | ConvertFrom-Json
+                    $security = @{ security_and_analysis = $publicSettings.security_and_analysis } | ConvertTo-Json -Depth 4
+                    Invoke-KitGhChecked -Arguments 'api', "repos/$repo", '--method', 'PATCH', '--input', '-' -InputText $security | Out-Null
+                    $approval = $publicSettings.fork_pr_contributor_approval | ConvertTo-Json
+                    Invoke-KitGhChecked -Arguments 'api', "repos/$repo/actions/permissions/fork-pr-contributor-approval", '--method', 'PUT', '--input', '-' -InputText $approval | Out-Null
+                }
             }
         }
         # The commit-msg hook rejects a subject that isn't a Conventional Commit (ADR-0027).
