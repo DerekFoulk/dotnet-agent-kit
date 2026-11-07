@@ -10,7 +10,8 @@ Describe 'text files in the repo' {
         $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
         $text = '\.(ps1|psm1|psd1|md|yml|yaml|json|cs|csproj|props|targets|slnx|xml|config|editorconfig|gitattributes|gitignore|txt|sh)$|(^|/)\.(editorconfig|gitattributes|gitignore)$|(^|/)\.githooks/[^/.]+$'
 
-        $bad = foreach ($line in git -C $root ls-files --eol) {
+        # core.quotePath=false: otherwise git quotes a path with non-ASCII characters, and it would slip past.
+        $bad = foreach ($line in git -C $root -c core.quotePath=false ls-files --eol) {
             # "i/lf    w/crlf  attr/text eol=crlf  <tab>path"
             $index, $path = ($line -split '\t', 2)
             if ($path -match $text -and $index -notmatch '^i/(lf|none)\s') { "$path ($(($index -split '\s+')[0]))" }

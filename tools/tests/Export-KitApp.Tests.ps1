@@ -24,6 +24,14 @@ Describe 'Export-KitApp' {
         git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m 'chore: kit fixture'
         $commit = (git -C $kit rev-parse HEAD).Trim()
 
+        # A later kit commit without the "Sample app" label: exporting it fails after the copying has
+        # started, which the cleanup tests need. Made before the uncommitted edit below, so it can't include it.
+        git -C $kit switch -q -c no-sample-label
+        $props = Join-Path $kit 'Directory.Packages.props'
+        (Get-Content -Raw $props) -replace 'ItemGroup Label="Sample app"', 'ItemGroup' | Set-Content -LiteralPath $props -NoNewline
+        git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m 'chore: no label' -- Directory.Packages.props
+        git -C $kit switch -q main
+
         # An edit nobody committed must not reach an app.
         Add-Content -LiteralPath (Join-Path $kit '.editorconfig') -Value '# uncommitted-edit-marker'
 
@@ -250,12 +258,6 @@ Describe 'Export-KitApp' {
     }
 
     It 'removes the folder it created when the export fails partway, so a rerun can start clean' {
-        # A kit commit without the "Sample app" label fails after the copying has started.
-        git -C $kit switch -q -c no-sample-label
-        $props = Join-Path $kit 'Directory.Packages.props'
-        (Get-Content -Raw $props) -replace 'ItemGroup Label="Sample app"', 'ItemGroup' | Set-Content -LiteralPath $props -NoNewline
-        git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m 'chore: no label' -- Directory.Packages.props
-        git -C $kit switch -q main
         $target = Join-Path $TestDrive 'partial'
 
         $output = & $script -Name 'Contoso.Orders' -Destination $target -KitRef 'no-sample-label' -KitRoot $kit 6>&1 | Out-String
@@ -300,9 +302,11 @@ Describe 'Export-KitApp' {
         $target = Join-Path $TestDrive 'given-empty'
         New-Item -ItemType Directory -Path $target | Out-Null
 
-        & $script -Name 'Contoso.Orders' -Destination $target -KitRef 'no-sample-label' -KitRoot $kit 6>&1 | Out-Null
+        $output = & $script -Name 'Contoso.Orders' -Destination $target -KitRef 'no-sample-label' -KitRoot $kit 6>&1 | Out-String
 
         $LASTEXITCODE | Should -Be 1
+        # The failure must come after copying started, or the cleanup isn't exercised at all.
+        $output | Should -Match 'Sample app' -Because 'the export should fail partway, or the cleanup isn''t exercised'
         Test-Path -LiteralPath $target | Should -BeTrue -Because 'the folder was the caller''s before the run'
         @(Get-ChildItem -LiteralPath $target -Force) | Should -BeNullOrEmpty -Because 'nothing the failed run wrote should stay'
     }
@@ -320,7 +324,8 @@ Describe 'Export-KitApp' {
     }
 
     It 'refuses a name that isn''t a dotted .NET name, before writing anything' {
-        # Con, Nul, Com1 and the like are Windows device names: Con.Orders.slnx can't be created on Windows.
+        # Con, Nul, Com1 and the like are Windows device names: a bare Con folder fails, and older Windows and
+        # some tools refuse Con.Orders.slnx too.
         foreach ($bad in 'Contoso Orders', '1Orders', 'Contoso..Orders', '../escape', '', 'Con', 'Nul.Orders', 'Contoso.Com1') {
             $target = Join-Path $TestDrive "bad-$([guid]::NewGuid().ToString('N'))"
 
@@ -349,6 +354,13 @@ Describe 'Export-KitApp' {
         git -C $kit branch v1.2.3-wip $commit
         try {
             Get-KitVersionLabel -KitRoot $kit -KitRef 'v0.0.1' -Commit $commit | Should -Be 'v0.0.1'
+
+            # Two releases on one commit: the one named wins; by SHA, the highest version (0.10 above 0.9).
+            git -C $kit tag v0.9.0 $commit
+            git -C $kit tag v0.10.0 $commit
+            Get-KitVersionLabel -KitRoot $kit -KitRef 'v0.9.0' -Commit $commit | Should -Be 'v0.9.0'
+            Get-KitVersionLabel -KitRoot $kit -KitRef $commit -Commit $commit | Should -Be 'v0.10.0'
+            git -C $kit tag -d v0.9.0 v0.10.0 | Out-Null
             Get-KitVersionLabel -KitRoot $kit -KitRef $commit -Commit $commit | Should -Be 'v0.0.1'
             Get-KitVersionLabel -KitRoot $kit -KitRef 'v1.2.3-wip' -Commit $commit | Should -Be 'v0.0.1'
 
@@ -366,7 +378,7 @@ Describe 'Export-KitApp' {
             Get-KitVersionLabel -KitRoot $kit -KitRef $commit -Commit $commit | Should -Be 'unreleased'
         }
         finally {
-            foreach ($tag in 'v0.0.1', 'v0.0.2', 'scratch-backup') { git -C $kit tag -d $tag 2>&1 | Out-Null }
+            foreach ($tag in 'v0.0.1', 'v0.0.2', 'v0.9.0', 'v0.10.0', 'scratch-backup') { git -C $kit tag -d $tag 2>&1 | Out-Null }
             git -C $kit branch -D v1.2.3-wip 2>&1 | Out-Null
         }
     }
