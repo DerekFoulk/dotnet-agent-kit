@@ -19,8 +19,7 @@ param(
     [string] $Name,
     [string] $Destination,
     [string] $KitRef,
-    [string] $KitRoot,
-    [string] $KitVersion
+    [string] $KitRoot
 )
 
 Set-StrictMode -Version Latest
@@ -179,6 +178,9 @@ function New-KitAgentRuleFile {
     }
 }
 
+# The release tag that points to the commit, or 'unreleased'. Only a tag counts: a ref that merely looks
+# like a release (v0.1.0~3, a branch named v1.2.3-wip) would label the app with a release it isn't, and
+# ADR-0031 trusts a pin only when a release tag points to it.
 function Get-KitVersionLabel {
     param(
         [Parameter(Mandatory)] [string] $KitRoot,
@@ -186,7 +188,8 @@ function Get-KitVersionLabel {
         [Parameter(Mandatory)] [string] $Commit
     )
 
-    if ($KitRef -match '^v\d+\.\d+\.\d+') { return $KitRef }
+    $tagged = (git -C $KitRoot rev-parse --verify --quiet "refs/tags/$KitRef^{commit}" 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -eq 0 -and $tagged -eq $Commit) { return $KitRef }
     $tag = (git -C $KitRoot describe --tags --exact-match $Commit 2>$null | Out-String).Trim()
     if ($LASTEXITCODE -eq 0 -and $tag) { return $tag }
     'unreleased'
@@ -197,8 +200,7 @@ function Export-KitApp {
         [Parameter(Mandatory)] [string] $Name,
         [Parameter(Mandatory)] [string] $Destination,
         [Parameter(Mandatory)] [string] $KitRef,
-        [Parameter(Mandatory)] [string] $KitRoot,
-        [string] $KitVersion
+        [Parameter(Mandatory)] [string] $KitRoot
     )
 
     # .NET file calls resolve a relative path against the process's directory, not PowerShell's location.
@@ -209,13 +211,18 @@ function Export-KitApp {
     if ($Name -cnotmatch '^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$') {
         throw "The app name '$Name' isn't a dotted .NET name such as Contoso.Orders: letters and digits, each part starting with a letter."
     }
+    # Windows reserves device names, with any extension: Con.Orders.slnx can't be created there.
+    $device = @($Name.Split('.') | Where-Object { $_ -match '^(?i:con|prn|aux|nul|com[1-9]|lpt[1-9])$' })
+    if ($device) {
+        throw "The app name '$Name' contains '$($device[0])', a Windows device name, which can't be a file name on Windows."
+    }
     if ((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count -gt 0) {
         throw "$Destination isn't empty. Export into a new or empty folder, so no existing file is overwritten."
     }
 
     $commit = (git -C $KitRoot rev-parse --verify --quiet "$KitRef^{commit}" | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
-    if (-not $KitVersion) { $KitVersion = Get-KitVersionLabel -KitRoot $KitRoot -KitRef $KitRef -Commit $commit }
+    $KitVersion = Get-KitVersionLabel -KitRoot $KitRoot -KitRef $KitRef -Commit $commit
 
     $checkout = Join-Path ([IO.Path]::GetTempPath()) "kit-export-$([guid]::NewGuid().ToString('N'))"
     git -C $KitRoot worktree add --quiet --detach $checkout $commit
@@ -269,7 +276,7 @@ function Export-KitApp {
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $KitRoot) { $KitRoot = Split-Path -Path $PSScriptRoot -Parent }
     try {
-        Export-KitApp -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot -KitVersion $KitVersion
+        Export-KitApp -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
     }
     catch {
         Write-Host $_.Exception.Message -ForegroundColor Red
