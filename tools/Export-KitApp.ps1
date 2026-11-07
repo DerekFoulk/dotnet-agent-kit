@@ -201,6 +201,10 @@ function Export-KitApp {
         [string] $KitVersion
     )
 
+    # .NET file calls resolve a relative path against the process's directory, not PowerShell's location.
+    $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination)
+    $KitRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($KitRoot)
+
     # A dotted .NET name (Contoso.Orders): it becomes the solution's file name and the root namespace.
     if ($Name -cnotmatch '^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$') {
         throw "The app name '$Name' isn't a dotted .NET name such as Contoso.Orders: letters and digits, each part starting with a letter."
@@ -216,6 +220,7 @@ function Export-KitApp {
     $checkout = Join-Path ([IO.Path]::GetTempPath()) "kit-export-$([guid]::NewGuid().ToString('N'))"
     git -C $KitRoot worktree add --quiet --detach $checkout $commit
     if ($LASTEXITCODE -ne 0) { throw "Couldn't check out $commit from $KitRoot." }
+    $created = $false
     try {
         $values = @{
             Name          = $Name
@@ -224,6 +229,7 @@ function Export-KitApp {
             KitSections   = Get-KitAgentsSection -AgentsText ([IO.File]::ReadAllText((Join-Path $checkout 'AGENTS.md')))
         }
 
+        $created = -not (Test-Path -LiteralPath $Destination)
         New-Item -ItemType Directory -Force -Path $Destination | Out-Null
         $map = @(Get-KitAppFileMap -KitRoot $KitRoot -Commit $commit -Name $Name)
         foreach ($entry in $map) {
@@ -248,6 +254,12 @@ function Export-KitApp {
         }
         $map += @(New-KitAgentRuleFile -Destination $Destination)
         Write-KitManifest -Destination $Destination -Map $map -Commit $commit -KitVersion $KitVersion
+    }
+    catch {
+        # A half-written app would block the rerun ("isn't empty"); remove only what this run made.
+        if ($created -and (Test-Path -LiteralPath $Destination)) { Remove-Item -LiteralPath $Destination -Recurse -Force }
+        elseif (Test-Path -LiteralPath $Destination) { Get-ChildItem -LiteralPath $Destination -Force | Remove-Item -Recurse -Force }
+        throw
     }
     finally {
         git -C $KitRoot worktree remove --force $checkout
