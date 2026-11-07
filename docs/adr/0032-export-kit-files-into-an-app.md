@@ -42,7 +42,7 @@ Option 1: the pin, the files and the manifest all name the same commit, which th
 
 ## Decision
 
-Accepted (owner, 2026-11-05: approved the D2 plan, with D2a writing the files offline and D2b creating the GitHub repo; apps public or private, private by default). ADR-0033 later made public the default (owner, 2026-11-07).
+Accepted (owner, 2026-11-05: approved the D2 plan, with D2a writing the files offline and D2b creating the GitHub repo; apps public or private, private by default).
 
 ## Consequences
 
@@ -60,6 +60,7 @@ Accepted (owner, 2026-11-05: approved the D2 plan, with D2a writing the files of
 - Files copied into apps must work there. The commit-msg hook looks in `.kit/tools/` before `tools/`; the skills and reviewer run the checks in AGENTS.md's Commands table instead of naming kit paths (`tools/tests/AgentFiles.Tests.ps1` checks this); `.claude/settings.json` allows running `./.kit/tools/*`.
 - A kit ADR number inside a kit-managed file means the kit's ADR; the app's AGENTS.md links them at the pinned commit. An app numbers its own ADRs from 0001.
 - D2b (`New-KitApp`) calls the export, then creates the GitHub repo, its settings and its ruleset. It must commit `.githooks/commit-msg` as executable (`git add --chmod=+x`): Windows doesn't record the bit, and git on Linux and macOS ignores a hook without it. D3 reads the manifest. ADR-0033 records how D2b does this.
+- **Amended by ADR-0033 (2026-11-07):** apps are public unless `-Private` is given; the owner chose it.
 
 ## Pillars affected
 

@@ -188,7 +188,7 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 | `-RepoName` | The app name. Set it for a repo name a .NET namespace can't have, such as `contoso-orders` (GitHub allows letters, digits, `-`, `_` and `.`) |
 | `-KitRef` | The kit's newest release tag (`vX.Y.Z`). Until one exists, pass a kit commit or tag |
 | `-Destination` | A folder named after the repo, next to the kit's folder |
-| `-Private` | Off: the repo is public, so its CI runs free on GitHub's standard runners (ADR-0033). Anyone can read a public app's code, history and PRs; with no license, nobody may reuse them. On GitHub Free, rulesets work only on public repos, and a private repo's ruleset may not hold (ADR-0033) |
+| `-Private` | Off: the repo is public, so its CI runs free on GitHub's standard runners (ADR-0033). Anyone can read a public app's code, history and PRs; with no license, nobody may reuse them. On GitHub Free, rulesets work only on public repos, so a private repo's ruleset may not hold; and whether a public app's holds isn't verified either, since it's added while the repo is still private (ADR-0033) |
 
 The app name (`-Name`) must be a dotted .NET name, because it becomes the solution's name and the root namespace, which can't contain hyphens.
 

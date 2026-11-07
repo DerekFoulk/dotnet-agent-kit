@@ -189,7 +189,7 @@ function New-KitApp {
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
             }
         }
-        # Public unless -Private: CI is free on public repos, and GitHub Free enforces rulesets only there
+        # Public unless -Private: CI is free on public repos, and GitHub Free offers rulesets only there
         # (ADR-0033). A public repo gets what the kit has (README, "GitHub settings on this repo"): secret
         # scanning and push protection, free on public repos, and no fork PR runs until the owner approves it.
         if (-not $Private) {
