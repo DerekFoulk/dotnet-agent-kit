@@ -19,11 +19,12 @@ Describe 'commit-msg hook' {
 
         # A repo set up the way people do it: the hook files committed in .githooks and tools, and a
         # relative core.hooksPath.
-        function New-HookedRepo {
+        # -ToolsPath .kit/tools is an app repo, where Export-KitApp puts the kit's scripts (ADR-0032).
+        function New-HookedRepo([string] $ToolsPath = 'tools') {
             $repo = Join-Path $TestDrive "repo-$(New-Guid)"
-            New-Item -ItemType Directory -Path (Join-Path $repo '.githooks'), (Join-Path $repo 'tools') | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $repo '.githooks'), (Join-Path $repo $ToolsPath) | Out-Null
             Copy-Item -Path (Join-Path $script:repoRoot '.githooks' '*') -Destination (Join-Path $repo '.githooks')
-            Copy-Item -Path (Join-Path $script:repoRoot 'tools' 'Test-ConventionalTitle.ps1') -Destination (Join-Path $repo 'tools')
+            Copy-Item -Path (Join-Path $script:repoRoot 'tools' 'Test-ConventionalTitle.ps1') -Destination (Join-Path $repo $ToolsPath)
             git -C $repo init --quiet --initial-branch main 2>&1 | Out-Null
             git -C $repo config core.hooksPath .githooks
             git -C $repo config user.name t
@@ -111,6 +112,19 @@ Describe 'commit-msg hook' {
 
             $merge.ExitCode | Should -Be 0 -Because $merge.Output
             git -C $repo log -1 --format=%s | Should -Be "Merge branch 'side'"
+        }
+    }
+
+    Context 'in an app repo, where the kit''s scripts are in .kit/tools' {
+        It 'blocks a commit with a bad subject and allows a good one' {
+            $repo = New-HookedRepo -ToolsPath '.kit/tools'
+
+            $bad = Invoke-InRepo $repo commit --quiet --allow-empty --message 'add tags'
+            $good = Invoke-InRepo $repo commit --quiet --allow-empty --message 'feat: add tags'
+
+            $bad.ExitCode | Should -Not -Be 0
+            $bad.Output | Should -Match 'Conventional Commit'
+            $good.ExitCode | Should -Be 0 -Because $good.Output
         }
     }
 }
