@@ -191,10 +191,10 @@ function Get-KitVersionLabel {
         [Parameter(Mandatory)] [string] $Commit
     )
 
-    $tagged = (git -C $KitRoot rev-parse --verify --quiet "refs/tags/$KitRef^{commit}" 2>$null | Out-String).Trim()
-    if ($LASTEXITCODE -eq 0 -and $tagged -eq $Commit) { return $KitRef }
-    $tag = (git -C $KitRoot describe --tags --exact-match $Commit 2>$null | Out-String).Trim()
-    if ($LASTEXITCODE -eq 0 -and $tag) { return $tag }
+    # Release tags (vX.Y.Z) that point at the commit itself; prefer the one the caller named.
+    $releases = @(git -C $KitRoot tag --points-at $Commit 2>$null | Where-Object { $_ -cmatch '^v\d+\.\d+\.\d+$' })
+    if ($KitRef -cin $releases) { return $KitRef }
+    if ($releases) { return ($releases | Sort-Object { [version] $_.Substring(1) } | Select-Object -Last 1) }
     'unreleased'
 }
 
