@@ -29,6 +29,9 @@ Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 
 # What every area needs: what "perfect" means for it, and where that comes from.
 $script:RequiredAreaFields = 'id', 'name', 'perfect', 'sources'
+# A gap is what's missing for an area to be "perfect"; closing one is its own PR.
+$script:RequiredGapFields = 'id', 'gap', 'status'
+$script:GapStatuses = 'proposed', 'planned', 'closed'
 
 function New-Problem {
     param([string] $Area, [string] $Message)
@@ -64,6 +67,7 @@ function Get-ScorecardProblem {
     $rules = Get-KitRule -StandardsPath $StandardsPath
     $scorecard = Read-FrontMatter -Path $ScorecardPath
     $named = @{}
+    $gapsSeen = @{}
     foreach ($area in @($scorecard['areas'])) {
         $areaId = "$($area['id'])"
         foreach ($field in $script:RequiredAreaFields) {
@@ -75,6 +79,23 @@ function Get-ScorecardProblem {
         $areaGaps = @($(if ($area.Contains('gaps')) { $area['gaps'] }) | Where-Object { $_ })
         if (-not $areaRules -and -not $areaGaps) {
             New-Problem -Area $areaId -Message 'has no rules and no gaps: list the rules that cover it, or what is missing'
+        }
+        foreach ($gap in $areaGaps) {
+            $gapId = if ($gap.Contains('id')) { "$($gap['id'])" } else { '' }
+            foreach ($field in $script:RequiredGapFields) {
+                if (-not $gap.Contains($field) -or -not (Test-Present $gap[$field])) {
+                    New-Problem -Area $areaId -Message "has a gap $gapId missing '$field'"
+                }
+            }
+            if ($gap.Contains('status') -and (Test-Present $gap['status']) -and "$($gap['status'])" -notin $script:GapStatuses) {
+                New-Problem -Area $areaId -Message "gap $gapId has status '$($gap['status'])'; it must be one of: $($script:GapStatuses -join ', ')"
+            }
+            if ($gapId) {
+                if ($gapsSeen.ContainsKey($gapId)) {
+                    New-Problem -Area $areaId -Message "gap id $gapId is already used in area $($gapsSeen[$gapId])"
+                }
+                else { $gapsSeen[$gapId] = $areaId }
+            }
         }
         foreach ($source in @(if ($area.Contains('sources')) { $area['sources'] })) {
             $message = Get-SourceProblem -Source "$source" -AdrPath $AdrPath
