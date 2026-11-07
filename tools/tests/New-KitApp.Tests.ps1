@@ -184,7 +184,7 @@ Describe 'New-KitApp run' {
             $app = Join-Path $TestDrive 'Contoso.Orders'
             Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'remote.git')
             $runError = $null
-            try { New-KitApp -Name 'Contoso.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
+            try { New-KitApp -Name 'Contoso.Orders' -KitRef $commit -Destination $app -KitRoot $kit -Private 6>$null }
             catch { $runError = $_ }
         }
 
@@ -389,7 +389,9 @@ Describe 'New-KitApp run' {
             # Exactly: a failed step listed as done would tell the owner main is protected when it isn't.
             $lines = "$runError" -split "`r?`n"
             $lines | Should -Contain "Done: Export the kit's files at $commit; Make the first commit; Create the private repo with the kit's merge settings; Push main."
-            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn the commit hook on in the local copy."
+            # The repo stays private: making it public comes after the ruleset.
+            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Turn the commit hook on in the local copy."
+            @($script:calls.Arguments) | Should -Not -Match '--method PATCH'
             (git -C $app config --local --get core.hooksPath) | Should -BeNullOrEmpty -Because 'no step runs after a failure'
         }
 

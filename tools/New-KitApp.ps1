@@ -5,14 +5,15 @@
 
 .DESCRIPTION
     Exports the app's files with Export-KitApp, commits them, creates the repo on your own GitHub account
-    with the kit's merge settings, pushes main, then adds the ruleset. The settings and the ruleset come from
+    with the kit's merge settings, pushes main, then adds the ruleset. The app is public, with secret scanning
+    and push protection, unless -Private says otherwise. The settings and the ruleset come from
     templates/github at the same kit commit as the files.
 
 .EXAMPLE
     ./tools/New-KitApp.ps1 -Name Contoso.Orders -KitRef v0.1.0 -WhatIf
 
 .EXAMPLE
-    ./tools/New-KitApp.ps1 -Name ContosoOrders -RepoName contoso-orders
+    ./tools/New-KitApp.ps1 -Name ContosoOrders -RepoName contoso-orders -Private
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -20,7 +21,7 @@ param(
     [string] $RepoName,
     [string] $KitRef,
     [string] $Destination,
-    [switch] $Public,
+    [switch] $Private,
     [string] $KitRoot
 )
 
@@ -106,7 +107,7 @@ function New-KitApp {
         [string] $KitRef,
         [string] $Destination,
         [Parameter(Mandatory)] [string] $KitRoot,
-        [switch] $Public
+        [switch] $Private
     )
 
     # The repo is named after the app unless -RepoName says otherwise: a repo name may have hyphens, which a
@@ -188,9 +189,10 @@ function New-KitApp {
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
             }
         }
-        # A public repo gets what the kit has (README, "GitHub settings on this repo"): secret scanning and push
-        # protection, free on public repos, and no fork PR runs until the owner approves it (ADR-0031).
-        if ($Public) {
+        # Public unless -Private: CI is free on public repos, and GitHub Free enforces rulesets only there
+        # (ADR-0033). A public repo gets what the kit has (README, "GitHub settings on this repo"): secret
+        # scanning and push protection, free on public repos, and no fork PR runs until the owner approves it.
+        if (-not $Private) {
             [pscustomobject]@{ Description = 'Make the repo public'; Action = {
                     Invoke-KitGhChecked -Arguments 'api', "repos/$repo", '--method', 'PATCH', '--input', '-' -InputText '{ "private": false }' | Out-Null
                 }
@@ -240,7 +242,7 @@ function New-KitApp {
 
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $KitRoot) { $KitRoot = Split-Path -Path $PSScriptRoot -Parent }
-    $arguments = @{ Name = $Name; KitRoot = $KitRoot; Public = $Public; WhatIf = $WhatIfPreference }
+    $arguments = @{ Name = $Name; KitRoot = $KitRoot; Private = $Private; WhatIf = $WhatIfPreference }
     if ($RepoName) { $arguments.RepoName = $RepoName }
     if ($KitRef) { $arguments.KitRef = $KitRef }
     if ($Destination) { $arguments.Destination = $Destination }
