@@ -146,10 +146,19 @@ function New-KitApp {
         }
     )
 
-    foreach ($step in $steps) {
+    $created = $null
+    for ($i = 0; $i -lt $steps.Count; $i++) {
+        $step = $steps[$i]
         if (-not $PSCmdlet.ShouldProcess("$repo, $Destination", $step.Description)) { continue }
         Write-Host $step.Description
-        . $step.Action
+        try { . $step.Action }
+        catch {
+            # Stop here. Undoing is left to the owner: deleting a GitHub repo can't be undone.
+            $done = if ($i -gt 0) { ($steps[0..($i - 1)].Description) -join '; ' } else { 'nothing' }
+            $left = ($steps[$i..($steps.Count - 1)].Description) -join '; '
+            $kept = if ($created) { "`n$($created.html_url) was created and is kept: finish the steps left by hand, or delete the repo on GitHub and the folder $Destination, then run this again." } else { '' }
+            throw "$($step.Description) failed: $($_.Exception.Message)`nDone: $done.`nLeft: $left.$kept"
+        }
     }
     if (-not $WhatIfPreference) { Write-Host "Created $($created.html_url)" }
 }
