@@ -20,13 +20,13 @@ D2a has to settle:
 
 `tools/Export-KitApp.ps1` checks the commit out into a temporary `git worktree` and copies from there. Kit files go across unchanged; the app's own files (AGENTS.md, README, solution, CI callers, Dependabot config) render from `templates/app/`, pinned to the commit. The checking scripts go to `.kit/tools/`. `.kit/manifest.json` lists every kit-managed file with its SHA-256.
 
-- **Trade-offs:** An uncommitted edit in the kit can't reach an app, and the files match the pin byte for byte. The manifest tells the sync job what it may replace and whether someone edited it. A second copy of the scripts lives in each app, kept in step by the sync job. Templates add a folder to maintain.
+- **Trade-offs:** An uncommitted edit in the kit can't reach an app, and the files have the pinned commit's content. Their line endings follow the exporting clone's settings, as any checkout's do, so the manifest hashes each file's text with LF line endings, the same on every machine. The manifest tells the sync job what it may replace and whether someone edited it. A second copy of the scripts lives in each app, kept in step by the sync job. Templates add a folder to maintain.
 - **Reversibility:** Easy before D3 ships: nothing reads the layout yet. After that, a layout change needs a sync-job migration.
-- **Risk:** Low. Pester tests compare the export with a clean checkout, and check that the app's own checks pass on it.
+- **Risk:** Low. Pester tests compare the export with a clean checkout, check that the app's own checks pass on it, and check the hashes against the LF form of each file. The tests run on Windows; an export on Linux hasn't been tried.
 
 ### Option 2: Copy from the kit's working tree
 
-- **Trade-offs:** Simpler, with no worktree. But an unfinished local edit would ship into an app, and line endings depend on the clone's settings.
+- **Trade-offs:** Simpler, with no worktree. But an unfinished local edit would ship into an app, under a pin that says it came from a commit.
 - **Reversibility:** Easy.
 - **Risk:** Medium: an app could carry files no kit version has.
 
@@ -47,14 +47,18 @@ Accepted (owner, 2026-11-05: approved the D2 plan, with D2a writing the files of
 ## Consequences
 
 - Who owns each file, recorded in `.kit/manifest.json`:
-  - **Kit:** the build files, agent files, skills, reviewer, standards, hook, PR template, ADR template, `THIRD-PARTY-NOTICES.md`, the CI callers, `.github/dependabot.yml`, `.kit/tools/`, and the generated rule files (`.claude/rules/`, `.github/instructions/`). The sync job replaces them.
-  - **The kit block of AGENTS.md:** the text between `kit:begin` and `kit:end`, hashed on its own. The rest of the file, under "This app", is the app's.
-  - **App:** `README.md`, the solution, `docs/corrections-log.md` and `Directory.Packages.props`, never touched by the sync job. `.github/copilot-instructions.md` copies the app's AGENTS.md, so it's regenerated rather than synced.
+  - **Kit:** the build files, agent files, skills, reviewer, standards, hook, PR template, ADR template, the CI callers, `.kit/tools/`, and the generated rule files (`.claude/rules/`, `.github/instructions/`). The sync job replaces them.
+  - **A kit block:** in `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, the text between `kit:begin` and `kit:end` is the kit's, hashed on its own. The rest is the app's: its own notes, and the notices for licensed work it adopts.
+  - **App:** `README.md`, the solution, `docs/corrections-log.md`, `Directory.Packages.props` and `.github/dependabot.yml`, never touched by the sync job. `.github/copilot-instructions.md` copies the app's AGENTS.md, so it's regenerated rather than synced.
+- The app's Dependabot config lists only NuGet: the sync job moves the kit pin and the `global.json` SDK pin with each kit release, so Dependabot doesn't propose edits to kit-managed files. An app's SDK moves when the kit's does.
+- Still kit-managed in v0.1, though an app may want to add to them: `global.json`, `.gitignore` and `.claude/settings.json`. The sync job (PR D3) decides how an app adds its own lines, for example with a kit block.
+- Each manifest hash is the SHA-256 of the file's text with LF line endings, because git stores text as LF while a checkout may give CRLF.
+- The version label in the manifest and the CI pin comments comes only from a release tag that points to the commit, otherwise `unreleased`, since a pin is trusted only when a release tag points to it (ADR-0031).
 - The export refuses a destination that isn't empty and a name that isn't a dotted .NET name (`Contoso.Orders`), before writing anything.
 - `Directory.Packages.props` keeps the kit's build and test toolset and drops the `ItemGroup` labelled `Sample app` (MSBuild's `Label` attribute "identifies the `ItemGroup`" and changes nothing in the build).
 - Files copied into apps must work there. The commit-msg hook looks in `.kit/tools/` before `tools/`; the skills and reviewer run the checks in AGENTS.md's Commands table instead of naming kit paths (`tools/tests/AgentFiles.Tests.ps1` checks this); `.claude/settings.json` allows running `./.kit/tools/*`.
 - A kit ADR number inside a kit-managed file means the kit's ADR; the app's AGENTS.md links them at the pinned commit. An app numbers its own ADRs from 0001.
-- D2b (`New-KitApp`) calls the export, then creates the GitHub repo, its settings and its ruleset. D3 reads the manifest.
+- D2b (`New-KitApp`) calls the export, then creates the GitHub repo, its settings and its ruleset. It must commit `.githooks/commit-msg` as executable (`git add --chmod=+x`): Windows doesn't record the bit, and git on Linux and macOS ignores a hook without it. D3 reads the manifest.
 
 ## Pillars affected
 

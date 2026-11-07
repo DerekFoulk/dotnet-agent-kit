@@ -21,7 +21,7 @@ This repo is **{{Name}}**. It follows dotnet-agent-kit {{KitVersion}} (commit `{
 | Every red commit is made green | `./.kit/tools/Test-RedGreenOrder.ps1 -Range origin/main..HEAD` |
 | List a PR's open review findings; reply; resolve a thread | `Import-Module ./.kit/tools/KitReview.psm1`, then `Get-OpenFinding`, `Resolve-ReviewFinding`, `Add-ReviewReply` (see the `address-review` skill) |
 
-CI runs the kit's shared checks on every pull request: `.github/workflows/ci.yml` (restore, build, format, tests, the coverage gate, deprecated packages and a gitleaks secret scan) and `.github/workflows/app-checks.yml` (the PR title, commit subjects, red→green order and ADR sections). The "main protection" ruleset requires them to pass. Until the solution has a project, the .NET steps skip.
+CI runs the kit's shared checks on every pull request: `.github/workflows/ci.yml` (restore, build, format, tests, the coverage gate, deprecated packages and a gitleaks secret scan) and `.github/workflows/app-checks.yml` (the PR title, commit subjects, red→green order and ADR sections). The "main protection" ruleset requires them to pass. Until the solution has a project, the .NET steps skip, and a local `dotnet build` warns that there's no project to restore; that warning goes away with the first project.
 
 The commit-msg hook in `.githooks/` rejects a commit whose subject isn't a Conventional Commit. `./.kit/tools/Initialize-DevMachine.ps1 -RepoRoot .` reports whether it's on for this clone. If the hook rejects a commit, fix the subject; never skip the hook.
 
@@ -38,7 +38,7 @@ Scripts target PowerShell 7 (`pwsh`).
 | `.claude/skills/`, `.claude/agents/reviewer.md` | The kit's workflow skills and independent reviewer |
 | `.kit/` | The kit's checking scripts (`.kit/tools/`) and the manifest of kit-managed files (`.kit/manifest.json`) |
 
-**Kit ADRs:** "ADR-NNNN" inside a kit-managed file (`docs/standards/`, the skills, the reviewer, the kit sections of this file) means the kit's ADR, at https://github.com/DerekFoulk/dotnet-agent-kit/tree/{{KitCommit}}/docs/adr. This app's own ADRs are in `docs/adr/`.
+**Kit ADRs:** "ADR-NNNN" inside a kit-managed file (`docs/standards/`, the skills, the reviewer, the kit sections of this file) means the kit's ADR, at https://github.com/DerekFoulk/dotnet-agent-kit/tree/{{KitCommit}}/docs/adr. This app's own ADRs are in `docs/adr/`. Likewise, a path under `tools/` or `sample/` in `docs/standards/` describes how the kit enforces a rule in its own repo; this repo's commands are the Commands table above.
 
 **Kit-managed files, don't edit:** every file listed in `.kit/manifest.json`, and this file between `kit:begin` and `kit:end`. The sync job replaces them with each kit release. To change one, change the kit.
 
