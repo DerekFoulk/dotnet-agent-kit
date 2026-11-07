@@ -71,6 +71,10 @@ function Get-ScorecardProblem {
                 New-Problem -Area $areaId -Message "is missing '$field'"
             }
         }
+        foreach ($source in @(if ($area.Contains('sources')) { $area['sources'] })) {
+            $message = Get-SourceProblem -Source "$source" -AdrPath $AdrPath
+            if ($message) { New-Problem -Area $areaId -Message $message }
+        }
         foreach ($ruleId in @($area['rules'])) {
             $named["$ruleId"] = $true
             if (-not $rules.Contains("$ruleId")) {
