@@ -30,14 +30,6 @@ Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 # What every area needs: what "perfect" means for it, and where that comes from.
 $script:RequiredAreaFields = 'id', 'name', 'perfect', 'sources'
 
-function Test-Present {
-    param($Value)
-    if ($null -eq $Value) { return $false }
-    if ($Value -is [string]) { return -not [string]::IsNullOrWhiteSpace($Value) }
-    if ($Value -is [System.Collections.ICollection]) { return $Value.Count -gt 0 }
-    $true
-}
-
 function New-Problem {
     param([string] $Area, [string] $Message)
     [pscustomobject]@{ Area = $Area; Message = $Message }

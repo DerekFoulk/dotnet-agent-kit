@@ -38,6 +38,15 @@ function Read-MarkdownBody {
     $lines -join "`n"
 }
 
+# True when a front matter value is there and not blank: a non-empty string or list, or any other value.
+function Test-Present {
+    param($Value)
+    if ($null -eq $Value) { return $false }
+    if ($Value -is [string]) { return -not [string]::IsNullOrWhiteSpace($Value) }
+    if ($Value -is [System.Collections.ICollection]) { return $Value.Count -gt 0 }
+    $true
+}
+
 function Test-IsoDate {
     param([string] $Text)
     $parsed = [datetime]::MinValue
@@ -76,4 +85,4 @@ function Get-SourceProblem {
     "source '$Source' is not a recognized source (owner, ADR or URL)"
 }
 
-Export-ModuleMember -Function Read-FrontMatter, Read-MarkdownBody, Get-SourceProblem
+Export-ModuleMember -Function Read-FrontMatter, Read-MarkdownBody, Test-Present, Get-SourceProblem

@@ -37,14 +37,6 @@ function New-Problem {
     [pscustomobject]@{ File = $File; RuleId = $RuleId; Message = $Message }
 }
 
-function Test-Present {
-    param($Value)
-    if ($null -eq $Value) { return $false }
-    if ($Value -is [string]) { return -not [string]::IsNullOrWhiteSpace($Value) }
-    if ($Value -is [System.Collections.ICollection]) { return $Value.Count -gt 0 }
-    $true
-}
-
 function Get-RuleSourceProblem {
     param(
         [Parameter(Mandatory)] [string] $StandardsPath,
