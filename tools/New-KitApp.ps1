@@ -48,3 +48,66 @@ function Get-KitAppRepoRequest {
     }
     $request
 }
+
+# Calls gh, failing with its output when it fails.
+function Invoke-KitGhChecked {
+    param(
+        [Parameter(Mandatory)] [string[]] $Arguments,
+        [string] $InputText
+    )
+
+    $result = Invoke-KitGh @PSBoundParameters
+    if ($result.ExitCode -ne 0) { throw "gh $($Arguments -join ' ') failed: $($result.Output)" }
+    $result.Output
+}
+
+# Runs git in the app's folder, failing with its output when it fails.
+function Invoke-KitGit {
+    param(
+        [Parameter(Mandatory)] [string] $Path,
+        [Parameter(Mandatory)] [string[]] $Arguments
+    )
+
+    $output = & git -C $Path @Arguments 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "git $($Arguments -join ' ') failed: $($output.Trim())" }
+}
+
+function New-KitApp {
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)] [string] $Name,
+        [Parameter(Mandatory)] [string] $KitRef,
+        [Parameter(Mandatory)] [string] $Destination,
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [switch] $Public
+    )
+
+    $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination)
+    $KitRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($KitRoot)
+
+    $commit = (git -C $KitRoot rev-parse --verify --quiet "$KitRef^{commit}" | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
+    $owner = Invoke-KitGhChecked -Arguments 'api', 'user', '--jq', '.login'
+    $repo = "$owner/$Name"
+    # The settings and ruleset come from the same kit commit as the files.
+    $settingsText = git -C $KitRoot show "${commit}:templates/github/repo.json" | Out-String
+    $rulesetText = git -C $KitRoot show "${commit}:templates/github/main-protection.json" | Out-String
+
+    $export = Join-Path $KitRoot 'tools/Export-KitApp.ps1'
+    & $export -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
+    if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
+
+    $version = (Get-Content -Raw -LiteralPath (Join-Path $Destination '.kit/manifest.json') | ConvertFrom-Json).kitVersion
+    Invoke-KitGit -Path $Destination -Arguments 'init', '-q', '-b', 'main'
+    Invoke-KitGit -Path $Destination -Arguments 'add', '-A'
+    Invoke-KitGit -Path $Destination -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
+
+    $request = Get-KitAppRepoRequest -Name $Name -SettingsText $settingsText -Public:$Public | ConvertTo-Json
+    $created = Invoke-KitGhChecked -Arguments 'api', 'user/repos', '--method', 'POST', '--input', '-' -InputText $request | ConvertFrom-Json
+
+    Invoke-KitGit -Path $Destination -Arguments 'remote', 'add', 'origin', $created.clone_url
+    Invoke-KitGit -Path $Destination -Arguments 'push', '-q', '-u', 'origin', 'main'
+
+    Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
+    Write-Host "Created $($created.html_url)"
+}
