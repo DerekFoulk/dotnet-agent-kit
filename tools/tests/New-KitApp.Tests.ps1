@@ -148,8 +148,7 @@ Describe 'New-KitApp run' {
         if (Test-Path -LiteralPath $script) { . $script }
 
         # A fake GitHub: records every call, answers as gh does (the JSON body on stdout, gh's own error line
-        # on stderr; review 2 of PR 17), and notes whether main had been
-        # pushed when each call was made.
+        # on stderr; review 2 of PR 17), and notes whether main had been pushed when each call was made.
         function Initialize-FakeGitHub([string] $Remote) {
             $script:calls = [Collections.Generic.List[object]]::new()
             $script:remote = $Remote
@@ -449,6 +448,7 @@ Describe 'New-KitApp run' {
             $app = Join-Path $TestDrive 'NoExport.Orders'
             Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'noexport-remote.git')
 
+            $message = $null
             try { New-KitApp -Name 'NoExport.Orders' -KitRef $broken -Destination $app -KitRoot $kit 6>$null *>$null } catch { $message = "$_" }
             $message | Should -Match '^Export the kit''s files at .* failed'
             $message | Should -Match 'Done: nothing\.'
