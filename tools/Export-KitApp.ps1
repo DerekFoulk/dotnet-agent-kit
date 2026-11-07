@@ -81,6 +81,10 @@ function Get-KitAppFileMap {
         [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = "tools/$tool"; Target = ".kit/tools/$tool" }
     }
 
+    # Central package versions: the kit's build and test toolset, without its sample app's packages. The
+    # app adds its own packages, so the app owns the file.
+    [pscustomobject]@{ Kind = 'Packages'; Owner = 'App'; Source = 'Directory.Packages.props'; Target = 'Directory.Packages.props' }
+
     # The app's own files, rendered from templates/app. App.slnx takes the app's name.
     $templates = @(git -C $KitRoot ls-tree -r --name-only $Commit -- templates/app)
     if ($LASTEXITCODE -ne 0) { throw "git ls-tree failed for templates/app at $Commit." }
@@ -132,6 +136,17 @@ function Write-KitManifest {
     $json = ($manifest | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
     New-Item -ItemType Directory -Force -Path (Join-Path $Destination '.kit') | Out-Null
     [IO.File]::WriteAllText((Join-Path $Destination '.kit/manifest.json'), "$json`n", [Text.UTF8Encoding]::new($false))
+}
+
+# Drops the ItemGroup labelled "Sample app", with the comment line above it, from Directory.Packages.props.
+function Remove-KitSamplePackage {
+    param([Parameter(Mandatory)] [string] $PropsText)
+
+    $pattern = '(?ms)(^[ \t]*<!--[^\r\n]*-->\r?\n)?^[ \t]*<ItemGroup Label="Sample app">.*?</ItemGroup>\r?\n(\r?\n)?'
+    if (-not [regex]::IsMatch($PropsText, $pattern)) { throw "The kit's Directory.Packages.props has no ItemGroup labelled 'Sample app'." }
+    $text = [regex]::Replace($PropsText, $pattern, '')
+    [xml] $text | Out-Null # still well-formed
+    $text
 }
 
 # Runs the app's own copy of Build-AgentRules, so its .claude/rules, .github/instructions and
@@ -214,6 +229,9 @@ function Export-KitApp {
                         $values[$key]
                     })
                 [IO.File]::WriteAllText($target, $text, [Text.UTF8Encoding]::new($false))
+            }
+            elseif ($entry.Kind -eq 'Packages') {
+                [IO.File]::WriteAllText($target, (Remove-KitSamplePackage -PropsText ([IO.File]::ReadAllText($source))), [Text.UTF8Encoding]::new($false))
             }
             else {
                 Copy-Item -LiteralPath $source -Destination $target
