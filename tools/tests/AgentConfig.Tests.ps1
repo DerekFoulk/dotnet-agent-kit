@@ -73,9 +73,10 @@ Describe 'Agent configuration' {
             @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
             @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
         ) {
-            # A rule's '*' matches any text, as in Claude Code's patterns; [ and ] are taken literally.
+            # A rule's '*' matches any text, as in Claude Code's patterns; [, ] and ? are taken literally. The match
+            # is case-sensitive, the stricter reading, since whether Claude Code ignores case isn't documented.
             $matching = @(Get-RuleList 'ask' | Where-Object {
-                    $_ -match "^$Tool\((.*)\)$" -and $Command -like ($Matches[1] -replace '[\[\]]', '`$0')
+                    $_ -match "^$Tool\((.*)\)$" -and $Command -clike ($Matches[1] -replace '[\[\]?]', '`$0')
                 })
             $matching | Should -Not -BeNullOrEmpty -Because "an ask rule should catch $Tool($Command)"
         }
