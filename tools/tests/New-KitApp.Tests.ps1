@@ -46,4 +46,33 @@ Describe 'New-KitApp settings' {
         @($pullRequest.allowed_merge_methods) | Should -Be @('merge')
         $pullRequest.required_approving_review_count | Should -Be 0 # one owner: the reviewer agent reviews, not a second person
     }
+
+    Context 'the create-repo request' {
+        BeforeAll {
+            $script = Join-Path $root 'tools' 'New-KitApp.ps1'
+            $settingsText = Get-Content -Raw -LiteralPath (Join-Path $root 'templates' 'github' 'repo.json') -ErrorAction SilentlyContinue
+            if (Test-Path -LiteralPath $script) { . $script }
+        }
+
+        It 'has the kit''s merge settings: merge commits only, titled with the PR title, branches deleted' {
+            Test-Path -LiteralPath $script | Should -BeTrue -Because 'New-KitApp.ps1 builds the request'
+            $request = Get-KitAppRepoRequest -Name 'Contoso.Orders' -SettingsText $settingsText
+
+            $request.name | Should -Be 'Contoso.Orders'
+            $request.allow_merge_commit | Should -BeTrue
+            $request.allow_squash_merge | Should -BeFalse
+            $request.allow_rebase_merge | Should -BeFalse
+            $request.allow_auto_merge | Should -BeFalse
+            $request.merge_commit_title | Should -Be 'PR_TITLE'
+            $request.merge_commit_message | Should -Be 'BLANK'
+            $request.delete_branch_on_merge | Should -BeTrue
+            $request.has_wiki | Should -BeFalse
+        }
+
+        It 'is private unless -Public is given' {
+            Test-Path -LiteralPath $script | Should -BeTrue -Because 'New-KitApp.ps1 builds the request'
+            (Get-KitAppRepoRequest -Name 'Contoso.Orders' -SettingsText $settingsText).private | Should -BeTrue
+            (Get-KitAppRepoRequest -Name 'Contoso.Orders' -SettingsText $settingsText -Public).private | Should -BeFalse
+        }
+    }
 }
