@@ -369,6 +369,26 @@ Describe 'New-KitApp run' {
         }
     }
 
+    Context 'a failure after the export, before the repo exists' {
+        BeforeAll {
+            $app = Join-Path $TestDrive 'NoRepo.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'norepo-remote.git')
+            Mock Invoke-KitGh {
+                $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $false })
+                [pscustomobject]@{ ExitCode = 1; Output = 'gh: Server Error (HTTP 500)' }
+            } -ParameterFilter { ($Arguments -join ' ') -match '^api user/repos ' }
+            $runError = $null
+            try { New-KitApp -Name 'NoRepo.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
+            catch { $runError = $_ }
+        }
+
+        It 'says the folder is kept and must be cleared before running again, since a rerun refuses it' {
+            Test-Path -LiteralPath (Join-Path $app '.git') | Should -BeTrue
+            "$runError" | Should -Match "$([regex]::Escape($app)) is kept"
+            "$runError" | Should -Not -Match 'was created and is kept'
+        }
+    }
+
     Context 'refusing before any change: <Case>' -ForEach @(
         @{ Case = 'the repo already exists'; AppName = 'Taken.Orders'; Message = 'fixture-owner/Taken\.Orders already exists'
             Answer = @{ Pattern = '^api repos/fixture-owner/Taken\.Orders$'; ExitCode = 0; Output = '{"full_name":"fixture-owner/Taken.Orders"}' } }
