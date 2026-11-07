@@ -27,10 +27,45 @@ $ErrorActionPreference = 'Stop'
 Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 
+function New-Problem {
+    param([string] $Area, [string] $Message)
+    [pscustomobject]@{ Area = $Area; Message = $Message }
+}
+
+# Every rule in docs/standards, keyed by id: its status and whether a tool enforces it.
+function Get-KitRule {
+    param([Parameter(Mandatory)] [string] $StandardsPath)
+
+    $rules = [ordered]@{}
+    foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
+        $frontMatter = Read-FrontMatter -Path $file.FullName
+        if ($null -eq $frontMatter -or -not $frontMatter.Contains('rules')) { continue }
+        foreach ($rule in @($frontMatter['rules'])) {
+            $rules["$($rule['id'])"] = [pscustomobject]@{
+                Id       = "$($rule['id'])"
+                Status   = "$($rule['status'])"
+                Advisory = "$($rule['enforcement'])" -match '^advisory\b'
+            }
+        }
+    }
+    $rules
+}
+
 function Get-ScorecardProblem {
     param(
         [Parameter(Mandatory)] [string] $ScorecardPath,
         [Parameter(Mandatory)] [string] $StandardsPath,
         [Parameter(Mandatory)] [string] $AdrPath
     )
+
+    $rules = Get-KitRule -StandardsPath $StandardsPath
+    $scorecard = Read-FrontMatter -Path $ScorecardPath
+    foreach ($area in @($scorecard['areas'])) {
+        $areaId = "$($area['id'])"
+        foreach ($ruleId in @($area['rules'])) {
+            if (-not $rules.Contains("$ruleId")) {
+                New-Problem -Area $areaId -Message "names rule $ruleId, which no standard in $StandardsPath has"
+            }
+        }
+    }
 }
