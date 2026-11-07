@@ -113,7 +113,7 @@ Each action is pinned by commit SHA, and the gitleaks image by digest. `.github/
 
 ### Using the kit's CI from an app repo
 
-An app repo, public or private, calls the kit's shared workflows; nothing from the kit's `tools/` is copied into it. The shared workflows fetch the kit's scripts through the `kit-tools` action (`uses: $/.github/actions/kit-tools`), which GitHub downloads at the shared workflow's own commit, so an app pinned to a version runs that version's scripts (`spikes/kit-sharing/README.md`, ADR-0030). The kit is public (ADR-0031), so no access setting or token is involved. Each repo pays for its own CI minutes: a public app's runs are free, while a private app's count against its owner's included Actions usage.
+An app repo, public or private, calls the kit's shared workflows. Its CI doesn't use the copy of the checking scripts the app keeps in `.kit/tools/` for local runs (below): the shared workflows fetch the kit's scripts through the `kit-tools` action (`uses: $/.github/actions/kit-tools`), which GitHub downloads at the shared workflow's own commit, so an app pinned to a version runs that version's scripts (`spikes/kit-sharing/README.md`, ADR-0030). The kit is public (ADR-0031), so no access setting or token is involved. Each repo pays for its own CI minutes: a public app's runs are free, while a private app's count against its owner's included Actions usage.
 
 The kit's repo name must stay as it is once an app pins it: GitHub doesn't redirect calls to an action in a renamed repo (and very likely not to its reusable workflows), so every app's CI would fail with "repository not found".
 
@@ -159,6 +159,33 @@ jobs:
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`. Called from any other event, it fails rather than pass having checked nothing |
 
 The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the sync job (PR D3) keeps them current.
+
+### Create an app repo's files
+
+`tools/Export-KitApp.ps1` writes a new app's files into an empty folder, taken from the kit at one commit or tag (ADR-0032). `New-KitApp` (PR D2b) will call it and then create the GitHub repo.
+
+```powershell
+./tools/Export-KitApp.ps1 -Name Contoso.Orders -Destination ../Contoso.Orders -KitRef v0.1.0
+```
+
+- The files come from a clean checkout of `-KitRef` (a temporary git worktree), never from your working tree, so an uncommitted edit can't reach an app.
+- The app gets the kit's build files, agent files, skills, reviewer, standards and commit hook unchanged; the checking scripts in `.kit/tools/`; and its own `AGENTS.md`, `README.md`, `<Name>.slnx` (no projects yet), CI callers pinned to the kit commit, and `.github/dependabot.yml`, rendered from `templates/app/`. Its agent rule files are generated during the export.
+- `Directory.Packages.props` keeps the kit's build and test packages and drops the ones in the `ItemGroup` labelled `Sample app`.
+- `.kit/manifest.json` records the kit version and commit, and the SHA-256 of every file the kit manages, so the sync job (PR D3) knows what it may replace. In `AGENTS.md` only the block between `kit:begin` and `kit:end` is the kit's.
+- It refuses a folder that isn't empty, a name that isn't a dotted .NET name, and a ref that isn't a commit or tag, before writing anything.
+
+### GitHub settings on this repo
+
+Applied 2026-11-06 with the owner's OK, after the repo went public:
+
+| Setting | Value | Why |
+|---|---|---|
+| Secret scanning, push protection | On | Free on public repos (ADR-0031); gitleaks stays the required check |
+| Approval for running fork pull request workflows from contributors | Require approval for all external contributors | A fork's PR runs nothing until the owner approves it (ADR-0031) |
+| Issues | Only collaborators can open them (set by the owner in the browser; GitHub documents no API for it) | The repo isn't open for outside contributions |
+| Pull requests | Anyone can open them (unchanged) | Left open so Dependabot and release-please keep opening PRs; fork PRs still wait for approval |
+| Wiki | Off | Until it's published from the repo (planned after D2a) |
+| Dependabot security updates | Off (unchanged) | Not reviewed yet; `.github/dependabot.yml` version updates run weekly |
 
 ## Run the tests
 
