@@ -181,6 +181,40 @@ Describe 'New-KitApp run' {
         }
     }
 
+    Context 'a public app' {
+        BeforeAll {
+            $app = Join-Path $TestDrive 'Public.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'public-remote.git')
+            $runError = $null
+            try { New-KitApp -Name 'Public.Orders' -KitRef $commit -Destination $app -KitRoot $kit -Public 6>$null }
+            catch { $runError = $_ }
+        }
+
+        It 'is created public, then gets the kit''s settings for a public repo' {
+            $runError | Should -BeNullOrEmpty
+            $writes = Get-WriteCall
+            @($writes.Arguments) | Should -Be @(
+                'api user/repos --method POST --input -'
+                'api repos/fixture-owner/Public.Orders/rulesets --method POST --input -'
+                'api repos/fixture-owner/Public.Orders --method PATCH --input -'
+                'api repos/fixture-owner/Public.Orders/actions/permissions/fork-pr-contributor-approval --method PUT --input -'
+            )
+            ($writes[0].Input | ConvertFrom-Json).private | Should -BeFalse
+        }
+
+        It 'turns on secret scanning and push protection, free on public repos (ADR-0031)' {
+            @(Get-WriteCall).Count | Should -Be 4
+            $security = ((Get-WriteCall)[2].Input | ConvertFrom-Json).security_and_analysis
+            $security.secret_scanning.status | Should -Be 'enabled'
+            $security.secret_scanning_push_protection.status | Should -Be 'enabled'
+        }
+
+        It 'runs no fork''s PR until the owner approves it' {
+            @(Get-WriteCall).Count | Should -Be 4
+            ((Get-WriteCall)[3].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
+        }
+    }
+
     Context 'with -WhatIf' {
         BeforeAll {
             $app = Join-Path $TestDrive 'WhatIf.Orders'
