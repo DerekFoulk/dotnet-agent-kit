@@ -212,7 +212,14 @@ function New-KitApp {
             # Stop here. Undoing is left to the owner: deleting a GitHub repo can't be undone.
             $done = if ($i -gt 0) { ($steps[0..($i - 1)].Description) -join '; ' } else { 'nothing' }
             $left = ($steps[$i..($steps.Count - 1)].Description) -join '; '
-            $kept = if ($created) { "`n$($created.html_url) was created and is kept: finish the steps left by hand, or delete the repo on GitHub and the folder $Destination, then run this again." } else { '' }
+            $kept = if ($created) {
+                "`n$($created.html_url) was created and is kept: finish the steps left by hand, or delete the repo on GitHub and the folder $Destination, then run this again."
+            }
+            elseif ($i -gt 0) {
+                # The export ran; a rerun refuses a folder that isn't empty.
+                "`nNo GitHub repo was created. The folder $Destination is kept: delete it, then run this again."
+            }
+            else { '' }
             throw "$($step.Description) failed: $($_.Exception.Message)`nDone: $done.`nLeft: $left.$kept"
         }
     }
