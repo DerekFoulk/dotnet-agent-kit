@@ -74,6 +74,14 @@ Describe 'New-KitApp settings' {
             (Get-KitAppRepoRequest -Name 'Contoso.Orders' -SettingsText $settingsText).private | Should -BeTrue
             (Get-KitAppRepoRequest -Name 'Contoso.Orders' -SettingsText $settingsText -Public).private | Should -BeFalse
         }
+
+        It 'keeps the name and visibility it was given, whatever the settings file says' {
+            # A stray "private": false in repo.json would otherwise make every new app public (ADR-0031).
+            $request = Get-KitAppRepoRequest -Name 'Contoso.Orders' -SettingsText '{ "private": false, "name": "other", "has_wiki": false }'
+            $request.private | Should -BeTrue
+            $request.name | Should -Be 'Contoso.Orders'
+            $request.has_wiki | Should -BeFalse
+        }
     }
 }
 
