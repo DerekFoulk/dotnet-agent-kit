@@ -1,0 +1,69 @@
+#Requires -Version 7.0
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }, @{ ModuleName = 'powershell-yaml'; ModuleVersion = '0.4.12' }
+
+# The quality scorecard (docs/quality/scorecard.md, ADR-0034) maps each quality area of a .NET app to the kit's
+# rules and lists what's missing. The check keeps it honest: every rule it names exists, every rule in force has
+# an area, and its table of counts matches the rules.
+
+Describe 'Test-Scorecard.ps1' {
+    BeforeAll {
+        $script = Join-Path $PSScriptRoot '..' 'Test-Scorecard.ps1'
+        if (Test-Path -LiteralPath $script) { . $script }
+
+        function New-Rule {
+            param([string] $Id, [string] $Status = 'accepted', [string] $Enforcement = 'ci: a check')
+            [ordered]@{
+                id = $Id; statement = "Rule $Id."; layer = 'owner'; status = $Status
+                sources = @('owner, 2026-11-07'); enforcement = $Enforcement
+            }
+        }
+
+        function New-Area {
+            param([hashtable] $Override = @{}, [string[]] $Remove = @())
+            $area = [ordered]@{
+                id      = 'code'
+                name    = 'Code'
+                perfect = 'Idiomatic C# with every analyzer on and no warnings.'
+                sources = @('https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-07')
+                rules   = @('STY-001')
+                gaps    = @()
+            }
+            foreach ($key in $Override.Keys) { $area[$key] = $Override[$key] }
+            foreach ($key in $Remove) { $area.Remove($key) }
+            $area
+        }
+
+        # Writes the standards, ADR folder and scorecard into a fresh folder; returns the paths.
+        function New-Fixture {
+            param(
+                [object[]] $Rules = @(New-Rule -Id 'STY-001'),
+                [object[]] $Areas = @(New-Area),
+                [string] $Body = "`n# Quality scorecard`n"
+            )
+            $root = Join-Path $TestDrive "scorecard-$(New-Guid)"
+            $paths = @{
+                Standards = Join-Path $root 'standards'
+                Adr       = Join-Path $root 'adr'
+                Scorecard = Join-Path $root 'quality' 'scorecard.md'
+            }
+            New-Item -ItemType Directory -Path $paths.Standards, $paths.Adr, (Split-Path $paths.Scorecard) | Out-Null
+            Set-Content -LiteralPath (Join-Path $paths.Adr '0034-quality-scorecard.md') -Value '# ADR-0034'
+            $standard = ConvertTo-Yaml ([ordered]@{ topic = 'style'; rules = $Rules })
+            Set-Content -LiteralPath (Join-Path $paths.Standards 'code-style.md') -Value "---`n$standard---`n`n# Style`n"
+            $scorecard = ConvertTo-Yaml ([ordered]@{ areas = $Areas })
+            Set-Content -LiteralPath $paths.Scorecard -Value "---`n$scorecard---$Body"
+            $paths
+        }
+
+        function Get-Problem([hashtable] $Paths) {
+            @(Get-ScorecardProblem -ScorecardPath $Paths.Scorecard -StandardsPath $Paths.Standards -AdrPath $Paths.Adr)
+        }
+    }
+
+    It 'finds no problems in a scorecard whose areas name existing rules and cover every rule in force' {
+        Get-Command Get-ScorecardProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'Test-Scorecard.ps1 checks the scorecard'
+        $paths = New-Fixture
+
+        Get-Problem $paths | Should -BeNullOrEmpty
+    }
+}
