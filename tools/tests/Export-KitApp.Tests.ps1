@@ -274,9 +274,7 @@ Describe 'Export-KitApp' {
         $block = [regex]::Match($text, '(?s)<!-- kit:begin.*?<!-- kit:end -->')
         $block.Success | Should -BeTrue -Because 'the kit''s notices sit between kit:begin and kit:end'
 
-        $kitNotices = (Get-Content -Raw (Join-Path $checkout 'THIRD-PARTY-NOTICES.md')) -replace '(?s)^# [^
-]*?
-', ''
+        $kitNotices = (Get-Content -Raw (Join-Path $checkout 'THIRD-PARTY-NOTICES.md')) -replace '(?s)^# [^\r\n]*\r?\n', ''
         $normalize = { param($t) ($t -replace "`r`n", "`n").Trim() }
         (& $normalize $block.Value) | Should -Match ([regex]::Escape((& $normalize $kitNotices)))
         $text.Substring($block.Index + $block.Length) | Should -Match '(?m)^## This app'
