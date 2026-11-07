@@ -168,4 +168,29 @@ Describe 'Test-Scorecard.ps1' {
         $problems[0].Area | Should -Be 'code'
         $problems[0].Message | Should -BeLike $Expected
     }
+
+    It 'counts each area''s rules from the standards: in force, checked by a tool, advisory, proposed, open gaps' {
+        # Only the start of 'enforcement' decides: "advisory: ..." is advisory; "build:", "ci:", "ruleset:" and the
+        # rest are checked by a tool, even when they add that some part is advisory.
+        $paths = New-Fixture -Rules @(
+            (New-Rule -Id 'STY-001' -Enforcement 'ci: a check'),
+            (New-Rule -Id 'STY-002' -Enforcement 'advisory: no tool can judge it'),
+            (New-Rule -Id 'STY-003' -Enforcement 'claude settings: asks first; the rest is advisory'),
+            (New-Rule -Id 'STY-004' -Status 'proposed' -Enforcement 'ci: not yet')
+        ) -Areas @(New-Area -Override @{
+                rules = @('STY-001', 'STY-002', 'STY-003', 'STY-004')
+                gaps  = @([ordered]@{ id = 'GAP-001'; gap = 'Open.'; status = 'planned' }, [ordered]@{ id = 'GAP-002'; gap = 'Done.'; status = 'closed' })
+            })
+
+        Get-Command Get-ScorecardRow -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the check counts each area'
+        $rows = @(Get-ScorecardRow -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards)
+
+        $rows | Should -HaveCount 1
+        $rows[0].Area | Should -Be 'Code'
+        $rows[0].InForce | Should -Be 3
+        $rows[0].CheckedByTool | Should -Be 2
+        $rows[0].Advisory | Should -Be 1
+        $rows[0].Proposed | Should -Be 1
+        $rows[0].OpenGaps | Should -Be 1
+    }
 }
