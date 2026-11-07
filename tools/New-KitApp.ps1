@@ -174,6 +174,7 @@ function New-KitApp {
         # failure before then leaves a private repo.
         [pscustomobject]@{ Description = "Create the private repo with the kit's merge settings"; Action = {
                 $request = Get-KitAppRepoRequest -Name $RepoName -SettingsText $settingsText | ConvertTo-Json
+                $createAttempted = $true
                 $created = Invoke-KitGhChecked -Arguments 'api', 'user/repos', '--method', 'POST', '--input', '-' -InputText $request | ConvertFrom-Json
             }
         }
@@ -211,6 +212,7 @@ function New-KitApp {
     )
 
     $created = $null
+    $createAttempted = $false
     for ($i = 0; $i -lt $steps.Count; $i++) {
         $step = $steps[$i]
         if (-not $PSCmdlet.ShouldProcess("$repo, $Destination", $step.Description)) { continue }
@@ -224,8 +226,10 @@ function New-KitApp {
                 "`n$($created.html_url) was created and is kept: finish the steps left by hand, or delete the repo on GitHub and the folder $Destination, then run this again."
             }
             elseif ($i -gt 0) {
-                # The export ran; a rerun refuses a folder that isn't empty.
-                "`nNo GitHub repo was created. The folder $Destination is kept: delete it, then run this again."
+                # The export ran; a rerun refuses a folder that isn't empty. If the create call was made, GitHub may
+                # have made the repo before gh failed, so say where to look rather than that there's none.
+                $check = if ($createAttempted) { " New-KitApp got no repo back from GitHub; check https://github.com/$repo, and delete it there if it exists." } else { '' }
+                "`nThe folder $Destination is kept: delete it, then run this again.$check"
             }
             else { '' }
             throw "$($step.Description) failed: $($_.Exception.Message)`nDone: $done.`nLeft: $left.$kept"
