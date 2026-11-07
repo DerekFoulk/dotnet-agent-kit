@@ -66,4 +66,14 @@ Describe 'Test-Scorecard.ps1' {
 
         Get-Problem $paths | Should -BeNullOrEmpty
     }
+
+    It 'reports a rule an area names that no standard has, with the area' {
+        $paths = New-Fixture -Areas @(New-Area -Override @{ rules = @('STY-001', 'STY-999') })
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Area | Should -Be 'code'
+        $problems[0].Message | Should -BeLike "*STY-999*"
+    }
 }
