@@ -147,7 +147,8 @@ Describe 'New-KitApp run' {
 
         if (Test-Path -LiteralPath $script) { . $script }
 
-        # A fake GitHub: records every call, answers as the API would, and notes whether main had been
+        # A fake GitHub: records every call, answers as gh does (the JSON body on stdout, gh's own error line
+        # on stderr; review 2 of PR 17), and notes whether main had been
         # pushed when each call was made.
         function Initialize-FakeGitHub([string] $Remote) {
             $script:calls = [Collections.Generic.List[object]]::new()
@@ -159,7 +160,7 @@ Describe 'New-KitApp run' {
                 $text = switch -Regex ($Arguments -join ' ') {
                     '^auth status' { 'Logged in to github.com account fixture-owner' }
                     '^api user --jq \.login$' { 'fixture-owner' }
-                    '^api repos/[^/ ]+/[^/ ]+$' { return [pscustomobject]@{ ExitCode = 1; Output = 'gh: Not Found (HTTP 404)'; Error = 'gh: Not Found (HTTP 404)' } }
+                    '^api repos/[^/ ]+/[^/ ]+$' { return [pscustomobject]@{ ExitCode = 1; Output = '{"message":"Not Found","status":"404"}'; Error = 'gh: Not Found (HTTP 404)' } }
                     '^api user/repos' { (@{ html_url = 'https://github.com/fixture-owner/Contoso.Orders'; clone_url = $script:remote } | ConvertTo-Json) }
                     default { '{}' }
                 }
@@ -375,7 +376,7 @@ Describe 'New-KitApp run' {
             Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'failing-remote.git')
             Mock Invoke-KitGh {
                 $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $true })
-                [pscustomobject]@{ ExitCode = 1; Output = 'gh: Validation Failed (HTTP 422)'; Error = 'gh: Validation Failed (HTTP 422)' }
+                [pscustomobject]@{ ExitCode = 1; Output = '{"message":"Validation Failed","status":"422"}'; Error = 'gh: Validation Failed (HTTP 422)' }
             } -ParameterFilter { ($Arguments -join ' ') -match '/rulesets ' }
             $runError = $null
             try { New-KitApp -Name 'Failing.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
@@ -403,7 +404,7 @@ Describe 'New-KitApp run' {
             Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'norepo-remote.git')
             Mock Invoke-KitGh {
                 $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $false })
-                [pscustomobject]@{ ExitCode = 1; Output = 'gh: Server Error (HTTP 500)'; Error = 'gh: Server Error (HTTP 500)' }
+                [pscustomobject]@{ ExitCode = 1; Output = '{"message":"Server Error","status":"500"}'; Error = 'gh: Server Error (HTTP 500)' }
             } -ParameterFilter { ($Arguments -join ' ') -match '^api user/repos ' }
             $runError = $null
             try { New-KitApp -Name 'NoRepo.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
@@ -420,10 +421,10 @@ Describe 'New-KitApp run' {
     Context 'refusing before any change: <Case>' -ForEach @(
         @{ Case = 'the repo already exists'; AppName = 'Taken.Orders'; Message = 'fixture-owner/Taken\.Orders already exists'
             Answer = @{ Pattern = '^api repos/fixture-owner/Taken\.Orders$'; ExitCode = 0; Output = '{"full_name":"fixture-owner/Taken.Orders"}'; Error = '' } }
-        @{ Case = 'the repo check fails for another reason'; AppName = 'Unknown.Orders'; Message = "Couldn't check whether fixture-owner/Unknown\.Orders exists"
-            Answer = @{ Pattern = '^api repos/fixture-owner/Unknown\.Orders$'; ExitCode = 1; Output = 'gh: Bad credentials (HTTP 401)'; Error = 'gh: Bad credentials (HTTP 401)' } }
-        @{ Case = 'gh isn''t signed in'; AppName = 'Signed.Out'; Message = 'gh auth login'
-            Answer = @{ Pattern = '^auth status$'; ExitCode = 1; Output = 'You are not logged into any GitHub hosts.'; Error = 'You are not logged into any GitHub hosts.' } }
+        @{ Case = 'the repo check fails for another reason'; AppName = 'Unknown.Orders'; Message = "Couldn't check whether fixture-owner/Unknown\.Orders exists: gh: Bad credentials \(HTTP 401\)"
+            Answer = @{ Pattern = '^api repos/fixture-owner/Unknown\.Orders$'; ExitCode = 1; Output = '{"message":"Bad credentials","status":"401"}'; Error = 'gh: Bad credentials (HTTP 401)' } }
+        @{ Case = 'gh isn''t signed in'; AppName = 'Signed.Out'; Message = 'not logged into any GitHub hosts'
+            Answer = @{ Pattern = '^auth status$'; ExitCode = 1; Output = ''; Error = 'You are not logged into any GitHub hosts. To log in, run: gh auth login' } }
         @{ Case = 'the folder isn''t empty'; AppName = 'Full.Folder'; Message = "isn't empty"; Answer = $null }
         @{ Case = 'the name isn''t a dotted .NET name'; AppName = '1Bad'; Message = 'dotted \.NET name'; Answer = $null }
     ) {
