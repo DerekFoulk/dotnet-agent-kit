@@ -156,6 +156,14 @@ function Export-KitApp {
         [string] $KitVersion
     )
 
+    # A dotted .NET name (Contoso.Orders): it becomes the solution's file name and the root namespace.
+    if ($Name -cnotmatch '^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$') {
+        throw "The app name '$Name' isn't a dotted .NET name such as Contoso.Orders: letters and digits, each part starting with a letter."
+    }
+    if ((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count -gt 0) {
+        throw "$Destination isn't empty. Export into a new or empty folder, so no existing file is overwritten."
+    }
+
     $commit = (git -C $KitRoot rev-parse --verify --quiet "$KitRef^{commit}" | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
     if (-not $KitVersion) { $KitVersion = Get-KitVersionLabel -KitRoot $KitRoot -KitRef $KitRef -Commit $commit }
