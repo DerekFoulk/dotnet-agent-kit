@@ -32,6 +32,9 @@ $script:RequiredAreaFields = 'id', 'name', 'perfect', 'sources'
 # A gap is what's missing for an area to be "perfect"; closing one is its own PR.
 $script:RequiredGapFields = 'id', 'gap', 'status'
 $script:GapStatuses = 'proposed', 'planned', 'closed'
+# -Update writes the table of counts between these lines.
+$script:TableStart = '<!-- scorecard-table:start -->'
+$script:TableEnd = '<!-- scorecard-table:end -->'
 
 function New-Problem {
     param([string] $Area, [string] $Message)
@@ -82,6 +85,78 @@ function Get-ScorecardRow {
             OpenGaps      = @($gaps | Where-Object { "$($_['status'])" -ne 'closed' }).Count
         }
     }
+}
+
+# The table and summary line that go between the markers in the scorecard file.
+function Format-ScorecardTable {
+    param(
+        [Parameter(Mandatory)] [string] $ScorecardPath,
+        [Parameter(Mandatory)] [string] $StandardsPath
+    )
+
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add('| Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |')
+    $lines.Add('|---|---|---|---|---|---|')
+    foreach ($row in Get-ScorecardRow -ScorecardPath $ScorecardPath -StandardsPath $StandardsPath) {
+        $lines.Add("| $($row.Area) | $($row.InForce) | $($row.CheckedByTool) | $($row.Advisory) | $($row.Proposed) | $($row.OpenGaps) |")
+    }
+
+    # The summary counts each rule once, however many areas name it.
+    $rules = @((Get-KitRule -StandardsPath $StandardsPath).Values)
+    $inForce = @($rules | Where-Object Status -EQ 'accepted')
+    $advisory = @($inForce | Where-Object Advisory).Count
+    $proposed = @($rules | Where-Object Status -EQ 'proposed').Count
+    $openGaps = 0
+    foreach ($area in @((Read-FrontMatter -Path $ScorecardPath)['areas'])) {
+        $gaps = @($(if ($area.Contains('gaps')) { $area['gaps'] }) | Where-Object { $_ })
+        $openGaps += @($gaps | Where-Object { "$($_['status'])" -ne 'closed' }).Count
+    }
+    $ruleNoun = if ($inForce.Count -eq 1) { 'rule' } else { 'rules' }
+    $gapNoun = if ($openGaps -eq 1) { 'gap' } else { 'gaps' }
+    $lines.Add('')
+    $lines.Add("**Overall:** $($inForce.Count) $ruleNoun in force, $($inForce.Count - $advisory) checked by a tool and $advisory advisory; $proposed proposed; $openGaps open $gapNoun.")
+    $lines -join "`n"
+}
+
+# The text between the table markers, or $null when the file has no markers.
+function Get-ScorecardTableText {
+    param([Parameter(Mandatory)] [string] $Text)
+    $pattern = "(?s)$([regex]::Escape($script:TableStart))\r?\n?(.*?)\r?\n?$([regex]::Escape($script:TableEnd))"
+    $match = [regex]::Match($Text, $pattern)
+    if ($match.Success) { $match.Groups[1].Value } else { $null }
+}
+
+function Get-ScorecardTableProblem {
+    param(
+        [Parameter(Mandatory)] [string] $ScorecardPath,
+        [Parameter(Mandatory)] [string] $StandardsPath
+    )
+
+    $current = Get-ScorecardTableText -Text (Get-Content -Raw -LiteralPath $ScorecardPath)
+    if ($null -eq $current) {
+        return New-Problem -Message "has no table: add the lines $script:TableStart and $script:TableEnd, then run ./tools/Test-Scorecard.ps1 -Update"
+    }
+    $expected = Format-ScorecardTable -ScorecardPath $ScorecardPath -StandardsPath $StandardsPath
+    if (($current -replace "`r`n", "`n").Trim() -ne $expected.Trim()) {
+        New-Problem -Message 'table is out of date with the rules: run ./tools/Test-Scorecard.ps1 -Update and commit the result'
+    }
+}
+
+# Rewrites the table between the markers; the rest of the file stays as it is.
+function Update-ScorecardTable {
+    param(
+        [Parameter(Mandatory)] [string] $ScorecardPath,
+        [Parameter(Mandatory)] [string] $StandardsPath
+    )
+
+    $text = Get-Content -Raw -LiteralPath $ScorecardPath
+    if ($null -eq (Get-ScorecardTableText -Text $text)) {
+        throw "$ScorecardPath has no table markers ($script:TableStart, $script:TableEnd)."
+    }
+    $table = Format-ScorecardTable -ScorecardPath $ScorecardPath -StandardsPath $StandardsPath
+    $pattern = "(?s)$([regex]::Escape($script:TableStart)).*?$([regex]::Escape($script:TableEnd))"
+    $updated = [regex]::Replace($text, $pattern, { param($m) "$script:TableStart`n$table`n$script:TableEnd" })
+    Set-Content -LiteralPath $ScorecardPath -Value $updated -NoNewline
 }
 
 function Get-ScorecardProblem {
