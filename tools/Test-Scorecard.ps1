@@ -27,6 +27,17 @@ $ErrorActionPreference = 'Stop'
 Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 
+# What every area needs: what "perfect" means for it, and where that comes from.
+$script:RequiredAreaFields = 'id', 'name', 'perfect', 'sources'
+
+function Test-Present {
+    param($Value)
+    if ($null -eq $Value) { return $false }
+    if ($Value -is [string]) { return -not [string]::IsNullOrWhiteSpace($Value) }
+    if ($Value -is [System.Collections.ICollection]) { return $Value.Count -gt 0 }
+    $true
+}
+
 function New-Problem {
     param([string] $Area, [string] $Message)
     [pscustomobject]@{ Area = $Area; Message = $Message }
@@ -63,6 +74,11 @@ function Get-ScorecardProblem {
     $named = @{}
     foreach ($area in @($scorecard['areas'])) {
         $areaId = "$($area['id'])"
+        foreach ($field in $script:RequiredAreaFields) {
+            if (-not $area.Contains($field) -or -not (Test-Present $area[$field])) {
+                New-Problem -Area $areaId -Message "is missing '$field'"
+            }
+        }
         foreach ($ruleId in @($area['rules'])) {
             $named["$ruleId"] = $true
             if (-not $rules.Contains("$ruleId")) {
