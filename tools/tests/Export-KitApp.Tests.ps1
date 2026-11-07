@@ -144,6 +144,24 @@ Describe 'Export-KitApp' {
         $listed['AGENTS.md']['sha256'] | Should -Be $blockHash
     }
 
+    # git stores text with LF line endings, but a checkout may give CRLF (core.autocrlf, .gitattributes), so
+    # the manifest hashes the text with LF line endings: the same on every machine and every checkout.
+    It 'hashes each kit-managed file with LF line endings, whatever the checkout gave' {
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        function Get-LfHash([string] $Text) {
+            $lf = $Text -replace "`r`n", "`n"
+            [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($lf))).ToLowerInvariant()
+        }
+        $withCrlf = 0
+        foreach ($file in $manifest['files']) {
+            $text = [IO.File]::ReadAllText((Join-Path $app $file['path']))
+            if ($text.Contains("`r`n")) { $withCrlf++ }
+            if ($file['block']) { $text = [regex]::Match($text, '(?s)<!-- kit:begin.*?<!-- kit:end -->').Value }
+            $file['sha256'] | Should -Be (Get-LfHash $text) -Because "$($file['path']) should hash the same in an LF checkout"
+        }
+        $withCrlf | Should -BeGreaterThan 0 -Because 'this test needs some CRLF files to mean anything (.ps1 files are eol=crlf)'
+    }
+
     It 'names only tools and parameters the app has, in its AGENTS.md commands' {
         $agents = Get-Content -Raw (Join-Path $app 'AGENTS.md')
         $calls = [regex]::Matches($agents, '\./\.kit/tools/(?<tool>[A-Za-z-]+\.ps1)(?<args>[^`]*)')
