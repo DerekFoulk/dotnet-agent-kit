@@ -85,34 +85,60 @@ function New-KitApp {
     $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination)
     $KitRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($KitRoot)
 
+    # Checks first. They only read, so they run with -WhatIf too.
     $commit = (git -C $KitRoot rev-parse --verify --quiet "$KitRef^{commit}" | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
+    Invoke-KitGhChecked -Arguments 'auth', 'status' | Out-Null
     $owner = Invoke-KitGhChecked -Arguments 'api', 'user', '--jq', '.login'
     $repo = "$owner/$Name"
+    Invoke-KitGh -Arguments 'api', "repos/$repo" | Out-Null
     # The settings and ruleset come from the same kit commit as the files.
     $settingsText = git -C $KitRoot show "${commit}:templates/github/repo.json" | Out-String
     $rulesetText = git -C $KitRoot show "${commit}:templates/github/main-protection.json" | Out-String
 
-    $export = Join-Path $KitRoot 'tools/Export-KitApp.ps1'
-    & $export -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
-    if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
+    # The steps, in order. Each runs in this function's scope (dot-sourced), so later steps see what earlier
+    # ones set. -WhatIf lists them instead.
+    $steps = @(
+        [pscustomobject]@{ Description = "Export the kit's files at $commit"; Action = {
+                & (Join-Path $KitRoot 'tools/Export-KitApp.ps1') -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
+                if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
+            }
+        }
+        [pscustomobject]@{ Description = 'Make the first commit'; Action = {
+                $version = (Get-Content -Raw -LiteralPath (Join-Path $Destination '.kit/manifest.json') | ConvertFrom-Json).kitVersion
+                Invoke-KitGit -Path $Destination -Arguments 'init', '-q', '-b', 'main'
+                Invoke-KitGit -Path $Destination -Arguments 'add', '-A'
+                # Windows doesn't record the executable bit, and git on Linux and macOS skips a hook without it.
+                Invoke-KitGit -Path $Destination -Arguments 'add', '--chmod=+x', '.githooks/commit-msg'
+                Invoke-KitGit -Path $Destination -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
+            }
+        }
+        [pscustomobject]@{ Description = "Create the $(if ($Public) { 'public' } else { 'private' }) repo with the kit's merge settings"; Action = {
+                $request = Get-KitAppRepoRequest -Name $Name -SettingsText $settingsText -Public:$Public | ConvertTo-Json
+                $created = Invoke-KitGhChecked -Arguments 'api', 'user/repos', '--method', 'POST', '--input', '-' -InputText $request | ConvertFrom-Json
+            }
+        }
+        [pscustomobject]@{ Description = 'Push main'; Action = {
+                Invoke-KitGit -Path $Destination -Arguments 'remote', 'add', 'origin', $created.clone_url
+                Invoke-KitGit -Path $Destination -Arguments 'push', '-q', '-u', 'origin', 'main'
+            }
+        }
+        # After the push: before it, the ruleset would reject the first push.
+        [pscustomobject]@{ Description = "Add the 'main protection' ruleset"; Action = {
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
+            }
+        }
+        # The commit-msg hook rejects a subject that isn't a Conventional Commit (ADR-0027).
+        [pscustomobject]@{ Description = 'Turn the commit hook on in the local copy'; Action = {
+                Invoke-KitGit -Path $Destination -Arguments 'config', '--local', 'core.hooksPath', '.githooks'
+            }
+        }
+    )
 
-    $version = (Get-Content -Raw -LiteralPath (Join-Path $Destination '.kit/manifest.json') | ConvertFrom-Json).kitVersion
-    Invoke-KitGit -Path $Destination -Arguments 'init', '-q', '-b', 'main'
-    Invoke-KitGit -Path $Destination -Arguments 'add', '-A'
-    # Windows doesn't record the executable bit, and git on Linux and macOS skips a hook without it.
-    Invoke-KitGit -Path $Destination -Arguments 'add', '--chmod=+x', '.githooks/commit-msg'
-    Invoke-KitGit -Path $Destination -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
-
-    $request = Get-KitAppRepoRequest -Name $Name -SettingsText $settingsText -Public:$Public | ConvertTo-Json
-    $created = Invoke-KitGhChecked -Arguments 'api', 'user/repos', '--method', 'POST', '--input', '-' -InputText $request | ConvertFrom-Json
-
-    Invoke-KitGit -Path $Destination -Arguments 'remote', 'add', 'origin', $created.clone_url
-    Invoke-KitGit -Path $Destination -Arguments 'push', '-q', '-u', 'origin', 'main'
-
-    Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
-
-    # The commit-msg hook rejects a subject that isn't a Conventional Commit (ADR-0027).
-    Invoke-KitGit -Path $Destination -Arguments 'config', '--local', 'core.hooksPath', '.githooks'
-    Write-Host "Created $($created.html_url)"
+    foreach ($step in $steps) {
+        if (-not $PSCmdlet.ShouldProcess("$repo, $Destination", $step.Description)) { continue }
+        Write-Host $step.Description
+        . $step.Action
+    }
+    if (-not $WhatIfPreference) { Write-Host "Created $($created.html_url)" }
 }
