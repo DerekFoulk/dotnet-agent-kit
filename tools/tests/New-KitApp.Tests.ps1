@@ -345,8 +345,10 @@ Describe 'New-KitApp run' {
 
         It 'stops there, and says which step failed, what''s done and what''s left' {
             "$runError" | Should -Match "Add the 'main protection' ruleset failed: .*HTTP 422"
-            "$runError" | Should -Match '(?m)^Done: .*Push main'
-            "$runError" | Should -Match '(?m)^Left: .*Turn the commit hook on'
+            # Exactly: a failed step listed as done would tell the owner main is protected when it isn't.
+            $lines = "$runError" -split "`r?`n"
+            $lines | Should -Contain "Done: Export the kit's files at $commit; Make the first commit; Create the private repo with the kit's merge settings; Push main."
+            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn the commit hook on in the local copy."
             (git -C $app config --local --get core.hooksPath) | Should -BeNullOrEmpty -Because 'no step runs after a failure'
         }
 
