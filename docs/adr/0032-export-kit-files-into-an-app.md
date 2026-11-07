@@ -18,7 +18,7 @@ D2a has to settle:
 
 ### Option 1: Export from a clean checkout of one commit, with templates and a manifest
 
-`tools/Export-KitApp.ps1` checks the commit out into a temporary `git worktree` and copies from there. Kit files go across unchanged; the app's own files (AGENTS.md, README, solution, CI callers, Dependabot config) render from `templates/app/`, pinned to the commit. The checking scripts go to `.kit/tools/`. `.kit/manifest.json` lists every kit-managed file with its SHA-256.
+`tools/Export-KitApp.ps1` checks the commit out into a temporary `git worktree` and copies from there. Kit files go across unchanged; the app's own files (AGENTS.md, THIRD-PARTY-NOTICES.md, README, solution, CI callers, Dependabot config) render from `templates/app/`, pinned to the commit. The checking scripts go to `.kit/tools/`. `.kit/manifest.json` lists every kit-managed file with its SHA-256.
 
 - **Trade-offs:** An uncommitted edit in the kit can't reach an app, and the files have the pinned commit's content. Their line endings follow the exporting clone's settings, as any checkout's do, so the manifest hashes each file's text with LF line endings, the same on every machine. The manifest tells the sync job what it may replace and whether someone edited it. A second copy of the scripts lives in each app, kept in step by the sync job. Templates add a folder to maintain.
 - **Reversibility:** Easy before D3 ships: nothing reads the layout yet. After that, a layout change needs a sync-job migration.
@@ -52,9 +52,10 @@ Accepted (owner, 2026-11-05: approved the D2 plan, with D2a writing the files of
   - **App:** `README.md`, the solution, `docs/corrections-log.md`, `Directory.Packages.props` and `.github/dependabot.yml`, never touched by the sync job. `.github/copilot-instructions.md` copies the app's AGENTS.md, so it's regenerated rather than synced.
 - The app's Dependabot config lists only NuGet: the sync job moves the kit pin and the `global.json` SDK pin with each kit release, so Dependabot doesn't propose edits to kit-managed files. An app's SDK moves when the kit's does.
 - Still kit-managed in v0.1, though an app may want to add to them: `global.json`, `.gitignore` and `.claude/settings.json`. The sync job (PR D3) decides how an app adds its own lines, for example with a kit block.
-- Each manifest hash is the SHA-256 of the file's text with LF line endings, because git stores text as LF while a checkout may give CRLF.
+- Each manifest hash is the SHA-256 of the file read as UTF-8 (a byte-order mark dropped), with CRLF changed to LF, encoded as UTF-8 without a byte-order mark; for a kit block, of the text from `<!-- kit:begin` to `<!-- kit:end -->` inclusive. git stores text as LF while a checkout may give CRLF, so this is the same on every checkout, and the sync job must compute it the same way.
 - The version label in the manifest and the CI pin comments comes only from a release tag that points to the commit, otherwise `unreleased`, since a pin is trusted only when a release tag points to it (ADR-0031).
-- The export refuses a destination that isn't empty and a name that isn't a dotted .NET name (`Contoso.Orders`), before writing anything.
+- The export refuses a destination that isn't empty, a name that isn't a dotted .NET name (`Contoso.Orders`) or that contains a Windows device name (`Con`, `Nul`, `Com1`), and a ref that isn't a commit or tag, before writing anything. A failure partway removes what the run wrote.
+- Apps don't get the kit's `dependabot-lockfiles.yml`. Whether an app's Dependabot NuGet PRs pass locked restore without it isn't tested yet; D2b's end-to-end app will show it.
 - `Directory.Packages.props` keeps the kit's build and test toolset and drops the `ItemGroup` labelled `Sample app` (MSBuild's `Label` attribute "identifies the `ItemGroup`" and changes nothing in the build).
 - Files copied into apps must work there. The commit-msg hook looks in `.kit/tools/` before `tools/`; the skills and reviewer run the checks in AGENTS.md's Commands table instead of naming kit paths (`tools/tests/AgentFiles.Tests.ps1` checks this); `.claude/settings.json` allows running `./.kit/tools/*`.
 - A kit ADR number inside a kit-managed file means the kit's ADR; the app's AGENTS.md links them at the pinned commit. An app numbers its own ADRs from 0001.
