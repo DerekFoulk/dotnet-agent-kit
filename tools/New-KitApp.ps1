@@ -100,6 +100,8 @@ function New-KitApp {
     $version = (Get-Content -Raw -LiteralPath (Join-Path $Destination '.kit/manifest.json') | ConvertFrom-Json).kitVersion
     Invoke-KitGit -Path $Destination -Arguments 'init', '-q', '-b', 'main'
     Invoke-KitGit -Path $Destination -Arguments 'add', '-A'
+    # Windows doesn't record the executable bit, and git on Linux and macOS skips a hook without it.
+    Invoke-KitGit -Path $Destination -Arguments 'add', '--chmod=+x', '.githooks/commit-msg'
     Invoke-KitGit -Path $Destination -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
 
     $request = Get-KitAppRepoRequest -Name $Name -SettingsText $settingsText -Public:$Public | ConvertTo-Json
