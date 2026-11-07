@@ -76,4 +76,15 @@ Describe 'Test-Scorecard.ps1' {
         $problems[0].Area | Should -Be 'code'
         $problems[0].Message | Should -BeLike "*STY-999*"
     }
+
+    It 'reports a retired rule an area still names' {
+        # A retired rule is no longer in force, so it can't count toward an area.
+        $paths = New-Fixture -Rules @((New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002' -Status 'retired')) -Areas @(
+            New-Area -Override @{ rules = @('STY-001', 'STY-002') })
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike '*STY-002*retired*'
+    }
 }
