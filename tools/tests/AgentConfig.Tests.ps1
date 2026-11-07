@@ -63,12 +63,21 @@ Describe 'Agent configuration' {
         }
 
         # New-KitApp creates a GitHub repo and changes its settings (ADR-0033); './tools/*' would allow it unasked.
-        It 'asks before running New-KitApp with <Rule>' -ForEach @(
-            @{ Rule = 'PowerShell(./tools/New-KitApp.ps1*)' }, @{ Rule = 'PowerShell(.\tools\New-KitApp.ps1*)' }
-            @{ Rule = 'PowerShell(pwsh -NoProfile -File ./tools/New-KitApp.ps1*)' }
-            @{ Rule = 'Bash(pwsh -NoProfile -File ./tools/New-KitApp.ps1*)' }
+        # Each way of running it must match an ask rule. PowerShell runs a path-qualified script without its
+        # .ps1, so the rules can't end in '.ps1*' (review 1 of PR 17).
+        It 'asks before running New-KitApp as <Tool>(<Command>)' -ForEach @(
+            @{ Tool = 'PowerShell'; Command = './tools/New-KitApp -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = './tools/New-KitApp.ps1 -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\New-KitApp -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\New-KitApp.ps1 -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
+            @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
         ) {
-            (Get-RuleList 'ask') -ccontains $Rule | Should -BeTrue
+            # A rule's '*' matches any text, as in Claude Code's patterns; [ and ] are taken literally.
+            $matching = @(Get-RuleList 'ask' | Where-Object {
+                    $_ -match "^$Tool\((.*)\)$" -and $Command -like ($Matches[1] -replace '[\[\]]', '`$0')
+                })
+            $matching | Should -Not -BeNullOrEmpty -Because "an ask rule should catch $Tool($Command)"
         }
 
         It 'leaves pushes to the GitHub ruleset: no deny or ask rule matches git push' {
