@@ -98,4 +98,18 @@ Describe 'Test-Scorecard.ps1' {
         $problems | Should -HaveCount 1
         $problems[0].Message | Should -BeLike '*STY-002*no area*'
     }
+
+    It 'reports an area missing <Field>' -ForEach @(
+        @{ Field = 'id'; Empty = '' }, @{ Field = 'name'; Empty = '' }, @{ Field = 'perfect'; Empty = ' ' }, @{ Field = 'sources'; Empty = @() }
+    ) {
+        # Without what "perfect" means and where that comes from, an area's score measures nothing.
+        foreach ($areas in @((New-Area -Remove $Field), (New-Area -Override @{ $Field = $Empty }))) {
+            $paths = New-Fixture -Areas @($areas)
+
+            $problems = @(Get-Problem $paths)
+
+            $problems | Should -HaveCount 1
+            $problems[0].Message | Should -BeLike "*$Field*"
+        }
+    }
 }
