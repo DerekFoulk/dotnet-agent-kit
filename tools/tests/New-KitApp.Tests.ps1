@@ -33,4 +33,17 @@ Describe 'New-KitApp settings' {
         # 15368 is the GitHub Actions app: only a check that Actions reports satisfies the rule.
         @($checks.integration_id | Select-Object -Unique) | Should -Be @(15368)
     }
+
+    It 'protects main as the kit''s ruleset does: no deletion or force-push, a PR, merge commits only, no bypass' {
+        $ruleset = Get-Content -Raw -LiteralPath $rulesetPath | ConvertFrom-Json
+
+        $ruleset.name | Should -Be 'main protection'
+        $ruleset.enforcement | Should -Be 'active'
+        @($ruleset.bypass_actors) | Should -BeNullOrEmpty
+        @($ruleset.conditions.ref_name.include) | Should -Be @('~DEFAULT_BRANCH')
+        @($ruleset.rules.type | Sort-Object) | Should -Be @('deletion', 'non_fast_forward', 'pull_request', 'required_status_checks')
+        $pullRequest = ($ruleset.rules | Where-Object type -EQ 'pull_request').parameters
+        @($pullRequest.allowed_merge_methods) | Should -Be @('merge')
+        $pullRequest.required_approving_review_count | Should -Be 0 # one owner: the reviewer agent reviews, not a second person
+    }
 }
