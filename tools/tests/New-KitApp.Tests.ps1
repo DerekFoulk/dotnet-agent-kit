@@ -424,6 +424,39 @@ Describe 'New-KitApp run' {
         }
     }
 
+    Context 'where the run stops decides what the report says is kept' {
+        It 'keeps the folder, and mentions no repo, when the first commit fails' {
+            $app = Join-Path $TestDrive 'NoCommit.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'nocommit-remote.git')
+            Mock Invoke-KitGit { throw 'git commit failed: no identity' } -ParameterFilter { $Arguments[0] -eq 'commit' }
+
+            $message = $null
+            try { New-KitApp -Name 'NoCommit.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null } catch { $message = "$_" }
+            $message | Should -Match "Make the first commit failed"
+            $message | Should -Match "The folder $([regex]::Escape($app)) is kept"
+            $message | Should -Not -Match 'github\.com' -Because 'no create call was made'
+            Get-WriteCall | Should -BeNullOrEmpty
+        }
+
+        It 'says nothing is kept when the export fails, which removes what it wrote' {
+            # A kit commit without the "Sample app" label makes the export fail after it has started writing.
+            git -C $kit switch -q -c no-sample-label-run
+            $props = Join-Path $kit 'Directory.Packages.props'
+            (Get-Content -Raw $props) -replace 'ItemGroup Label="Sample app"', 'ItemGroup' | Set-Content -LiteralPath $props -NoNewline
+            git -C $kit commit -q -m 'chore: no label' -- Directory.Packages.props
+            $broken = (git -C $kit rev-parse HEAD).Trim()
+            git -C $kit switch -q main
+            $app = Join-Path $TestDrive 'NoExport.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'noexport-remote.git')
+
+            try { New-KitApp -Name 'NoExport.Orders' -KitRef $broken -Destination $app -KitRoot $kit 6>$null *>$null } catch { $message = "$_" }
+            $message | Should -Match '^Export the kit''s files at .* failed'
+            $message | Should -Match 'Done: nothing\.'
+            $message | Should -Not -Match 'kept'
+            Test-Path -LiteralPath $app | Should -BeFalse
+        }
+    }
+
     Context 'refusing before any change: <Case>' -ForEach @(
         @{ Case = 'the repo already exists'; AppName = 'Taken.Orders'; Message = 'fixture-owner/Taken\.Orders already exists'
             Answer = @{ Pattern = '^api repos/fixture-owner/Taken\.Orders$'; ExitCode = 0; Output = '{"full_name":"fixture-owner/Taken.Orders"}'; Error = '' } }
