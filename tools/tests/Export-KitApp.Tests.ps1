@@ -344,9 +344,18 @@ Describe 'Export-KitApp' {
             git -C $kit tag -d v0.0.1 | Out-Null
             Get-KitVersionLabel -KitRoot $kit -KitRef 'v1.2.3-wip' -Commit $commit | Should -Be 'unreleased'
             Get-KitVersionLabel -KitRoot $kit -KitRef 'v1.2.3-wip~0' -Commit $commit | Should -Be 'unreleased'
+
+            # A release tag on a later commit, reached back with ~1: that names the commit, not a release of it.
+            $child = (git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid commit-tree "$commit^{tree}" -p $commit -m 'chore: later' | Out-String).Trim()
+            git -C $kit tag v0.0.2 $child
+            Get-KitVersionLabel -KitRoot $kit -KitRef 'v0.0.2~1' -Commit $commit | Should -Be 'unreleased'
+
+            # Only a release tag (vX.Y.Z) counts, not any tag that happens to be on the commit.
+            git -C $kit tag scratch-backup $commit
+            Get-KitVersionLabel -KitRoot $kit -KitRef $commit -Commit $commit | Should -Be 'unreleased'
         }
         finally {
-            git -C $kit tag -d v0.0.1 2>&1 | Out-Null
+            foreach ($tag in 'v0.0.1', 'v0.0.2', 'scratch-backup') { git -C $kit tag -d $tag 2>&1 | Out-Null }
             git -C $kit branch -D v1.2.3-wip 2>&1 | Out-Null
         }
     }
