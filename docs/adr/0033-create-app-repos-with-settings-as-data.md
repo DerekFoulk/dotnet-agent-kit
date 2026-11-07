@@ -46,13 +46,13 @@ Accepted (owner, 2026-11-06: approved the D2b plan, including the throwaway end-
 ## Consequences
 
 - The repo is named after the app unless `-RepoName` gives another name. The app name is a dotted .NET name (ADR-0032), because it becomes the root namespace, which can't contain hyphens; a repo name can, as `dotnet-agent-kit` does (owner, 2026-11-06: "add -RepoName"). The local folder defaults to the repo name, as `git clone` would name it.
-- `New-KitApp` runs in this order: read-only checks (the app and repo names, an empty folder, the kit ref, the `gh` sign-in, and that the repo doesn't exist), export, first commit `chore: start from dotnet-agent-kit <version>` with `.githooks/commit-msg` stored as executable, create, push `main`, the ruleset, the public settings for a public app, and `core.hooksPath` in the local copy. `-WhatIf` runs only the checks and lists the steps.
-- It works on the signed-in owner's own account only, and only creates new repos: it refuses an existing one, so it never changes a real repo's settings. A failed step stops the run and reports what's done and what's left. It never deletes a repo, which can't be undone.
+- `New-KitApp` runs in this order: read-only checks (the app and repo names, an empty folder, the kit ref with its `templates/github`, the `gh` sign-in, and that the repo doesn't exist), export, first commit `chore: start from dotnet-agent-kit <version>` with `.githooks/commit-msg` stored as executable, create (always private), push `main`, the ruleset, for a public app the switch to public and then its public settings, and `core.hooksPath` in the local copy. A public app goes public only once `main` is pushed and protected, so a failure before then leaves a private repo (review 1 of PR 17). `-WhatIf` runs only the checks and lists the steps.
+- It works on the signed-in owner's own account only, and only creates new repos: it refuses an existing one, so it never changes a real repo's settings. A failed step stops the run and reports what's done and what's left, and whether the repo or the local folder is kept. It never deletes a repo, which can't be undone.
 - `.claude/settings.json` asks before running `New-KitApp` (`./tools/*` would otherwise allow it), because it acts outside the repo.
 - The required checks are the app's CI jobs, `<caller job> / <shared workflow job name>`: `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`. `tools/tests/New-KitApp.Tests.ps1` derives them from the workflows.
 - The kit's own ruleset and settings stay set by hand on GitHub (README, "GitHub settings on this repo"); the tests check that the app ruleset has the same rules. Storing the kit's as data too is possible later.
 - GitHub documents no API for "only collaborators can open issues", so the owner sets it in the browser for a public app, as he did for the kit.
-- GitHub's docs list rulesets for Team and Enterprise plans. The release-please spike's private repo enforced its required checks under the owner's account, and the end-to-end private app checks it again.
+- Which plans enforce rulesets on private repos isn't stated plainly. GitHub's rulesets page names only "GitHub Team and GitHub Enterprise plans"; its plans page lists "Protected branches" in private repositories under GitHub Pro, and not under Free. Under the owner's account, the end-to-end private app's ruleset rejected a direct push to `main` (GH013), so it is enforced there. On an account whose plan doesn't enforce it, the ruleset step may fail, or succeed without protecting `main`, after the push; the report then lists the ruleset as left. Before handing `New-KitApp` to another account, check its plan.
 - The sync job (PR D3) can apply `templates/github/` to existing apps. A kit version from before this ADR has no such folder, and `New-KitApp` refuses it before any change.
 
 ## Pillars affected
@@ -64,4 +64,5 @@ Security: every app is protected from its first push, private by default, and an
 - owner, 2026-11-06
 - https://docs.github.com/en/rest/repos/repos#create-a-repository-for-the-authenticated-user, retrieved 2026-11-06
 - https://docs.github.com/en/rest/repos/rules, retrieved 2026-11-02
-- https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets, retrieved 2026-11-06
+- https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets, retrieved 2026-11-07
+- https://docs.github.com/en/get-started/learning-about-github/githubs-plans, retrieved 2026-11-07

@@ -192,17 +192,17 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 
 The app name (`-Name`) must be a dotted .NET name, because it becomes the solution's name and the root namespace, which can't contain hyphens.
 
-It checks first, before changing anything: the app and repo names, an empty folder, the kit ref, that `gh` is signed in, and that the repo doesn't exist yet. Then, in order:
+It checks first, before changing anything: the app and repo names, an empty folder, the kit ref (which must have `templates/github`), that `gh` is signed in, and that the repo doesn't exist yet. Then, in order:
 
 1. Exports the files (`Export-KitApp`).
 2. Makes the first commit, `chore: start from dotnet-agent-kit <version>`, with the commit hook stored as executable for Linux and macOS.
-3. Creates the repo with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
+3. Creates the repo, private, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
 4. Pushes `main`.
 5. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`.
-6. For a public app: turns on secret scanning and push protection, and requires approval before any fork's PR runs (`templates/github/public.json`). Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
+6. For a public app: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, and requires approval before any fork's PR runs (`templates/github/public.json`). Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
 7. Turns the commit hook on in the local copy.
 
-If a step fails, it stops and says what's done and what's left. It never deletes a repo. Claude Code asks before running it.
+If a step fails, it stops and says what's done and what's left, and whether the repo or the folder is kept. It never deletes a repo. Claude Code asks before running it.
 
 ### GitHub settings on this repo
 
