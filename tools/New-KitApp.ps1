@@ -46,10 +46,13 @@ function Get-KitAppRepoRequest {
         [switch] $Public
     )
 
-    $request = [ordered]@{ name = $Name; private = -not $Public }
+    $request = [ordered]@{}
     foreach ($setting in ($SettingsText | ConvertFrom-Json -AsHashtable).GetEnumerator()) {
         $request[$setting.Key] = $setting.Value
     }
+    # Set last, so the settings file can't rename the repo or make it public.
+    $request['name'] = $Name
+    $request['private'] = -not $Public
     $request
 }
 
