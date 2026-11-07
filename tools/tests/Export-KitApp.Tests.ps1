@@ -144,6 +144,24 @@ Describe 'Export-KitApp' {
         $listed['AGENTS.md']['sha256'] | Should -Be $blockHash
     }
 
+    It 'names only tools and parameters the app has, in its AGENTS.md commands' {
+        $agents = Get-Content -Raw (Join-Path $app 'AGENTS.md')
+        $calls = [regex]::Matches($agents, '\./\.kit/tools/(?<tool>[A-Za-z-]+\.ps1)(?<args>[^`]*)')
+
+        $calls.Count | Should -BeGreaterThan 5
+        foreach ($call in $calls) {
+            $tool = Join-Path $app '.kit/tools' $call.Groups['tool'].Value
+            Test-Path -LiteralPath $tool | Should -BeTrue -Because "AGENTS.md runs $($call.Groups['tool'].Value)"
+            $parameters = (Get-Command -Name $tool).Parameters.Keys
+            foreach ($name in [regex]::Matches($call.Groups['args'].Value, '(?<=\s)-(?<name>[A-Za-z]+)') | ForEach-Object { $_.Groups['name'].Value }) {
+                $parameters | Should -Contain $name -Because "AGENTS.md passes -$name to $($call.Groups['tool'].Value)"
+            }
+        }
+        foreach ($module in [regex]::Matches($agents, '\./\.kit/tools/(?<module>[A-Za-z-]+\.psm1)')) {
+            Test-Path -LiteralPath (Join-Path $app '.kit/tools' $module.Groups['module'].Value) | Should -BeTrue
+        }
+    }
+
     It 'includes the build files, agent files, rules, notices and tools an app needs' {
         $targets = @($map | ForEach-Object { $_.Target })
 
