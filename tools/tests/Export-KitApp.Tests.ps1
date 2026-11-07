@@ -296,6 +296,17 @@ Describe 'Export-KitApp' {
         @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain '.github/dependabot.yml'
     }
 
+    It 'empties, but keeps, an empty folder it was given when the export fails partway' {
+        $target = Join-Path $TestDrive 'given-empty'
+        New-Item -ItemType Directory -Path $target | Out-Null
+
+        & $script -Name 'Contoso.Orders' -Destination $target -KitRef 'no-sample-label' -KitRoot $kit 6>&1 | Out-Null
+
+        $LASTEXITCODE | Should -Be 1
+        Test-Path -LiteralPath $target | Should -BeTrue -Because 'the folder was the caller''s before the run'
+        @(Get-ChildItem -LiteralPath $target -Force) | Should -BeNullOrEmpty -Because 'nothing the failed run wrote should stay'
+    }
+
     It 'refuses a destination that already has files, and leaves them alone' {
         $busy = Join-Path $TestDrive 'busy'
         New-Item -ItemType Directory -Path $busy | Out-Null
