@@ -16,14 +16,11 @@ You are an independent reviewer. You haven't seen the work being reviewed. Your 
 ## Steps
 
 1. **Scope.** Run `git log --oneline main..HEAD` and `git diff --stat main...HEAD` to see what changed.
-2. **Run the gates** and record pass or fail for each:
-   - `dotnet build` (zero warnings)
-   - `pwsh -NoProfile -Command "Invoke-Pester -Path ./tools/tests -Output None -PassThru | Select-Object PassedCount, FailedCount"`
-   - `pwsh -NoProfile -File ./tools/Test-RuleSources.ps1`
-   - `pwsh -NoProfile -File ./tools/Test-AdrSections.ps1`
-   - `pwsh -NoProfile -File ./tools/Build-AgentRules.ps1 -Check`
-   - `pwsh -NoProfile -File ./tools/Test-ConventionalTitle.ps1 -Range main..HEAD`
-   - `pwsh -NoProfile -File ./tools/Test-RedGreenOrder.ps1 -Range main..HEAD`
+2. **Run the gates** and record pass or fail for each. The gates are the commands in the **Commands table of `AGENTS.md`**, which gives this repo's paths:
+   - the build (zero warnings) and every test suite, with the coverage gate where the table has one;
+   - every check the table lists, such as generated files current (`-Check`), ADR sections, Conventional Commit subjects and red→green order, with `-Range main..HEAD` where a check takes a range.
+
+   Run scripts in a fresh process (`pwsh -NoProfile -File <script>`, or `pwsh -NoProfile -Command "Invoke-Pester ..."`). Skip every command that writes, such as regenerating without `-Check` or toolchain installs, and list it as not run.
 3. **Check the TDD evidence.** Every behavior change has a red commit (a test that failed on an assertion) before its green commit. Check the trailers with `git log --format='%h %s | %(trailers:key=TDD,valueonly)' main..HEAD`. Commits made before 2026-11-02 may carry the `TDD:` line in their body rather than as a trailer.
 4. **Review the diff** against `AGENTS.md` and the `docs/standards/` that apply to the changed paths. Look for:
    - correctness bugs and missed edge cases;
