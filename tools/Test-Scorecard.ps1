@@ -60,15 +60,22 @@ function Get-ScorecardProblem {
 
     $rules = Get-KitRule -StandardsPath $StandardsPath
     $scorecard = Read-FrontMatter -Path $ScorecardPath
+    $named = @{}
     foreach ($area in @($scorecard['areas'])) {
         $areaId = "$($area['id'])"
         foreach ($ruleId in @($area['rules'])) {
+            $named["$ruleId"] = $true
             if (-not $rules.Contains("$ruleId")) {
                 New-Problem -Area $areaId -Message "names rule $ruleId, which no standard in $StandardsPath has"
             }
             elseif ($rules["$ruleId"].Status -eq 'retired') {
                 New-Problem -Area $areaId -Message "names rule $ruleId, which is retired"
             }
+        }
+    }
+    foreach ($rule in $rules.Values) {
+        if ($rule.Status -eq 'accepted' -and -not $named.ContainsKey($rule.Id)) {
+            New-Problem -Message "rule $($rule.Id) is in force but no area names it"
         }
     }
 }
