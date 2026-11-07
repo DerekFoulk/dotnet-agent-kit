@@ -50,7 +50,7 @@ Describe 'Export-KitApp' {
     It 'copies every kit-managed file unchanged, as it is at the chosen commit' {
         $copied = @($map | Where-Object { $_.Kind -eq 'Copy' })
 
-        $copied.Count | Should -BeGreaterThan 40
+        $copied.Count | Should -BeGreaterThan 35
         foreach ($entry in $copied) {
             $expected = [IO.File]::ReadAllBytes((Join-Path $checkout $entry.Source))
             $actualPath = Join-Path $app $entry.Target

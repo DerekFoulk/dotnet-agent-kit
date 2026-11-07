@@ -28,7 +28,7 @@ $ErrorActionPreference = 'Stop'
 # Kit files an app gets unchanged. A trailing slash means every file under that folder.
 $script:KitCopies = @(
     '.editorconfig', '.gitattributes', '.gitignore', 'global.json', 'nuget.config', 'Directory.Build.props',
-    'THIRD-PARTY-NOTICES.md', 'CLAUDE.md', '.mcp.json', '.vscode/mcp.json', '.vscode/settings.json',
+    'CLAUDE.md', '.mcp.json', '.vscode/mcp.json', '.vscode/settings.json',
     '.claude/settings.json', '.claude/agents/reviewer.md', '.claude/skills/', 'docs/standards/', '.githooks/',
     '.github/pull_request_template.md', 'docs/adr/0000-template.md'
 )
@@ -47,7 +47,10 @@ $script:KitTools = @(
 )
 
 # Templates the app owns from the start: the sync job never changes them.
-$script:AppOwnedTemplates = @('README.md', 'App.slnx', 'docs/corrections-log.md')
+$script:AppOwnedTemplates = @('README.md', 'App.slnx', 'docs/corrections-log.md', '.github/dependabot.yml')
+
+# Templates the app owns except for the block between kit:begin and kit:end, which is the kit's.
+$script:KitBlockTemplates = @('AGENTS.md', 'THIRD-PARTY-NOTICES.md')
 
 # Lists what goes where: Source is a path in the kit, Target a path in the app. Owner says who changes
 # the file later: Kit (the sync job replaces it), KitBlock (only the kit:begin..kit:end block is the
@@ -89,7 +92,7 @@ function Get-KitAppFileMap {
     if ($LASTEXITCODE -ne 0) { throw "git ls-tree failed for templates/app at $Commit." }
     foreach ($file in $templates) {
         $relative = $file.Substring('templates/app/'.Length)
-        $owner = if ($relative -eq 'AGENTS.md') { 'KitBlock' } elseif ($relative -in $script:AppOwnedTemplates) { 'App' } else { 'Kit' }
+        $owner = if ($relative -in $script:KitBlockTemplates) { 'KitBlock' } elseif ($relative -in $script:AppOwnedTemplates) { 'App' } else { 'Kit' }
         $target = if ($relative -eq 'App.slnx') { "$Name.slnx" } else { $relative }
         [pscustomobject]@{ Kind = 'Template'; Owner = $owner; Source = $file; Target = $target }
     }
@@ -234,6 +237,8 @@ function Export-KitApp {
             KitCommit     = $commit
             KitVersion    = $KitVersion
             KitSections   = Get-KitAgentsSection -AgentsText ([IO.File]::ReadAllText((Join-Path $checkout 'AGENTS.md')))
+            # The kit's notices without their title; the template has its own.
+            KitNotices    = ([IO.File]::ReadAllText((Join-Path $checkout 'THIRD-PARTY-NOTICES.md')) -replace '(?s)^# [^\r\n]*\r?\n(\r?\n)?', '').TrimEnd()
         }
 
         $created = -not (Test-Path -LiteralPath $Destination)
