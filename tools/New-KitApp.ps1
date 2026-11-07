@@ -111,5 +111,8 @@ function New-KitApp {
     Invoke-KitGit -Path $Destination -Arguments 'push', '-q', '-u', 'origin', 'main'
 
     Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
+
+    # The commit-msg hook rejects a subject that isn't a Conventional Commit (ADR-0027).
+    Invoke-KitGit -Path $Destination -Arguments 'config', '--local', 'core.hooksPath', '.githooks'
     Write-Host "Created $($created.html_url)"
 }
