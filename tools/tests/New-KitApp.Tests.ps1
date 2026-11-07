@@ -84,6 +84,31 @@ Describe 'New-KitApp settings' {
     }
 }
 
+Describe 'Invoke-KitGh' {
+    BeforeAll {
+        . (Join-Path $PSScriptRoot '..' 'New-KitApp.ps1')
+    }
+
+    It 'keeps gh''s error output apart from its JSON, so a warning can''t break parsing' {
+        # Native stderr arrives as ErrorRecords under 2>&1; Write-Error -ErrorAction Continue stands in for it.
+        Mock gh { '{ "html_url": "https://github.com/o/r" }'; Write-Error 'warning: an update is available' -ErrorAction Continue; $global:LASTEXITCODE = 0 }
+        $result = Invoke-KitGh -Arguments 'api', 'user/repos'
+        { $result.Output | ConvertFrom-Json } | Should -Not -Throw
+        ($result.Output | ConvertFrom-Json).html_url | Should -Be 'https://github.com/o/r'
+        $result.PSObject.Properties.Name | Should -Contain 'Error'
+        $result.Error | Should -Match 'an update is available'
+    }
+
+    It 'reports gh''s error output when gh fails' {
+        Mock gh { Write-Error 'gh: Not Found (HTTP 404)' -ErrorAction Continue; $global:LASTEXITCODE = 1 }
+        $result = Invoke-KitGh -Arguments 'api', 'repos/o/r'
+        $result.ExitCode | Should -Be 1
+        $result.PSObject.Properties.Name | Should -Contain 'Error'
+        $result.Error | Should -Match 'HTTP 404'
+        { Invoke-KitGhChecked -Arguments 'api', 'repos/o/r' } | Should -Throw '*HTTP 404*'
+    }
+}
+
 # The run, against a throwaway kit repo built from this working tree (as in Export-KitApp.Tests.ps1). GitHub
 # is replaced: Invoke-KitGh is mocked, and the "created" repo's clone URL is a local bare repo, so git
 # itself runs for real.
@@ -131,11 +156,11 @@ Describe 'New-KitApp run' {
                 $text = switch -Regex ($Arguments -join ' ') {
                     '^auth status' { 'Logged in to github.com account fixture-owner' }
                     '^api user --jq \.login$' { 'fixture-owner' }
-                    '^api repos/[^/ ]+/[^/ ]+$' { return [pscustomobject]@{ ExitCode = 1; Output = 'gh: Not Found (HTTP 404)' } }
+                    '^api repos/[^/ ]+/[^/ ]+$' { return [pscustomobject]@{ ExitCode = 1; Output = 'gh: Not Found (HTTP 404)'; Error = 'gh: Not Found (HTTP 404)' } }
                     '^api user/repos' { (@{ html_url = 'https://github.com/fixture-owner/Contoso.Orders'; clone_url = $script:remote } | ConvertTo-Json) }
                     default { '{}' }
                 }
-                [pscustomobject]@{ ExitCode = 0; Output = $text }
+                [pscustomobject]@{ ExitCode = 0; Output = $text; Error = '' }
             }
         }
 
@@ -347,7 +372,7 @@ Describe 'New-KitApp run' {
             Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'failing-remote.git')
             Mock Invoke-KitGh {
                 $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $true })
-                [pscustomobject]@{ ExitCode = 1; Output = 'gh: Validation Failed (HTTP 422)' }
+                [pscustomobject]@{ ExitCode = 1; Output = 'gh: Validation Failed (HTTP 422)'; Error = 'gh: Validation Failed (HTTP 422)' }
             } -ParameterFilter { ($Arguments -join ' ') -match '/rulesets ' }
             $runError = $null
             try { New-KitApp -Name 'Failing.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
@@ -375,7 +400,7 @@ Describe 'New-KitApp run' {
             Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'norepo-remote.git')
             Mock Invoke-KitGh {
                 $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $false })
-                [pscustomobject]@{ ExitCode = 1; Output = 'gh: Server Error (HTTP 500)' }
+                [pscustomobject]@{ ExitCode = 1; Output = 'gh: Server Error (HTTP 500)'; Error = 'gh: Server Error (HTTP 500)' }
             } -ParameterFilter { ($Arguments -join ' ') -match '^api user/repos ' }
             $runError = $null
             try { New-KitApp -Name 'NoRepo.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
@@ -391,11 +416,11 @@ Describe 'New-KitApp run' {
 
     Context 'refusing before any change: <Case>' -ForEach @(
         @{ Case = 'the repo already exists'; AppName = 'Taken.Orders'; Message = 'fixture-owner/Taken\.Orders already exists'
-            Answer = @{ Pattern = '^api repos/fixture-owner/Taken\.Orders$'; ExitCode = 0; Output = '{"full_name":"fixture-owner/Taken.Orders"}' } }
+            Answer = @{ Pattern = '^api repos/fixture-owner/Taken\.Orders$'; ExitCode = 0; Output = '{"full_name":"fixture-owner/Taken.Orders"}'; Error = '' } }
         @{ Case = 'the repo check fails for another reason'; AppName = 'Unknown.Orders'; Message = "Couldn't check whether fixture-owner/Unknown\.Orders exists"
-            Answer = @{ Pattern = '^api repos/fixture-owner/Unknown\.Orders$'; ExitCode = 1; Output = 'gh: Bad credentials (HTTP 401)' } }
+            Answer = @{ Pattern = '^api repos/fixture-owner/Unknown\.Orders$'; ExitCode = 1; Output = 'gh: Bad credentials (HTTP 401)'; Error = 'gh: Bad credentials (HTTP 401)' } }
         @{ Case = 'gh isn''t signed in'; AppName = 'Signed.Out'; Message = 'gh auth login'
-            Answer = @{ Pattern = '^auth status$'; ExitCode = 1; Output = 'You are not logged into any GitHub hosts.' } }
+            Answer = @{ Pattern = '^auth status$'; ExitCode = 1; Output = 'You are not logged into any GitHub hosts.'; Error = 'You are not logged into any GitHub hosts.' } }
         @{ Case = 'the folder isn''t empty'; AppName = 'Full.Folder'; Message = "isn't empty"; Answer = $null }
         @{ Case = 'the name isn''t a dotted .NET name'; AppName = '1Bad'; Message = 'dotted \.NET name'; Answer = $null }
     ) {
@@ -407,7 +432,7 @@ Describe 'New-KitApp run' {
                 $script:answer = $Answer
                 Mock Invoke-KitGh {
                     $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $false })
-                    [pscustomobject]@{ ExitCode = $script:answer.ExitCode; Output = $script:answer.Output }
+                    [pscustomobject]@{ ExitCode = $script:answer.ExitCode; Output = $script:answer.Output; Error = $script:answer.Error }
                 } -ParameterFilter { ($Arguments -join ' ') -match $script:answer.Pattern }
             }
             $runError = $null
