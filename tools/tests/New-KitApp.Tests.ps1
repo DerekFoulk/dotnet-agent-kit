@@ -69,10 +69,9 @@ Describe 'New-KitApp settings' {
             $request.has_wiki | Should -BeFalse
         }
 
-        It 'is private unless -Public is given' {
+        It 'is always private: a public app is made public after its ruleset' {
             Test-Path -LiteralPath $script | Should -BeTrue -Because 'New-KitApp.ps1 builds the request'
             (Get-KitAppRepoRequest -Name 'Contoso.Orders' -SettingsText $settingsText).private | Should -BeTrue
-            (Get-KitAppRepoRequest -Name 'Contoso.Orders' -SettingsText $settingsText -Public).private | Should -BeFalse
         }
 
         It 'keeps the name and visibility it was given, whatever the settings file says' {

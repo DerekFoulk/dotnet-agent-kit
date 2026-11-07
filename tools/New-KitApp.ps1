@@ -38,21 +38,21 @@ function Invoke-KitGh {
     [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = ($output | Out-String).Trim() }
 }
 
-# The body of POST /user/repos: the app's name and visibility, plus the kit's settings (templates/github/repo.json).
+# The body of POST /user/repos: the kit's settings (templates/github/repo.json), the repo name, and private.
 function Get-KitAppRepoRequest {
     param(
         [Parameter(Mandatory)] [string] $Name,
-        [Parameter(Mandatory)] [string] $SettingsText,
-        [switch] $Public
+        [Parameter(Mandatory)] [string] $SettingsText
     )
 
     $request = [ordered]@{}
     foreach ($setting in ($SettingsText | ConvertFrom-Json -AsHashtable).GetEnumerator()) {
         $request[$setting.Key] = $setting.Value
     }
-    # Set last, so the settings file can't rename the repo or make it public.
+    # Set last, so the settings file can't rename the repo or make it public. A public app is made public
+    # by a later step.
     $request['name'] = $Name
-    $request['private'] = -not $Public
+    $request['private'] = $true
     $request
 }
 
