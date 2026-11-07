@@ -134,6 +134,27 @@ function Write-KitManifest {
     [IO.File]::WriteAllText((Join-Path $Destination '.kit/manifest.json'), "$json`n", [Text.UTF8Encoding]::new($false))
 }
 
+# Runs the app's own copy of Build-AgentRules, so its .claude/rules, .github/instructions and
+# copilot-instructions.md exist from the first commit and pass -Check. Returns the rule files as map
+# entries: they come from the kit's standards, so the kit manages them. copilot-instructions.md copies the
+# app's AGENTS.md, which the app edits, so it stays out of the manifest.
+function New-KitAgentRuleFile {
+    param([Parameter(Mandatory)] [string] $Destination)
+
+    $builder = Join-Path $Destination '.kit/tools/Build-AgentRules.ps1'
+    $output = & pwsh -NoProfile -File $builder -RepoRoot $Destination 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "Generating the app's agent rule files failed:`n$output" }
+
+    foreach ($folder in '.claude/rules', '.github/instructions') {
+        $directory = Join-Path $Destination $folder
+        if (-not (Test-Path -LiteralPath $directory)) { continue }
+        foreach ($file in Get-ChildItem -LiteralPath $directory -File | Sort-Object Name) {
+            $target = "$folder/$($file.Name)"
+            [pscustomobject]@{ Kind = 'Generated'; Owner = 'Kit'; Source = $null; Target = $target }
+        }
+    }
+}
+
 function Get-KitVersionLabel {
     param(
         [Parameter(Mandatory)] [string] $KitRoot,
@@ -198,6 +219,7 @@ function Export-KitApp {
                 Copy-Item -LiteralPath $source -Destination $target
             }
         }
+        $map += @(New-KitAgentRuleFile -Destination $Destination)
         Write-KitManifest -Destination $Destination -Map $map -Commit $commit -KitVersion $KitVersion
     }
     finally {
