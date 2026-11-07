@@ -250,7 +250,9 @@ Describe 'Test-Scorecard.ps1' {
 
             $lines | Should -Contain '- **GAP-001** (Code, planned; needs a CI change): No mutation testing.'
             $lines | Should -Contain '- **GAP-002** (Code, proposed): No style guide.'
-            ($lines -match 'GAP-003') | Should -BeNullOrEmpty
+            # The front matter still has GAP-003; the generated part doesn't.
+            $generated = (Get-Content -Raw -LiteralPath $paths.Scorecard) -replace '(?s)^.*?<!-- scorecard-table:start -->', ''
+            $generated | Should -Not -Match 'GAP-003'
         }
 
         It 'is reported missing when the file has no table markers' {

@@ -110,15 +110,26 @@ function Format-ScorecardTable {
     $inForce = @($rules | Where-Object Status -EQ 'accepted')
     $advisory = @($inForce | Where-Object Advisory).Count
     $proposed = @($rules | Where-Object Status -EQ 'proposed').Count
-    $openGaps = 0
+    # Each open gap, so a reader sees what's missing without reading the YAML.
+    $gapLines = [Collections.Generic.List[string]]::new()
     foreach ($area in @((Read-FrontMatter -Path $ScorecardPath)['areas'])) {
         $gaps = @($(if ($area.Contains('gaps')) { $area['gaps'] }) | Where-Object { $_ })
-        $openGaps += @($gaps | Where-Object { "$($_['status'])" -ne 'closed' }).Count
+        foreach ($gap in @($gaps | Where-Object { "$($_['status'])" -ne 'closed' })) {
+            $needs = if ($gap.Contains('needs') -and (Test-Present $gap['needs'])) { "; needs $($gap['needs'])" } else { '' }
+            $gapLines.Add("- **$($gap['id'])** ($($area['name']), $($gap['status'])$needs): $($gap['gap'])")
+        }
     }
+    $openGaps = $gapLines.Count
     $ruleNoun = if ($inForce.Count -eq 1) { 'rule' } else { 'rules' }
     $gapNoun = if ($openGaps -eq 1) { 'gap' } else { 'gaps' }
     $lines.Add('')
     $lines.Add("**Overall:** $($inForce.Count) $ruleNoun in force, $($inForce.Count - $advisory) checked by a tool and $advisory advisory; $proposed proposed; $openGaps open $gapNoun.")
+    if ($gapLines.Count) {
+        $lines.Add('')
+        $lines.Add('Open gaps:')
+        $lines.Add('')
+        $lines.AddRange($gapLines)
+    }
     $lines -join "`n"
 }
 

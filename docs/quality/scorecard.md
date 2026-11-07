@@ -224,6 +224,27 @@ Each area in the front matter above has:
 | Process | 13 | 4 | 9 | 1 | 0 |
 
 **Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 9 proposed; 18 open gaps.
+
+Open gaps:
+
+- **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
+- **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
+- **GAP-003** (Tests, planned; needs a CI change): Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1.
+- **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
+- **GAP-005** (Security, proposed; needs a CI change): No code scanning: CodeQL is free on public repos but isn't set up.
+- **GAP-006** (Security, proposed): No rules for authentication, authorization or input validation defaults beyond the threat model in plans.
+- **GAP-007** (Reliability, proposed; needs packages): No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit.
+- **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
+- **GAP-009** (Observability, proposed; needs packages): No OpenTelemetry defaults for logs, metrics and traces; plans name observability (ARC-006) but nothing sets it up.
+- **GAP-010** (API design, proposed): No guidance on choosing an API style: when HTTP APIs, gRPC, SignalR or GraphQL fit.
+- **GAP-011** (API design, proposed): No HTTP API conventions (Problem Details, versioning, pagination) and no guidance on API packages (OpenAPI, Scalar, Asp.Versioning, client generation).
+- **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
+- **GAP-013** (Supply chain and build, proposed; needs a CI change): No SBOM is produced for an app's build.
+- **GAP-014** (Supply chain and build, proposed; needs a GitHub Action and a CI change): OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside.
+- **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet.
+- **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
+- **GAP-017** (Docs and decisions, proposed): No runbooks: nothing says how to operate, recover or roll back an app.
+- **GAP-018** (UI and accessibility, proposed): No accessibility rule: nothing requires WCAG 2.2 AA or checks it (GAP-004 adds the tests).
 <!-- scorecard-table:end -->
 
 ## Keeping it current
