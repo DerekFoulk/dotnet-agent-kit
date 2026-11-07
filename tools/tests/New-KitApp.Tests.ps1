@@ -362,6 +362,36 @@ Describe 'New-KitApp run' {
             $output | Should -Match 'dotted \.NET name'
         }
 
+        # The command line has its own path to New-KitApp: a guard that dropped -Private would make public an app
+        # the owner asked to keep private, which can't be fully undone (review 5 of PR 17).
+        It 'makes the app public unless -Private is given (<Visibility>)' -ForEach @(
+            @{ Visibility = 'public'; Switches = @(); Public = $true }
+            @{ Visibility = 'private'; Switches = @('-Private'); Public = $false }
+        ) {
+            # A fake gh first on PATH, signed in, with no such repo yet. -WhatIf only lists the steps.
+            $fake = Join-Path $TestDrive "fake-gh-$Visibility"
+            New-Item -ItemType Directory -Force -Path $fake | Out-Null
+            Set-Content -LiteralPath (Join-Path $fake 'gh.cmd') -Value @(
+                '@echo off', 'if "%1"=="auth" exit /b 0', 'if "%2"=="user" (echo fixture-owner& exit /b 0)'
+                'echo gh: Not Found (HTTP 404) 1>&2', 'exit /b 1')
+            $sh = "#!/bin/sh`n" + 'if [ "$1" = auth ]; then exit 0; fi' + "`n" + 'if [ "$2" = user ]; then echo fixture-owner; exit 0; fi' +
+                "`necho 'gh: Not Found (HTTP 404)' >&2`nexit 1`n"
+            [IO.File]::WriteAllText((Join-Path $fake 'gh'), $sh)
+            if (-not $IsWindows) { chmod +x (Join-Path $fake 'gh') }
+            $savedPath = $env:PATH
+            try {
+                $env:PATH = $fake + [IO.Path]::PathSeparator + $env:PATH
+                $folder = Join-Path $TestDrive "command-$Visibility"
+                $output = pwsh -NoProfile -File $script -Name 'Command.Orders' -KitRef $commit -Destination $folder -KitRoot $kit -WhatIf @Switches 2>&1 | Out-String
+            }
+            finally { $env:PATH = $savedPath }
+
+            $LASTEXITCODE | Should -Be 0 -Because $output
+            $output | Should -Match "Add the 'main protection' ruleset" -Because 'the run reached its steps'
+            ($output -match 'Make the repo public') | Should -Be $Public
+            Test-Path -LiteralPath $folder | Should -BeFalse -Because '-WhatIf changes nothing'
+        }
+
         It 'defaults the folder to one named after the app, next to the kit' {
             $sibling = Join-Path (Split-Path $kit -Parent) 'Sibling.Orders'
             New-Item -ItemType File -Force -Path (Join-Path $sibling 'keep.txt') | Out-Null
