@@ -265,6 +265,39 @@ Describe 'Export-KitApp' {
         Test-Path -LiteralPath $target | Should -BeFalse -Because 'a half-written app would block the rerun'
     }
 
+    # An app that adopts licensed code needs somewhere to put its notice, so only the kit's notices are the
+    # kit's: they sit in a kit block, like AGENTS.md's.
+    It 'keeps the kit''s third-party notices in a kit block, with room for the app''s own' {
+        $path = Join-Path $app 'THIRD-PARTY-NOTICES.md'
+        Test-Path -LiteralPath $path | Should -BeTrue
+        $text = Get-Content -Raw $path
+        $block = [regex]::Match($text, '(?s)<!-- kit:begin.*?<!-- kit:end -->')
+        $block.Success | Should -BeTrue -Because 'the kit''s notices sit between kit:begin and kit:end'
+
+        $kitNotices = (Get-Content -Raw (Join-Path $checkout 'THIRD-PARTY-NOTICES.md')) -replace '(?s)^# [^
+]*?
+', ''
+        $normalize = { param($t) ($t -replace "`r`n", "`n").Trim() }
+        (& $normalize $block.Value) | Should -Match ([regex]::Escape((& $normalize $kitNotices)))
+        $text.Substring($block.Index + $block.Length) | Should -Match '(?m)^## This app'
+
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        $entry = @($manifest['files'] | Where-Object { $_['path'] -eq 'THIRD-PARTY-NOTICES.md' })
+        $entry.Count | Should -Be 1
+        $entry[0]['block'] | Should -Be 'kit'
+    }
+
+    # The kit's sync job moves the kit pin and the SDK pin with each kit release, so Dependabot proposes only
+    # the app's NuGet packages; the app owns the file and adds ecosystems as it grows.
+    It 'gives the app its own Dependabot config, for its NuGet packages only' {
+        $text = Get-Content -Raw (Join-Path $app '.github/dependabot.yml')
+        $text | Should -Match 'package-ecosystem: nuget'
+        $text | Should -Not -Match 'package-ecosystem: (dotnet-sdk|github-actions)'
+
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain '.github/dependabot.yml'
+    }
+
     It 'refuses a destination that already has files, and leaves them alone' {
         $busy = Join-Path $TestDrive 'busy'
         New-Item -ItemType Directory -Path $busy | Out-Null
