@@ -248,6 +248,20 @@ Describe 'Test-Scorecard.ps1' {
         }
     }
 
+    It 'passes on the kit''s own scorecard' {
+        $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        $real = @{
+            Scorecard = Join-Path $repoRoot 'docs' 'quality' 'scorecard.md'
+            Standards = Join-Path $repoRoot 'docs' 'standards'
+            Adr       = Join-Path $repoRoot 'docs' 'adr'
+        }
+        Test-Path -LiteralPath $real.Scorecard | Should -BeTrue -Because 'the kit defines a "perfect" app in docs/quality/scorecard.md (ADR-0034)'
+
+        $problems = @(Get-Problem $real) + @(Get-ScorecardTableProblem -ScorecardPath $real.Scorecard -StandardsPath $real.Standards)
+
+        @($problems | Where-Object { $_ } | ForEach-Object { "$($_.Area): $($_.Message)" }) | Should -BeNullOrEmpty
+    }
+
     Context 'run as a command' {
         BeforeAll {
             function Invoke-Check([hashtable] $Paths, [string[]] $Extra = @()) {
