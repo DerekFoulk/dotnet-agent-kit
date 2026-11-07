@@ -202,4 +202,41 @@ Describe 'New-KitApp run' {
             @($script:calls.Arguments) | Should -Contain 'api repos/fixture-owner/WhatIf.Orders'
         }
     }
+
+    Context 'refusing before any change: <Case>' -ForEach @(
+        @{ Case = 'the repo already exists'; AppName = 'Taken.Orders'; Message = 'fixture-owner/Taken\.Orders already exists'
+            Answer = @{ Pattern = '^api repos/fixture-owner/Taken\.Orders$'; ExitCode = 0; Output = '{"full_name":"fixture-owner/Taken.Orders"}' } }
+        @{ Case = 'the repo check fails for another reason'; AppName = 'Unknown.Orders'; Message = "Couldn't check whether fixture-owner/Unknown\.Orders exists"
+            Answer = @{ Pattern = '^api repos/fixture-owner/Unknown\.Orders$'; ExitCode = 1; Output = 'gh: Bad credentials (HTTP 401)' } }
+        @{ Case = 'gh isn''t signed in'; AppName = 'Signed.Out'; Message = 'gh auth login'
+            Answer = @{ Pattern = '^auth status$'; ExitCode = 1; Output = 'You are not logged into any GitHub hosts.' } }
+        @{ Case = 'the folder isn''t empty'; AppName = 'Full.Folder'; Message = "isn't empty"; Answer = $null }
+        @{ Case = 'the name isn''t a dotted .NET name'; AppName = '1Bad'; Message = 'dotted \.NET name'; Answer = $null }
+    ) {
+        BeforeAll {
+            $app = Join-Path $TestDrive "refuse-$AppName"
+            if ($Case -eq 'the folder isn''t empty') { New-Item -ItemType File -Force -Path (Join-Path $app 'keep.txt') | Out-Null }
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive "refuse-$AppName.git")
+            if ($Answer) {
+                $script:answer = $Answer
+                Mock Invoke-KitGh {
+                    $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $false })
+                    [pscustomobject]@{ ExitCode = $script:answer.ExitCode; Output = $script:answer.Output }
+                } -ParameterFilter { ($Arguments -join ' ') -match $script:answer.Pattern }
+            }
+            $runError = $null
+            try { New-KitApp -Name $AppName -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
+            catch { $runError = $_ }
+        }
+
+        It 'stops with a message saying why' {
+            "$runError" | Should -Match $Message
+        }
+
+        It 'makes no GitHub change and writes no file' {
+            Get-WriteCall | Should -BeNullOrEmpty
+            $expected = if ($Case -eq 'the folder isn''t empty') { @('keep.txt') } else { @() }
+            @(if (Test-Path -LiteralPath $app) { (Get-ChildItem -LiteralPath $app -Force).Name }) | Should -Be $expected
+        }
+    }
 }
