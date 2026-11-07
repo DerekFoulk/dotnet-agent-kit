@@ -172,6 +172,10 @@ Describe 'New-KitApp run' {
             (git -C $remote ls-tree main .githooks/commit-msg.ps1) | Should -Match '^100644 '
         }
 
+        It 'turns the commit hook on in the local copy' {
+            (git -C $app config --local --get core.hooksPath) | Should -Be '.githooks'
+        }
+
         It 'names the kit version in the first commit, which is the only one' {
             @(git -C $remote log --format=%s main) | Should -Be @('chore: start from dotnet-agent-kit unreleased')
         }
