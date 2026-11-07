@@ -203,6 +203,32 @@ Describe 'New-KitApp run' {
         }
     }
 
+    Context 'a step that fails' {
+        BeforeAll {
+            $app = Join-Path $TestDrive 'Failing.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'failing-remote.git')
+            Mock Invoke-KitGh {
+                $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $true })
+                [pscustomobject]@{ ExitCode = 1; Output = 'gh: Validation Failed (HTTP 422)' }
+            } -ParameterFilter { ($Arguments -join ' ') -match '/rulesets ' }
+            $runError = $null
+            try { New-KitApp -Name 'Failing.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
+            catch { $runError = $_ }
+        }
+
+        It 'stops there, and says which step failed, what''s done and what''s left' {
+            "$runError" | Should -Match "Add the 'main protection' ruleset failed: .*HTTP 422"
+            "$runError" | Should -Match '(?m)^Done: .*Push main'
+            "$runError" | Should -Match '(?m)^Left: .*Turn the commit hook on'
+            (git -C $app config --local --get core.hooksPath) | Should -BeNullOrEmpty -Because 'no step runs after a failure'
+        }
+
+        It 'keeps the GitHub repo it created, and says so' {
+            @($script:calls.Arguments) | Should -Not -Match '--method DELETE'
+            "$runError" | Should -Match 'https://github\.com/fixture-owner/Contoso\.Orders .*kept'
+        }
+    }
+
     Context 'refusing before any change: <Case>' -ForEach @(
         @{ Case = 'the repo already exists'; AppName = 'Taken.Orders'; Message = 'fixture-owner/Taken\.Orders already exists'
             Answer = @{ Pattern = '^api repos/fixture-owner/Taken\.Orders$'; ExitCode = 0; Output = '{"full_name":"fixture-owner/Taken.Orders"}' } }
