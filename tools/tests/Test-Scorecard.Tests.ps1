@@ -247,4 +247,34 @@ Describe 'Test-Scorecard.ps1' {
             $problems[0].Message | Should -BeLike "*$start*"
         }
     }
+
+    Context 'run as a command' {
+        BeforeAll {
+            function Invoke-Check([hashtable] $Paths, [string[]] $Extra = @()) {
+                $output = pwsh -NoProfile -File $script -ScorecardPath $Paths.Scorecard -StandardsPath $Paths.Standards -AdrPath $Paths.Adr @Extra 2>&1 | Out-String
+                [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
+            }
+            $markers = "`n<!-- scorecard-table:start -->`n<!-- scorecard-table:end -->`n"
+        }
+
+        It 'exits 1 and names each problem' {
+            $paths = New-Fixture -Areas @(New-Area -Override @{ rules = @('STY-001', 'STY-999') }) -Body $markers
+
+            $result = Invoke-Check $paths
+
+            $result.ExitCode | Should -Be 1
+            $result.Output | Should -Match 'code: names rule STY-999'
+            $result.Output | Should -Match 'out of date'
+        }
+
+        It 'exits 0 once -Update has written the table' {
+            $paths = New-Fixture -Body $markers
+
+            (Invoke-Check $paths -Extra '-Update').ExitCode | Should -Be 0
+            $result = Invoke-Check $paths
+
+            $result.ExitCode | Should -Be 0 -Because $result.Output
+            $result.Output | Should -Match '1 area'
+        }
+    }
 }
