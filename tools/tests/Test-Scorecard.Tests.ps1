@@ -237,6 +237,22 @@ Describe 'Test-Scorecard.ps1' {
             $lines | Should -Contain '**Overall:** 2 rules in force, 1 checked by a tool and 1 advisory; 1 proposed; 1 open gap.'
         }
 
+        It 'lists the open gaps under the table, with their area, status and what they need, but not closed ones' {
+            $gaps = @(
+                [ordered]@{ id = 'GAP-001'; gap = 'No mutation testing.'; status = 'planned'; needs = 'a CI change' }
+                [ordered]@{ id = 'GAP-002'; gap = 'No style guide.'; status = 'proposed' }
+                [ordered]@{ id = 'GAP-003'; gap = 'Done already.'; status = 'closed' }
+            )
+            $paths = New-Fixture -Areas @(New-Area -Override @{ gaps = $gaps }) -Body "`n$start`n$end`n"
+
+            Update-ScorecardTable -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards
+            $lines = (Get-Content -Raw -LiteralPath $paths.Scorecard) -split "`r?`n"
+
+            $lines | Should -Contain '- **GAP-001** (Code, planned; needs a CI change): No mutation testing.'
+            $lines | Should -Contain '- **GAP-002** (Code, proposed): No style guide.'
+            ($lines -match 'GAP-003') | Should -BeNullOrEmpty
+        }
+
         It 'is reported missing when the file has no table markers' {
             $paths = New-Fixture -Body "`n# Quality scorecard`n"
             Get-Command Get-ScorecardTableProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the check reads the table'
