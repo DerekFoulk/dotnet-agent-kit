@@ -10,10 +10,14 @@
 
 .EXAMPLE
     ./tools/New-KitApp.ps1 -Name Contoso.Orders -KitRef v0.1.0 -WhatIf
+
+.EXAMPLE
+    ./tools/New-KitApp.ps1 -Name ContosoOrders -RepoName contoso-orders
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string] $Name,
+    [string] $RepoName,
     [string] $KitRef,
     [string] $Destination,
     [switch] $Public,
@@ -87,15 +91,23 @@ function New-KitApp {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)] [string] $Name,
+        [string] $RepoName,
         [string] $KitRef,
         [string] $Destination,
         [Parameter(Mandatory)] [string] $KitRoot,
         [switch] $Public
     )
 
+    # The repo is named after the app unless -RepoName says otherwise: a repo name may have hyphens, which a
+    # .NET namespace can't. GitHub allows letters, digits, '-', '_' and '.', up to 100 characters.
+    if (-not $RepoName) { $RepoName = $Name }
+    if ($RepoName -notmatch '^[A-Za-z0-9._-]{1,100}$' -or $RepoName -in '.', '..') {
+        throw "The repo name '$RepoName' isn't one GitHub allows: up to 100 letters, digits, '-', '_' and '.'."
+    }
+
     $KitRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($KitRoot)
-    # By default, a folder named after the app next to the kit's, as repos usually sit side by side.
-    if (-not $Destination) { $Destination = Join-Path (Split-Path -Path $KitRoot -Parent) $Name }
+    # By default, a folder named after the repo next to the kit's, as git clone would name it.
+    if (-not $Destination) { $Destination = Join-Path (Split-Path -Path $KitRoot -Parent) $RepoName }
     $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination)
 
     # Checks first. They only read, so they run with -WhatIf too, and a refusal leaves nothing behind.
@@ -113,7 +125,7 @@ function New-KitApp {
         throw "gh isn't signed in to GitHub: $($signIn.Output)`nSigning in is your step: run 'gh auth login', then run this again."
     }
     $owner = Invoke-KitGhChecked -Arguments 'api', 'user', '--jq', '.login'
-    $repo = "$owner/$Name"
+    $repo = "$owner/$RepoName"
     $existing = Invoke-KitGh -Arguments 'api', "repos/$repo"
     if ($existing.ExitCode -eq 0) { throw "$repo already exists. New-KitApp only creates new repos, so it never changes an existing one's settings." }
     if ($existing.Output -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Output)" }
@@ -148,7 +160,7 @@ function New-KitApp {
             }
         }
         [pscustomobject]@{ Description = "Create the $(if ($Public) { 'public' } else { 'private' }) repo with the kit's merge settings"; Action = {
-                $request = Get-KitAppRepoRequest -Name $Name -SettingsText $settingsText -Public:$Public | ConvertTo-Json
+                $request = Get-KitAppRepoRequest -Name $RepoName -SettingsText $settingsText -Public:$Public | ConvertTo-Json
                 $created = Invoke-KitGhChecked -Arguments 'api', 'user/repos', '--method', 'POST', '--input', '-' -InputText $request | ConvertFrom-Json
             }
         }
@@ -201,6 +213,7 @@ function New-KitApp {
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $KitRoot) { $KitRoot = Split-Path -Path $PSScriptRoot -Parent }
     $arguments = @{ Name = $Name; KitRoot = $KitRoot; Public = $Public; WhatIf = $WhatIfPreference }
+    if ($RepoName) { $arguments.RepoName = $RepoName }
     if ($KitRef) { $arguments.KitRef = $KitRef }
     if ($Destination) { $arguments.Destination = $Destination }
     try {
