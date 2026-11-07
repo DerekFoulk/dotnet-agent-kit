@@ -162,6 +162,25 @@ Describe 'Export-KitApp' {
         }
     }
 
+    It 'generates the app''s agent rule files, current with its standards and AGENTS.md' {
+        foreach ($path in '.claude/rules/git.md', '.github/instructions/git.instructions.md', '.github/copilot-instructions.md') {
+            Test-Path -LiteralPath (Join-Path $app $path) | Should -BeTrue -Because "$path is generated during export"
+        }
+
+        & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Build-AgentRules.ps1') -RepoRoot $app -Check | Out-Null
+        $LASTEXITCODE | Should -Be 0 -Because 'the app''s generated files should pass its own -Check'
+
+        # Rule files come from the kit's standards, so the kit manages them; copilot-instructions.md copies
+        # the app's own AGENTS.md, so it changes whenever the app's section does and isn't in the manifest.
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        $listed = @($manifest['files'] | ForEach-Object { $_['path'] })
+        $generated = @(Get-ChildItem -LiteralPath (Join-Path $app '.claude/rules'), (Join-Path $app '.github/instructions') -File |
+                ForEach-Object { [IO.Path]::GetRelativePath($app, $_.FullName) -replace '\\', '/' })
+        $generated.Count | Should -BeGreaterThan 10
+        foreach ($path in $generated) { $listed | Should -Contain $path }
+        $listed | Should -Not -Contain '.github/copilot-instructions.md'
+    }
+
     It 'refuses a destination that already has files, and leaves them alone' {
         $busy = Join-Path $TestDrive 'busy'
         New-Item -ItemType Directory -Path $busy | Out-Null
