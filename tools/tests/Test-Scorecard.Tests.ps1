@@ -128,4 +128,25 @@ Describe 'Test-Scorecard.ps1' {
         $problems[0].Area | Should -Be 'code'
         $problems[0].Message | Should -BeLike "*$Source*"
     }
+
+    It 'reports an area with no rules and no gaps, which nobody has looked at' {
+        $paths = New-Fixture -Areas @(
+            (New-Area),
+            (New-Area -Override @{ id = 'performance'; name = 'Performance'; rules = @(); gaps = @() }))
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Area | Should -Be 'performance'
+        $problems[0].Message | Should -BeLike '*no rules and no gaps*'
+    }
+
+    It 'accepts an area with gaps but no rules yet' {
+        $gap = [ordered]@{ id = 'GAP-001'; gap = 'No benchmarks or budgets.'; status = 'proposed' }
+        $paths = New-Fixture -Areas @(
+            (New-Area),
+            (New-Area -Override @{ id = 'performance'; name = 'Performance'; rules = @(); gaps = @($gap) }))
+
+        Get-Problem $paths | Should -BeNullOrEmpty
+    }
 }
