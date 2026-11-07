@@ -76,3 +76,89 @@ Describe 'New-KitApp settings' {
         }
     }
 }
+
+# The run, against a throwaway kit repo built from this working tree (as in Export-KitApp.Tests.ps1). GitHub
+# is replaced: Invoke-KitGh is mocked, and the "created" repo's clone URL is a local bare repo, so git
+# itself runs for real.
+Describe 'New-KitApp run' {
+    BeforeAll {
+        $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        $script = Join-Path $root 'tools' 'New-KitApp.ps1'
+
+        # Commits made here must not depend on the machine's git identity or signing setup.
+        $savedEnv = @{}
+        $gitEnv = @{
+            GIT_AUTHOR_NAME = 'fixture'; GIT_AUTHOR_EMAIL = 'fixture@example.invalid'
+            GIT_COMMITTER_NAME = 'fixture'; GIT_COMMITTER_EMAIL = 'fixture@example.invalid'
+            GIT_CONFIG_COUNT = '1'; GIT_CONFIG_KEY_0 = 'commit.gpgsign'; GIT_CONFIG_VALUE_0 = 'false'
+        }
+        foreach ($key in $gitEnv.Keys) {
+            $savedEnv[$key] = [Environment]::GetEnvironmentVariable($key)
+            [Environment]::SetEnvironmentVariable($key, $gitEnv[$key])
+        }
+
+        $kit = Join-Path $TestDrive 'kit'
+        foreach ($file in git -C $root ls-files --cached --others --exclude-standard) {
+            $source = Join-Path $root $file
+            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue } # deleted but not yet staged
+            $target = Join-Path $kit $file
+            New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+            Copy-Item -LiteralPath $source -Destination $target
+        }
+        git -C $kit init -q -b main
+        git -C $kit add -A
+        git -C $kit commit -q -m 'chore: kit fixture'
+        $commit = (git -C $kit rev-parse HEAD).Trim()
+
+        if (Test-Path -LiteralPath $script) { . $script }
+
+        # A fake GitHub: records every call, answers as the API would, and notes whether main had been
+        # pushed when each call was made.
+        function Initialize-FakeGitHub([string] $Remote) {
+            $script:calls = [Collections.Generic.List[object]]::new()
+            $script:remote = $Remote
+            git init -q --bare $Remote
+            Mock Invoke-KitGh {
+                $pushed = [bool] (git -C $script:remote rev-parse --verify --quiet refs/heads/main)
+                $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $pushed })
+                $text = switch -Regex ($Arguments -join ' ') {
+                    '^auth status' { 'Logged in to github.com account fixture-owner' }
+                    '^api user --jq \.login$' { 'fixture-owner' }
+                    '^api repos/[^/ ]+/[^/ ]+$' { return [pscustomobject]@{ ExitCode = 1; Output = 'gh: Not Found (HTTP 404)' } }
+                    '^api user/repos' { (@{ html_url = 'https://github.com/fixture-owner/Contoso.Orders'; clone_url = $script:remote } | ConvertTo-Json) }
+                    default { '{}' }
+                }
+                [pscustomobject]@{ ExitCode = 0; Output = $text }
+            }
+        }
+
+        function Get-WriteCall { @($script:calls | Where-Object { $_.Arguments -match '--method (POST|PATCH|PUT|DELETE)' }) }
+    }
+
+    AfterAll {
+        foreach ($key in $savedEnv.Keys) { [Environment]::SetEnvironmentVariable($key, $savedEnv[$key]) }
+    }
+
+    Context 'a private app' {
+        BeforeAll {
+            $app = Join-Path $TestDrive 'Contoso.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'remote.git')
+            $runError = $null
+            try { New-KitApp -Name 'Contoso.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
+            catch { $runError = $_ }
+        }
+
+        It 'exports, commits, creates the repo, pushes main, then adds the ruleset' {
+            $runError | Should -BeNullOrEmpty
+            Test-Path -LiteralPath (Join-Path $app '.kit' 'manifest.json') | Should -BeTrue -Because 'the export ran'
+            (git -C $remote log -1 --format=%s main) | Should -Match '^chore: start from dotnet-agent-kit'
+
+            $writes = Get-WriteCall
+            @($writes.Arguments) | Should -Be @('api user/repos --method POST --input -', 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -')
+            ($writes[0].Input | ConvertFrom-Json).name | Should -Be 'Contoso.Orders'
+            ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
+            $writes[1].Pushed | Should -BeTrue -Because 'the ruleset would reject the first push'
+            ($writes[1].Input | ConvertFrom-Json).name | Should -Be 'main protection'
+        }
+    }
+}

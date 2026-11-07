@@ -23,6 +23,17 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Every GitHub call goes through here, using the owner's existing gh sign-in; the tests replace it.
+function Invoke-KitGh {
+    param(
+        [Parameter(Mandatory)] [string[]] $Arguments,
+        [string] $InputText
+    )
+
+    $output = if ($PSBoundParameters.ContainsKey('InputText')) { $InputText | & gh @Arguments 2>&1 } else { & gh @Arguments 2>&1 }
+    [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = ($output | Out-String).Trim() }
+}
+
 # The body of POST /user/repos: the app's name and visibility, plus the kit's settings (templates/github/repo.json).
 function Get-KitAppRepoRequest {
     param(
