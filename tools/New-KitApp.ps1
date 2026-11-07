@@ -88,13 +88,15 @@ function New-KitApp {
     param(
         [Parameter(Mandatory)] [string] $Name,
         [string] $KitRef,
-        [Parameter(Mandatory)] [string] $Destination,
+        [string] $Destination,
         [Parameter(Mandatory)] [string] $KitRoot,
         [switch] $Public
     )
 
-    $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination)
     $KitRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($KitRoot)
+    # By default, a folder named after the app next to the kit's, as repos usually sit side by side.
+    if (-not $Destination) { $Destination = Join-Path (Split-Path -Path $KitRoot -Parent) $Name }
+    $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination)
 
     # Checks first. They only read, so they run with -WhatIf too, and a refusal leaves nothing behind.
     # Export-KitApp's name check, loaded in a child scope so its parameters don't replace this function's.
@@ -186,4 +188,19 @@ function New-KitApp {
         }
     }
     if (-not $WhatIfPreference) { Write-Host "Created $($created.html_url)" }
+}
+
+if ($MyInvocation.InvocationName -ne '.') {
+    if (-not $KitRoot) { $KitRoot = Split-Path -Path $PSScriptRoot -Parent }
+    $arguments = @{ Name = $Name; KitRoot = $KitRoot; Public = $Public; WhatIf = $WhatIfPreference }
+    if ($KitRef) { $arguments.KitRef = $KitRef }
+    if ($Destination) { $arguments.Destination = $Destination }
+    try {
+        New-KitApp @arguments
+    }
+    catch {
+        Write-Host $_.Exception.Message -ForegroundColor Red
+        exit 1
+    }
+    exit 0
 }
