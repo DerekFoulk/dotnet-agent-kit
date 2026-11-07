@@ -393,4 +393,9 @@ Describe 'Export-KitApp' {
             $targets | Should -Contain $path
         }
     }
+
+    It 'leaves out New-KitApp and the GitHub settings, which only the kit runs' {
+        @($map | Where-Object { $_.Source -match 'New-KitApp|^templates/github/' }) | Should -BeNullOrEmpty
+        Get-ChildItem -LiteralPath $app -Recurse -File -Filter 'New-KitApp*' | Should -BeNullOrEmpty
+    }
 }
