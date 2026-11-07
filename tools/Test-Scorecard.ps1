@@ -57,6 +57,33 @@ function Get-KitRule {
     $rules
 }
 
+# One row per area, counted from the standards, so the scores can't drift from the rules. A rule whose
+# enforcement starts with "advisory" is advisory; any other kind (build, ci, ruleset, hook, settings) is checked
+# by a tool. Proposed rules aren't in force, so they're counted apart. Unknown rule ids are skipped here;
+# Get-ScorecardProblem reports them.
+function Get-ScorecardRow {
+    param(
+        [Parameter(Mandatory)] [string] $ScorecardPath,
+        [Parameter(Mandatory)] [string] $StandardsPath
+    )
+
+    $rules = Get-KitRule -StandardsPath $StandardsPath
+    foreach ($area in @((Read-FrontMatter -Path $ScorecardPath)['areas'])) {
+        $areaRules = @(@($(if ($area.Contains('rules')) { $area['rules'] })) | Where-Object { $_ -and $rules.Contains("$_") } |
+                ForEach-Object { $rules["$_"] })
+        $inForce = @($areaRules | Where-Object Status -EQ 'accepted')
+        $gaps = @($(if ($area.Contains('gaps')) { $area['gaps'] }) | Where-Object { $_ })
+        [pscustomobject]@{
+            Area          = "$($area['name'])"
+            InForce       = $inForce.Count
+            CheckedByTool = @($inForce | Where-Object { -not $_.Advisory }).Count
+            Advisory      = @($inForce | Where-Object Advisory).Count
+            Proposed      = @($areaRules | Where-Object Status -EQ 'proposed').Count
+            OpenGaps      = @($gaps | Where-Object { "$($_['status'])" -ne 'closed' }).Count
+        }
+    }
+}
+
 function Get-ScorecardProblem {
     param(
         [Parameter(Mandatory)] [string] $ScorecardPath,
