@@ -149,4 +149,23 @@ Describe 'Test-Scorecard.ps1' {
 
         Get-Problem $paths | Should -BeNullOrEmpty
     }
+
+    It 'reports a gap that <Case>' -ForEach @(
+        @{ Case = 'reuses another gap''s id'; Expected = '*GAP-001*already*'
+            Gaps = @([ordered]@{ id = 'GAP-001'; gap = 'One.'; status = 'proposed' }, [ordered]@{ id = 'GAP-001'; gap = 'Two.'; status = 'planned' }) }
+        @{ Case = 'has an unknown status'; Expected = '*status*done*'
+            Gaps = @([ordered]@{ id = 'GAP-001'; gap = 'One.'; status = 'done' }) }
+        @{ Case = 'has no id'; Expected = '*id*'
+            Gaps = @([ordered]@{ gap = 'One.'; status = 'proposed' }) }
+        @{ Case = 'doesn''t say what''s missing'; Expected = '*gap*'
+            Gaps = @([ordered]@{ id = 'GAP-001'; status = 'proposed' }) }
+    ) {
+        $paths = New-Fixture -Areas @(New-Area -Override @{ gaps = $Gaps })
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Area | Should -Be 'code'
+        $problems[0].Message | Should -BeLike $Expected
+    }
 }
