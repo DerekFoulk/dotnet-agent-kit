@@ -416,6 +416,12 @@ Describe 'New-KitApp run' {
             "$runError" | Should -Match "$([regex]::Escape($app)) is kept"
             "$runError" | Should -Not -Match 'was created and is kept'
         }
+
+        It 'says where to check for the repo, rather than claiming there is none' {
+            # GitHub may have made it before gh failed (a timeout after the server acted), so the run can't know.
+            "$runError" | Should -Match 'check https://github\.com/fixture-owner/NoRepo\.Orders'
+            "$runError" | Should -Not -Match 'No GitHub repo was created'
+        }
     }
 
     Context 'refusing before any change: <Case>' -ForEach @(
