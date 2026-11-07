@@ -185,11 +185,14 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 
 | Parameter | Default |
 |---|---|
+| `-RepoName` | The app name. Set it for a repo name a .NET namespace can't have, such as `contoso-orders` (GitHub allows letters, digits, `-`, `_` and `.`) |
 | `-KitRef` | The kit's newest release tag (`vX.Y.Z`). Until one exists, pass a kit commit or tag |
-| `-Destination` | A folder named after the app, next to the kit's folder |
+| `-Destination` | A folder named after the repo, next to the kit's folder |
 | `-Public` | Off: the repo is private (ADR-0031) |
 
-It checks first, before changing anything: the name, an empty folder, the kit ref, that `gh` is signed in, and that the repo doesn't exist yet. Then, in order:
+The app name (`-Name`) must be a dotted .NET name, because it becomes the solution's name and the root namespace, which can't contain hyphens.
+
+It checks first, before changing anything: the app and repo names, an empty folder, the kit ref, that `gh` is signed in, and that the repo doesn't exist yet. Then, in order:
 
 1. Exports the files (`Export-KitApp`).
 2. Makes the first commit, `chore: start from dotnet-agent-kit <version>`, with the commit hook stored as executable for Linux and macOS.
