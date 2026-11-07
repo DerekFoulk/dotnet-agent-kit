@@ -193,4 +193,58 @@ Describe 'Test-Scorecard.ps1' {
         $rows[0].Proposed | Should -Be 1
         $rows[0].OpenGaps | Should -Be 1
     }
+
+    Context 'the table in the file' {
+        # The table between the markers is written by -Update, like Build-AgentRules.ps1 writes the rule files, and
+        # the check fails when it no longer matches the rules.
+        BeforeAll {
+            $start = '<!-- scorecard-table:start -->'
+            $end = '<!-- scorecard-table:end -->'
+        }
+
+        It 'is reported as out of date until -Update rewrites it, which keeps the rest of the file' {
+            Get-Command Update-ScorecardTable -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because '-Update writes the table'
+            $paths = New-Fixture -Rules @((New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002' -Enforcement 'advisory: judgment')) -Areas @(
+                New-Area -Override @{ rules = @('STY-001', 'STY-002') }) -Body "`n# Quality scorecard`n`nBefore.`n`n$start`nold table`n$end`n`nAfter.`n"
+            $frontMatter = (Get-Content -Raw -LiteralPath $paths.Scorecard) -replace '(?s)^(---.*?---).*$', '$1'
+
+            $stale = @(Get-ScorecardTableProblem -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards)
+            $stale | Should -HaveCount 1
+            $stale[0].Message | Should -BeLike '*out of date*-Update*'
+
+            Update-ScorecardTable -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards
+            Get-ScorecardTableProblem -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards | Should -BeNullOrEmpty
+            $text = Get-Content -Raw -LiteralPath $paths.Scorecard
+            $text | Should -BeLike "$([WildcardPattern]::Escape($frontMatter))*Before.*After.*"
+            $text | Should -Not -Match 'old table'
+        }
+
+        It 'shows a row per area and a summary over every rule, each rule counted once' {
+            $paths = New-Fixture -Rules @((New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002' -Enforcement 'advisory: judgment'),
+                (New-Rule -Id 'STY-003' -Status 'proposed')) -Areas @(
+                (New-Area -Override @{ rules = @('STY-001', 'STY-002', 'STY-003') }),
+                (New-Area -Override @{ id = 'tests'; name = 'Tests'; rules = @('STY-001'); gaps = @([ordered]@{ id = 'GAP-001'; gap = 'Mutation.'; status = 'proposed' }) })
+            ) -Body "`n$start`n$end`n"
+            Get-Command Update-ScorecardTable -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because '-Update writes the table'
+
+            Update-ScorecardTable -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards
+            $lines = (Get-Content -Raw -LiteralPath $paths.Scorecard) -split "`r?`n"
+
+            $lines | Should -Contain '| Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |'
+            $lines | Should -Contain '| Code | 2 | 1 | 1 | 1 | 0 |'
+            $lines | Should -Contain '| Tests | 1 | 1 | 0 | 0 | 1 |'
+            # STY-001 is in two areas but is one rule.
+            $lines | Should -Contain '**Overall:** 2 rules in force, 1 checked by a tool and 1 advisory; 1 proposed; 1 open gap.'
+        }
+
+        It 'is reported missing when the file has no table markers' {
+            $paths = New-Fixture -Body "`n# Quality scorecard`n"
+            Get-Command Get-ScorecardTableProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the check reads the table'
+
+            $problems = @(Get-ScorecardTableProblem -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards)
+
+            $problems | Should -HaveCount 1
+            $problems[0].Message | Should -BeLike "*$start*"
+        }
+    }
 }
