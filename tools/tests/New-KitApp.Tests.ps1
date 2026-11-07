@@ -216,12 +216,14 @@ Describe 'New-KitApp run' {
         }
     }
 
-    Context 'a public app' {
+    # Public is the default: CI is free on public repos, macOS included, and GitHub Free enforces rulesets only
+    # on public repos (owner, 2026-11-07).
+    Context 'a public app, the default' {
         BeforeAll {
             $app = Join-Path $TestDrive 'Public.Orders'
             Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'public-remote.git')
             $runError = $null
-            try { New-KitApp -Name 'Public.Orders' -KitRef $commit -Destination $app -KitRoot $kit -Public 6>$null }
+            try { New-KitApp -Name 'Public.Orders' -KitRef $commit -Destination $app -KitRoot $kit 6>$null }
             catch { $runError = $_ }
         }
 
