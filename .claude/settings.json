@@ -55,7 +55,8 @@
       "Edit(./.github/dependabot.yml)",
       "Edit(./.claude/settings.json)",
       "Edit(./.mcp.json)",
-      "Edit(./.vscode/mcp.json)"
+      "Edit(./.vscode/mcp.json)",
+      "Edit(./.kit/**)"
     ],
     "deny": [
       "Read(./.env)",
