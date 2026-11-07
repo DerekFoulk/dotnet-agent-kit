@@ -34,8 +34,16 @@ function Invoke-KitGh {
         [string] $InputText
     )
 
-    $output = if ($PSBoundParameters.ContainsKey('InputText')) { $InputText | & gh @Arguments 2>&1 } else { & gh @Arguments 2>&1 }
-    [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = ($output | Out-String).Trim() }
+    $all = if ($PSBoundParameters.ContainsKey('InputText')) { $InputText | & gh @Arguments 2>&1 } else { & gh @Arguments 2>&1 }
+    $exitCode = $LASTEXITCODE
+    # stderr lines arrive as ErrorRecords. Keeping them apart means a warning can't corrupt the JSON on stdout.
+    $errors = @($all | Where-Object { $_ -is [Management.Automation.ErrorRecord] })
+    $output = @($all | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] })
+    [pscustomobject]@{
+        ExitCode = $exitCode
+        Output   = ($output | Out-String).Trim()
+        Error    = ($errors | ForEach-Object { $_.Exception.Message } | Out-String).Trim()
+    }
 }
 
 # The body of POST /user/repos: the kit's settings (templates/github/repo.json), the repo name, and private.
@@ -75,7 +83,7 @@ function Invoke-KitGhChecked {
     )
 
     $result = Invoke-KitGh @PSBoundParameters
-    if ($result.ExitCode -ne 0) { throw "gh $($Arguments -join ' ') failed: $($result.Output)" }
+    if ($result.ExitCode -ne 0) { throw "gh $($Arguments -join ' ') failed: $(($result.Error, $result.Output | Where-Object { $_ }) -join ' ')" }
     $result.Output
 }
 
@@ -125,13 +133,13 @@ function New-KitApp {
     if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
     $signIn = Invoke-KitGh -Arguments 'auth', 'status'
     if ($signIn.ExitCode -ne 0) {
-        throw "gh isn't signed in to GitHub: $($signIn.Output)`nSigning in is your step: run 'gh auth login', then run this again."
+        throw "gh isn't signed in to GitHub: $($signIn.Error)`nSigning in is your step: run 'gh auth login', then run this again."
     }
     $owner = Invoke-KitGhChecked -Arguments 'api', 'user', '--jq', '.login'
     $repo = "$owner/$RepoName"
     $existing = Invoke-KitGh -Arguments 'api', "repos/$repo"
     if ($existing.ExitCode -eq 0) { throw "$repo already exists. New-KitApp only creates new repos, so it never changes an existing one's settings." }
-    if ($existing.Output -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Output)" }
+    if ($existing.Error -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Error)" }
     # The settings and ruleset come from the same kit commit as the files.
     $github = @{}
     foreach ($file in 'repo.json', 'main-protection.json', 'public.json') {
