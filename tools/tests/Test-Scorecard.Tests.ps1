@@ -112,4 +112,20 @@ Describe 'Test-Scorecard.ps1' {
             $problems[0].Message | Should -BeLike "*$Field*"
         }
     }
+
+    It 'reports a source that can''t be traced: <Source>' -ForEach @(
+        @{ Source = 'https://learn.microsoft.com/dotnet/core/testing' }   # no retrieval date
+        @{ Source = 'ADR-0999' }                                           # no such ADR
+        @{ Source = 'owner' }                                              # no date
+        @{ Source = 'a blog post' }
+    ) {
+        # The same formats as rule sources (Test-RuleSources.ps1): owner and date, an ADR, or a URL and its date.
+        $paths = New-Fixture -Areas @(New-Area -Override @{ sources = @('ADR-0034', $Source) })
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Area | Should -Be 'code'
+        $problems[0].Message | Should -BeLike "*$Source*"
+    }
 }
