@@ -181,6 +181,12 @@ Describe 'Export-KitApp' {
         $listed | Should -Not -Contain '.github/copilot-instructions.md'
     }
 
+    It 'passes its own ADR check, which skips the ADR template' {
+        $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-AdrSections.ps1') -AdrPath (Join-Path $app 'docs/adr') 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $output
+    }
+
     It 'seeds central package versions with the kit''s build and test packages, without the sample app''s' {
         $path = Join-Path $app 'Directory.Packages.props'
         Test-Path -LiteralPath $path | Should -BeTrue -Because 'an app needs central package management from the start'
