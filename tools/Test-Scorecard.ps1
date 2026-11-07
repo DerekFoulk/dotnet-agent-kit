@@ -71,11 +71,16 @@ function Get-ScorecardProblem {
                 New-Problem -Area $areaId -Message "is missing '$field'"
             }
         }
+        $areaRules = @($(if ($area.Contains('rules')) { $area['rules'] }) | Where-Object { $_ })
+        $areaGaps = @($(if ($area.Contains('gaps')) { $area['gaps'] }) | Where-Object { $_ })
+        if (-not $areaRules -and -not $areaGaps) {
+            New-Problem -Area $areaId -Message 'has no rules and no gaps: list the rules that cover it, or what is missing'
+        }
         foreach ($source in @(if ($area.Contains('sources')) { $area['sources'] })) {
             $message = Get-SourceProblem -Source "$source" -AdrPath $AdrPath
             if ($message) { New-Problem -Area $areaId -Message $message }
         }
-        foreach ($ruleId in @($area['rules'])) {
+        foreach ($ruleId in $areaRules) {
             $named["$ruleId"] = $true
             if (-not $rules.Contains("$ruleId")) {
                 New-Problem -Area $areaId -Message "names rule $ruleId, which no standard in $StandardsPath has"
