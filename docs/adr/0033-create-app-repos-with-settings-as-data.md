@@ -58,7 +58,7 @@ Accepted (owner, 2026-11-06: approved the D2b plan, including the throwaway end-
 
 ## Pillars affected
 
-Security: every app is protected from its first push, goes public only once protected, gets secret scanning and push protection when public, and an agent asks before creating one; a public app's code is visible to anyone. Reliability: checks run before any change, and a failure says exactly what's left. Operational Excellence: one command creates a ready repo, and the settings are versioned data. Cost Optimization: no new service; a public app's CI is free, and a `-Private` app's uses the plan's included minutes. Performance Efficiency: not affected.
+Security: every app gets the ruleset from its first push (whether it holds on GitHub Free isn't verified), goes public only once its ruleset is on, gets secret scanning and push protection when public, and an agent asks before creating one; a public app's code is visible to anyone. Reliability: checks run before any change, and a failure says exactly what's left. Operational Excellence: one command creates a ready repo, and the settings are versioned data. Cost Optimization: no new service; a public app's CI is free, and a `-Private` app's uses the plan's included minutes. Performance Efficiency: not affected.
 
 ## Sources
 
