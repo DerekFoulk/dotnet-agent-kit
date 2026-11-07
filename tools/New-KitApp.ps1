@@ -171,7 +171,7 @@ function New-KitApp {
                 Invoke-KitGit -Path $Destination -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
             }
         }
-        # Always private at first: a public app is made public only once main is pushed and protected, so a
+        # Always private at first: a public app is made public only once main is pushed and its ruleset is on, so a
         # failure before then leaves a private repo.
         [pscustomobject]@{ Description = "Create the private repo with the kit's merge settings"; Action = {
                 $request = Get-KitAppRepoRequest -Name $RepoName -SettingsText $settingsText | ConvertTo-Json
