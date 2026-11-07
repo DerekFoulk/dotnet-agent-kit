@@ -278,7 +278,8 @@ Describe 'Export-KitApp' {
     }
 
     It 'refuses a name that isn''t a dotted .NET name, before writing anything' {
-        foreach ($bad in 'Contoso Orders', '1Orders', 'Contoso..Orders', '../escape', '') {
+        # Con, Nul, Com1 and the like are Windows device names: Con.Orders.slnx can't be created on Windows.
+        foreach ($bad in 'Contoso Orders', '1Orders', 'Contoso..Orders', '../escape', '', 'Con', 'Nul.Orders', 'Contoso.Com1') {
             $target = Join-Path $TestDrive "bad-$([guid]::NewGuid().ToString('N'))"
 
             $output = & $script -Name $bad -Destination $target -KitRef $commit -KitRoot $kit 6>&1 | Out-String
@@ -297,6 +298,26 @@ Describe 'Export-KitApp' {
         $LASTEXITCODE | Should -Be 1
         $output | Should -Match 'v9\.9\.9-nope'
         Test-Path -LiteralPath $target | Should -BeFalse
+    }
+
+    # A ref that merely looks like a release (v0.1.0~3, a branch v1.2.3-wip) must not label the app with a
+    # release it isn't: ADR-0031 trusts a pin only when a release tag points to it.
+    It 'labels the kit version with a release tag only when a tag points to the commit' {
+        git -C $kit tag v0.0.1 $commit
+        git -C $kit branch v1.2.3-wip $commit
+        try {
+            Get-KitVersionLabel -KitRoot $kit -KitRef 'v0.0.1' -Commit $commit | Should -Be 'v0.0.1'
+            Get-KitVersionLabel -KitRoot $kit -KitRef $commit -Commit $commit | Should -Be 'v0.0.1'
+            Get-KitVersionLabel -KitRoot $kit -KitRef 'v1.2.3-wip' -Commit $commit | Should -Be 'v0.0.1'
+
+            git -C $kit tag -d v0.0.1 | Out-Null
+            Get-KitVersionLabel -KitRoot $kit -KitRef 'v1.2.3-wip' -Commit $commit | Should -Be 'unreleased'
+            Get-KitVersionLabel -KitRoot $kit -KitRef 'v1.2.3-wip~0' -Commit $commit | Should -Be 'unreleased'
+        }
+        finally {
+            git -C $kit tag -d v0.0.1 2>&1 | Out-Null
+            git -C $kit branch -D v1.2.3-wip 2>&1 | Out-Null
+        }
     }
 
     It 'includes the build files, agent files, rules, notices and tools an app needs' {
