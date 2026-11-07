@@ -128,7 +128,8 @@ Describe 'Export-KitApp' {
         $kitOwned | Should -Contain '.github/workflows/ci.yml'
         foreach ($path in $kitOwned) {
             $listed.ContainsKey($path) | Should -BeTrue -Because "$path is kit-managed"
-            $actual = (Get-FileHash -LiteralPath (Join-Path $app $path) -Algorithm SHA256).Hash.ToLowerInvariant()
+            $lf = [IO.File]::ReadAllText((Join-Path $app $path)) -replace "`r`n", "`n"
+            $actual = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($lf))).ToLowerInvariant()
             $listed[$path]['sha256'] | Should -Be $actual -Because "$path's hash should match the exported file"
         }
 
@@ -139,7 +140,7 @@ Describe 'Export-KitApp' {
 
         # AGENTS.md is the app's, except the block between kit:begin and kit:end.
         $block = [regex]::Match((Get-Content -Raw (Join-Path $app 'AGENTS.md')), '(?s)<!-- kit:begin.*?<!-- kit:end -->').Value
-        $blockHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($block))).ToLowerInvariant()
+        $blockHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes(($block -replace "`r`n", "`n")))).ToLowerInvariant()
         $listed['AGENTS.md']['block'] | Should -Be 'kit'
         $listed['AGENTS.md']['sha256'] | Should -Be $blockHash
     }

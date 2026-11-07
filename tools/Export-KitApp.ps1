@@ -105,8 +105,18 @@ function Get-KitAgentsSection {
     $match.Value.TrimEnd()
 }
 
+# SHA-256 of text with LF line endings. git stores text as LF, but a checkout may give CRLF (core.autocrlf,
+# .gitattributes eol=crlf), so hashing the LF form gives the same value on every machine and checkout.
+function Get-KitTextHash {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Text)
+
+    $lf = $Text -replace "`r`n", "`n"
+    [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($lf))).ToLowerInvariant()
+}
+
 # .kit/manifest.json: the kit version an app was made from and every file the kit manages in it, with
-# its SHA-256, so the sync job (PR D3) knows what it may replace and can tell when someone edited one.
+# its SHA-256 (of the text with LF line endings), so the sync job (PR D3) knows what it may replace and
+# can tell when someone edited one.
 function Write-KitManifest {
     param(
         [Parameter(Mandatory)] [string] $Destination,
@@ -120,11 +130,10 @@ function Write-KitManifest {
         if ($entry.Owner -eq 'KitBlock') {
             $block = [regex]::Match([IO.File]::ReadAllText($path), '(?s)<!-- kit:begin.*?<!-- kit:end -->')
             if (-not $block.Success) { throw "$($entry.Target) has no kit:begin..kit:end block." }
-            $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($block.Value)))
-            [ordered]@{ path = $entry.Target; block = 'kit'; sha256 = $hash.ToLowerInvariant() }
+            [ordered]@{ path = $entry.Target; block = 'kit'; sha256 = (Get-KitTextHash -Text $block.Value) }
         }
         else {
-            [ordered]@{ path = $entry.Target; sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() }
+            [ordered]@{ path = $entry.Target; sha256 = (Get-KitTextHash -Text ([IO.File]::ReadAllText($path))) }
         }
     }
     $manifest = [ordered]@{
