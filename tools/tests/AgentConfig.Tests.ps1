@@ -62,6 +62,25 @@ Describe 'Agent configuration' {
             (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
         }
 
+        # New-KitApp creates a GitHub repo and changes its settings (ADR-0033); './tools/*' would allow it unasked.
+        # Each way of running it must match an ask rule. PowerShell runs a path-qualified script without its
+        # .ps1, so the rules can't end in '.ps1*' (review 1 of PR 17).
+        It 'asks before running New-KitApp as <Tool>(<Command>)' -ForEach @(
+            @{ Tool = 'PowerShell'; Command = './tools/New-KitApp -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = './tools/New-KitApp.ps1 -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\New-KitApp -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\New-KitApp.ps1 -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
+            @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
+        ) {
+            # A rule's '*' matches any text, as in Claude Code's patterns; [, ] and ? are taken literally. The match
+            # is case-sensitive, the stricter reading, since whether Claude Code ignores case isn't documented.
+            $matching = @(Get-RuleList 'ask' | Where-Object {
+                    $_ -match "^$Tool\((.*)\)$" -and $Command -clike ($Matches[1] -replace '[\[\]?]', '`$0')
+                })
+            $matching | Should -Not -BeNullOrEmpty -Because "an ask rule should catch $Tool($Command)"
+        }
+
         It 'leaves pushes to the GitHub ruleset: no deny or ask rule matches git push' {
             @((Get-RuleList 'deny') + (Get-RuleList 'ask')) -match 'git push' | Should -BeNullOrEmpty
         }

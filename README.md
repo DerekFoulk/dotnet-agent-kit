@@ -162,7 +162,7 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 
 ### Create an app repo's files
 
-`tools/Export-KitApp.ps1` writes a new app's files into an empty folder, taken from the kit at one commit or tag (ADR-0032). `New-KitApp` (PR D2b) will call it and then create the GitHub repo.
+`tools/Export-KitApp.ps1` writes a new app's files into an empty folder, taken from the kit at one commit or tag (ADR-0032). `tools/New-KitApp.ps1` calls it and then creates the GitHub repo (see "Start a new app" below).
 
 ```powershell
 ./tools/Export-KitApp.ps1 -Name Contoso.Orders -Destination ../Contoso.Orders -KitRef v0.1.0
@@ -173,6 +173,36 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 - `Directory.Packages.props` keeps the kit's build and test packages and drops the ones in the `ItemGroup` labelled `Sample app`.
 - `.kit/manifest.json` records the kit version (the release tag on the commit, or `unreleased`) and commit, and the SHA-256 of every file the kit manages, taken over the text with LF line endings so it's the same on every checkout. The sync job (PR D3) uses it to know what it may replace. In `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, only the block between `kit:begin` and `kit:end` is the kit's.
 - It refuses a folder that isn't empty, a name that isn't a dotted .NET name (or contains a Windows device name such as `Con`), and a ref that isn't a commit or tag, before writing anything. If it fails partway, it removes what it wrote.
+
+### Start a new app
+
+`tools/New-KitApp.ps1` creates an app repo on your own GitHub account, with the kit's files, settings and ruleset, using your existing `gh` sign-in (ADR-0033). Try it with `-WhatIf` first: it runs the checks and lists the steps, and changes nothing.
+
+```powershell
+./tools/New-KitApp.ps1 -Name Contoso.Orders -WhatIf
+./tools/New-KitApp.ps1 -Name Contoso.Orders
+```
+
+| Parameter | Default |
+|---|---|
+| `-RepoName` | The app name. Set it for a repo name a .NET namespace can't have, such as `contoso-orders` (GitHub allows letters, digits, `-`, `_` and `.`) |
+| `-KitRef` | The kit's newest release tag (`vX.Y.Z`). Until one exists, pass a kit commit or tag |
+| `-Destination` | A folder named after the repo, next to the kit's folder |
+| `-Private` | Off: the repo is public, so its CI runs free on GitHub's standard runners (ADR-0033). Anyone can read a public app's code, history and PRs; with no license, nobody may reuse them. On GitHub Free, rulesets work only on public repos, so a private repo's ruleset may not hold; and whether a public app's holds isn't verified either, since it's added while the repo is still private. `New-KitApp` may then report success while `main` is unprotected, so on a new account, try a direct push to `main` in its first app (ADR-0033) |
+
+The app name (`-Name`) must be a dotted .NET name, because it becomes the solution's name and the root namespace, which can't contain hyphens.
+
+It checks first, before changing anything: the app and repo names, an empty folder, the kit ref (which must have `templates/github`), that `gh` is signed in, and that the repo doesn't exist yet. Then, in order:
+
+1. Exports the files (`Export-KitApp`).
+2. Makes the first commit, `chore: start from dotnet-agent-kit <version>`, with the commit hook stored as executable for Linux and macOS.
+3. Creates the repo, private for now, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
+4. Pushes `main`.
+5. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`.
+6. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, and requires approval before any fork's PR runs (`templates/github/public.json`). Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
+7. Turns the commit hook on in the local copy.
+
+If a step fails, it stops and says what's done and what's left, and whether the repo or the folder is kept. It never deletes a repo. Claude Code asks before running it.
 
 ### GitHub settings on this repo
 
