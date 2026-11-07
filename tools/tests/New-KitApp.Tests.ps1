@@ -263,6 +263,40 @@ Describe 'New-KitApp run' {
         }
     }
 
+    Context 'a repo name other than the app name' {
+        BeforeAll {
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'renamed-remote.git')
+            $runError = $null
+            # No -Destination: the folder defaults to the repo's name, as git clone would name it.
+            try { New-KitApp -Name 'KitAppTest' -RepoName 'kit-app-test' -KitRef $commit -KitRoot $kit 6>$null }
+            catch { $runError = $_ }
+            $app = Join-Path (Split-Path $kit -Parent) 'kit-app-test'
+        }
+
+        It 'creates, checks and protects the repo by its own name' {
+            $runError | Should -BeNullOrEmpty
+            @($script:calls.Arguments) | Should -Contain 'api repos/fixture-owner/kit-app-test'
+            $writes = Get-WriteCall
+            ($writes[0].Input | ConvertFrom-Json).name | Should -Be 'kit-app-test'
+            $writes[1].Arguments | Should -Be 'api repos/fixture-owner/kit-app-test/rulesets --method POST --input -'
+        }
+
+        It 'keeps the app name for the solution, in a folder named after the repo' {
+            Test-Path -LiteralPath (Join-Path $app 'KitAppTest.slnx') | Should -BeTrue
+        }
+
+        It 'refuses a repo name GitHub doesn''t allow, before any change: <RepoName>' -ForEach @(
+            @{ RepoName = 'kit app test' }, @{ RepoName = 'kit/app' }, @{ RepoName = '..' }, @{ RepoName = ('a' * 101) }
+        ) {
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive "bad-repo-$($RepoName.Length).git")
+            $folder = Join-Path $TestDrive "bad-repo-folder-$($RepoName.Length)"
+            { New-KitApp -Name 'KitAppTest' -RepoName $RepoName -KitRef $commit -Destination $folder -KitRoot $kit 6>$null } |
+                Should -Throw '*repo name*'
+            @($script:calls) | Should -BeNullOrEmpty
+            Test-Path -LiteralPath $folder | Should -BeFalse
+        }
+    }
+
     Context 'a kit version from before New-KitApp' {
         It 'refuses it before any change, since it has no GitHub settings to apply' {
             git -C $kit switch -q -c no-github-settings
