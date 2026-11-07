@@ -139,6 +139,9 @@ Describe 'New-KitApp run' {
         }
         git -C $kit init -q -b main
         git -C $kit add -A
+        # As Windows would store it. On Linux the copy keeps the executable bit, and git add would record it
+        # without New-KitApp's --chmod, so the hook test couldn't fail there.
+        git -C $kit update-index --chmod=-x .githooks/commit-msg
         git -C $kit commit -q -m 'chore: kit fixture'
         $commit = (git -C $kit rev-parse HEAD).Trim()
 
