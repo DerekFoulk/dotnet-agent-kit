@@ -180,4 +180,26 @@ Describe 'New-KitApp run' {
             @(git -C $remote log --format=%s main) | Should -Be @('chore: start from dotnet-agent-kit unreleased')
         }
     }
+
+    Context 'with -WhatIf' {
+        BeforeAll {
+            $app = Join-Path $TestDrive 'WhatIf.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'whatif-remote.git')
+            $runError = $null
+            try { New-KitApp -Name 'WhatIf.Orders' -KitRef $commit -Destination $app -KitRoot $kit -WhatIf 6>$null }
+            catch { $runError = $_ }
+        }
+
+        It 'changes nothing: no folder, no GitHub change, no push' {
+            $runError | Should -BeNullOrEmpty
+            Test-Path -LiteralPath $app | Should -BeFalse
+            Get-WriteCall | Should -BeNullOrEmpty
+            git -C $remote rev-parse --verify --quiet refs/heads/main | Should -BeNullOrEmpty
+        }
+
+        It 'still checks the sign-in and that the repo doesn''t exist yet, which only read' {
+            @($script:calls.Arguments) | Should -Contain 'auth status'
+            @($script:calls.Arguments) | Should -Contain 'api repos/fixture-owner/WhatIf.Orders'
+        }
+    }
 }
