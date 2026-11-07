@@ -62,6 +62,15 @@ Describe 'Agent configuration' {
             (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
         }
 
+        # New-KitApp creates a GitHub repo and changes its settings (ADR-0033); './tools/*' would allow it unasked.
+        It 'asks before running New-KitApp with <Rule>' -ForEach @(
+            @{ Rule = 'PowerShell(./tools/New-KitApp.ps1*)' }, @{ Rule = 'PowerShell(.\tools\New-KitApp.ps1*)' }
+            @{ Rule = 'PowerShell(pwsh -NoProfile -File ./tools/New-KitApp.ps1*)' }
+            @{ Rule = 'Bash(pwsh -NoProfile -File ./tools/New-KitApp.ps1*)' }
+        ) {
+            (Get-RuleList 'ask') -ccontains $Rule | Should -BeTrue
+        }
+
         It 'leaves pushes to the GitHub ruleset: no deny or ask rule matches git push' {
             @((Get-RuleList 'deny') + (Get-RuleList 'ask')) -match 'git push' | Should -BeNullOrEmpty
         }
