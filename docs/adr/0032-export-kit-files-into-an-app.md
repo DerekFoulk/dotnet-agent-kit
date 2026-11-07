@@ -42,7 +42,7 @@ Option 1: the pin, the files and the manifest all name the same commit, which th
 
 ## Decision
 
-Accepted (owner, 2026-11-05: approved the D2 plan, with D2a writing the files offline and D2b creating the GitHub repo; apps public or private, private by default).
+Accepted (owner, 2026-11-05: approved the D2 plan, with D2a writing the files offline and D2b creating the GitHub repo; apps public or private, private by default). ADR-0033 later made public the default (owner, 2026-11-07).
 
 ## Consequences
 
