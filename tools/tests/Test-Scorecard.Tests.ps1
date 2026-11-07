@@ -87,4 +87,15 @@ Describe 'Test-Scorecard.ps1' {
         $problems | Should -HaveCount 1
         $problems[0].Message | Should -BeLike '*STY-002*retired*'
     }
+
+    It 'reports a rule in force that no area names, but not a proposed one' {
+        # A new rule must say which quality area it serves; a proposed rule isn't in force yet.
+        $paths = New-Fixture -Rules @(
+            (New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002'), (New-Rule -Id 'STY-003' -Status 'proposed'))
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike '*STY-002*no area*'
+    }
 }
