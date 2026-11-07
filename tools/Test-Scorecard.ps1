@@ -11,12 +11,16 @@
 
 .EXAMPLE
     ./tools/Test-Scorecard.ps1
+
+.EXAMPLE
+    ./tools/Test-Scorecard.ps1 -Update   # rewrite the table after changing a rule or the scorecard
 #>
 [CmdletBinding()]
 param(
     [string] $ScorecardPath,
     [string] $StandardsPath,
-    [string] $AdrPath
+    [string] $AdrPath,
+    [switch] $Update
 )
 
 Set-StrictMode -Version Latest
@@ -218,4 +222,42 @@ function Get-ScorecardProblem {
             New-Problem -Message "rule $($rule.Id) is in force but no area names it"
         }
     }
+}
+
+# Prints every problem and returns 0 when the scorecard matches the rules, otherwise 1. With -Update, the table
+# is rewritten first, so only the other problems remain.
+function Invoke-ScorecardCheck {
+    param(
+        [Parameter(Mandatory)] [string] $ScorecardPath,
+        [Parameter(Mandatory)] [string] $StandardsPath,
+        [Parameter(Mandatory)] [string] $AdrPath,
+        [switch] $Update
+    )
+
+    if ($Update) { Update-ScorecardTable -ScorecardPath $ScorecardPath -StandardsPath $StandardsPath }
+    $problems = @(Get-ScorecardProblem -ScorecardPath $ScorecardPath -StandardsPath $StandardsPath -AdrPath $AdrPath) +
+        @(Get-ScorecardTableProblem -ScorecardPath $ScorecardPath -StandardsPath $StandardsPath)
+    $problems = @($problems | Where-Object { $_ })
+    foreach ($problem in $problems) {
+        $where = if ($problem.Area) { "$($problem.Area): " } else { '' }
+        Write-Host "  $where$($problem.Message)" -ForegroundColor Red
+    }
+    if ($problems) {
+        Write-Host "`n$($problems.Count) scorecard problem(s) in $ScorecardPath." -ForegroundColor Red
+        return 1
+    }
+
+    $areas = @((Read-FrontMatter -Path $ScorecardPath)['areas']).Count
+    $noun = if ($areas -eq 1) { 'area' } else { 'areas' }
+    Write-Host "$areas $noun, consistent with the rules." -ForegroundColor Green
+    0
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    $repoRoot = Split-Path -Path $PSScriptRoot -Parent
+    if (-not $ScorecardPath) { $ScorecardPath = Join-Path $repoRoot 'docs' 'quality' 'scorecard.md' }
+    if (-not $StandardsPath) { $StandardsPath = Join-Path $repoRoot 'docs' 'standards' }
+    if (-not $AdrPath) { $AdrPath = Join-Path $repoRoot 'docs' 'adr' }
+    exit (Invoke-ScorecardCheck -ScorecardPath $ScorecardPath -StandardsPath $StandardsPath -AdrPath $AdrPath -Update:$Update)
 }
