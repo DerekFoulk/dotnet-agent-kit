@@ -181,6 +181,32 @@ Describe 'Export-KitApp' {
         $listed | Should -Not -Contain '.github/copilot-instructions.md'
     }
 
+    It 'seeds central package versions with the kit''s build and test packages, without the sample app''s' {
+        $path = Join-Path $app 'Directory.Packages.props'
+        Test-Path -LiteralPath $path | Should -BeTrue -Because 'an app needs central package management from the start'
+        $props = [xml](Get-Content -Raw $path)
+        $kitProps = [xml](Get-Content -Raw (Join-Path $checkout 'Directory.Packages.props'))
+
+        $props.SelectSingleNode('//ManagePackageVersionsCentrally').InnerText | Should -Be 'true'
+        $props.SelectSingleNode('//CentralPackageTransitivePinningEnabled').InnerText | Should -Be 'true'
+        $props.SelectSingleNode('//GlobalPackageReference[@Include="MinVer"]') | Should -Not -BeNullOrEmpty
+
+        $versions = @{}
+        foreach ($node in $props.SelectNodes('//PackageVersion')) { $versions[$node.Include] = $node.Version }
+        foreach ($sample in $kitProps.SelectNodes('//ItemGroup[@Label="Sample app"]/PackageVersion')) {
+            $versions.ContainsKey($sample.Include) | Should -BeFalse -Because "$($sample.Include) is only the kit's sample app's"
+        }
+        $kitTests = @($kitProps.SelectNodes('//ItemGroup[not(@Label="Sample app")]/PackageVersion'))
+        $kitTests.Count | Should -BeGreaterThan 3
+        foreach ($node in $kitTests) {
+            $versions[$node.Include] | Should -Be $node.Version -Because "$($node.Include) is part of the kit's toolset"
+        }
+
+        # The app adds its own packages here, so the app owns the file.
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain 'Directory.Packages.props'
+    }
+
     It 'refuses a destination that already has files, and leaves them alone' {
         $busy = Join-Path $TestDrive 'busy'
         New-Item -ItemType Directory -Path $busy | Out-Null

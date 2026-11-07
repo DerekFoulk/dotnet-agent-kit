@@ -11,8 +11,8 @@
     <GlobalPackageReference Include="MinVer" Version="8.0.0" />
   </ItemGroup>
 
-  <!-- Sample app (owner approved, 2026-11-04). -->
-  <ItemGroup>
+  <!-- Sample app (owner approved, 2026-11-04). The label keeps these out of a new app's copy (ADR-0032). -->
+  <ItemGroup Label="Sample app">
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
   </ItemGroup>
