@@ -198,28 +198,32 @@ Describe 'New-KitApp run' {
             catch { $runError = $_ }
         }
 
-        It 'is created public, then gets the kit''s settings for a public repo' {
+        It 'is created private and made public only after the push and the ruleset' {
+            # A failure before then leaves a private repo, not a public one without its protections.
             $runError | Should -BeNullOrEmpty
             $writes = Get-WriteCall
             @($writes.Arguments) | Should -Be @(
                 'api user/repos --method POST --input -'
                 'api repos/fixture-owner/Public.Orders/rulesets --method POST --input -'
                 'api repos/fixture-owner/Public.Orders --method PATCH --input -'
+                'api repos/fixture-owner/Public.Orders --method PATCH --input -'
                 'api repos/fixture-owner/Public.Orders/actions/permissions/fork-pr-contributor-approval --method PUT --input -'
             )
-            ($writes[0].Input | ConvertFrom-Json).private | Should -BeFalse
+            ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
+            ($writes[1].Pushed) | Should -BeTrue
+            ($writes[2].Input | ConvertFrom-Json).private | Should -BeFalse
         }
 
-        It 'turns on secret scanning and push protection, free on public repos (ADR-0031)' {
-            @(Get-WriteCall).Count | Should -Be 4
-            $security = ((Get-WriteCall)[2].Input | ConvertFrom-Json).security_and_analysis
+        It 'then turns on secret scanning and push protection, free on public repos (ADR-0031)' {
+            @(Get-WriteCall).Count | Should -Be 5
+            $security = ((Get-WriteCall)[3].Input | ConvertFrom-Json).security_and_analysis
             $security.secret_scanning.status | Should -Be 'enabled'
             $security.secret_scanning_push_protection.status | Should -Be 'enabled'
         }
 
         It 'runs no fork''s PR until the owner approves it' {
-            @(Get-WriteCall).Count | Should -Be 4
-            ((Get-WriteCall)[3].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
+            @(Get-WriteCall).Count | Should -Be 5
+            ((Get-WriteCall)[4].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
         }
     }
 
