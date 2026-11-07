@@ -118,15 +118,23 @@ function New-KitApp {
     if ($existing.ExitCode -eq 0) { throw "$repo already exists. New-KitApp only creates new repos, so it never changes an existing one's settings." }
     if ($existing.Output -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Output)" }
     # The settings and ruleset come from the same kit commit as the files.
-    $settingsText = git -C $KitRoot show "${commit}:templates/github/repo.json" | Out-String
-    $rulesetText = git -C $KitRoot show "${commit}:templates/github/main-protection.json" | Out-String
-    $publicText = git -C $KitRoot show "${commit}:templates/github/public.json" | Out-String
+    $github = @{}
+    foreach ($file in 'repo.json', 'main-protection.json', 'public.json') {
+        $text = git -C $KitRoot show "${commit}:templates/github/$file" 2>$null | Out-String
+        if ($LASTEXITCODE -ne 0 -or -not $text.Trim()) {
+            throw "The kit at $KitRef has no templates/github/$file, so it predates New-KitApp. Pass a newer -KitRef."
+        }
+        $github[$file] = $text
+    }
+    $settingsText = $github['repo.json']
+    $rulesetText = $github['main-protection.json']
+    $publicText = $github['public.json']
 
     # The steps, in order. Each runs in this function's scope (dot-sourced), so later steps see what earlier
     # ones set. -WhatIf lists them instead.
     $steps = @(
         [pscustomobject]@{ Description = "Export the kit's files at $commit"; Action = {
-                & (Join-Path $KitRoot 'tools/Export-KitApp.ps1') -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
+                & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
                 if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
             }
         }
