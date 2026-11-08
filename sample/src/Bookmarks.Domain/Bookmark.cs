@@ -27,6 +27,7 @@ public sealed class Bookmark
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
-        return new Bookmark(Guid.NewGuid(), url, title.Trim(), createdAt);
+        // A UUID version 7 starts with its creation time, so ordering by Id is creation order.
+        return new Bookmark(Guid.CreateVersion7(createdAt), url, title.Trim(), createdAt);
     }
 }
