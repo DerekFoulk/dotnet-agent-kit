@@ -54,3 +54,27 @@ function Set-AgentMode {
     if ($Mode -eq 'Review') { Set-Content -LiteralPath $modeFile -Value 'review' }
     elseif (Test-Path -LiteralPath $modeFile) { Remove-Item -LiteralPath $modeFile }
 }
+
+# The mode agents follow: 'review' when .agent-mode says so, otherwise 'auto' (the default, ADR-0035).
+function Get-AgentMode {
+    param([Parameter(Mandatory)] [string] $RepoRoot)
+
+    $modeFile = Join-Path $RepoRoot '.agent-mode'
+    if ((Test-Path -LiteralPath $modeFile) -and (Get-Content -Raw -LiteralPath $modeFile).Trim() -eq 'review') { 'review' } else { 'auto' }
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    if (-not $RepoRoot) { $RepoRoot = (& git -C $PWD rev-parse --show-toplevel 2>$null) ?? $PWD.Path }
+    try {
+        if ($Mode) { Set-AgentMode -Mode $Mode -RepoRoot $RepoRoot }
+        $current = Get-AgentMode -RepoRoot $RepoRoot
+        $meaning = if ($current -eq 'review') { 'the owner approves plans and merges each PR' } else { 'the agent works and merges its own PRs, asking only for the hard limits' }
+        Write-Host "Mode: $current ($meaning)."
+    }
+    catch {
+        Write-Host $_.Exception.Message -ForegroundColor Red
+        exit 1
+    }
+    exit 0
+}
