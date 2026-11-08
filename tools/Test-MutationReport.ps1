@@ -64,9 +64,10 @@ function Get-MutationReportProblem {
     $flagged = foreach ($id in $unreached.Keys) {
         [pscustomobject]@{ Id = $id; Name = if ($names[$id]) { $names[$id] } else { $id }; Count = $unreached[$id] }
     }
-    $shared = @($flagged | Group-Object Name | Where-Object Count -GT 1 | ForEach-Object Name)
-    foreach ($test in ($flagged | Sort-Object Name, Id)) {
-        $label = if ($shared -contains $test.Name) { "$($test.Name) (id $($test.Id))" } else { $test.Name }
+    # Case-exact, as the ids are compared: Group-Object, Sort-Object and -contains ignore case unless told not to.
+    $shared = @($flagged | Group-Object Name -CaseSensitive | Where-Object Count -GT 1 | ForEach-Object Name)
+    foreach ($test in ($flagged | Sort-Object Name, Id -CaseSensitive)) {
+        $label = if ($shared -ccontains $test.Name) { "$($test.Name) (id $($test.Id))" } else { $test.Name }
         "$label killed $($test.Count) mutant(s) it never reached, so it fails whatever is mutated and the score " +
         'can''t be trusted. Run that test under Stryker and fix why it fails there.'
     }
