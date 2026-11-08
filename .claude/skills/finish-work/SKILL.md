@@ -46,6 +46,7 @@ If a PR already exists for this branch, run `gh pr view <n> --json state,mergedA
 Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your own PR when all of these hold; otherwise fix what's missing, or report and stop:
 
 - **It isn't a release PR.** `gh pr view <n> --json headRefName` doesn't start with `release-please--`. Never merge one, in either mode: releases are the owner's (ADR-0035).
+- **It doesn't change the guardrails.** That means `AGENTS.md`'s "Working modes" or "Always ask" sections, SEC-003 in `docs/standards/security.md`, `.claude/settings.json`, the `Set-AgentMode.ps1` script, a ruleset, or a CI check removed or weakened (`gh pr diff <n> --name-only`, then read those files' changes). Such a PR is the owner's to merge.
 - **It's open, and CI has passed at its head commit:** `gh pr view <n> --json state,headRefOid,mergeStateStatus` shows `OPEN` and `CLEAN`, and `gh pr checks <n>` passes.
 - **The latest `reviewer` run is on that head commit,** with no unanswered blocking or should-fix finding, and it's posted on the PR. `Get-OpenFinding` lists nothing open from Copilot or a person.
 - **The description is complete:** the template's sections are filled in, with the red→green table and counts from the head commit.

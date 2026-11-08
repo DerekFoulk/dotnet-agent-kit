@@ -16,7 +16,7 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 - Are inputs validated? Do any secrets stay out of the repo and the logs?
 
 ## Cost optimization
-- Does it add a paid service, a dependency or cloud resources? Each needs the owner's OK.
+- Does it add a paid service or cloud resources? Each needs the owner's OK, in both modes. A new dependency needs it in review mode; in auto mode, name the source that recommends it (`AGENTS.md`, "Working modes").
 
 ## Operational excellence
 - **Observability:** are health checks, logs, metrics and traces covered for new behavior?
@@ -32,4 +32,4 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 - Schema changes, migrations, retention, personal data?
 
 ## Docs and decisions
-- Which docs change in the same PR? Which choices need an ADR (`write-adr`)? Which dependencies need approval?
+- Which docs change in the same PR? Which choices need an ADR (`write-adr`)? Which dependencies does it add, and, in review mode, which need approval?

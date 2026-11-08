@@ -43,7 +43,7 @@ The owner would pick a permission mode in Claude Code that prompts less, and the
 
 ## Recommendation
 
-Option 1. Auto is the default, review is one command away, and the hard limits keep their prompts in both modes.
+Option 1. Auto is the default, review is one command away, and the hard limits stay in force in both modes, with prompts for their common forms.
 
 ## Decision
 
@@ -68,7 +68,22 @@ Accepted (owner, 2026-11-07: "Yes, set it up… default to the auto mode", and k
   - merges its own PR once CI has passed at the head commit, the latest `reviewer` run on that commit has no unanswered blocking or should-fix finding, and the description is complete. It then reports what merged.
 - **Release PRs** (release-please's, on a `release-please--` branch) are never merged by an agent. The `finish-work` skill refuses one before merging. Only the instructions enforce this, because a rule can't match a PR number.
 - **`.claude/settings.json`** drops its asks for merging, `gh repo edit`, `dotnet add package`, and edits to the build, NuGet, SDK, tool, workflow and Dependabot files. `Set-AgentMode.ps1` holds those as its review rules. A test checks that every rule removed is one that review mode adds back.
-- **New asks in both modes:** running `Set-AgentMode` (from `tools/` or `.kit/tools/`), and editing `.claude/settings.local.json` or `.agent-mode`. So an agent can't switch modes or drop its prompts on its own.
+- **New asks in both modes:**
+  - any `Set-AgentMode` run that passes `-Mode`, whatever the path; the script takes no positional arguments, so `-M` is the only way to switch;
+  - editing `.claude/settings.local.json` or `.agent-mode`;
+  - the common forms of the hard limits: `git push` with `--delete`, `-d`, `--force` or `-f`; `gh repo edit --visibility`; `gh repo delete`; `gh release`; and `gh api` DELETE calls.
+
+  These are prompts for the common forms, not a security boundary. Claude Code's docs say such rules aren't one: a shell `Set-Content` on `.agent-mode`, an unusual path, or another agent can still get past them, and the instructions cover the rest. Showing the mode (`Set-AgentMode.ps1` with no `-Mode`) doesn't prompt, so checking it at the start of a task costs nothing.
+- **Amends ADR-0026:** pushes still have no deny rule, and an ordinary push still runs unasked. Deleting or force-pushing a branch now asks, because the "main protection" ruleset guards only `main`.
+- **Guardrail changes are the owner's to merge.** In auto mode an agent may change CI and repo settings, so it could otherwise loosen the checks this ADR relies on and merge that itself. The owner merges any PR that changes:
+  - `AGENTS.md`'s "Working modes" or "Always ask";
+  - SEC-003;
+  - `.claude/settings.json` or `tools/Set-AgentMode.ps1`;
+  - a ruleset, branch protection or the merge settings;
+  - a CI check, by removing or weakening it. The `finish-work` skill checks this before merging.
+- **Per checkout, and per person:**
+  - The mode belongs to one checkout. A new git worktree has neither file, so it starts in auto until `Set-AgentMode` runs there; on Windows, Claude Code also reads the local settings from the session's own folder.
+  - Auto mode removes the review rules by their text. If the owner had added the same rule to his local settings himself, it goes too.
 - **Rules updated:**
   - SEC-003 is restated as the two lists.
   - GIT-003 (proposed) says merges follow the mode and never include a release PR.
@@ -82,7 +97,7 @@ Accepted (owner, 2026-11-07: "Yes, set it up… default to the auto mode", and k
 ## Pillars affected
 
 - **Operational Excellence:** work flows without waiting for the owner, and the mode is one command to change.
-- **Security:** the hard limits and the floor keep their prompts in both modes, and an agent can't switch modes without asking. The owner no longer reviews before each merge, so CI, the ruleset and the `reviewer` agent carry more of the weight.
+- **Security:** the hard limits and the floor apply in both modes, with prompts for their common forms, and changes to the guardrails wait for the owner. The owner no longer reviews before each merge, so CI, the ruleset and the `reviewer` agent carry more of the weight.
 - **Reliability:** an agent merges only on green CI and a clean review.
 - **Cost Optimization:** spending money always asks.
 - **Performance Efficiency:** not affected.

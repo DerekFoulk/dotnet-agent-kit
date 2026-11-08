@@ -102,11 +102,23 @@ Agents work in **auto** mode unless you switch to **review** (ADR-0035):
 | | Auto (the default) | Review |
 |---|---|---|
 | Plans | The agent posts its plan and builds it | You approve each non-trivial plan first |
-| Packages, CI, repo settings | The agent goes ahead, within what the kit's sources name | The agent asks you first |
-| Merging | The agent merges its own PR once CI passes and the reviewer's findings are answered | You merge, or tell the agent to for that PR |
+| Packages | The agent adds one when the kit's sources name it, and says so in the PR | The agent asks you first |
+| CI and repo settings | The agent goes ahead, except for removing or weakening a check, or changing a ruleset or the merge settings | The agent asks you first |
+| Merging | The agent merges its own PR once CI passes and the reviewer's findings are answered, except a PR that changes the guardrails | You merge, or tell the agent to for that PR |
 | "Won't fix" on a review finding | The agent decides, and gives the reason | You decide |
 
-In both modes, the agent asks before anything that costs money, deletes or rewrites, creates an app repo, makes something public, adds a connector, installs software, or switches the mode. It never merges a release PR: releases are yours. Secrets and sign-in stay yours.
+In both modes, the agent asks before:
+- anything that costs money or uses cloud resources;
+- deleting or rewriting anything;
+- creating an app repo, or making something public;
+- adding a connector, or installing software;
+- changing a ruleset or merge settings, or weakening a CI check;
+- switching the mode;
+- anything else that can't be undone.
+
+It never merges a release PR or publishes a release: releases are yours. Secrets and sign-in stay yours. Claude Code prompts for the common forms of these, and the rest rests on the agent's instructions (`AGENTS.md`, "Always ask").
+
+This is the kit's own "auto mode", not Claude Code's permission mode of the same name, which you set in Claude Code itself.
 
 ```powershell
 ./tools/Set-AgentMode.ps1                # show the mode
@@ -114,7 +126,7 @@ In both modes, the agent asks before anything that costs money, deletes or rewri
 ./tools/Set-AgentMode.ps1 -Mode Auto     # back to the default
 ```
 
-The mode is yours alone. Review mode writes `review` to `.agent-mode`, which every agent reads. It also adds the prompts for merging, packages, repo settings and build or CI files to your `.claude/settings.local.json`, which Claude Code combines with `.claude/settings.json`. Both files are gitignored, and auto mode removes what review mode added. In an app, the script is `./.kit/tools/Set-AgentMode.ps1 -RepoRoot .`.
+The mode is yours alone. Review mode writes `review` to `.agent-mode`, which every agent reads. It also adds the prompts for merging, packages, repo settings and build or CI files to your `.claude/settings.local.json`, which Claude Code combines with `.claude/settings.json`. Both files are gitignored, and auto mode removes what review mode added. If you'd added one of those same prompts to your local settings yourself, auto mode removes it too. The mode belongs to the checkout, so a new git worktree starts in auto: run the script there too. In an app, the script is `./.kit/tools/Set-AgentMode.ps1 -RepoRoot .`.
 
 ## CI
 

@@ -13,6 +13,6 @@ description: Start any task that will change files in this repo. Sets up the bra
    - the files you'll touch;
    - a **test list**: the behaviors to cover, one line each, not yet written as tests;
    - the plan checklist (run the `plan-checklist` skill);
-   - the ADRs needed (`write-adr`) and anything that needs the owner's OK (see "Ask before" in `AGENTS.md`).
+   - the ADRs needed (`write-adr`) and anything that needs the owner's OK (see "Always ask", and in review mode "Also ask in review mode", in `AGENTS.md`).
 5. **Get approval, or go on.** Check the working mode (`AGENTS.md`, "Working modes"). In review mode, show the owner the plan unless the task is trivial (for example, a typo), and wait for his OK. In auto mode, post the plan and go on, unless it hits "Always ask". Restate any answers he gives as a table.
 6. **Start the first red test** with the `tdd-cycle` skill.

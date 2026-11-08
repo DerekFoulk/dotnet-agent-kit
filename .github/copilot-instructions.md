@@ -14,9 +14,9 @@ Anything an agent suggests is **proposed** until the owner accepts it. Rules mar
 
 ## Working modes
 
-Agents work in one of two modes (ADR-0035). At the start of each task, check which: `Set-AgentMode.ps1` prints it (`./tools/` in the kit, `./.kit/tools/` with `-RepoRoot .` in an app). It's **auto** unless the file `.agent-mode` at the repo root says `review`. The file is gitignored, so each person's mode is their own. Switching is the owner's call: the script asks before it runs.
+Agents work in one of two modes (ADR-0035). At the start of each task, check which. Read `.agent-mode` at the repo root: it's **auto** unless that file says `review`. `Set-AgentMode.ps1` with no `-Mode` also prints the mode, without a prompt (`./tools/` in the kit, `./.kit/tools/` with `-RepoRoot .` in an app). The file is gitignored, so each person's mode is their own, and each checkout's: a new worktree starts in auto. Switching is the owner's call: Claude Code asks before any run with `-Mode`, and other agents follow this rule.
 
-- **Auto, the default.** Work through the agreed roadmap without waiting for approval: post the plan in chat, then build it. You may add a dependency that the kit's standards or ADRs, or the official docs they cite, name for the task; say so in the PR. Merge your own PR with a merge commit (`gh pr merge <n> --merge`) once CI has passed at its head commit, the latest `reviewer` run on that commit has no unanswered blocking or should-fix finding, and the description is complete. Then report what merged. Decide a "won't fix" yourself, with the reason in the reply. "Always ask" still applies.
+- **Auto, the default.** Work through the agreed roadmap without waiting for approval: post the plan in chat, then build it. You may add a dependency that the kit's standards or ADRs, or the official docs they cite, name for the task; say so in the PR. Merge your own PR with a merge commit (`gh pr merge <n> --merge`) once CI has passed at its head commit, the latest `reviewer` run on that commit has no unanswered blocking or should-fix finding, and the description is complete. Then report what merged. Decide a "won't fix" yourself, with the reason in the reply. "Always ask" still applies, and so does one exception: a PR that changes the guardrails themselves is the owner's to merge. That means the "Working modes" or "Always ask" sections, SEC-003, `.claude/settings.json`, the `Set-AgentMode.ps1` script, a ruleset, or a CI check removed or weakened.
 - **Review.** The owner approves non-trivial plans before work starts, decides each "won't fix", and merges each PR, or says to for that PR. "Also ask in review mode" applies too.
 
 **Release PRs are never merged by an agent, in either mode.** Those are release-please's PRs, on a `release-please--` branch: releases are the owner's (owner, 2026-11-07).
@@ -68,9 +68,13 @@ In both modes, ask the owner first before you:
 - delete anything on GitHub, or work that isn't merged; force-push or rewrite history;
 - create a new app repo (`New-KitApp`), or make anything public;
 - merge a release PR, or publish a release;
+- change a ruleset, branch protection or the repo's merge settings, or remove or weaken a CI check;
 - add a connector (MCP server);
 - install software on the owner's machine;
-- switch the working mode.
+- switch the working mode, or merge a change to the guardrails (see "Working modes");
+- do anything else that can't be undone.
+
+Claude Code prompts for the common forms of these (`.claude/settings.json`). The rest rests on this list.
 
 Never read, print or store secrets. Sign-in is always the owner's step.
 
@@ -78,7 +82,7 @@ Never read, print or store secrets. Sign-in is always the owner's step.
 
 In review mode, also ask the owner first before you:
 - add a dependency (a package in `Directory.Packages.props`, a PowerShell module, a GitHub Action);
-- change CI, repo settings or rulesets;
+- change CI or other repo settings;
 - act outside this repo.
 
 **When a permission rule or prompt blocks something legitimate, stop and tell the owner.** Don't rephrase the command, move it into a script or split it up to get past the rule (ADR-0026). The rule may be wrong, but changing it is the owner's call.
