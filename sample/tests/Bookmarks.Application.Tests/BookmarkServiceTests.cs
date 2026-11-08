@@ -32,6 +32,15 @@ public sealed class BookmarkServiceTests
     }
 
     [Fact]
+    public async Task AddRejectsAMissingRequestByName()
+    {
+        // Mutation testing (PR 23): without the guard, a null request failed later with a NullReferenceException.
+        Func<Task> add = () => _service.AddAsync(null!, TestContext.Current.CancellationToken);
+
+        (await add.Should().ThrowAsync<ArgumentNullException>()).WithParameterName("request");
+    }
+
+    [Fact]
     public async Task AddRefusesAUrlThatIsAlreadySaved()
     {
         Bookmark existing = Bookmark.Create(new Uri("https://example.com/a"), "A", s_now);

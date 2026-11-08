@@ -126,6 +126,22 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         first.Concat(second).Select(b => b.Title).Should().Equal("A", "B", "C");
     }
 
+    [Fact]
+    public void TheModelKeysOnIdRequiresEveryFieldCapsTheTitleAndIndexesTheUrl()
+    {
+        // Mutation testing (PR 23): SQLite doesn't enforce a length, and EF finds "Id" as the key by convention, so
+        // no behaviour test noticed when a line of OnModelCreating was removed. These are the schema's promises.
+        using BookmarksDbContext db = new(_options);
+        Microsoft.EntityFrameworkCore.Metadata.IEntityType bookmark = db.Model.FindEntityType(typeof(Bookmark))!;
+
+        bookmark.FindPrimaryKey()!.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.Id));
+        bookmark.FindProperty(nameof(Bookmark.Url))!.IsNullable.Should().BeFalse();
+        bookmark.FindProperty(nameof(Bookmark.Title))!.IsNullable.Should().BeFalse();
+        bookmark.FindProperty(nameof(Bookmark.Title))!.GetMaxLength().Should().Be(500);
+        bookmark.FindProperty(nameof(Bookmark.CreatedAt))!.IsNullable.Should().BeFalse();
+        bookmark.GetIndexes().Should().ContainSingle(index => index.Properties.Single().Name == nameof(Bookmark.Url));
+    }
+
     public void Dispose() => _connection.Dispose();
 
     private async Task SaveAsync(Bookmark bookmark)

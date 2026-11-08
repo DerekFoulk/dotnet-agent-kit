@@ -26,6 +26,24 @@ public sealed class BookmarkTests
     }
 
     [Fact]
+    public void CreateRejectsAMissingUrlByName()
+    {
+        // Mutation testing (PR 23): without the guard, a null URL failed later with a NullReferenceException.
+        Action create = () => Bookmark.Create(null!, "Title", s_now);
+
+        create.Should().Throw<ArgumentNullException>().WithParameterName("url");
+    }
+
+    [Fact]
+    public void CreateSaysWhatKindOfUrlItNeeds()
+    {
+        // Mutation testing (PR 23): the message reaches the API's 400 Problem Details, so it is part of the behaviour.
+        Action create = () => Bookmark.Create(new Uri("ftp://example.com/file"), "Title", s_now);
+
+        create.Should().Throw<ArgumentException>().WithMessage("A bookmark needs an absolute http or https URL.*");
+    }
+
+    [Fact]
     public void CreateRejectsARelativeUrl()
     {
         Action create = () => Bookmark.Create(new Uri("/articles/1", UriKind.Relative), "Title", s_now);
