@@ -212,7 +212,7 @@ Describe 'Test-Scorecard.ps1' {
         @{ Case = 'an empty area'; Yaml = "areas:`n  - id: code`n    name: Code`n  -"; Expected = '*area 2 is empty*' }
         @{ Case = 'a rule written as a map'; Yaml = "areas:`n  - id: code`n    rules:`n      - a: b"; Expected = '*rules*text*' }
         @{ Case = 'a source written as a map'; Yaml = "areas:`n  - id: code`n    sources:`n      - a: b"; Expected = '*sources*text*' }
-        @{ Case = 'a gap id written as a map'; Yaml = "areas:`n  - id: code`n    gaps:`n      - id: { a: b }`n        gap: One.`n        status: proposed"; Expected = '*gap id*text*' }
+        @{ Case = 'a gap id written as a map'; Yaml = "areas:`n  - id: code`n    gaps:`n      - id: { a: b }`n        gap: One.`n        status: proposed"; Expected = "*gap*'id'*text*" }
     ) {
         # Review 2 of PR 18: these crashed, passed quietly, or named "System.Collections.Hashtable".
         $paths = New-Fixture
@@ -222,6 +222,37 @@ Describe 'Test-Scorecard.ps1' {
         { $script:problems = @(Get-Problem $paths) } | Should -Not -Throw
         @($script:problems | Where-Object { $_.Message -like $Expected }) | Should -HaveCount 1
         @($script:problems | Where-Object { $_.Message -like '*Hashtable*' }) | Should -BeNullOrEmpty
+    }
+
+    It 'reports <Owner> field <Field> written as <Shape> instead of text' -ForEach @(
+        @{ Owner = 'an area'; Field = 'id'; Shape = 'a map'; Value = @{ a = 'b' } }
+        @{ Owner = 'an area'; Field = 'name'; Shape = 'a map'; Value = @{ a = 'b' } }
+        @{ Owner = 'an area'; Field = 'name'; Shape = 'a list'; Value = @('a', 'b') }
+        @{ Owner = 'an area'; Field = 'perfect'; Shape = 'a map'; Value = @{ a = 'b' } }
+        @{ Owner = 'a gap'; Field = 'id'; Shape = 'a list'; Value = @('a', 'b') }
+        @{ Owner = 'a gap'; Field = 'gap'; Shape = 'a map'; Value = @{ a = 'b' } }
+        @{ Owner = 'a gap'; Field = 'status'; Shape = 'a list'; Value = @('closed') }
+        @{ Owner = 'a gap'; Field = 'needs'; Shape = 'a map'; Value = @{ a = 'b' } }
+    ) {
+        # Review 3 of PR 18: these passed quietly and printed "System.Collections.Hashtable" in the table.
+        $gap = [ordered]@{ id = 'GAP-001'; gap = 'One.'; status = 'proposed' }
+        if ($Owner -eq 'a gap') { $gap[$Field] = $Value }
+        $area = New-Area -Override @{ gaps = @($gap) }
+        if ($Owner -eq 'an area') { $area[$Field] = $Value }
+        $paths = New-Fixture -Areas @($area)
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike "*'$Field'*text*"
+        "$($problems[0].Area) $($problems[0].Message)" | Should -Not -BeLike '*Hashtable*'
+    }
+
+    It 'counts no area when ''areas'' is one map' {
+        $paths = New-Fixture
+        Set-Content -LiteralPath $paths.Scorecard -Value "---`nareas:`n  id: code`n  name: Code`n  rules: [STY-001]`n---`n"
+
+        @(Get-ScorecardRow -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards) | Should -BeNullOrEmpty
     }
 
     It 'counts each area''s rules from the standards: in force, checked by a tool, advisory, proposed, open gaps' {
