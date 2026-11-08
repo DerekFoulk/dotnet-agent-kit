@@ -169,6 +169,21 @@ Describe 'Test-Scorecard.ps1' {
         $problems[0].Message | Should -BeLike $Expected
     }
 
+    It 'reports <Case>, which would count one thing twice' -ForEach @(
+        @{ Case = 'a rule an area names twice'; Expected = '*STY-001*twice*' }
+        @{ Case = 'two areas with the same id'; Expected = '*code*already*' }
+    ) {
+        # Review 1 of the scorecard PR: the row counted 2 rules in force for 1 rule, and the check passed.
+        $areas = if ($Case -like '*twice') { @(New-Area -Override @{ rules = @('STY-001', 'STY-001') }) }
+        else { @((New-Area), (New-Area -Override @{ name = 'Code again' })) }
+        $paths = New-Fixture -Areas $areas
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike $Expected
+    }
+
     It 'counts each area''s rules from the standards: in force, checked by a tool, advisory, proposed, open gaps' {
         # Only the start of 'enforcement' decides: "advisory: ..." is advisory; "build:", "ci:", "ruleset:" and the
         # rest are checked by a tool, even when they add that some part is advisory.
