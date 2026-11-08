@@ -77,6 +77,20 @@ public sealed class BookmarkServiceTests
         last.HasMore.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task AFullLastPageSaysNoneFollows()
+    {
+        // Review 1 of PR 22: a last page holding exactly `limit` bookmarks must not link to an empty page.
+        Bookmark a = Bookmark.Create(new Uri("https://example.com/a"), "A", s_now);
+        Bookmark b = Bookmark.Create(new Uri("https://example.com/b"), "B", s_now);
+        _repository.Setup(r => r.ListAsync(0, 3, It.IsAny<CancellationToken>())).ReturnsAsync([a, b]);
+
+        BookmarkListResult page = await _service.ListAsync(0, 2, TestContext.Current.CancellationToken);
+
+        page.Items.Should().HaveCount(2);
+        page.HasMore.Should().BeFalse();
+    }
+
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
