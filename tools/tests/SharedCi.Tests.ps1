@@ -85,7 +85,7 @@ Describe 'Shared CI for app repos' {
             $codeql.Text | Should -Not -BeNullOrEmpty -Because 'codeql.reusable.yml runs CodeQL for the kit and its apps'
             $codeql.Text | Should -Match '(?m)^\s*workflow_call:'
             $jobs['languages']['outputs'].ContainsKey('languages') | Should -BeTrue
-            $codeql.Text | Should -Match "git ls-files '\*\.cs'"
+            $codeql.Text | Should -Match "git ls-files -- '\*\.cs'"
             $codeql.Text | Should -Match '"actions","csharp"'
             $jobs['analyze']['strategy']['matrix']['language'] | Should -Match 'fromJSON\(needs\.languages\.outputs\.languages\)'
         }
@@ -106,8 +106,10 @@ Describe 'Shared CI for app repos' {
             }
             $output = Join-Path $repo 'github-output'
             Set-Content -LiteralPath (Join-Path $repo 'detect.sh') -Value ($step['run'] -replace "`r`n", "`n") -NoNewline
+            # On Windows, Git's own bash: the one on PATH may be WSL's, with no Linux installed.
+            $bash = if ($IsWindows) { Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin' 'bash.exe' } else { 'bash' }
             Push-Location $repo
-            try { $env:GITHUB_OUTPUT = $output; bash --noprofile --norc -e -o pipefail ./detect.sh }
+            try { $env:GITHUB_OUTPUT = $output; & $bash --noprofile --norc -e -o pipefail ./detect.sh }
             finally { Pop-Location; Remove-Item Env:GITHUB_OUTPUT -ErrorAction SilentlyContinue }
 
             $LASTEXITCODE | Should -Be 0

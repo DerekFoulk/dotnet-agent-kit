@@ -27,12 +27,13 @@ jobs:
         with:
           persist-credentials: false
 
-      # A new app has no C# yet, and CodeQL fails on a language with no source, so C# joins once it exists.
+      # A new app has no C# yet, and CodeQL fails on a language with no source, so C# joins once it exists. The
+      # whole list is read, not piped into grep -q: under bash -o pipefail, git can die of SIGPIPE on a big repo.
       - name: Find the languages to scan
         id: detect
         shell: bash
         run: |
-          if git ls-files '*.cs' | grep -q .; then
+          if [ -n "$(git ls-files -- '*.cs')" ]; then
             echo 'languages=["actions","csharp"]' >> "$GITHUB_OUTPUT"
           else
             echo 'languages=["actions"]' >> "$GITHUB_OUTPUT"
