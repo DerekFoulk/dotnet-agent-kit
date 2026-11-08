@@ -39,10 +39,27 @@ jobs:
       - name: Install Stryker.NET
         run: dotnet tool install dotnet-stryker --version 5.0.0 --tool-path "$RUNNER_TEMP/stryker"
 
+      # Settings that have no command-line flag (ADR-0039):
+      # - coverage-analysis off: every test runs against every mutant. Per-test coverage missed code that runs
+      #   inside an in-memory API host, so those mutants were reported as untested;
+      # - ignore-methods ConfigureAwait: ConfigureAwait(true) can't change behaviour without a synchronization
+      #   context, so no test could ever kill that mutant.
+      - name: Write the Stryker settings
+        run: |
+          cat > "$RUNNER_TEMP/stryker-config.json" <<'JSON'
+          {
+            "stryker-config": {
+              "coverage-analysis": "off",
+              "ignore-methods": ["ConfigureAwait"]
+            }
+          }
+          JSON
+
       # The Microsoft Testing Platform runner, because the kit's test projects use it (global.json).
       - name: Mutation test
         run: >-
           "$RUNNER_TEMP/stryker/dotnet-stryker"
+          --config-file "$RUNNER_TEMP/stryker-config.json"
           --solution "$SOLUTION"
           --test-runner mtp
           --configuration Release
