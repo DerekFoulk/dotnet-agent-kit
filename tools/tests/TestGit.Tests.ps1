@@ -36,6 +36,8 @@ Describe 'TestGit.psm1' {
             $repo = New-TestRepo
             git -C $repo config --get maintenance.auto | Should -Be 'false'
             git -C $repo config --get gc.auto | Should -Be '0'
+            # A push into a test's bare "remote" starts maintenance through receive-pack, which has its own switch.
+            git -C $repo config --get receive.autogc | Should -Be 'false'
         }
         finally { Restore-TestGitEnvironment -Saved $saved }
     }
