@@ -28,7 +28,13 @@ using (IServiceScope scope = app.Services.CreateScope())
 }
 
 app.MapDefaultEndpoints();
-app.MapOpenApi();
+// The OpenAPI document maps the whole API, so it is served in Development only (API-003); the contract test
+// snapshots it.
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
 app.MapBookmarks();
 
 app.Run();
