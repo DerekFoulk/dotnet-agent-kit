@@ -79,8 +79,8 @@ function Get-TextFieldProblem {
     param($Value)
     if ($null -eq $Value) { return $null }
     if (-not (Test-Text $Value)) { return "isn't text" }
-    if ("$Value".Trim() -match '|
-') { return 'is written over several lines' }
+    # An escape, not a typed line break: git rewrites line endings in this file on checkout (.gitattributes).
+    if ("$Value".Trim() -match '[\r\n]') { return 'is written over several lines' }
     $null
 }
 
