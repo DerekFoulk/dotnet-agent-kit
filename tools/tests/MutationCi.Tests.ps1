@@ -42,38 +42,46 @@ Describe 'Mutation testing in CI' {
     }
 
     Context 'the kit''s mutation.yml' {
-        It 'runs nightly, on demand, and on a pull request that changes the mutation setup' {
+        It 'runs nightly, on demand, and on every pull request except one that changes only files the run can''t read' {
+            # Reviews 2, 3 and 4 of PR 23 each found files missing from a list of what the run reads. A list of
+            # inputs falls behind silently; a list of what can't matter fails safe: a gap costs one extra run.
             $on = $kit.Yaml['on']
 
             $on | Should -Not -BeNullOrEmpty
             @($on['schedule']).Count | Should -BeGreaterThan 0
             $on.ContainsKey('workflow_dispatch') | Should -BeTrue
-            @($on['pull_request']['paths']) | Should -Contain '.github/workflows/mutation.reusable.yml'
-            @($on['pull_request']['paths']) | Should -Contain '.github/workflows/mutation.yml'
-            # A pull request that changes the sample proves its mutation score before it merges.
-            @($on['pull_request']['paths']) | Should -Contain 'sample/**'
+            $on['pull_request'].ContainsKey('paths') | Should -BeFalse -Because 'an allowlist of inputs falls behind without anyone noticing'
+            @($on['pull_request']['paths-ignore']).Count | Should -BeGreaterThan 0
         }
 
-        It 'runs on a pull request that changes any file the mutation run reads, a Dependabot bump of Stryker or the SDK included' {
-            # Reviews 2 and 3 of PR 23: the filter missed files the run reads. The list is built from the workflow and
-            # the repo, not written out, so a file the run starts reading later fails this test until the filter has it.
+        It 'never ignores a file the mutation run reads: the solution''s projects, the root build files, the kit files the workflow calls' {
             $read = [System.Collections.Generic.List[string]]::new()
+            $read.Add('.github/workflows/mutation.yml')
+            $read.Add('.github/workflows/mutation.reusable.yml')
             foreach ($match in [regex]::Matches($reusable.Text, '\$(?:env:)?KIT/(?<path>[^"''\s]+)')) { $read.Add($match.Groups['path'].Value) }
             foreach ($match in [regex]::Matches($reusable.Text, 'uses: \$/(?<path>\S+)')) { $read.Add("$($match.Groups['path'].Value)/action.yml") }
             foreach ($match in [regex]::Matches($reusable.Text, 'global-json-file: (?<path>\S+)')) { $read.Add($match.Groups['path'].Value) }
-            $read.Add([string] @($kit.Yaml['jobs'].Values)[0]['with']['solution'])
-            # What dotnet and MSBuild read from the repo root when they build the solution.
+            # The solution, and every tracked file in each of its projects' folders: Stryker builds and mutates them.
+            $solution = [string] @($kit.Yaml['jobs'].Values)[0]['with']['solution']
+            $read.Add($solution)
+            foreach ($project in ([xml] (Get-Content -Raw (Join-Path $root $solution))).SelectNodes('//Project')) {
+                $folder = Split-Path ($project.Path -replace '\\', '/') -Parent
+                git -C $root ls-files -- $folder | ForEach-Object { $read.Add($_) }
+            }
+            # What dotnet, MSBuild and the analyzers read from the repo root when they build the solution.
             Get-ChildItem -LiteralPath $root -File -Force |
-                Where-Object Name -Match '^(global\.json|nuget\.config|Directory\.[^.]+\.(props|targets))$' |
+                Where-Object Name -Match '^(global\.json|nuget\.config|\.editorconfig|Directory\.[^.]+\.(props|targets|rsp))$' |
                 ForEach-Object { $read.Add($_.Name) }
 
-            # GitHub's path patterns: ** crosses folders, * doesn't.
-            $patterns = @($kit.Yaml['on']['pull_request']['paths'] | ForEach-Object {
-                    '^' + ([regex]::Escape($_) -replace '\\\*\\\*', '.*' -replace '\\\*', '[^/]*') + '$'
+            # GitHub's path patterns, case-sensitive: **/ is zero or more folders, ** crosses folders, * doesn't.
+            $ignore = @($kit.Yaml['on']['pull_request']['paths-ignore'])
+            $ignore | Should -Not -Match '[!?\[]' -Because 'this test reads only *, ** and literal paths'
+            $patterns = @($ignore | ForEach-Object {
+                    '^' + ([regex]::Escape($_) -creplace '\\\*\\\*/', '(?:.*/)?' -creplace '\\\*\\\*', '.*' -creplace '\\\*', '[^/]*') + '$'
                 })
-            $read.Count | Should -BeGreaterThan 8
+            $read.Count | Should -BeGreaterThan 50 -Because 'the sample alone has more tracked files than that'
             foreach ($file in ($read | Sort-Object -Unique)) {
-                @($patterns | Where-Object { $file -match $_ }).Count | Should -BeGreaterThan 0 -Because "the mutation run reads $file"
+                @($patterns | Where-Object { $file -cmatch $_ }) | Should -BeNullOrEmpty -Because "the mutation run reads $file"
             }
         }
 
