@@ -39,11 +39,13 @@ public static class ServiceDefaultsExtensions
         // Every HttpClient gets timeouts, retries with backoff and a circuit breaker (OPS-003). Retries are only for
         // safe methods: a POST, PUT, PATCH or DELETE isn't repeated, so a payment can't be sent twice (review 1
         // of PR 21). A client that needs other settings calls RemoveAllResilienceHandlers() before adding its
-        // own; adding a second handler on top would keep this one's retries.
+        // own; adding a second handler on top would keep this one's retries. That method is experimental
+        // (EXTEXP0001), so the call needs the diagnostic suppressed, with a reason.
         builder.Services.ConfigureHttpClientDefaults(http =>
             http.AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods()));
-        // The health endpoints are anonymous, so a flood of probes mustn't become a flood of database calls:
-        // each answer is cached briefly, and a slow check is cut off (Microsoft's Aspire health-check guidance).
+        // The health endpoints are anonymous, so a flood of probes mustn't become a flood of database calls: a
+        // Healthy answer is cached briefly (output caching stores only 200 responses), and a slow check is cut off
+        // with a 504. The settings follow Microsoft's Aspire health-check guidance (aspire.dev, MIT).
         builder.Services.AddRequestTimeouts(timeouts => timeouts.AddPolicy(HealthPolicy, TimeSpan.FromSeconds(5)));
         builder.Services.AddOutputCache(caching => caching.AddPolicy(HealthPolicy, policy => policy.Expire(TimeSpan.FromSeconds(10))));
         return builder;
@@ -88,9 +90,14 @@ public static class ServiceDefaultsExtensions
     /// <summary>
     /// Maps /health (readiness: every check passes) and /alive (liveness: the "live" checks pass). They answer in
     /// every environment, because production probes need them, with only the status word ("Healthy",
-    /// "Degraded" or "Unhealthy"), never the checks' details. Each answer is cached for 10 seconds, and a check
-    /// that takes longer than 5 seconds is cut off.
+    /// "Degraded" or "Unhealthy"), never the checks' details. A Healthy answer is cached for 10 seconds, and a
+    /// check that takes longer than 5 seconds is cut off with an empty 504.
     /// </summary>
+    /// <remarks>
+    /// This adds the output-cache and request-timeout middleware. Call UseCors, UseAuthentication and
+    /// UseAuthorization before this method: output caching must run after them, or it could serve an answer
+    /// cached for an authorized caller to an anonymous one.
+    /// </remarks>
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);

@@ -7,6 +7,7 @@ The kit itself isn't licensed for reuse (ADR-0031). These files are based on oth
 | `.editorconfig` | [dotnet/runtime `.editorconfig`](https://github.com/dotnet/runtime/blob/860eddba936f4a7e8a04cb12ee3bc54385216cab/.editorconfig) at commit `860eddb` | MIT, Copyright (c) .NET Foundation and Contributors |
 | `.editorconfig` (lines marked "(docs)") | [dotnet/docs `.editorconfig`](https://github.com/dotnet/docs/blob/a9d609595f9b72ac1acd8c60170b92ae3c0644bf/.editorconfig) at commit `a9d6095` | MIT, Copyright (c) Microsoft Corporation. dotnet/docs licenses its documentation under CC-BY-4.0 (`LICENSE`) and its code under MIT (`LICENSE-CODE`); a config file is treated as code |
 | `sample/src/Bookmarks.ServiceDefaults/ServiceDefaultsExtensions.cs` (the kit's sample, which apps don't get) | The `aspire-servicedefaults` template's [`Extensions.cs`](https://github.com/microsoft/aspire/blob/569ddf47bac85516bef73fa838d4558fe08f3f0c/src/Aspire.ProjectTemplates/templates/aspire-servicedefaults/Extensions.cs) in microsoft/aspire at commit `569ddf4` (2026-04-23), adapted (ADR-0037) | MIT, Copyright (c) .NET Foundation and Contributors (the text below) |
+| `sample/src/Bookmarks.ServiceDefaults/ServiceDefaultsExtensions.cs` (the health endpoints' cache and timeout settings) | The example on [aspire.dev's health-check page](https://aspire.dev/fundamentals/health-checks/), from microsoft/aspire.dev, retrieved 2026-11-08 (ADR-0037) | MIT, Copyright (c) Microsoft Corporation (the dotnet/docs code text below) |
 | `.gitignore` | The `dotnet new gitignore` template, [`template_feed/Microsoft.DotNet.Common.ItemTemplates/content/Gitignore/.gitignore`](https://github.com/dotnet/sdk/blob/dc1869b/template_feed/Microsoft.DotNet.Common.ItemTemplates/content/Gitignore/.gitignore) in dotnet/sdk at commit `dc1869b` (2025-03-27), plus the kit's own lines | MIT, Copyright (c) .NET Foundation and Contributors. Parts of the template come from [github/gitignore](https://github.com/github/gitignore), which is CC0 and needs no notice |
 
 ## dotnet/runtime, dotnet/sdk and microsoft/aspire
@@ -37,7 +38,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## dotnet/docs (code)
+## dotnet/docs (code) and microsoft/aspire.dev
 
 ```text
 The MIT License (MIT)

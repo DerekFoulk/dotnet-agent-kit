@@ -11,7 +11,7 @@ rules:
     scope: core
     paths: ["**/*.csproj", "**/Program.cs", "**/*ServiceDefaults*/**"]
   - id: OPS-002
-    statement: "Every ASP.NET Core app maps /health (readiness: every check, its database included) and /alive (liveness: only checks tagged live) in every environment, answering with the status word only, cached briefly and cut off when a check is slow."
+    statement: "Every ASP.NET Core app maps /health (readiness: every check, its database included) and /alive (liveness: only checks tagged live) in every environment, answering with the status word only; a Healthy answer is cached briefly, and a slow check is cut off with a 504."
     why: "Probes restart a dead app and keep traffic from one that isn't ready; a liveness check that touched the database would restart the app whenever the database is slow, and details in the reply would tell an attacker what the app depends on (GAP-007)."
     layer: outside
     status: proposed
@@ -20,7 +20,7 @@ rules:
     scope: core
     paths: ["**/Program.cs", "**/*ServiceDefaults*/**", "**/*Infrastructure*/**"]
   - id: OPS-003
-    statement: "Every HttpClient gets the standard resilience handler (timeouts, retries with backoff, circuit breaker) from the ServiceDefaults project, retrying only safe methods; a client that needs other settings removes the default handler (RemoveAllResilienceHandlers) before adding its own."
+    statement: "Every HttpClient gets the standard resilience handler (timeouts, retries with backoff, circuit breaker) from the ServiceDefaults project, retrying only safe methods; a client that needs other settings removes the default handler (RemoveAllResilienceHandlers, experimental: suppress EXTEXP0001 with a reason) before adding its own."
     why: "A call to another service without a timeout can hang a request forever, and a retry without backoff can overload a service that is already struggling (GAP-007)."
     layer: outside
     status: proposed

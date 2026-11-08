@@ -25,7 +25,7 @@ The kit gives apps no starter projects (ADR-0032), so the reference implementati
 
 The sample gets `Bookmarks.ServiceDefaults`, and the API calls `AddServiceDefaults()` and `MapDefaultEndpoints()`. The kit changes the template in three ways:
 - **No service discovery:** the sample calls no other service. Outside Aspire it would still resolve endpoints from configuration, so an app that calls other services can add it back.
-- **Health endpoints in every environment:** the template maps them only in Development, but production probes need them. Microsoft's Aspire health-check page asks that endpoints exposed outside Development be protected: with a request timeout and output caching against abuse, and with host filtering or authorization. So each reply is cached for 10 seconds, a check that takes over 5 seconds is cut off, and the reply is the status word only, never the checks' details (review 1 of PR 21).
+- **Health endpoints in every environment:** the template maps them only in Development, but production probes need them. For endpoints exposed outside Development, Microsoft's Aspire health-check page recommends host filtering and/or authorization, and says request timeouts and output caching "may be advantageous" against abuse. So a Healthy reply is cached for 10 seconds, a check that takes over 5 seconds is cut off with an empty 504, and the reply is the status word only, never the checks' details (reviews 1 and 2 of PR 21). Output caching stores only 200 responses, so while the app is Unhealthy every probe still runs the checks.
 - **Retries only for safe methods:** the standard handler retries every method by default. Microsoft's resilience page warns that this can be harmful, so the kit turns retries off for POST, PUT, PATCH and DELETE (`DisableForUnsafeHttpMethods`), and a payment can't be sent twice (review 1 of PR 21).
 - **The kit's code style:** explicit types, null checks, comments.
 
@@ -33,7 +33,7 @@ Each dependency registers its own readiness check where it's set up. The sample'
 
 - **Trade-offs:** it's Microsoft's recommended pattern, so agents and people meet it in the docs and in other repos. It keeps all the setup in one project. The packages are Microsoft's and OpenTelemetry's own. Every web app gets one more project, about 80 lines.
 - **Reversibility:** easy. It's one project and two calls.
-- **Risk:** low. The functional tests check every default the kit sets: the endpoints and their cache and timeout, the database and live checks, the trace filter, OTLP export when it's configured, the resilience handler, and that a failed POST isn't retried.
+- **Risk:** low. The functional tests check every default the kit sets: the endpoints, their cache, and the timeout with a deliberately slow check, the database and live checks, the trace filter, OTLP export when it's configured, the resilience handler, and that a failed POST isn't retried.
 
 ### Option 2: Put the setup in each app's API project
 
@@ -75,8 +75,8 @@ Accepted, in auto mode (ADR-0035). The packages are the ones the template and Mi
   - the OpenTelemetry providers;
   - a start with an OTLP endpoint set;
   - the resilience handler.
-- **Retries:** they're on for safe methods only. A client that needs other resilience settings calls `RemoveAllResilienceHandlers()` before adding its own. Adding a second handler on top would keep the default one's retries.
-- **Security:** the health endpoints are anonymous, reply with the status word only, and are cached and time-boxed. An app that wants them reachable only from its platform's probes adds authorization (`RequireAuthorization`) or a network rule. ASP.NET Core's health-check page warns that host-based filters such as `RequireHost` can be spoofed, so they're never enough on their own.
+- **Retries:** they're on for safe methods only. A client that needs other resilience settings calls `RemoveAllResilienceHandlers()` before adding its own. Adding a second handler on top would keep the default one's retries. That method is experimental in Microsoft.Extensions.Http.Resilience 10.11.0 (diagnostic `EXTEXP0001`), so the call needs that diagnostic suppressed, with a reason in the code.
+- **Security:** the health endpoints are anonymous, reply with the status word only, and are cached and time-boxed. An app that wants them reachable only from its platform's probes adds authorization (`RequireAuthorization`) or a network rule. ASP.NET Core's health-check page warns that host-based filters such as `RequireHost` can be spoofed, so they're never enough on their own. With authorization, `UseCors`, `UseAuthentication` and `UseAuthorization` must come before `MapDefaultEndpoints`, because output caching has to run after them (Microsoft's output-caching page); the method's own comment says so.
 - **Not checked:** the exported telemetry itself isn't asserted, which would need a test collector. Nor is `/health` turning Unhealthy when the database can't be reached: an in-memory SQLite database can't be made unreachable from a test.
 
 ## Pillars affected
@@ -92,5 +92,6 @@ Accepted, in auto mode (ADR-0035). The packages are the ones the template and Mi
 - https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel, retrieved 2026-11-08
 - https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks, retrieved 2026-11-08
 - https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-08
-- https://aspire.dev/fundamentals/health-checks/, retrieved 2026-11-08
+- https://aspire.dev/fundamentals/health-checks/, retrieved 2026-11-08 (the cache and timeout settings follow its example; microsoft/aspire.dev, MIT, THIRD-PARTY-NOTICES.md)
+- https://learn.microsoft.com/en-us/aspnet/core/performance/caching/output, retrieved 2026-11-08
 - https://github.com/microsoft/aspire/blob/569ddf47bac85516bef73fa838d4558fe08f3f0c/src/Aspire.ProjectTemplates/templates/aspire-servicedefaults/Extensions.cs, retrieved 2026-11-08 (MIT; THIRD-PARTY-NOTICES.md)
