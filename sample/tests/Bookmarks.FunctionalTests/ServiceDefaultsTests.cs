@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Net;
 using System.Reflection;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -69,6 +71,29 @@ public sealed class ServiceDefaultsTests : IDisposable
         using HttpResponseMessage second = await _host.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
 
         second.Headers.Age.Should().NotBeNull("the second probe within the cache window is served from the output cache");
+    }
+
+    [Fact]
+    public async Task ASlowHealthCheckIsCutOffByTheTimeout()
+    {
+        // Review 2 of PR 21: the metadata alone passed with the timeout middleware gone. A check that waits 30 seconds
+        // meets a timeout shortened to 100 ms here, so the test stays fast. (The middleware doesn't fire under a
+        // debugger, so run this one without one.)
+        using ApiHost host = new(services: services =>
+        {
+            services.AddHealthChecks().AddAsyncCheck("slow", async cancellationToken =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+                return HealthCheckResult.Healthy();
+            });
+            services.PostConfigure<RequestTimeoutOptions>(options => options.AddPolicy("HealthChecks", TimeSpan.FromMilliseconds(100)));
+        });
+        Stopwatch elapsed = Stopwatch.StartNew();
+
+        using HttpResponseMessage response = await host.Client.GetAsync(new Uri("/health", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.GatewayTimeout);
+        elapsed.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10));
     }
 
     [Fact]
