@@ -48,9 +48,11 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(limit, MaxPageSize);
 
-        // One row more than the page shows whether another page follows, without counting every row.
+        // One row more than the page shows whether another page follows, without counting every row. A next page that
+        // would start past MaxOffset couldn't be read, so this page is the last one reachable.
         IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(offset, limit + 1, cancellationToken).ConfigureAwait(false);
-        return new BookmarkListResult([.. bookmarks.Take(limit).Select(ToResponse)], HasMore: bookmarks.Count > limit);
+        bool hasMore = bookmarks.Count > limit && offset + limit <= MaxOffset;
+        return new BookmarkListResult([.. bookmarks.Take(limit).Select(ToResponse)], hasMore);
     }
 
     private static BookmarkResponse ToResponse(Bookmark bookmark) =>
