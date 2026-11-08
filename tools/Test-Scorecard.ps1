@@ -185,8 +185,13 @@ function Get-ScorecardProblem {
     $scorecard = Read-FrontMatter -Path $ScorecardPath
     $named = @{}
     $gapsSeen = @{}
+    $areasSeen = @{}
     foreach ($area in @($scorecard['areas'])) {
         $areaId = "$($area['id'])"
+        if ($areaId) {
+            if ($areasSeen.ContainsKey($areaId)) { New-Problem -Area $areaId -Message "area id $areaId is already used" }
+            else { $areasSeen[$areaId] = $true }
+        }
         foreach ($field in $script:RequiredAreaFields) {
             if (-not $area.Contains($field) -or -not (Test-Present $area[$field])) {
                 New-Problem -Area $areaId -Message "is missing '$field'"
@@ -217,6 +222,9 @@ function Get-ScorecardProblem {
         foreach ($source in @(if ($area.Contains('sources')) { $area['sources'] })) {
             $message = Get-SourceProblem -Source "$source" -AdrPath $AdrPath
             if ($message) { New-Problem -Area $areaId -Message $message }
+        }
+        foreach ($ruleId in @($areaRules | Group-Object { "$_" } | Where-Object Count -GT 1 | ForEach-Object Name)) {
+            New-Problem -Area $areaId -Message "names rule $ruleId twice"
         }
         foreach ($ruleId in $areaRules) {
             $named["$ruleId"] = $true
