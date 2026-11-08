@@ -21,6 +21,28 @@ Describe 'Mutation testing in CI' {
         }
 
         $reusable = Read-Yaml '.github/workflows/mutation.reusable.yml'
+        $kit = Read-Yaml '.github/workflows/mutation.yml'
+    }
+
+    Context 'the kit''s mutation.yml' {
+        It 'runs nightly, on demand, and on a pull request that changes the mutation setup' {
+            $on = $kit.Yaml['on']
+
+            $on | Should -Not -BeNullOrEmpty
+            @($on['schedule']).Count | Should -BeGreaterThan 0
+            $on.ContainsKey('workflow_dispatch') | Should -BeTrue
+            @($on['pull_request']['paths']) | Should -Contain '.github/workflows/mutation.reusable.yml'
+            @($on['pull_request']['paths']) | Should -Contain '.github/workflows/mutation.yml'
+        }
+
+        It 'calls the shared workflow for the kit''s solution, with a read-only token' {
+            $kit.Yaml.ContainsKey('jobs') | Should -BeTrue
+            $job = @($kit.Yaml['jobs'].Values)[0]
+
+            $job['uses'] | Should -Be './.github/workflows/mutation.reusable.yml'
+            $job['with']['solution'] | Should -Be 'dotnet-agent-kit.slnx'
+            $kit.Yaml['permissions']['contents'] | Should -Be 'read'
+        }
     }
 
     Context 'mutation.reusable.yml' {
