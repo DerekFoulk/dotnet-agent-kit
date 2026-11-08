@@ -16,7 +16,8 @@
 .EXAMPLE
     ./tools/Set-AgentMode.ps1 -Mode Review
 #>
-[CmdletBinding()]
+# No positional arguments: a switch must say -Mode, which the ask rule in .claude/settings.json catches.
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [ValidateSet('Auto', 'Review')] [string] $Mode,
     [string] $RepoRoot

@@ -159,8 +159,11 @@ Describe 'Agent configuration' {
             $matching | Should -Not -BeNullOrEmpty -Because "an ask rule should catch $Tool($Command)"
         }
 
-        It 'leaves pushes to the GitHub ruleset: no deny or ask rule matches git push' {
-            @((Get-RuleList 'deny') + (Get-RuleList 'ask')) -match 'git push' | Should -BeNullOrEmpty
+        # ADR-0026 leaves pushes to main to the GitHub ruleset. ADR-0035 adds asks, never denies, for deleting and
+        # force-pushing, which the ruleset doesn't guard on other branches; an ordinary push stays unasked.
+        It 'leaves pushes to the GitHub ruleset: no deny rule matches git push, and only destructive forms ask' {
+            @(Get-RuleList 'deny') -match 'git push' | Should -BeNullOrEmpty
+            @(Get-RuleList 'ask') -match 'git push' | Where-Object { $_ -notmatch '--delete|-d |--force|-f' } | Should -BeNullOrEmpty
         }
 
         It 'allows git switch only as the exact command <Rule>' -ForEach @(
