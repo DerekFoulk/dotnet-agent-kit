@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Bookmarks.Application.Features.Bookmarks;
 using Bookmarks.Contracts;
+using Bookmarks.Domain;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.FunctionalTests;
 
@@ -77,6 +80,34 @@ public sealed class BookmarksApiTests : IDisposable
             JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
             problem.GetProperty("status").GetInt32().Should().Be((int)status);
         }
+    }
+
+    [Fact]
+    public async Task AnUnhandledErrorIsAProblemWithoutItsDetailsInProduction()
+    {
+        // API-002: a 500 tells the client something failed, never what or where.
+        using ApiHost production = new("Production", services: services => services.AddScoped<IBookmarkRepository>(_ => new BrokenRepository()));
+
+        using HttpResponseMessage response = await production.Client.GetAsync(new Uri($"/bookmarks/{Guid.NewGuid()}", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json");
+        string body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain(BrokenRepository.Secret).And.NotContain(nameof(BrokenRepository));
+    }
+
+    /// <summary>A repository whose every call fails with a message the client must never see.</summary>
+    private sealed class BrokenRepository : IBookmarkRepository
+    {
+        public const string Secret = "connection to db-prod-01 refused";
+
+        public Task<Bookmark?> FindAsync(Guid id, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+
+        public Task<Bookmark?> FindByUrlAsync(Uri url, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+
+        public Task<IReadOnlyList<Bookmark>> ListAsync(CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+
+        public Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
     }
 
     public void Dispose() => _host.Dispose();
