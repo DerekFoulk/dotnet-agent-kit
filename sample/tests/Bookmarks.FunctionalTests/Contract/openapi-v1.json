@@ -62,6 +62,8 @@
             "name": "offset",
             "in": "query",
             "schema": {
+              "maximum": 10000,
+              "minimum": 0,
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
                 "integer",
@@ -75,6 +77,8 @@
             "name": "limit",
             "in": "query",
             "schema": {
+              "maximum": 100,
+              "minimum": 1,
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
                 "integer",
@@ -92,6 +96,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BookmarkPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
                 }
               }
             }
@@ -197,6 +211,53 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "HttpValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         }
       },

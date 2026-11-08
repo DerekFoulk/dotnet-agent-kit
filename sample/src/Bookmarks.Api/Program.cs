@@ -16,6 +16,9 @@ builder.Services.AddOpenApi();
 // 5xx responses through status code pages (API-002).
 builder.Services.AddProblemDetails();
 
+// Validates endpoint parameters from their DataAnnotations and answers a validation problem (API-006).
+builder.Services.AddValidation();
+
 WebApplication app = builder.Build();
 
 app.UseExceptionHandler();
