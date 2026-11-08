@@ -83,6 +83,25 @@ Describe 'Set-AgentMode.ps1' {
         ($raw | ConvertFrom-Json).permissions.ask | Should -Be $Own
     }
 
+    It 'takes no positional mode as a function either' {
+        # Review 2 of the modes PR: ". ./tools/Set-AgentMode.ps1; Set-AgentMode Review ." matched no ask rule.
+        $root = New-Repo
+
+        { Set-AgentMode Review $root } | Should -Throw
+        Join-Path $root '.agent-mode' | Should -Not -Exist
+    }
+
+    It 'removes the hidden .agent-mode on every system when switching to auto with no local settings' {
+        # Review 2 of the modes PR: on Linux and macOS a dotfile is hidden, and Remove-Item refuses it without
+        # -Force, so CI failed and a switch could stop halfway. This path had no test.
+        $root = New-Repo
+        Set-Content -LiteralPath (Join-Path $root '.agent-mode') -Value 'review'
+
+        Set-AgentMode -Mode Auto -RepoRoot $root
+
+        Join-Path $root '.agent-mode' | Should -Not -Exist
+    }
+
     It 'leaves no local settings behind when switching to auto, the default, if there were none' {
         $root = New-Repo
 

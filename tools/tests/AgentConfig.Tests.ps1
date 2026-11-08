@@ -102,6 +102,8 @@ Describe 'Agent configuration' {
         It 'doesn''t ask just to show the mode: <Tool>(<Command>)' -ForEach @(
             @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode.ps1' }
             @{ Tool = 'PowerShell'; Command = './.kit/tools/Set-AgentMode.ps1 -RepoRoot .' }
+            # A worktree path with "-m" in it isn't -Mode (review 2 of the modes PR).
+            @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode.ps1 -RepoRoot ../dotnet-agent-kit-main' }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeFalse
         }
@@ -120,6 +122,20 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'gh release create v0.1.0' }
                 @{ Tool = $tool; Command = 'gh api repos/DerekFoulk/x --method DELETE' }
                 @{ Tool = $tool; Command = 'gh api -X DELETE repos/DerekFoulk/x' }
+                # Review 2 of the modes PR: refspec forms, git -C, mirror and prune; rulesets and merge settings.
+                @{ Tool = $tool; Command = 'git push origin :feat/x' }
+                @{ Tool = $tool; Command = 'git push origin +feat/x' }
+                @{ Tool = $tool; Command = 'git -C . push --force origin x' }
+                @{ Tool = $tool; Command = 'git -C . push origin --delete x' }
+                @{ Tool = $tool; Command = 'git push --mirror origin' }
+                @{ Tool = $tool; Command = 'git push --prune origin' }
+                @{ Tool = $tool; Command = 'gh api -X PUT repos/o/r/rulesets/1 --input r.json' }
+                @{ Tool = $tool; Command = 'gh api -X PUT repos/o/r/branches/main/protection --input p.json' }
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -f allow_squash_merge=true' }
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -f visibility=public' }
+                @{ Tool = $tool; Command = 'gh repo edit --enable-squash-merge' }
+                @{ Tool = $tool; Command = 'gh repo edit --delete-branch-on-merge=false' }
+                @{ Tool = $tool; Command = 'gh repo edit --default-branch dev' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
