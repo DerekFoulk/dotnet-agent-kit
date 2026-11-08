@@ -35,8 +35,18 @@ jobs:
         with:
           global-json-file: global.json
 
+      # A new app has no projects until its first task adds them; there's nothing to mutate until then.
+      - name: Count projects
+        id: projects
+        shell: pwsh
+        run: |
+          $count = ([xml](Get-Content -LiteralPath $env:SOLUTION -Raw)).SelectNodes('//Project').Count
+          "count=$count" >> $env:GITHUB_OUTPUT
+          "Projects in ${env:SOLUTION}: $count"
+
       # Stryker.NET (Apache-2.0), a dotnet tool installed for this run only, at a pinned version.
       - name: Install Stryker.NET
+        if: steps.projects.outputs.count != '0'
         run: dotnet tool install dotnet-stryker --version 5.0.0 --tool-path "$RUNNER_TEMP/stryker"
 
       # Settings that have no command-line flag (ADR-0039):
@@ -57,6 +67,7 @@ jobs:
 
       # The Microsoft Testing Platform runner, because the kit's test projects use it (global.json).
       - name: Mutation test
+        if: steps.projects.outputs.count != '0'
         run: >-
           "$RUNNER_TEMP/stryker/dotnet-stryker"
           --config-file "$RUNNER_TEMP/stryker-config.json"
