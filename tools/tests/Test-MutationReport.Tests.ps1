@@ -90,20 +90,23 @@ Describe 'Test-MutationReport.ps1' {
         # Review 3 of PR 23: tied names printed alike, in an order that changed from run to run, and an empty name
         # printed as nothing.
         Get-Command Get-MutationReportProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        # Six tests share one name, so an order left to hashing (it changes per process) almost never comes out
+        # sorted: with two, review 4 saw a missing tiebreak pass 3 runs in 10.
+        $shared = 'idE', 'idB', 'idF', 'idA', 'idD', 'idC'
         $report = New-Report @(
-            (New-Mutant -KilledBy 'idB', 'idA', 'idC' -CoveredBy @())
+            (New-Mutant -KilledBy ($shared + 'idX') -CoveredBy @())
             (New-Mutant -KilledBy 'idB' -CoveredBy @()))
         $report['testFiles']['tests/App.Tests/ThingTests.cs']['tests'] = @(
-            [ordered]@{ id = 'idA'; name = 'App.Tests.Same' }
-            [ordered]@{ id = 'idB'; name = 'App.Tests.Same' }
-            [ordered]@{ id = 'idC'; name = '' })
+            $shared | ForEach-Object { [ordered]@{ id = $_; name = 'App.Tests.Same' } }
+            [ordered]@{ id = 'idX'; name = '' })
 
         $problems = @(Get-MutationReportProblem -Path (Write-Report $report))
 
-        $problems.Count | Should -Be 3
+        $problems.Count | Should -Be 7
         $problems[0] | Should -Match '^App\.Tests\.Same \(id idA\) killed 1 mutant'
         $problems[1] | Should -Match '^App\.Tests\.Same \(id idB\) killed 2 mutant'
-        $problems[2] | Should -Match '^idC killed 1 mutant'
+        foreach ($i in 2..5) { $problems[$i] | Should -Match "^App\.Tests\.Same \(id id$([char] (65 + $i))\) killed 1 mutant" }
+        $problems[6] | Should -Match '^idX killed 1 mutant'
     }
 
     It 'treats ids that differ only in case as different tests, as JSON does' {
