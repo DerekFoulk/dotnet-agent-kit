@@ -488,3 +488,7 @@ sample/**/bookmarks.db*
 
 # Contract test output to review (see ContractTests.cs)
 *.received.json
+
+# Each person's own working mode and Claude Code settings (Set-AgentMode.ps1, ADR-0035)
+.agent-mode
+.claude/settings.local.json

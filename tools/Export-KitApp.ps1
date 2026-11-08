@@ -43,7 +43,7 @@ $script:KitMoves = [ordered]@{
 $script:KitTools = @(
     'Test-ConventionalTitle.ps1', 'Test-RedGreenOrder.ps1', 'Test-AdrSections.ps1', 'Test-CoverageGate.ps1',
     'Test-DeprecatedPackages.ps1', 'KitReview.psm1', 'Initialize-DevMachine.ps1', 'Build-AgentRules.ps1',
-    'KitFrontMatter.psm1'
+    'KitFrontMatter.psm1', 'Set-AgentMode.ps1'
 )
 
 # Templates the app owns from the start: the sync job never changes them.
