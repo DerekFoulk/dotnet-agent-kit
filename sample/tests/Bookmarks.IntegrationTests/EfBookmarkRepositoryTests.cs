@@ -109,6 +109,23 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         firstAgain.Select(b => b.Id).Should().Equal(first.Select(b => b.Id));
     }
 
+    [Fact]
+    public async Task PagesComeInCreationOrderWhateverOrderTheRowsWereSavedIn()
+    {
+        // Review 1 of PR 22: saved in creation order, rows came back in that order even without the OrderBy. Saved
+        // out of order, only the key order puts them right.
+        await SaveAsync(Bookmark.Create(new Uri("https://example.com/c"), "C", s_now.AddMinutes(2)));
+        await SaveAsync(Bookmark.Create(new Uri("https://example.com/a"), "A", s_now));
+        await SaveAsync(Bookmark.Create(new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
+
+        await using BookmarksDbContext db = new(_options);
+        EfBookmarkRepository repository = new(db);
+        IReadOnlyList<Bookmark> first = await repository.ListAsync(0, 2, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> second = await repository.ListAsync(2, 2, TestContext.Current.CancellationToken);
+
+        first.Concat(second).Select(b => b.Title).Should().Equal("A", "B", "C");
+    }
+
     public void Dispose() => _connection.Dispose();
 
     private async Task SaveAsync(Bookmark bookmark)
