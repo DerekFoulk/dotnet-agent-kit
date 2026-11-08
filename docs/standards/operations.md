@@ -11,21 +11,21 @@ rules:
     scope: core
     paths: ["**/*.csproj", "**/Program.cs", "**/*ServiceDefaults*/**"]
   - id: OPS-002
-    statement: "Every ASP.NET Core app maps /health (readiness: every check, its database included) and /alive (liveness: only checks tagged live) in every environment, answering with the status word only."
+    statement: "Every ASP.NET Core app maps /health (readiness: every check, its database included) and /alive (liveness: only checks tagged live) in every environment, answering with the status word only, cached briefly and cut off when a check is slow."
     why: "Probes restart a dead app and keep traffic from one that isn't ready; a liveness check that touched the database would restart the app whenever the database is slow, and details in the reply would tell an attacker what the app depends on (GAP-007)."
     layer: outside
     status: proposed
-    sources: ["ADR-0037", "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks, retrieved 2026-11-08"]
-    enforcement: "ci: the sample's FunctionalTests check both endpoints, the database check and the production status-only reply; advisory in an app until it follows the sample"
+    sources: ["ADR-0037", "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks, retrieved 2026-11-08", "https://aspire.dev/fundamentals/health-checks/, retrieved 2026-11-08"]
+    enforcement: "ci: the sample's FunctionalTests check both endpoints, the database and live checks, the production status-only reply, the cache and the timeout; advisory in an app until it follows the sample"
     scope: core
     paths: ["**/Program.cs", "**/*ServiceDefaults*/**", "**/*Infrastructure*/**"]
   - id: OPS-003
-    statement: "Every HttpClient gets the standard resilience handler (timeouts, retries with backoff, circuit breaker) from the ServiceDefaults project; a client that sends non-idempotent requests turns retries off for itself."
+    statement: "Every HttpClient gets the standard resilience handler (timeouts, retries with backoff, circuit breaker) from the ServiceDefaults project, retrying only safe methods; a client that needs other settings removes the default handler (RemoveAllResilienceHandlers) before adding its own."
     why: "A call to another service without a timeout can hang a request forever, and a retry without backoff can overload a service that is already struggling (GAP-007)."
     layer: outside
     status: proposed
     sources: ["ADR-0037", "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-08"]
-    enforcement: "ci: the sample's FunctionalTests check that a client from IHttpClientFactory has the resilience handler; advisory in an app until it follows the sample"
+    enforcement: "ci: the sample's FunctionalTests check that a client from IHttpClientFactory has the resilience handler and doesn't retry a failed POST; advisory in an app until it follows the sample"
     scope: core
     paths: ["**/*ServiceDefaults*/**"]
 ---

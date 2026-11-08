@@ -13,9 +13,13 @@ namespace Microsoft.Extensions.Hosting;
 
 /// <summary>
 /// The service defaults every ASP.NET Core app gets (OPS-001 to OPS-003, ADR-0037): OpenTelemetry logs, metrics
-/// and traces, health checks with the endpoints that report them, and resilience on every HttpClient. Adapted from Microsoft's
-/// aspire-servicedefaults template, without its service discovery, which does nothing outside Aspire.
+/// and traces, health checks with the endpoints that report them, and resilience on every HttpClient.
 /// </summary>
+/// <remarks>
+/// Adapted from Microsoft's aspire-servicedefaults template (Extensions.cs in microsoft/aspire at commit 569ddf4,
+/// MIT; see THIRD-PARTY-NOTICES.md). It leaves out service discovery, which the sample doesn't need since it calls
+/// no other service, and adds a short cache and a timeout to the health endpoints.
+/// </remarks>
 public static class ServiceDefaultsExtensions
 {
     private const string HealthPath = "/health";
