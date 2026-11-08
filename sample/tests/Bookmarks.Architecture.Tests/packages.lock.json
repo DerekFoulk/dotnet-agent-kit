@@ -375,6 +375,7 @@
           "Bookmarks.Application": "[1.0.0, )",
           "Bookmarks.Contracts": "[1.0.0, )",
           "Bookmarks.Infrastructure": "[1.0.0, )",
+          "Bookmarks.ServiceDefaults": "[1.0.0, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.14, )"
         }
       },
@@ -397,6 +398,9 @@
           "Bookmarks.Application": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.14, )"
         }
+      },
+      "bookmarks.servicedefaults": {
+        "type": "Project"
       },
       "Microsoft.AspNetCore.OpenApi": {
         "type": "CentralTransitive",
