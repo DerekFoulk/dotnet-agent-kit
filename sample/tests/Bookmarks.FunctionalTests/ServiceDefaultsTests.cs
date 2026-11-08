@@ -1,10 +1,12 @@
 using System.Net;
+using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Instrumentation.AspNetCore;
 
 namespace Bookmarks.FunctionalTests;
 
@@ -84,14 +86,48 @@ public sealed class ServiceDefaultsTests : IDisposable
     }
 
     [Fact]
-    public async Task TheAppStillAnswersWithAnOtlpEndpointSet()
+    public async Task TracesAreExportedOverOtlpOnlyWhenAnEndpointIsSet()
     {
-        // Telemetry is exported over OTLP only when OTEL_EXPORTER_OTLP_ENDPOINT is set; nothing listens here.
+        // Review 1 of PR 21: the tracer provider gets an export processor only with OTEL_EXPORTER_OTLP_ENDPOINT set.
+        // Its Processor property isn't public, so it's read by reflection; nothing listens on the endpoint here.
         using ApiHost exporting = new(settings: new Dictionary<string, string> { ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4317" });
 
         using HttpResponseMessage response = await exporting.Client.GetAsync(new Uri("/alive", UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        TraceProcessor(exporting).Should().Contain("Export", "an OTLP endpoint is set");
+        TraceProcessor(_host).Should().BeNull("no OTLP endpoint is set");
+    }
+
+    [Theory]
+    [InlineData("/health", false)]
+    [InlineData("/alive", false)]
+    [InlineData("/bookmarks", true)]
+    public void HealthProbesAreNotTracedButOtherRequestsAre(string path, bool traced)
+    {
+        // Review 1 of PR 21: probes call the health endpoints often, so the trace filter leaves them out.
+        Func<HttpContext, bool>? filter = _host.Services.GetRequiredService<IOptionsMonitor<AspNetCoreTraceInstrumentationOptions>>()
+            .Get(Options.DefaultName).Filter;
+        DefaultHttpContext context = new();
+        context.Request.Path = path;
+
+        filter.Should().NotBeNull();
+        filter!(context).Should().Be(traced);
+    }
+
+    [Fact]
+    public void AliveRestsOnALiveCheckOfItsOwn()
+    {
+        // Review 1 of PR 21: with no live check at all, /alive would still answer Healthy, so this pins the check.
+        _host.Services.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations
+            .Should().ContainSingle(registration => registration.Name == "self").Which.Tags.Should().Contain("live");
+    }
+
+    private static string? TraceProcessor(ApiHost host)
+    {
+        object? provider = host.Services.GetService(Type.GetType("OpenTelemetry.Trace.TracerProvider, OpenTelemetry.Api")!);
+        object? processor = provider?.GetType().GetProperty("Processor", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(provider);
+        return processor?.GetType().Name;
     }
 
     [Fact]
