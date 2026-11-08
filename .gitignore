@@ -60,6 +60,9 @@ dlldata.c
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
 
+# Kit: a local Stryker.NET run's reports (ADR-0039)
+[Ss]tryker[Oo]utput/
+
 # .NET
 project.lock.json
 project.fragment.lock.json
