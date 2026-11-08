@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.FunctionalTests;
 
@@ -11,7 +12,7 @@ internal sealed class ApiHost : IDisposable
     private readonly WebApplicationFactory<Program> _baseFactory = new();
     private readonly WebApplicationFactory<Program> _factory;
 
-    public ApiHost(string environment = "Development", IReadOnlyDictionary<string, string>? settings = null)
+    public ApiHost(string environment = "Development", IReadOnlyDictionary<string, string>? settings = null, Action<IServiceCollection>? services = null)
     {
         string connectionString = $"DataSource=bookmarks-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
 
@@ -24,6 +25,11 @@ internal sealed class ApiHost : IDisposable
             foreach (KeyValuePair<string, string> setting in settings ?? new Dictionary<string, string>())
             {
                 host.UseSetting(setting.Key, setting.Value);
+            }
+
+            if (services is not null)
+            {
+                host.ConfigureServices(services);
             }
         });
         Client = _factory.CreateClient();
