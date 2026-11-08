@@ -64,4 +64,29 @@ Describe 'Set-AgentMode.ps1' {
         $settings['permissions']['allow'] | Should -Be @('Bash(npm test)')
         Join-Path $root '.agent-mode' | Should -Not -Exist
     }
+
+    It 'reads the mode: auto when there is no .agent-mode, review after switching' {
+        Get-Command Get-AgentMode -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'agents and the owner check the mode'
+        $root = New-Repo
+
+        Get-AgentMode -RepoRoot $root | Should -Be 'auto'
+        Set-AgentMode -Mode Review -RepoRoot $root
+        Get-AgentMode -RepoRoot $root | Should -Be 'review'
+    }
+
+    Context 'run as a command' {
+        It 'switches with -Mode and says which mode is on; without -Mode it only reports' {
+            $root = New-Repo
+
+            $report = pwsh -NoProfile -File $script -RepoRoot $root 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $report | Should -Match 'auto'
+            Join-Path $root '.agent-mode' | Should -Not -Exist -Because 'reporting changes nothing'
+
+            $switched = pwsh -NoProfile -File $script -Mode Review -RepoRoot $root 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $switched | Should -Match 'review'
+            Get-AgentMode -RepoRoot $root | Should -Be 'review'
+        }
+    }
 }
