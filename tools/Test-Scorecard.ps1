@@ -47,11 +47,28 @@ function New-Problem {
 
 # The scorecard's areas as written: anything under 'areas', which may not all be maps. Get-ScorecardProblem
 # reports what isn't a map; the counting functions skip it, so a malformed file is reported, not a crash.
-function Get-ScorecardEntry {
+function Get-ScorecardAreaList {
     param([Parameter(Mandatory)] [string] $ScorecardPath)
     $frontMatter = Read-FrontMatter -Path $ScorecardPath
-    if ($null -eq $frontMatter -or -not $frontMatter.Contains('areas')) { return @() }
-    @($frontMatter['areas'] | Where-Object { $null -ne $_ })
+    if ($frontMatter -isnot [Collections.IDictionary] -or -not $frontMatter.Contains('areas')) { return $null }
+    # The comma keeps a list a list: PowerShell would otherwise unroll it, or turn a one-map list into the map.
+    , $frontMatter['areas']
+}
+
+# Each entry under 'areas', empty ones included (as $null), so they can be reported. A single map written
+# where the list should be gives no entries; Get-ScorecardProblem reports it.
+function Get-ScorecardEntry {
+    param([Parameter(Mandatory)] [string] $ScorecardPath)
+    $list = Get-ScorecardAreaList -ScorecardPath $ScorecardPath
+    if ($null -eq $list -or $list -is [Collections.IDictionary]) { return @() }
+    if ($list -is [string]) { return @($list) }
+    @($list)
+}
+
+# True for a value written as text (or a number or date), not a list or a map.
+function Test-Text {
+    param($Value)
+    $null -ne $Value -and ($Value -is [string] -or $Value -isnot [Collections.IEnumerable])
 }
 
 function Get-ScorecardArea {
@@ -86,7 +103,8 @@ function Get-KitRule {
 
 # One row per area, counted from the standards, so the scores can't drift from the rules. A rule whose
 # enforcement starts with "advisory" is advisory; any other start (build, ci, ruleset, check, restore, settings)
-# counts as checked by a tool, even when the text adds that part is advisory, so it's an upper bound. Proposed rules aren't in force, so they're counted apart. Unknown rule ids are skipped here;
+# counts as checked by a tool, even when the text adds that part is advisory, so it's an upper bound.
+# Proposed rules aren't in force, so they're counted apart. Unknown rule ids are skipped here;
 # Get-ScorecardProblem reports them.
 function Get-ScorecardRow {
     param(
@@ -206,12 +224,19 @@ function Get-ScorecardProblem {
     $gapsSeen = @{}
     $areasSeen = @{}
     $entries = @(Get-ScorecardEntry -ScorecardPath $ScorecardPath)
-    if (-not $entries) {
+    if ((Get-ScorecardAreaList -ScorecardPath $ScorecardPath) -is [Collections.IDictionary]) {
+        New-Problem -Message "'areas' is one map; it must be a list, with each area starting '- id:'"
+    }
+    elseif (-not $entries) {
         New-Problem -Message "has no areas: its front matter needs an 'areas' list"
     }
     $position = 0
     foreach ($area in $entries) {
         $position++
+        if ($null -eq $area) {
+            New-Problem -Message "area $position is empty"
+            continue
+        }
         if ($area -isnot [Collections.IDictionary]) {
             New-Problem -Message "area $position ('$area') is not a map with id, name, perfect and sources"
             continue
@@ -227,6 +252,13 @@ function Get-ScorecardProblem {
             }
         }
         $areaRules = @($(if ($area.Contains('rules')) { $area['rules'] }) | Where-Object { $_ })
+        foreach ($field in 'rules', 'sources') {
+            $items = @($(if ($area.Contains($field)) { $area[$field] }) | Where-Object { $_ })
+            if (@($items | Where-Object { -not (Test-Text $_) })) {
+                New-Problem -Area $areaId -Message "lists $field that aren't text: write each as one line, such as '- STY-001' or '- owner, 2026-11-07'"
+            }
+        }
+        $areaRules = @($areaRules | Where-Object { Test-Text $_ })
         $areaGaps = @($(if ($area.Contains('gaps')) { $area['gaps'] }) | Where-Object { $_ })
         foreach ($gap in @($areaGaps | Where-Object { $_ -isnot [Collections.IDictionary] })) {
             New-Problem -Area $areaId -Message "has a gap '$gap' that is not a map with id, gap and status"
@@ -236,7 +268,10 @@ function Get-ScorecardProblem {
             New-Problem -Area $areaId -Message 'has no rules and no gaps: list the rules that cover it, or what is missing'
         }
         foreach ($gap in $areaGaps) {
-            $gapId = if ($gap.Contains('id')) { "$($gap['id'])" } else { '' }
+            $gapId = if ($gap.Contains('id') -and (Test-Text $gap['id'])) { "$($gap['id'])" } else { '' }
+            if ($gap.Contains('id') -and $null -ne $gap['id'] -and -not (Test-Text $gap['id'])) {
+                New-Problem -Area $areaId -Message "has a gap id that isn't text: write it as 'id: GAP-NNN'"
+            }
             foreach ($field in $script:RequiredGapFields) {
                 if (-not $gap.Contains($field) -or -not (Test-Present $gap[$field])) {
                     New-Problem -Area $areaId -Message "has a gap $gapId missing '$field'"
@@ -252,7 +287,7 @@ function Get-ScorecardProblem {
                 else { $gapsSeen[$gapId] = $areaId }
             }
         }
-        foreach ($source in @(if ($area.Contains('sources')) { $area['sources'] })) {
+        foreach ($source in @(@(if ($area.Contains('sources')) { $area['sources'] }) | Where-Object { Test-Text $_ })) {
             $message = Get-SourceProblem -Source "$source" -AdrPath $AdrPath
             if ($message) { New-Problem -Area $areaId -Message $message }
         }
