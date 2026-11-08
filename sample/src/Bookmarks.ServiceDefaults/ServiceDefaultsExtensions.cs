@@ -11,6 +11,7 @@ namespace Microsoft.Extensions.Hosting;
 /// </summary>
 public static class ServiceDefaultsExtensions
 {
+    private const string HealthPath = "/health";
     private const string AlivePath = "/alive";
     private const string LiveTag = "live";
 
@@ -25,11 +26,16 @@ public static class ServiceDefaultsExtensions
         return builder;
     }
 
-    /// <summary>Maps the health endpoint.</summary>
+    /// <summary>
+    /// Maps /health (readiness: every check passes) and /alive (liveness: the "live" checks pass). They answer in
+    /// every environment, because production probes need them, with only the status word ("Healthy",
+    /// "Degraded" or "Unhealthy"), never the checks' details.
+    /// </summary>
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
 
+        app.MapHealthChecks(HealthPath);
         app.MapHealthChecks(AlivePath, new HealthCheckOptions { Predicate = registration => registration.Tags.Contains(LiveTag) });
         return app;
     }

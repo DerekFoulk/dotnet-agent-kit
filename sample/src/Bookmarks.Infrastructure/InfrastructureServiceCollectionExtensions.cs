@@ -12,6 +12,8 @@ public static class InfrastructureServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
         services.AddDbContext<BookmarksDbContext>(options => options.UseSqlite(connectionString));
         services.AddScoped<IBookmarkRepository, EfBookmarkRepository>();
+        // Readiness: /health reports unhealthy while the database can't be reached (OPS-002).
+        services.AddHealthChecks().AddDbContextCheck<BookmarksDbContext>();
         return services;
     }
 }
