@@ -9,6 +9,17 @@
     <AssemblyMetadata Include="ProjectDirectory" Value="$(MSBuildProjectDirectory)" />
   </ItemGroup>
 
+  <!-- Where the API lives, for WebApplicationFactory. Its usual source, MvcTestingAppManifest.json, is read from the
+       working directory, and Stryker.NET runs the tests from the repo root (ADR-0039). Key, path, marker, priority. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryContentRootAttribute">
+      <_Parameter1>Bookmarks.Api</_Parameter1>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../src/Bookmarks.Api'))</_Parameter2>
+      <_Parameter3>Bookmarks.Api.csproj</_Parameter3>
+      <_Parameter4>-1</_Parameter4>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bookmarks.Api\Bookmarks.Api.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
