@@ -42,6 +42,12 @@ function Set-AgentMode {
     )
 
     $path = Join-Path $RepoRoot '.claude' 'settings.local.json'
+    $modeFile = Join-Path $RepoRoot '.agent-mode'
+    # Auto is the default and adds nothing, so with no local settings there's nothing to take away.
+    if ($Mode -eq 'Auto' -and -not (Test-Path -LiteralPath $path)) {
+        if (Test-Path -LiteralPath $modeFile) { Remove-Item -LiteralPath $modeFile }
+        return
+    }
     $settings = [ordered]@{}
     if (Test-Path -LiteralPath $path) {
         $text = Get-Content -Raw -LiteralPath $path
@@ -57,11 +63,13 @@ function Set-AgentMode {
     if (-not $settings.Contains('permissions')) { $settings['permissions'] = [ordered]@{} }
     # The owner's own rules stay; only the review rules are added or taken away.
     $own = @(@(if ($settings['permissions'].Contains('ask')) { $settings['permissions']['ask'] }) | Where-Object { $_ -cnotin $script:ReviewAskRules })
-    $settings['permissions']['ask'] = if ($Mode -eq 'Review') { @($own + $script:ReviewAskRules) } else { $own }
+    # A typed array, not an if-expression: PowerShell would unroll that to $null or one string, and Claude Code's
+    # settings schema needs a list (review 1 of the modes PR).
+    [object[]] $ask = @(if ($Mode -eq 'Review') { $own + $script:ReviewAskRules } else { $own })
+    $settings['permissions']['ask'] = $ask
     New-Item -ItemType Directory -Path (Split-Path -Path $path -Parent) -Force | Out-Null
     Set-Content -LiteralPath $path -Value (ConvertTo-Json -InputObject $settings -Depth 10)
 
-    $modeFile = Join-Path $RepoRoot '.agent-mode'
     if ($Mode -eq 'Review') { Set-Content -LiteralPath $modeFile -Value 'review' }
     elseif (Test-Path -LiteralPath $modeFile) { Remove-Item -LiteralPath $modeFile }
 }
