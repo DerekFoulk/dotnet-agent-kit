@@ -58,15 +58,23 @@ public sealed class BookmarkServiceTests
     }
 
     [Fact]
-    public async Task ListReturnsEveryBookmark()
+    public async Task ListReturnsAPageAndSaysWhetherAnotherFollows()
     {
-        Bookmark first = Bookmark.Create(new Uri("https://example.com/a"), "A", s_now);
-        Bookmark second = Bookmark.Create(new Uri("https://example.com/b"), "B", s_now);
-        _repository.Setup(r => r.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([first, second]);
+        // API-004: one extra row tells the service another page exists, without counting the whole table.
+        Bookmark a = Bookmark.Create(new Uri("https://example.com/a"), "A", s_now);
+        Bookmark b = Bookmark.Create(new Uri("https://example.com/b"), "B", s_now);
+        Bookmark c = Bookmark.Create(new Uri("https://example.com/c"), "C", s_now);
+        _repository.Setup(r => r.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        _repository.Setup(r => r.ListAsync(0, 3, It.IsAny<CancellationToken>())).ReturnsAsync([a, b, c]);
+        _repository.Setup(r => r.ListAsync(2, 3, It.IsAny<CancellationToken>())).ReturnsAsync([c]);
 
-        IReadOnlyList<BookmarkResponse> all = await _service.ListAsync(TestContext.Current.CancellationToken);
+        BookmarkListResult first = await _service.ListAsync(0, 2, TestContext.Current.CancellationToken);
+        BookmarkListResult last = await _service.ListAsync(2, 2, TestContext.Current.CancellationToken);
 
-        all.Select(b => b.Title).Should().Equal("A", "B");
+        first.Items.Select(bookmark => bookmark.Title).Should().Equal("A", "B");
+        first.HasMore.Should().BeTrue();
+        last.Items.Select(bookmark => bookmark.Title).Should().Equal("C");
+        last.HasMore.Should().BeFalse();
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider

@@ -6,6 +6,9 @@ namespace Bookmarks.Application.Features.Bookmarks;
 /// <summary>The outcome of adding a bookmark: the saved bookmark, or that its URL is already saved.</summary>
 public sealed record AddBookmarkResult(BookmarkResponse? Bookmark, bool AlreadyExists);
 
+/// <summary>One page of bookmarks, and whether another page follows it.</summary>
+public sealed record BookmarkListResult(IReadOnlyList<BookmarkResponse> Items, bool HasMore);
+
 /// <summary>Bookmark use cases.</summary>
 public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider timeProvider)
 {
@@ -32,10 +35,10 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
         return bookmark is null ? null : ToResponse(bookmark);
     }
 
-    public async Task<IReadOnlyList<BookmarkResponse>> ListAsync(CancellationToken cancellationToken)
+    public async Task<BookmarkListResult> ListAsync(int offset, int limit, CancellationToken cancellationToken)
     {
-        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(0, int.MaxValue, cancellationToken).ConfigureAwait(false);
-        return [.. bookmarks.Select(ToResponse)];
+        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(offset, limit, cancellationToken).ConfigureAwait(false);
+        return new BookmarkListResult([.. bookmarks.Select(ToResponse)], HasMore: false);
     }
 
     private static BookmarkResponse ToResponse(Bookmark bookmark) =>
