@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Bookmarks.FunctionalTests;
@@ -47,6 +48,31 @@ public sealed class ServiceDefaultsTests : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("Healthy");
+    }
+
+    [Fact]
+    public void OpenTelemetryCollectsTracesMetricsAndLogs()
+    {
+        // By type name, so the test doesn't depend on the OpenTelemetry packages itself (OPS-001).
+        Type? tracerProvider = Type.GetType("OpenTelemetry.Trace.TracerProvider, OpenTelemetry.Api");
+        Type? meterProvider = Type.GetType("OpenTelemetry.Metrics.MeterProvider, OpenTelemetry.Api");
+
+        tracerProvider.Should().NotBeNull("the app should reference OpenTelemetry");
+        _host.Services.GetService(tracerProvider!).Should().NotBeNull("traces are collected");
+        _host.Services.GetService(meterProvider!).Should().NotBeNull("metrics are collected");
+        _host.Services.GetServices<ILoggerProvider>().Select(provider => provider.GetType().Name)
+            .Should().Contain("OpenTelemetryLoggerProvider", "logs go through OpenTelemetry too");
+    }
+
+    [Fact]
+    public async Task TheAppStillAnswersWithAnOtlpEndpointSet()
+    {
+        // Telemetry is exported over OTLP only when OTEL_EXPORTER_OTLP_ENDPOINT is set; nothing listens here.
+        using ApiHost exporting = new(settings: new Dictionary<string, string> { ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4317" });
+
+        using HttpResponseMessage response = await exporting.Client.GetAsync(new Uri("/alive", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     public void Dispose() => _host.Dispose();

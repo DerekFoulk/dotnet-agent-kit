@@ -11,16 +11,21 @@ internal sealed class ApiHost : IDisposable
     private readonly WebApplicationFactory<Program> _baseFactory = new();
     private readonly WebApplicationFactory<Program> _factory;
 
-    public ApiHost(string environment = "Development")
+    public ApiHost(string environment = "Development", IReadOnlyDictionary<string, string>? settings = null)
     {
         string connectionString = $"DataSource=bookmarks-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
 
         // An in-memory SQLite database lives as long as one connection to it stays open.
         _keepAlive = new SqliteConnection(connectionString);
         _keepAlive.Open();
-        _factory = _baseFactory.WithWebHostBuilder(host => host
-            .UseEnvironment(environment)
-            .UseSetting("ConnectionStrings:Bookmarks", connectionString));
+        _factory = _baseFactory.WithWebHostBuilder(host =>
+        {
+            host.UseEnvironment(environment).UseSetting("ConnectionStrings:Bookmarks", connectionString);
+            foreach (KeyValuePair<string, string> setting in settings ?? new Dictionary<string, string>())
+            {
+                host.UseSetting(setting.Key, setting.Value);
+            }
+        });
         Client = _factory.CreateClient();
     }
 
