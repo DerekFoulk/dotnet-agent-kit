@@ -90,6 +90,30 @@ Describe 'Shared CI for app repos' {
             $jobs['analyze']['strategy']['matrix']['language'] | Should -Match 'fromJSON\(needs\.languages\.outputs\.languages\)'
         }
 
+        # Review 1 of PR 20: under GitHub's bash -e -o pipefail, `git ls-files | grep -q` can kill git with SIGPIPE
+        # on a large repo, and the if then drops C# silently. The step is run here, as CI runs it.
+        It 'finds <Expected> in a repo with <Case>, reading git''s whole output' -ForEach @(
+            @{ Case = 'no C#'; Files = @('README.md'); Expected = '["actions"]' }
+            @{ Case = 'C#'; Files = @('README.md', 'src/App.cs'); Expected = '["actions","csharp"]' }
+        ) {
+            $step = @($jobs['languages']['steps'] | Where-Object { $_['id'] -eq 'detect' })[0]
+            $step['run'] | Should -Not -Match 'ls-files[^\n]*\|' -Because 'a pipe into grep -q can end git with SIGPIPE'
+            $repo = Join-Path $TestDrive "langs-$(New-Guid)"
+            git init -q $repo
+            foreach ($file in $Files) {
+                New-Item -ItemType File -Force -Path (Join-Path $repo $file) | Out-Null
+                git -C $repo add -- $file
+            }
+            $output = Join-Path $repo 'github-output'
+            Set-Content -LiteralPath (Join-Path $repo 'detect.sh') -Value ($step['run'] -replace "`r`n", "`n") -NoNewline
+            Push-Location $repo
+            try { $env:GITHUB_OUTPUT = $output; bash --noprofile --norc -e -o pipefail ./detect.sh }
+            finally { Pop-Location; Remove-Item Env:GITHUB_OUTPUT -ErrorAction SilentlyContinue }
+
+            $LASTEXITCODE | Should -Be 0
+            (Get-Content -Raw -LiteralPath $output).Trim() | Should -Be "languages=$Expected"
+        }
+
         It 'analyzes with the CodeQL action, needing no build, and uploads with only security-events: write' {
             $jobs.ContainsKey('analyze') | Should -BeTrue -Because 'an analyze job runs CodeQL per language'
             $steps = @($jobs['analyze']['steps'])
