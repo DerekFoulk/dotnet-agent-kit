@@ -11,12 +11,12 @@ rules:
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*.proto", "**/*Hub*.cs"]
   - id: API-002
-    statement: "Every HTTP API error response is Problem Details (RFC 9457): AddProblemDetails, UseExceptionHandler and UseStatusCodePages; outside Development a 500 never carries the exception's message or stack."
+    statement: "Every HTTP API error response is Problem Details (RFC 9457): AddProblemDetails, UseExceptionHandler and UseStatusCodePages; a client error such as malformed input stays a 400 in every environment, and outside Development a 500 never carries the exception's message or stack."
     why: "Clients handle one error format whichever error it is, and exception details would tell an attacker how the app is built (GAP-011)."
     layer: outside
     status: proposed
     sources: ["ADR-0038", "https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-07", "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api, retrieved 2026-11-08"]
-    enforcement: "ci: the sample's FunctionalTests check that a 400, 404, 409 and 500 are Problem Details, and that a 500 in Production hides the exception; advisory in an app until it follows the sample"
+    enforcement: "ci: the sample's FunctionalTests check that a 400, 404, 409 and 500 are Problem Details, that malformed input is a 400 in Development, that a 500 in Production hides the exception, and that the OpenAPI document declares every error as Problem Details; advisory in an app until it follows the sample"
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs"]
   - id: API-003
@@ -34,7 +34,7 @@ rules:
     layer: outside
     status: proposed
     sources: ["ADR-0038", "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design#implement-data-pagination-and-filtering, retrieved 2026-11-08", "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-implementation#handling-large-requests-and-responses, retrieved 2026-11-08"]
-    enforcement: "ci: the sample's tests check the pages and nextLink (FunctionalTests), the extra row that says another page follows (Application.Tests) and stable, non-overlapping pages (IntegrationTests); advisory in an app until it follows the sample"
+    enforcement: "ci: the sample's tests check the pages and nextLink (FunctionalTests), the extra row that says another page follows, a full last page and the service's own limits (Application.Tests), pages in creation order whatever order the rows were saved in (IntegrationTests) and time-ordered ids (Domain.Tests); advisory in an app until it follows the sample"
     scope: core
     paths: ["**/*Endpoints*.cs", "**/*Repository*.cs", "**/*Contracts*/**"]
   - id: API-005
@@ -47,7 +47,7 @@ rules:
     scope: core
     paths: ["**/*Endpoints*.cs", "**/Contract/**"]
   - id: API-006
-    statement: "A Minimal API validates its inputs with the built-in validation (AddValidation and DataAnnotations attributes on parameters and request types), so invalid input gets a 400 validation problem before the handler runs."
+    statement: "A Minimal API validates its inputs with the built-in validation (AddValidation and DataAnnotations attributes on parameters and request types), so invalid input gets a 400 validation problem before the handler runs; a domain rule (such as a bookmark's URL being http or https) stays in the domain, and the endpoint turns its exception into a 400 Problem."
     why: "Validation in one place, from attributes the OpenAPI document also shows, instead of checks scattered through handlers; it is built into .NET 10, so it needs no package (GAP-011)."
     layer: outside
     status: proposed
@@ -77,11 +77,11 @@ An app can mix them, for example an HTTP API for its UI and SignalR for live upd
 
 ## HTTP API conventions
 
-- **Errors (API-002):** register `AddProblemDetails()`, then call `UseExceptionHandler()` and `UseStatusCodePages()` early in the pipeline. A handler returns `TypedResults.Problem`, `ValidationProblem`, `NotFound` or `Conflict`; status code pages give an empty error response its Problem Details body.
-- **OpenAPI (API-003):** `AddOpenApi()`, and `MapOpenApi()` inside `if (app.Environment.IsDevelopment())`. Typed results (`Results<Ok<T>, NotFound>`) let the document describe every response without attributes. A UI such as Scalar is a package; add it in Development only.
-- **Pages (API-004):** the sample's `GET /bookmarks?offset=0&limit=25` answers `{ "items": [...], "nextLink": "/bookmarks?offset=25&limit=25" }`. The service asks the repository for one row more than the page, so it knows whether another page follows without counting the table. For a large or fast-changing collection, Azure's guide suggests cursor-based paging instead, with an ADR.
+- **Errors (API-002):** register `AddProblemDetails()`, then call `UseExceptionHandler()` and `UseStatusCodePages()` early in the pipeline. In .NET 10, give the exception handler a `StatusCodeSelector` that keeps a `BadHttpRequestException`'s own status: in Development a binding failure (malformed JSON, `?limit=abc`) throws one, and the handler would otherwise answer 500. ASP.NET Core 11 keeps that status by itself. Declare each error with `ProducesProblem`, so the OpenAPI document shows its body. A handler returns `TypedResults.Problem`, `ValidationProblem`, `NotFound` or `Conflict`; status code pages give an empty error response its Problem Details body.
+- **OpenAPI (API-003):** `AddOpenApi()`, and `MapOpenApi()` inside `if (app.Environment.IsDevelopment())`. Typed results (`Results<Ok<T>, NotFound>`) describe each success; `ProducesProblem` and `ProducesValidationProblem` describe each error body. A contract test checks that every error in the document is Problem Details. A UI such as Scalar is a package; add it in Development only.
+- **Pages (API-004):** the sample's `GET /bookmarks?offset=0&limit=25` answers `{ "items": [...], "nextLink": "/bookmarks?offset=25&limit=25" }`. The service asks the repository for one row more than the page, so it knows whether another page follows without counting the table, and refuses a page outside the limits even when the endpoint's check is bypassed. Order by a key that sorts in creation order, such as a UUID version 7 (`Guid.CreateVersion7`), so a new row lands on the last page instead of shifting earlier ones. The sample's `nextLink` is a relative path; behind a proxy that adds a path prefix, or with filters or sorting, build it with `LinkGenerator` and carry those query values, as Azure's guide asks. For a large or fast-changing collection, Azure's guide suggests cursor-based paging instead, with an ADR.
 - **Versioning (API-005):** none until the first breaking change that a caller depends on. Adding a field isn't breaking; removing or renaming one is. The contract test makes every change visible, so the review decides. The likely package then is `Asp.Versioning.Http`, from the .NET Foundation's `dotnet/aspnet-api-versioning`; Microsoft Learn doesn't cover it, so its ADR checks it first.
-- **Validation (API-006):** `AddValidation()`, then `[Range]`, `[Required]` and the other DataAnnotations attributes on parameters and request records. In .NET 10, validation of nullable value-type parameters is a known gap (dotnet/aspnetcore#67033), so give them a default instead of making them nullable.
+- **Validation (API-006):** `AddValidation()`, then `[Range]`, `[Required]` and the other DataAnnotations attributes on parameters and request records. In .NET 10, attributes on a nullable value-type parameter are ignored when the client passes no value (dotnet/aspnetcore#67033, fixed for .NET 11, retrieved 2026-11-08), so give such parameters a default instead of making them nullable.
 
 ## Calling other APIs
 

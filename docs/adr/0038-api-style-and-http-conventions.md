@@ -59,14 +59,16 @@ Accepted, in auto mode (ADR-0035). The six rules stay `proposed` until the owner
 - **Rules:** API-001 to API-006, proposed, in `docs/standards/api-design.md`.
 - **Plans:** the `plan-checklist` skill asks for the API style.
 - **The sample:**
-  - every error response is Problem Details, and a 500 in Production hides the exception;
+  - every error response is Problem Details, and a 500 in Production hides the exception. A binding failure keeps its 400 in Development too, through the exception handler's `StatusCodeSelector` (review 1 of PR 22), and the OpenAPI document declares each error body;
   - the OpenAPI document is mapped in Development only;
-  - `GET /bookmarks` answers a `BookmarkPage`. The repository pages in the database, ordered by key: SQLite can't order by a `DateTimeOffset`.
+  - `GET /bookmarks` answers a `BookmarkPage`. The repository pages in the database, ordered by key. Bookmarks now get UUID version 7 keys made from their creation time, so key order is creation order (review 1 of PR 22). Ordering by `CreatedAt` would need a converter: SQLite can't order by a `DateTimeOffset`.
+  - the service refuses a page outside the limits itself, so a caller that bypasses the endpoint can't overflow `limit + 1` into SQLite's "no limit".
   - `limit` and `offset` are validated by `AddValidation`.
 - **Tests:**
-  - FunctionalTests: the error formats, the hidden 500, the document in Production, the pages and their link, and the validation;
-  - Application.Tests: the extra row that says another page follows;
-  - IntegrationTests: stable, non-overlapping pages.
+  - FunctionalTests: the error formats, the hidden 500, the 400 for malformed input in Development, the error bodies in the document, the document in Production, the pages and their link, and the validation;
+  - Application.Tests: the extra row that says another page follows, a full last page, and the service's own limits;
+  - IntegrationTests: stable, non-overlapping pages in creation order, whatever order the rows were saved in;
+  - Domain.Tests: ids that sort in creation order.
 - **GAP-010 and GAP-011 are closed** in the scorecard.
 - **Packages:** none added. A UI such as Scalar, a client generator such as Kiota, or `Asp.Versioning.Http` is added by an app when needed. In review mode that needs the owner's OK; installing a tool always does.
 - **Not checked:** a gRPC or SignalR app, because none exists. API-001 stays advisory until one does.
@@ -93,3 +95,4 @@ Accepted, in auto mode (ADR-0035). The six rules stay `proposed` until the owner
 - https://learn.microsoft.com/en-us/azure/architecture/microservices/design/api-design, retrieved 2026-11-08
 - https://learn.microsoft.com/en-us/aspnet/core/fundamentals/validation, retrieved 2026-11-08
 - https://learn.microsoft.com/en-us/openapi/kiota/overview, retrieved 2026-11-08
+- https://github.com/dotnet/aspnetcore/issues/67033, retrieved 2026-11-08

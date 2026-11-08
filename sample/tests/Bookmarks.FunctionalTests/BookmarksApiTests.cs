@@ -83,7 +83,7 @@ public sealed class BookmarksApiTests : IDisposable
         last.GetProperty("nextLink").ValueKind.Should().Be(JsonValueKind.Null, "the last page links nowhere");
 
         JsonElement defaults = await Client.GetFromJsonAsync<JsonElement>("/bookmarks", TestContext.Current.CancellationToken);
-        defaults.GetProperty("items").GetArrayLength().Should().Be(3, "the default page holds 25");
+        defaults.GetProperty("items").GetArrayLength().Should().Be(3, "with no limit given, a page holds more than 3; the contract snapshot pins the default of 25");
     }
 
     [Theory]

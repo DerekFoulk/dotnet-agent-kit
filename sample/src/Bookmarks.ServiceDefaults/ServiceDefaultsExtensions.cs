@@ -91,7 +91,8 @@ public static class ServiceDefaultsExtensions
     /// Maps /health (readiness: every check passes) and /alive (liveness: the "live" checks pass). They answer in
     /// every environment, because production probes need them, with only the status word ("Healthy",
     /// "Degraded" or "Unhealthy"), never the checks' details. A Healthy answer is cached for 10 seconds, and a
-    /// check that takes longer than 5 seconds is cut off with an empty 504.
+    /// check that takes longer than 5 seconds is cut off with a 504 (empty, or Problem Details when the app uses
+    /// status code pages, as the sample's API does).
     /// </summary>
     /// <remarks>
     /// This adds the output-cache and request-timeout middleware. Call UseCors, UseAuthentication and
