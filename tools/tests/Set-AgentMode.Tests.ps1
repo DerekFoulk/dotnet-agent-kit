@@ -88,6 +88,18 @@ Describe 'Set-AgentMode.ps1' {
         Join-Path $root '.agent-mode' | Should -Not -Exist
     }
 
+    It 'is kept out of commits: git ignores <Path>, here and in every app (which copies .gitignore)' -ForEach @(
+        @{ Path = '.agent-mode' }, @{ Path = '.claude/settings.local.json' }
+    ) {
+        # Each person's mode is their own; a committed review mode would switch everyone.
+        $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        # Only the repo's own .gitignore counts: Claude Code may also add the local settings to this machine's
+        # global excludes, which CI and an app's other clones don't have.
+        $noGlobal = Join-Path $TestDrive 'no-global-excludes'
+        git -C $repoRoot -c "core.excludesFile=$noGlobal" check-ignore --no-index -q $Path
+        $LASTEXITCODE | Should -Be 0 -Because "$Path must be in .gitignore"
+    }
+
     Context 'run as a command' {
         It 'switches with -Mode and says which mode is on; without -Mode it only reports' {
             $root = New-Repo
