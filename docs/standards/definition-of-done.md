@@ -38,12 +38,12 @@ rules:
     scope: core
     paths: ["**"]
   - id: DOD-005
-    statement: "Every review finding on a PR is checked against the code and answered with evidence; a fixed or already-fixed one is resolved as addressed, a wrong one as incorrect, and one left unfixed as won't fix only with the owner's OK."
-    why: "The owner asked agents to react to every Copilot review on their own, with an honest resolution on each thread."
+    statement: "Every review finding on a PR is checked against the code and answered with evidence; a fixed or already-fixed one is resolved as addressed, a wrong one as incorrect, and one left unfixed as won't fix: in review mode only with the owner's OK, in auto mode with the agent's reason in the reply."
+    why: "The owner asked agents to react to every Copilot review on their own, with an honest resolution on each thread, and then chose auto mode by default (ADR-0035)."
     layer: owner
     status: accepted
-    sources: ["owner, 2026-11-03", "ADR-0028"]
-    enforcement: "advisory: the address-review skill and tools/KitReview.psm1 guide it; the module refuses won't fix without -OwnerApproved, a switch it takes on trust; the main ruleset doesn't yet require conversations resolved before merging"
+    sources: ["owner, 2026-11-03", "ADR-0028", "owner, 2026-11-07", "ADR-0035"]
+    enforcement: "advisory: the address-review skill and tools/KitReview.psm1 guide it; the module refuses won't fix without -OwnerApproved, a switch it takes on trust, passed in auto mode under ADR-0035's standing approval; the main ruleset doesn't yet require conversations resolved before merging"
     scope: core
     paths: ["**"]
 ---

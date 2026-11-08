@@ -12,17 +12,26 @@ This repo is **dotnet-agent-kit**, a versioned engineering method for .NET repos
 
 Anything an agent suggests is **proposed** until the owner accepts it. Rules marked `status: proposed` in `docs/standards/` aren't in force.
 
+## Working modes
+
+Agents work in one of two modes (ADR-0035). At the start of each task, check which: `Set-AgentMode.ps1` prints it (`./tools/` in the kit, `./.kit/tools/` with `-RepoRoot .` in an app). It's **auto** unless the file `.agent-mode` at the repo root says `review`. The file is gitignored, so each person's mode is their own. Switching is the owner's call: the script asks before it runs.
+
+- **Auto, the default.** Work through the agreed roadmap without waiting for approval: post the plan in chat, then build it. You may add a dependency that the kit's standards or ADRs, or the official docs they cite, name for the task; say so in the PR. Merge your own PR with a merge commit (`gh pr merge <n> --merge`) once CI has passed at its head commit, the latest `reviewer` run on that commit has no unanswered blocking or should-fix finding, and the description is complete. Then report what merged. Decide a "won't fix" yourself, with the reason in the reply. "Always ask" still applies.
+- **Review.** The owner approves non-trivial plans before work starts, decides each "won't fix", and merges each PR, or says to for that PR. "Also ask in review mode" applies too.
+
+**Release PRs are never merged by an agent, in either mode.** Those are release-please's PRs, on a `release-please--` branch: releases are the owner's (owner, 2026-11-07).
+
 ## How to work
 
 Each task runs through these steps, in order. The skills in `.claude/skills/` walk through them; their names are in brackets.
 
-1. **Plan** (`start-work`, `plan-checklist`). State the goal, approach, files touched, and a **test list** (the behaviors to cover). Cover the five Well-Architected pillars: reliability; security, with a short threat model for anything touching data or sign-in; cost; operational excellence, including observability; performance. Add accessibility, data, and docs/ADRs. The owner approves non-trivial plans before work starts.
+1. **Plan** (`start-work`, `plan-checklist`). State the goal, approach, files touched, and a **test list** (the behaviors to cover). Cover the five Well-Architected pillars: reliability; security, with a short threat model for anything touching data or sign-in; cost; operational excellence, including observability; performance. Add accessibility, data, and docs/ADRs. In review mode, the owner approves non-trivial plans before work starts; in auto mode, post the plan and go on.
 2. **Red** (`tdd-cycle`). Turn one item from the test list into a failing test. It must fail on an assertion, not on a crash or a missing type. Commit it.
 3. **Green.** Make the full suite pass. Commit.
 4. **Refactor** on green, then repeat from step 2 until the list is empty. Never convert the whole list into tests up front.
 5. **Decide** (`write-adr`). A significant technical choice gets an ADR in `docs/adr/`, made from the template, with at least two options and a recommendation.
-6. **Verify and hand over** (`finish-work`). Run every check, get an independent review from the `reviewer` agent, then open the PR with the template.
-7. **Answer the review** (`address-review`). When a review lands on the PR, from GitHub Copilot or a person, check every finding against the current code. Fix the real ones test-first and push. Reply to each thread with the evidence, and resolve it as addressed or incorrect. Leave a finding you'd recommend not fixing open, with your recommendation, for the owner: "won't fix" is his call. Do this again for each re-review.
+6. **Verify and hand over** (`finish-work`). Run every check, get an independent review from the `reviewer` agent, then open the PR with the template. In auto mode, merge it once it's ready (see "Working modes").
+7. **Answer the review** (`address-review`). When a review lands on the PR, from GitHub Copilot or a person, check every finding against the current code. Fix the real ones test-first and push. Reply to each thread with the evidence, and resolve it as addressed or incorrect. For a finding you'd recommend not fixing: in review mode, leave it open with your recommendation, because "won't fix" is the owner's call; in auto mode, decide it and give the reason. Do this again for each re-review.
 
 ## Talking to the owner
 
@@ -49,20 +58,28 @@ Details and sources: `docs/standards/communication.md`.
   Co-Authored-By: ...
   ```
 
-- Never push to `main`, force-push, or skip hooks. Merge a PR only when the owner says so for that PR. GitHub's "main protection" ruleset rejects direct pushes, force-pushes and deletion of `main`, and allows merge commits only.
-- Before pushing to a PR's branch or reporting on a PR, check that it's still open (`gh pr view <n> --json state`). The owner merges on his own schedule. If it's merged, put new commits on a fresh branch and open a new PR.
+- Never push to `main`, force-push, or skip hooks. Merge a PR only as the working mode allows: in review mode, when the owner says so for that PR; never a release PR. GitHub's "main protection" ruleset rejects direct pushes, force-pushes and deletion of `main`, and allows merge commits only.
+- Before pushing to a PR's branch or reporting on a PR, check that it's still open (`gh pr view <n> --json state`). The owner may merge on his own schedule. If it's merged, put new commits on a fresh branch and open a new PR.
 
-## Ask before
+## Always ask
 
-Ask the owner first before you:
-- add a dependency (a package in `Directory.Packages.props`, a PowerShell module, a GitHub Action);
-- use anything that costs money;
-- change CI, repo settings or rulesets;
-- act outside this repo or on cloud resources;
+In both modes, ask the owner first before you:
+- use anything that costs money, or touch cloud resources;
+- delete anything on GitHub, or work that isn't merged; force-push or rewrite history;
+- create a new app repo (`New-KitApp`), or make anything public;
+- merge a release PR, or publish a release;
 - add a connector (MCP server);
-- do anything that can't be undone.
+- install software on the owner's machine;
+- switch the working mode.
 
 Never read, print or store secrets. Sign-in is always the owner's step.
+
+## Also ask in review mode
+
+In review mode, also ask the owner first before you:
+- add a dependency (a package in `Directory.Packages.props`, a PowerShell module, a GitHub Action);
+- change CI, repo settings or rulesets;
+- act outside this repo.
 
 **When a permission rule or prompt blocks something legitimate, stop and tell the owner.** Don't rephrase the command, move it into a script or split it up to get past the rule (ADR-0026). The rule may be wrong, but changing it is the owner's call.
 
@@ -71,6 +88,7 @@ Never read, print or store secrets. Sign-in is always the owner's step.
 | What | Command |
 |---|---|
 | Check this machine's toolchain | `./tools/Initialize-DevMachine.ps1` |
+| Show the working mode; switch it (the owner's call) | `./tools/Set-AgentMode.ps1`, with `-Mode Review` or `-Mode Auto` |
 | All script tests (Pester 6) | `Invoke-Pester -Path ./tools/tests` |
 | Every rule has a source and an enforcement | `./tools/Test-RuleSources.ps1` |
 | Every rule in force has a quality area, and the scorecard's table is current; `-Update` rewrites the table after a rule or area changes | `./tools/Test-Scorecard.ps1` |

@@ -20,12 +20,12 @@ rules:
     scope: core
     paths: ["**"]
   - id: GIT-003
-    statement: "Nobody pushes directly to main or force-pushes it; agents merge a PR only when the owner says so for that PR."
-    why: "Branch protection was approved in one project; the owner has told agents to merge specific PRs, so the rule is per PR, not never."
+    statement: "Nobody pushes directly to main or force-pushes it; agents merge a PR only as the working mode allows (in review mode, when the owner says so for that PR), and never a release PR."
+    why: "Branch protection was approved in one project; the owner then chose auto mode by default, where the agent merges its own PRs once they're green and reviewed, and kept releases his (ADR-0035)."
     layer: owner
     status: proposed
-    sources: ["ADR-0007", "ADR-0010"]
-    enforcement: "ruleset: main protection blocks force-pushes and deletion and requires a pull request; merging only when told is advisory, backed by the gh pr merge ask rule in .claude/settings.json"
+    sources: ["ADR-0007", "ADR-0010", "ADR-0035"]
+    enforcement: "ruleset: main protection blocks force-pushes and deletion and requires a pull request; merging by mode is advisory, backed in review mode by the gh pr merge ask rule Set-AgentMode.ps1 adds to .claude/settings.local.json"
     scope: core
     paths: ["**"]
   - id: GIT-004

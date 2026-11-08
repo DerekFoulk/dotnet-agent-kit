@@ -1,6 +1,6 @@
 ---
 name: start-work
-description: Start any task that will change files in this repo. Sets up the branch, reads the rules that apply, and writes the plan with its test list for the owner to approve. Use before editing code, scripts, standards or docs.
+description: Start any task that will change files in this repo. Sets up the branch, reads the rules that apply, and writes the plan with its test list (for the owner to approve, in review mode). Use before editing code, scripts, standards or docs.
 ---
 
 # Start work
@@ -14,5 +14,5 @@ description: Start any task that will change files in this repo. Sets up the bra
    - a **test list**: the behaviors to cover, one line each, not yet written as tests;
    - the plan checklist (run the `plan-checklist` skill);
    - the ADRs needed (`write-adr`) and anything that needs the owner's OK (see "Ask before" in `AGENTS.md`).
-5. **Get approval.** Show the owner the plan, unless the task is trivial (for example, a typo). Restate any answers he gives as a table.
+5. **Get approval, or go on.** Check the working mode (`AGENTS.md`, "Working modes"). In review mode, show the owner the plan unless the task is trivial (for example, a typo), and wait for his OK. In auto mode, post the plan and go on, unless it hits "Always ask". Restate any answers he gives as a table.
 6. **Start the first red test** with the `tdd-cycle` skill.

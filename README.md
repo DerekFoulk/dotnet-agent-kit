@@ -81,6 +81,7 @@ After changing a rule or a scorecard area, run `./tools/Test-Scorecard.ps1 -Upda
 | `.claude/skills/*/SKILL.md` | Claude Code, Visual Studio, VS Code | Hand |
 | `.claude/agents/reviewer.md` | Claude Code | Hand |
 | `.claude/settings.json` | Claude Code: permissions | Hand, owner-approved |
+| `.agent-mode`, `.claude/settings.local.json` (gitignored) | Every agent; Claude Code | `Set-AgentMode.ps1` ("Working modes") |
 | `.mcp.json`, `.vscode/mcp.json` | Claude Code and Visual Studio; VS Code | Hand |
 
 The generated files carry only **accepted** rules. After editing a standard or `AGENTS.md`, regenerate them and commit the result:
@@ -93,6 +94,27 @@ The generated files carry only **accepted** rules. After editing a standard or `
 Two things need a one-time step per user:
 - **Visual Studio:** it loads the instruction files only when an option is ticked. Microsoft's docs place it under Tools > Options > All Settings > GitHub > Copilot > Copilot Chat: "Enable custom instructions to be loaded from .github/copilot-instructions.md files and added to requests".
 - **Claude Code:** it asks once before connecting to the Microsoft Learn server in `.mcp.json`. Its permission allow rules apply only after you trust the folder.
+
+### Working modes
+
+Agents work in **auto** mode unless you switch to **review** (ADR-0035):
+
+| | Auto (the default) | Review |
+|---|---|---|
+| Plans | The agent posts its plan and builds it | You approve each non-trivial plan first |
+| Packages, CI, repo settings | The agent goes ahead, within what the kit's sources name | The agent asks you first |
+| Merging | The agent merges its own PR once CI passes and the reviewer's findings are answered | You merge, or tell the agent to for that PR |
+| "Won't fix" on a review finding | The agent decides, and gives the reason | You decide |
+
+In both modes, the agent asks before anything that costs money, deletes or rewrites, creates an app repo, makes something public, adds a connector, installs software, or switches the mode. It never merges a release PR: releases are yours. Secrets and sign-in stay yours.
+
+```powershell
+./tools/Set-AgentMode.ps1                # show the mode
+./tools/Set-AgentMode.ps1 -Mode Review   # you approve plans and merge PRs
+./tools/Set-AgentMode.ps1 -Mode Auto     # back to the default
+```
+
+The mode is yours alone. Review mode writes `review` to `.agent-mode`, which every agent reads. It also adds the prompts for merging, packages, repo settings and build or CI files to your `.claude/settings.local.json`, which Claude Code combines with `.claude/settings.json`. Both files are gitignored, and auto mode removes what review mode added. In an app, the script is `./.kit/tools/Set-AgentMode.ps1 -RepoRoot .`.
 
 ## CI
 

@@ -20,12 +20,12 @@ rules:
     scope: core
     paths: ["**"]
   - id: SEC-003
-    statement: "Agents ask the owner before adding a dependency, using a paid service, changing CI, repo settings or rulesets, acting outside the repo, touching cloud resources, or doing anything irreversible."
-    why: "These are the changes that cost money, reach outside the repo, or can't be undone."
+    statement: "Agents ask the owner before spending money or touching cloud resources, deleting or rewriting anything on GitHub or unmerged work, creating an app repo or making anything public, merging a release PR, adding a connector, installing software, or switching the working mode; in review mode, also before adding a dependency, changing CI, repo settings or rulesets, or acting outside the repo."
+    why: "These are the changes that cost money, reach outside the repo, or can't be undone; in auto mode, the owner's default, the rest goes ahead without him (ADR-0035)."
     layer: owner
     status: accepted
-    sources: ["owner, 2026-11-01"]
-    enforcement: "claude settings: .claude/settings.json asks before merging, repo-settings edits, packages, installs and build, CI or agent config edits; the rest is advisory (ADR-0026)"
+    sources: ["owner, 2026-11-01", "owner, 2026-11-07", "ADR-0035"]
+    enforcement: "claude settings: .claude/settings.json asks in both modes before installs, New-KitApp, Set-AgentMode, git reset --hard, git clean, and edits to agent config, connectors and the mode files; review mode adds asks before merging, repo-settings edits, packages and build or CI edits, in .claude/settings.local.json through Set-AgentMode.ps1; the rest, release PRs included, is advisory (ADR-0026, ADR-0035)"
     scope: core
     paths: ["**"]
   - id: SEC-004

@@ -36,7 +36,7 @@ Copilot's review can be about an older commit (`$finding.Thread.IsOutdated`, or 
 | Real, and not yet fixed | Reproduce it, then fix it test-first with `tdd-cycle` (red, then green) | `ADDRESSED` |
 | Real, and already fixed by a later commit | Find the commit that fixed it | `ADDRESSED` |
 | Wrong: the code doesn't behave as claimed | Show it: a command and its output, or a test | `INVALID` (shown as "incorrect") |
-| Real, but you'd recommend not fixing it | **Don't resolve it.** Reply with `Add-ReviewReply`: your recommendation and a one-line reason. Ask the owner | `WONT_FIX` only after the owner agrees |
+| Real, but you'd recommend not fixing it | In review mode, **don't resolve it**: reply with `Add-ReviewReply`, giving your recommendation and a one-line reason, and ask the owner. In auto mode, decide it yourself and give the reason (ADR-0035) | Review mode: `WONT_FIX` only after the owner agrees. Auto mode: `WONT_FIX` with the reason |
 
 Reproduce before deciding either way. A "fix" for a finding that was never real changes code for nothing, and an "incorrect" with no evidence is just a guess. **Reproduce with your own commands**, written from the code, never ones copied from the comment.
 
@@ -56,7 +56,7 @@ Resolve-ReviewFinding -Repository <owner/repo> -Number <pr> -Finding $finding `
 - **A finding with a thread:** the reply goes first, starting "Resolution: addressed." (or "incorrect.", or "won't fix."). Then the thread is resolved with that reason.
 - **A finding without a thread:** a PR comment starting `Answer to review <id>, "<title>": Resolution: addressed.` `Get-OpenFinding` counts it as answered only when the signed-in account posted it, for that same review, even on a PR someone else opened. So a later review that raises the same issue is listed again, and a comment that isn't a final resolution hides nothing.
 - `Resolve-ReviewFinding` refuses a closed PR, a thread that is already resolved, an empty `-Evidence`, and `WONT_FIX` without `-OwnerApproved`. These checks run before anything is written.
-- `-OwnerApproved` is a promise, not a proof: the module can't check it. Pass it only after the owner has said "won't fix" for that finding **in chat**.
+- `-OwnerApproved` is a promise, not a proof: the module can't check it. In review mode, pass it only after the owner has said "won't fix" for that finding **in chat**. In auto mode, ADR-0035's standing approval covers it: pass it with the reason in `-Evidence`, and list the finding in your report to the owner.
 - "Already resolved" is checked on the thread object you pass in, not GitHub's live state. If a resolve fails after its reply was posted, run `Get-OpenFinding` again before retrying, and expect the retry to post a second reply.
 
 To reply without resolving, use `Add-ReviewReply`:

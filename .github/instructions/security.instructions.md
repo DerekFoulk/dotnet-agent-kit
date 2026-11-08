@@ -7,4 +7,4 @@ applyTo: '**'
 
 - SEC-001: No secrets in the repo: no keys, tokens, passwords or connection strings with credentials, in any file or commit.
 - SEC-002: Agents never read, print or store secrets, and never retrieve credentials from browsers or password managers; sign-in is always the owner's step.
-- SEC-003: Agents ask the owner before adding a dependency, using a paid service, changing CI, repo settings or rulesets, acting outside the repo, touching cloud resources, or doing anything irreversible.
+- SEC-003: Agents ask the owner before spending money or touching cloud resources, deleting or rewriting anything on GitHub or unmerged work, creating an app repo or making anything public, merging a release PR, adding a connector, installing software, or switching the working mode; in review mode, also before adding a dependency, changing CI, repo settings or rulesets, or acting outside the repo.

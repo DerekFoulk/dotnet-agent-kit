@@ -30,7 +30,7 @@ Keep each review's report: it goes on the PR (step 4).
 
 ## 3. Check the PR state
 
-If a PR already exists for this branch, run `gh pr view <n> --json state,mergedAt` **before pushing or reporting**. The owner merges on his own schedule. If it's merged, branch from the old branch, then open a new PR into `main` for the new commits. This step comes from `docs/corrections-log.md` (2026-11-02).
+If a PR already exists for this branch, run `gh pr view <n> --json state,mergedAt` **before pushing or reporting**. The owner may merge on his own schedule. If it's merged, branch from the old branch, then open a new PR into `main` for the new commits. This step comes from `docs/corrections-log.md` (2026-11-02).
 
 ## 4. Open the PR
 
@@ -38,9 +38,20 @@ If a PR already exists for this branch, run `gh pr view <n> --json state,mergedA
 - Use `.github/pull_request_template.md` and fill in the red→green table from `git log`.
 - List the decisions the owner must make and any `proposed` rules he must ratify.
 - **Post the reviews on the PR.** Add each `reviewer` report, with how every finding was fixed or answered, as a PR comment (`gh pr comment <n> --body-file <file>`), so the owner sees what was checked without reading the session. Post a new comment for each later review.
-- Don't merge. The owner merges, or tells you to for that PR.
+- In review mode, don't merge: the owner merges, or tells you to for that PR.
 - **Watch for reviews.** In the Claude Code desktop app, turn on the PR monitor with auto-fix for the new PR; the owner approves it. Per the app's tool description, the app then wakes the session when a review, a CI failure or a merge conflict arrives. When a review lands, from Copilot or a person, run `address-review`. In other tools, run `Get-OpenFinding` (from `KitReview.psm1`) before reporting on the PR.
 
-## 5. Report
+## 5. Merge, in auto mode
 
-Tell the owner what changed and what the evidence shows, with links. Say what wasn't verified. Ask one question, if one is pending.
+Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your own PR when all of these hold; otherwise fix what's missing, or report and stop:
+
+- **It isn't a release PR.** `gh pr view <n> --json headRefName` doesn't start with `release-please--`. Never merge one, in either mode: releases are the owner's (ADR-0035).
+- **It's open, and CI has passed at its head commit:** `gh pr view <n> --json state,headRefOid,mergeStateStatus` shows `OPEN` and `CLEAN`, and `gh pr checks <n>` passes.
+- **The latest `reviewer` run is on that head commit,** with no unanswered blocking or should-fix finding, and it's posted on the PR. `Get-OpenFinding` lists nothing open from Copilot or a person.
+- **The description is complete:** the template's sections are filled in, with the red→green table and counts from the head commit.
+
+Then run `gh pr merge <n> --merge` on its own, never inside a script. Run `git switch main` and `git pull --ff-only`. If the merge updated the release PR, check its CI.
+
+## 6. Report
+
+Tell the owner what changed and what the evidence shows, with links. In auto mode, say what merged. Say what wasn't verified. Ask one question, if one is pending.
