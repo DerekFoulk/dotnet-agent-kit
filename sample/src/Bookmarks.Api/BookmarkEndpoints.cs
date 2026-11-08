@@ -16,8 +16,9 @@ internal static class BookmarkEndpoints
     public static IEndpointRouteBuilder MapBookmarks(this IEndpointRouteBuilder app)
     {
         RouteGroupBuilder bookmarks = app.MapGroup("/bookmarks").WithTags("Bookmarks");
-        bookmarks.MapPost("/", CreateAsync).WithName("CreateBookmark").ProducesProblem(StatusCodes.Status400BadRequest);
-        bookmarks.MapGet("/{id:guid}", GetAsync).WithName("GetBookmark");
+        bookmarks.MapPost("/", CreateAsync).WithName("CreateBookmark")
+            .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status409Conflict);
+        bookmarks.MapGet("/{id:guid}", GetAsync).WithName("GetBookmark").ProducesProblem(StatusCodes.Status404NotFound);
         bookmarks.MapGet("/", ListAsync).WithName("ListBookmarks").ProducesValidationProblem();
         return app;
     }
