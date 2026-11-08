@@ -49,17 +49,14 @@ jobs:
         if: steps.projects.outputs.count != '0'
         run: dotnet tool install dotnet-stryker --version 5.0.0 --tool-path "$RUNNER_TEMP/stryker"
 
-      # Settings that have no command-line flag (ADR-0039):
-      # - coverage-analysis off: every test runs against every mutant. Per-test coverage missed code that runs
-      #   inside an in-memory API host, so those mutants were reported as untested;
-      # - ignore-methods ConfigureAwait: ConfigureAwait(true) can't change behaviour without a synchronization
-      #   context, so no test could ever kill that mutant.
+      # A setting with no command-line flag (ADR-0039): skip ConfigureAwait, because ConfigureAwait(true) can't change
+      # behaviour without a synchronization context, so no test could ever kill that mutant. Coverage stays per test:
+      # each mutant runs only against the tests that reach it.
       - name: Write the Stryker settings
         run: |
           cat > "$RUNNER_TEMP/stryker-config.json" <<'JSON'
           {
             "stryker-config": {
-              "coverage-analysis": "off",
               "ignore-methods": ["ConfigureAwait"]
             }
           }
