@@ -108,7 +108,7 @@ In review mode, also ask the owner first before you:
 | List a PR's open review findings; reply; resolve a thread | `Import-Module ./tools/KitReview.psm1`, then `Get-OpenFinding`, `Resolve-ReviewFinding`, `Add-ReviewReply` (see the `address-review` skill) |
 | Build | `dotnet build` |
 | .NET tests with coverage, then the coverage gate (TST-004) | Delete `TestResults` first (the gate merges every report it finds), then `dotnet test --coverage --coverage-output-format cobertura --results-directory TestResults` and `./tools/Test-CoverageGate.ps1 -Path TestResults -Solution dotnet-agent-kit.slnx` |
-| Mutation score (TST-004, ADR-0039): CI only, nightly | `.github/workflows/mutation.yml`; read the `mutation-report` artifact of a failed run. `./tools/Test-MutationReport.ps1 -Path <mutation-report.json>` checks one test didn't inflate the score |
+| Mutation score (TST-004, ADR-0039): nightly in CI; optional locally | CI: `.github/workflows/mutation.yml`; read the `mutation-report` artifact of a failed run. Locally: `dotnet tool restore` installs the pinned Stryker (installing is the owner's call), then `dotnet tool run dotnet-stryker --config-file .config/stryker-config.json --solution dotnet-agent-kit.slnx`, and `./tools/Test-MutationReport.ps1 -Path <its mutation-report.json>` |
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request, plus a gitleaks secret scan. The "main protection" ruleset requires them to pass. Mutation testing runs nightly instead, and on a pull request that changes the sample or the mutation setup; it isn't a required check.
 

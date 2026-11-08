@@ -64,3 +64,9 @@ Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which 
 ## Coverage
 
 `dotnet test --coverage --coverage-output-format cobertura --results-directory <dir>` writes one Cobertura report per test project (Microsoft.Testing.Extensions.CodeCoverage, on Microsoft Testing Platform via `global.json`). `./tools/Test-CoverageGate.ps1 -Path <dir>` merges them and applies TST-004. It leaves out test assemblies and generated files (`*.g.cs`, `*.generated.cs`, anything under `obj/`), and it fails when it finds no report.
+
+## Mutation testing
+
+`.github/workflows/mutation.yml` runs Stryker.NET nightly with the kit's `.config/stryker-config.json` and fails below a mutation score of 85% (TST-004, ADR-0039). Then `Test-MutationReport.ps1` checks that every kill came from a test that reached the mutant, so a test that fails whatever is mutated can't fake a high score. A failed night uploads a `mutation-report` artifact that lists each surviving mutant.
+
+**API tests set the API's content root themselves.** `WebApplicationFactory` looks the API's folder up in `MvcTestingAppManifest.json` by the API assembly's full name. Stryker compiles from a design-time build, which MinVer (SUP-006) skips, so Stryker's API has a different version, the lookup fails, and every API test fails under Stryker. Give the app's factory a `ConfigureWebHost` override that calls `builder.UseSolutionRelativeContentRoot(...)` with the API project's path from the solution folder, as the sample's `ApiFactory` does, and a test like the sample's `ContentRootTests`.
