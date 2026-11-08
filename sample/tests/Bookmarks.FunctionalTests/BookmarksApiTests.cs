@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Bookmarks.Contracts;
 
 namespace Bookmarks.FunctionalTests;
@@ -57,6 +58,25 @@ public sealed class BookmarksApiTests : IDisposable
         using HttpResponseMessage response = await Client.GetAsync(new Uri($"/bookmarks/{Guid.NewGuid()}", UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task EveryErrorResponseIsProblemDetails()
+    {
+        // API-002: clients get one error format (RFC 9457), whichever error it is.
+        CreateBookmarkRequest request = new(new Uri("https://example.com/a"), "A");
+        using HttpResponseMessage created = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
+        using HttpResponseMessage conflict = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
+        using HttpResponseMessage notFound = await Client.GetAsync(new Uri($"/bookmarks/{Guid.NewGuid()}", UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage noRoute = await Client.GetAsync(new Uri("/no-such-route", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        foreach ((HttpResponseMessage response, HttpStatusCode status) in new[] { (conflict, HttpStatusCode.Conflict), (notFound, HttpStatusCode.NotFound), (noRoute, HttpStatusCode.NotFound) })
+        {
+            response.StatusCode.Should().Be(status);
+            (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json", $"a {(int)status} is Problem Details");
+            JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+            problem.GetProperty("status").GetInt32().Should().Be((int)status);
+        }
     }
 
     public void Dispose() => _host.Dispose();
