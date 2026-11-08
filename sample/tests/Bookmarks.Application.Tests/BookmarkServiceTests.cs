@@ -147,6 +147,22 @@ public sealed class BookmarkServiceTests
         page.HasMore.Should().BeTrue();
     }
 
+    [Theory]
+    [InlineData(9_900, 100, true)]
+    [InlineData(9_901, 100, false)]
+    [InlineData(9_999, 1, true)]
+    [InlineData(10_000, 1, false)]
+    public async Task ANextPageIsLinkedOnlyWhenItStartsWithinTheDeepestOffset(int offset, int limit, bool linked)
+    {
+        // Review 4 of PR 22: both sides of the cap, so an off-by-one (a next page at 10,001) fails a test.
+        Bookmark[] rows = [.. Enumerable.Range(0, limit + 1).Select(i => Bookmark.Create(new Uri($"https://example.com/{i}"), $"{i}", s_now))];
+        _repository.Setup(r => r.ListAsync(offset, limit + 1, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+
+        BookmarkListResult page = await _service.ListAsync(offset, limit, TestContext.Current.CancellationToken);
+
+        page.HasMore.Should().Be(linked);
+    }
+
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
