@@ -35,6 +35,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      # The kit's scripts and Stryker files, at this workflow's own commit (as in dotnet-ci.reusable.yml).
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
       # A new app has no projects until its first task adds them; there's nothing to mutate until then.
       - name: Count projects
         id: projects
@@ -44,45 +48,31 @@ jobs:
           "count=$count" >> $env:GITHUB_OUTPUT
           "Projects in ${env:SOLUTION}: $count"
 
-      # Stryker.NET (Apache-2.0), a dotnet tool installed for this run only, at a pinned version.
+      # Stryker.NET (Apache-2.0), installed for this run only, at the version the kit's tool manifest pins
+      # (.config/dotnet-tools.json, which Dependabot keeps current).
       - name: Install Stryker.NET
         if: steps.projects.outputs.count != '0'
-        run: dotnet tool install dotnet-stryker --version 5.0.0 --tool-path "$RUNNER_TEMP/stryker"
-
-      # A setting with no command-line flag (ADR-0039): skip ConfigureAwait, because ConfigureAwait(true) can't change
-      # behaviour without a synchronization context, so no test could ever kill that mutant. Coverage stays per test:
-      # each mutant runs only against the tests that reach it.
-      - name: Write the Stryker settings
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
         run: |
-          cat > "$RUNNER_TEMP/stryker-config.json" <<'JSON'
-          {
-            "stryker-config": {
-              "ignore-methods": ["ConfigureAwait"]
-            }
-          }
-          JSON
+          $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.'dotnet-stryker'.version
+          dotnet tool install dotnet-stryker --version $version --tool-path "$env:RUNNER_TEMP/stryker"
 
-      # The Microsoft Testing Platform runner, because the kit's test projects use it (global.json).
+      # Every setting (the MTP runner, the 85% threshold, the reporters, the ConfigureAwait skip) is in the kit's
+      # .config/stryker-config.json, which a person running Stryker locally uses too (ADR-0039).
       - name: Mutation test
         if: steps.projects.outputs.count != '0'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
         run: >-
           "$RUNNER_TEMP/stryker/dotnet-stryker"
-          --config-file "$RUNNER_TEMP/stryker-config.json"
+          --config-file "$KIT/.config/stryker-config.json"
           --solution "$SOLUTION"
-          --test-runner mtp
-          --configuration Release
-          --break-at 85
-          --threshold-low 85
-          --threshold-high 95
-          --reporter cleartext --reporter html --reporter json
           --output "$RUNNER_TEMP/stryker-output"
 
-      # The kit's scripts, at this workflow's own commit (as in dotnet-ci.reusable.yml).
-      - id: kit
-        if: always() && steps.projects.outputs.count != '0'
-        uses: $/.github/actions/kit-tools
-
-      # A test that "kills" every mutant fails whatever is mutated, so the score above can't be trusted (PR 23).
+      # A kill by a test that never reached the mutant means that test fails whatever is mutated, so the score can't
+      # be trusted (PR 23, ADR-0039).
       - name: Check the report can be trusted
         if: always() && steps.projects.outputs.count != '0'
         shell: pwsh

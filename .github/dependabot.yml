@@ -1,4 +1,5 @@
-# Keeps packages, pinned GitHub Actions and the global.json SDK pin current (SUP-008, ADR-0025).
+# Keeps packages, dotnet tools (.config/dotnet-tools.json), pinned GitHub Actions and the global.json SDK pin
+# current (SUP-008, ADR-0025).
 # The "chore(deps)" prefix makes each PR title a Conventional Commit, which CI requires.
 # Not covered: the gitleaks image in dotnet-ci.reusable.yml is pinned inside a run command, so bump it
 # by hand with its release.
