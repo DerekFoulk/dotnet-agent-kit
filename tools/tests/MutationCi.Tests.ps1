@@ -55,6 +55,17 @@ Describe 'Mutation testing in CI' {
             $run | Should -Match '--solution "\$SOLUTION"'
         }
 
+        It 'runs every test against every mutant, and skips ConfigureAwait, through a config file it writes' {
+            # Per-test coverage misses code that runs inside an in-memory API host (the first CI run on PR 23 scored
+            # the API 0% with every mutant "not covered"), and ConfigureAwait(true) can't change behaviour without a
+            # synchronization context, so those mutants could never be killed.
+            $run = (Get-Steps $reusable.Yaml | ForEach-Object { "$($_['run'])" }) -join "`n"
+
+            $run | Should -Match '"coverage-analysis":\s*"off"'
+            $run | Should -Match '"ignore-methods":\s*\[\s*"ConfigureAwait"\s*\]'
+            $run | Should -Match '--config-file "\$RUNNER_TEMP/stryker-config\.json"'
+        }
+
         It 'uploads the HTML and JSON report, even when the score fails, so the surviving mutants can be read' {
             # The YAML parser drops the "# vX" comment, so the version is read from the text.
             $upload = @(Get-Steps $reusable.Yaml | Where-Object { "$($_['uses'])" -match '^actions/upload-artifact@[0-9a-f]{40}$' })
