@@ -52,10 +52,12 @@ Accepted, in auto mode (ADR-0035). Stryker.NET is the tool TST-005 names, instal
 
 - **Workflows:** `.github/workflows/mutation.reusable.yml`, `.github/workflows/mutation.yml` (the kit), and `templates/app/.github/workflows/mutation.yml` (every new app). Not a required check: a low score shows as a failed nightly run on the Actions tab. `New-KitApp`'s required checks count only workflows that run on pull requests.
 - **The report:** each run uploads the HTML and JSON report for 14 days. It lists every surviving mutant, with its line and change.
-- **The sample:** its first runs found real gaps, now closed by tests: a null URL and a null request failed late with a `NullReferenceException`; the URL error message wasn't asserted; and nothing checked the database model's key, required fields, title length or URL index. MEASURED_SCORE
+- **The sample:** its first runs found real gaps, now closed by tests: a null URL and a null request failed late with a `NullReferenceException`; the URL error message wasn't asserted; and nothing checked the database model's key, required fields, title length or URL index, the logging options, or that `/alive` ignores a failing readiness check. With those, a local run of the whole sample scored 94.34%. The six survivors left can't change behaviour or barely can: two database model lines EF already infers, a null guard repeated in the next call, two endpoint names and one exception message.
 - **Rules:** TST-004 and TST-003 now name the workflow as their enforcement. GAP-003 is closed.
 - **Apps with no projects** skip the run, as the .NET CI does.
-- **Not run locally:** running Stryker on your machine means installing a dotnet tool, which is the owner's call. The report from CI gives the same detail.
+- **API tests under Stryker:** `WebApplicationFactory` finds the API's folder through `MvcTestingAppManifest.json`, keyed by the API assembly's full name. Stryker's recompiled API doesn't match that key, so the factory fell back to "solution folder + project name", a folder that doesn't exist. Every API test then failed on every mutant, and the run reported a false 100%. The sample's test host now sets the content root itself, from a `WebApplicationFactoryContentRoot` attribute its `.csproj` adds. An app whose API tests use `WebApplicationFactory` does the same.
+- **A false score is refused:** `tools/Test-MutationReport.ps1` runs after Stryker and fails the run when one test killed every one of at least 10 mutants. That's the signature of a test that fails whatever is mutated.
+- **Running it locally:** it's optional. It means installing Stryker as a dotnet tool, which is the owner's call; the owner allowed it once, in a scratch folder, to find the content-root problem. The CI report gives the same detail for day-to-day work.
 
 ## Pillars affected
 
