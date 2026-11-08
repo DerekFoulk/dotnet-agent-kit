@@ -1,5 +1,5 @@
-# The kit's own checks: script tests, rule sources, ADR sections, generated-file drift, and on pull
-# requests the commit subjects and red-to-green order. The PR title has its own workflow (pr-title.yml).
+# The kit's own checks: script tests, rule sources, the quality scorecard, ADR sections, generated-file
+# drift, and on pull requests the commit subjects and red-to-green order. The PR title has its own workflow (pr-title.yml).
 name: Kit checks (reusable)
 
 on:
@@ -43,6 +43,10 @@ jobs:
 
       - name: Rule sources
         run: ./tools/Test-RuleSources.ps1
+
+      # Every rule in force has a quality area, and the scorecard's table matches the rules (ADR-0034).
+      - name: Quality scorecard
+        run: ./tools/Test-Scorecard.ps1
 
       - name: ADR sections
         run: ./tools/Test-AdrSections.ps1
