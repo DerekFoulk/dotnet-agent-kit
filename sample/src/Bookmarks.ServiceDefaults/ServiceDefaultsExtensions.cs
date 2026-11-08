@@ -2,12 +2,17 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 
 namespace Microsoft.Extensions.Hosting;
 
 /// <summary>
-/// The service defaults every ASP.NET Core app gets (OPS-001 to OPS-003, ADR-0037): health checks, and the
-/// endpoints that report them.
+/// The service defaults every ASP.NET Core app gets (OPS-001 to OPS-003, ADR-0037): OpenTelemetry logs, metrics
+/// and traces, and health checks with the endpoints that report them. Adapted from Microsoft's
+/// aspire-servicedefaults template, without its service discovery, which does nothing outside Aspire.
 /// </summary>
 public static class ServiceDefaultsExtensions
 {
@@ -21,8 +26,45 @@ public static class ServiceDefaultsExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
+        builder.ConfigureOpenTelemetry();
         // Liveness: the process answers. It checks nothing else, so a slow dependency never restarts the app.
         builder.Services.AddHealthChecks().AddCheck("self", () => HealthCheckResult.Healthy(), [LiveTag]);
+        return builder;
+    }
+
+    /// <summary>
+    /// Sends logs, metrics and traces through OpenTelemetry, and exports them over OTLP when
+    /// OTEL_EXPORTER_OTLP_ENDPOINT is set (for example to the Aspire dashboard, or a collector in production).
+    /// </summary>
+    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.Logging.AddOpenTelemetry(logging =>
+        {
+            logging.IncludeFormattedMessage = true;
+            logging.IncludeScopes = true;
+        });
+
+        builder.Services.AddOpenTelemetry()
+            .WithMetrics(metrics => metrics
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddRuntimeInstrumentation())
+            .WithTracing(tracing => tracing
+                .AddSource(builder.Environment.ApplicationName)
+                // Probes call the health endpoints often; tracing them would only add noise.
+                .AddAspNetCoreInstrumentation(aspNetCore => aspNetCore.Filter = context =>
+                    !context.Request.Path.StartsWithSegments(HealthPath, StringComparison.OrdinalIgnoreCase)
+                    && !context.Request.Path.StartsWithSegments(AlivePath, StringComparison.OrdinalIgnoreCase))
+                .AddHttpClientInstrumentation());
+
+        if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+        {
+            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+        }
+
         return builder;
     }
 
