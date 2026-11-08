@@ -110,10 +110,14 @@ public sealed class BookmarksApiTests : IDisposable
         using StringContent badJson = new("{ not json", System.Text.Encoding.UTF8, "application/json");
         using HttpResponseMessage body = await Client.PostAsync(new Uri("/bookmarks", UriKind.Relative), badJson, TestContext.Current.CancellationToken);
         using HttpResponseMessage query = await Client.GetAsync(new Uri("/bookmarks?limit=abc", UriKind.Relative), TestContext.Current.CancellationToken);
+        using StringContent text = new("https://example.com", System.Text.Encoding.UTF8, "text/plain");
+        using HttpResponseMessage mediaType = await Client.PostAsync(new Uri("/bookmarks", UriKind.Relative), text, TestContext.Current.CancellationToken);
 
-        foreach (HttpResponseMessage response in new[] { body, query })
+        // Review 2 of PR 22: a wrong content type is a 415 Problem too. (It doesn't reach the exception handler: with
+        // the handler's selector forced to 400, it is still a 415.)
+        foreach ((HttpResponseMessage response, HttpStatusCode status) in new[] { (body, HttpStatusCode.BadRequest), (query, HttpStatusCode.BadRequest), (mediaType, HttpStatusCode.UnsupportedMediaType) })
         {
-            response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"{response.RequestMessage!.RequestUri} is the client's error");
+            response.StatusCode.Should().Be(status, $"{response.RequestMessage!.RequestUri} is the client's error");
             (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json");
         }
     }

@@ -108,6 +108,20 @@ public sealed class BookmarkServiceTests
         await list.Should().ThrowAsync<ArgumentOutOfRangeException>();
     }
 
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(0, BookmarkService.MaxPageSize)]
+    [InlineData(BookmarkService.MaxOffset, 1)]
+    public async Task APageAtTheLimitsIsAccepted(int offset, int limit)
+    {
+        // Review 2 of PR 22: the endpoint's [Range] allows these, so the service must too, or a valid request is a 500.
+        _repository.Setup(r => r.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        Func<Task> list = () => _service.ListAsync(offset, limit, TestContext.Current.CancellationToken);
+
+        await list.Should().NotThrowAsync();
+    }
+
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
