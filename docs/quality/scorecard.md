@@ -58,11 +58,11 @@ areas:
     sources:
       - "https://asvs.owasp.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/azure/well-architected/security/, retrieved 2026-11-07"
-    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, ARC-006]
+    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, ARC-006]
     gaps:
       - id: GAP-005
-        gap: "No code scanning: CodeQL is free on public repos but isn't set up."
-        status: proposed
+        gap: "No code scanning: CodeQL is free on public repos but isn't set up. Closed by ADR-0036: codeql.reusable.yml runs in the kit's and every public app's CI (SEC-006, proposed)."
+        status: closed
         needs: "a GitHub Action (CodeQL) and a CI change"
       - id: GAP-006
         gap: "No rules for authentication, authorization or input validation defaults beyond the threat model in plans."
@@ -213,7 +213,7 @@ Each area in the front matter above has:
 | Proportion | 0 | 0 | 0 | 0 | 1 |
 | Code | 4 | 3 | 1 | 2 | 0 |
 | Tests | 7 | 4 | 3 | 0 | 2 |
-| Security | 6 | 4 | 2 | 0 | 2 |
+| Security | 6 | 4 | 2 | 1 | 1 |
 | Reliability | 1 | 0 | 1 | 0 | 2 |
 | Observability | 1 | 0 | 1 | 0 | 1 |
 | API design | 0 | 0 | 0 | 0 | 2 |
@@ -224,7 +224,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
 | Process | 14 | 4 | 10 | 1 | 0 |
 
-**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 9 proposed; 18 open gaps.
+**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 10 proposed; 17 open gaps.
 
 Open gaps:
 
@@ -232,7 +232,6 @@ Open gaps:
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
 - **GAP-003** (Tests, planned; needs a dotnet tool (Stryker) and a CI change): Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
-- **GAP-005** (Security, proposed; needs a GitHub Action (CodeQL) and a CI change): No code scanning: CodeQL is free on public repos but isn't set up.
 - **GAP-006** (Security, proposed): No rules for authentication, authorization or input validation defaults beyond the threat model in plans.
 - **GAP-007** (Reliability, proposed; needs packages): No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).

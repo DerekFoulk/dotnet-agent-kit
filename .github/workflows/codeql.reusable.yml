@@ -1,0 +1,65 @@
+# CodeQL code scanning, shared by the kit and its apps (GAP-005, ADR-0036). It scans the repo's GitHub Actions
+# workflows always, and its C# when it has any, with no build (build-mode none). Code scanning is free on public
+# repos; a private repo needs GitHub Code Security, so the callers skip it there. Results appear under the
+# repo's Security tab and as checks on each pull request.
+#
+#   jobs:
+#     codeql:
+#       if: ${{ !github.event.repository.private }}
+#       permissions: { contents: read, security-events: write }
+#       uses: DerekFoulk/dotnet-agent-kit/.github/workflows/codeql.reusable.yml@<kit commit>
+name: CodeQL (reusable)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  languages:
+    name: CodeQL languages
+    runs-on: ubuntu-latest
+    outputs:
+      languages: ${{ steps.detect.outputs.languages }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # A new app has no C# yet, and CodeQL fails on a language with no source, so C# joins once it exists. The
+      # whole list is read, not piped into grep -q: under bash -o pipefail, git can die of SIGPIPE on a big repo.
+      - name: Find the languages to scan
+        id: detect
+        shell: bash
+        run: |
+          if [ -n "$(git ls-files -- '*.cs')" ]; then
+            echo 'languages=["actions","csharp"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'languages=["actions"]' >> "$GITHUB_OUTPUT"
+          fi
+
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    needs: languages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ${{ fromJSON(needs.languages.outputs.languages) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:${{ matrix.language }}

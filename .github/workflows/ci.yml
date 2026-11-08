@@ -21,3 +21,10 @@ jobs:
 
   kit:
     uses: ./.github/workflows/kit-checks.reusable.yml
+
+  # CodeQL code scanning (ADR-0036): free here, because the kit is public.
+  codeql:
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/codeql.reusable.yml

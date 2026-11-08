@@ -130,11 +130,12 @@ The mode is yours alone. Review mode writes `review` to `.agent-mode`, which eve
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every pull request and every push to `main`. It calls two reusable workflows that other repos can call once they adopt the kit:
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`. It calls three reusable workflows that other repos can call once they adopt the kit:
 
 | Workflow | What it checks |
 |---|---|
 | `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage, the coverage gate (TST-004), and deprecated packages. It also runs a gitleaks secret scan of the full git history |
+| `codeql.reusable.yml` | CodeQL code scanning of the GitHub Actions workflows, and of the C# once there is some, with no build (ADR-0036). Results go to the repo's Security tab. Not a required check yet |
 | `kit-checks.reusable.yml` | All Pester tests, rule sources, the quality scorecard, ADR sections, generated-file drift, and on pull requests the commit subjects and red→green order (the branch's own commits) |
 | `pr-title.yml` | The PR title is a Conventional Commit. It also runs when the PR is edited, because the title becomes the merge commit's subject |
 
@@ -175,6 +176,12 @@ jobs:
     uses: DerekFoulk/dotnet-agent-kit/.github/workflows/dotnet-ci.reusable.yml@<commit SHA> # v0.1.0
     with:
       solution: MyApp.slnx
+  codeql:
+    if: ${{ !github.event.repository.private }} # code scanning needs a paid licence on a private repo
+    permissions:
+      contents: read
+      security-events: write
+    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/codeql.reusable.yml@<commit SHA> # v0.1.0
 ```
 
 ```yaml
@@ -194,6 +201,7 @@ jobs:
 | Shared workflow | What it checks in the app |
 |---|---|
 | `dotnet-ci.reusable.yml` | Restore, build, format, tests with coverage, the coverage gate, deprecated packages, and the secret scan. `solution` is required |
+| `codeql.reusable.yml` | CodeQL code scanning of the workflows, and the C# once there is some. Skipped on a private app |
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`. Called from any other event, it fails rather than pass having checked nothing |
 
 The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the sync job (PR D3) keeps them current.

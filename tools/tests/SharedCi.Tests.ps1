@@ -74,6 +74,89 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # GAP-005 (ADR-0036): CodeQL code scanning, free on public repos, through one shared workflow.
+    Context 'codeql.reusable.yml' {
+        BeforeAll {
+            $codeql = Read-Yaml '.github/workflows/codeql.reusable.yml'
+            $jobs = if ($codeql.Yaml.ContainsKey('jobs')) { $codeql.Yaml['jobs'] } else { @{} }
+        }
+
+        It 'is a shared workflow that scans the workflows always, and C# when the repo has any' {
+            $codeql.Text | Should -Not -BeNullOrEmpty -Because 'codeql.reusable.yml runs CodeQL for the kit and its apps'
+            $codeql.Text | Should -Match '(?m)^\s*workflow_call:'
+            $jobs['languages']['outputs'].ContainsKey('languages') | Should -BeTrue
+            $codeql.Text | Should -Match "git ls-files -- '\*\.cs'"
+            $codeql.Text | Should -Match '"actions","csharp"'
+            $jobs['analyze']['strategy']['matrix']['language'] | Should -Match 'fromJSON\(needs\.languages\.outputs\.languages\)'
+        }
+
+        # Review 1 of PR 20: under GitHub's bash -e -o pipefail, `git ls-files | grep -q` can kill git with SIGPIPE
+        # on a large repo, and the if then drops C# silently. The step is run here, as CI runs it.
+        It 'finds <Expected> in a repo with <Case>, reading git''s whole output' -ForEach @(
+            @{ Case = 'no C#'; Files = @('README.md'); Expected = '["actions"]' }
+            @{ Case = 'C#'; Files = @('README.md', 'src/App.cs'); Expected = '["actions","csharp"]' }
+        ) {
+            $step = @($jobs['languages']['steps'] | Where-Object { $_['id'] -eq 'detect' })[0]
+            $step['run'] | Should -Not -Match 'ls-files[^\n]*\|' -Because 'a pipe into grep -q can end git with SIGPIPE'
+            $repo = Join-Path $TestDrive "langs-$(New-Guid)"
+            git init -q $repo
+            foreach ($file in $Files) {
+                New-Item -ItemType File -Force -Path (Join-Path $repo $file) | Out-Null
+                git -C $repo add -- $file
+            }
+            $output = Join-Path $repo 'github-output'
+            Set-Content -LiteralPath (Join-Path $repo 'detect.sh') -Value ($step['run'] -replace "`r`n", "`n") -NoNewline
+            # On Windows, Git's own bash: the one on PATH may be WSL's, with no Linux installed.
+            $bash = if ($IsWindows) { Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin' 'bash.exe' } else { 'bash' }
+            Push-Location $repo
+            try { $env:GITHUB_OUTPUT = $output; & $bash --noprofile --norc -e -o pipefail ./detect.sh }
+            finally { Pop-Location; Remove-Item Env:GITHUB_OUTPUT -ErrorAction SilentlyContinue }
+
+            $LASTEXITCODE | Should -Be 0
+            (Get-Content -Raw -LiteralPath $output).Trim() | Should -Be "languages=$Expected"
+        }
+
+        It 'analyzes with the CodeQL action, needing no build, and uploads with only security-events: write' {
+            $jobs.ContainsKey('analyze') | Should -BeTrue -Because 'an analyze job runs CodeQL per language'
+            $steps = @($jobs['analyze']['steps'])
+            $init = @($steps | Where-Object { "$($_['uses'])" -like 'github/codeql-action/init@*' })
+            $analyze = @($steps | Where-Object { "$($_['uses'])" -like 'github/codeql-action/analyze@*' })
+            $init | Should -HaveCount 1
+            $analyze | Should -HaveCount 1
+            $init[0]['with']['build-mode'] | Should -Be 'none'
+            $jobs['analyze']['permissions']['security-events'] | Should -Be 'write'
+            $jobs['analyze']['permissions']['contents'] | Should -Be 'read'
+            @($jobs['analyze']['permissions'].Keys | Where-Object { $jobs['analyze']['permissions'][$_] -eq 'write' }) | Should -Be @('security-events')
+        }
+
+        It 'runs in <Caller>, with security-events: write for the upload' -ForEach @(
+            @{ Caller = 'the kit''s own CI'; File = '.github/workflows/ci.yml'; Uses = './.github/workflows/codeql.reusable.yml'; SkipsPrivate = $false }
+            @{ Caller = 'every app''s CI'; File = 'templates/app/.github/workflows/ci.yml'; Uses = 'DerekFoulk/dotnet-agent-kit/.github/workflows/codeql.reusable.yml@X'; SkipsPrivate = $true }
+        ) {
+            # {{Name}} placeholders aren't YAML.
+            $text = (Get-Content -Raw -LiteralPath (Join-Path $root $File)) -replace '\{\{[A-Za-z]+\}\}', 'X'
+            $job = (ConvertFrom-Yaml $text)['jobs']['codeql']
+
+            $job | Should -Not -BeNullOrEmpty -Because "$File should have a codeql job"
+            $job['uses'] | Should -Be $Uses
+            $job['permissions']['security-events'] | Should -Be 'write'
+            $job['permissions']['contents'] | Should -Be 'read'
+            # Code scanning on a private repo needs GitHub Code Security, a paid licence (ADR-0036).
+            if ($SkipsPrivate) { $job['if'] | Should -Match '!\s*github\.event\.repository\.private' }
+        }
+
+        It 'pins every action to a full commit SHA and checks out without keeping the token' {
+            $uses = @([regex]::Matches($codeql.Text, '(?m)^\s*(?:-\s*)?uses: (\S+)') | ForEach-Object { $_.Groups[1].Value })
+            $uses.Count | Should -BeGreaterThan 2
+            $uses | Should -Match '@[0-9a-f]{40}$'
+            foreach ($job in $jobs.Values) {
+                foreach ($step in @($job['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })) {
+                    $step['with']['persist-credentials'] | Should -BeFalse
+                }
+            }
+        }
+    }
+
     Context 'dotnet-ci.reusable.yml input' {
         # An app that left out the solution would get the kit's own default and fail obscurely.
         It 'requires the caller to name its solution, and the kit''s own CI does' {
