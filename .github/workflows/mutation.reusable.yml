@@ -80,6 +80,19 @@ jobs:
           --reporter cleartext --reporter html --reporter json
           --output "$RUNNER_TEMP/stryker-output"
 
+      # The kit's scripts, at this workflow's own commit (as in dotnet-ci.reusable.yml).
+      - id: kit
+        if: always() && steps.projects.outputs.count != '0'
+        uses: $/.github/actions/kit-tools
+
+      # A test that "kills" every mutant fails whatever is mutated, so the score above can't be trusted (PR 23).
+      - name: Check the report can be trusted
+        if: always() && steps.projects.outputs.count != '0'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-MutationReport.ps1" -Path "$env:RUNNER_TEMP/stryker-output/reports/mutation-report.json"'
+
       # The report names every surviving mutant: the line, the change, and the tests that ran against it.
       - name: Upload the mutation report
         if: always()
