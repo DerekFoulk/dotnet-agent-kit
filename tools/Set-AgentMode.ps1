@@ -48,4 +48,5 @@ function Set-AgentMode {
     $settings['permissions']['ask'] = @($ask + $script:ReviewAskRules)
     New-Item -ItemType Directory -Path (Split-Path -Path $path -Parent) -Force | Out-Null
     Set-Content -LiteralPath $path -Value ($settings | ConvertTo-Json -Depth 10)
+    Set-Content -LiteralPath (Join-Path $RepoRoot '.agent-mode') -Value 'review'
 }
