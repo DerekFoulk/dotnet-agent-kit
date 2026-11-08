@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -29,9 +30,12 @@ public static class ServiceDefaultsExtensions
         builder.ConfigureOpenTelemetry();
         // Liveness: the process answers. It checks nothing else, so a slow dependency never restarts the app.
         builder.Services.AddHealthChecks().AddCheck("self", () => HealthCheckResult.Healthy(), [LiveTag]);
-        // Every HttpClient gets timeouts, retries with backoff and a circuit breaker (OPS-003). A client that
-        // sends non-idempotent requests, such as a payment POST, can turn retries off for itself.
-        builder.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
+        // Every HttpClient gets timeouts, retries with backoff and a circuit breaker (OPS-003). Retries are only for
+        // safe methods: a POST, PUT, PATCH or DELETE isn't repeated, so a payment can't be sent twice (review 1
+        // of PR 21). A client that needs other settings calls RemoveAllResilienceHandlers() before adding its
+        // own; adding a second handler on top would keep this one's retries.
+        builder.Services.ConfigureHttpClientDefaults(http =>
+            http.AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods()));
         return builder;
     }
 
