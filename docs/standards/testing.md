@@ -64,3 +64,7 @@ Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which 
 ## Coverage
 
 `dotnet test --coverage --coverage-output-format cobertura --results-directory <dir>` writes one Cobertura report per test project (Microsoft.Testing.Extensions.CodeCoverage, on Microsoft Testing Platform via `global.json`). `./tools/Test-CoverageGate.ps1 -Path <dir>` merges them and applies TST-004. It leaves out test assemblies and generated files (`*.g.cs`, `*.generated.cs`, anything under `obj/`), and it fails when it finds no report.
+
+## Script tests
+
+A Pester test file that makes git repos imports `tools/tests/TestGit.psm1`. It calls `Set-TestGitEnvironment` in its `BeforeAll` and `Restore-TestGitEnvironment` in its `AfterAll`, and makes any bare repo it pushes into with `New-TestGitRemote`. Every repo then commits as the fixture, unsigned, whatever the machine's own git settings are, and git starts no background maintenance. A repack started by a fixture commit once raced a test's next lookups and failed 11 tests, but only for some file contents. `TestGit.Tests.ps1` fails when a file that makes repos doesn't use the helper.
