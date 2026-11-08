@@ -1,22 +1,18 @@
-using System.Reflection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 
 namespace Bookmarks.FunctionalTests;
 
 /// <summary>
-/// The API's WebApplicationFactory. It sets the API's content root itself, from this assembly's
-/// WebApplicationFactoryContentRoot attribute (the .csproj adds it). The factory's own lookup keys
-/// MvcTestingAppManifest.json by the API assembly's full name, which Stryker.NET's recompiled API doesn't match, so it
-/// fell back to a folder that doesn't exist and the API wouldn't start (ADR-0039). ConfigureWebHost runs after that
-/// lookup, so this path wins.
+/// The API's WebApplicationFactory. It sets the API's content root itself, relative to the solution file, because the
+/// factory's own lookup can go wrong: it keys MvcTestingAppManifest.json by the API assembly's full name, and MinVer
+/// skips the design-time build Stryker.NET compiles from, so Stryker's API has a different version and no match. The
+/// factory then falls back to a folder that doesn't exist (ADR-0039). ConfigureWebHost runs after that lookup, so this
+/// path wins.
 /// </summary>
 internal class ApiFactory : WebApplicationFactory<Program>
 {
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        string contentRoot = typeof(ApiFactory).Assembly.GetCustomAttributes<WebApplicationFactoryContentRootAttribute>()
-            .Single(attribute => attribute.Key == "Bookmarks.Api").ContentRootPath;
-        builder.UseContentRoot(contentRoot);
-    }
+    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+        builder.UseSolutionRelativeContentRoot(Path.Combine("sample", "src", typeof(Program).Assembly.GetName().Name!));
 }
