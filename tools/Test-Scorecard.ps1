@@ -45,6 +45,26 @@ function New-Problem {
     [pscustomobject]@{ Area = $Area; Message = $Message }
 }
 
+# The scorecard's areas as written: anything under 'areas', which may not all be maps. Get-ScorecardProblem
+# reports what isn't a map; the counting functions skip it, so a malformed file is reported, not a crash.
+function Get-ScorecardEntry {
+    param([Parameter(Mandatory)] [string] $ScorecardPath)
+    $frontMatter = Read-FrontMatter -Path $ScorecardPath
+    if ($null -eq $frontMatter -or -not $frontMatter.Contains('areas')) { return @() }
+    @($frontMatter['areas'] | Where-Object { $null -ne $_ })
+}
+
+function Get-ScorecardArea {
+    param([Parameter(Mandatory)] [string] $ScorecardPath)
+    @(Get-ScorecardEntry -ScorecardPath $ScorecardPath | Where-Object { $_ -is [Collections.IDictionary] })
+}
+
+# An area's gaps that are maps; others are reported by Get-ScorecardProblem.
+function Get-AreaGap {
+    param([Parameter(Mandatory)] [Collections.IDictionary] $Area)
+    @($(if ($Area.Contains('gaps')) { $Area['gaps'] }) | Where-Object { $_ -is [Collections.IDictionary] })
+}
+
 # Every rule in docs/standards, keyed by id: its status and whether a tool enforces it.
 function Get-KitRule {
     param([Parameter(Mandatory)] [string] $StandardsPath)
@@ -75,11 +95,11 @@ function Get-ScorecardRow {
     )
 
     $rules = Get-KitRule -StandardsPath $StandardsPath
-    foreach ($area in @((Read-FrontMatter -Path $ScorecardPath)['areas'])) {
+    foreach ($area in Get-ScorecardArea -ScorecardPath $ScorecardPath) {
         $areaRules = @(@($(if ($area.Contains('rules')) { $area['rules'] })) | Where-Object { $_ -and $rules.Contains("$_") } |
                 ForEach-Object { $rules["$_"] })
         $inForce = @($areaRules | Where-Object Status -EQ 'accepted')
-        $gaps = @($(if ($area.Contains('gaps')) { $area['gaps'] }) | Where-Object { $_ })
+        $gaps = Get-AreaGap -Area $area
         [pscustomobject]@{
             Area          = "$($area['name'])"
             InForce       = $inForce.Count
@@ -112,8 +132,8 @@ function Format-ScorecardTable {
     $proposed = @($rules | Where-Object Status -EQ 'proposed').Count
     # Each open gap, so a reader sees what's missing without reading the YAML.
     $gapLines = [Collections.Generic.List[string]]::new()
-    foreach ($area in @((Read-FrontMatter -Path $ScorecardPath)['areas'])) {
-        $gaps = @($(if ($area.Contains('gaps')) { $area['gaps'] }) | Where-Object { $_ })
+    foreach ($area in Get-ScorecardArea -ScorecardPath $ScorecardPath) {
+        $gaps = Get-AreaGap -Area $area
         foreach ($gap in @($gaps | Where-Object { "$($_['status'])" -ne 'closed' })) {
             $needs = if ($gap.Contains('needs') -and (Test-Present $gap['needs'])) { "; needs $($gap['needs'])" } else { '' }
             $gapLines.Add("- **$($gap['id'])** ($($area['name']), $($gap['status'])$needs): $($gap['gap'])")
@@ -182,11 +202,20 @@ function Get-ScorecardProblem {
     )
 
     $rules = Get-KitRule -StandardsPath $StandardsPath
-    $scorecard = Read-FrontMatter -Path $ScorecardPath
     $named = @{}
     $gapsSeen = @{}
     $areasSeen = @{}
-    foreach ($area in @($scorecard['areas'])) {
+    $entries = @(Get-ScorecardEntry -ScorecardPath $ScorecardPath)
+    if (-not $entries) {
+        New-Problem -Message "has no areas: its front matter needs an 'areas' list"
+    }
+    $position = 0
+    foreach ($area in $entries) {
+        $position++
+        if ($area -isnot [Collections.IDictionary]) {
+            New-Problem -Message "area $position ('$area') is not a map with id, name, perfect and sources"
+            continue
+        }
         $areaId = "$($area['id'])"
         if ($areaId) {
             if ($areasSeen.ContainsKey($areaId)) { New-Problem -Area $areaId -Message "area id $areaId is already used" }
@@ -199,6 +228,10 @@ function Get-ScorecardProblem {
         }
         $areaRules = @($(if ($area.Contains('rules')) { $area['rules'] }) | Where-Object { $_ })
         $areaGaps = @($(if ($area.Contains('gaps')) { $area['gaps'] }) | Where-Object { $_ })
+        foreach ($gap in @($areaGaps | Where-Object { $_ -isnot [Collections.IDictionary] })) {
+            New-Problem -Area $areaId -Message "has a gap '$gap' that is not a map with id, gap and status"
+        }
+        $areaGaps = Get-AreaGap -Area $area
         if (-not $areaRules -and -not $areaGaps) {
             New-Problem -Area $areaId -Message 'has no rules and no gaps: list the rules that cover it, or what is missing'
         }
@@ -266,7 +299,7 @@ function Invoke-ScorecardCheck {
         return 1
     }
 
-    $areas = @((Read-FrontMatter -Path $ScorecardPath)['areas']).Count
+    $areas = @(Get-ScorecardArea -ScorecardPath $ScorecardPath).Count
     $noun = if ($areas -eq 1) { 'area' } else { 'areas' }
     Write-Host "$areas $noun, consistent with the rules." -ForegroundColor Green
     0
