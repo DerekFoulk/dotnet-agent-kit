@@ -22,6 +22,23 @@ Describe 'Mutation testing in CI' {
 
         $reusable = Read-Yaml '.github/workflows/mutation.reusable.yml'
         $kit = Read-Yaml '.github/workflows/mutation.yml'
+        # {{Name}} placeholders aren't YAML; read the template with them replaced.
+        $appText = if (Test-Path (Join-Path $root 'templates/app/.github/workflows/mutation.yml')) {
+            Get-Content -Raw (Join-Path $root 'templates/app/.github/workflows/mutation.yml')
+        } else { '' }
+        $app = if ($appText) { ConvertFrom-Yaml ($appText -replace '\{\{[A-Za-z]+\}\}', 'X') } else { @{} }
+    }
+
+    Context 'an app''s mutation.yml (templates/app)' {
+        It 'runs nightly and on demand, never on pull requests, calling the shared workflow pinned to the kit release' {
+            $appText | Should -Not -BeNullOrEmpty -Because 'every new app gets the nightly mutation run'
+            @($app['on']['schedule']).Count | Should -BeGreaterThan 0
+            $app['on'].ContainsKey('workflow_dispatch') | Should -BeTrue
+            $app['on'].ContainsKey('pull_request') | Should -BeFalse -Because 'it is too slow for every pull request, and so not a required check'
+            $appText | Should -Match 'uses: DerekFoulk/dotnet-agent-kit/\.github/workflows/mutation\.reusable\.yml@\{\{KitCommit\}\} # \{\{KitVersion\}\}'
+            $appText | Should -Match 'solution: \{\{Name\}\}\.slnx'
+            $app['permissions']['contents'] | Should -Be 'read'
+        }
     }
 
     Context 'the kit''s mutation.yml' {
@@ -66,6 +83,16 @@ Describe 'Mutation testing in CI' {
             $run | Should -Match '"coverage-analysis":\s*"off"'
             $run | Should -Match '"ignore-methods":\s*\[\s*"ConfigureAwait"\s*\]'
             $run | Should -Match '--config-file "\$RUNNER_TEMP/stryker-config\.json"'
+        }
+
+        It 'skips Stryker while the solution has no projects, as a new app''s does' {
+            $steps = @(Get-Steps $reusable.Yaml)
+            $count = @($steps | Where-Object { $_['id'] -eq 'projects' })
+            $stryker = @($steps | Where-Object { "$($_['run'])" -match 'dotnet-stryker' })
+
+            $count.Count | Should -Be 1
+            $stryker.Count | Should -BeGreaterThan 0
+            $stryker | ForEach-Object { $_['if'] | Should -Be "steps.projects.outputs.count != '0'" }
         }
 
         It 'uploads the HTML and JSON report, even when the score fails, so the surviving mutants can be read' {

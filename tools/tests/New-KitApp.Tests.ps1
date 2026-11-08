@@ -17,6 +17,8 @@ Describe 'New-KitApp settings' {
         $expected = foreach ($caller in Get-ChildItem -LiteralPath (Join-Path $root 'templates' 'app' '.github' 'workflows') -Filter *.yml) {
             # {{Name}} placeholders aren't YAML; ${{ }} expressions are plain strings.
             $yaml = ConvertFrom-Yaml ((Get-Content -Raw -LiteralPath $caller.FullName) -replace '\{\{[A-Za-z]+\}\}', 'X')
+            # Only a workflow that runs on pull requests can report a required check; a nightly one never would.
+            if (-not $yaml['on'].ContainsKey('pull_request')) { continue }
             foreach ($jobId in $yaml['jobs'].Keys) {
                 $uses = $yaml['jobs'][$jobId]['uses']
                 if ($uses -notmatch '^DerekFoulk/dotnet-agent-kit/\.github/workflows/([^@]+)@') { continue }
