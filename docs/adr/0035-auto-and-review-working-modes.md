@@ -72,10 +72,10 @@ Accepted (owner, 2026-11-07: "Yes, set it up… default to the auto mode", and k
   - any `Set-AgentMode` run that passes `-Mode`, whatever the path. Neither the script nor its function takes positional arguments, so `-M` is the only way to switch;
   - editing `.claude/settings.local.json` or `.agent-mode`;
   - the common forms of the hard limits:
-    - pushes (`git push` or `git -C … push`) with `--delete`, `-d`, `--force`, `-f`, a `:` or `+` refspec, `--mirror` or `--prune`;
+    - pushes (`git push` or `git -C … push`) with `--delete`, `-d`, `--force`, `-f`, a `:` or `+` refspec (quoted or not), `--mirror` or `--prune`. Bundled short flags such as `-uf` aren't caught (review 3 of PR 19);
     - `gh repo edit` with `--visibility`, `--enable-…`, `--delete-branch-on-merge` or `--default-branch`;
     - `gh repo delete` and `gh release`;
-    - `gh api` calls on rulesets, branch protection, merge settings or visibility, and DELETE calls.
+    - `gh api` calls on rulesets, branch protection, merge settings, visibility, `private`, `delete_branch_on_merge` or `default_branch`, and DELETE calls.
 
     Some ordinary commands prompt as a side effect, such as a commit message that names one of these forms, or `gh release view`. A prompt errs on the safe side.
 
