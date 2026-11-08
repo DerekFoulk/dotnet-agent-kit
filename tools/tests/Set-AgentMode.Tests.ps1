@@ -127,6 +127,26 @@ Describe 'Set-AgentMode.ps1' {
     }
 
     Context 'run as a command' {
+        It 'takes no positional mode, so a switch always shows -Mode for the ask rule to catch' {
+            # Review 1 of the modes PR: "Set-AgentMode.ps1 Auto" would switch without matching '*-M*'.
+            $root = New-Repo
+
+            pwsh -NoProfile -File $script Review -RepoRoot $root 2>&1 | Out-Null
+
+            $LASTEXITCODE | Should -Not -Be 0
+            Join-Path $root '.agent-mode' | Should -Not -Exist
+        }
+
+        It 'exits 1 with the reason when it refuses' {
+            $root = New-Repo
+            Set-Content -LiteralPath (Join-Path $root '.claude' 'settings.local.json') -Value '[1, 2]'
+
+            $output = pwsh -NoProfile -File $script -Mode Review -RepoRoot $root 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1
+            $output | Should -Match "shape of Claude Code settings"
+        }
+
         It 'switches with -Mode and says which mode is on; without -Mode it only reports' {
             $root = New-Repo
 

@@ -19,6 +19,15 @@ Describe 'Agent configuration' {
         function Get-RuleList([string] $Kind) {
             if ($permissions.ContainsKey($Kind)) { @($permissions[$Kind]) } else { @() }
         }
+
+        # Whether an ask rule catches a command. A rule's '*' matches any text, as in Claude Code's patterns; [, ]
+        # and ? are taken literally. The match is case-sensitive, the stricter reading, since whether Claude Code
+        # ignores case isn't documented.
+        function Test-AskRuleMatch([string] $Tool, [string] $Command) {
+            [bool] @(Get-RuleList 'ask' | Where-Object {
+                    $_ -match "^$Tool\((.*)\)$" -and $Command -clike ($Matches[1] -replace '[\[\]?]', '`$0')
+                }).Count
+        }
     }
 
     Context '.claude/settings.json permissions' {
@@ -74,20 +83,61 @@ Describe 'Agent configuration' {
             $script:ReviewAskRules | Should -Contain $Rule -Because 'review mode must still ask for it'
         }
 
-        # Switching modes is the owner's call in both modes, so an agent can't turn its own prompts off.
+        # Switching modes is the owner's call in both modes, so an agent can't turn its own prompts off. Any form
+        # that passes -Mode, or a prefix of it such as -M (PowerShell accepts one), asks, whatever the path; the
+        # script takes no positional arguments, so -M is the only way in (review 1 of the modes PR).
         It 'asks before switching modes with <Tool>(<Command>)' -ForEach @(
             @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode.ps1 -Mode Auto' }
             @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode -Mode Review' }
             @{ Tool = 'PowerShell'; Command = '.\tools\Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'PowerShell'; Command = './tools/./Set-AgentMode.ps1 -M Auto' }
             @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/Set-AgentMode.ps1 -Mode Auto' }
-            @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/Set-AgentMode.ps1 -Mode Auto' }
-            @{ Tool = 'PowerShell'; Command = './.kit/tools/Set-AgentMode.ps1 -Mode Auto' }
-            @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./.kit/tools/Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/../tools/Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'PowerShell'; Command = './.kit/tools/Set-AgentMode.ps1 -RepoRoot . -Mode Auto' }
         ) {
-            $matching = @(Get-RuleList 'ask' | Where-Object {
-                    $_ -match "^$Tool\((.*)\)$" -and $Command -clike ($Matches[1] -replace '[\[\]?]', '`$0')
-                })
-            $matching | Should -Not -BeNullOrEmpty -Because "an ask rule should catch $Tool($Command)"
+            Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
+        }
+
+        # Checking the mode happens at the start of every task; in auto mode it mustn't prompt (review 1).
+        It 'doesn''t ask just to show the mode: <Tool>(<Command>)' -ForEach @(
+            @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode.ps1' }
+            @{ Tool = 'PowerShell'; Command = './.kit/tools/Set-AgentMode.ps1 -RepoRoot .' }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeFalse
+        }
+
+        # "Always ask" in AGENTS.md: the common forms of deleting, force-pushing, publishing and releasing prompt
+        # in both modes, though `git push *` and the like are allowed (review 1 of the modes PR).
+        It 'asks before the hard limit <Tool>(<Command>)' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'git push origin --delete feat/x' }
+                @{ Tool = $tool; Command = 'git push -d origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --force origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --force-with-lease origin feat/x' }
+                @{ Tool = $tool; Command = 'git push -f origin feat/x' }
+                @{ Tool = $tool; Command = 'gh repo edit --visibility public' }
+                @{ Tool = $tool; Command = 'gh repo delete DerekFoulk/kit-app-test' }
+                @{ Tool = $tool; Command = 'gh release create v0.1.0' }
+                @{ Tool = $tool; Command = 'gh api repos/DerekFoulk/x --method DELETE' }
+                @{ Tool = $tool; Command = 'gh api -X DELETE repos/DerekFoulk/x' }
+            }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
+        }
+
+        It 'still lets an ordinary push run unasked' {
+            Test-AskRuleMatch -Tool 'Bash' -Command 'git push -q -u origin feat/agent-modes' | Should -BeFalse
+            Test-AskRuleMatch -Tool 'PowerShell' -Command 'git push origin feat/defer-fix' | Should -BeFalse
+        }
+
+        It 'gives review mode exactly the rules auto mode drops from the shared settings' {
+            . (Join-Path $repoRoot 'tools' 'Set-AgentMode.ps1')
+            @($script:ReviewAskRules | Sort-Object) | Should -Be @(
+                'Bash(dotnet add * package *)', 'Bash(gh pr merge *)', 'Bash(gh repo edit *)'
+                'Edit(./.config/dotnet-tools.json)', 'Edit(./.github/dependabot.yml)', 'Edit(./.github/workflows/**)'
+                'Edit(./**/Directory.Build.props)', 'Edit(./**/Directory.Packages.props)', 'Edit(./global.json)', 'Edit(./nuget.config)'
+                'PowerShell(dotnet add * package *)', 'PowerShell(gh pr merge *)', 'PowerShell(gh repo edit *)'
+            )
         }
 
         # New-KitApp creates a GitHub repo and changes its settings (ADR-0033); './tools/*' would allow it unasked.
