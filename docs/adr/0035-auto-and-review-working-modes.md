@@ -77,6 +77,8 @@ Accepted (owner, 2026-11-07: "Yes, set it up… default to the auto mode", and k
     - `gh repo delete` and `gh release`;
     - `gh api` calls on rulesets, branch protection, merge settings, visibility, `private`, `delete_branch_on_merge` or `default_branch`, and DELETE calls.
 
+    No rule ends in `:*`: Claude Code reads that as its older prefix syntax, where `*` is literal, so the `:` refspec rules end in `:**`. A test models that syntax and forbids mixing the two (review 4 of PR 19). Whether `:**` prompts in a live session isn't verified.
+
     Some ordinary commands prompt as a side effect, such as a commit message that names one of these forms, or `gh release view`. A prompt errs on the safe side.
 
   These are prompts for the common forms, not a security boundary. Claude Code's docs say such rules aren't one: a shell `Set-Content` on `.agent-mode`, an unusual path, or another agent can still get past them, and the instructions cover the rest. Showing the mode (`Set-AgentMode.ps1` with no `-Mode`) doesn't prompt, so checking it at the start of a task costs nothing.
