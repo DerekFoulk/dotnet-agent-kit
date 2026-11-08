@@ -90,6 +90,7 @@ public sealed class BookmarksApiTests : IDisposable
     [InlineData("limit=0")]
     [InlineData("limit=101")]
     [InlineData("offset=-1")]
+    [InlineData("offset=10001")]
     public async Task AnOutOfRangePageIsAValidationProblem(string query)
     {
         // API-004 and API-006: the page size is capped at 100, so no client can ask for the whole table.
