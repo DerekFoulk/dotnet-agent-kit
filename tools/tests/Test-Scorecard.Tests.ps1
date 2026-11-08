@@ -231,6 +231,19 @@ Describe 'Test-Scorecard.ps1' {
         $rows[0].OpenGaps | Should -Be 1
     }
 
+    It 'counts "Advisory:" as advisory in any case, but not a word that only starts with it' {
+        # Review 1 of the scorecard PR: case and the word boundary weren't pinned by any test.
+        $paths = New-Fixture -Rules @(
+            (New-Rule -Id 'STY-001' -Enforcement 'Advisory: capitalized'),
+            (New-Rule -Id 'STY-002' -Enforcement 'advisoryboard: a made-up tool name')
+        ) -Areas @(New-Area -Override @{ rules = @('STY-001', 'STY-002') })
+
+        $row = @(Get-ScorecardRow -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards)[0]
+
+        $row.Advisory | Should -Be 1
+        $row.CheckedByTool | Should -Be 1
+    }
+
     Context 'the table in the file' {
         # The table between the markers is written by -Update, like Build-AgentRules.ps1 writes the rule files, and
         # the check fails when it no longer matches the rules.
