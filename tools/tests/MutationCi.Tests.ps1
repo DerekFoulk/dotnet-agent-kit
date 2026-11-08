@@ -114,6 +114,14 @@ Describe 'Mutation testing in CI' {
             $config.ContainsKey('coverage-analysis') | Should -BeFalse
         }
 
+        It 'keeps a local run''s StrykerOutput folder out of commits, here and in every app (which copies .gitignore)' {
+            # Re-review of PR 23: the documented local run writes StrykerOutput/<date>/ at the repo root.
+            # Only the repo's own .gitignore counts, not this machine's global excludes.
+            $noGlobal = Join-Path $TestDrive 'no-global-excludes'
+            git -C $root -c "core.excludesFile=$noGlobal" check-ignore --no-index -q 'StrykerOutput/2026-11-08.06-17-00/reports/mutation-report.json'
+            $LASTEXITCODE | Should -Be 0 -Because 'StrykerOutput/ must be in .gitignore'
+        }
+
         It 'skips Stryker while the solution has no projects, as a new app''s does' {
             $steps = @(Get-Steps $reusable.Yaml)
             $count = @($steps | Where-Object { $_['id'] -eq 'projects' })
