@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.Hosting;
 
 /// <summary>
 /// The service defaults every ASP.NET Core app gets (OPS-001 to OPS-003, ADR-0037): OpenTelemetry logs, metrics
-/// and traces, and health checks with the endpoints that report them. Adapted from Microsoft's
+/// and traces, health checks with the endpoints that report them, and resilience on every HttpClient. Adapted from Microsoft's
 /// aspire-servicedefaults template, without its service discovery, which does nothing outside Aspire.
 /// </summary>
 public static class ServiceDefaultsExtensions
@@ -29,6 +29,9 @@ public static class ServiceDefaultsExtensions
         builder.ConfigureOpenTelemetry();
         // Liveness: the process answers. It checks nothing else, so a slow dependency never restarts the app.
         builder.Services.AddHealthChecks().AddCheck("self", () => HealthCheckResult.Healthy(), [LiveTag]);
+        // Every HttpClient gets timeouts, retries with backoff and a circuit breaker (OPS-003). A client that
+        // sends non-idempotent requests, such as a payment POST, can turn retries off for itself.
+        builder.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
         return builder;
     }
 
