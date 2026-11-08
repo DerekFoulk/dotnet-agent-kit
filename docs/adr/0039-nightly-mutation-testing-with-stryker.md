@@ -17,7 +17,9 @@ This ADR was decided in auto mode (ADR-0035).
 
 ### Option 1: A shared nightly workflow for the kit and every app
 
-`mutation.reusable.yml` runs Stryker.NET over the whole solution and fails below 85%. The kit calls it nightly, on demand, and on a pull request that changes any file the run reads: the sample, the root build files, the Stryker files and the kit scripts the workflow calls. A Pester test finds those files from the workflow and the repo, so the filter can't silently fall behind. Every new app gets a nightly caller from `templates/app`.
+`mutation.reusable.yml` runs Stryker.NET over the whole solution and fails below 85%. The kit calls it nightly, on demand, and on every pull request except one that changes only files the run can't read (docs, Markdown at the root, agent config, git hooks, spikes, templates, the Pester tests). Every new app gets a nightly caller from `templates/app`.
+
+The filter lists what can't matter, not what does. PR 23 first listed the run's inputs, and three reviews in a row found inputs missing: the Stryker files, then the SDK and build files, then `.editorconfig` and any project outside `sample/`. A list of inputs falls behind without anyone noticing, and the change merges unproven. A list of what can't matter fails safe: a gap only costs one extra run of about three minutes, which isn't a required check. A Pester test fails if an ignored path holds a file the run reads: any tracked file in the solution's projects, a root build input, or a kit file the workflow calls.
 
 Each fact lives in one place, in the kit, which the workflow reads at its own pinned version:
 - **The version** is in `.config/dotnet-tools.json`, .NET's tool manifest, which Dependabot keeps current with the NuGet packages.

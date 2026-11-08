@@ -67,7 +67,7 @@ Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which 
 
 ## Mutation testing
 
-`.github/workflows/mutation.yml` runs Stryker.NET nightly with the kit's `.config/stryker-config.json` and fails below a mutation score of 85% (TST-004, ADR-0039). Then `Test-MutationReport.ps1` checks that every kill came from a test that reached the mutant, so a test that fails whatever is mutated can't fake a high score. Each run uploads a `mutation-report` artifact that lists each surviving mutant.
+`.github/workflows/mutation.yml` runs Stryker.NET nightly with the kit's `.config/stryker-config.json` and fails below a mutation score of 85% (TST-004, ADR-0039). Then `Test-MutationReport.ps1` checks that every kill came from a test that reached the mutant, so a test that fails whatever is mutated can't fake a high score. Each run that gets as far as a report uploads it as a `mutation-report` artifact, which lists each surviving mutant.
 
 An app needs no Stryker install, config file or tool manifest of its own: the shared workflow reads the version and settings from the kit at its pinned commit. The report artifact shows each survivor's line and change, which is what a local run would show, so apps get no local setup until one is needed (YAGNI). The kit itself has a tool manifest for working on the kit's own settings (the kit's [AGENTS.md](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/AGENTS.md#commands), Commands).
 
