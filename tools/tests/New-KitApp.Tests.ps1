@@ -151,7 +151,7 @@ Describe 'New-KitApp run' {
         function Initialize-FakeGitHub([string] $Remote) {
             $script:calls = [Collections.Generic.List[object]]::new()
             $script:remote = $Remote
-            git init -q --bare $Remote
+            New-TestGitRemote -Path $Remote | Out-Null
             Mock Invoke-KitGh {
                 $pushed = [bool] (git -C $script:remote rev-parse --verify --quiet refs/heads/main)
                 $script:calls.Add([pscustomobject]@{ Arguments = $Arguments -join ' '; Input = $InputText; Pushed = $pushed })

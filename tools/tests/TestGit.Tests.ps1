@@ -46,21 +46,23 @@ Describe 'TestGit.psm1' {
         Get-Command New-TestGitRemote -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $saved = Set-TestGitEnvironment
         $trace = Join-Path $TestDrive "push-trace-$(New-Guid).jsonl"
+        $outerTrace = $env:GIT_TRACE2_EVENT
         try {
             $remote = New-TestGitRemote -Path (Join-Path $TestDrive "remote-$(New-Guid).git")
             $repo = New-TestRepo
             git -C $repo commit -q --allow-empty -m 'chore: fixture'
             $env:GIT_TRACE2_EVENT = $trace
             git -C $repo push -q $remote main 2>&1 | Out-Null
-            $env:GIT_TRACE2_EVENT = $null
+            $pushExit = $LASTEXITCODE
+            $env:GIT_TRACE2_EVENT = $outerTrace
 
-            $LASTEXITCODE | Should -Be 0
+            $pushExit | Should -Be 0
             git -C $remote rev-parse --verify --quiet refs/heads/main | Should -Not -BeNullOrEmpty -Because 'the push landed'
             $started = @(Get-Content -LiteralPath $trace | ConvertFrom-Json | Where-Object event -EQ 'start' | ForEach-Object { $_.argv -join ' ' })
             $started | Should -Not -BeNullOrEmpty -Because 'the trace recorded the push'
             $started | Where-Object { $_ -match ' (maintenance|gc|repack)( |$)' } | Should -BeNullOrEmpty
         }
-        finally { $env:GIT_TRACE2_EVENT = $null; Restore-TestGitEnvironment -Saved $saved }
+        finally { $env:GIT_TRACE2_EVENT = $outerTrace; Restore-TestGitEnvironment -Saved $saved }
     }
 
     It 'is how every test file makes a bare remote' {

@@ -9,7 +9,8 @@
     test, and they reach the scripts under test and every process they start. They also turn off git's background
     maintenance: a fixture commit could start a repack that raced the test's next lookups (New-KitApp.Tests on
     Windows, PR 23). Restore-TestGitEnvironment puts back what was there before. Call the first in a test file's
-    BeforeAll and the second in its AfterAll.
+    BeforeAll and the second in its AfterAll. New-TestGitRemote makes a bare repo for a test to push into, with
+    the one setting a push's receive-pack needs in the remote's own config.
 #>
 
 Set-StrictMode -Version Latest
@@ -52,6 +53,19 @@ function Set-TestGitEnvironment {
     $saved
 }
 
+function New-TestGitRemote {
+    [CmdletBinding(SupportsShouldProcess)]
+    [OutputType([string])]
+    param([Parameter(Mandatory)] [string] $Path)
+
+    # A bare repo a test pushes into, as if it were GitHub. git strips GIT_CONFIG_COUNT from the receive-pack a
+    # local push starts, so Set-TestGitEnvironment can't reach it: the remote gets the setting in its own config.
+    if (-not $PSCmdlet.ShouldProcess($Path, 'Create a bare git repo')) { return $Path }
+    git init -q --bare $Path
+    git -C $Path config receive.autoGC false
+    $Path
+}
+
 function Restore-TestGitEnvironment {
     [CmdletBinding(SupportsShouldProcess)]
     param([Parameter(Mandatory)] [hashtable] $Saved)
@@ -65,4 +79,4 @@ function Restore-TestGitEnvironment {
     }
 }
 
-Export-ModuleMember -Function Set-TestGitEnvironment, Restore-TestGitEnvironment
+Export-ModuleMember -Function Set-TestGitEnvironment, Restore-TestGitEnvironment, New-TestGitRemote
