@@ -75,5 +75,21 @@ public sealed class ServiceDefaultsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public void EveryHttpClientGetsTheStandardResilienceHandler()
+    {
+        // Timeouts, retries with backoff and a circuit breaker on every outbound call, by default (OPS-003).
+        IHttpMessageHandlerFactory? factory = _host.Services.GetService<IHttpMessageHandlerFactory>();
+        factory.Should().NotBeNull("the service defaults set up IHttpClientFactory with resilience");
+        using HttpMessageHandler handler = factory!.CreateHandler("any-client");
+        List<string> chain = [];
+        for (HttpMessageHandler? current = handler; current is not null; current = (current as DelegatingHandler)?.InnerHandler)
+        {
+            chain.Add(current.GetType().Name);
+        }
+
+        chain.Should().Contain("ResilienceHandler");
+    }
+
     public void Dispose() => _host.Dispose();
 }
