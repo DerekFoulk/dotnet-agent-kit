@@ -11,6 +11,7 @@ This repo is **{{Name}}**. It follows dotnet-agent-kit {{KitVersion}} (commit `{
 | What | Command |
 |---|---|
 | Check this machine's toolchain | `./.kit/tools/Initialize-DevMachine.ps1 -RepoRoot .` |
+| Show the working mode; switch it (the owner's call) | `./.kit/tools/Set-AgentMode.ps1 -RepoRoot .`, with `-Mode Review` or `-Mode Auto` |
 | Build | `dotnet build {{Name}}.slnx` |
 | .NET tests with coverage, then the coverage gate (TST-004) | Delete `TestResults` first (the gate merges every report it finds), then `dotnet test --solution {{Name}}.slnx --coverage --coverage-output-format cobertura --results-directory TestResults` and `./.kit/tools/Test-CoverageGate.ps1 -Path TestResults -Solution {{Name}}.slnx` |
 | No deprecated NuGet packages | `./.kit/tools/Test-DeprecatedPackages.ps1 -Path {{Name}}.slnx` |

@@ -19,6 +19,20 @@ Describe 'Agent configuration' {
         function Get-RuleList([string] $Kind) {
             if ($permissions.ContainsKey($Kind)) { @($permissions[$Kind]) } else { @() }
         }
+
+        # Whether an ask rule catches a command. A rule's '*' matches any text, as in Claude Code's patterns; [, ]
+        # and ? are taken literally. The match is case-sensitive, the stricter reading, since whether Claude Code
+        # ignores case isn't documented.
+        # A rule ending in ":*" is Claude Code's older prefix syntax: the text before it is a literal prefix and any
+        # '*' in it isn't expanded (review 4 of PR 19, from Claude Code's own rule parser).
+        function Test-AskRuleMatch([string] $Tool, [string] $Command) {
+            [bool] @(Get-RuleList 'ask' | Where-Object {
+                    if ($_ -notmatch "^$Tool\((.*)\)$") { return $false }
+                    $pattern = $Matches[1]
+                    if ($pattern -match '^(.+):\*$') { return $Command -ceq $Matches[1] -or $Command.StartsWith("$($Matches[1]) ", [StringComparison]::Ordinal) }
+                    $Command -clike ($pattern -replace '[\[\]?]', '`$0')
+                }).Count
+        }
     }
 
     Context '.claude/settings.json permissions' {
@@ -34,10 +48,8 @@ Describe 'Agent configuration' {
         }
 
         It 'asks before <Command> in both Bash and PowerShell' -ForEach @(
-            # The owner's decisions: merging and repo settings.
-            @{ Command = 'gh pr merge *' }, @{ Command = 'gh repo edit *' }
-            # Dependencies and installs. -I* catches -Install and its prefixes (-Ins), which PowerShell accepts.
-            @{ Command = 'dotnet add * package *' }, @{ Command = 'winget install *' }, @{ Command = '*Initialize-DevMachine*-I*' }
+            # Installs on the owner's machine. -I* catches -Install and its prefixes (-Ins), which PowerShell accepts.
+            @{ Command = 'winget install *' }, @{ Command = '*Initialize-DevMachine*-I*' }
             # The two commands that destroy local work and that an agent rarely needs.
             @{ Command = 'git reset --hard *' }, @{ Command = 'git clean *' }
         ) {
@@ -52,14 +64,116 @@ Describe 'Agent configuration' {
         }
 
         It 'asks before editing <Path>' -ForEach @(
-            @{ Path = './**/Directory.Packages.props' }, @{ Path = './**/Directory.Build.props' },
-            @{ Path = './nuget.config' }, @{ Path = './global.json' }, @{ Path = './.config/dotnet-tools.json' },
-            @{ Path = './.github/workflows/**' }, @{ Path = './.github/dependabot.yml' },
-            @{ Path = './.claude/settings.json' }, @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' },
+            # The agent's own permissions and connectors (SEC-004), and the working mode (ADR-0035).
+            @{ Path = './.claude/settings.json' }, @{ Path = './.claude/settings.local.json' }, @{ Path = './.agent-mode' }
+            @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' },
             # An app's kit-managed scripts and manifest (ADR-0032): the sync job changes them, not a hand edit.
             @{ Path = './.kit/**' }
         ) {
             (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
+        }
+
+        # Auto mode is the default (ADR-0035): the rules review mode adds can't also be in the shared file, or
+        # auto mode would ask too. Review mode adds them to the owner's .claude/settings.local.json.
+        It 'leaves the review-mode rules out of the shared settings: <Rule>' -ForEach @(
+            @{ Rule = 'Bash(gh pr merge *)' }, @{ Rule = 'PowerShell(gh pr merge *)' }
+            @{ Rule = 'Bash(gh repo edit *)' }, @{ Rule = 'PowerShell(gh repo edit *)' }
+            @{ Rule = 'Bash(dotnet add * package *)' }, @{ Rule = 'PowerShell(dotnet add * package *)' }
+            @{ Rule = 'Edit(./**/Directory.Packages.props)' }, @{ Rule = 'Edit(./**/Directory.Build.props)' }
+            @{ Rule = 'Edit(./nuget.config)' }, @{ Rule = 'Edit(./global.json)' }, @{ Rule = 'Edit(./.config/dotnet-tools.json)' }
+            @{ Rule = 'Edit(./.github/workflows/**)' }, @{ Rule = 'Edit(./.github/dependabot.yml)' }
+        ) {
+            (Get-RuleList 'ask') -ccontains $Rule | Should -BeFalse
+            . (Join-Path $repoRoot 'tools' 'Set-AgentMode.ps1')
+            $script:ReviewAskRules | Should -Contain $Rule -Because 'review mode must still ask for it'
+        }
+
+        # Switching modes is the owner's call in both modes, so an agent can't turn its own prompts off. Any form
+        # that passes -Mode, or a prefix of it such as -M (PowerShell accepts one), asks, whatever the path; the
+        # script takes no positional arguments, so -M is the only way in (review 1 of the modes PR).
+        It 'asks before switching modes with <Tool>(<Command>)' -ForEach @(
+            @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode -Mode Review' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'PowerShell'; Command = './tools/./Set-AgentMode.ps1 -M Auto' }
+            @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/../tools/Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'PowerShell'; Command = './.kit/tools/Set-AgentMode.ps1 -RepoRoot . -Mode Auto' }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
+        }
+
+        # Checking the mode happens at the start of every task; in auto mode it mustn't prompt (review 1).
+        It 'doesn''t ask just to show the mode: <Tool>(<Command>)' -ForEach @(
+            @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode.ps1' }
+            @{ Tool = 'PowerShell'; Command = './.kit/tools/Set-AgentMode.ps1 -RepoRoot .' }
+            # A worktree path with "-m" in it isn't -Mode (review 2 of the modes PR).
+            @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode.ps1 -RepoRoot ../dotnet-agent-kit-main' }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeFalse
+        }
+
+        # "Always ask" in AGENTS.md: the common forms of deleting, force-pushing, publishing and releasing prompt
+        # in both modes, though `git push *` and the like are allowed (review 1 of the modes PR).
+        It 'asks before the hard limit <Tool>(<Command>)' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'git push origin --delete feat/x' }
+                @{ Tool = $tool; Command = 'git push -d origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --force origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --force-with-lease origin feat/x' }
+                @{ Tool = $tool; Command = 'git push -f origin feat/x' }
+                @{ Tool = $tool; Command = 'gh repo edit --visibility public' }
+                @{ Tool = $tool; Command = 'gh repo delete DerekFoulk/kit-app-test' }
+                @{ Tool = $tool; Command = 'gh release create v0.1.0' }
+                @{ Tool = $tool; Command = 'gh api repos/DerekFoulk/x --method DELETE' }
+                @{ Tool = $tool; Command = 'gh api -X DELETE repos/DerekFoulk/x' }
+                # Review 2 of the modes PR: refspec forms, git -C, mirror and prune; rulesets and merge settings.
+                @{ Tool = $tool; Command = 'git push origin :feat/x' }
+                @{ Tool = $tool; Command = 'git push origin +feat/x' }
+                @{ Tool = $tool; Command = 'git -C . push --force origin x' }
+                @{ Tool = $tool; Command = 'git -C . push origin --delete x' }
+                @{ Tool = $tool; Command = 'git push --mirror origin' }
+                @{ Tool = $tool; Command = 'git push --prune origin' }
+                @{ Tool = $tool; Command = 'gh api -X PUT repos/o/r/rulesets/1 --input r.json' }
+                @{ Tool = $tool; Command = 'gh api -X PUT repos/o/r/branches/main/protection --input p.json' }
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -f allow_squash_merge=true' }
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -f visibility=public' }
+                @{ Tool = $tool; Command = 'gh repo edit --enable-squash-merge' }
+                @{ Tool = $tool; Command = 'gh repo edit --delete-branch-on-merge=false' }
+                @{ Tool = $tool; Command = 'gh repo edit --default-branch dev' }
+                # Review 3 of PR 19: gh api's other repo fields, quoted refspecs and a trailing -d.
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -F private=false' }
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -F delete_branch_on_merge=false' }
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -f default_branch=dev' }
+                @{ Tool = $tool; Command = "git push origin ':feat/x'" }
+                @{ Tool = $tool; Command = 'git push origin ":feat/x"' }
+                @{ Tool = $tool; Command = "git push origin '+feat/x'" }
+                @{ Tool = $tool; Command = 'git push origin feat/x -d' }
+            }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
+        }
+
+        # Claude Code warns that a rule mixing '*' with a trailing ":*" "will likely never match".
+        It 'has no rule that mixes * with the trailing :* prefix syntax' {
+            @((Get-RuleList 'allow') + (Get-RuleList 'ask') + (Get-RuleList 'deny')) |
+                Where-Object { $_ -match '^\w+\((.*)\)$' -and $Matches[1] -match '^(.+):\*$' -and $Matches[1] -match '\*' } |
+                Should -BeNullOrEmpty
+        }
+
+        It 'still lets an ordinary push run unasked' {
+            Test-AskRuleMatch -Tool 'Bash' -Command 'git push -q -u origin feat/agent-modes' | Should -BeFalse
+            Test-AskRuleMatch -Tool 'PowerShell' -Command 'git push origin feat/defer-fix' | Should -BeFalse
+        }
+
+        It 'gives review mode exactly the rules auto mode drops from the shared settings' {
+            . (Join-Path $repoRoot 'tools' 'Set-AgentMode.ps1')
+            @($script:ReviewAskRules | Sort-Object) | Should -Be @(
+                'Bash(dotnet add * package *)', 'Bash(gh pr merge *)', 'Bash(gh repo edit *)'
+                'Edit(./.config/dotnet-tools.json)', 'Edit(./.github/dependabot.yml)', 'Edit(./.github/workflows/**)'
+                'Edit(./**/Directory.Build.props)', 'Edit(./**/Directory.Packages.props)', 'Edit(./global.json)', 'Edit(./nuget.config)'
+                'PowerShell(dotnet add * package *)', 'PowerShell(gh pr merge *)', 'PowerShell(gh repo edit *)'
+            )
         }
 
         # New-KitApp creates a GitHub repo and changes its settings (ADR-0033); './tools/*' would allow it unasked.
@@ -81,8 +195,11 @@ Describe 'Agent configuration' {
             $matching | Should -Not -BeNullOrEmpty -Because "an ask rule should catch $Tool($Command)"
         }
 
-        It 'leaves pushes to the GitHub ruleset: no deny or ask rule matches git push' {
-            @((Get-RuleList 'deny') + (Get-RuleList 'ask')) -match 'git push' | Should -BeNullOrEmpty
+        # ADR-0026 leaves pushes to main to the GitHub ruleset. ADR-0035 adds asks, never denies, for deleting and
+        # force-pushing, which the ruleset doesn't guard on other branches; an ordinary push stays unasked.
+        It 'leaves pushes to the GitHub ruleset: no deny rule matches git push, and only destructive forms ask' {
+            @(Get-RuleList 'deny') -match 'git push' | Should -BeNullOrEmpty
+            @(Get-RuleList 'ask') -match 'git \*?push' | Where-Object { $_ -notmatch '--delete|-d( |\))|--force|-f|:\*|\+\*|--mirror|--prune' } | Should -BeNullOrEmpty
         }
 
         It 'allows git switch only as the exact command <Rule>' -ForEach @(

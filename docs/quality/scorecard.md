@@ -251,7 +251,7 @@ Open gaps:
 ## Keeping it current
 
 - Every rule in force must be named by at least one area here, or the check fails in CI. A proposed rule can wait until it's accepted.
-- Closing a gap is its own pull request: it adds or changes rules and marks the gap `closed`. Gaps that need a package, a CI change or cost wait for the owner's OK.
+- Closing a gap is its own pull request: it adds or changes rules and marks the gap `closed`. Gaps that need cost or cloud resources wait for the owner's OK in both modes; in review mode, so do gaps that need a package or a CI change (ADR-0035).
 - After changing a rule or an area, run `./tools/Test-Scorecard.ps1 -Update` and commit the table.
 
 Checks catch mechanical mistakes, not design. A well-tested, warning-free app can still be over-engineered or awkward to use; that judgment stays with the reviewer agent and the owner.

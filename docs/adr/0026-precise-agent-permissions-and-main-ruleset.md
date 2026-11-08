@@ -47,6 +47,7 @@ Accepted as recommended (owner, 2026-11-02). The ruleset "main protection" was c
 - When a permission rule blocks a legitimate action, the agent stops and tells the owner; it doesn't rephrase or relocate the command to get past the rule (`AGENTS.md`).
 - Build step 4 adds required status checks to the ruleset once CI exists.
 - GIT-001, GIT-002 and GIT-003 are now enforced by the ruleset rather than advisory.
+- **Amended by ADR-0035 (2026-11-07):** pushes still have no deny rule, but deleting or force-pushing a branch asks, because the ruleset guards only `main`. The asks for merging, packages, repo settings and build or CI files move to review mode, in the owner's `.claude/settings.local.json`.
 
 ## Pillars affected
 

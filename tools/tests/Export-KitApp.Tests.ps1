@@ -114,7 +114,7 @@ Describe 'Export-KitApp' {
         $kitAgents = Get-Content -Raw (Join-Path $checkout 'AGENTS.md')
         $appAgents = Get-Content -Raw (Join-Path $app 'AGENTS.md')
 
-        foreach ($title in 'Whose rules win', 'How to work', 'Talking to the owner', 'Git', 'Ask before') {
+        foreach ($title in 'Whose rules win', 'Working modes', 'How to work', 'Talking to the owner', 'Git', 'Always ask', 'Also ask in review mode') {
             Get-Section $appAgents $title | Should -Be (Get-Section $kitAgents $title)
         }
         $appAgents | Should -Match '<!-- kit:begin'
