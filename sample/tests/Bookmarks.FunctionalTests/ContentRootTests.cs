@@ -1,24 +1,39 @@
-using System.Reflection;
-using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Bookmarks.FunctionalTests;
 
 /// <summary>
-/// WebApplicationFactory reads MvcTestingAppManifest.json from the working directory. Stryker.NET runs the tests from
-/// the repo root, where it isn't, so the factory fell back to "solution folder + project name", a folder that doesn't
-/// exist, and every API test failed on every mutant (PR 23). Its other lookup, a WebApplicationFactoryContentRoot
-/// attribute on the test assembly, doesn't depend on the working directory.
+/// The API must start even when WebApplicationFactory's own content-root lookup goes wrong. Under Stryker.NET it does:
+/// MinVer skips the design-time build Stryker compiles from, so the recompiled API's version (1.0.0.0) doesn't match
+/// the key in MvcTestingAppManifest.json (0.0.0.0), and the factory falls back to a folder that doesn't exist. Every
+/// API test then failed on every mutant (PR 23, ADR-0039).
 /// </summary>
 public sealed class ContentRootTests
 {
     [Fact]
-    public void TheTestsFindTheApiWhateverTheWorkingDirectoryIs()
+    public async Task TheApiStartsInItsOwnFolderWhenTheFactorysLookupGoesWrong()
     {
-        WebApplicationFactoryContentRootAttribute api = typeof(ContentRootTests).Assembly
-            .GetCustomAttributes<WebApplicationFactoryContentRootAttribute>()
-            .Should().ContainSingle(attribute => attribute.Key == "Bookmarks.Api").Subject;
+        using MisledFactory factory = new();
+        using HttpClient client = factory.CreateClient();
 
-        // The factory accepts the folder only when this marker file is in it.
-        File.Exists(Path.Combine(api.ContentRootPath, api.ContentRootTest)).Should().BeTrue();
+        using HttpResponseMessage alive = await client.GetAsync(new Uri("/alive", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        alive.StatusCode.Should().Be(HttpStatusCode.OK);
+        factory.Services.GetRequiredService<IHostEnvironment>().ContentRootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Should().EndWith(Path.Combine("src", "Bookmarks.Api"));
+    }
+
+    /// <summary>Points the content root at a missing folder first, as the factory's fallback does under Stryker.</summary>
+    private sealed class MisledFactory : ApiFactory
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseContentRoot(Path.Combine(Path.GetTempPath(), "no-such-folder-" + Guid.NewGuid().ToString("N")))
+                .UseSetting("ConnectionStrings:Bookmarks", "DataSource=:memory:");
+            base.ConfigureWebHost(builder);
+        }
     }
 }
