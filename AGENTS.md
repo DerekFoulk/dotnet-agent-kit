@@ -14,7 +14,12 @@ Anything an agent suggests is **proposed** until the owner accepts it. Rules mar
 
 Agents work in one of two modes (ADR-0035). At the start of each task, check which. Read `.agent-mode` at the repo root: it's **auto** unless that file says `review`. `Set-AgentMode.ps1` with no `-Mode` also prints the mode, without a prompt (`./tools/` in the kit, `./.kit/tools/` with `-RepoRoot .` in an app). The file is gitignored, so each person's mode is their own, and each checkout's: a new worktree starts in auto. Switching is the owner's call: Claude Code asks before any run with `-Mode`, and other agents follow this rule.
 
-- **Auto, the default.** Work through the agreed roadmap without waiting for approval: post the plan in chat, then build it. You may add a dependency that the kit's standards or ADRs, or the official docs they cite, name for the task; say so in the PR. Merge your own PR with a merge commit (`gh pr merge <n> --merge`) once CI has passed at its head commit, the latest `reviewer` run on that commit has no unanswered blocking or should-fix finding, and the description is complete. Then report what merged. Decide a "won't fix" yourself, with the reason in the reply. "Always ask" still applies, and so does one exception: a PR that changes the guardrails themselves is the owner's to merge. That means the "Working modes" or "Always ask" sections, SEC-003, `.claude/settings.json`, the `Set-AgentMode.ps1` script, a ruleset, or a CI check removed or weakened.
+- **Auto, the default.** Work through the agreed roadmap without waiting for approval: post the plan in chat, then build it. You may add a dependency that the kit's standards or ADRs, or the official docs they cite, name for the task; say so in the PR. Merge your own PR with a merge commit (`gh pr merge <n> --merge`) once CI has passed at its head commit, the latest `reviewer` run on that commit has no unanswered blocking or should-fix finding, and the description is complete. Then report what merged. Decide a "won't fix" yourself, with the reason in the reply. "Always ask" still applies, and so does one exception: a PR that changes the guardrails themselves is the owner's to merge. That means:
+  - the "Working modes" or "Always ask" sections, or SEC-003;
+  - `.claude/settings.json` or the `Set-AgentMode.ps1` script;
+  - the `finish-work` skill or the `reviewer` agent, which enforce these rules;
+  - a ruleset, branch protection or the merge settings;
+  - a CI check, if removed or weakened.
 - **Review.** The owner approves non-trivial plans before work starts, decides each "won't fix", and merges each PR, or says to for that PR. "Also ask in review mode" applies too.
 
 **Release PRs are never merged by an agent, in either mode.** Those are release-please's PRs, on a `release-please--` branch: releases are the owner's (owner, 2026-11-07).
@@ -56,7 +61,7 @@ Details and sources: `docs/standards/communication.md`.
   Co-Authored-By: ...
   ```
 
-- Never push to `main`, force-push, or skip hooks. Merge a PR only as the working mode allows: in review mode, when the owner says so for that PR; never a release PR. GitHub's "main protection" ruleset rejects direct pushes, force-pushes and deletion of `main`, and allows merge commits only.
+- Never push to `main`, force-push, or skip hooks. Merge a PR only as the working mode allows: in review mode, when the owner says so for that PR; never a release PR or a change to the guardrails. GitHub's "main protection" ruleset rejects direct pushes, force-pushes and deletion of `main`, and allows merge commits only.
 - Before pushing to a PR's branch or reporting on a PR, check that it's still open (`gh pr view <n> --json state`). The owner may merge on his own schedule. If it's merged, put new commits on a fresh branch and open a new PR.
 
 ## Always ask
