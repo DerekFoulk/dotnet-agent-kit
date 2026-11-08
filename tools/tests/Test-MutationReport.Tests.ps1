@@ -124,6 +124,26 @@ Describe 'Test-MutationReport.ps1' {
         $problems[1] | Should -Match '^App\.Tests\.Upper killed 1 mutant'
     }
 
+    It 'groups and orders names and ids case-exactly, as it compares ids' {
+        # Review 4 of PR 23: Group-Object and Sort-Object ignore case unless told not to, so "Case" and "case" were
+        # labelled as one name, and ids "a" and "A" swapped places between runs.
+        Get-Command Get-MutationReportProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $report = New-Report @((New-Mutant -KilledBy 'A', 'a', 'upper', 'lower' -CoveredBy @()))
+        $report['testFiles']['tests/App.Tests/ThingTests.cs']['tests'] = @(
+            [ordered]@{ id = 'A'; name = 'App.Tests.Twin' }
+            [ordered]@{ id = 'a'; name = 'App.Tests.Twin' }
+            [ordered]@{ id = 'upper'; name = 'App.Tests.Case' }
+            [ordered]@{ id = 'lower'; name = 'App.Tests.case' })
+
+        $problems = @(Get-MutationReportProblem -Path (Write-Report $report))
+
+        $problems.Count | Should -Be 4
+        $problems[0] | Should -Match '^App\.Tests\.case killed' -Because 'a name no other test has needs no id'
+        $problems[1] | Should -Match '^App\.Tests\.Case killed'
+        $problems[2] | Should -Match '^App\.Tests\.Twin \(id a\) killed'
+        $problems[3] | Should -Match '^App\.Tests\.Twin \(id A\) killed'
+    }
+
     It 'leaves static mutants alone: Stryker runs them against every test' {
         Get-Command Get-MutationReportProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $report = New-Report @((New-Mutant -KilledBy 'tAlways' -CoveredBy @() -Static $true))
