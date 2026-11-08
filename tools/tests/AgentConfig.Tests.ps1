@@ -23,9 +23,14 @@ Describe 'Agent configuration' {
         # Whether an ask rule catches a command. A rule's '*' matches any text, as in Claude Code's patterns; [, ]
         # and ? are taken literally. The match is case-sensitive, the stricter reading, since whether Claude Code
         # ignores case isn't documented.
+        # A rule ending in ":*" is Claude Code's older prefix syntax: the text before it is a literal prefix and any
+        # '*' in it isn't expanded (review 4 of PR 19, from Claude Code's own rule parser).
         function Test-AskRuleMatch([string] $Tool, [string] $Command) {
             [bool] @(Get-RuleList 'ask' | Where-Object {
-                    $_ -match "^$Tool\((.*)\)$" -and $Command -clike ($Matches[1] -replace '[\[\]?]', '`$0')
+                    if ($_ -notmatch "^$Tool\((.*)\)$") { return $false }
+                    $pattern = $Matches[1]
+                    if ($pattern -match '^(.+):\*$') { return $Command -ceq $Matches[1] -or $Command.StartsWith("$($Matches[1]) ", [StringComparison]::Ordinal) }
+                    $Command -clike ($pattern -replace '[\[\]?]', '`$0')
                 }).Count
         }
     }
@@ -147,6 +152,13 @@ Describe 'Agent configuration' {
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
+        }
+
+        # Claude Code warns that a rule mixing '*' with a trailing ":*" "will likely never match".
+        It 'has no rule that mixes * with the trailing :* prefix syntax' {
+            @((Get-RuleList 'allow') + (Get-RuleList 'ask') + (Get-RuleList 'deny')) |
+                Where-Object { $_ -match '^\w+\((.*)\)$' -and $Matches[1] -match '^(.+):\*$' -and $Matches[1] -match '\*' } |
+                Should -BeNullOrEmpty
         }
 
         It 'still lets an ordinary push run unasked' {

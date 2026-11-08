@@ -56,6 +56,8 @@ Describe 'Set-AgentMode.ps1' {
         Set-AgentMode -Mode Review -RepoRoot $root
         Set-AgentMode -Mode Review -RepoRoot $root
         @((Read-LocalSettings $root)['permissions']['ask'] | Where-Object { $_ -eq 'Bash(gh pr merge *)' }) | Should -HaveCount 1
+        # Hidden, as it is on Linux and macOS, so a missing -Force fails here on Windows too (review 4 of PR 19).
+        if ($IsWindows) { (Get-Item -LiteralPath (Join-Path $root '.agent-mode') -Force).Attributes = 'Hidden' }
 
         Set-AgentMode -Mode Auto -RepoRoot $root
 
