@@ -38,4 +38,51 @@ function Read-MarkdownBody {
     $lines -join "`n"
 }
 
-Export-ModuleMember -Function Read-FrontMatter, Read-MarkdownBody
+# True when a front matter value is there and not blank: a non-empty string or list, or any other value.
+function Test-Present {
+    param($Value)
+    if ($null -eq $Value) { return $false }
+    if ($Value -is [string]) { return -not [string]::IsNullOrWhiteSpace($Value) }
+    if ($Value -is [System.Collections.ICollection]) { return $Value.Count -gt 0 }
+    $true
+}
+
+function Test-IsoDate {
+    param([string] $Text)
+    $parsed = [datetime]::MinValue
+    [datetime]::TryParseExact($Text, 'yyyy-MM-dd', [cultureinfo]::InvariantCulture, 'None', [ref] $parsed)
+}
+
+# A source is one of: "owner, YYYY-MM-DD", "ADR-NNNN" (an existing ADR file), or "<URL>, retrieved YYYY-MM-DD".
+# Returns the problem message, or $null when the source is valid. Shared by the rule-source and scorecard checks.
+function Get-SourceProblem {
+    param(
+        [Parameter(Mandatory)] [string] $Source,
+        [Parameter(Mandatory)] [string] $AdrPath
+    )
+
+    if ($Source -match '^owner\b') {
+        if ($Source -match '^owner, (\S+)$' -and (Test-IsoDate $Matches[1])) { return $null }
+        return "source '$Source' must read 'owner, YYYY-MM-DD'"
+    }
+    if ($Source -match '^ADR-(\d{4})$') {
+        if (Get-ChildItem -Path $AdrPath -Filter "$($Matches[1])-*.md" -File) { return $null }
+        return "source '$Source' not found in $AdrPath"
+    }
+    if ($Source -match '^https?://') {
+        if ($Source -notmatch '^(https?://\S+), retrieved (\S+)$' -or -not (Test-IsoDate $Matches[2])) {
+            return "outside source '$Source' needs ', retrieved YYYY-MM-DD'"
+        }
+        $uri = $null
+        if (-not [uri]::TryCreate($Matches[1], [UriKind]::Absolute, [ref] $uri) -or
+            $uri.Scheme -notin 'http', 'https' -or
+            [string]::IsNullOrEmpty($uri.Host) -or
+            [uri]::CheckHostName($uri.Host) -eq [UriHostNameType]::Unknown) {
+            return "outside source '$Source' is not a valid http(s) URL"
+        }
+        return $null
+    }
+    "source '$Source' is not a recognized source (owner, ADR or URL)"
+}
+
+Export-ModuleMember -Function Read-FrontMatter, Read-MarkdownBody, Test-Present, Get-SourceProblem
