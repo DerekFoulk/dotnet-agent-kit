@@ -1,0 +1,53 @@
+# Mutation testing for any repo that uses the kit (GAP-003, TST-004, ADR-0039). Stryker.NET changes the code in
+# small ways ("mutants") and runs the tests against each change; a mutant the tests don't notice survived. The
+# mutation score is the share of mutants the tests killed, and TST-004 asks for at least 85%.
+# Called nightly by this repo's mutation.yml, and by app repos pinned to the commit a kit release tag points to:
+#   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/mutation.reusable.yml@<commit SHA> # v0.1.0
+name: Mutation testing (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      solution:
+        description: Solution file to mutate (.slnx).
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  stryker:
+    name: Mutation score (Stryker.NET)
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      # Through the environment, never pasted into a script, so the name can't break quoting.
+      SOLUTION: ${{ inputs.solution }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # MinVer reads version tags from history
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      # Stryker.NET (Apache-2.0), a dotnet tool installed for this run only, at a pinned version.
+      - name: Install Stryker.NET
+        run: dotnet tool install dotnet-stryker --version 5.0.0 --tool-path "$RUNNER_TEMP/stryker"
+
+      # The Microsoft Testing Platform runner, because the kit's test projects use it (global.json).
+      - name: Mutation test
+        run: >-
+          "$RUNNER_TEMP/stryker/dotnet-stryker"
+          --solution "$SOLUTION"
+          --test-runner mtp
+          --configuration Release
+          --break-at 85
+          --threshold-low 85
+          --threshold-high 95
+          --reporter cleartext --reporter html --reporter json
+          --output "$RUNNER_TEMP/stryker-output"
