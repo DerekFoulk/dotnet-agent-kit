@@ -17,7 +17,7 @@ This ADR was decided in auto mode (ADR-0035).
 
 ### Option 1: A shared nightly workflow for the kit and every app
 
-`mutation.reusable.yml` runs Stryker.NET over the whole solution and fails below 85%. The kit calls it nightly, on demand, and on a pull request that changes the sample or the mutation setup. Every new app gets a nightly caller from `templates/app`.
+`mutation.reusable.yml` runs Stryker.NET over the whole solution and fails below 85%. The kit calls it nightly, on demand, and on a pull request that changes any file the run reads: the sample, the root build files, the Stryker files and the kit scripts the workflow calls. A Pester test finds those files from the workflow and the repo, so the filter can't silently fall behind. Every new app gets a nightly caller from `templates/app`.
 
 Each fact lives in one place, in the kit, which the workflow reads at its own pinned version:
 - **The version** is in `.config/dotnet-tools.json`, .NET's tool manifest, which Dependabot keeps current with the NuGet packages.
