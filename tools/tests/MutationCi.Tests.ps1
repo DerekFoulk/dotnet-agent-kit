@@ -33,6 +33,8 @@ Describe 'Mutation testing in CI' {
             $on.ContainsKey('workflow_dispatch') | Should -BeTrue
             @($on['pull_request']['paths']) | Should -Contain '.github/workflows/mutation.reusable.yml'
             @($on['pull_request']['paths']) | Should -Contain '.github/workflows/mutation.yml'
+            # A pull request that changes the sample proves its mutation score before it merges.
+            @($on['pull_request']['paths']) | Should -Contain 'sample/**'
         }
 
         It 'calls the shared workflow for the kit''s solution, with a read-only token' {
