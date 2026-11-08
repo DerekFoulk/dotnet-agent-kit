@@ -35,6 +35,9 @@ Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 $script:RequiredAreaFields = 'id', 'name', 'perfect', 'sources'
 # A gap is what's missing for an area to be "perfect"; closing one is its own PR.
 $script:RequiredGapFields = 'id', 'gap', 'status'
+# Fields written as one line of text; a list or map there would print as "System.Collections.Hashtable".
+$script:AreaTextFields = 'id', 'name', 'perfect'
+$script:GapTextFields = 'id', 'gap', 'status', 'needs'
 $script:GapStatuses = 'proposed', 'planned', 'closed'
 # -Update writes the table of counts between these lines.
 $script:TableStart = '<!-- scorecard-table:start -->'
@@ -61,7 +64,6 @@ function Get-ScorecardEntry {
     param([Parameter(Mandatory)] [string] $ScorecardPath)
     $list = Get-ScorecardAreaList -ScorecardPath $ScorecardPath
     if ($null -eq $list -or $list -is [Collections.IDictionary]) { return @() }
-    if ($list -is [string]) { return @($list) }
     @($list)
 }
 
@@ -241,7 +243,12 @@ function Get-ScorecardProblem {
             New-Problem -Message "area $position ('$area') is not a map with id, name, perfect and sources"
             continue
         }
-        $areaId = "$($area['id'])"
+        $areaId = if (Test-Text $area['id']) { "$($area['id'])" } else { '' }
+        foreach ($field in $script:AreaTextFields) {
+            if ($area.Contains($field) -and $null -ne $area[$field] -and -not (Test-Text $area[$field])) {
+                New-Problem -Area $areaId -Message "has a '$field' that isn't text: write it on one line"
+            }
+        }
         if ($areaId) {
             if ($areasSeen.ContainsKey($areaId)) { New-Problem -Area $areaId -Message "area id $areaId is already used" }
             else { $areasSeen[$areaId] = $true }
@@ -269,8 +276,10 @@ function Get-ScorecardProblem {
         }
         foreach ($gap in $areaGaps) {
             $gapId = if ($gap.Contains('id') -and (Test-Text $gap['id'])) { "$($gap['id'])" } else { '' }
-            if ($gap.Contains('id') -and $null -ne $gap['id'] -and -not (Test-Text $gap['id'])) {
-                New-Problem -Area $areaId -Message "has a gap id that isn't text: write it as 'id: GAP-NNN'"
+            foreach ($field in $script:GapTextFields) {
+                if ($gap.Contains($field) -and $null -ne $gap[$field] -and -not (Test-Text $gap[$field])) {
+                    New-Problem -Area $areaId -Message "has a gap $gapId whose '$field' isn't text: write it on one line"
+                }
             }
             foreach ($field in $script:RequiredGapFields) {
                 if (-not $gap.Contains($field) -or -not (Test-Present $gap[$field])) {
