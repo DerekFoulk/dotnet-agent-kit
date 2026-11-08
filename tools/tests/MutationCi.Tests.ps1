@@ -56,9 +56,11 @@ Describe 'Mutation testing in CI' {
         }
 
         It 'uploads the HTML and JSON report, even when the score fails, so the surviving mutants can be read' {
-            $upload = @(Get-Steps $reusable.Yaml | Where-Object { "$($_['uses'])" -match '^actions/upload-artifact@[0-9a-f]{40} # v' })
+            # The YAML parser drops the "# vX" comment, so the version is read from the text.
+            $upload = @(Get-Steps $reusable.Yaml | Where-Object { "$($_['uses'])" -match '^actions/upload-artifact@[0-9a-f]{40}$' })
 
             $upload.Count | Should -Be 1
+            $reusable.Text | Should -Match 'actions/upload-artifact@[0-9a-f]{40} # v\d'
             $upload[0]['if'] | Should -Match 'always\(\)'
             "$($upload[0]['with']['path'])" | Should -Match 'stryker-output/reports'
         }
