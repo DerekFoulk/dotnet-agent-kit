@@ -135,6 +135,18 @@ public sealed class BookmarkServiceTests
         page.HasMore.Should().BeFalse("a page from offset 10,050 is past the deepest offset the API accepts");
     }
 
+    [Fact]
+    public async Task APageFollowsWhenItStartsExactlyAtTheDeepestOffset()
+    {
+        // The edge of the fix above: a next page from offset 10,000 is still accepted, so it is linked.
+        Bookmark[] rows = [.. Enumerable.Range(0, 101).Select(i => Bookmark.Create(new Uri($"https://example.com/{i}"), $"{i}", s_now))];
+        _repository.Setup(r => r.ListAsync(9_900, 101, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+
+        BookmarkListResult page = await _service.ListAsync(9_900, 100, TestContext.Current.CancellationToken);
+
+        page.HasMore.Should().BeTrue();
+    }
+
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
