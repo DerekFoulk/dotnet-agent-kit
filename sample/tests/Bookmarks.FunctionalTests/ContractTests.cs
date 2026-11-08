@@ -32,6 +32,17 @@ public sealed class ContractTests : IDisposable
         matches.Should().BeTrue($"the API contract must match {snapshotPath}; the current document was written to openapi-v1.received.json for review");
     }
 
+    [Fact]
+    public async Task TheOpenApiDocumentIsNotServedInProduction()
+    {
+        // API-003: the document maps the whole API, so outside Development it isn't published.
+        using ApiHost production = new("Production");
+
+        using HttpResponseMessage response = await production.Client.GetAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
+    }
+
     public void Dispose() => _host.Dispose();
 
     // The project folder, recorded at build time (see the .csproj). [CallerFilePath] is mapped to /_/ in CI builds.
