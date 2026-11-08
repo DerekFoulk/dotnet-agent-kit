@@ -269,6 +269,19 @@ Describe 'Test-Scorecard.ps1' {
         $problems[0].Message | Should -BeLike "*'name'*one line*"
     }
 
+    It 'reports a gap''s text written over several lines, but not a one-line block ending in a line break' {
+        # Review 5 of PR 18: only an area's name was tested. YAML reads "name: |" with one line as "Code`n".
+        $paths = New-Fixture
+        $gap = [ordered]@{ id = 'GAP-001'; gap = "One.`nTwo."; status = 'proposed' }
+        $yaml = ConvertTo-Yaml ([ordered]@{ areas = @(New-Area -Override @{ name = "Code`n"; gaps = @($gap) }) })
+        Set-Content -LiteralPath $paths.Scorecard -Value "---`n$yaml---`n"
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike "*gap GAP-001 whose 'gap'*several lines*"
+    }
+
     It 'says which area has an id that isn''t text' {
         $paths = New-Fixture -Areas @(New-Area -Override @{ id = @('a', 'b') })
 
