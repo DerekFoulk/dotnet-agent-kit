@@ -10,6 +10,10 @@ on:
     paths:
       - .github/workflows/mutation.reusable.yml
       - .github/workflows/mutation.yml
+      - .config/dotnet-tools.json
+      - .config/stryker-config.json
+      - tools/Test-MutationReport.ps1
+      - tools/Get-SolutionProjectCount.ps1
       - sample/**
 
 permissions:
