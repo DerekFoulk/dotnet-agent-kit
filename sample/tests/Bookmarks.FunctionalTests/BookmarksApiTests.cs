@@ -64,6 +64,29 @@ public sealed class BookmarksApiTests : IDisposable
     }
 
     [Fact]
+    public async Task TheListComesInPagesLinkedByNextLink()
+    {
+        // API-004: a list never returns the whole table; each page links to the next until the last.
+        for (int i = 0; i < 3; i++)
+        {
+            using HttpResponseMessage saved = await Client.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri($"https://example.com/{i}"), $"{i}"), TestContext.Current.CancellationToken);
+        }
+
+        JsonElement first = await Client.GetFromJsonAsync<JsonElement>("/bookmarks?limit=2", TestContext.Current.CancellationToken);
+        first.ValueKind.Should().Be(JsonValueKind.Object, "a page is an object with items and a link to the next page");
+        first.GetProperty("items").GetArrayLength().Should().Be(2);
+        string next = first.GetProperty("nextLink").GetString()!;
+        next.Should().Be("/bookmarks?offset=2&limit=2");
+
+        JsonElement last = await Client.GetFromJsonAsync<JsonElement>(next, TestContext.Current.CancellationToken);
+        last.GetProperty("items").GetArrayLength().Should().Be(1);
+        last.GetProperty("nextLink").ValueKind.Should().Be(JsonValueKind.Null, "the last page links nowhere");
+
+        JsonElement defaults = await Client.GetFromJsonAsync<JsonElement>("/bookmarks", TestContext.Current.CancellationToken);
+        defaults.GetProperty("items").GetArrayLength().Should().Be(3, "the default page holds 25");
+    }
+
+    [Fact]
     public async Task EveryErrorResponseIsProblemDetails()
     {
         // API-002: clients get one error format (RFC 9457), whichever error it is.
