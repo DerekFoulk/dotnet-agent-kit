@@ -248,6 +248,36 @@ Describe 'Test-Scorecard.ps1' {
         "$($problems[0].Area) $($problems[0].Message)" | Should -Not -BeLike '*Hashtable*'
     }
 
+    It 'accepts a gap whose optional needs is left blank, and reports a blank name once' {
+        # Review 4 of PR 18: nothing pinned that a blank value is "missing", not "not text".
+        $gap = [ordered]@{ id = 'GAP-001'; gap = 'One.'; status = 'proposed'; needs = $null }
+        Get-Problem (New-Fixture -Areas @(New-Area -Override @{ gaps = @($gap) })) | Should -BeNullOrEmpty
+
+        $problems = @(Get-Problem (New-Fixture -Areas @(New-Area -Override @{ name = $null })))
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike "*missing 'name'*"
+    }
+
+    It 'reports text written over several lines, which would break the table' {
+        $paths = New-Fixture
+        $yaml = (ConvertTo-Yaml ([ordered]@{ areas = @(New-Area) })) -replace '(?m)^(\s*)name: Code\s*$', "`$1name: |`n`$1  Code`n`$1  and more"
+        Set-Content -LiteralPath $paths.Scorecard -Value "---`n$yaml---`n"
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike "*'name'*one line*"
+    }
+
+    It 'says which area has an id that isn''t text' {
+        $paths = New-Fixture -Areas @(New-Area -Override @{ id = @('a', 'b') })
+
+        $problems = @(Get-Problem $paths)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Area | Should -Be 'area 1'
+    }
+
     It 'counts no area when ''areas'' is one map' {
         $paths = New-Fixture
         Set-Content -LiteralPath $paths.Scorecard -Value "---`nareas:`n  id: code`n  name: Code`n  rules: [STY-001]`n---`n"
