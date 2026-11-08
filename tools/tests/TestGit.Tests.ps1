@@ -67,12 +67,14 @@ Describe 'TestGit.psm1' {
 
             (Get-GitConfigEnvironment).GetEnumerator() | ForEach-Object { $_.Value | Should -Be $expected[$_.Key] -Because $_.Key }
         }
-        finally { foreach ($name in $before.Keys) { [Environment]::SetEnvironmentVariable($name, $null) } }
+        finally { foreach ($name in $before.Keys) { Remove-Item -LiteralPath "env:$name" -ErrorAction SilentlyContinue } }
     }
 
-    It 'is used by every test file that makes a git repo or commit' {
+    It 'is used by every test file that makes a git repo' {
+        # A repo is made by git init or git clone, directly or through a file's own Invoke-Git wrapper; its commits
+        # then run with the settings.
         $makesRepos = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' |
-            Where-Object { (Get-Content -Raw -LiteralPath $_.FullName) -match '\bgit\b[^\r\n]*\s(init|commit|commit-tree)\b' }
+            Where-Object { (Get-Content -Raw -LiteralPath $_.FullName) -cmatch '\b(git|Invoke-Git)\b(?:\s+-[Cc]\s+\S+)*\s+(init|clone)\b' }
 
         @($makesRepos).Count | Should -BeGreaterThan 5
         foreach ($file in $makesRepos) {

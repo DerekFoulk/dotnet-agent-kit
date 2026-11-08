@@ -4,6 +4,14 @@
 # New-KitApp creates an app repo on GitHub from Export-KitApp's files (PR D2b, ADR-0033). The repo settings
 # and the "main protection" ruleset are data in templates/github, so the sync job (PR D3) can apply them again.
 
+BeforeAll {
+    # Every repo these tests make, and every one New-KitApp makes under test, runs with the same git settings:
+    # no dependence on this machine's identity or signing, and no background maintenance (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
+}
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
 Describe 'New-KitApp settings' {
     BeforeAll {
         Import-Module powershell-yaml
@@ -120,18 +128,6 @@ Describe 'New-KitApp run' {
         $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
         $script = Join-Path $root 'tools' 'New-KitApp.ps1'
 
-        # Commits made here must not depend on the machine's git identity or signing setup.
-        $savedEnv = @{}
-        $gitEnv = @{
-            GIT_AUTHOR_NAME = 'fixture'; GIT_AUTHOR_EMAIL = 'fixture@example.invalid'
-            GIT_COMMITTER_NAME = 'fixture'; GIT_COMMITTER_EMAIL = 'fixture@example.invalid'
-            GIT_CONFIG_COUNT = '1'; GIT_CONFIG_KEY_0 = 'commit.gpgsign'; GIT_CONFIG_VALUE_0 = 'false'
-        }
-        foreach ($key in $gitEnv.Keys) {
-            $savedEnv[$key] = [Environment]::GetEnvironmentVariable($key)
-            [Environment]::SetEnvironmentVariable($key, $gitEnv[$key])
-        }
-
         $kit = Join-Path $TestDrive 'kit'
         foreach ($file in git -C $root ls-files --cached --others --exclude-standard) {
             $source = Join-Path $root $file
@@ -171,15 +167,6 @@ Describe 'New-KitApp run' {
         }
 
         function Get-WriteCall { @($script:calls | Where-Object { $_.Arguments -match '--method (POST|PATCH|PUT|DELETE)' }) }
-    }
-
-    AfterAll {
-        # PowerShell passes $null to a .NET string parameter as '', which would leave an empty GIT_AUTHOR_NAME
-        # behind and break the next test file's commits, so an unset variable is removed instead.
-        foreach ($key in $savedEnv.Keys) {
-            if ($null -eq $savedEnv[$key]) { Remove-Item -LiteralPath "env:$key" -ErrorAction SilentlyContinue }
-            else { Set-Item -LiteralPath "env:$key" -Value $savedEnv[$key] }
-        }
     }
 
     Context 'a private app' {

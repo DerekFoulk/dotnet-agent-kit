@@ -5,6 +5,13 @@
 # because a bad subject found by CI can only be fixed by rewriting history. It must never accept a
 # subject CI rejects. CI skips only real merge commits, so the hook skips only a merge in progress.
 
+BeforeAll {
+    # Every repo these tests make runs with the same git settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
+}
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
 Describe 'commit-msg hook' {
     BeforeAll {
         $script:repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path

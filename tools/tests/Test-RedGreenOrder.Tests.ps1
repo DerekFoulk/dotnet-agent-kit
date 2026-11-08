@@ -8,6 +8,13 @@ BeforeDiscovery {
     }
 }
 
+BeforeAll {
+    # Every repo these tests make runs with the same git settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
+}
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
 Describe 'Test-RedGreenOrder.ps1' {
     BeforeAll {
         . (Join-Path $PSScriptRoot '..' 'Test-RedGreenOrder.ps1')

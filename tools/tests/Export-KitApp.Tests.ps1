@@ -5,6 +5,13 @@
 # build a throwaway kit repo from this working tree (tracked and new files), commit it, and export from
 # that commit, so they run before the kit's own changes are committed.
 
+BeforeAll {
+    # Every repo these tests make runs with the same git settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
+}
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
 Describe 'Export-KitApp' {
     BeforeAll {
         $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
