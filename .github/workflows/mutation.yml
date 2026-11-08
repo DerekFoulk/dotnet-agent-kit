@@ -1,6 +1,7 @@
-# This repo's mutation testing (GAP-003, TST-004, ADR-0039): nightly, on demand, and on a pull request that
-# changes any file the run reads, so such a change is proved before it merges. Too slow for every PR.
-# MutationCi.Tests.ps1 finds those files from mutation.reusable.yml and the repo root, and fails if one is missing.
+# This repo's mutation testing (GAP-003, TST-004, ADR-0039): nightly, on demand, and on every pull request that
+# changes a file the run could read, so such a change is proved before it merges. It isn't a required check.
+# The filter lists what can't matter, not what does: a list of inputs falls behind silently, while a gap here
+# only costs one extra run. MutationCi.Tests.ps1 fails if an ignored path holds a file the run reads.
 name: Mutation testing
 
 on:
@@ -8,20 +9,15 @@ on:
     - cron: '17 6 * * *' # 06:17 UTC daily, off the busy top of the hour
   workflow_dispatch:
   pull_request:
-    paths:
-      - .github/workflows/mutation.reusable.yml
-      - .github/workflows/mutation.yml
-      - .github/actions/kit-tools/**
-      - .config/dotnet-tools.json
-      - .config/stryker-config.json
-      - tools/Test-MutationReport.ps1
-      - tools/Get-SolutionProjectCount.ps1
-      - global.json
-      - nuget.config
-      - Directory.Build.props
-      - Directory.Packages.props
-      - dotnet-agent-kit.slnx
-      - sample/**
+    paths-ignore:
+      - docs/**
+      - '*.md'
+      - .claude/**
+      - .githooks/**
+      - .vscode/**
+      - spikes/**
+      - templates/**
+      - tools/tests/**
 
 permissions:
   contents: read
