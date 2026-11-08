@@ -91,6 +91,23 @@ public sealed class BookmarkServiceTests
         page.HasMore.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(0, 101)]
+    [InlineData(0, int.MaxValue)]
+    [InlineData(-1, 25)]
+    [InlineData(10_001, 25)]
+    public async Task AnOutOfRangePageIsRefusedEvenWithoutTheEndpoint(int offset, int limit)
+    {
+        // Review 1 of PR 22: only the endpoint's [Range] guarded the page, and int.MaxValue + 1 overflows into a
+        // negative LIMIT, which SQLite reads as no limit at all.
+        _repository.Setup(r => r.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        Func<Task> list = () => _service.ListAsync(offset, limit, TestContext.Current.CancellationToken);
+
+        await list.Should().ThrowAsync<ArgumentOutOfRangeException>();
+    }
+
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
