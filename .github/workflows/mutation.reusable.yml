@@ -43,8 +43,10 @@ jobs:
       - name: Count projects
         id: projects
         shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
         run: |
-          $count = ([xml](Get-Content -LiteralPath $env:SOLUTION -Raw)).SelectNodes('//Project').Count
+          $count = & "$env:KIT/tools/Get-SolutionProjectCount.ps1" -Solution $env:SOLUTION
           "count=$count" >> $env:GITHUB_OUTPUT
           "Projects in ${env:SOLUTION}: $count"
 
