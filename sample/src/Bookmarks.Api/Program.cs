@@ -21,7 +21,14 @@ builder.Services.AddValidation();
 
 WebApplication app = builder.Build();
 
-app.UseExceptionHandler();
+// In Development a binding failure (bad JSON, a query value that isn't a number) throws BadHttpRequestException;
+// keep its 400 instead of the handler's default 500. ASP.NET Core 11 does this by itself.
+app.UseExceptionHandler(new ExceptionHandlerOptions
+{
+    StatusCodeSelector = exception => exception is BadHttpRequestException badRequest
+        ? badRequest.StatusCode
+        : StatusCodes.Status500InternalServerError,
+});
 app.UseStatusCodePages();
 
 // The sample creates its schema on startup; a real app would use migrations.
