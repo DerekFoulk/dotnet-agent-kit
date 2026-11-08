@@ -36,10 +36,38 @@ Describe 'TestGit.psm1' {
             $repo = New-TestRepo
             git -C $repo config --get maintenance.auto | Should -Be 'false'
             git -C $repo config --get gc.auto | Should -Be '0'
-            # A push into a test's bare "remote" starts maintenance through receive-pack, which has its own switch.
-            git -C $repo config --get receive.autogc | Should -Be 'false'
         }
         finally { Restore-TestGitEnvironment -Saved $saved }
+    }
+
+    It 'makes a bare "remote" that a test can push into without starting background maintenance' {
+        # git strips GIT_CONFIG_COUNT from the receive-pack a local push starts, so the remote needs its own config.
+        # git's trace shows every git process a push starts, receive-pack's own included.
+        Get-Command New-TestGitRemote -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $saved = Set-TestGitEnvironment
+        $trace = Join-Path $TestDrive "push-trace-$(New-Guid).jsonl"
+        try {
+            $remote = New-TestGitRemote -Path (Join-Path $TestDrive "remote-$(New-Guid).git")
+            $repo = New-TestRepo
+            git -C $repo commit -q --allow-empty -m 'chore: fixture'
+            $env:GIT_TRACE2_EVENT = $trace
+            git -C $repo push -q $remote main 2>&1 | Out-Null
+            $env:GIT_TRACE2_EVENT = $null
+
+            $LASTEXITCODE | Should -Be 0
+            git -C $remote rev-parse --verify --quiet refs/heads/main | Should -Not -BeNullOrEmpty -Because 'the push landed'
+            $started = @(Get-Content -LiteralPath $trace | ConvertFrom-Json | Where-Object event -EQ 'start' | ForEach-Object { $_.argv -join ' ' })
+            $started | Should -Not -BeNullOrEmpty -Because 'the trace recorded the push'
+            $started | Where-Object { $_ -match ' (maintenance|gc|repack)( |$)' } | Should -BeNullOrEmpty
+        }
+        finally { $env:GIT_TRACE2_EVENT = $null; Restore-TestGitEnvironment -Saved $saved }
+    }
+
+    It 'is how every test file makes a bare remote' {
+        $byHand = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' |
+            Where-Object { $_.Name -ne 'TestGit.Tests.ps1' -and (Get-Content -Raw -LiteralPath $_.FullName) -cmatch '\bgit\b[^\r\n]*\binit\b[^\r\n]*--bare\b' }
+
+        @($byHand.Name) | Should -BeNullOrEmpty -Because 'New-TestGitRemote gives a remote the settings a push needs'
     }
 
     It 'commits as the fixture, unsigned, whatever this machine''s own git identity and signing are' {
