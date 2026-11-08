@@ -65,25 +65,44 @@ Describe 'Mutation testing in CI' {
     }
 
     Context 'mutation.reusable.yml' {
-        It 'runs Stryker.NET at a pinned version, with the Microsoft Testing Platform runner, failing below 85%' {
+        It 'installs the Stryker.NET version the kit''s tool manifest pins, and runs it with the kit''s settings file' {
+            # One place for each: the version in .config/dotnet-tools.json, where Dependabot keeps it current, and every
+            # setting in .config/stryker-config.json, which a person running Stryker locally uses too (review of PR 23).
             $run = (Get-Steps $reusable.Yaml | ForEach-Object { "$($_['run'])" }) -join "`n"
 
-            $run | Should -Match 'dotnet tool install dotnet-stryker --version \d+\.\d+\.\d+ '
-            $run | Should -Match '--test-runner mtp'
-            $run | Should -Match '--break-at 85\b'
+            $run | Should -Match '\$env:KIT/\.config/dotnet-tools\.json'
+            $run | Should -Match 'dotnet tool install dotnet-stryker --version \$version '
+            $run | Should -Match '--config-file "\$KIT/\.config/stryker-config\.json"'
             $run | Should -Match '--solution "\$SOLUTION"'
+            $run | Should -Not -Match '--version \d|--test-runner|--break-at|--threshold|--reporter|"stryker-config"' -Because 'the settings live in the kit''s files, not in the workflow'
+        }
+    }
+
+    Context 'the kit''s Stryker files' {
+        It 'pins Stryker.NET in the tool manifest' {
+            $path = Join-Path $root '.config/dotnet-tools.json'
+            Test-Path $path | Should -BeTrue
+            $manifest = Get-Content -Raw $path | ConvertFrom-Json -AsHashtable
+
+            $manifest['tools']['dotnet-stryker']['version'] | Should -Match '^\d+\.\d+\.\d+$'
+            @($manifest['tools']['dotnet-stryker']['commands']) | Should -Contain 'dotnet-stryker'
         }
 
-        It 'keeps Stryker''s per-test coverage, and skips ConfigureAwait, through a config file it writes' {
-            # Per-test coverage runs each mutant only against the tests that reach it, so a test that fails everywhere
-            # can't "kill" mutants in code it never runs. (Its "not covered" API on PR 23's first run came from the API
-            # tests failing to start, not from the coverage.) ConfigureAwait(true) can't change behaviour without a
-            # synchronization context, so no test could kill that mutant.
-            $run = (Get-Steps $reusable.Yaml | ForEach-Object { "$($_['run'])" }) -join "`n"
+        It 'keeps every setting in stryker-config.json: the MTP runner, failing below 85%, per-test coverage, ConfigureAwait skipped' {
+            # Per-test coverage stays (the default): with the API tests fixed it captures coverage, and the report
+            # check needs it. ConfigureAwait(true) can't change behaviour without a synchronization context.
+            $path = Join-Path $root '.config/stryker-config.json'
+            Test-Path $path | Should -BeTrue
+            $config = (Get-Content -Raw $path | ConvertFrom-Json -AsHashtable)['stryker-config']
 
-            $run | Should -Not -Match '"coverage-analysis"'
-            $run | Should -Match '"ignore-methods":\s*\[\s*"ConfigureAwait"\s*\]'
-            $run | Should -Match '--config-file "\$RUNNER_TEMP/stryker-config\.json"'
+            $config['test-runner'] | Should -Be 'mtp'
+            $config['configuration'] | Should -Be 'Release'
+            $config['thresholds']['break'] | Should -Be 85
+            $config['thresholds']['low'] | Should -Be 85
+            @($config['reporters']) | Should -Contain 'html'
+            @($config['reporters']) | Should -Contain 'json'
+            @($config['ignore-methods']) | Should -Contain 'ConfigureAwait'
+            $config.ContainsKey('coverage-analysis') | Should -BeFalse
         }
 
         It 'skips Stryker while the solution has no projects, as a new app''s does' {
