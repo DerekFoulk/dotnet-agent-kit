@@ -103,6 +103,22 @@ public sealed class BookmarksApiTests : IDisposable
     }
 
     [Fact]
+    public async Task MalformedInputIsABadRequestInDevelopmentToo()
+    {
+        // Review 1 of PR 22: in Development a binding failure throws BadHttpRequestException, and the exception
+        // handler turned it into a 500. A client error stays a 400 in every environment.
+        using StringContent badJson = new("{ not json", System.Text.Encoding.UTF8, "application/json");
+        using HttpResponseMessage body = await Client.PostAsync(new Uri("/bookmarks", UriKind.Relative), badJson, TestContext.Current.CancellationToken);
+        using HttpResponseMessage query = await Client.GetAsync(new Uri("/bookmarks?limit=abc", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        foreach (HttpResponseMessage response in new[] { body, query })
+        {
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"{response.RequestMessage!.RequestUri} is the client's error");
+            (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json");
+        }
+    }
+
+    [Fact]
     public async Task EveryErrorResponseIsProblemDetails()
     {
         // API-002: clients get one error format (RFC 9457), whichever error it is.
