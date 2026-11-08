@@ -42,7 +42,18 @@ function Set-AgentMode {
     )
 
     $path = Join-Path $RepoRoot '.claude' 'settings.local.json'
-    $settings = if (Test-Path -LiteralPath $path) { Get-Content -Raw -LiteralPath $path | ConvertFrom-Json -AsHashtable } else { [ordered]@{} }
+    $settings = [ordered]@{}
+    if (Test-Path -LiteralPath $path) {
+        $text = Get-Content -Raw -LiteralPath $path
+        if ($text -and $text.Trim()) {
+            try { $settings = $text | ConvertFrom-Json -AsHashtable }
+            catch { throw "$path isn't valid JSON, so it was left as it is and the mode wasn't changed: $($_.Exception.Message)" }
+            if ($settings -isnot [Collections.IDictionary] -or
+                ($settings.Contains('permissions') -and $settings['permissions'] -isnot [Collections.IDictionary])) {
+                throw "$path doesn't have the shape of Claude Code settings, so it was left as it is and the mode wasn't changed."
+            }
+        }
+    }
     if (-not $settings.Contains('permissions')) { $settings['permissions'] = [ordered]@{} }
     # The owner's own rules stay; only the review rules are added or taken away.
     $own = @(@(if ($settings['permissions'].Contains('ask')) { $settings['permissions']['ask'] }) | Where-Object { $_ -cnotin $script:ReviewAskRules })
