@@ -37,8 +37,9 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
 
     public async Task<BookmarkListResult> ListAsync(int offset, int limit, CancellationToken cancellationToken)
     {
-        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(offset, limit, cancellationToken).ConfigureAwait(false);
-        return new BookmarkListResult([.. bookmarks.Select(ToResponse)], HasMore: false);
+        // One row more than the page shows whether another page follows, without counting every row.
+        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(offset, limit + 1, cancellationToken).ConfigureAwait(false);
+        return new BookmarkListResult([.. bookmarks.Take(limit).Select(ToResponse)], HasMore: bookmarks.Count > limit);
     }
 
     private static BookmarkResponse ToResponse(Bookmark bookmark) =>

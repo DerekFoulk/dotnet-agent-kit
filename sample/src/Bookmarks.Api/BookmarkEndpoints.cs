@@ -42,5 +42,5 @@ internal static class BookmarkEndpoints
     }
 
     private static async Task<Ok<IReadOnlyList<BookmarkResponse>>> ListAsync(BookmarkService service, CancellationToken cancellationToken) =>
-        TypedResults.Ok((await service.ListAsync(0, int.MaxValue, cancellationToken)).Items);
+        TypedResults.Ok((await service.ListAsync(0, int.MaxValue - 1, cancellationToken)).Items);
 }
