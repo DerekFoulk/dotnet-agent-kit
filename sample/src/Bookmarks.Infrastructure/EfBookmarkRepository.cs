@@ -15,7 +15,7 @@ public sealed class EfBookmarkRepository(BookmarksDbContext db) : IBookmarkRepos
     public Task<Bookmark?> FindByUrlAsync(Uri url, CancellationToken cancellationToken) =>
         _db.Bookmarks.AsNoTracking().FirstOrDefaultAsync(b => b.Url == url, cancellationToken);
 
-    public async Task<IReadOnlyList<Bookmark>> ListAsync(CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyList<Bookmark>> ListAsync(int offset, int limit, CancellationToken cancellationToken) =>
         await _db.Bookmarks.AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
 
     public async Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken)

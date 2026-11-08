@@ -34,7 +34,7 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
 
     public async Task<IReadOnlyList<BookmarkResponse>> ListAsync(CancellationToken cancellationToken)
     {
-        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(0, int.MaxValue, cancellationToken).ConfigureAwait(false);
         return [.. bookmarks.Select(ToResponse)];
     }
 

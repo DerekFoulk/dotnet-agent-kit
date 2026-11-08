@@ -62,7 +62,7 @@ public sealed class BookmarkServiceTests
     {
         Bookmark first = Bookmark.Create(new Uri("https://example.com/a"), "A", s_now);
         Bookmark second = Bookmark.Create(new Uri("https://example.com/b"), "B", s_now);
-        _repository.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([first, second]);
+        _repository.Setup(r => r.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([first, second]);
 
         IReadOnlyList<BookmarkResponse> all = await _service.ListAsync(TestContext.Current.CancellationToken);
 

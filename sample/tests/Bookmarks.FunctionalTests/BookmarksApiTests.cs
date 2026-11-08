@@ -105,7 +105,7 @@ public sealed class BookmarksApiTests : IDisposable
 
         public Task<Bookmark?> FindByUrlAsync(Uri url, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
 
-        public Task<IReadOnlyList<Bookmark>> ListAsync(CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+        public Task<IReadOnlyList<Bookmark>> ListAsync(int offset, int limit, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
 
         public Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
     }

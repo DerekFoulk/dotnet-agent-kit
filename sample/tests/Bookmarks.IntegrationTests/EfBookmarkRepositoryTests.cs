@@ -83,9 +83,30 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         await SaveAsync(Bookmark.Create(new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
 
         await using BookmarksDbContext db = new(_options);
-        IReadOnlyList<Bookmark> all = await new EfBookmarkRepository(db).ListAsync(TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> all = await new EfBookmarkRepository(db).ListAsync(0, 10, TestContext.Current.CancellationToken);
 
         all.Select(b => b.Title).Should().BeEquivalentTo("A", "B");
+    }
+
+    [Fact]
+    public async Task PagesDoNotOverlapAndComeInAStableOrder()
+    {
+        // API-004: paging happens in the database, in a deterministic order, so no bookmark is skipped or repeated.
+        for (int i = 0; i < 3; i++)
+        {
+            await SaveAsync(Bookmark.Create(new Uri($"https://example.com/{i}"), $"{i}", s_now));
+        }
+
+        await using BookmarksDbContext db = new(_options);
+        EfBookmarkRepository repository = new(db);
+        IReadOnlyList<Bookmark> first = await repository.ListAsync(0, 2, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> second = await repository.ListAsync(2, 2, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> firstAgain = await repository.ListAsync(0, 2, TestContext.Current.CancellationToken);
+
+        first.Should().HaveCount(2);
+        second.Should().ContainSingle();
+        first.Concat(second).Select(b => b.Id).Should().OnlyHaveUniqueItems();
+        firstAgain.Select(b => b.Id).Should().Equal(first.Select(b => b.Id));
     }
 
     public void Dispose() => _connection.Dispose();
