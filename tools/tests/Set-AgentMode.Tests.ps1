@@ -65,6 +65,32 @@ Describe 'Set-AgentMode.ps1' {
         Join-Path $root '.agent-mode' | Should -Not -Exist
     }
 
+    It 'keeps ask a JSON list, as Claude Code''s settings schema requires, with <Case>' -ForEach @(
+        @{ Case = 'one rule of the owner''s'; Own = @('Bash(rm *)') }
+        @{ Case = 'no rules of the owner''s'; Own = @() }
+    ) {
+        # Review 1 of the modes PR: auto mode wrote "ask": null or "ask": "Bash(rm *)", which the schema rejects,
+        # so every session would start with a settings error.
+        $root = New-Repo
+        $existing = [ordered]@{ permissions = [ordered]@{ ask = $Own } }
+        Set-Content -LiteralPath (Join-Path $root '.claude' 'settings.local.json') -Value (ConvertTo-Json -InputObject $existing -Depth 5)
+
+        Set-AgentMode -Mode Review -RepoRoot $root
+        Set-AgentMode -Mode Auto -RepoRoot $root
+
+        $raw = Get-Content -Raw -LiteralPath (Join-Path $root '.claude' 'settings.local.json')
+        $raw | Should -Match '"ask":\s*\[' -Because 'ask must stay a list'
+        ($raw | ConvertFrom-Json).permissions.ask | Should -Be $Own
+    }
+
+    It 'leaves no local settings behind when switching to auto, the default, if there were none' {
+        $root = New-Repo
+
+        Set-AgentMode -Mode Auto -RepoRoot $root
+
+        Join-Path $root '.claude' 'settings.local.json' | Should -Not -Exist
+    }
+
     It 'reads the mode: auto when there is no .agent-mode, review after switching' {
         Get-Command Get-AgentMode -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'agents and the owner check the mode'
         $root = New-Repo
