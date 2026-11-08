@@ -74,6 +74,47 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # GAP-005 (ADR-0036): CodeQL code scanning, free on public repos, through one shared workflow.
+    Context 'codeql.reusable.yml' {
+        BeforeAll {
+            $codeql = Read-Yaml '.github/workflows/codeql.reusable.yml'
+            $jobs = if ($codeql.Yaml.ContainsKey('jobs')) { $codeql.Yaml['jobs'] } else { @{} }
+        }
+
+        It 'is a shared workflow that scans the workflows always, and C# when the repo has any' {
+            $codeql.Text | Should -Not -BeNullOrEmpty -Because 'codeql.reusable.yml runs CodeQL for the kit and its apps'
+            $codeql.Text | Should -Match '(?m)^\s*workflow_call:'
+            $jobs['languages']['outputs'].ContainsKey('languages') | Should -BeTrue
+            $codeql.Text | Should -Match "git ls-files '\*\.cs'"
+            $codeql.Text | Should -Match '"actions","csharp"'
+            $jobs['analyze']['strategy']['matrix']['language'] | Should -Match 'fromJSON\(needs\.languages\.outputs\.languages\)'
+        }
+
+        It 'analyzes with the CodeQL action, needing no build, and uploads with only security-events: write' {
+            $jobs.ContainsKey('analyze') | Should -BeTrue -Because 'an analyze job runs CodeQL per language'
+            $steps = @($jobs['analyze']['steps'])
+            $init = @($steps | Where-Object { "$($_['uses'])" -like 'github/codeql-action/init@*' })
+            $analyze = @($steps | Where-Object { "$($_['uses'])" -like 'github/codeql-action/analyze@*' })
+            $init | Should -HaveCount 1
+            $analyze | Should -HaveCount 1
+            $init[0]['with']['build-mode'] | Should -Be 'none'
+            $jobs['analyze']['permissions']['security-events'] | Should -Be 'write'
+            $jobs['analyze']['permissions']['contents'] | Should -Be 'read'
+            @($jobs['analyze']['permissions'].Keys | Where-Object { $jobs['analyze']['permissions'][$_] -eq 'write' }) | Should -Be @('security-events')
+        }
+
+        It 'pins every action to a full commit SHA and checks out without keeping the token' {
+            $uses = @([regex]::Matches($codeql.Text, '(?m)^\s*(?:-\s*)?uses: (\S+)') | ForEach-Object { $_.Groups[1].Value })
+            $uses.Count | Should -BeGreaterThan 2
+            $uses | Should -Match '@[0-9a-f]{40}$'
+            foreach ($job in $jobs.Values) {
+                foreach ($step in @($job['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })) {
+                    $step['with']['persist-credentials'] | Should -BeFalse
+                }
+            }
+        }
+    }
+
     Context 'dotnet-ci.reusable.yml input' {
         # An app that left out the solution would get the kit's own default and fail obscurely.
         It 'requires the caller to name its solution, and the kit''s own CI does' {
