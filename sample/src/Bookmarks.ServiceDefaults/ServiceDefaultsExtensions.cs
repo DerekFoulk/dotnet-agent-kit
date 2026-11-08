@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Http.Resilience;
@@ -20,6 +21,7 @@ public static class ServiceDefaultsExtensions
     private const string HealthPath = "/health";
     private const string AlivePath = "/alive";
     private const string LiveTag = "live";
+    private const string HealthPolicy = "HealthChecks";
 
     /// <summary>Adds the service defaults to the app.</summary>
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder)
@@ -36,6 +38,10 @@ public static class ServiceDefaultsExtensions
         // own; adding a second handler on top would keep this one's retries.
         builder.Services.ConfigureHttpClientDefaults(http =>
             http.AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods()));
+        // The health endpoints are anonymous, so a flood of probes mustn't become a flood of database calls:
+        // each answer is cached briefly, and a slow check is cut off (Microsoft's Aspire health-check guidance).
+        builder.Services.AddRequestTimeouts(timeouts => timeouts.AddPolicy(HealthPolicy, TimeSpan.FromSeconds(5)));
+        builder.Services.AddOutputCache(caching => caching.AddPolicy(HealthPolicy, policy => policy.Expire(TimeSpan.FromSeconds(10))));
         return builder;
     }
 
@@ -78,14 +84,19 @@ public static class ServiceDefaultsExtensions
     /// <summary>
     /// Maps /health (readiness: every check passes) and /alive (liveness: the "live" checks pass). They answer in
     /// every environment, because production probes need them, with only the status word ("Healthy",
-    /// "Degraded" or "Unhealthy"), never the checks' details.
+    /// "Degraded" or "Unhealthy"), never the checks' details. Each answer is cached for 10 seconds, and a check
+    /// that takes longer than 5 seconds is cut off.
     /// </summary>
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        app.MapHealthChecks(HealthPath);
-        app.MapHealthChecks(AlivePath, new HealthCheckOptions { Predicate = registration => registration.Tags.Contains(LiveTag) });
+        app.UseRequestTimeouts();
+        app.UseOutputCache();
+        RouteGroupBuilder health = app.MapGroup(string.Empty);
+        health.CacheOutput(HealthPolicy).WithRequestTimeout(HealthPolicy);
+        health.MapHealthChecks(HealthPath);
+        health.MapHealthChecks(AlivePath, new HealthCheckOptions { Predicate = registration => registration.Tags.Contains(LiveTag) });
         return app;
     }
 }
