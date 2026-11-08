@@ -45,22 +45,25 @@ function Get-MutationReportProblem {
         foreach ($test in (Get-ReportList $testFile 'tests')) { $names[[string] $test['id']] = [string] $test['name'] }
     }
 
-    # For each test, the number of killed mutants it never reached.
-    $unreached = [ordered]@{}
+    # For each test id, the number of killed mutants it never reached. Keyed by id, not name: two tests can share a name.
+    $unreached = @{}
     foreach ($file in (Get-ReportList $report 'files')) {
         foreach ($mutant in (Get-ReportList $file 'mutants')) {
             if ($mutant['status'] -ne 'Killed' -or $mutant['static'] -eq $true) { continue }
             $covered = [System.Collections.Generic.HashSet[string]]::new([string[]] @(Get-ReportList $mutant 'coveredBy'))
             foreach ($killer in (Get-ReportList $mutant 'killedBy')) {
                 $id = [string] $killer
-                if (-not $covered.Contains($id)) { $unreached[$id] = 1 + $(if ($unreached.Contains($id)) { $unreached[$id] } else { 0 }) }
+                if (-not $covered.Contains($id)) { $unreached[$id] = [int] $unreached[$id] + 1 }
             }
         }
     }
 
-    foreach ($id in ($unreached.Keys | Sort-Object)) {
-        $name = if ($names.ContainsKey($id)) { $names[$id] } else { $id }
-        "$name killed $($unreached[$id]) mutant(s) it never reached, so it fails whatever is mutated and the score " +
+    # By name, for the reader; a test the report doesn't name goes by its id.
+    $flagged = foreach ($id in $unreached.Keys) {
+        [pscustomobject]@{ Name = if ($names.ContainsKey($id)) { $names[$id] } else { $id }; Count = $unreached[$id] }
+    }
+    foreach ($test in ($flagged | Sort-Object Name)) {
+        "$($test.Name) killed $($test.Count) mutant(s) it never reached, so it fails whatever is mutated and the score " +
         'can''t be trusted. Run that test under Stryker and fix why it fails there.'
     }
 }
