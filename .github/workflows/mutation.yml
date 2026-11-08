@@ -1,5 +1,6 @@
 # This repo's mutation testing (GAP-003, TST-004, ADR-0039): nightly, on demand, and on a pull request that
-# changes the sample or the mutation setup, so such a change is proved before it merges. Too slow for every PR.
+# changes any file the run reads, so such a change is proved before it merges. Too slow for every PR.
+# MutationCi.Tests.ps1 finds those files from mutation.reusable.yml and the repo root, and fails if one is missing.
 name: Mutation testing
 
 on:
@@ -10,10 +11,16 @@ on:
     paths:
       - .github/workflows/mutation.reusable.yml
       - .github/workflows/mutation.yml
+      - .github/actions/kit-tools/**
       - .config/dotnet-tools.json
       - .config/stryker-config.json
       - tools/Test-MutationReport.ps1
       - tools/Get-SolutionProjectCount.ps1
+      - global.json
+      - nuget.config
+      - Directory.Build.props
+      - Directory.Packages.props
+      - dotnet-agent-kit.slnx
       - sample/**
 
 permissions:
