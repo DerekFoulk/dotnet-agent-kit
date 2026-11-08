@@ -40,13 +40,14 @@ function Get-MutationReportProblem {
     }
     $report = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json -AsHashtable
 
-    $names = @{}
+    # Ids compare as JSON strings do, case-sensitively, everywhere: here, in the counts and in the coverage set.
+    $names = [hashtable]::new([System.StringComparer]::Ordinal)
     foreach ($testFile in (Get-ReportList $report 'testFiles')) {
         foreach ($test in (Get-ReportList $testFile 'tests')) { $names[[string] $test['id']] = [string] $test['name'] }
     }
 
     # For each test id, the number of killed mutants it never reached. Keyed by id, not name: two tests can share a name.
-    $unreached = @{}
+    $unreached = [hashtable]::new([System.StringComparer]::Ordinal)
     foreach ($file in (Get-ReportList $report 'files')) {
         foreach ($mutant in (Get-ReportList $file 'mutants')) {
             if ($mutant['status'] -ne 'Killed' -or $mutant['static'] -eq $true) { continue }
