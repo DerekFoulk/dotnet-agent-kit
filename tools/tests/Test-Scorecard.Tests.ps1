@@ -206,6 +206,24 @@ Describe 'Test-Scorecard.ps1' {
         @($script:problems | Where-Object { $_.Message -like $Expected }) | Should -HaveCount 1
     }
 
+    It 'reports a scorecard shaped wrong: <Case>' -ForEach @(
+        @{ Case = 'front matter that is only text'; Yaml = 'areas'; Expected = '*no areas*' }
+        @{ Case = 'areas written as one map'; Yaml = "areas:`n  id: code`n  name: Code"; Expected = '*areas*list*' }
+        @{ Case = 'an empty area'; Yaml = "areas:`n  - id: code`n    name: Code`n  -"; Expected = '*area 2 is empty*' }
+        @{ Case = 'a rule written as a map'; Yaml = "areas:`n  - id: code`n    rules:`n      - a: b"; Expected = '*rules*text*' }
+        @{ Case = 'a source written as a map'; Yaml = "areas:`n  - id: code`n    sources:`n      - a: b"; Expected = '*sources*text*' }
+        @{ Case = 'a gap id written as a map'; Yaml = "areas:`n  - id: code`n    gaps:`n      - id: { a: b }`n        gap: One.`n        status: proposed"; Expected = '*gap id*text*' }
+    ) {
+        # Review 2 of PR 18: these crashed, passed quietly, or named "System.Collections.Hashtable".
+        $paths = New-Fixture
+        Set-Content -LiteralPath $paths.Scorecard -Value "---`n$Yaml`n---`n# Quality scorecard`n"
+
+        $script:problems = $null
+        { $script:problems = @(Get-Problem $paths) } | Should -Not -Throw
+        @($script:problems | Where-Object { $_.Message -like $Expected }) | Should -HaveCount 1
+        @($script:problems | Where-Object { $_.Message -like '*Hashtable*' }) | Should -BeNullOrEmpty
+    }
+
     It 'counts each area''s rules from the standards: in force, checked by a tool, advisory, proposed, open gaps' {
         # Only the start of 'enforcement' decides: "advisory: ..." is advisory; "build:", "ci:", "ruleset:" and the
         # rest are checked by a tool, even when they add that some part is advisory.
