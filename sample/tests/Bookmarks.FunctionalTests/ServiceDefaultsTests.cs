@@ -74,6 +74,14 @@ public sealed class ServiceDefaultsTests : IDisposable
     }
 
     [Fact]
+    public void TheHealthTimeoutIsFiveSeconds()
+    {
+        // Review 3 of PR 21: the slow-check test below shortens the policy, so this pins the value the app uses.
+        _host.Services.GetRequiredService<IOptions<RequestTimeoutOptions>>().Value.Policies["HealthChecks"].Timeout
+            .Should().Be(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public async Task ASlowHealthCheckIsCutOffByTheTimeout()
     {
         // Review 2 of PR 21: the metadata alone passed with the timeout middleware gone. A check that waits 30 seconds
