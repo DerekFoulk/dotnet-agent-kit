@@ -35,8 +35,19 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
         return bookmark is null ? null : ToResponse(bookmark);
     }
 
+    /// <summary>The largest page a caller may ask for (API-004).</summary>
+    public const int MaxPageSize = 100;
+
+    /// <summary>The deepest offset: offset paging reads and skips every earlier row (Azure's API implementation guide).</summary>
+    public const int MaxOffset = 10_000;
+
     public async Task<BookmarkListResult> ListAsync(int offset, int limit, CancellationToken cancellationToken)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, MaxOffset);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(limit, MaxPageSize);
+
         // One row more than the page shows whether another page follows, without counting every row.
         IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(offset, limit + 1, cancellationToken).ConfigureAwait(false);
         return new BookmarkListResult([.. bookmarks.Take(limit).Select(ToResponse)], HasMore: bookmarks.Count > limit);

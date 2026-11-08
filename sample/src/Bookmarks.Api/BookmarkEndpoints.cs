@@ -5,14 +5,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Bookmarks.Api;
 
-/// <summary>The bookmarks HTTP API. Typed results let OpenAPI describe every response.</summary>
+/// <summary>The bookmarks HTTP API. Typed results describe each success in OpenAPI, and ProducesProblem each error body.</summary>
 internal static class BookmarkEndpoints
 {
-    private const int MaxLimit = 100;
-
-    // Offset paging reads and skips every earlier row, so deep offsets are capped too (Azure's API implementation guide).
-    private const int MaxOffset = 10_000;
-
     public static IEndpointRouteBuilder MapBookmarks(this IEndpointRouteBuilder app)
     {
         RouteGroupBuilder bookmarks = app.MapGroup("/bookmarks").WithTags("Bookmarks");
@@ -52,7 +47,7 @@ internal static class BookmarkEndpoints
     // validation problem before this runs (API-006).
     private static async Task<Ok<BookmarkPage>> ListAsync(
         BookmarkService service, CancellationToken cancellationToken,
-        [Range(0, MaxOffset)] int offset = 0, [Range(1, MaxLimit)] int limit = 25)
+        [Range(0, BookmarkService.MaxOffset)] int offset = 0, [Range(1, BookmarkService.MaxPageSize)] int limit = 25)
     {
         BookmarkListResult result = await service.ListAsync(offset, limit, cancellationToken);
         Uri? next = result.HasMore ? new Uri($"/bookmarks?offset={offset + limit}&limit={limit}", UriKind.Relative) : null;
