@@ -74,13 +74,14 @@ Describe 'Mutation testing in CI' {
             $run | Should -Match '--solution "\$SOLUTION"'
         }
 
-        It 'runs every test against every mutant, and skips ConfigureAwait, through a config file it writes' {
-            # Per-test coverage misses code that runs inside an in-memory API host (the first CI run on PR 23 scored
-            # the API 0% with every mutant "not covered"), and ConfigureAwait(true) can't change behaviour without a
-            # synchronization context, so those mutants could never be killed.
+        It 'keeps Stryker''s per-test coverage, and skips ConfigureAwait, through a config file it writes' {
+            # Per-test coverage runs each mutant only against the tests that reach it, so a test that fails everywhere
+            # can't "kill" mutants in code it never runs. (Its "not covered" API on PR 23's first run came from the API
+            # tests failing to start, not from the coverage.) ConfigureAwait(true) can't change behaviour without a
+            # synchronization context, so no test could kill that mutant.
             $run = (Get-Steps $reusable.Yaml | ForEach-Object { "$($_['run'])" }) -join "`n"
 
-            $run | Should -Match '"coverage-analysis":\s*"off"'
+            $run | Should -Not -Match '"coverage-analysis"'
             $run | Should -Match '"ignore-methods":\s*\[\s*"ConfigureAwait"\s*\]'
             $run | Should -Match '--config-file "\$RUNNER_TEMP/stryker-config\.json"'
         }
