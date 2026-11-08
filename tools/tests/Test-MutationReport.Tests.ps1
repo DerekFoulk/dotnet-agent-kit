@@ -86,6 +86,26 @@ Describe 'Test-MutationReport.ps1' {
         $problems[1] | Should -Match '^App\.Tests\.ThingTests\.Zeta killed'
     }
 
+    It 'tells tests that share a name apart by id, in a stable order, and names a nameless test by its id' {
+        # Review 3 of PR 23: tied names printed alike, in an order that changed from run to run, and an empty name
+        # printed as nothing.
+        Get-Command Get-MutationReportProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $report = New-Report @(
+            (New-Mutant -KilledBy 'idB', 'idA', 'idC' -CoveredBy @())
+            (New-Mutant -KilledBy 'idB' -CoveredBy @()))
+        $report['testFiles']['tests/App.Tests/ThingTests.cs']['tests'] = @(
+            [ordered]@{ id = 'idA'; name = 'App.Tests.Same' }
+            [ordered]@{ id = 'idB'; name = 'App.Tests.Same' }
+            [ordered]@{ id = 'idC'; name = '' })
+
+        $problems = @(Get-MutationReportProblem -Path (Write-Report $report))
+
+        $problems.Count | Should -Be 3
+        $problems[0] | Should -Match '^App\.Tests\.Same \(id idA\) killed 1 mutant'
+        $problems[1] | Should -Match '^App\.Tests\.Same \(id idB\) killed 2 mutant'
+        $problems[2] | Should -Match '^idC killed 1 mutant'
+    }
+
     It 'leaves static mutants alone: Stryker runs them against every test' {
         Get-Command Get-MutationReportProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $report = New-Report @((New-Mutant -KilledBy 'tAlways' -CoveredBy @() -Static $true))
