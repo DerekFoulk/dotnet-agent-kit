@@ -27,8 +27,8 @@ Describe 'Export-KitApp' {
             Copy-Item -LiteralPath $source -Destination $target
         }
         git -C $kit init -q -b main
-        git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false add -A
-        git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m 'chore: kit fixture'
+        git -C $kit add -A
+        git -C $kit commit -q -m 'chore: kit fixture'
         $commit = (git -C $kit rev-parse HEAD).Trim()
 
         # A later kit commit without the "Sample app" label: exporting it fails after the copying has
@@ -36,7 +36,7 @@ Describe 'Export-KitApp' {
         git -C $kit switch -q -c no-sample-label
         $props = Join-Path $kit 'Directory.Packages.props'
         (Get-Content -Raw $props) -replace 'ItemGroup Label="Sample app"', 'ItemGroup' | Set-Content -LiteralPath $props -NoNewline
-        git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m 'chore: no label' -- Directory.Packages.props
+        git -C $kit commit -q -m 'chore: no label' -- Directory.Packages.props
         git -C $kit switch -q main
 
         # An edit nobody committed must not reach an app.
@@ -376,7 +376,7 @@ Describe 'Export-KitApp' {
             Get-KitVersionLabel -KitRoot $kit -KitRef 'v1.2.3-wip~0' -Commit $commit | Should -Be 'unreleased'
 
             # A release tag on a later commit, reached back with ~1: that names the commit, not a release of it.
-            $child = (git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid commit-tree "$commit^{tree}" -p $commit -m 'chore: later' | Out-String).Trim()
+            $child = (git -C $kit commit-tree "$commit^{tree}" -p $commit -m 'chore: later' | Out-String).Trim()
             git -C $kit tag v0.0.2 $child
             Get-KitVersionLabel -KitRoot $kit -KitRef 'v0.0.2~1' -Commit $commit | Should -Be 'unreleased'
 

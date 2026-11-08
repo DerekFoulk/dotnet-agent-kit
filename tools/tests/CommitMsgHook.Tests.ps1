@@ -34,9 +34,6 @@ Describe 'commit-msg hook' {
             Copy-Item -Path (Join-Path $script:repoRoot 'tools' 'Test-ConventionalTitle.ps1') -Destination (Join-Path $repo $ToolsPath)
             git -C $repo init --quiet --initial-branch main 2>&1 | Out-Null
             git -C $repo config core.hooksPath .githooks
-            git -C $repo config user.name t
-            git -C $repo config user.email t@example.invalid
-            git -C $repo config commit.gpgsign false
             $repo
         }
 

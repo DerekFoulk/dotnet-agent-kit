@@ -32,7 +32,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
 
             git -C $workspace init --quiet --initial-branch main
             git -C $workspace -c core.autocrlf=false add --all
-            git -C $workspace -c user.name=fixture -c user.email=fixture@example.invalid commit --quiet --message fixture
+            git -C $workspace commit --quiet --message fixture
             git -C $workspace tag v1.2.3
             $workspace
         }

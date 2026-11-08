@@ -52,7 +52,7 @@ Describe 'Test-RedGreenOrder.ps1' {
         BeforeAll {
             $script:repo = Join-Path $TestDrive 'repo'
             New-Item -ItemType Directory -Path $script:repo | Out-Null
-            function Invoke-Git { git -C $script:repo -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false @args 2>&1 | Out-Null }
+            function Invoke-Git { git -C $script:repo @args 2>&1 | Out-Null }
             Invoke-Git init --quiet --initial-branch main
             Invoke-Git commit --quiet --allow-empty --message 'chore: initial'
             Invoke-Git switch --quiet -c work
@@ -107,7 +107,7 @@ Describe 'Test-RedGreenOrder.ps1' {
             function Invoke-GitAt([string] $Date) {
                 $env:GIT_COMMITTER_DATE = $Date
                 $env:GIT_AUTHOR_DATE = $Date
-                try { git -C $repo -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false @args 2>&1 | Out-Null }
+                try { git -C $repo @args 2>&1 | Out-Null }
                 finally { $env:GIT_COMMITTER_DATE = $null; $env:GIT_AUTHOR_DATE = $null }
             }
             Invoke-GitAt '2026-11-03T10:00:00-08:00' init --quiet --initial-branch main
@@ -137,8 +137,8 @@ Describe 'Test-RedGreenOrder.ps1' {
             $repo = Join-Path $TestDrive "runner-$(New-Guid)"
             New-Item -ItemType Directory -Path $repo | Out-Null
             git -C $repo init --quiet --initial-branch main 2>&1 | Out-Null
-            git -C $repo -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false commit --quiet --allow-empty --message 'chore: initial' 2>&1 | Out-Null
-            git -C $repo -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false commit --quiet --allow-empty --message 'test: red' --message 'TDD: red' 2>&1 | Out-Null
+            git -C $repo commit --quiet --allow-empty --message 'chore: initial' 2>&1 | Out-Null
+            git -C $repo commit --quiet --allow-empty --message 'test: red' --message 'TDD: red' 2>&1 | Out-Null
             $script = Join-Path $PSScriptRoot '..' 'Test-RedGreenOrder.ps1'
 
             $output = pwsh -NoProfile -File $script -RepoPath $repo -Range 'HEAD~1..HEAD' 2>&1 | Out-String
