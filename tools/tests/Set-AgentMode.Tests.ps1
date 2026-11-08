@@ -96,10 +96,26 @@ Describe 'Set-AgentMode.ps1' {
         # -Force, so CI failed and a switch could stop halfway. This path had no test.
         $root = New-Repo
         Set-Content -LiteralPath (Join-Path $root '.agent-mode') -Value 'review'
+        # Hidden on Windows too, so the test catches a missing -Force here as well as on Linux CI (review 3).
+        if ($IsWindows) { (Get-Item -LiteralPath (Join-Path $root '.agent-mode') -Force).Attributes = 'Hidden' }
 
         Set-AgentMode -Mode Auto -RepoRoot $root
 
         Join-Path $root '.agent-mode' | Should -Not -Exist
+    }
+
+    It 'removes the mode file before rewriting the prompts, so a failed switch to auto leaves them on' {
+        # Review 3 of PR 19: nothing tested the order. A read-only local file makes the rewrite fail.
+        $root = New-Repo
+        Set-AgentMode -Mode Review -RepoRoot $root
+        $local = Get-Item -LiteralPath (Join-Path $root '.claude' 'settings.local.json')
+        $local.IsReadOnly = $true
+        try {
+            { Set-AgentMode -Mode Auto -RepoRoot $root } | Should -Throw
+            Join-Path $root '.agent-mode' | Should -Not -Exist -Because 'the mode file goes first'
+            (Read-LocalSettings $root)['permissions']['ask'] | Should -Contain 'Bash(gh pr merge *)' -Because 'the prompts stay on'
+        }
+        finally { $local.IsReadOnly = $false }
     }
 
     It 'leaves no local settings behind when switching to auto, the default, if there were none' {

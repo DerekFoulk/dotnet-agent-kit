@@ -136,6 +136,14 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'gh repo edit --enable-squash-merge' }
                 @{ Tool = $tool; Command = 'gh repo edit --delete-branch-on-merge=false' }
                 @{ Tool = $tool; Command = 'gh repo edit --default-branch dev' }
+                # Review 3 of PR 19: gh api's other repo fields, quoted refspecs and a trailing -d.
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -F private=false' }
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -F delete_branch_on_merge=false' }
+                @{ Tool = $tool; Command = 'gh api -X PATCH repos/o/r -f default_branch=dev' }
+                @{ Tool = $tool; Command = "git push origin ':feat/x'" }
+                @{ Tool = $tool; Command = 'git push origin ":feat/x"' }
+                @{ Tool = $tool; Command = "git push origin '+feat/x'" }
+                @{ Tool = $tool; Command = 'git push origin feat/x -d' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
