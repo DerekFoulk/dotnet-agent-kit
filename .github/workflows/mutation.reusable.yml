@@ -51,3 +51,13 @@ jobs:
           --threshold-high 95
           --reporter cleartext --reporter html --reporter json
           --output "$RUNNER_TEMP/stryker-output"
+
+      # The report names every surviving mutant: the line, the change, and the tests that ran against it.
+      - name: Upload the mutation report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-report
+          path: ${{ runner.temp }}/stryker-output/reports
+          if-no-files-found: ignore
+          retention-days: 14
