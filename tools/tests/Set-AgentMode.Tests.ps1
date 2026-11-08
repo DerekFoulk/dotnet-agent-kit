@@ -47,4 +47,21 @@ Describe 'Set-AgentMode.ps1' {
         Join-Path $root '.agent-mode' | Should -Exist
         (Get-Content -Raw -LiteralPath (Join-Path $root '.agent-mode')).Trim() | Should -Be 'review'
     }
+
+    It 'auto mode removes only the review rules and the mode file, and running review twice adds nothing twice' {
+        $root = New-Repo
+        $existing = [ordered]@{ permissions = [ordered]@{ allow = @('Bash(npm test)'); ask = @('Bash(rm *)') } }
+        Set-Content -LiteralPath (Join-Path $root '.claude' 'settings.local.json') -Value ($existing | ConvertTo-Json -Depth 5)
+
+        Set-AgentMode -Mode Review -RepoRoot $root
+        Set-AgentMode -Mode Review -RepoRoot $root
+        @((Read-LocalSettings $root)['permissions']['ask'] | Where-Object { $_ -eq 'Bash(gh pr merge *)' }) | Should -HaveCount 1
+
+        Set-AgentMode -Mode Auto -RepoRoot $root
+
+        $settings = Read-LocalSettings $root
+        @($settings['permissions']['ask']) | Should -Be @('Bash(rm *)')
+        $settings['permissions']['allow'] | Should -Be @('Bash(npm test)')
+        Join-Path $root '.agent-mode' | Should -Not -Exist
+    }
 }
