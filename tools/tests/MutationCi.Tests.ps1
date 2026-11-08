@@ -95,6 +95,20 @@ Describe 'Mutation testing in CI' {
             $stryker | ForEach-Object { $_['if'] | Should -Be "steps.projects.outputs.count != '0'" }
         }
 
+        It 'refuses a score that one test inflated, with the kit''s Test-MutationReport.ps1 at its own version' {
+            $steps = @(Get-Steps $reusable.Yaml)
+            $kitTools = @($steps | Where-Object { "$($_['uses'])" -eq '$/.github/actions/kit-tools' })
+            $check = @($steps | Where-Object { "$($_['run'])" -match 'Test-MutationReport\.ps1' })
+
+            $kitTools.Count | Should -Be 1
+            $kitTools[0]['id'] | Should -Be 'kit'
+            $check.Count | Should -Be 1
+            "$($check[0]['run'])" | Should -Match '\$env:KIT/tools/Test-MutationReport\.ps1'
+            "$($check[0]['run'])" | Should -Match 'stryker-output/reports/mutation-report\.json'
+            $check[0]['if'] | Should -Match 'always\(\)'
+            $check[0]['if'] | Should -Match "steps\.projects\.outputs\.count != '0'"
+        }
+
         It 'uploads the HTML and JSON report, even when the score fails, so the surviving mutants can be read' {
             # The YAML parser drops the "# vX" comment, so the version is read from the text.
             $upload = @(Get-Steps $reusable.Yaml | Where-Object { "$($_['uses'])" -match '^actions/upload-artifact@[0-9a-f]{40}$' })
