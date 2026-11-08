@@ -77,7 +77,7 @@ Accepted (owner, 2026-11-07: "Yes, set it up… default to the auto mode", and k
     - `gh repo delete` and `gh release`;
     - `gh api` calls on rulesets, branch protection, merge settings, visibility, `private`, `delete_branch_on_merge` or `default_branch`, and DELETE calls.
 
-    No rule ends in `:*`: Claude Code reads that as its older prefix syntax, where `*` is literal, so the `:` refspec rules end in `:**`. A test models that syntax and forbids mixing the two (review 4 of PR 19). Whether `:**` prompts in a live session isn't verified.
+    No rule ends in `:*`: Claude Code reads that as its older prefix syntax, where `*` is literal, so the `:` refspec rules end in `:**`. A test models that syntax and forbids mixing the two (review 4 of PR 19). Review 5 read Claude Code 2.1.310's rule parser and found that `:**` is matched as a wildcard. For each of the six rules, Claude Code warns that a `:*` that isn't at the end is matched as a wildcard. That's expected, and it confirms the rules work: don't change them back to `:*`. Whether they prompt in a live session isn't verified.
 
     Some ordinary commands prompt as a side effect, such as a commit message that names one of these forms, or `gh release view`. A prompt errs on the safe side.
 
