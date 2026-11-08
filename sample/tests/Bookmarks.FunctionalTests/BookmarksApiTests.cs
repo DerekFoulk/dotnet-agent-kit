@@ -86,6 +86,21 @@ public sealed class BookmarksApiTests : IDisposable
         defaults.GetProperty("items").GetArrayLength().Should().Be(3, "the default page holds 25");
     }
 
+    [Theory]
+    [InlineData("limit=0")]
+    [InlineData("limit=101")]
+    [InlineData("offset=-1")]
+    public async Task AnOutOfRangePageIsAValidationProblem(string query)
+    {
+        // API-004 and API-006: the page size is capped at 100, so no client can ask for the whole table.
+        using HttpResponseMessage response = await Client.GetAsync(new Uri($"/bookmarks?{query}", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json");
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.TryGetProperty("errors", out _).Should().BeTrue("a validation problem names the invalid field");
+    }
+
     [Fact]
     public async Task EveryErrorResponseIsProblemDetails()
     {
