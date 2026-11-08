@@ -74,6 +74,20 @@ Describe 'Set-AgentMode.ps1' {
         Get-AgentMode -RepoRoot $root | Should -Be 'review'
     }
 
+    It 'refuses local settings it can''t read, and leaves them and the mode as they were' {
+        # Overwriting a file Claude Code can't parse would lose the owner's own rules.
+        $root = New-Repo
+        $path = Join-Path $root '.claude' 'settings.local.json'
+        Set-Content -LiteralPath $path -Value '{ "permissions": { "allow": [ "Bash(npm test)", ] }' -NoNewline
+
+        $message = $null
+        try { Set-AgentMode -Mode Review -RepoRoot $root } catch { $message = "$_" }
+
+        $message | Should -BeLike '*settings.local.json*'
+        Get-Content -Raw -LiteralPath $path | Should -Be '{ "permissions": { "allow": [ "Bash(npm test)", ] }'
+        Join-Path $root '.agent-mode' | Should -Not -Exist
+    }
+
     Context 'run as a command' {
         It 'switches with -Mode and says which mode is on; without -Mode it only reports' {
             $root = New-Repo
