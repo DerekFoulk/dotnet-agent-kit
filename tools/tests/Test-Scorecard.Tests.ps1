@@ -360,6 +360,21 @@ Describe 'Test-Scorecard.ps1' {
             $result.Output | Should -Not -Match 'null'
         }
 
+        It 'exits 1 with reasons, not an error, for a gap and an area written as plain text' {
+            # Review 2 of the scorecard PR: the table and count code crashed on these too, and only the problem
+            # list was tested.
+            $paths = New-Fixture
+            $yaml = ConvertTo-Yaml ([ordered]@{ areas = @((New-Area -Override @{ gaps = @('none yet') }), 'Performance') })
+            Set-Content -LiteralPath $paths.Scorecard -Value "---`n$yaml---$markers"
+
+            $result = Invoke-Check $paths
+
+            $result.ExitCode | Should -Be 1
+            $result.Output | Should -Match "gap 'none yet' that is not a map"
+            $result.Output | Should -Match "area 2 \('Performance'\) is not a map"
+            $result.Output | Should -Not -Match 'Cannot|Exception'
+        }
+
         It 'exits 0 once -Update has written the table' {
             $paths = New-Fixture -Body $markers
 
