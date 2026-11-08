@@ -106,6 +106,21 @@ Describe 'Test-MutationReport.ps1' {
         $problems[2] | Should -Match '^idC killed 1 mutant'
     }
 
+    It 'treats ids that differ only in case as different tests, as JSON does' {
+        # The coverage set compared ids case-sensitively, but the counts and names didn't (PowerShell's @{}).
+        Get-Command Get-MutationReportProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $report = New-Report @((New-Mutant -KilledBy 'id', 'ID' -CoveredBy @()))
+        $report['testFiles']['tests/App.Tests/ThingTests.cs']['tests'] = @(
+            [ordered]@{ id = 'id'; name = 'App.Tests.Lower' }
+            [ordered]@{ id = 'ID'; name = 'App.Tests.Upper' })
+
+        $problems = @(Get-MutationReportProblem -Path (Write-Report $report))
+
+        $problems.Count | Should -Be 2
+        $problems[0] | Should -Match '^App\.Tests\.Lower killed 1 mutant'
+        $problems[1] | Should -Match '^App\.Tests\.Upper killed 1 mutant'
+    }
+
     It 'leaves static mutants alone: Stryker runs them against every test' {
         Get-Command Get-MutationReportProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $report = New-Report @((New-Mutant -KilledBy 'tAlways' -CoveredBy @() -Static $true))
