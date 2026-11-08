@@ -44,9 +44,13 @@ function Set-AgentMode {
     $path = Join-Path $RepoRoot '.claude' 'settings.local.json'
     $settings = if (Test-Path -LiteralPath $path) { Get-Content -Raw -LiteralPath $path | ConvertFrom-Json -AsHashtable } else { [ordered]@{} }
     if (-not $settings.Contains('permissions')) { $settings['permissions'] = [ordered]@{} }
-    $ask = @(if ($settings['permissions'].Contains('ask')) { $settings['permissions']['ask'] })
-    $settings['permissions']['ask'] = @($ask + $script:ReviewAskRules)
+    # The owner's own rules stay; only the review rules are added or taken away.
+    $own = @(@(if ($settings['permissions'].Contains('ask')) { $settings['permissions']['ask'] }) | Where-Object { $_ -cnotin $script:ReviewAskRules })
+    $settings['permissions']['ask'] = if ($Mode -eq 'Review') { @($own + $script:ReviewAskRules) } else { $own }
     New-Item -ItemType Directory -Path (Split-Path -Path $path -Parent) -Force | Out-Null
-    Set-Content -LiteralPath $path -Value ($settings | ConvertTo-Json -Depth 10)
-    Set-Content -LiteralPath (Join-Path $RepoRoot '.agent-mode') -Value 'review'
+    Set-Content -LiteralPath $path -Value (ConvertTo-Json -InputObject $settings -Depth 10)
+
+    $modeFile = Join-Path $RepoRoot '.agent-mode'
+    if ($Mode -eq 'Review') { Set-Content -LiteralPath $modeFile -Value 'review' }
+    elseif (Test-Path -LiteralPath $modeFile) { Remove-Item -LiteralPath $modeFile }
 }
