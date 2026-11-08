@@ -54,5 +54,13 @@ Describe 'Mutation testing in CI' {
             $run | Should -Match '--break-at 85\b'
             $run | Should -Match '--solution "\$SOLUTION"'
         }
+
+        It 'uploads the HTML and JSON report, even when the score fails, so the surviving mutants can be read' {
+            $upload = @(Get-Steps $reusable.Yaml | Where-Object { "$($_['uses'])" -match '^actions/upload-artifact@[0-9a-f]{40} # v' })
+
+            $upload.Count | Should -Be 1
+            $upload[0]['if'] | Should -Match 'always\(\)'
+            "$($upload[0]['with']['path'])" | Should -Match 'stryker-output/reports'
+        }
     }
 }
