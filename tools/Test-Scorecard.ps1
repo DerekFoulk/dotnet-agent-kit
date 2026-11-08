@@ -73,6 +73,17 @@ function Test-Text {
     $null -ne $Value -and ($Value -is [string] -or $Value -isnot [Collections.IEnumerable])
 }
 
+# What's wrong with a field that must be one line of text, or $null when it's fine (or blank: the required
+# fields check reports that). A multi-line value would split its row in the table.
+function Get-TextFieldProblem {
+    param($Value)
+    if ($null -eq $Value) { return $null }
+    if (-not (Test-Text $Value)) { return "isn't text" }
+    if ("$Value".Trim() -match '|
+') { return 'is written over several lines' }
+    $null
+}
+
 function Get-ScorecardArea {
     param([Parameter(Mandatory)] [string] $ScorecardPath)
     @(Get-ScorecardEntry -ScorecardPath $ScorecardPath | Where-Object { $_ -is [Collections.IDictionary] })
@@ -243,11 +254,10 @@ function Get-ScorecardProblem {
             New-Problem -Message "area $position ('$area') is not a map with id, name, perfect and sources"
             continue
         }
-        $areaId = if (Test-Text $area['id']) { "$($area['id'])" } else { '' }
+        $areaId = if (Test-Text $area['id']) { "$($area['id'])" } else { "area $position" }
         foreach ($field in $script:AreaTextFields) {
-            if ($area.Contains($field) -and $null -ne $area[$field] -and -not (Test-Text $area[$field])) {
-                New-Problem -Area $areaId -Message "has a '$field' that isn't text: write it on one line"
-            }
+            $problem = if ($area.Contains($field)) { Get-TextFieldProblem $area[$field] }
+            if ($problem) { New-Problem -Area $areaId -Message "has a '$field' that $problem`: write it on one line" }
         }
         if ($areaId) {
             if ($areasSeen.ContainsKey($areaId)) { New-Problem -Area $areaId -Message "area id $areaId is already used" }
@@ -277,9 +287,8 @@ function Get-ScorecardProblem {
         foreach ($gap in $areaGaps) {
             $gapId = if ($gap.Contains('id') -and (Test-Text $gap['id'])) { "$($gap['id'])" } else { '' }
             foreach ($field in $script:GapTextFields) {
-                if ($gap.Contains($field) -and $null -ne $gap[$field] -and -not (Test-Text $gap[$field])) {
-                    New-Problem -Area $areaId -Message "has a gap $gapId whose '$field' isn't text: write it on one line"
-                }
+                $problem = if ($gap.Contains($field)) { Get-TextFieldProblem $gap[$field] }
+                if ($problem) { New-Problem -Area $areaId -Message "has a gap $gapId whose '$field' $problem`: write it on one line" }
             }
             foreach ($field in $script:RequiredGapFields) {
                 if (-not $gap.Contains($field) -or -not (Test-Present $gap[$field])) {
