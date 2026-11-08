@@ -34,10 +34,8 @@ Describe 'Agent configuration' {
         }
 
         It 'asks before <Command> in both Bash and PowerShell' -ForEach @(
-            # The owner's decisions: merging and repo settings.
-            @{ Command = 'gh pr merge *' }, @{ Command = 'gh repo edit *' }
-            # Dependencies and installs. -I* catches -Install and its prefixes (-Ins), which PowerShell accepts.
-            @{ Command = 'dotnet add * package *' }, @{ Command = 'winget install *' }, @{ Command = '*Initialize-DevMachine*-I*' }
+            # Installs on the owner's machine. -I* catches -Install and its prefixes (-Ins), which PowerShell accepts.
+            @{ Command = 'winget install *' }, @{ Command = '*Initialize-DevMachine*-I*' }
             # The two commands that destroy local work and that an agent rarely needs.
             @{ Command = 'git reset --hard *' }, @{ Command = 'git clean *' }
         ) {
@@ -52,14 +50,44 @@ Describe 'Agent configuration' {
         }
 
         It 'asks before editing <Path>' -ForEach @(
-            @{ Path = './**/Directory.Packages.props' }, @{ Path = './**/Directory.Build.props' },
-            @{ Path = './nuget.config' }, @{ Path = './global.json' }, @{ Path = './.config/dotnet-tools.json' },
-            @{ Path = './.github/workflows/**' }, @{ Path = './.github/dependabot.yml' },
-            @{ Path = './.claude/settings.json' }, @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' },
+            # The agent's own permissions and connectors (SEC-004), and the working mode (ADR-0035).
+            @{ Path = './.claude/settings.json' }, @{ Path = './.claude/settings.local.json' }, @{ Path = './.agent-mode' }
+            @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' },
             # An app's kit-managed scripts and manifest (ADR-0032): the sync job changes them, not a hand edit.
             @{ Path = './.kit/**' }
         ) {
             (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
+        }
+
+        # Auto mode is the default (ADR-0035): the rules review mode adds can't also be in the shared file, or
+        # auto mode would ask too. Review mode adds them to the owner's .claude/settings.local.json.
+        It 'leaves the review-mode rules out of the shared settings: <Rule>' -ForEach @(
+            @{ Rule = 'Bash(gh pr merge *)' }, @{ Rule = 'PowerShell(gh pr merge *)' }
+            @{ Rule = 'Bash(gh repo edit *)' }, @{ Rule = 'PowerShell(gh repo edit *)' }
+            @{ Rule = 'Bash(dotnet add * package *)' }, @{ Rule = 'PowerShell(dotnet add * package *)' }
+            @{ Rule = 'Edit(./**/Directory.Packages.props)' }, @{ Rule = 'Edit(./**/Directory.Build.props)' }
+            @{ Rule = 'Edit(./nuget.config)' }, @{ Rule = 'Edit(./global.json)' }, @{ Rule = 'Edit(./.config/dotnet-tools.json)' }
+            @{ Rule = 'Edit(./.github/workflows/**)' }, @{ Rule = 'Edit(./.github/dependabot.yml)' }
+        ) {
+            (Get-RuleList 'ask') -ccontains $Rule | Should -BeFalse
+            . (Join-Path $repoRoot 'tools' 'Set-AgentMode.ps1')
+            $script:ReviewAskRules | Should -Contain $Rule -Because 'review mode must still ask for it'
+        }
+
+        # Switching modes is the owner's call in both modes, so an agent can't turn its own prompts off.
+        It 'asks before switching modes with <Tool>(<Command>)' -ForEach @(
+            @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'PowerShell'; Command = './tools/Set-AgentMode -Mode Review' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'PowerShell'; Command = './.kit/tools/Set-AgentMode.ps1 -Mode Auto' }
+            @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./.kit/tools/Set-AgentMode.ps1 -Mode Auto' }
+        ) {
+            $matching = @(Get-RuleList 'ask' | Where-Object {
+                    $_ -match "^$Tool\((.*)\)$" -and $Command -clike ($Matches[1] -replace '[\[\]?]', '`$0')
+                })
+            $matching | Should -Not -BeNullOrEmpty -Because "an ask rule should catch $Tool($Command)"
         }
 
         # New-KitApp creates a GitHub repo and changes its settings (ADR-0033); './tools/*' would allow it unasked.
