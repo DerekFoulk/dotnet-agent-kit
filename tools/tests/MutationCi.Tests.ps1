@@ -54,12 +54,26 @@ Describe 'Mutation testing in CI' {
             @($on['pull_request']['paths']) | Should -Contain 'sample/**'
         }
 
-        It 'runs on a pull request that changes any file the mutation run reads, a Dependabot bump of Stryker included' {
-            # Re-review of PR 23: the settings moved into these files, and the filter didn't follow them.
-            $paths = @($kit.Yaml['on']['pull_request']['paths'])
+        It 'runs on a pull request that changes any file the mutation run reads, a Dependabot bump of Stryker or the SDK included' {
+            # Reviews 2 and 3 of PR 23: the filter missed files the run reads. The list is built from the workflow and
+            # the repo, not written out, so a file the run starts reading later fails this test until the filter has it.
+            $read = [System.Collections.Generic.List[string]]::new()
+            foreach ($match in [regex]::Matches($reusable.Text, '\$(?:env:)?KIT/(?<path>[^"''\s]+)')) { $read.Add($match.Groups['path'].Value) }
+            foreach ($match in [regex]::Matches($reusable.Text, 'uses: \$/(?<path>\S+)')) { $read.Add("$($match.Groups['path'].Value)/action.yml") }
+            foreach ($match in [regex]::Matches($reusable.Text, 'global-json-file: (?<path>\S+)')) { $read.Add($match.Groups['path'].Value) }
+            $read.Add([string] @($kit.Yaml['jobs'].Values)[0]['with']['solution'])
+            # What dotnet and MSBuild read from the repo root when they build the solution.
+            Get-ChildItem -LiteralPath $root -File -Force |
+                Where-Object Name -Match '^(global\.json|nuget\.config|Directory\.[^.]+\.(props|targets))$' |
+                ForEach-Object { $read.Add($_.Name) }
 
-            foreach ($file in '.config/dotnet-tools.json', '.config/stryker-config.json', 'tools/Test-MutationReport.ps1', 'tools/Get-SolutionProjectCount.ps1') {
-                $paths | Should -Contain $file -Because "the mutation run reads $file"
+            # GitHub's path patterns: ** crosses folders, * doesn't.
+            $patterns = @($kit.Yaml['on']['pull_request']['paths'] | ForEach-Object {
+                    '^' + ([regex]::Escape($_) -replace '\\\*\\\*', '.*' -replace '\\\*', '[^/]*') + '$'
+                })
+            $read.Count | Should -BeGreaterThan 8
+            foreach ($file in ($read | Sort-Object -Unique)) {
+                @($patterns | Where-Object { $file -match $_ }).Count | Should -BeGreaterThan 0 -Because "the mutation run reads $file"
             }
         }
 
