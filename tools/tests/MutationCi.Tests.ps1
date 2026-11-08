@@ -54,6 +54,15 @@ Describe 'Mutation testing in CI' {
             @($on['pull_request']['paths']) | Should -Contain 'sample/**'
         }
 
+        It 'runs on a pull request that changes any file the mutation run reads, a Dependabot bump of Stryker included' {
+            # Re-review of PR 23: the settings moved into these files, and the filter didn't follow them.
+            $paths = @($kit.Yaml['on']['pull_request']['paths'])
+
+            foreach ($file in '.config/dotnet-tools.json', '.config/stryker-config.json', 'tools/Test-MutationReport.ps1', 'tools/Get-SolutionProjectCount.ps1') {
+                $paths | Should -Contain $file -Because "the mutation run reads $file"
+            }
+        }
+
         It 'calls the shared workflow for the kit''s solution, with a read-only token' {
             $kit.Yaml.ContainsKey('jobs') | Should -BeTrue
             $job = @($kit.Yaml['jobs'].Values)[0]
