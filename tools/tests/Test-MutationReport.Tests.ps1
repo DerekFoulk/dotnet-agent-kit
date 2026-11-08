@@ -65,7 +65,10 @@ Describe 'Test-MutationReport.ps1' {
 
         $problems = @(Get-MutationReportProblem -Path (Write-Report $report))
 
-        $problems | Should -Match 'tAlways killed 2 mutant\(s\) it never reached'
+        # With no coverage, every killer is outside it: both tests are named, each with its own count.
+        $problems.Count | Should -Be 2
+        $problems[0] | Should -Match '^App\.Tests\.ThingTests\.t1 killed 1 mutant\(s\) it never reached'
+        $problems[1] | Should -Match '^App\.Tests\.ThingTests\.tAlways killed 2 mutant\(s\) it never reached'
     }
 
     It 'leaves static mutants alone: Stryker runs them against every test' {
