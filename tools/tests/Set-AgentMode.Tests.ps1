@@ -38,4 +38,13 @@ Describe 'Set-AgentMode.ps1' {
         foreach ($rule in $script:ReviewAskRules) { $settings['permissions']['ask'] | Should -Contain $rule }
         $script:ReviewAskRules | Should -Contain 'Bash(gh pr merge *)'
     }
+
+    It 'review mode writes the mode to .agent-mode, which every agent reads' {
+        $root = New-Repo
+
+        Set-AgentMode -Mode Review -RepoRoot $root
+
+        Join-Path $root '.agent-mode' | Should -Exist
+        (Get-Content -Raw -LiteralPath (Join-Path $root '.agent-mode')).Trim() | Should -Be 'review'
+    }
 }
