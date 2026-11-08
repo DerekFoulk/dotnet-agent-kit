@@ -9,7 +9,8 @@ public interface IBookmarkRepository
 
     Task<Bookmark?> FindByUrlAsync(Uri url, CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<Bookmark>> ListAsync(CancellationToken cancellationToken);
+    /// <summary>One page of bookmarks, in a stable order: <paramref name="limit"/> of them from <paramref name="offset"/>.</summary>
+    Task<IReadOnlyList<Bookmark>> ListAsync(int offset, int limit, CancellationToken cancellationToken);
 
     Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken);
 }

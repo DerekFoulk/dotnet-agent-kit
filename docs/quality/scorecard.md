@@ -103,14 +103,14 @@ areas:
       - "https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/aspnet/core/grpc/comparison, retrieved 2026-11-07"
       - "owner, 2026-11-06"
-    rules: []
+    rules: [API-001, API-002, API-003, API-004, API-005, API-006]
     gaps:
       - id: GAP-010
-        gap: "No guidance on choosing an API style: when HTTP APIs, gRPC, SignalR or GraphQL fit."
-        status: proposed
+        gap: "No guidance on choosing an API style: when HTTP APIs, gRPC, SignalR or GraphQL fit. Closed by ADR-0038: API-001 (proposed) and the plan-checklist skill."
+        status: closed
       - id: GAP-011
-        gap: "No HTTP API conventions (Problem Details, versioning, pagination) and no guidance on API packages (OpenAPI, Scalar, Asp.Versioning, client generation)."
-        status: proposed
+        gap: "No HTTP API conventions (Problem Details, versioning, pagination) and no guidance on API packages (OpenAPI, Scalar, Asp.Versioning, client generation). Closed by ADR-0038: API-002 to API-006 (proposed), the sample's API and docs/standards/api-design.md."
+        status: closed
   - id: performance
     name: Performance
     perfect: "Hot paths benchmarked, database queries checked, caching only where measured, and load tests before a release."
@@ -216,7 +216,7 @@ Each area in the front matter above has:
 | Security | 6 | 4 | 2 | 1 | 1 |
 | Reliability | 1 | 0 | 1 | 2 | 1 |
 | Observability | 1 | 0 | 1 | 1 | 0 |
-| API design | 0 | 0 | 0 | 0 | 2 |
+| API design | 0 | 0 | 0 | 6 | 0 |
 | Performance | 1 | 0 | 1 | 0 | 1 |
 | Supply chain and build | 4 | 4 | 0 | 4 | 2 |
 | Delivery | 1 | 1 | 0 | 0 | 2 |
@@ -224,7 +224,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
 | Process | 14 | 4 | 10 | 1 | 0 |
 
-**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 13 proposed; 15 open gaps.
+**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 19 proposed; 13 open gaps.
 
 Open gaps:
 
@@ -234,8 +234,6 @@ Open gaps:
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-006** (Security, proposed): No rules for authentication, authorization or input validation defaults beyond the threat model in plans.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
-- **GAP-010** (API design, proposed): No guidance on choosing an API style: when HTTP APIs, gRPC, SignalR or GraphQL fit.
-- **GAP-011** (API design, proposed): No HTTP API conventions (Problem Details, versioning, pagination) and no guidance on API packages (OpenAPI, Scalar, Asp.Versioning, client generation).
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
 - **GAP-013** (Supply chain and build, proposed; needs a tool or GitHub Action, and a CI change): No SBOM is produced for an app's build.
 - **GAP-014** (Supply chain and build, proposed; needs a GitHub Action and a CI change): OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside.

@@ -6,6 +6,9 @@ namespace Bookmarks.Application.Features.Bookmarks;
 /// <summary>The outcome of adding a bookmark: the saved bookmark, or that its URL is already saved.</summary>
 public sealed record AddBookmarkResult(BookmarkResponse? Bookmark, bool AlreadyExists);
 
+/// <summary>One page of bookmarks, and whether another page follows it.</summary>
+public sealed record BookmarkListResult(IReadOnlyList<BookmarkResponse> Items, bool HasMore);
+
 /// <summary>Bookmark use cases.</summary>
 public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider timeProvider)
 {
@@ -32,10 +35,24 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
         return bookmark is null ? null : ToResponse(bookmark);
     }
 
-    public async Task<IReadOnlyList<BookmarkResponse>> ListAsync(CancellationToken cancellationToken)
+    /// <summary>The largest page a caller may ask for (API-004).</summary>
+    public const int MaxPageSize = 100;
+
+    /// <summary>The deepest offset: offset paging reads and skips every earlier row (Azure's API implementation guide).</summary>
+    public const int MaxOffset = 10_000;
+
+    public async Task<BookmarkListResult> ListAsync(int offset, int limit, CancellationToken cancellationToken)
     {
-        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
-        return [.. bookmarks.Select(ToResponse)];
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, MaxOffset);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(limit, MaxPageSize);
+
+        // One row more than the page shows whether another page follows, without counting every row. A next page that
+        // would start past MaxOffset couldn't be read, so this page is the last one reachable.
+        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(offset, limit + 1, cancellationToken).ConfigureAwait(false);
+        bool hasMore = bookmarks.Count > limit && offset + limit <= MaxOffset;
+        return new BookmarkListResult([.. bookmarks.Take(limit).Select(ToResponse)], hasMore);
     }
 
     private static BookmarkResponse ToResponse(Bookmark bookmark) =>

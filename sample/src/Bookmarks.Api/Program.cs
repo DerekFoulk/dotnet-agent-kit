@@ -12,7 +12,24 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<BookmarkService>();
 builder.Services.AddOpenApi();
 
+// Every error response is Problem Details (RFC 9457): exceptions through the exception handler, and empty 4xx and
+// 5xx responses through status code pages (API-002).
+builder.Services.AddProblemDetails();
+
+// Validates endpoint parameters from their DataAnnotations and answers a validation problem (API-006).
+builder.Services.AddValidation();
+
 WebApplication app = builder.Build();
+
+// In Development a binding failure (bad JSON, a query value that isn't a number) throws BadHttpRequestException;
+// keep its 400 instead of the handler's default 500. ASP.NET Core 11 does this by itself.
+app.UseExceptionHandler(new ExceptionHandlerOptions
+{
+    StatusCodeSelector = exception => exception is BadHttpRequestException badRequest
+        ? badRequest.StatusCode
+        : StatusCodes.Status500InternalServerError,
+});
+app.UseStatusCodePages();
 
 // The sample creates its schema on startup; a real app would use migrations.
 using (IServiceScope scope = app.Services.CreateScope())
@@ -21,7 +38,13 @@ using (IServiceScope scope = app.Services.CreateScope())
 }
 
 app.MapDefaultEndpoints();
-app.MapOpenApi();
+// The OpenAPI document maps the whole API, so it is served in Development only (API-003); the contract test
+// snapshots it.
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
 app.MapBookmarks();
 
 app.Run();

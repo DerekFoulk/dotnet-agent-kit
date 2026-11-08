@@ -33,6 +33,18 @@ public sealed class BookmarkTests
         create.Should().Throw<ArgumentException>().WithParameterName("url");
     }
 
+    [Fact]
+    public void IdsSortInTheOrderTheBookmarksWereCreated()
+    {
+        // Review 1 of PR 22: lists are ordered by Id (API-004), so a time-ordered Id (UUID version 7) makes that the
+        // creation order, and a new bookmark lands on the last page instead of shifting a random one. Ordinal string
+        // order is how the sample's SQLite compares them (SQL Server orders Guids differently: api-design.md).
+        List<string> ids = [.. Enumerable.Range(0, 20)
+            .Select(minute => Bookmark.Create(new Uri($"https://example.com/{minute}"), "Title", s_now.AddMinutes(minute)).Id.ToString())];
+
+        ids.Should().BeInAscendingOrder(StringComparer.Ordinal);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
