@@ -13,6 +13,7 @@ One module in Clean Architecture (ARC-001):
 | `src/Bookmarks.Application` | Use cases, grouped by feature (`Features/Bookmarks`) |
 | `src/Bookmarks.Infrastructure` | EF Core with SQLite |
 | `src/Bookmarks.Api` | Minimal API endpoints and OpenAPI |
+| `src/Bookmarks.ServiceDefaults` | OpenTelemetry logs, metrics and traces; the `/health` and `/alive` endpoints; resilience on every `HttpClient` (OPS-001 to OPS-003, ADR-0037). The reference for an app's own ServiceDefaults project |
 
 | Test project | Kind (brief §6.7) |
 |---|---|
@@ -34,7 +35,7 @@ dotnet test --coverage --coverage-output-format cobertura --results-directory Te
 dotnet run --project sample/src/Bookmarks.Api
 ```
 
-The API keeps its data in `bookmarks.db` (SQLite) next to where it runs, and serves its OpenAPI document at `/openapi/v1.json`.
+The API keeps its data in `bookmarks.db` (SQLite) next to where it runs, and serves its OpenAPI document at `/openapi/v1.json`. `/health` answers `Healthy` once the database is reachable, and `/alive` while the process runs. To see its telemetry, set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OTLP endpoint, such as the Aspire dashboard's.
 
 ## The API contract
 

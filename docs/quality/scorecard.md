@@ -74,11 +74,11 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/reliability/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks, retrieved 2026-11-07"
-    rules: [ARC-006]
+    rules: [ARC-006, OPS-002, OPS-003]
     gaps:
       - id: GAP-007
-        gap: "No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit."
-        status: proposed
+        gap: "No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-002, OPS-003 (proposed)."
+        status: closed
         needs: "packages"
       - id: GAP-008
         gap: "No rule for safe database migrations (backward-compatible steps, tested before deploy)."
@@ -89,11 +89,11 @@ areas:
     sources:
       - "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel, retrieved 2026-11-07"
       - "https://aspire.dev/get-started/csharp-service-defaults/, retrieved 2026-11-07"
-    rules: [ARC-006]
+    rules: [ARC-006, OPS-001]
     gaps:
       - id: GAP-009
-        gap: "No OpenTelemetry defaults for logs, metrics and traces; plans name observability (ARC-006) but nothing sets it up."
-        status: proposed
+        gap: "No OpenTelemetry defaults for logs, metrics and traces; plans name observability (ARC-006) but nothing sets it up. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-001 (proposed)."
+        status: closed
         needs: "packages"
   - id: api-design
     name: API design
@@ -214,8 +214,8 @@ Each area in the front matter above has:
 | Code | 4 | 3 | 1 | 2 | 0 |
 | Tests | 7 | 4 | 3 | 0 | 2 |
 | Security | 6 | 4 | 2 | 1 | 1 |
-| Reliability | 1 | 0 | 1 | 0 | 2 |
-| Observability | 1 | 0 | 1 | 0 | 1 |
+| Reliability | 1 | 0 | 1 | 2 | 1 |
+| Observability | 1 | 0 | 1 | 1 | 0 |
 | API design | 0 | 0 | 0 | 0 | 2 |
 | Performance | 1 | 0 | 1 | 0 | 1 |
 | Supply chain and build | 4 | 4 | 0 | 4 | 2 |
@@ -224,7 +224,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
 | Process | 14 | 4 | 10 | 1 | 0 |
 
-**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 10 proposed; 17 open gaps.
+**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 13 proposed; 15 open gaps.
 
 Open gaps:
 
@@ -233,9 +233,7 @@ Open gaps:
 - **GAP-003** (Tests, planned; needs a dotnet tool (Stryker) and a CI change): Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-006** (Security, proposed): No rules for authentication, authorization or input validation defaults beyond the threat model in plans.
-- **GAP-007** (Reliability, proposed; needs packages): No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
-- **GAP-009** (Observability, proposed; needs packages): No OpenTelemetry defaults for logs, metrics and traces; plans name observability (ARC-006) but nothing sets it up.
 - **GAP-010** (API design, proposed): No guidance on choosing an API style: when HTTP APIs, gRPC, SignalR or GraphQL fit.
 - **GAP-011** (API design, proposed): No HTTP API conventions (Problem Details, versioning, pagination) and no guidance on API packages (OpenAPI, Scalar, Asp.Versioning, client generation).
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
