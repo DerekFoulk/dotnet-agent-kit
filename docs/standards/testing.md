@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-10-25", "owner, 2026-10-26"]
-    enforcement: "ci: the sample's unit, integration, functional, contract and architecture test projects run in dotnet-ci.reusable.yml; advisory for the rest: mutation runs nightly after v0.1, UI tests apply only to apps with a UI, and a production project without its own test project (the sample's Contracts, Infrastructure, Api) is covered by the shared IntegrationTests and FunctionalTests"
+    enforcement: "ci: the sample's unit, integration, functional, contract and architecture test projects run in dotnet-ci.reusable.yml; mutation testing runs nightly in mutation.reusable.yml (ADR-0039); advisory for the rest: UI tests apply only to apps with a UI, and a production project without its own test project (the sample's Contracts, Infrastructure, Api) is covered by the shared IntegrationTests and FunctionalTests"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
@@ -33,8 +33,8 @@ rules:
     why: "Thresholds approved in one project's plan, then ratified as kit defaults."
     layer: owner
     status: accepted
-    sources: ["owner, 2026-11-01", "owner, 2026-11-04"]
-    enforcement: "ci: tools/Test-CoverageGate.ps1 in dotnet-ci.reusable.yml fails a build below the line-coverage minimums (tools/tests/Test-CoverageGate.Tests.ps1); the mutation score stays advisory until the nightly Stryker run (after v0.1)"
+    sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039"]
+    enforcement: "ci: tools/Test-CoverageGate.ps1 in dotnet-ci.reusable.yml fails a build below the line-coverage minimums (tools/tests/Test-CoverageGate.Tests.ps1); mutation.reusable.yml runs Stryker.NET nightly and fails below a mutation score of 85% (ADR-0039, tools/tests/MutationCi.Tests.ps1); it isn't a required check, so a low score shows as a failed nightly run, not a blocked pull request"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
