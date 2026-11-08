@@ -66,6 +66,32 @@ Describe 'Test-MutationReport.ps1' {
         @(Get-MutationReportProblem -Path (Write-Report (New-Report -KilledBy $killedBy -Statuses $statuses))).Count | Should -Be 1
     }
 
+    It 'reads killed mutants with no killedBy list as having no known killer, not as one blank test' {
+        # Review of PR 23: an absent killedBy became "" and was reported as a test that killed everything.
+        $report = New-Report -KilledBy (1..10 | ForEach-Object { , @("t$_") })
+        foreach ($mutant in $report['files']['src/App/Thing.cs']['mutants']) { $mutant.Remove('killedBy') }
+
+        @(Get-MutationReportProblem -Path (Write-Report $report)) | Should -BeNullOrEmpty
+    }
+
+    It 'names a test by its id when the report has no test files' {
+        # Review of PR 23: a report without testFiles threw under strict mode.
+        $report = New-Report -KilledBy (1..10 | ForEach-Object { , @('tAlways') })
+        $report.Remove('testFiles')
+
+        $path = Write-Report $report
+
+        { Get-MutationReportProblem -Path $path } | Should -Not -Throw
+        $problems = @(Get-MutationReportProblem -Path $path)
+        $problems.Count | Should -Be 1
+        $problems[0] | Should -Match '^tAlways killed every one'
+    }
+
+    It 'says plainly when there is no report to check' {
+        # Review of PR 23: when Stryker died before writing one, the check failed with a bare Get-Content error.
+        { Get-MutationReportProblem -Path (Join-Path $TestDrive 'missing.json') } | Should -Throw '*No mutation report at*'
+    }
+
     It 'returns exit code 1 with the problem, and 0 for a sound report' {
         Get-Command Invoke-MutationReportCheck -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $bad = Write-Report (New-Report -KilledBy (1..10 | ForEach-Object { , @('tAlways') }))
