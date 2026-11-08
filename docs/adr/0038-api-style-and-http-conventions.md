@@ -61,12 +61,13 @@ Accepted, in auto mode (ADR-0035). The six rules stay `proposed` until the owner
 - **The sample:**
   - every error response is Problem Details, and a 500 in Production hides the exception. A binding failure keeps its 400 in Development too, through the exception handler's `StatusCodeSelector` (review 1 of PR 22), and the OpenAPI document declares each error body;
   - the OpenAPI document is mapped in Development only;
-  - `GET /bookmarks` answers a `BookmarkPage`. The repository pages in the database, ordered by key. Bookmarks now get UUID version 7 keys made from their creation time, so on SQLite key order is creation order, to the millisecond (review 1 of PR 22). That holds where Guids compare as text or bytes (SQLite, PostgreSQL) but not on SQL Server, whose `uniqueidentifier` puts the last six bytes first; there, an app orders by a creation-time column with the key as tie-breaker (review 2). Ordering by `CreatedAt` would need a converter: SQLite can't order by a `DateTimeOffset`.
+  - `GET /bookmarks` answers a `BookmarkPage`. The repository pages in the database, ordered by key. Bookmarks now get UUID version 7 keys made from their creation time, so on SQLite key order is creation order, to the millisecond (review 1 of PR 22). That holds where Guids compare as text, as on SQLite, or as bytes in RFC 9562 order, but not on SQL Server, whose `uniqueidentifier` puts the last six bytes first; there, an app orders by a creation-time column with the key as tie-breaker (review 2). Ordering by `CreatedAt` would need a converter: SQLite can't order by a `DateTimeOffset`.
+  - the last page reachable within the offset cap has no `nextLink`, so a client following the links never gets a 400 (review 3);
   - the service refuses a page outside the limits itself, so a caller that bypasses the endpoint can't overflow `limit + 1` into SQLite's "no limit".
   - `limit` and `offset` are validated by `AddValidation`.
 - **Tests:**
-  - FunctionalTests: the error formats, the hidden 500, the 400 for malformed input in Development, the error bodies in the document, the document in Production, the pages and their link, and the validation;
-  - Application.Tests: the extra row that says another page follows, a full last page, and the service's own limits;
+  - FunctionalTests: the error formats, the hidden 500, the 400 for malformed input in Development and the 415 for a wrong content type, the error bodies in the document, the document in Production, the pages and their link, and the validation;
+  - Application.Tests: the extra row that says another page follows, a full last page, the last page the offset cap allows, and the service's own limits;
   - IntegrationTests: stable, non-overlapping pages in creation order, whatever order the rows were saved in;
   - Domain.Tests: ids that sort in creation order.
 - **GAP-010 and GAP-011 are closed** in the scorecard.

@@ -103,7 +103,7 @@ public sealed class BookmarksApiTests : IDisposable
     }
 
     [Fact]
-    public async Task MalformedInputIsABadRequestInDevelopmentToo()
+    public async Task MalformedInputIsAClientErrorProblemInDevelopmentToo()
     {
         // Review 1 of PR 22: in Development a binding failure throws BadHttpRequestException, and the exception
         // handler turned it into a 500. A client error stays a 400 in every environment.
