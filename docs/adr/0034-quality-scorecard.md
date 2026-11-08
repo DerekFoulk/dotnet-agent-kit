@@ -69,7 +69,7 @@ Accepted (owner, 2026-11-07: approved the scorecard plan, including the CI step)
 - **The first score:** 40 rules in force; 21 checked by a tool and 19 advisory; 9 proposed; 18 open gaps. The table is in `docs/quality/scorecard.md`.
 - **Areas with no rules:** Proportion and API design have none yet, only gaps.
 - **Closing a gap:** each gap is closed by its own PR. That PR adds or changes rules and marks the gap `closed`. A gap that needs a package, a CI change or cost waits for the owner's OK. This PR closes none.
-- **Keeping it current:** a new rule fails CI until an area names it. After changing a rule or the scorecard, run `./tools/Test-Scorecard.ps1 -Update` and commit the table.
+- **Keeping it current:** a rule in force fails CI until an area names it; a proposed one can wait. After changing a rule or the scorecard, run `./tools/Test-Scorecard.ps1 -Update` and commit the table.
 - **Where it applies:** the scorecard stays in the kit and isn't exported to apps (ADR-0032). It measures the kit's rules, which apps already get.
 - **Shared code:** `Get-SourceProblem` and `Test-Present` moved from `Test-RuleSources.ps1` into `KitFrontMatter.psm1`, so both checks validate sources the same way.
 - **What it can't measure:** checks catch mechanical mistakes, not design. Design judgment stays with the reviewer agent and the owner, and the practice run will show how far that gets.

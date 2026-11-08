@@ -109,7 +109,7 @@ Scripts target PowerShell 7 (`pwsh`). Every script and check gets Pester tests, 
 ## Done means
 
 - The build has zero warnings and every test passes.
-- Every check passes: rule sources, ADR sections, and generated files current.
+- Every check passes: rule sources, the quality scorecard, ADR sections, and generated files current.
 - Docs and ADRs are updated in the same PR.
 - The `reviewer` agent has reviewed the change, and its findings are fixed or answered.
 - The PR uses `.github/pull_request_template.md`, including the red→green evidence table.

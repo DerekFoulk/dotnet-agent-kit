@@ -27,10 +27,11 @@ areas:
         status: proposed
   - id: code
     name: Code
-    perfect: "Idiomatic C# that follows Microsoft's conventions, with nullable on, every analyzer on and no warnings; async code that is correct and passes cancellation tokens; small, cohesive types."
+    perfect: "Idiomatic C# that follows Microsoft's conventions, with nullable on, every analyzer on and no warnings; async code that passes cancellation tokens on to the methods it calls."
     sources:
       - "https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-07"
+      - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
     rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006]
     gaps: []
@@ -46,7 +47,7 @@ areas:
       - id: GAP-003
         gap: "Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1."
         status: planned
-        needs: "a CI change"
+        needs: "a dotnet tool (Stryker) and a CI change"
       - id: GAP-004
         gap: "Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI."
         status: proposed
@@ -62,7 +63,7 @@ areas:
       - id: GAP-005
         gap: "No code scanning: CodeQL is free on public repos but isn't set up."
         status: proposed
-        needs: "a CI change"
+        needs: "a GitHub Action (CodeQL) and a CI change"
       - id: GAP-006
         gap: "No rules for authentication, authorization or input validation defaults beyond the threat model in plans."
         status: proposed
@@ -134,7 +135,7 @@ areas:
       - id: GAP-013
         gap: "No SBOM is produced for an app's build."
         status: proposed
-        needs: "a CI change"
+        needs: "a tool or GitHub Action, and a CI change"
       - id: GAP-014
         gap: "OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside."
         status: proposed
@@ -162,7 +163,7 @@ areas:
     sources:
       - "https://diataxis.fr/, retrieved 2026-11-07"
       - "ADR-0016"
-    rules: [ARC-005, DOD-001, DOD-004]
+    rules: [ARC-005, ARC-006, DOD-001]
     gaps:
       - id: GAP-017
         gap: "No runbooks: nothing says how to operate, recover or roll back an app."
@@ -174,10 +175,10 @@ areas:
       - "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/architecture/maui/mvvm, retrieved 2026-11-07"
       - "ADR-0008"
-    rules: [ARC-003, ARC-004]
+    rules: [ARC-003, ARC-004, ARC-006]
     gaps:
       - id: GAP-018
-        gap: "No accessibility rule: nothing requires WCAG 2.2 AA or checks it (GAP-004 adds the tests)."
+        gap: "No rule requires WCAG 2.2 AA or checks it: only the plan checklist asks about accessibility (ARC-006, the plan-checklist skill). GAP-004 adds the tests."
         status: proposed
   - id: process
     name: Process
@@ -187,7 +188,7 @@ areas:
       - "ADR-0010"
       - "ADR-0026"
       - "owner, 2026-10-26"
-    rules: [GIT-001, GIT-002, GIT-003, GIT-004, GIT-005, COM-001, COM-002, COM-003, COM-004, COM-005, COM-006, DOD-002, DOD-003, DOD-005]
+    rules: [GIT-001, GIT-002, GIT-003, GIT-004, GIT-005, COM-001, COM-002, COM-003, COM-004, COM-005, COM-006, DOD-002, DOD-003, DOD-004, DOD-005]
     gaps: []
 ---
 
@@ -203,7 +204,7 @@ Each area in the front matter above has:
 
 ## The score
 
-`tools/Test-Scorecard.ps1 -Update` writes this table from the rules. A rule counts as **checked by a tool** when its `enforcement` names one (build, CI, ruleset, hook, settings), and as **advisory** when only the agents' instructions and the reviewer stand behind it. Proposed rules aren't in force yet, so they're counted apart. A rule can serve more than one area, so the rows add up to more than the overall line, which counts each rule once.
+`tools/Test-Scorecard.ps1 -Update` writes this table from the rules. A rule counts as **advisory** when its `enforcement` starts with `advisory`: only the agents' instructions and the reviewer stand behind it. Any other start (build, ci, ruleset, check, restore, settings) counts as **checked by a tool**, even when the text adds that part of the rule is advisory, so that number is an upper bound. Proposed rules aren't in force yet, so they're counted apart. A rule can serve more than one area, so the rows add up to more than the overall line, which counts each rule once.
 
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
@@ -220,8 +221,8 @@ Each area in the front matter above has:
 | Supply chain and build | 4 | 4 | 0 | 4 | 2 |
 | Delivery | 1 | 1 | 0 | 0 | 2 |
 | Docs and decisions | 2 | 1 | 1 | 1 | 1 |
-| UI and accessibility | 2 | 1 | 1 | 0 | 1 |
-| Process | 13 | 4 | 9 | 1 | 0 |
+| UI and accessibility | 3 | 1 | 2 | 0 | 1 |
+| Process | 14 | 4 | 10 | 1 | 0 |
 
 **Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 9 proposed; 18 open gaps.
 
@@ -229,9 +230,9 @@ Open gaps:
 
 - **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
-- **GAP-003** (Tests, planned; needs a CI change): Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1.
+- **GAP-003** (Tests, planned; needs a dotnet tool (Stryker) and a CI change): Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
-- **GAP-005** (Security, proposed; needs a CI change): No code scanning: CodeQL is free on public repos but isn't set up.
+- **GAP-005** (Security, proposed; needs a GitHub Action (CodeQL) and a CI change): No code scanning: CodeQL is free on public repos but isn't set up.
 - **GAP-006** (Security, proposed): No rules for authentication, authorization or input validation defaults beyond the threat model in plans.
 - **GAP-007** (Reliability, proposed; needs packages): No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
@@ -239,17 +240,17 @@ Open gaps:
 - **GAP-010** (API design, proposed): No guidance on choosing an API style: when HTTP APIs, gRPC, SignalR or GraphQL fit.
 - **GAP-011** (API design, proposed): No HTTP API conventions (Problem Details, versioning, pagination) and no guidance on API packages (OpenAPI, Scalar, Asp.Versioning, client generation).
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
-- **GAP-013** (Supply chain and build, proposed; needs a CI change): No SBOM is produced for an app's build.
+- **GAP-013** (Supply chain and build, proposed; needs a tool or GitHub Action, and a CI change): No SBOM is produced for an app's build.
 - **GAP-014** (Supply chain and build, proposed; needs a GitHub Action and a CI change): OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet.
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 - **GAP-017** (Docs and decisions, proposed): No runbooks: nothing says how to operate, recover or roll back an app.
-- **GAP-018** (UI and accessibility, proposed): No accessibility rule: nothing requires WCAG 2.2 AA or checks it (GAP-004 adds the tests).
+- **GAP-018** (UI and accessibility, proposed): No rule requires WCAG 2.2 AA or checks it: only the plan checklist asks about accessibility (ARC-006, the plan-checklist skill). GAP-004 adds the tests.
 <!-- scorecard-table:end -->
 
 ## Keeping it current
 
-- A new rule must name at least one area here, or the check fails in CI.
+- Every rule in force must be named by at least one area here, or the check fails in CI. A proposed rule can wait until it's accepted.
 - Closing a gap is its own pull request: it adds or changes rules and marks the gap `closed`. Gaps that need a package, a CI change or cost wait for the owner's OK.
 - After changing a rule or an area, run `./tools/Test-Scorecard.ps1 -Update` and commit the table.
 

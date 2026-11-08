@@ -101,7 +101,7 @@ Two things need a one-time step per user:
 | Workflow | What it checks |
 |---|---|
 | `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage, the coverage gate (TST-004), and deprecated packages. It also runs a gitleaks secret scan of the full git history |
-| `kit-checks.reusable.yml` | All Pester tests, rule sources, ADR sections, generated-file drift, and on pull requests the commit subjects and red→green order (the branch's own commits) |
+| `kit-checks.reusable.yml` | All Pester tests, rule sources, the quality scorecard, ADR sections, generated-file drift, and on pull requests the commit subjects and red→green order (the branch's own commits) |
 | `pr-title.yml` | The PR title is a Conventional Commit. It also runs when the PR is edited, because the title becomes the merge commit's subject |
 
 Two more workflows act rather than check:
