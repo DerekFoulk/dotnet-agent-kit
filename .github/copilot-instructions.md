@@ -73,6 +73,7 @@ Never read, print or store secrets. Sign-in is always the owner's step.
 | Check this machine's toolchain | `./tools/Initialize-DevMachine.ps1` |
 | All script tests (Pester 6) | `Invoke-Pester -Path ./tools/tests` |
 | Every rule has a source and an enforcement | `./tools/Test-RuleSources.ps1` |
+| Every rule in force has a quality area, and the scorecard's table is current; `-Update` rewrites the table after a rule or area changes | `./tools/Test-Scorecard.ps1` |
 | Every ADR has its required sections | `./tools/Test-AdrSections.ps1` |
 | Regenerate agent rule files after editing a standard or this file | `./tools/Build-AgentRules.ps1` |
 | Check generated files are current | `./tools/Build-AgentRules.ps1 -Check` |
@@ -97,6 +98,7 @@ Scripts target PowerShell 7 (`pwsh`). Every script and check gets Pester tests, 
 |---|---|
 | `docs/standards/` | One file per topic. Rules sit in YAML front matter with `id`, `statement`, `layer`, `status`, `sources` and `enforcement` |
 | `docs/adr/` | Decisions. ADR numbers match the brief's decision numbers (D8 is ADR-0008) |
+| `docs/quality/scorecard.md` | What a "perfect" .NET app is, area by area; the rules that cover each area and its open gaps (ADR-0034). A new rule names its area here |
 | `docs/corrections-log.md` | Every owner correction and what it became |
 | `.claude/skills/` | The workflow skills, read by Claude Code, Visual Studio and VS Code |
 | `.claude/agents/reviewer.md` | The independent reviewer |
