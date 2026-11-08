@@ -35,7 +35,7 @@ dotnet test --coverage --coverage-output-format cobertura --results-directory Te
 dotnet run --project sample/src/Bookmarks.Api
 ```
 
-The API keeps its data in `bookmarks.db` (SQLite) next to where it runs, and serves its OpenAPI document at `/openapi/v1.json`. `/health` answers `Healthy` once the database is reachable, and `/alive` while the process runs. To see its telemetry, set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OTLP endpoint, such as the Aspire dashboard's.
+The API keeps its data in `bookmarks.db` (SQLite) next to where it runs. In Development it serves its OpenAPI document at `/openapi/v1.json`; other environments don't (API-003). `GET /bookmarks` answers one page at a time (`?offset=0&limit=25`, at most 100) with a `nextLink` to the next, and every error is Problem Details (`docs/standards/api-design.md`). `/health` answers `Healthy` once the database is reachable, and `/alive` while the process runs. To see its telemetry, set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OTLP endpoint, such as the Aspire dashboard's.
 
 ## The API contract
 

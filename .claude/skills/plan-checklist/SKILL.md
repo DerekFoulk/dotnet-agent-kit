@@ -31,5 +31,8 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 ## Data
 - Schema changes, migrations, retention, personal data?
 
+## API style
+- Does it add or change an API? Name its style (an HTTP API with Minimal APIs, gRPC or SignalR) and why; controllers or GraphQL need an ADR (API-001, `docs/standards/api-design.md`).
+
 ## Docs and decisions
 - Which docs change in the same PR? Which choices need an ADR (`write-adr`)? Which dependencies does it add, and, in review mode, which need approval?
