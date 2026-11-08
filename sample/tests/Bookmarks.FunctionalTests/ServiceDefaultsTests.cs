@@ -1,4 +1,6 @@
 using System.Net;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -48,6 +50,23 @@ public sealed class ServiceDefaultsTests : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("Healthy");
+    }
+
+    [Theory]
+    [InlineData("/alive")]
+    [InlineData("/health")]
+    public async Task HealthEndpointsAreCachedAndTimeBoxedSoProbesCanNotOverloadTheApp(string path)
+    {
+        // Review 1 of PR 21, after Microsoft's Aspire health-check guidance: an anonymous /health that touches the
+        // database on every call needs a request timeout and a short output cache.
+        Endpoint endpoint = _host.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .Single(candidate => (candidate as RouteEndpoint)?.RoutePattern.RawText == path);
+        endpoint.Metadata.Select(metadata => metadata.GetType().Name).Should().Contain(name => name.Contains("RequestTimeout", StringComparison.Ordinal));
+
+        using HttpResponseMessage first = await _host.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage second = await _host.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+
+        second.Headers.Age.Should().NotBeNull("the second probe within the cache window is served from the output cache");
     }
 
     [Fact]
