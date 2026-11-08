@@ -184,6 +184,28 @@ Describe 'Test-Scorecard.ps1' {
         $problems[0].Message | Should -BeLike $Expected
     }
 
+    It 'reports <Case> instead of failing with an error' -ForEach @(
+        @{ Case = 'a gap written as plain text'; Expected = '*gap*not*id, gap and status*' }
+        @{ Case = 'an area written as plain text'; Expected = '*area*not*' }
+        @{ Case = 'a scorecard with no areas'; Expected = '*no areas*' }
+        @{ Case = 'a scorecard with no front matter'; Expected = '*no areas*' }
+    ) {
+        # Review 1 of the scorecard PR: these crashed the check with a runtime error.
+        $paths = New-Fixture
+        $yaml = switch -Wildcard ($Case) {
+            '*gap*' { ConvertTo-Yaml ([ordered]@{ areas = @(New-Area -Override @{ gaps = @('No benchmarks') }) }) }
+            '*area written*' { ConvertTo-Yaml ([ordered]@{ areas = @((New-Area), 'Performance') }) }
+            '*no areas' { "title: scorecard`n" }
+            default { $null }
+        }
+        $text = if ($null -eq $yaml) { "# Quality scorecard`n" } else { "---`n$yaml---`n# Quality scorecard`n" }
+        Set-Content -LiteralPath $paths.Scorecard -Value $text
+
+        $script:problems = $null
+        { $script:problems = @(Get-Problem $paths) } | Should -Not -Throw
+        @($script:problems | Where-Object { $_.Message -like $Expected }) | Should -HaveCount 1
+    }
+
     It 'counts each area''s rules from the standards: in force, checked by a tool, advisory, proposed, open gaps' {
         # Only the start of 'enforcement' decides: "advisory: ..." is advisory; "build:", "ci:", "ruleset:" and the
         # rest are checked by a tool, even when they add that some part is advisory.
@@ -312,6 +334,17 @@ Describe 'Test-Scorecard.ps1' {
             $result.ExitCode | Should -Be 1
             $result.Output | Should -Match 'code: names rule STY-999'
             $result.Output | Should -Match 'out of date'
+        }
+
+        It 'exits 1 with a reason, not an error, when the scorecard has no areas' {
+            $paths = New-Fixture
+            Set-Content -LiteralPath $paths.Scorecard -Value "---`ntitle: scorecard`n---`n$markers"
+
+            $result = Invoke-Check $paths
+
+            $result.ExitCode | Should -Be 1
+            $result.Output | Should -Match 'no areas'
+            $result.Output | Should -Not -Match 'null'
         }
 
         It 'exits 0 once -Update has written the table' {
