@@ -15,8 +15,10 @@ public sealed class EfBookmarkRepository(BookmarksDbContext db) : IBookmarkRepos
     public Task<Bookmark?> FindByUrlAsync(Uri url, CancellationToken cancellationToken) =>
         _db.Bookmarks.AsNoTracking().FirstOrDefaultAsync(b => b.Url == url, cancellationToken);
 
+    // Paged in the database, ordered by the key so pages never overlap. (SQLite can't order by a DateTimeOffset.)
     public async Task<IReadOnlyList<Bookmark>> ListAsync(int offset, int limit, CancellationToken cancellationToken) =>
-        await _db.Bookmarks.AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
+        await _db.Bookmarks.AsNoTracking().OrderBy(b => b.Id).Skip(offset).Take(limit)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
 
     public async Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken)
     {
