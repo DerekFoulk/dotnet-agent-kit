@@ -103,6 +103,22 @@ Describe 'Shared CI for app repos' {
             @($jobs['analyze']['permissions'].Keys | Where-Object { $jobs['analyze']['permissions'][$_] -eq 'write' }) | Should -Be @('security-events')
         }
 
+        It 'runs in <Caller>, with security-events: write for the upload' -ForEach @(
+            @{ Caller = 'the kit''s own CI'; File = '.github/workflows/ci.yml'; Uses = './.github/workflows/codeql.reusable.yml'; SkipsPrivate = $false }
+            @{ Caller = 'every app''s CI'; File = 'templates/app/.github/workflows/ci.yml'; Uses = 'DerekFoulk/dotnet-agent-kit/.github/workflows/codeql.reusable.yml@X'; SkipsPrivate = $true }
+        ) {
+            # {{Name}} placeholders aren't YAML.
+            $text = (Get-Content -Raw -LiteralPath (Join-Path $root $File)) -replace '\{\{[A-Za-z]+\}\}', 'X'
+            $job = (ConvertFrom-Yaml $text)['jobs']['codeql']
+
+            $job | Should -Not -BeNullOrEmpty -Because "$File should have a codeql job"
+            $job['uses'] | Should -Be $Uses
+            $job['permissions']['security-events'] | Should -Be 'write'
+            $job['permissions']['contents'] | Should -Be 'read'
+            # Code scanning on a private repo needs GitHub Code Security, a paid licence (ADR-0036).
+            if ($SkipsPrivate) { $job['if'] | Should -Match '!\s*github\.event\.repository\.private' }
+        }
+
         It 'pins every action to a full commit SHA and checks out without keeping the token' {
             $uses = @([regex]::Matches($codeql.Text, '(?m)^\s*(?:-\s*)?uses: (\S+)') | ForEach-Object { $_.Groups[1].Value })
             $uses.Count | Should -BeGreaterThan 2

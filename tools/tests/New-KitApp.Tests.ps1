@@ -20,6 +20,9 @@ Describe 'New-KitApp settings' {
             foreach ($jobId in $yaml['jobs'].Keys) {
                 $uses = $yaml['jobs'][$jobId]['uses']
                 if ($uses -notmatch '^DerekFoulk/dotnet-agent-kit/\.github/workflows/([^@]+)@') { continue }
+                # CodeQL isn't required: its job names depend on the app's languages, and a private app skips it
+                # (ADR-0036). Requiring it would be a ruleset change, the owner's call.
+                if ($Matches[1] -eq 'codeql.reusable.yml') { continue }
                 $shared = ConvertFrom-Yaml (Get-Content -Raw -LiteralPath (Join-Path $root '.github' 'workflows' $Matches[1]))
                 foreach ($job in $shared['jobs'].Values) { "$jobId / $($job['name'])" }
             }
