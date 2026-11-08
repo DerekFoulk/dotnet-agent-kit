@@ -37,6 +37,7 @@ $script:ReviewAskRules = @(
 )
 
 function Set-AgentMode {
+    [CmdletBinding(PositionalBinding = $false)]
     param(
         [Parameter(Mandatory)] [ValidateSet('Auto', 'Review')] [string] $Mode,
         [Parameter(Mandatory)] [string] $RepoRoot
@@ -45,8 +46,9 @@ function Set-AgentMode {
     $path = Join-Path $RepoRoot '.claude' 'settings.local.json'
     $modeFile = Join-Path $RepoRoot '.agent-mode'
     # Auto is the default and adds nothing, so with no local settings there's nothing to take away.
+    # -Force: on Linux and macOS a dotfile is hidden, and Remove-Item refuses it otherwise (review 2 of PR 19).
     if ($Mode -eq 'Auto' -and -not (Test-Path -LiteralPath $path)) {
-        if (Test-Path -LiteralPath $modeFile) { Remove-Item -LiteralPath $modeFile }
+        if (Test-Path -LiteralPath $modeFile) { Remove-Item -LiteralPath $modeFile -Force }
         return
     }
     $settings = [ordered]@{}
@@ -68,11 +70,12 @@ function Set-AgentMode {
     # settings schema needs a list (review 1 of the modes PR).
     [object[]] $ask = @(if ($Mode -eq 'Review') { $own + $script:ReviewAskRules } else { $own })
     $settings['permissions']['ask'] = $ask
+    # Switching to auto, the mode file goes before the prompts; switching to review, the prompts come before the
+    # mode file. A failure halfway then leaves the prompts on, the safer side.
+    if ($Mode -eq 'Auto' -and (Test-Path -LiteralPath $modeFile)) { Remove-Item -LiteralPath $modeFile -Force }
     New-Item -ItemType Directory -Path (Split-Path -Path $path -Parent) -Force | Out-Null
     Set-Content -LiteralPath $path -Value (ConvertTo-Json -InputObject $settings -Depth 10)
-
-    if ($Mode -eq 'Review') { Set-Content -LiteralPath $modeFile -Value 'review' }
-    elseif (Test-Path -LiteralPath $modeFile) { Remove-Item -LiteralPath $modeFile }
+    if ($Mode -eq 'Review') { Set-Content -LiteralPath $modeFile -Value 'review' -Force }
 }
 
 # The mode agents follow: 'review' when .agent-mode says so, otherwise 'auto' (the default, ADR-0035).
