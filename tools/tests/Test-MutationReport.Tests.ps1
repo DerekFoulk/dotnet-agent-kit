@@ -71,6 +71,21 @@ Describe 'Test-MutationReport.ps1' {
         $problems[1] | Should -Match '^App\.Tests\.ThingTests\.tAlways killed 2 mutant\(s\) it never reached'
     }
 
+    It 'lists the flagged tests in order of name, not of Stryker''s ids' {
+        # Re-review of PR 23: real ids are numbers or GUIDs, so their order means nothing to a reader.
+        Get-Command Get-MutationReportProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $report = New-Report @((New-Mutant -KilledBy '1', '2' -CoveredBy @()))
+        $report['testFiles']['tests/App.Tests/ThingTests.cs']['tests'] = @(
+            [ordered]@{ id = '1'; name = 'App.Tests.ThingTests.Zeta' }
+            [ordered]@{ id = '2'; name = 'App.Tests.ThingTests.Alpha' })
+
+        $problems = @(Get-MutationReportProblem -Path (Write-Report $report))
+
+        $problems.Count | Should -Be 2
+        $problems[0] | Should -Match '^App\.Tests\.ThingTests\.Alpha killed'
+        $problems[1] | Should -Match '^App\.Tests\.ThingTests\.Zeta killed'
+    }
+
     It 'leaves static mutants alone: Stryker runs them against every test' {
         Get-Command Get-MutationReportProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $report = New-Report @((New-Mutant -KilledBy 'tAlways' -CoveredBy @() -Static $true))
