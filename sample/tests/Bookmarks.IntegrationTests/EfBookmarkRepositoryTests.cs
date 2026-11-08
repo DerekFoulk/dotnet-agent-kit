@@ -131,7 +131,11 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     {
         // Mutation testing (PR 23): SQLite doesn't enforce a length, and EF finds "Id" as the key by convention, so
         // no behaviour test noticed when a line of OnModelCreating was removed. These are the schema's promises.
-        using BookmarksDbContext db = new(_options);
+        // EF caches a built model for the whole process; a fresh service provider builds it again, so a mutated
+        // OnModelCreating is really run (Stryker reuses one test process across mutants).
+        DbContextOptions<BookmarksDbContext> uncached = new DbContextOptionsBuilder<BookmarksDbContext>()
+            .UseSqlite(_connection).EnableServiceProviderCaching(false).Options;
+        using BookmarksDbContext db = new(uncached);
         Microsoft.EntityFrameworkCore.Metadata.IEntityType bookmark = db.Model.FindEntityType(typeof(Bookmark))!;
 
         bookmark.FindPrimaryKey()!.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.Id));
@@ -140,6 +144,18 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         bookmark.FindProperty(nameof(Bookmark.Title))!.GetMaxLength().Should().Be(500);
         bookmark.FindProperty(nameof(Bookmark.CreatedAt))!.IsNullable.Should().BeFalse();
         bookmark.GetIndexes().Should().ContainSingle(index => index.Properties.Single().Name == nameof(Bookmark.Url));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void InfrastructureNeedsAConnectionString(string blank)
+    {
+        // Mutation testing (PR 23): without the guard, a blank connection string failed only at the first query.
+        Action add = () => Microsoft.Extensions.DependencyInjection.InfrastructureServiceCollectionExtensions
+            .AddBookmarksInfrastructure(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), blank);
+
+        add.Should().Throw<ArgumentException>().WithParameterName("connectionString");
     }
 
     public void Dispose() => _connection.Dispose();

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.AspNetCore;
@@ -154,6 +155,44 @@ public sealed class ServiceDefaultsTests : IDisposable
         // Review 1 of PR 21: with no live check at all, /alive would still answer Healthy, so this pins the check.
         _host.Services.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations
             .Should().ContainSingle(registration => registration.Name == "self").Which.Tags.Should().Contain("live");
+    }
+
+    [Fact]
+    public async Task AliveStaysHealthyWhileAReadinessCheckFails()
+    {
+        // Mutation testing (PR 23): with /alive's predicate removed it ran every check, so a failing dependency
+        // would restart a running app instead of only taking it out of rotation.
+        using ApiHost host = new(services: services => services.AddHealthChecks()
+            .AddCheck("dependency", () => HealthCheckResult.Unhealthy("down")));
+
+        using HttpResponseMessage health = await host.Client.GetAsync(new Uri("/health", UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage alive = await host.Client.GetAsync(new Uri("/alive", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        health.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        alive.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public void LogsKeepTheirFormattedMessageAndScopes()
+    {
+        // Mutation testing (PR 23): nothing noticed when OpenTelemetry logs lost the formatted message or scopes.
+        OpenTelemetry.Logs.OpenTelemetryLoggerOptions logging = _host.Services
+            .GetRequiredService<IOptionsMonitor<OpenTelemetry.Logs.OpenTelemetryLoggerOptions>>().CurrentValue;
+
+        logging.IncludeFormattedMessage.Should().BeTrue();
+        logging.IncludeScopes.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TheServiceDefaultsRejectAMissingBuilderOrAppByName()
+    {
+        // Mutation testing (PR 23): without the guards, a null failed later with a NullReferenceException.
+        ((Action)(() => ServiceDefaultsExtensions.AddServiceDefaults<IHostApplicationBuilder>(null!)))
+            .Should().Throw<ArgumentNullException>().WithParameterName("builder");
+        ((Action)(() => ServiceDefaultsExtensions.ConfigureOpenTelemetry<IHostApplicationBuilder>(null!)))
+            .Should().Throw<ArgumentNullException>().WithParameterName("builder");
+        ((Action)(() => ServiceDefaultsExtensions.MapDefaultEndpoints(null!)))
+            .Should().Throw<ArgumentNullException>().WithParameterName("app");
     }
 
     private static string? TraceProcessor(ApiHost host)
