@@ -58,12 +58,15 @@ function Get-MutationReportProblem {
         }
     }
 
-    # By name, for the reader; a test the report doesn't name goes by its id.
+    # By name, for the reader, then by id, so the order is the same every run. A test the report doesn't name goes by
+    # its id, and tests that share a name are told apart by theirs.
     $flagged = foreach ($id in $unreached.Keys) {
-        [pscustomobject]@{ Name = if ($names.ContainsKey($id)) { $names[$id] } else { $id }; Count = $unreached[$id] }
+        [pscustomobject]@{ Id = $id; Name = if ($names[$id]) { $names[$id] } else { $id }; Count = $unreached[$id] }
     }
-    foreach ($test in ($flagged | Sort-Object Name)) {
-        "$($test.Name) killed $($test.Count) mutant(s) it never reached, so it fails whatever is mutated and the score " +
+    $shared = @($flagged | Group-Object Name | Where-Object Count -GT 1 | ForEach-Object Name)
+    foreach ($test in ($flagged | Sort-Object Name, Id)) {
+        $label = if ($shared -contains $test.Name) { "$($test.Name) (id $($test.Id))" } else { $test.Name }
+        "$label killed $($test.Count) mutant(s) it never reached, so it fails whatever is mutated and the score " +
         'can''t be trusted. Run that test under Stryker and fix why it fails there.'
     }
 }
