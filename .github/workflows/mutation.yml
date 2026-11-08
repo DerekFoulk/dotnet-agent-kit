@@ -1,5 +1,5 @@
 # This repo's mutation testing (GAP-003, TST-004, ADR-0039): nightly, on demand, and on a pull request that
-# changes the mutation setup, so such a change is proved before it merges. Too slow to run on every pull request.
+# changes the sample or the mutation setup, so such a change is proved before it merges. Too slow for every PR.
 name: Mutation testing
 
 on:
@@ -10,6 +10,7 @@ on:
     paths:
       - .github/workflows/mutation.reusable.yml
       - .github/workflows/mutation.yml
+      - sample/**
 
 permissions:
   contents: read
