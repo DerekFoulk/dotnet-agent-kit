@@ -11,6 +11,7 @@ namespace Bookmarks.FunctionalTests;
 public sealed class ContractTests : IDisposable
 {
     private static readonly JsonSerializerOptions s_indented = new() { WriteIndented = true };
+    private static readonly string[] s_methods = ["get", "put", "post", "delete", "options", "head", "patch", "trace"];
     private readonly ApiHost _host = new();
 
     [Fact]
@@ -42,7 +43,8 @@ public sealed class ContractTests : IDisposable
         List<string> bare = [];
         foreach (KeyValuePair<string, JsonNode?> path in document["paths"]!.AsObject())
         {
-            foreach (KeyValuePair<string, JsonNode?> operation in path.Value!.AsObject())
+            // Only operations: a path item can also hold parameters, a summary or servers.
+            foreach (KeyValuePair<string, JsonNode?> operation in path.Value!.AsObject().Where(entry => s_methods.Contains(entry.Key)))
             {
                 foreach (KeyValuePair<string, JsonNode?> response in operation.Value!["responses"]!.AsObject())
                 {

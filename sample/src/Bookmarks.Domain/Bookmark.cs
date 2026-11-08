@@ -27,7 +27,8 @@ public sealed class Bookmark
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
-        // A UUID version 7 starts with its creation time, so ordering by Id is creation order.
+        // A UUID version 7 starts with its creation time (to the millisecond), so on SQLite ordering by Id is creation
+        // order. It needs a time from 1970 on; createdAt comes from TimeProvider.
         return new Bookmark(Guid.CreateVersion7(createdAt), url, title.Trim(), createdAt);
     }
 }

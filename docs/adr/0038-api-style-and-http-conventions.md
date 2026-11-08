@@ -61,7 +61,7 @@ Accepted, in auto mode (ADR-0035). The six rules stay `proposed` until the owner
 - **The sample:**
   - every error response is Problem Details, and a 500 in Production hides the exception. A binding failure keeps its 400 in Development too, through the exception handler's `StatusCodeSelector` (review 1 of PR 22), and the OpenAPI document declares each error body;
   - the OpenAPI document is mapped in Development only;
-  - `GET /bookmarks` answers a `BookmarkPage`. The repository pages in the database, ordered by key. Bookmarks now get UUID version 7 keys made from their creation time, so key order is creation order (review 1 of PR 22). Ordering by `CreatedAt` would need a converter: SQLite can't order by a `DateTimeOffset`.
+  - `GET /bookmarks` answers a `BookmarkPage`. The repository pages in the database, ordered by key. Bookmarks now get UUID version 7 keys made from their creation time, so on SQLite key order is creation order, to the millisecond (review 1 of PR 22). That holds where Guids compare as text or bytes (SQLite, PostgreSQL) but not on SQL Server, whose `uniqueidentifier` puts the last six bytes first; there, an app orders by a creation-time column with the key as tie-breaker (review 2). Ordering by `CreatedAt` would need a converter: SQLite can't order by a `DateTimeOffset`.
   - the service refuses a page outside the limits itself, so a caller that bypasses the endpoint can't overflow `limit + 1` into SQLite's "no limit".
   - `limit` and `offset` are validated by `AddValidation`.
 - **Tests:**
@@ -96,3 +96,4 @@ Accepted, in auto mode (ADR-0035). The six rules stay `proposed` until the owner
 - https://learn.microsoft.com/en-us/aspnet/core/fundamentals/validation, retrieved 2026-11-08
 - https://learn.microsoft.com/en-us/openapi/kiota/overview, retrieved 2026-11-08
 - https://github.com/dotnet/aspnetcore/issues/67033, retrieved 2026-11-08
+- https://learn.microsoft.com/en-us/sql/connect/ado-net/sql/compare-guid-uniqueidentifier-values, retrieved 2026-11-08
