@@ -57,16 +57,41 @@
           "Bookmarks"
         ],
         "operationId": "ListBookmarks",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 25
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/BookmarkResponse"
-                  }
+                  "$ref": "#/components/schemas/BookmarkPage"
                 }
               }
             }
@@ -111,6 +136,28 @@
   },
   "components": {
     "schemas": {
+      "BookmarkPage": {
+        "required": [
+          "items",
+          "nextLink"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookmarkResponse"
+            }
+          },
+          "nextLink": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uri"
+          }
+        }
+      },
       "BookmarkResponse": {
         "required": [
           "id",

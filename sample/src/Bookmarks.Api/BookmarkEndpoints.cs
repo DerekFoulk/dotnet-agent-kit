@@ -41,6 +41,12 @@ internal static class BookmarkEndpoints
         return bookmark is null ? TypedResults.NotFound() : TypedResults.Ok(bookmark);
     }
 
-    private static async Task<Ok<IReadOnlyList<BookmarkResponse>>> ListAsync(BookmarkService service, CancellationToken cancellationToken) =>
-        TypedResults.Ok((await service.ListAsync(0, int.MaxValue - 1, cancellationToken)).Items);
+    // Offset paging with a default page of 25 (API-004).
+    private static async Task<Ok<BookmarkPage>> ListAsync(
+        BookmarkService service, CancellationToken cancellationToken, int offset = 0, int limit = 25)
+    {
+        BookmarkListResult result = await service.ListAsync(offset, limit, cancellationToken);
+        Uri? next = result.HasMore ? new Uri($"/bookmarks?offset={offset + limit}&limit={limit}", UriKind.Relative) : null;
+        return TypedResults.Ok(new BookmarkPage(result.Items, next));
+    }
 }

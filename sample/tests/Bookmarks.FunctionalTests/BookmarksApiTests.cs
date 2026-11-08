@@ -29,8 +29,8 @@ public sealed class BookmarksApiTests : IDisposable
         BookmarkResponse? fetched = await Client.GetFromJsonAsync<BookmarkResponse>(created.Headers.Location, TestContext.Current.CancellationToken);
         fetched.Should().Be(body);
 
-        BookmarkResponse[]? all = await Client.GetFromJsonAsync<BookmarkResponse[]>("/bookmarks", TestContext.Current.CancellationToken);
-        all.Should().ContainSingle().Which.Should().Be(body);
+        BookmarkPage? all = await Client.GetFromJsonAsync<BookmarkPage>("/bookmarks", TestContext.Current.CancellationToken);
+        all!.Items.Should().ContainSingle().Which.Should().Be(body);
     }
 
     [Fact]
