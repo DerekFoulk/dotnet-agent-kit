@@ -189,6 +189,23 @@ Describe 'Get-DevMachineCheck' {
     }
 }
 
+Describe 'the minimum PowerShell' {
+    # One minimum (ADR-0040): a script that runs on an older pwsh than this check asks for is never tested there.
+    It 'is what every kit script requires, except this one, which runs in Windows PowerShell 5.1' {
+        $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        $expected = "#Requires -Version $(Get-MinimumPwshVersion)"
+
+        $scripts = @(git -C $root ls-files -- '*.ps1' '*.psm1' | Where-Object { $_ -ne 'tools/Initialize-DevMachine.ps1' })
+        $wrong = foreach ($path in $scripts) {
+            $first = Get-Content -LiteralPath (Join-Path $root $path) -TotalCount 1
+            if ($first -ne $expected) { "$path ($first)" }
+        }
+
+        $scripts.Count | Should -BeGreaterThan 0
+        @($wrong) | Should -BeNullOrEmpty -Because "each should start with '$expected'"
+    }
+}
+
 Describe 'Invoke-DevMachineCheck' {
     It 'reports <Status> for a <Kind> check that <Outcome>' -ForEach @(
         @{ Kind = 'required'; Outcome = 'passes'; Required = $true; Passes = $true; Install = 'x'; Manual = $null; Status = 'ok' }
