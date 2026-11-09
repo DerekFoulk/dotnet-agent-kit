@@ -47,12 +47,12 @@ rules:
     scope: core
     paths: ["**"]
   - id: DOD-006
-    statement: "A PR whose description a bot writes, such as Dependabot's, keeps that description. In either mode, before the PR is merged, the agent handling it posts the template's sections as a PR comment, with counts from the head commit: what changed and why, the gates run, the reviewer agent's findings and how each was answered, anything for the owner, what wasn't verified, and a red-to-green row for each commit an agent added (a bot's own commits need none). That comment is the complete description auto mode needs before an agent merges. Release PRs are the owner's, so this doesn't cover them."
+    statement: "A PR whose description a bot writes, such as Dependabot's, keeps that description. In either mode, before the PR is merged, the agent handling it posts the template's sections as a PR comment, with counts from the head commit: what changed and why, the gates run, the reviewer agent's findings and how each was answered, anything for the owner, what wasn't verified, and a red-to-green row for each commit an agent added (a bot's own commits need none). That comment stands in for the complete description a merge needs, whoever merges the PR. Release PRs are the owner's, so this doesn't cover them."
     why: "Dependabot writes its own description, so DOD-004's template can't apply to its PRs, yet the owner still needs the evidence, and auto mode merges only a PR whose description is complete; PRs 25 and 26 were merged with the evidence in a PR comment instead."
     layer: owner
     status: proposed
     sources: ["owner, 2026-11-01", "owner, 2026-11-07", "ADR-0035"]
-    enforcement: "advisory: the reviewing agent posts the comment; no CI check reads PR comments"
+    enforcement: "advisory: the agent handling the PR posts the comment; no CI check reads PR comments"
     scope: core
     paths: ["**"]
 ---
@@ -72,3 +72,5 @@ DOD-006 was written by an agent too. It adds an exception to DOD-004, a rule you
 - steps 4 and 5 of the `finish-work` skill.
 
 "Working modes" and the `finish-work` skill are guardrails, so that PR is yours to merge.
+
+DOD-006 doesn't decide who merges a bot's PR. Auto mode lets an agent merge only its own PR ("Working modes", ADR-0035, `finish-work` step 5), so today an agent merges a Dependabot PR only when you say so for that PR, as you did for PRs 25 and 26. Letting agents merge them in auto mode would change those three places too: a separate decision for you.
