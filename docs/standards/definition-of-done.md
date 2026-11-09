@@ -47,7 +47,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: DOD-006
-    statement: "A PR whose description a bot writes, such as Dependabot's, keeps that description; the agent that reviews it posts the template's sections as a PR comment before the PR is merged, in either mode: what changed and why, the gates run with their counts (no red-to-green table when nothing's behaviour changes), the reviewer's findings and how each was answered, anything for the owner, and what wasn't verified. That comment is the complete description auto mode needs before an agent merges. Release PRs are the owner's, so this doesn't cover them."
+    statement: "A PR whose description a bot writes, such as Dependabot's, keeps that description. In either mode, before the PR is merged, the agent handling it posts the template's sections as a PR comment, with counts from the head commit: what changed and why, the gates run, the reviewer agent's findings and how each was answered, anything for the owner, what wasn't verified, and a red-to-green row for each commit an agent added (a bot's own commits need none). That comment is the complete description auto mode needs before an agent merges. Release PRs are the owner's, so this doesn't cover them."
     why: "Dependabot writes its own description, so DOD-004's template can't apply to its PRs, yet the owner still needs the evidence, and auto mode merges only a PR whose description is complete; PRs 25 and 26 were merged with the evidence in a PR comment instead."
     layer: owner
     status: proposed
@@ -68,7 +68,7 @@ DOD-001 was written by an agent. It's consistent with your stated rules, but you
 DOD-006 was written by an agent too. It adds an exception to DOD-004, a rule you stated, for PRs whose description a bot writes. It stays `proposed` until you accept it. Release PRs are bot PRs as well, but you merge those yourself. Accepting it also means changing the places that say a PR's description must use the template, so they point to DOD-006:
 - DOD-004 itself;
 - "Done means" in `AGENTS.md` and `templates/app/AGENTS.md`;
-- "Working modes" in `AGENTS.md`, where auto mode merges only when "the description is complete";
+- "Working modes" in `AGENTS.md`, where auto mode merges only when "the description is complete", and the same words in ADR-0035;
 - steps 4 and 5 of the `finish-work` skill.
 
 "Working modes" and the `finish-work` skill are guardrails, so that PR is yours to merge.
