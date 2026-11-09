@@ -6,9 +6,10 @@
 # Not covered: the gitleaks image in dotnet-ci.reusable.yml is pinned inside a run command, so bump it
 # by hand with its release.
 # NuGet PRs: dependabot-lockfiles.yml refreshes the lock files Dependabot misses (dependabot-core#13950).
-# Each version update waits before Dependabot proposes it: 3 days, and 7 for a NuGet or SDK major, so a
-# release that's pulled or found compromised in its first days never reaches a PR (ADR-0041). Security
-# updates don't wait. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors and
+# Each version update waits before Dependabot proposes it, so a release that's pulled or found compromised
+# in its first days never reaches a PR (ADR-0041): 3 days, Dependabot's default, stated here so a test
+# guards it, and 7 for a NuGet or SDK major. Security updates don't wait. Shortening the wait is a
+# guardrail change, for the owner to merge. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors and
 # GitHub Actions bumps are the owner's.
 version: 2
 updates:

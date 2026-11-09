@@ -21,7 +21,8 @@ Agents work in one of two modes (ADR-0035). At the start of each task, check whi
   - `.claude/settings.json` or the `Set-AgentMode.ps1` script;
   - the `finish-work` skill or the `reviewer` agent, which enforce these rules;
   - a ruleset, branch protection or the merge settings;
-  - a CI check, if removed or weakened.
+  - a CI check, if removed or weakened;
+  - the Dependabot cooldown in `.github/dependabot.yml`, if shortened.
 - **Review.** The owner approves non-trivial plans before work starts, decides each "won't fix", and merges each PR, or says to for that PR. "Also ask in review mode" applies too.
 
 **Release PRs are never merged by an agent, in either mode.** Those are release-please's PRs, on a `release-please--` branch: releases are the owner's (owner, 2026-11-07).
