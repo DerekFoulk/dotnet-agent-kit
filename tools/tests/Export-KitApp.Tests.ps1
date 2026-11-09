@@ -5,14 +5,23 @@
 # build a throwaway kit repo from this working tree (tracked and new files), commit it, and export from
 # that commit, so they run before the kit's own changes are committed.
 
+BeforeAll {
+    # The kit's files, listed first, with this checkout's own ignore rules, global ones included: it's the
+    # person's checkout, not a test repo.
+    $kitFiles = git -C (Join-Path $PSScriptRoot '..' '..') ls-files --cached --others --exclude-standard
+    # Every repo these tests make runs with the same git settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
+}
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
 Describe 'Export-KitApp' {
     BeforeAll {
         $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
         $script = Join-Path $root 'tools' 'Export-KitApp.ps1'
 
         $kit = Join-Path $TestDrive 'kit'
-        $files = git -C $root ls-files --cached --others --exclude-standard
-        foreach ($file in $files) {
+        foreach ($file in $kitFiles) {
             $source = Join-Path $root $file
             if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue } # deleted but not yet staged
             $target = Join-Path $kit $file
@@ -20,8 +29,8 @@ Describe 'Export-KitApp' {
             Copy-Item -LiteralPath $source -Destination $target
         }
         git -C $kit init -q -b main
-        git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false add -A
-        git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m 'chore: kit fixture'
+        git -C $kit add -A
+        git -C $kit commit -q -m 'chore: kit fixture'
         $commit = (git -C $kit rev-parse HEAD).Trim()
 
         # A later kit commit without the "Sample app" label: exporting it fails after the copying has
@@ -29,7 +38,7 @@ Describe 'Export-KitApp' {
         git -C $kit switch -q -c no-sample-label
         $props = Join-Path $kit 'Directory.Packages.props'
         (Get-Content -Raw $props) -replace 'ItemGroup Label="Sample app"', 'ItemGroup' | Set-Content -LiteralPath $props -NoNewline
-        git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m 'chore: no label' -- Directory.Packages.props
+        git -C $kit commit -q -m 'chore: no label' -- Directory.Packages.props
         git -C $kit switch -q main
 
         # An edit nobody committed must not reach an app.
@@ -369,7 +378,7 @@ Describe 'Export-KitApp' {
             Get-KitVersionLabel -KitRoot $kit -KitRef 'v1.2.3-wip~0' -Commit $commit | Should -Be 'unreleased'
 
             # A release tag on a later commit, reached back with ~1: that names the commit, not a release of it.
-            $child = (git -C $kit -c user.name=fixture -c user.email=fixture@example.invalid commit-tree "$commit^{tree}" -p $commit -m 'chore: later' | Out-String).Trim()
+            $child = (git -C $kit commit-tree "$commit^{tree}" -p $commit -m 'chore: later' | Out-String).Trim()
             git -C $kit tag v0.0.2 $child
             Get-KitVersionLabel -KitRoot $kit -KitRef 'v0.0.2~1' -Commit $commit | Should -Be 'unreleased'
 

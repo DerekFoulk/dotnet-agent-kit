@@ -1,6 +1,13 @@
 #Requires -Version 7.0
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
+BeforeAll {
+    # Every repo these tests make runs with the same git settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
+}
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
 Describe 'Test-ConventionalTitle.ps1' {
     BeforeAll {
         . (Join-Path $PSScriptRoot '..' 'Test-ConventionalTitle.ps1')
@@ -39,7 +46,7 @@ Describe 'Test-ConventionalTitle.ps1' {
             # A small repo: main has one commit; the branch adds a good, a bad and a merge commit.
             $script:repo = Join-Path $TestDrive 'repo'
             New-Item -ItemType Directory -Path $script:repo | Out-Null
-            function Invoke-Git { git -C $script:repo -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false @args 2>&1 | Out-Null }
+            function Invoke-Git { git -C $script:repo @args 2>&1 | Out-Null }
             Invoke-Git init --quiet --initial-branch main
             Invoke-Git commit --quiet --allow-empty --message 'chore: initial'
             Invoke-Git switch --quiet -c work
