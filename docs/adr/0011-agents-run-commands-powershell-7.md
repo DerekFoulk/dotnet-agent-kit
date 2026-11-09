@@ -32,7 +32,7 @@ Accepted as recommended, revised (owner, 2026-11-01).
 ## Consequences
 
 - Agents run commands themselves and say in one line what each one does first.
-- Kit scripts start with `#Requires -Version 7.0`, except `tools/Initialize-DevMachine.ps1`, which runs in 5.1 so a new machine can install PowerShell 7 with it.
+- Kit scripts start with `#Requires -Version 7.0`, except `tools/Initialize-DevMachine.ps1`, which runs in 5.1 so a new machine can install PowerShell 7 with it. ADR-0040 raised the minimum to 7.6, the current LTS (2026-11-08).
 - Every kit script gets Pester tests, written first.
 
 ## Pillars affected

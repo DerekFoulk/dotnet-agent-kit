@@ -12,7 +12,7 @@ This repo is public so its CI, and the CI of any public app that uses it, runs f
 
 | Tool | Needed for | Required now |
 |---|---|---|
-| PowerShell 7 | Every kit script, and CI | Yes |
+| PowerShell 7.6 or later (the current LTS) | Every kit script, and CI | Yes |
 | Pester 6 | The kit's script tests | Yes |
 | powershell-yaml | Reading rule metadata in `docs/standards` | Yes |
 | Git | Everything | Yes |

@@ -8,7 +8,7 @@ Built with [dotnet-agent-kit](https://github.com/DerekFoulk/dotnet-agent-kit) {{
 ./.kit/tools/Initialize-DevMachine.ps1 -RepoRoot .
 ```
 
-It checks the toolchain (PowerShell 7, Git, GitHub CLI, the .NET SDK in `global.json`) and whether the commit-msg hook is on for this clone. Add `-Install` to install what's missing.
+It checks the toolchain (PowerShell 7.6 or later, Git, GitHub CLI, the .NET SDK in `global.json`) and whether the commit-msg hook is on for this clone. Add `-Install` to install what's missing.
 
 ## Build and test
 
