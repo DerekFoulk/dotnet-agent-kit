@@ -184,7 +184,7 @@ function Get-DevMachineCheck {
     $sdkVersion = [version] $pin.Version
     $sdkTest = [scriptblock]::Create("Test-DotNetSdk -Pinned '$sdkVersion' -RollForward '$($pin.RollForward)'")
 
-    New-DevMachineCheck -Name 'PowerShell 7' -Required $true -Test { Test-CommandAvailable -Name 'pwsh' } `
+    New-DevMachineCheck -Name 'PowerShell 7.6+' -Required $true -Test { Test-CommandAvailable -Name 'pwsh' } `
         -InstallCommand 'winget install --id Microsoft.PowerShell --exact'
     New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PwshModule -Name 'Pester' -MinimumVersion '6.0.0' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0')

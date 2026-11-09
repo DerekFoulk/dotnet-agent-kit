@@ -102,7 +102,7 @@ Describe 'Get-DevMachineCheck' {
 
     Context 'probes' {
         It '<Name> passes when its command is on PATH' -ForEach @(
-            @{ Name = 'PowerShell 7'; Command = 'pwsh' }
+            @{ Name = 'PowerShell 7.6+'; Command = 'pwsh' }
             @{ Name = 'Git'; Command = 'git' }
             @{ Name = 'GitHub CLI'; Command = 'gh' }
             @{ Name = 'Claude Code'; Command = 'claude' }
@@ -116,7 +116,7 @@ Describe 'Get-DevMachineCheck' {
         }
 
         It '<Name> fails when its command is missing' -ForEach @(
-            @{ Name = 'PowerShell 7' }, @{ Name = 'Pester 6' }, @{ Name = 'powershell-yaml' }, @{ Name = 'Git' }, @{ Name = 'GitHub CLI' }, @{ Name = 'GitHub CLI signed in' },
+            @{ Name = 'PowerShell 7.6+' }, @{ Name = 'Pester 6' }, @{ Name = 'powershell-yaml' }, @{ Name = 'Git' }, @{ Name = 'GitHub CLI' }, @{ Name = 'GitHub CLI signed in' },
             @{ Name = '.NET SDK 10.0.403' }, @{ Name = 'Claude Code' }, @{ Name = 'Git commit-msg hook' }, @{ Name = 'VS Code' },
             @{ Name = 'VS Code PowerShell extension' }, @{ Name = 'Docker' }
         ) {
