@@ -98,8 +98,11 @@ function Set-TestGitEnvironment {
         Set-Item -LiteralPath 'env:GIT_CONFIG_COUNT' -Value ([string] $count)
     }
     catch {
-        Restore-TestGitEnvironment -Saved $saved
-        throw
+        # The step that failed is the error people need; if putting things back fails too, that's a warning.
+        $failure = $_
+        try { Restore-TestGitEnvironment -Saved $saved }
+        catch { Write-Warning "Couldn't put the git environment back after Set-TestGitEnvironment failed: $_" }
+        throw $failure
     }
     $saved
 }
