@@ -89,6 +89,11 @@ Describe 'Get-DevMachineCheck' {
         (Get-Check $Name).InstallCommand | Should -Be "pwsh -NoProfile -Command `"Install-PSResource -Name $Module -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository`""
     }
 
+    # winget install upgrades an installed older pwsh too: only --no-upgrade stops it (ADR-0040).
+    It 'installs or upgrades PowerShell with winget, without --no-upgrade' {
+        (Get-Check 'PowerShell 7.6+').InstallCommand | Should -Be 'winget install --id Microsoft.PowerShell --exact'
+    }
+
     It 'installs the exact pinned SDK version' {
         (Get-Check '.NET SDK 10.0.403').InstallCommand | Should -Be 'winget install --id Microsoft.DotNet.SDK.10 --exact --version 10.0.403'
     }
