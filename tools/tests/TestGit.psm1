@@ -146,6 +146,9 @@ function New-TestGitRemote {
 # The NUL-separated names a git listing (-z) prints, read as UTF-8 apart from anything git writes to stderr (a
 # trace, a warning), which goes into the error only when git fails.
 function Get-GitListing([string] $RepoRoot, [string[]] $Arguments) {
+    # git's exit code is checked here, so a caller's $PSNativeCommandUseErrorActionPreference mustn't turn it into
+    # an error first.
+    $PSNativeCommandUseErrorActionPreference = $false
     $encoding = [Console]::OutputEncoding
     [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
     try { $output = @(git -C $RepoRoot -c core.quotePath=false @Arguments 2>&1); $code = $LASTEXITCODE }
@@ -164,6 +167,8 @@ function Test-RepoGitIgnore {
     # aren't, so it's judged on its own, copied into a repo made with the test settings.
     # Path is relative to the repo root. Nothing exists in that repo, so a pattern for a folder ("StrykerOutput/")
     # matches a path beneath it ("StrykerOutput/x.json"), not the folder's own name.
+    # check-ignore exits 1 for "not ignored", an answer rather than a failure; the exit codes are read below.
+    $PSNativeCommandUseErrorActionPreference = $false
     $gitignore = Join-Path $RepoRoot '.gitignore'
     if (-not (Test-Path -LiteralPath $gitignore -PathType Leaf)) { throw "There's no .gitignore in $RepoRoot." }
     $scratch = [IO.Directory]::CreateTempSubdirectory('dotnet-agent-kit-ignore-').FullName
