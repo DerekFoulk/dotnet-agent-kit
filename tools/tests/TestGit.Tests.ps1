@@ -583,6 +583,39 @@ Describe 'TestGit.psm1' {
         { Test-RepoGitIgnore -RepoRoot $checkout -Path 'sub/settings.local.json' } | Should -Throw -ExpectedMessage '*sub/.gitignore*'
     }
 
+    It 'reads the repo''s own files whatever git variable the caller has set (<Name>)' -ForEach @(
+        @{ Name = 'GIT_LITERAL_PATHSPECS'; Value = '1' }
+        @{ Name = 'GIT_INDEX_FILE'; Value = 'missing-index' }
+        @{ Name = 'GIT_TRACE'; Value = '1' }
+    ) {
+        # Review 2 of the helper: its listing of nested .gitignore files ran with the caller's git variables. A
+        # literal pathspec or another index hid sub/.gitignore, and trace lines read as file names.
+        $saved = Set-TestGitEnvironment
+        try {
+            $nested = New-TestRepo
+            New-Item -ItemType Directory -Path (Join-Path $nested 'sub') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $nested '.gitignore'), "*.local.json`n")
+            [IO.File]::WriteAllText((Join-Path $nested 'sub' '.gitignore'), "!settings.local.json`n")
+            git -C $nested add .gitignore sub/.gitignore
+            git -C $nested commit -q -m 'chore: fixture'
+            $plain = New-TestRepo
+            [IO.File]::WriteAllText((Join-Path $plain '.gitignore'), "committed.txt`n")
+        }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+        $value = if ($Name -eq 'GIT_INDEX_FILE') { Join-Path $TestDrive $Value } else { $Value }
+        $outer = @{ $Name = [Environment]::GetEnvironmentVariable($Name) }
+
+        Set-Item -LiteralPath "env:$Name" -Value $value
+        try {
+            $nestedError = try { Test-RepoGitIgnore -RepoRoot $nested -Path 'sub/settings.local.json'; $null } catch { $_.Exception.Message }
+            $plainResult = try { Test-RepoGitIgnore -RepoRoot $plain -Path 'committed.txt' } catch { "threw: $($_.Exception.Message)" }
+        }
+        finally { Restore-TestGitEnvironment -Saved $outer }
+
+        $nestedError | Should -BeLike '*sub/.gitignore*' -Because 'the nested .gitignore is found'
+        $plainResult | Should -BeTrue -Because 'a repo with no nested .gitignore is judged'
+    }
+
     Context 'Test-RepoGitIgnore, in isolation' {
         # Review of the helper: these held, but no test pinned them; each fails when its line is taken out.
         BeforeAll {
