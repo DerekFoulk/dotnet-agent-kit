@@ -27,6 +27,10 @@ Describe 'Dependabot configuration' {
         foreach ($update in $updates) {
             $update.Contains('cooldown') | Should -BeTrue -Because "$($update['package-ecosystem']) needs a cooldown"
             [int] $update['cooldown']['default-days'] | Should -BeGreaterOrEqual 7
+            # Review 2 of PR 33: an exclude list skips the wait for what it names, and an include list keeps the
+            # wait only for what it names, so either would narrow the wait without shortening a number.
+            $update['cooldown'].Keys | Should -Not -Contain 'exclude' -Because 'every dependency waits'
+            $update['cooldown'].Keys | Should -Not -Contain 'include' -Because 'every dependency waits'
         }
     }
 
