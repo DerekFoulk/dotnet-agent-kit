@@ -269,6 +269,24 @@ Describe 'TestGit.psm1' {
         $templates | ForEach-Object { $_ | Should -Not -Exist -Because 'Restore removes the run''s template' }
     }
 
+    It 'changes nothing when Set fails, so the caller''s git variables are still there' {
+        # Review 7 of PR 24: Set removed the inherited variables before making the template; when that threw, the
+        # caller never got what Set saved, so the variables were gone for the rest of the session.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $notAFolder = Join-Path $TestDrive "not-a-folder-$(New-Guid)"
+        Set-Content -LiteralPath $notAFolder -Value 'a file, so no temp folder can be made under it'
+        $machine = @{ GIT_PROBE_KEEP = 'kept'; TMP = $notAFolder; TEMP = $notAFolder; TMPDIR = $notAFolder }
+        $outer = @{}
+        foreach ($name in $machine.Keys) { $outer[$name] = [Environment]::GetEnvironmentVariable($name) }
+        Restore-TestGitEnvironment -Saved $machine
+        try {
+            { Set-TestGitEnvironment } | Should -Throw
+            $env:GIT_PROBE_KEEP | Should -Be 'kept'
+            $env:GIT_CONFIG_COUNT | Should -Be $outer['GIT_CONFIG_COUNT'] -Because 'none of the test settings were left behind'
+        }
+        finally { Restore-TestGitEnvironment -Saved $outer }
+    }
+
     It 'adds no second error when Set failed, so the first one is the one people see' {
         # Review 6 of PR 24: a file's AfterAll then called Restore with nothing, and failed again.
         { Restore-TestGitEnvironment -Saved $null } | Should -Not -Throw
