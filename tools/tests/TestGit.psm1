@@ -37,7 +37,8 @@
 
     Test-RepoGitIgnore says whether a repo's root .gitignore ignores a path, judging that file alone: the kit's
     tests use it to check that a file stays out of commits in every clone and every app, which a line in this
-    clone's .git/info/exclude or this machine's excludes would otherwise hide.
+    clone's .git/info/exclude or this machine's excludes would otherwise hide. It stops if the repo commits a
+    .gitignore below the root, which could un-ignore the path, and says git's reason when git can't judge it.
 #>
 
 Set-StrictMode -Version Latest
@@ -149,6 +150,8 @@ function Test-RepoGitIgnore {
     # Whether the repo's root .gitignore, as it stands in the work tree, ignores Path. That's the file every clone
     # gets, and every app (Export-KitApp copies it); this clone's .git/info/exclude and this machine's excludes
     # aren't, so it's judged on its own, copied into a repo made with the test settings.
+    # Path is relative to the repo root. Nothing exists in that repo, so a pattern for a folder ("StrykerOutput/")
+    # matches a path beneath it ("StrykerOutput/x.json"), not the folder's own name.
     $gitignore = Join-Path $RepoRoot '.gitignore'
     if (-not (Test-Path -LiteralPath $gitignore -PathType Leaf)) { throw "There's no .gitignore in $RepoRoot." }
     # A .gitignore below the root can un-ignore what the root one ignores, so judging the root file alone would
@@ -159,7 +162,8 @@ function Test-RepoGitIgnore {
     $scratch = [IO.Directory]::CreateTempSubdirectory('dotnet-agent-kit-ignore-').FullName
     $saved = $null
     try {
-        Copy-Item -LiteralPath $gitignore -Destination $scratch
+        # A copy that fails must stop here: an empty repo would judge every path not ignored.
+        Copy-Item -LiteralPath $gitignore -Destination $scratch -ErrorAction Stop
         $saved = Set-TestGitEnvironment
         $init = git init -q $scratch 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { throw "Couldn't make the repo that judges .gitignore: $($init.Trim())" }
@@ -167,8 +171,8 @@ function Test-RepoGitIgnore {
         $code = $LASTEXITCODE
     }
     finally {
-        Restore-TestGitEnvironment -Saved $saved
-        Remove-Item -LiteralPath $scratch -Recurse -Force
+        try { Restore-TestGitEnvironment -Saved $saved }
+        finally { Remove-Item -LiteralPath $scratch -Recurse -Force }
     }
     switch ($code) {
         0 { $true }
