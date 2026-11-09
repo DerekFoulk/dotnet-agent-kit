@@ -84,7 +84,7 @@ Describe 'commit-msg hook' {
         }
 
         # The hook skips a merge in progress in the repo it runs in. These checks must not depend on the
-        # checkout the tests run from: a kit checkout mid-merge once made every rejection test fail.
+        # checkout the tests run from: a kit checkout mid-merge once made every rejection test in this context fail.
         It 'rejects a bad subject even when the tests run from a checkout with a merge in progress' {
             $merging = New-HookedRepo
             Invoke-InRepo $merging commit --quiet --allow-empty --message 'chore: initial' | Out-Null
