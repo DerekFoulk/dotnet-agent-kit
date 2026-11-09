@@ -222,9 +222,9 @@ Each area in the front matter above has:
 | Delivery | 1 | 1 | 0 | 0 | 2 |
 | Docs and decisions | 3 | 2 | 1 | 0 | 1 |
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
-| Process | 15 | 5 | 10 | 1 | 0 |
+| Process | 15 | 6 | 9 | 1 | 0 |
 
-**Overall:** 56 rules in force, 36 checked by a tool and 20 advisory; 4 proposed; 12 open gaps.
+**Overall:** 56 rules in force, 37 checked by a tool and 19 advisory; 4 proposed; 12 open gaps.
 
 Open gaps:
 

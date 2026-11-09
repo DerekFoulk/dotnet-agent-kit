@@ -49,6 +49,7 @@ Accepted (auto mode, ADR-0035: the action is the one GAP-005 and GitHub's code s
 - **SEC-006 is proposed:** every public repo runs CodeQL on its PRs and on `main`. The owner ratifies it.
 - **GAP-005 is closed** in the scorecard.
 - **Not a required check yet.** The checks are `codeql / CodeQL languages`, `codeql / CodeQL (actions)`, `codeql / CodeQL (csharp)` and a `CodeQL` results check from GitHub; an app with no C# has no `csharp` one. Requiring them would change the ruleset, which is the owner's call. So would a "require code scanning results" rule, which blocks a merge on alerts. `tools/tests/New-KitApp.Tests.ps1` leaves CodeQL out of the required checks it derives.
+- **Update (2026-11-09):** the owner accepted SEC-006, and the kit's "main protection" ruleset gained a "require code scanning results" rule: CodeQL, blocking on an error or a security alert high or higher on lines the pull request changes, or while CodeQL hasn't run. The CodeQL jobs still aren't required status checks, and apps' rulesets don't have the rule yet.
 - **PowerShell, most of the kit, isn't scanned.** CodeQL doesn't support it, and PSScriptAnalyzer would be its own gap.
 - **Finding the languages:** the step reads `git ls-files` in full rather than piping it into `grep -q`. Under GitHub's `bash -e -o pipefail`, that pipe can end git with SIGPIPE on a large repo, and C# would drop out silently (review 1 of PR 20). A test runs the step as CI does.
 - **Known limits, left for later:**

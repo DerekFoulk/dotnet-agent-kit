@@ -135,7 +135,7 @@ The mode is yours alone. Review mode writes `review` to `.agent-mode`, which eve
 | Workflow | What it checks |
 |---|---|
 | `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage, the coverage gate (TST-004), and deprecated packages. It also runs a gitleaks secret scan of the full git history |
-| `codeql.reusable.yml` | CodeQL code scanning of the GitHub Actions workflows, and of the C# once there is some, with no build (ADR-0036). Results go to the repo's Security tab. Not a required check yet |
+| `codeql.reusable.yml` | CodeQL code scanning of the GitHub Actions workflows, and of the C# once there is some, with no build (ADR-0036). Results go to the repo's Security tab. In the kit, the ruleset's code scanning rule blocks a merge on its results (see "GitHub settings on this repo") |
 | `kit-checks.reusable.yml` | All Pester tests, rule sources, the quality scorecard, ADR sections, generated-file drift, and on pull requests the commit subjects and red→green order (the branch's own commits) |
 | `pr-title.yml` | The PR title is a Conventional Commit. It also runs when the PR is edited, because the title becomes the merge commit's subject |
 
@@ -268,8 +268,8 @@ Applied 2026-11-09 with the owner's OK:
 | Setting | Value | Why |
 |---|---|---|
 | Actions: require actions pinned to a full-length commit SHA | On | Enforces SUP-008. The shared workflows' `$/.github/actions/kit-tools` resolves to a full SHA, so it passes |
-| "main protection" ruleset: require code scanning results | CodeQL; blocks on an error, or a security alert high or higher, or while CodeQL hasn't run | Enforces SEC-006 at merge time; CodeQL runs on every pull request |
-| "main protection" ruleset: require conversation resolution | On | Every review thread is answered and resolved before merging (DOD-005) |
+| "main protection" ruleset: require code scanning results | CodeQL; blocks on an error, or a security alert high or higher, on lines the pull request changes, or while CodeQL hasn't run | Enforces SEC-006 at merge time; CodeQL runs on every pull request |
+| "main protection" ruleset: require conversation resolution | On | Every review thread is resolved before merging; that each one was answered with evidence (DOD-005) is still the agents' and the reviewer's job |
 
 ## Run the tests
 

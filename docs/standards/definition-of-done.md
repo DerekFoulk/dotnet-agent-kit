@@ -43,7 +43,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-03", "ADR-0028", "owner, 2026-11-07", "ADR-0035"]
-    enforcement: "advisory: the address-review skill and tools/KitReview.psm1 guide it; the module refuses won't fix without -OwnerApproved, a switch it takes on trust, passed in auto mode under ADR-0035's standing approval; in the kit, the main ruleset requires review conversations resolved before merging (since 2026-11-09), and apps' rulesets don't yet"
+    enforcement: "ruleset: in the kit, main protection requires review conversations resolved before merging (since 2026-11-09), and apps' rulesets don't yet; answering each with evidence stays advisory: the address-review skill and tools/KitReview.psm1 guide it; the module refuses won't fix without -OwnerApproved, a switch it takes on trust, passed in auto mode under ADR-0035's standing approval"
     scope: core
     paths: ["**"]
   - id: DOD-006
@@ -63,7 +63,7 @@ Done means verified, with the evidence shown. The `finish-work` skill (`.claude/
 
 ## Pending ratification
 
-DOD-006 was written by an agent too. It adds an exception to DOD-004, a rule you stated, for PRs whose description a bot writes. It stays `proposed` until you accept it. Release PRs are bot PRs as well, but you merge those yourself. Accepting it also means changing the places that say a PR's description must use the template, so they point to DOD-006:
+DOD-006 was written by an agent. It adds an exception to DOD-004, a rule you stated, for PRs whose description a bot writes. It stays `proposed` until you accept it. Release PRs are bot PRs as well, but you merge those yourself. Accepting it also means changing the places that say a PR's description must use the template, so they point to DOD-006:
 - DOD-004 itself, which should also say release PRs are yours, since release-please writes their description too;
 - "Done means" in `AGENTS.md` and `templates/app/AGENTS.md`;
 - "Working modes" in `AGENTS.md`, where auto mode merges only when "the description is complete", and the same words in ADR-0035;

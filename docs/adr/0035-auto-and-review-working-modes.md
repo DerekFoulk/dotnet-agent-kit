@@ -96,6 +96,7 @@ Accepted (owner, 2026-11-07: "Yes, set it up… default to the auto mode", and k
 - **Rules updated:**
   - SEC-003 is restated as the two lists.
   - GIT-003 (proposed) says merges follow the mode and never include a release PR.
+  - **Update (2026-11-09):** the owner accepted GIT-003.
   - DOD-005 lets an agent in auto mode resolve "won't fix" with its reason.
   - `KitReview.psm1`'s `-OwnerApproved` is passed in auto mode under this standing approval.
 - **Files:**

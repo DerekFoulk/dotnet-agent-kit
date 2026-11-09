@@ -77,4 +77,4 @@ rules:
 
 # Supply chain
 
-Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project. Its individual items stay `proposed` here until he ratifies them for all repos.
+Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project and accepted its items for all repos on 2026-11-09.
