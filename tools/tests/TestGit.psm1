@@ -39,6 +39,11 @@ $script:Variables = [ordered]@{
     GIT_CONFIG_NOSYSTEM = '1'
     # Nor the system attributes file, which GIT_CONFIG_NOSYSTEM doesn't cover.
     GIT_ATTR_NOSYSTEM   = '1'
+    # Nor a template directory: git init would copy its hooks, info/exclude and config into every repo. An empty
+    # one, since git warns about a missing one.
+    GIT_TEMPLATE_DIR    = Join-Path ([IO.Path]::GetTempPath()) 'dotnet-agent-kit-empty-git-template'
+    # Nor config a parent git hands down (git -c, aliases): it outranks GIT_CONFIG_COUNT. $null removes it.
+    GIT_CONFIG_PARAMETERS = $null
 }
 
 $script:Settings = [ordered]@{
@@ -70,7 +75,15 @@ function Set-TestGitEnvironment {
     $saved = @{}
     foreach ($name in @(Get-GitConfigVariableName $count) + $script:Variables.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 
-    foreach ($variable in $script:Variables.GetEnumerator()) { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
+    $template = $script:Variables['GIT_TEMPLATE_DIR']
+    if (-not (Test-Path -LiteralPath $template)) { New-Item -ItemType Directory -Path $template | Out-Null }
+    if (@(Get-ChildItem -LiteralPath $template -Force).Count -gt 0) {
+        throw "$template should be empty: it's the test repos' git template, and anything in it reaches every one."
+    }
+    foreach ($variable in $script:Variables.GetEnumerator()) {
+        if ($null -eq $variable.Value) { Remove-Item -LiteralPath "env:$($variable.Key)" -ErrorAction SilentlyContinue }
+        else { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
+    }
     $i = $existing
     foreach ($setting in $script:Settings.GetEnumerator()) {
         Set-Item -LiteralPath "env:GIT_CONFIG_KEY_$i" -Value $setting.Key
