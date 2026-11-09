@@ -17,10 +17,17 @@ Describe 'commit-msg hook' {
         $script:repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
         $script:hookScript = Join-Path $script:repoRoot '.githooks' 'commit-msg.ps1'
 
+        # git runs a hook from the root of the repo's work tree, and the hook looks there for a merge in
+        # progress. So these checks run it the same way, in a repo of their own with no merge in progress,
+        # never in whatever checkout the tests run from.
+        $script:hookRepo = Join-Path $TestDrive 'hook-repo'
+        $init = git init --quiet $script:hookRepo 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't make the repo the hook runs in: $init" }
+
         function Invoke-Hook([string] $Message) {
             $file = Join-Path $TestDrive "msg-$(New-Guid).txt"
             Set-Content -Path $file -Value $Message -NoNewline
-            $output = pwsh -NoProfile -File $script:hookScript $file 2>&1 | Out-String
+            $output = pwsh -NoProfile -WorkingDirectory $script:hookRepo -File $script:hookScript $file 2>&1 | Out-String
             [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
         }
 
