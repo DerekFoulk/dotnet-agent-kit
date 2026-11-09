@@ -47,7 +47,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: DOD-006
-    statement: "A PR whose description a bot writes, such as Dependabot's, keeps that description. In either mode, before the PR is merged, the agent handling it posts the template's sections as a PR comment, with counts from the head commit: what changed and why, the gates run, the reviewer agent's findings and how each was answered, anything for the owner, what wasn't verified, and the red-to-green table for any behavior change an agent added, one row per test-list item as the template has it (a bot's own commits need none). That comment stands in for the complete description a merge needs, whoever merges the PR. Release PRs are the owner's, so this doesn't cover them."
+    statement: "A PR whose description a bot writes, such as Dependabot's, keeps that description. In either mode, before the PR is merged, the agent handling it posts the template's sections as a PR comment, with counts from the head commit it's merged at (a new comment when the head moves, as it does when a lock-file refresh pushes or Dependabot rebases): what changed and why, the gates run, the reviewer agent's findings and how each was answered, anything for the owner, what wasn't verified, and the red-to-green table for any behavior change an agent added, one row per test-list item as the template has it (a bot's own commits need none). That comment stands in for the complete description a merge needs, whoever merges the PR. Release PRs are the owner's, so this doesn't cover them."
     why: "Dependabot writes its own description, so DOD-004's template can't apply to its PRs, yet the owner still needs the evidence, and a merge needs a complete description; PRs 25 and 26 were merged with the evidence in a PR comment instead."
     layer: owner
     status: proposed
@@ -66,7 +66,7 @@ Done means verified, with the evidence shown. The `finish-work` skill (`.claude/
 DOD-001 was written by an agent. It's consistent with your stated rules, but you never stated it as one rule, so it stays `proposed` until you accept it.
 
 DOD-006 was written by an agent too. It adds an exception to DOD-004, a rule you stated, for PRs whose description a bot writes. It stays `proposed` until you accept it. Release PRs are bot PRs as well, but you merge those yourself. Accepting it also means changing the places that say a PR's description must use the template, so they point to DOD-006:
-- DOD-004 itself;
+- DOD-004 itself, which should also say release PRs are yours, since release-please writes their description too;
 - "Done means" in `AGENTS.md` and `templates/app/AGENTS.md`;
 - "Working modes" in `AGENTS.md`, where auto mode merges only when "the description is complete", and the same words in ADR-0035;
 - steps 4 and 5 of the `finish-work` skill.
