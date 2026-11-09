@@ -521,6 +521,249 @@ Describe 'TestGit.psm1' {
         @($byHand.Name) | Should -BeNullOrEmpty -Because 'New-TestGitRemote gives a remote the settings a push needs'
     }
 
+    It 'is how every test file checks that a file stays out of commits' {
+        # Review of Test-RepoGitIgnore: check-ignore in the checkout also reads that clone's .git/info/exclude.
+        $byHand = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' | Where-Object {
+            $_.Name -ne 'TestGit.Tests.ps1' -and
+            @(Get-GitCall (Get-FileAst $_) | Where-Object {
+                    $name = Split-Path -Leaf $_.Ast.GetCommandName()
+                    if ($name -match '^git(\.exe|\.cmd)?$') { (Get-GitSubcommand $_.Arguments) -ceq 'check-ignore' } else { $_.Arguments -ccontains 'check-ignore' }
+                }).Count -gt 0
+        }
+
+        @($byHand.Name) | Should -BeNullOrEmpty -Because 'Test-RepoGitIgnore judges the root .gitignore alone'
+    }
+
+    It 'judges a path by the checkout''s root .gitignore, never by its own .git/info/exclude' {
+        # Review of PR 28: a path in this clone's .git/info/exclude, which no other clone or app has, made the
+        # kit's ignore tests pass for a line missing from .gitignore.
+        Get-Command Test-RepoGitIgnore -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $saved = Set-TestGitEnvironment
+        try {
+            $checkout = New-TestRepo
+            [IO.File]::WriteAllText((Join-Path $checkout '.gitignore'), "committed.txt`n")
+            git -C $checkout add .gitignore
+            git -C $checkout commit -q -m 'chore: fixture'
+            # An edit not committed yet counts: it's what the next commit will carry.
+            [IO.File]::AppendAllText((Join-Path $checkout '.gitignore'), "edited.txt`n")
+            New-Item -ItemType Directory -Path (Join-Path $checkout '.git' 'info') -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $checkout '.git' 'info' 'exclude'), "local.txt`n")
+        }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+
+        Test-RepoGitIgnore -RepoRoot $checkout -Path 'committed.txt' | Should -BeTrue
+        Test-RepoGitIgnore -RepoRoot $checkout -Path 'edited.txt' | Should -BeTrue
+        Test-RepoGitIgnore -RepoRoot $checkout -Path 'local.txt' | Should -BeFalse -Because 'only this clone has .git/info/exclude'
+    }
+
+    It 'stops with git''s own reason when it can''t judge a path, such as one outside the repo' {
+        # Review of the helper: the error gave only check-ignore's exit code.
+        $saved = Set-TestGitEnvironment
+        try { $checkout = New-TestRepo }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+        [IO.File]::WriteAllText((Join-Path $checkout '.gitignore'), "committed.txt`n")
+
+        { Test-RepoGitIgnore -RepoRoot $checkout -Path '../outside.txt' } | Should -Throw -ExpectedMessage '*outside repository*'
+    }
+
+    It 'stops when the repo commits a .gitignore below the root, which judging the root file alone would miss' {
+        # Review of the helper: a nested .gitignore can un-ignore a path ("!settings.local.json"), and then judging
+        # the root file alone would pass a file that every clone commits.
+        $saved = Set-TestGitEnvironment
+        try {
+            $checkout = New-TestRepo
+            New-Item -ItemType Directory -Path (Join-Path $checkout 'sub') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $checkout '.gitignore'), "*.local.json`n")
+            [IO.File]::WriteAllText((Join-Path $checkout 'sub' '.gitignore'), "!settings.local.json`n")
+            git -C $checkout add .gitignore sub/.gitignore
+            git -C $checkout commit -q -m 'chore: fixture'
+        }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+
+        { Test-RepoGitIgnore -RepoRoot $checkout -Path 'sub/settings.local.json' } | Should -Throw -ExpectedMessage '*sub/.gitignore*'
+    }
+
+    It 'names a nested .gitignore exactly, spaces and accents included' {
+        # Review 3 of the helper: git writes names as UTF-8, and a console on another code page would garble them.
+        $folder = "$([char] 0xE9) dir"
+        $saved = Set-TestGitEnvironment
+        try {
+            $checkout = New-TestRepo
+            New-Item -ItemType Directory -Path (Join-Path $checkout $folder) | Out-Null
+            [IO.File]::WriteAllText((Join-Path $checkout '.gitignore'), "x`n")
+            [IO.File]::WriteAllText((Join-Path $checkout $folder '.gitignore'), "y`n")
+            git -C $checkout add -A
+            git -C $checkout commit -q -m 'chore: fixture'
+        }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+
+        # A console on another code page, whatever this run's is (Pester's own may already be UTF-8).
+        $encoding = [Console]::OutputEncoding
+        [Console]::OutputEncoding = [Text.Encoding]::Latin1
+        try { $message = try { Test-RepoGitIgnore -RepoRoot $checkout -Path 'x' | Out-Null; 'nothing thrown' } catch { $_.Exception.Message } }
+        finally { [Console]::OutputEncoding = $encoding }
+
+        $message.Contains("$folder/.gitignore") | Should -BeTrue -Because "the message names it exactly: $message"
+    }
+
+    It 'reads the repo''s own files whatever git variable the caller has set (<Name>)' -ForEach @(
+        @{ Name = 'GIT_LITERAL_PATHSPECS'; Value = '1' }
+        @{ Name = 'GIT_INDEX_FILE'; Value = 'missing-index' }
+        @{ Name = 'GIT_TRACE'; Value = '1' }
+    ) {
+        # Review 2 of the helper: its listing of nested .gitignore files ran with the caller's git variables. A
+        # literal pathspec or another index hid sub/.gitignore, and trace lines read as file names.
+        $saved = Set-TestGitEnvironment
+        try {
+            $nested = New-TestRepo
+            New-Item -ItemType Directory -Path (Join-Path $nested 'sub') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $nested '.gitignore'), "*.local.json`n")
+            [IO.File]::WriteAllText((Join-Path $nested 'sub' '.gitignore'), "!settings.local.json`n")
+            git -C $nested add .gitignore sub/.gitignore
+            git -C $nested commit -q -m 'chore: fixture'
+            $plain = New-TestRepo
+            [IO.File]::WriteAllText((Join-Path $plain '.gitignore'), "committed.txt`n")
+        }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+        $value = if ($Name -eq 'GIT_INDEX_FILE') { Join-Path $TestDrive $Value } else { $Value }
+        $outer = @{ $Name = [Environment]::GetEnvironmentVariable($Name) }
+
+        Set-Item -LiteralPath "env:$Name" -Value $value
+        try {
+            $nestedError = try { Test-RepoGitIgnore -RepoRoot $nested -Path 'sub/settings.local.json' | Out-Null; 'nothing thrown' } catch { $_.Exception.Message }
+            # No catch: a throw (trace lines read as file names, say) fails the test. Review 3: a caught message is a
+            # non-empty string, which -BeTrue accepts.
+            $plainResult = Test-RepoGitIgnore -RepoRoot $plain -Path 'committed.txt'
+        }
+        finally { Restore-TestGitEnvironment -Saved $outer }
+
+        $nestedError | Should -BeLike '*sub/.gitignore*' -Because 'the nested .gitignore is found'
+        $plainResult | Should -BeOfType [bool]
+        $plainResult | Should -BeTrue -Because 'a repo with no nested .gitignore is judged'
+    }
+
+    Context 'Test-RepoGitIgnore, in isolation' {
+        # Review of the helper: these held, but no test pinned them; each fails when its line is taken out.
+        BeforeAll {
+            $saved = Set-TestGitEnvironment
+            try {
+                $script:ignoreCheckout = New-TestRepo
+                [IO.File]::WriteAllText((Join-Path $script:ignoreCheckout '.gitignore'), "committed.txt`n")
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+        }
+
+        It 'leaves out this machine''s own ignore file' {
+            $xdg = Join-Path $TestDrive "machine-xdg-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $xdg 'git') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $xdg 'git' 'ignore'), "machine.txt`n")
+            # An empty global config too: a machine whose global config sets core.excludesFile never reads the
+            # XDG file, and the test would then pass even without the helper's isolation.
+            $emptyGlobal = Join-Path $TestDrive "empty-global-$(New-Guid)"
+            [IO.File]::WriteAllText($emptyGlobal, '')
+            $outer = @{}
+            foreach ($name in 'XDG_CONFIG_HOME', 'GIT_CONFIG_GLOBAL') { $outer[$name] = [Environment]::GetEnvironmentVariable($name) }
+            Set-Item -LiteralPath 'env:XDG_CONFIG_HOME' -Value $xdg
+            Set-Item -LiteralPath 'env:GIT_CONFIG_GLOBAL' -Value $emptyGlobal
+            try { $ignored = Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'machine.txt' }
+            finally { Restore-TestGitEnvironment -Saved $outer }
+
+            $ignored | Should -BeFalse -Because 'only this machine has that ignore file'
+        }
+
+        It 'puts back the caller''s git variables, with or without the test settings around it' {
+            $outer = @{ GIT_PROBE_CALLER = [Environment]::GetEnvironmentVariable('GIT_PROBE_CALLER') }
+            Set-Item -LiteralPath 'env:GIT_PROBE_CALLER' -Value 'kept'
+            try {
+                foreach ($around in $false, $true) {
+                    $saved = if ($around) { Set-TestGitEnvironment } else { $null }
+                    try {
+                        $before = @(Get-ChildItem -Path env: | Where-Object Name -Like 'GIT_*' | ForEach-Object { "$($_.Name)=$($_.Value)" } | Sort-Object)
+                        Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'committed.txt' | Should -BeTrue
+                        $after = @(Get-ChildItem -Path env: | Where-Object Name -Like 'GIT_*' | ForEach-Object { "$($_.Name)=$($_.Value)" } | Sort-Object)
+                        $after | Should -Be $before -Because "the variables come back (test settings around it: $around)"
+                    }
+                    finally { Restore-TestGitEnvironment -Saved $saved }
+                }
+            }
+            finally { Restore-TestGitEnvironment -Saved $outer }
+        }
+
+        It 'removes the folder it judges in' {
+            $temp = Join-Path $TestDrive "temp-$(New-Guid)"
+            New-Item -ItemType Directory -Path $temp | Out-Null
+            $outer = @{}
+            foreach ($name in 'TMP', 'TEMP', 'TMPDIR') { $outer[$name] = [Environment]::GetEnvironmentVariable($name); Set-Item -LiteralPath "env:$name" -Value $temp }
+            try { Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'committed.txt' | Should -BeTrue }
+            finally { Restore-TestGitEnvironment -Saved $outer }
+
+            @(Get-ChildItem -LiteralPath $temp -Force).Name | Should -BeNullOrEmpty -Because 'the scratch repo and its template are removed'
+        }
+
+        It 'stops when it can''t copy .gitignore, rather than judging an empty repo' {
+            # Review 2 of the helper: fb87e7f made a failed copy stop, untested.
+            # A failing cmdlet's error is non-terminating unless its caller says -ErrorAction Stop; the mock passes on
+            # whatever the helper says, as Copy-Item itself would.
+            Mock -ModuleName TestGit Copy-Item {
+                $action = if ($PesterBoundParameters.ContainsKey('ErrorAction')) { $PesterBoundParameters['ErrorAction'] } else { 'Continue' }
+                Write-Error 'the copy failed' -ErrorAction $action
+            }
+
+            { Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*the copy failed*'
+        }
+
+        It 'removes its folder even when putting the git variables back fails' {
+            # Review 2 of the helper: fb87e7f made the removal run when Restore throws, untested. The mock puts the
+            # variables back with the real Restore first, so the rest of the run isn't affected.
+            $script:realRestore = Get-Command -Module TestGit -Name Restore-TestGitEnvironment
+            Mock -ModuleName TestGit Restore-TestGitEnvironment { & $script:realRestore @PesterBoundParameters; throw 'putting back failed' }
+            $temp = Join-Path $TestDrive "temp-$(New-Guid)"
+            New-Item -ItemType Directory -Path $temp | Out-Null
+            $outer = @{}
+            foreach ($name in 'TMP', 'TEMP', 'TMPDIR') { $outer[$name] = [Environment]::GetEnvironmentVariable($name); Set-Item -LiteralPath "env:$name" -Value $temp }
+            try { { Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*putting back failed*' }
+            finally { Restore-TestGitEnvironment -Saved $outer }
+
+            @(Get-ChildItem -LiteralPath $temp -Force).Name | Should -BeNullOrEmpty -Because 'the scratch repo is removed'
+        }
+
+        It 'stops when git can''t list the repo''s files, rather than judging the root file alone' {
+            # Review 3 of the helper: with the failure ignored, an empty listing would read as "no nested .gitignore".
+            # A .git file pointing nowhere makes git fail here, even where a repo sits above the temp folder (a home
+            # folder that's a repo, say), which a plain folder would find instead (review 4).
+            $notRepo = Join-Path $TestDrive "broken-repo-$(New-Guid)"
+            New-Item -ItemType Directory -Path $notRepo | Out-Null
+            [IO.File]::WriteAllText((Join-Path $notRepo '.git'), "gitdir: $(Join-Path $TestDrive 'no-such-git-dir')`n")
+            [IO.File]::WriteAllText((Join-Path $notRepo '.gitignore'), "committed.txt`n")
+
+            { Test-RepoGitIgnore -RepoRoot $notRepo -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*ls-files failed*'
+        }
+
+        It 'answers false for a path that isn''t ignored, even where native commands'' exit codes are errors' {
+            # Review 3 of the helper: with $PSNativeCommandUseErrorActionPreference on and $ErrorActionPreference
+            # Stop, check-ignore's exit 1 ("not ignored") became a thrown error. The module reads global preferences.
+            $outer = @{ Native = $global:PSNativeCommandUseErrorActionPreference; Action = $global:ErrorActionPreference }
+            $global:PSNativeCommandUseErrorActionPreference = $true
+            $global:ErrorActionPreference = 'Stop'
+            try { $ignored = try { Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'kept.txt' } catch { "threw: $($_.Exception.Message)" } }
+            finally {
+                $global:PSNativeCommandUseErrorActionPreference = $outer.Native
+                $global:ErrorActionPreference = $outer.Action
+            }
+
+            $ignored | Should -BeOfType [bool]
+            $ignored | Should -BeFalse
+        }
+
+        It 'stops when the repo has no .gitignore' {
+            $saved = Set-TestGitEnvironment
+            try { $bare = New-TestRepo }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+
+            { Test-RepoGitIgnore -RepoRoot $bare -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*no .gitignore*'
+        }
+    }
+
     It 'commits as the fixture, unsigned, whatever this machine''s own git identity and signing are' {
         # Review of PR 24: author.* and committer.* config, and the GIT_AUTHOR_* and GIT_COMMITTER_* variables, all
         # rank above user.name, so a machine that sets any of them changed every fixture commit.

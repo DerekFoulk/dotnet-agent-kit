@@ -28,12 +28,19 @@
     commit (New-KitApp.Tests on Windows, PR 23).
 
     With no global or system config, a safe.directory entry there doesn't apply either: a checkout owned by another
-    account makes git stop with "dubious ownership". Run the tests from a checkout of your own. A test that reads
-    the checkout itself (its file list, say) does so before calling Set-TestGitEnvironment, with its own config.
+    account makes git stop with "dubious ownership". Run the tests from a checkout of your own. A test that lists
+    the checkout's own files does so before calling Set-TestGitEnvironment, so your global ignore rules apply to
+    that list. Test-RepoGitIgnore is the exception: it reads the checkout with the test settings on, so a caller's
+    git variables can't change its answer, and so it too needs a checkout of your own.
 
     One exception: for a push or fetch through a local path, git strips GIT_CONFIG_COUNT from the receive-pack or
     upload-pack it starts. Only receive-pack runs maintenance, so New-TestGitRemote makes a bare repo for a test to
     push into, with the setting receive-pack needs in its own config.
+
+    Test-RepoGitIgnore says whether a repo's root .gitignore ignores a path, judging that file alone: the kit's
+    tests use it to check that a file stays out of commits in every clone and every app, which a line in this
+    clone's .git/info/exclude or this machine's excludes would otherwise hide. It stops if the repo commits a
+    .gitignore below the root, which could un-ignore the path, and says git's reason when git can't judge it.
 #>
 
 Set-StrictMode -Version Latest
@@ -138,4 +145,58 @@ function New-TestGitRemote {
     $Path
 }
 
-Export-ModuleMember -Function Set-TestGitEnvironment, Restore-TestGitEnvironment, New-TestGitRemote
+# The NUL-separated names a git listing (-z, which also leaves names unquoted) prints, read as UTF-8 apart from
+# anything git writes to stderr (a trace, a warning), which goes into the error only when git fails. Its caller,
+# Test-RepoGitIgnore, turns $PSNativeCommandUseErrorActionPreference off, so the exit code is read here.
+function Get-GitListing([string] $RepoRoot, [string[]] $Arguments) {
+    $encoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+    try { $output = @(git -C $RepoRoot @Arguments 2>&1); $code = $LASTEXITCODE }
+    finally { [Console]::OutputEncoding = $encoding }
+    $errors = @($output | Where-Object { $_ -is [Management.Automation.ErrorRecord] })
+    if ($code -ne 0) { throw "git $($Arguments[0]) failed in ${RepoRoot} (exit $code): $(($errors | ForEach-Object { "$_" }) -join ' ')" }
+    $output | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] } | ForEach-Object { "$_".Split([char] 0, [StringSplitOptions]::RemoveEmptyEntries) }
+}
+
+function Test-RepoGitIgnore {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)] [string] $RepoRoot, [Parameter(Mandatory)] [string] $Path)
+
+    # Whether the repo's root .gitignore, as it stands in the work tree, ignores Path. That's the file every clone
+    # gets, and every app (Export-KitApp copies it); this clone's .git/info/exclude and this machine's excludes
+    # aren't, so it's judged on its own, copied into a repo made with the test settings.
+    # Path is relative to the repo root. Nothing exists in that repo, so a pattern for a folder ("StrykerOutput/")
+    # matches a path beneath it ("StrykerOutput/x.json"), not the folder's own name.
+    # check-ignore exits 1 for "not ignored", an answer rather than a failure; the exit codes are read below.
+    $PSNativeCommandUseErrorActionPreference = $false
+    $gitignore = Join-Path $RepoRoot '.gitignore'
+    if (-not (Test-Path -LiteralPath $gitignore -PathType Leaf)) { throw "There's no .gitignore in $RepoRoot." }
+    $scratch = [IO.Directory]::CreateTempSubdirectory('dotnet-agent-kit-ignore-').FullName
+    $saved = $null
+    try {
+        # Every git call runs with the test settings, so a caller's GIT_LITERAL_PATHSPECS or GIT_INDEX_FILE can't
+        # change what git reads (GIT_TRACE stays, and goes to stderr).
+        $saved = Set-TestGitEnvironment
+        # A .gitignore below the root can un-ignore what the root one ignores, so judging the root file alone would
+        # be wrong there. The kit has none; stop rather than give a false answer if one is ever committed.
+        $nested = @(Get-GitListing -RepoRoot $RepoRoot -Arguments 'ls-files', '-z', '--', ':(glob)*/**/.gitignore')
+        if ($nested) { throw "Test-RepoGitIgnore judges the root .gitignore only, but $RepoRoot also commits: $($nested -join ', ')" }
+        # A copy that fails must stop here: an empty repo would judge every path not ignored.
+        Copy-Item -LiteralPath $gitignore -Destination $scratch -ErrorAction Stop
+        $init = git init -q $scratch 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't make the repo that judges .gitignore: $($init.Trim())" }
+        $reason = git -C $scratch check-ignore --no-index -q -- $Path 2>&1 | Out-String
+        $code = $LASTEXITCODE
+    }
+    finally {
+        try { Restore-TestGitEnvironment -Saved $saved }
+        finally { Remove-Item -LiteralPath $scratch -Recurse -Force }
+    }
+    switch ($code) {
+        0 { $true }
+        1 { $false }
+        default { throw "git check-ignore failed for '$Path' (exit $code): $($reason.Trim())" }
+    }
+}
+
+Export-ModuleMember -Function Set-TestGitEnvironment, Restore-TestGitEnvironment, New-TestGitRemote, Test-RepoGitIgnore

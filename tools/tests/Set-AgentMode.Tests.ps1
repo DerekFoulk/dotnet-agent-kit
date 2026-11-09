@@ -6,6 +6,11 @@
 # mode writes .agent-mode and adds the ask rules to the owner's own .claude/settings.local.json, which Claude Code
 # merges with the project's settings (an ask rule from any file beats an allow rule).
 
+# At file level, where the files that make repos import it too: if this file ever adds a file-level Set, a -Force
+# re-import inside a Describe would reset the module's record of that Set's template folder, and Restore would
+# leave it behind.
+BeforeAll { Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force }
+
 Describe 'Set-AgentMode.ps1' {
     BeforeAll {
         $script = Join-Path $PSScriptRoot '..' 'Set-AgentMode.ps1'
@@ -158,9 +163,7 @@ Describe 'Set-AgentMode.ps1' {
         $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
         # Only the repo's own .gitignore counts: Claude Code may also add the local settings to this machine's
         # global excludes, which CI and an app's other clones don't have.
-        $noGlobal = Join-Path $TestDrive 'no-global-excludes'
-        git -C $repoRoot -c "core.excludesFile=$noGlobal" check-ignore --no-index -q $Path
-        $LASTEXITCODE | Should -Be 0 -Because "$Path must be in .gitignore"
+        Test-RepoGitIgnore -RepoRoot $repoRoot -Path $Path | Should -BeTrue -Because "$Path must be in .gitignore"
     }
 
     Context 'run as a command' {

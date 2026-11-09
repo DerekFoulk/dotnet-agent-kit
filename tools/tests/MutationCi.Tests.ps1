@@ -4,6 +4,11 @@
 # Mutation testing (GAP-003, TST-004's 85% score, ADR-0039). A shared workflow runs Stryker.NET over a solution
 # and fails when the mutation score is below 85%. The kit runs it nightly; apps get the same nightly caller.
 
+# At file level, where the files that make repos import it too: if this file ever adds a file-level Set, a -Force
+# re-import inside a Describe would reset the module's record of that Set's template folder, and Restore would
+# leave it behind.
+BeforeAll { Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force }
+
 Describe 'Mutation testing in CI' {
     BeforeAll {
         Import-Module powershell-yaml
@@ -206,9 +211,8 @@ Describe 'Mutation testing in CI' {
         It 'keeps a local run''s StrykerOutput folder out of commits, here and in every app (which copies .gitignore)' {
             # Re-review of PR 23: the documented local run writes StrykerOutput/<date>/ at the repo root.
             # Only the repo's own .gitignore counts, not this machine's global excludes.
-            $noGlobal = Join-Path $TestDrive 'no-global-excludes'
-            git -C $root -c "core.excludesFile=$noGlobal" check-ignore --no-index -q 'StrykerOutput/2026-11-08.06-17-00/reports/mutation-report.json'
-            $LASTEXITCODE | Should -Be 0 -Because 'StrykerOutput/ must be in .gitignore'
+            Test-RepoGitIgnore -RepoRoot $root -Path 'StrykerOutput/2026-11-08.06-17-00/reports/mutation-report.json' |
+                Should -BeTrue -Because 'StrykerOutput/ must be in .gitignore'
         }
 
         It 'skips Stryker while the solution has no projects, as a new app''s does' {
