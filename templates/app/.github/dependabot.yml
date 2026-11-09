@@ -1,5 +1,6 @@
 # Keeps {{Name}}'s NuGet packages current. The "chore" prefix makes each PR title a Conventional Commit,
-# which CI requires; NuGet PRs come titled "chore: Bump ...", without a "(deps)" scope.
+# which CI requires. "include: scope" adds "(deps)", but the NuGet updater ignores it for now
+# (dependabot-core#15158), so PRs come as "chore: Bump ..."; keep it for when that's fixed.
 # The kit's sync job moves the kit pin (DerekFoulk/dotnet-agent-kit) and the global.json SDK pin with each
 # kit release, so they aren't listed here (ADR-0032). This file is the app's: add an ecosystem when the app
 # adds one of its own, such as github-actions for its own workflows, and check any kit pin Dependabot
