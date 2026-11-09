@@ -407,4 +407,17 @@ Describe 'Export-KitApp' {
         @($map | Where-Object { $_.Source -match 'New-KitApp|^templates/github/' }) | Should -BeNullOrEmpty
         Get-ChildItem -LiteralPath $app -Recurse -File -Filter 'New-KitApp*' | Should -BeNullOrEmpty
     }
+
+    # The owner, 2026-11-09: an app's settings shouldn't carry rules for kit scripts it doesn't have, such as
+    # the asks before ./tools/New-KitApp (review 1 of PR 17, finding 10).
+    It 'gives the app the kit''s permission rules, without those for kit scripts the app doesn''t get' {
+        $kitSettings = Get-Content -Raw -LiteralPath (Join-Path $checkout '.claude/settings.json') | ConvertFrom-Json -AsHashtable
+        $appSettings = Get-Content -Raw -LiteralPath (Join-Path $app '.claude/settings.json') | ConvertFrom-Json -AsHashtable
+
+        foreach ($list in 'allow', 'ask', 'deny') {
+            $expected = @($kitSettings['permissions'][$list] | Where-Object { $_ -notmatch 'New-KitApp' })
+            @($appSettings['permissions'][$list]) | Should -Be $expected -Because "the app keeps every other $list rule, in order"
+        }
+        $appSettings['$schema'] | Should -Be $kitSettings['$schema']
+    }
 }
