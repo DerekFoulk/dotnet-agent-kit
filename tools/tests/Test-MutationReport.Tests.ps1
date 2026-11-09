@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # Test-MutationReport.ps1 (ADR-0039) reads Stryker.NET's JSON report and refuses a score it can't trust: a test may

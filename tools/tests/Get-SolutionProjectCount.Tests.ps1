@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # Get-SolutionProjectCount.ps1 counts the projects in a .slnx solution. The shared .NET CI and mutation workflows both

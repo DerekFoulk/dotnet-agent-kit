@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Fails when Stryker.NET's mutation score can't be trusted (ADR-0039).
