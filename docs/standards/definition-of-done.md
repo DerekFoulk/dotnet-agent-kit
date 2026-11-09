@@ -46,6 +46,15 @@ rules:
     enforcement: "advisory: the address-review skill and tools/KitReview.psm1 guide it; the module refuses won't fix without -OwnerApproved, a switch it takes on trust, passed in auto mode under ADR-0035's standing approval; the main ruleset doesn't yet require conversations resolved before merging"
     scope: core
     paths: ["**"]
+  - id: DOD-006
+    statement: "A PR whose description a bot writes, such as Dependabot's, keeps that description; before an agent merges it, the agent posts the template's evidence as a PR comment: what changed, the reviewer's verdict, the gates run with their counts, and what wasn't verified."
+    why: "Dependabot writes its own description, so DOD-004's template can't apply to its PRs, yet auto mode merges only a PR whose description is complete; PRs 25 and 26 were merged with the evidence in a review comment instead."
+    layer: owner
+    status: proposed
+    sources: ["owner, 2026-11-01", "ADR-0035"]
+    enforcement: "advisory: the agent posts the comment when it merges a bot's PR; no CI check reads PR comments"
+    scope: core
+    paths: ["**"]
 ---
 
 # Definition of done
@@ -55,3 +64,5 @@ Done means verified, with the evidence shown. The `finish-work` skill (`.claude/
 ## Pending ratification
 
 DOD-001 was written by an agent. It's consistent with your stated rules, but you never stated it as one rule, so it stays `proposed` until you accept it.
+
+DOD-006 was written by an agent too. It adds an exception to DOD-004, a rule you stated, for PRs whose description a bot writes. It stays `proposed` until you accept it. Release PRs are bot PRs as well, but you merge those yourself.

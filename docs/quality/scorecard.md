@@ -224,7 +224,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
 | Process | 14 | 4 | 10 | 1 | 0 |
 
-**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 19 proposed; 12 open gaps.
+**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 20 proposed; 12 open gaps.
 
 Open gaps:
 
