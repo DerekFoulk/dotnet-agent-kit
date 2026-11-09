@@ -80,7 +80,8 @@ Describe 'Mutation testing in CI' {
             # tab, even a line break) is escaped or split out of reach of the patterns (reviews 8 and 9 of PR 23).
             # PowerShell's own capture would split on line breaks and decode with the console's code page.
             function Get-TrackedFile([string] $Folder) {
-                $start = [Diagnostics.ProcessStartInfo]::new('git')
+                # The git PowerShell's own lookup finds (PATH and PATHEXT), as the rest of this file runs (review 10).
+                $start = [Diagnostics.ProcessStartInfo]::new((Get-Command git -CommandType Application -TotalCount 1).Source)
                 foreach ($argument in @('-C', $root, '-c', 'core.quotePath=false', 'ls-files', '-z') + $(if ($Folder) { '--', ":(literal)$Folder" })) {
                     $start.ArgumentList.Add($argument)
                 }
@@ -88,9 +89,12 @@ Describe 'Mutation testing in CI' {
                 $start.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
                 $start.UseShellExecute = $false
                 $git = [Diagnostics.Process]::Start($start)
-                $listing = $git.StandardOutput.ReadToEnd()
-                $git.WaitForExit()
-                if ($git.ExitCode -ne 0) { throw "git ls-files failed for '$Folder' (exit $($git.ExitCode))" }
+                try {
+                    $listing = $git.StandardOutput.ReadToEnd()
+                    $git.WaitForExit()
+                    if ($git.ExitCode -ne 0) { throw "git ls-files failed for '$Folder' (exit $($git.ExitCode))" }
+                }
+                finally { $git.Dispose() }
                 $listing.Split([char] 0, [StringSplitOptions]::RemoveEmptyEntries)
             }
 
