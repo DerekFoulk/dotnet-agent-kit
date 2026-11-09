@@ -7,8 +7,8 @@
 # by hand with its release.
 # NuGet PRs: dependabot-lockfiles.yml refreshes the lock files Dependabot misses (dependabot-core#13950).
 # Each version update waits before Dependabot proposes it, so a release that's pulled or found compromised
-# in its first days never reaches a PR (ADR-0041): 3 days, Dependabot's default, stated here so a test
-# guards it, and 7 for a NuGet or SDK major. Security updates don't wait. Shortening the wait is a
+# in its first days never reaches a PR (ADR-0041): 7 days, and 14 for a NuGet or SDK major. Dependabot's own
+# default is 3 days. Security updates don't wait. Shortening the wait is a
 # guardrail change, for the owner to merge. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors and
 # GitHub Actions bumps are the owner's.
 version: 2
@@ -21,8 +21,8 @@ updates:
       prefix: chore
       include: scope
     cooldown:
-      default-days: 3
-      semver-major-days: 7
+      default-days: 7
+      semver-major-days: 14
 
   - package-ecosystem: github-actions
     directory: /
@@ -32,7 +32,7 @@ updates:
       prefix: chore
       include: scope
     cooldown:
-      default-days: 3
+      default-days: 7
 
   - package-ecosystem: dotnet-sdk
     directory: /
@@ -42,5 +42,5 @@ updates:
       prefix: chore
       include: scope
     cooldown:
-      default-days: 3
-      semver-major-days: 7
+      default-days: 7
+      semver-major-days: 14

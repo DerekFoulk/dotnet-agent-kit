@@ -5,7 +5,7 @@
 # kit release, so they aren't listed here (ADR-0032). This file is the app's: add an ecosystem when the app
 # adds one of its own, such as github-actions for its own workflows, and check any kit pin Dependabot
 # proposes against a kit release tag before merging (ADR-0031).
-# Each update waits before Dependabot proposes it: 3 days, and 7 for a major, so a release that's pulled or
+# Each update waits before Dependabot proposes it: 7 days, and 14 for a major, so a release that's pulled or
 # found compromised in its first days never reaches a PR (the kit's ADR-0041). Security updates don't wait.
 version: 2
 updates:
@@ -17,5 +17,5 @@ updates:
       prefix: chore
       include: scope
     cooldown:
-      default-days: 3
-      semver-major-days: 7
+      default-days: 7
+      semver-major-days: 14
