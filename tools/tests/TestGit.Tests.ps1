@@ -26,12 +26,14 @@ Describe 'TestGit.psm1' {
             [System.Management.Automation.Language.Parser]::ParseFile($File.FullName, [ref] $null, [ref] $null)
         }
 
-        # The arguments of every git command (or a file's own Invoke-Git* wrapper) the file runs, one array each.
-        # Command names are matched as PowerShell resolves them: in any case, with or without .exe.
-        function Get-GitCall([System.IO.FileInfo] $File) {
-            $commands = (Get-FileAst $File).FindAll({
+        # The arguments of every git command (or a file's own Invoke-Git* wrapper) under an AST, one array each.
+        # Command names are matched as PowerShell resolves them: in any case, by file name when given as a path,
+        # with or without .exe or .cmd. A command named only at run time (& $git, git @args) can't be read.
+        function Get-GitCall([System.Management.Automation.Language.Ast] $Root) {
+            $commands = $Root.FindAll({
                     param($node)
-                    $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -match '^(git|Invoke-Git\w*)(\.exe)?$'
+                    $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -and
+                    (Split-Path -Leaf $node.GetCommandName()) -match '^(git|Invoke-Git\w*)(\.exe|\.cmd)?$'
                 }, $true)
             foreach ($command in $commands) { , @($command.CommandElements | Select-Object -Skip 1 | ForEach-Object { $_.Extent.Text.Trim('''', '"') }) }
         }
@@ -192,7 +194,7 @@ Describe 'TestGit.psm1' {
         # init or clone with --bare or --mirror, anywhere in the call (git --bare init too).
         $byHand = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' | Where-Object {
             $_.Name -ne 'TestGit.Tests.ps1' -and
-            @(Get-GitCall $_ | Where-Object { ($_ -ccontains 'init' -or $_ -ccontains 'clone') -and ($_ -ccontains '--bare' -or $_ -ccontains '--mirror') }).Count -gt 0
+            @(Get-GitCall (Get-FileAst $_) | Where-Object { ($_ -ccontains 'init' -or $_ -ccontains 'clone') -and ($_ -ccontains '--bare' -or $_ -ccontains '--mirror') }).Count -gt 0
         }
 
         @($byHand.Name) | Should -BeNullOrEmpty -Because 'New-TestGitRemote gives a remote the settings a push needs'
@@ -246,13 +248,25 @@ Describe 'TestGit.psm1' {
         finally { Restore-TestGitEnvironment -Saved $outer }
     }
 
+    It 'makes no git repo in any test file''s BeforeDiscovery, which runs before the setup and has no TestDrive' {
+        # Review 4 of PR 24: discovery only builds test data; a repo made there would get none of the settings.
+        $inDiscovery = foreach ($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1') {
+            $blocks = (Get-FileAst $file).FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -eq 'BeforeDiscovery' }, $true)
+            foreach ($block in $blocks) {
+                if (@(Get-GitCall $block | Where-Object { $_ -ccontains 'init' -or $_ -ccontains 'clone' }).Count -gt 0) { $file.Name }
+            }
+        }
+
+        @($inDiscovery) | Should -BeNullOrEmpty
+    }
+
     It 'is used by every test file that makes a git repo' {
         # A repo is made by git init or git clone, directly or through a file's own Invoke-Git wrapper; its commits
         # then run with the settings.
         # The setup runs in the file's own BeforeAll and AfterAll, so it wraps every Describe. TestGit.Tests.ps1 is
         # the exception: it tests the helper, setting and restoring it in each test.
         $makesRepos = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' | Where-Object {
-            $_.Name -ne 'TestGit.Tests.ps1' -and @(Get-GitCall $_ | Where-Object { $_ -ccontains 'init' -or $_ -ccontains 'clone' }).Count -gt 0
+            $_.Name -ne 'TestGit.Tests.ps1' -and @(Get-GitCall (Get-FileAst $_) | Where-Object { $_ -ccontains 'init' -or $_ -ccontains 'clone' }).Count -gt 0
         }
 
         @($makesRepos).Count | Should -BeGreaterThan 5
