@@ -138,4 +138,18 @@ function New-TestGitRemote {
     $Path
 }
 
-Export-ModuleMember -Function Set-TestGitEnvironment, Restore-TestGitEnvironment, New-TestGitRemote
+function Test-RepoGitIgnore {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)] [string] $RepoRoot, [Parameter(Mandatory)] [string] $Path)
+
+    # Whether the repo's own .gitignore ignores Path, so every clone and every app that copies it does too, not
+    # just this machine.
+    git -C $RepoRoot -c 'core.excludesFile=/dev/null' check-ignore --no-index -q -- $Path
+    switch ($LASTEXITCODE) {
+        0 { $true }
+        1 { $false }
+        default { throw "git check-ignore failed for '$Path' in $RepoRoot (exit $LASTEXITCODE)" }
+    }
+}
+
+Export-ModuleMember -Function Set-TestGitEnvironment, Restore-TestGitEnvironment, New-TestGitRemote, Test-RepoGitIgnore
