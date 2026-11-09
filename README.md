@@ -263,6 +263,14 @@ Applied 2026-11-06 with the owner's OK, after the repo went public:
 | Wiki | Off | Until it's published from the repo (planned after D2a) |
 | Dependabot security updates | Off (unchanged) | Not reviewed yet; `.github/dependabot.yml` version updates run weekly |
 
+Applied 2026-11-09 with the owner's OK:
+
+| Setting | Value | Why |
+|---|---|---|
+| Actions: require actions pinned to a full-length commit SHA | On | Enforces SUP-008. The shared workflows' `$/.github/actions/kit-tools` resolves to a full SHA, so it passes |
+| "main protection" ruleset: require code scanning results | CodeQL; blocks on an error, or a security alert high or higher, or while CodeQL hasn't run | Enforces SEC-006 at merge time; CodeQL runs on every pull request |
+| "main protection" ruleset: require conversation resolution | On | Every review thread is answered and resolved before merging (DOD-005) |
+
 ## Run the tests
 
 ```powershell
