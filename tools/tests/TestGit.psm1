@@ -34,6 +34,8 @@ $script:Variables = [ordered]@{
     # No global or system config at all: git reads /dev/null as an empty file, on Windows too.
     GIT_CONFIG_GLOBAL   = '/dev/null'
     GIT_CONFIG_NOSYSTEM = '1'
+    # Nor the system attributes file, which GIT_CONFIG_NOSYSTEM doesn't cover.
+    GIT_ATTR_NOSYSTEM   = '1'
 }
 
 $script:Settings = [ordered]@{
@@ -42,6 +44,10 @@ $script:Settings = [ordered]@{
     'maintenance.auto' = 'false'
     'gc.auto'          = '0'
     'core.fsmonitor'   = 'false' # a daemon per repo, holding handles in TestDrive
+    # With no global config, git would still read its default per-user files, $XDG_CONFIG_HOME/git/ignore and
+    # git/attributes; pointing these at an empty file leaves those out too.
+    'core.excludesFile'   = '/dev/null'
+    'core.attributesFile' = '/dev/null'
 }
 
 function Get-GitConfigVariableName([int] $Count) {
