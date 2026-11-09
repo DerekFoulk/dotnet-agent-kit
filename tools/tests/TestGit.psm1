@@ -6,11 +6,14 @@
 .DESCRIPTION
     Set-TestGitEnvironment sets them in the environment, so they reach the scripts under test and the processes
     they start:
-    - no global or system config at all (GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM), so nothing on this
-      machine, such as a global hook, reaches a test;
+    - no git config, ignore or attributes file from this machine: no global or system config
+      (GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM), no system attributes (GIT_ATTR_NOSYSTEM), and the
+      default per-user ignore and attributes files replaced by an empty one (core.excludesFile and
+      core.attributesFile below). A global hook, or a ".vscode/" line in ~/.config/git/ignore, can't change a test;
     - the fixture identity, in GIT_AUTHOR_* and GIT_COMMITTER_*, which outrank every identity config key;
     - the rest through GIT_CONFIG_COUNT, GIT_CONFIG_KEY_<n> and GIT_CONFIG_VALUE_<n>, which outrank a repo's own
-      config too: no signing, no background maintenance, no file-system monitor.
+      config too: no signing, no background maintenance, no file-system monitor, those empty ignore and
+      attributes files.
     A fixture commit once started git's background maintenance, whose repack raced the test's next lookups of the
     fixture commit (New-KitApp.Tests on Windows, PR 23). Restore-TestGitEnvironment puts back what was there before.
     Call the first in a test file's BeforeAll and the second in its AfterAll.
