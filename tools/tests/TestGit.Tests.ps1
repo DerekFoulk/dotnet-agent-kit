@@ -19,9 +19,33 @@ Describe 'TestGit.psm1' {
             $values
         }
 
-        # A test file's code without its comment lines, so a comment can neither trigger nor satisfy a check.
-        function Get-TestCode([System.IO.FileInfo] $File) {
-            (Get-Content -LiteralPath $File.FullName | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+        # Review 2 of PR 24: the checks below read a file through PowerShell's own parser, so a comment or a string
+        # is never taken for a command, and an option's position doesn't matter.
+        function Get-FileAst([System.IO.FileInfo] $File) {
+            [System.Management.Automation.Language.Parser]::ParseFile($File.FullName, [ref] $null, [ref] $null)
+        }
+
+        # The arguments of every git command (or a file's own Invoke-Git* wrapper) the file runs, one array each.
+        function Get-GitCall([System.IO.FileInfo] $File) {
+            $commands = (Get-FileAst $File).FindAll({
+                    param($node)
+                    $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -cmatch '^(git|Invoke-Git\w*)$'
+                }, $true)
+            foreach ($command in $commands) { , @($command.CommandElements | Select-Object -Skip 1 | ForEach-Object { $_.Extent.Text.Trim('''', '"') }) }
+        }
+
+        # The names of the commands inside the file's own BeforeAll or AfterAll, the one outside every Describe.
+        function Get-FileLevelSetup([System.IO.FileInfo] $File, [string] $Block) {
+            $root = Get-FileAst $File
+            $blocks = $root.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -eq $Block }, $true)
+            foreach ($call in $blocks) {
+                $scope = $call.Parent
+                while ($scope -isnot [System.Management.Automation.Language.ScriptBlockAst]) { $scope = $scope.Parent }
+                if ($scope -ne $root) { continue }
+                foreach ($body in $call.CommandElements | Where-Object { $_ -is [System.Management.Automation.Language.ScriptBlockExpressionAst] }) {
+                    $body.ScriptBlock.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true) | ForEach-Object { $_.GetCommandName() }
+                }
+            }
         }
 
         function New-TestRepo {
@@ -124,9 +148,11 @@ Describe 'TestGit.psm1' {
     }
 
     It 'is how every test file makes a bare remote' {
-        # Review of PR 24: also clone --bare and --mirror, and a file's own Invoke-Git* wrapper.
-        $byHand = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' |
-            Where-Object { $_.Name -ne 'TestGit.Tests.ps1' -and (Get-TestCode $_) -cmatch '\b(git|Invoke-Git\w*)\b[^\n]*\s(init|clone)\b[^\n]*\s--(bare|mirror)\b' }
+        # init or clone with --bare or --mirror, anywhere in the call (git --bare init too).
+        $byHand = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' | Where-Object {
+            $_.Name -ne 'TestGit.Tests.ps1' -and
+            @(Get-GitCall $_ | Where-Object { ($_ -ccontains 'init' -or $_ -ccontains 'clone') -and ($_ -ccontains '--bare' -or $_ -ccontains '--mirror') }).Count -gt 0
+        }
 
         @($byHand.Name) | Should -BeNullOrEmpty -Because 'New-TestGitRemote gives a remote the settings a push needs'
     }
@@ -182,16 +208,16 @@ Describe 'TestGit.psm1' {
     It 'is used by every test file that makes a git repo' {
         # A repo is made by git init or git clone, directly or through a file's own Invoke-Git wrapper; its commits
         # then run with the settings.
-        # Review of PR 24: any options before the command (quoted paths, --git-dir), any Invoke-Git* wrapper, comments
-        # ignored, and both halves of the setup required.
-        $makesRepos = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' |
-            Where-Object { (Get-TestCode $_) -cmatch '\b(git|Invoke-Git\w*)\b[^\n]*\s(init|clone)\b' }
+        # The setup runs in the file's own BeforeAll and AfterAll, so it wraps every Describe. TestGit.Tests.ps1 is
+        # the exception: it tests the helper, setting and restoring it in each test.
+        $makesRepos = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' | Where-Object {
+            $_.Name -ne 'TestGit.Tests.ps1' -and @(Get-GitCall $_ | Where-Object { $_ -ccontains 'init' -or $_ -ccontains 'clone' }).Count -gt 0
+        }
 
         @($makesRepos).Count | Should -BeGreaterThan 5
         foreach ($file in $makesRepos) {
-            $code = Get-TestCode $file
-            $code | Should -Match '\bSet-TestGitEnvironment\b' -Because "$($file.Name) makes git repos"
-            $code | Should -Match '\bRestore-TestGitEnvironment\b' -Because "$($file.Name) must put the environment back"
+            @(Get-FileLevelSetup $file 'BeforeAll') | Should -Contain 'Set-TestGitEnvironment' -Because "$($file.Name) makes git repos"
+            @(Get-FileLevelSetup $file 'AfterAll') | Should -Contain 'Restore-TestGitEnvironment' -Because "$($file.Name) must put the environment back"
         }
     }
 }
