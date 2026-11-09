@@ -44,8 +44,6 @@ $script:Variables = [ordered]@{
     # Nor a template directory: git init would copy its hooks, info/exclude and config into every repo. An empty
     # one, since git warns about a missing one.
     GIT_TEMPLATE_DIR    = Join-Path ([IO.Path]::GetTempPath()) 'dotnet-agent-kit-empty-git-template'
-    # Nor config a parent git hands down (git -c, aliases): it outranks GIT_CONFIG_COUNT. $null removes it.
-    GIT_CONFIG_PARAMETERS = $null
 }
 
 $script:Settings = [ordered]@{
@@ -69,24 +67,22 @@ function Set-TestGitEnvironment {
     [OutputType([hashtable])]
     param()
 
-    # Settings a parent process already gave this way are replaced, since they come from outside the test too;
-    # Restore-TestGitEnvironment brings them back.
-    $existing = 0
-    [void] [int]::TryParse([Environment]::GetEnvironmentVariable('GIT_CONFIG_COUNT'), [ref] $existing)
+    # Every git variable the parent environment has is removed while tests run, since each one comes from outside
+    # the test (GIT_CONFIG, GIT_DIR, GIT_DEFAULT_HASH, GIT_CONFIG_PARAMETERS, a date...). Only git's GIT_TRACE*
+    # variables stay: they record what git does without changing it. Restore-TestGitEnvironment brings back all.
+    $inherited = @(Get-ChildItem -Path env: | Where-Object { $_.Name -like 'GIT_*' -and $_.Name -notlike 'GIT_TRACE*' } | ForEach-Object Name)
     $count = $script:Settings.Count
 
     $saved = @{}
-    foreach ($name in @(Get-GitConfigVariableName ([Math]::Max($existing, $count))) + $script:Variables.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+    foreach ($name in $inherited + @(Get-GitConfigVariableName $count) + $script:Variables.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+    foreach ($name in $inherited) { Remove-Item -LiteralPath "env:$name" }
 
     $template = $script:Variables['GIT_TEMPLATE_DIR']
     if (-not (Test-Path -LiteralPath $template)) { New-Item -ItemType Directory -Path $template | Out-Null }
     if (@(Get-ChildItem -LiteralPath $template -Force).Count -gt 0) {
         throw "$template should be empty: it's the test repos' git template, and anything in it reaches every one."
     }
-    foreach ($variable in $script:Variables.GetEnumerator()) {
-        if ($null -eq $variable.Value) { Remove-Item -LiteralPath "env:$($variable.Key)" -ErrorAction SilentlyContinue }
-        else { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
-    }
+    foreach ($variable in $script:Variables.GetEnumerator()) { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
     $i = 0
     foreach ($setting in $script:Settings.GetEnumerator()) {
         Set-Item -LiteralPath "env:GIT_CONFIG_KEY_$i" -Value $setting.Key
