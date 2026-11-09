@@ -95,6 +95,23 @@ Describe 'TestGit.psm1' {
             }
         }
 
+        # Every GIT_* variable, name to value, to compare the whole set before and after (review 8 of PR 24).
+        function Get-GitVariable {
+            $variables = @{}
+            Get-ChildItem -Path env: | Where-Object Name -Like 'GIT_*' | ForEach-Object { $variables[$_.Name] = $_.Value }
+            $variables
+        }
+
+        # Puts the GIT_* variables back to a snapshot from Get-GitVariable, without the module (whose Restore a test
+        # may have mocked).
+        function Set-GitVariable([hashtable] $Snapshot) {
+            Get-ChildItem -Path env: | Where-Object { $_.Name -like 'GIT_*' -and -not $Snapshot.ContainsKey($_.Name) } |
+                ForEach-Object { Remove-Item -LiteralPath "env:$($_.Name)" }
+            foreach ($name in $Snapshot.Keys) { Set-Item -LiteralPath "env:$name" -Value $Snapshot[$name] }
+        }
+
+        function Get-TemplateFolder { @(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'dotnet-agent-kit-git-template-*' | ForEach-Object FullName) }
+
         function New-TestRepo {
             $repo = Join-Path $TestDrive "repo-$(New-Guid)"
             git init -q -b main $repo
@@ -303,6 +320,17 @@ Describe 'TestGit.psm1' {
         $own | Should -Not -Exist -Because 'Restore removes the folder its Set made'
         $foreign | Should -Exist -Because 'Restore never removes a folder it didn''t make'
 
+        # In order: Restoring the inner Set removes only its own folder (review 8 of PR 24).
+        $first = Set-TestGitEnvironment
+        $firstTemplate = $env:GIT_TEMPLATE_DIR
+        $second = Set-TestGitEnvironment
+        $secondTemplate = $env:GIT_TEMPLATE_DIR
+        Restore-TestGitEnvironment -Saved $second
+        $firstTemplate | Should -Exist -Because 'the outer Set''s folder is still in use'
+        $secondTemplate | Should -Not -Exist
+        Restore-TestGitEnvironment -Saved $first
+        $firstTemplate | Should -Not -Exist
+
         $first = Set-TestGitEnvironment
         $firstTemplate = $env:GIT_TEMPLATE_DIR
         $second = Set-TestGitEnvironment
@@ -325,11 +353,39 @@ Describe 'TestGit.psm1' {
         foreach ($name in $machine.Keys) { $outer[$name] = [Environment]::GetEnvironmentVariable($name) }
         Restore-TestGitEnvironment -Saved $machine
         try {
+            # The whole set, so a GIT_CONFIG_COUNT a parent passes is expected to stay too (review 8 of PR 24).
+            $before = Get-GitVariable
             { Set-TestGitEnvironment } | Should -Throw
             $env:GIT_PROBE_KEEP | Should -Be 'kept'
-            $env:GIT_CONFIG_COUNT | Should -Be $outer['GIT_CONFIG_COUNT'] -Because 'none of the test settings were left behind'
+            $after = Get-GitVariable
+            @($after.Keys) | Sort-Object | Should -Be (@($before.Keys) | Sort-Object)
+            foreach ($name in $before.Keys) { $after[$name] | Should -Be $before[$name] -Because "$name is as it was" }
         }
         finally { Restore-TestGitEnvironment -Saved $outer }
+    }
+
+    It 'undoes every change when a step after the template fails, and removes the template' {
+        # Review 8 of PR 24: the test above fails before Set changes anything, so Set's own undo never ran.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        # The last change Set makes fails, once; every other Set-Item runs as normal, Restore's own included.
+        $script:probeFailed = $false
+        Mock -ModuleName TestGit Set-Item { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
+        Mock -ModuleName TestGit Set-Item {
+            if ($script:probeFailed) { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
+            else { $script:probeFailed = $true; throw 'probe failure' }
+        } -ParameterFilter { $LiteralPath -eq 'env:GIT_CONFIG_COUNT' }
+        $outer = @{ GIT_PROBE_KEEP = $env:GIT_PROBE_KEEP }
+        $env:GIT_PROBE_KEEP = 'kept'
+        $before = Get-GitVariable
+        $templates = Get-TemplateFolder
+        try {
+            { Set-TestGitEnvironment } | Should -Throw '*probe failure*'
+            $after = Get-GitVariable
+            @($after.Keys) | Sort-Object | Should -Be (@($before.Keys) | Sort-Object)
+            foreach ($name in $before.Keys) { $after[$name] | Should -Be $before[$name] -Because "$name is as it was" }
+            @(Get-TemplateFolder | Where-Object { $_ -notin $templates }) | Should -BeNullOrEmpty -Because 'the template is removed'
+        }
+        finally { Set-GitVariable $before; Restore-TestGitEnvironment -Saved $outer }
     }
 
     It 'adds no second error when Set failed, so the first one is the one people see' {
