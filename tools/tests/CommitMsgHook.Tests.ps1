@@ -75,6 +75,25 @@ Describe 'commit-msg hook' {
             (Invoke-Hook "`n# Please enter the commit message`nadd tags`n").ExitCode | Should -Be 1
             (Invoke-Hook "`n# Please enter the commit message`nfeat: add tags`n").ExitCode | Should -Be 0
         }
+
+        # The hook skips a merge in progress in the repo it runs in. These checks must not depend on the
+        # checkout the tests run from: a kit checkout mid-merge once made every rejection test fail.
+        It 'rejects a bad subject even when the tests run from a checkout with a merge in progress' {
+            $merging = New-HookedRepo
+            Invoke-InRepo $merging commit --quiet --allow-empty --message 'chore: initial' | Out-Null
+            Invoke-InRepo $merging switch --quiet -c side | Out-Null
+            Invoke-InRepo $merging commit --quiet --allow-empty --message 'feat: on the side' | Out-Null
+            Invoke-InRepo $merging switch --quiet main | Out-Null
+            $merge = Invoke-InRepo $merging merge --no-ff --no-commit side
+            $merge.ExitCode | Should -Be 0 -Because $merge.Output
+            Invoke-InRepo $merging rev-parse -q --verify MERGE_HEAD | Select-Object -ExpandProperty ExitCode | Should -Be 0
+
+            Push-Location -LiteralPath $merging
+            try { $result = Invoke-Hook "add tags`n" }
+            finally { Pop-Location }
+
+            $result.ExitCode | Should -Be 1 -Because $result.Output
+        }
     }
 
     Context 'through git, with a relative core.hooksPath' {
