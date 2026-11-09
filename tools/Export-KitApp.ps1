@@ -174,7 +174,8 @@ function Test-KitOnlyRule {
 function Get-KitAppSettingsText {
     param([Parameter(Mandatory)] [string] $SettingsText, [Parameter(Mandatory)] [string[]] $AppTools)
 
-    $settings = $SettingsText | ConvertFrom-Json -AsHashtable
+    # -DateKind String: otherwise ISO dates become DateTime and are written back in this machine's time zone.
+    $settings = $SettingsText | ConvertFrom-Json -AsHashtable -DateKind String
     if ($settings -isnot [Collections.IDictionary] -or $settings['permissions'] -isnot [Collections.IDictionary]) {
         throw "The kit's .claude/settings.json has no ""permissions"" object."
     }
