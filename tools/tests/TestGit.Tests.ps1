@@ -388,6 +388,27 @@ Describe 'TestGit.psm1' {
         finally { Set-GitVariable $before; Restore-TestGitEnvironment -Saved $outer }
     }
 
+    It 'reports the step that failed, even when putting things back fails too' {
+        # Review 8 of PR 24: an error from the undo in Set's catch replaced the one that caused it.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $script:probeFailed = $false
+        Mock -ModuleName TestGit Set-Item { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
+        Mock -ModuleName TestGit Set-Item {
+            if ($script:probeFailed) { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
+            else { $script:probeFailed = $true; throw 'probe failure' }
+        } -ParameterFilter { $LiteralPath -eq 'env:GIT_CONFIG_COUNT' }
+        Mock -ModuleName TestGit Restore-TestGitEnvironment { throw 'restore failure' }
+        $before = Get-GitVariable
+        $templates = Get-TemplateFolder
+        try {
+            { Set-TestGitEnvironment } | Should -Throw '*probe failure*'
+        }
+        finally {
+            Set-GitVariable $before
+            Get-TemplateFolder | Where-Object { $_ -notin $templates } | ForEach-Object { Remove-Item -LiteralPath $_ -Recurse -Force }
+        }
+    }
+
     It 'adds no second error when Set failed, so the first one is the one people see' {
         # Review 6 of PR 24: a file's AfterAll then called Restore with nothing, and failed again.
         { Restore-TestGitEnvironment -Saved $null } | Should -Not -Throw
