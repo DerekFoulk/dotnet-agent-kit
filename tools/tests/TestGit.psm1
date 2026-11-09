@@ -69,8 +69,10 @@ function New-TestGitRemote {
     # A bare repo a test pushes into, as if it were GitHub. git strips GIT_CONFIG_COUNT from the receive-pack a
     # local push starts, so Set-TestGitEnvironment can't reach it: the remote gets the setting in its own config.
     if (-not $PSCmdlet.ShouldProcess($Path, 'Create a bare git repo')) { return $Path }
-    git init -q --bare $Path
-    git -C $Path config receive.autoGC false
+    foreach ($arguments in @(('init', '-q', '--bare', $Path), ('-C', $Path, 'config', 'receive.autoGC', 'false'))) {
+        $output = git @arguments 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't make the test remote at ${Path}: $($output.Trim())" }
+    }
     $Path
 }
 
