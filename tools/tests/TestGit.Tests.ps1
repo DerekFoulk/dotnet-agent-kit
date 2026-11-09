@@ -73,19 +73,35 @@ Describe 'TestGit.psm1' {
     }
 
     It 'commits as the fixture, unsigned, whatever this machine''s own git identity and signing are' {
+        # Review of PR 24: author.* and committer.* config, and the GIT_AUTHOR_* and GIT_COMMITTER_* variables, all
+        # rank above user.name, so a machine that sets any of them changed every fixture commit.
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
-        $saved = Set-TestGitEnvironment
+        $machine = @{ GIT_AUTHOR_NAME = 'Env Author'; GIT_AUTHOR_EMAIL = 'env@example.invalid'; GIT_COMMITTER_NAME = 'Env Committer'; GIT_COMMITTER_EMAIL = 'env@example.invalid' }
+        $outer = @{}
+        foreach ($name in $machine.Keys) { $outer[$name] = [Environment]::GetEnvironmentVariable($name); Set-Item -LiteralPath "env:$name" -Value $machine[$name] }
         try {
-            $repo = New-TestRepo
-            # A repo's own config is below the environment's, so it can't win either.
-            git -C $repo config user.name 'someone else'
-            git -C $repo config commit.gpgsign true
-            git -C $repo commit -q --allow-empty -m 'chore: fixture'
+            $saved = Set-TestGitEnvironment
+            try {
+                $repo = New-TestRepo
+                git -C $repo config user.name 'someone else'
+                git -C $repo config author.name 'Config Author'
+                git -C $repo config committer.email 'config@example.invalid'
+                git -C $repo config commit.gpgsign true
+                git -C $repo commit -q --allow-empty -m 'chore: fixture'
 
-            $LASTEXITCODE | Should -Be 0 -Because 'no signing key is needed'
-            git -C $repo log -1 --format='%an <%ae> %cn <%ce>' | Should -Be 'fixture <fixture@example.invalid> fixture <fixture@example.invalid>'
+                $LASTEXITCODE | Should -Be 0 -Because 'no signing key is needed'
+                git -C $repo log -1 --format='%an <%ae> %cn <%ce>' | Should -Be 'fixture <fixture@example.invalid> fixture <fixture@example.invalid>'
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+
+            foreach ($name in $machine.Keys) { [Environment]::GetEnvironmentVariable($name) | Should -Be $machine[$name] -Because "$name comes back" }
         }
-        finally { Restore-TestGitEnvironment -Saved $saved }
+        finally {
+            foreach ($name in $machine.Keys) {
+                if ($null -eq $outer[$name]) { Remove-Item -LiteralPath "env:$name" -ErrorAction SilentlyContinue }
+                else { Set-Item -LiteralPath "env:$name" -Value $outer[$name] }
+            }
+        }
     }
 
     It 'puts back exactly the environment it found, including settings someone else set the same way' {
