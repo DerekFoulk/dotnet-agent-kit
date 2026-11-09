@@ -241,6 +241,31 @@ Describe 'TestGit.psm1' {
         finally { Restore-TestGitEnvironment -Saved $outer }
     }
 
+    It 'gives each run its own empty template directory, private to this account, and removes it after' {
+        # Review 6 of PR 24: one shared path in the temp folder could be made first by another account on Linux,
+        # which could then put a hook or config in it, and two first runs at once collided.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $templates = foreach ($run in 1, 2) {
+            $saved = Set-TestGitEnvironment
+            try {
+                $template = $env:GIT_TEMPLATE_DIR
+                $template | Should -Exist
+                @(Get-ChildItem -LiteralPath $template -Force) | Should -BeNullOrEmpty
+                if (-not $IsWindows) { [IO.File]::GetUnixFileMode($template) | Should -Be ([IO.UnixFileMode] 'UserRead, UserWrite, UserExecute') }
+                $template
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+        }
+
+        $templates[0] | Should -Not -Be $templates[1]
+        $templates | ForEach-Object { $_ | Should -Not -Exist -Because 'Restore removes the run''s template' }
+    }
+
+    It 'adds no second error when Set failed, so the first one is the one people see' {
+        # Review 6 of PR 24: a file's AfterAll then called Restore with nothing, and failed again.
+        { Restore-TestGitEnvironment -Saved $null } | Should -Not -Throw
+    }
+
     It 'starts no file-system monitor daemon for a test repo, even where this machine turns it on' {
         # Review of PR 24: with core.fsmonitor=true, every test repo got a daemon holding handles in TestDrive.
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
