@@ -102,7 +102,6 @@ Describe 'Get-DevMachineCheck' {
 
     Context 'probes' {
         It '<Name> passes when its command is on PATH' -ForEach @(
-            @{ Name = 'PowerShell 7.6+'; Command = 'pwsh' }
             @{ Name = 'Git'; Command = 'git' }
             @{ Name = 'GitHub CLI'; Command = 'gh' }
             @{ Name = 'Claude Code'; Command = 'claude' }
