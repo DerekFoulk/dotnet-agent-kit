@@ -37,7 +37,7 @@ Option 1. The kit should require a supported runtime it actually tests, and 7.6 
 
 ## Decision
 
-Accepted, in auto mode (ADR-0035). The task that started this asked for 7.4 as "the current LTS". Microsoft's lifecycle page shows 7.6 is, and 7.4 retires on 2026-11-10. The owner can reverse this, as with any merged change.
+Accepted as recommended (owner, 2026-11-09: "Keep 7.6"). The task that started this asked for 7.4 as "the current LTS". Microsoft's lifecycle page shows 7.6 is, and 7.4 retires on 2026-11-10.
 
 ## Consequences
 
@@ -56,6 +56,7 @@ Accepted, in auto mode (ADR-0035). The task that started this asked for 7.4 as "
 
 ## Sources
 
+- owner, 2026-11-09
 - https://learn.microsoft.com/powershell/scripting/install/powershell-support-lifecycle, retrieved 2026-11-08
 - https://learn.microsoft.com/windows/package-manager/winget/install, retrieved 2026-11-08
 - https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md, retrieved 2026-11-08
