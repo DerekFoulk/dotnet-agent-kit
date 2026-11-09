@@ -17,10 +17,17 @@ Describe 'commit-msg hook' {
         $script:repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
         $script:hookScript = Join-Path $script:repoRoot '.githooks' 'commit-msg.ps1'
 
+        # git runs a hook from the root of the repo's work tree, and the hook looks there for a merge in
+        # progress. So these checks run it the same way, in a repo of their own with no merge in progress,
+        # never in whatever checkout the tests run from.
+        $script:hookRepo = Join-Path $TestDrive 'hook-repo'
+        $init = git init --quiet $script:hookRepo 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't make the repo the hook runs in: $init" }
+
         function Invoke-Hook([string] $Message) {
             $file = Join-Path $TestDrive "msg-$(New-Guid).txt"
             Set-Content -Path $file -Value $Message -NoNewline
-            $output = pwsh -NoProfile -File $script:hookScript $file 2>&1 | Out-String
+            $output = pwsh -NoProfile -WorkingDirectory $script:hookRepo -File $script:hookScript $file 2>&1 | Out-String
             [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
         }
 
@@ -74,6 +81,25 @@ Describe 'commit-msg hook' {
         It 'checks the first line that is not blank or a comment' {
             (Invoke-Hook "`n# Please enter the commit message`nadd tags`n").ExitCode | Should -Be 1
             (Invoke-Hook "`n# Please enter the commit message`nfeat: add tags`n").ExitCode | Should -Be 0
+        }
+
+        # The hook skips a merge in progress in the repo it runs in. These checks must not depend on the
+        # checkout the tests run from: a kit checkout mid-merge once made every rejection test in this context fail.
+        It 'rejects a bad subject even when the tests run from a checkout with a merge in progress' {
+            $merging = New-HookedRepo
+            Invoke-InRepo $merging commit --quiet --allow-empty --message 'chore: initial' | Out-Null
+            Invoke-InRepo $merging switch --quiet -c side | Out-Null
+            Invoke-InRepo $merging commit --quiet --allow-empty --message 'feat: on the side' | Out-Null
+            Invoke-InRepo $merging switch --quiet main | Out-Null
+            $merge = Invoke-InRepo $merging merge --no-ff --no-commit side
+            $merge.ExitCode | Should -Be 0 -Because $merge.Output
+            Invoke-InRepo $merging rev-parse -q --verify MERGE_HEAD | Select-Object -ExpandProperty ExitCode | Should -Be 0
+
+            Push-Location -LiteralPath $merging
+            try { $result = Invoke-Hook "add tags`n" }
+            finally { Pop-Location }
+
+            $result.ExitCode | Should -Be 1 -Because $result.Output
         }
     }
 
