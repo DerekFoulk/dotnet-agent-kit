@@ -50,9 +50,9 @@ rules:
     statement: "Every public repo runs CodeQL code scanning on its pull requests and on main, over its GitHub Actions workflows and its C#."
     why: "Code scanning finds injection, unsafe deserialization and similar flaws that analyzers and tests miss, and it's free on public repos (GAP-005)."
     layer: owner
-    status: proposed
-    sources: ["ADR-0036", "https://docs.github.com/en/code-security/concepts/code-scanning/codeql/codeql-code-scanning, retrieved 2026-11-07"]
-    enforcement: "ci: codeql.reusable.yml, called from the kit's ci.yml and every app's ci.yml (skipped on private repos); not yet a required check, which is a ruleset change for the owner"
+    status: accepted
+    sources: ["ADR-0036", "https://docs.github.com/en/code-security/concepts/code-scanning/codeql/codeql-code-scanning, retrieved 2026-11-07", "owner, 2026-11-09"]
+    enforcement: "ci: codeql.reusable.yml, called from the kit's ci.yml and every app's ci.yml (skipped on private repos); in the kit, the main ruleset's code scanning rule blocks a merge on a CodeQL error or a security alert high or higher, or while CodeQL hasn't run; apps' rulesets don't have that rule yet"
     scope: core
     paths: [".github/workflows/**", "**/*.cs"]
 ---

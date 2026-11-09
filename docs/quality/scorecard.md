@@ -61,7 +61,7 @@ areas:
     rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, ARC-006]
     gaps:
       - id: GAP-005
-        gap: "No code scanning: CodeQL is free on public repos but isn't set up. Closed by ADR-0036: codeql.reusable.yml runs in the kit's and every public app's CI (SEC-006, proposed)."
+        gap: "No code scanning: CodeQL is free on public repos but isn't set up. Closed by ADR-0036: codeql.reusable.yml runs in the kit's and every public app's CI (SEC-006, accepted 2026-11-09), and the kit's ruleset requires its results before merging."
         status: closed
         needs: "a GitHub Action (CodeQL) and a CI change"
       - id: GAP-006
@@ -77,7 +77,7 @@ areas:
     rules: [ARC-006, OPS-002, OPS-003]
     gaps:
       - id: GAP-007
-        gap: "No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-002, OPS-003 (proposed)."
+        gap: "No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-002, OPS-003 (accepted 2026-11-09)."
         status: closed
         needs: "packages"
       - id: GAP-008
@@ -92,7 +92,7 @@ areas:
     rules: [ARC-006, OPS-001]
     gaps:
       - id: GAP-009
-        gap: "No OpenTelemetry defaults for logs, metrics and traces; plans name observability (ARC-006) but nothing sets it up. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-001 (proposed)."
+        gap: "No OpenTelemetry defaults for logs, metrics and traces; plans name observability (ARC-006) but nothing sets it up. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-001 (accepted 2026-11-09)."
         status: closed
         needs: "packages"
   - id: api-design
@@ -109,7 +109,7 @@ areas:
         gap: "No guidance on choosing an API style: when HTTP APIs, gRPC, SignalR or GraphQL fit. Closed by ADR-0038: API-001 (proposed) and the plan-checklist skill."
         status: closed
       - id: GAP-011
-        gap: "No HTTP API conventions (Problem Details, versioning, pagination) and no guidance on API packages (OpenAPI, Scalar, Asp.Versioning, client generation). Closed by ADR-0038: API-002 to API-006 (proposed), the sample's API and docs/standards/api-design.md."
+        gap: "No HTTP API conventions (Problem Details, versioning, pagination) and no guidance on API packages (OpenAPI, Scalar, Asp.Versioning, client generation). Closed by ADR-0038: API-002 to API-004 (accepted 2026-11-09) and API-005, API-006 (proposed), the sample's API and docs/standards/api-design.md."
         status: closed
   - id: performance
     name: Performance
@@ -209,22 +209,22 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 5 | 2 | 3 | 1 | 1 |
+| Architecture | 6 | 2 | 4 | 0 | 1 |
 | Proportion | 0 | 0 | 0 | 0 | 1 |
-| Code | 4 | 3 | 1 | 2 | 0 |
+| Code | 6 | 5 | 1 | 0 | 0 |
 | Tests | 7 | 4 | 3 | 0 | 1 |
-| Security | 6 | 4 | 2 | 1 | 1 |
-| Reliability | 1 | 0 | 1 | 2 | 1 |
-| Observability | 1 | 0 | 1 | 1 | 0 |
-| API design | 0 | 0 | 0 | 6 | 0 |
+| Security | 7 | 5 | 2 | 0 | 1 |
+| Reliability | 3 | 2 | 1 | 0 | 1 |
+| Observability | 2 | 1 | 1 | 0 | 0 |
+| API design | 3 | 3 | 0 | 3 | 0 |
 | Performance | 1 | 0 | 1 | 0 | 1 |
-| Supply chain and build | 4 | 4 | 0 | 4 | 2 |
+| Supply chain and build | 8 | 8 | 0 | 0 | 2 |
 | Delivery | 1 | 1 | 0 | 0 | 2 |
-| Docs and decisions | 2 | 1 | 1 | 1 | 1 |
+| Docs and decisions | 3 | 2 | 1 | 0 | 1 |
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
-| Process | 14 | 4 | 10 | 2 | 0 |
+| Process | 15 | 5 | 10 | 1 | 0 |
 
-**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 20 proposed; 12 open gaps.
+**Overall:** 56 rules in force, 36 checked by a tool and 20 advisory; 4 proposed; 12 open gaps.
 
 Open gaps:
 

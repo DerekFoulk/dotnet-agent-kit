@@ -32,8 +32,8 @@ rules:
     statement: "Zero warnings: warnings are errors in every build."
     why: "A warning nobody must fix becomes noise that hides the next real one."
     layer: owner
-    status: proposed
-    sources: ["ADR-0009"]
+    status: accepted
+    sources: ["ADR-0009", "owner, 2026-11-09"]
     enforcement: "build: TreatWarningsAsErrors (compiler and NuGet warnings) and MSBuildTreatWarningsAsErrors (MSBuild task warnings); tools/tests/BuildConfig.Tests.ps1"
     scope: core
     paths: ["Directory.Build.props"]
@@ -41,8 +41,8 @@ rules:
     statement: "Nullable reference types are on in every project."
     why: "The compiler then catches null misuse; part of the platinum standard the owner asked for."
     layer: owner
-    status: proposed
-    sources: ["owner, 2026-10-27"]
+    status: accepted
+    sources: ["owner, 2026-10-27", "owner, 2026-11-09"]
     enforcement: "build: Nullable enable; tools/tests/BuildConfig.Tests.ps1 (NullableViolation fixture)"
     scope: core
     paths: ["**/*.cs", "Directory.Build.props"]
@@ -60,10 +60,3 @@ rules:
 # Code style
 
 Microsoft's own conventions, enforced by the build (ADR-0009). The root `.editorconfig` records its sources by commit SHA and retrieval date, and marks every deviation from them with `(kit)`.
-
-## Pending ratification
-
-- **STY-004 (zero warnings):** the brief lists it as proposed (brief §7).
-- **STY-005 (nullable on):** an agent added it under your "platinum standard" request.
-
-Both are already on in `Directory.Build.props`. Accepting them changes nothing in the build. Rejecting one means an ADR and a props change.

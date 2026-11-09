@@ -8,3 +8,4 @@ paths:
 # Code style
 
 - STY-003: Turn on every analyzer rule (AnalysisLevel latest-all); an opt-out needs an ADR.
+- STY-005: Nullable reference types are on in every project.

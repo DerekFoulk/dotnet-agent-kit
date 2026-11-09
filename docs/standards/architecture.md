@@ -68,8 +68,8 @@ rules:
     statement: "Assemblies marked pure (core business logic) use no hidden dependencies: no clock, randomness, file or network access except through injected abstractions."
     why: "Pure logic gives deterministic tests; opt-in per project."
     layer: owner
-    status: proposed
-    sources: ["owner, 2026-11-01"]
+    status: accepted
+    sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     enforcement: "advisory: until the banned-API analyzer for pure assemblies (web profile, after v0.1)"
     scope: core
     paths: ["src/**"]
@@ -78,7 +78,3 @@ rules:
 # Architecture
 
 The defaults are Clean Architecture for web apps, and native MAUI with the MVVM Toolkit and Shell for mobile (ADR-0008). Architecture practice follows the Azure Well-Architected Framework (ADR-0016). Diagrams live as Mermaid in `docs/architecture/` and are updated in the same PR as the change they describe.
-
-## Pending ratification
-
-ARC-008 (pure business logic) came from an agent in one project. The brief recommends keeping it as an opt-in rule (brief §7). It stays `proposed` until you accept it.
