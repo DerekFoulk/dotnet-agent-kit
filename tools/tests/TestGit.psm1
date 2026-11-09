@@ -15,8 +15,9 @@
     fixture commit (New-KitApp.Tests on Windows, PR 23). Restore-TestGitEnvironment puts back what was there before.
     Call the first in a test file's BeforeAll and the second in its AfterAll.
 
-    With no global config, a safe.directory entry there doesn't apply either: a checkout owned by another account
-    makes git stop with "dubious ownership". Run the tests from a checkout of your own.
+    With no global or system config, a safe.directory entry there doesn't apply either: a checkout owned by another
+    account makes git stop with "dubious ownership". Run the tests from a checkout of your own. A test that reads
+    the checkout itself (its file list, say) does so before calling Set-TestGitEnvironment, with its own config.
 
     One exception: for a push or fetch through a local path, git strips GIT_CONFIG_COUNT from the receive-pack or
     upload-pack it starts. Only receive-pack runs maintenance, so New-TestGitRemote makes a bare repo for a test to
