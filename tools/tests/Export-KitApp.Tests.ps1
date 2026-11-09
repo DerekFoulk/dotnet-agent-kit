@@ -478,7 +478,7 @@ Describe 'Export-KitApp' {
         foreach ($level in 1..20) { $deep = "{""k$level"":$deep}" }
         $text = "{""permissions"":{""allow"":[]},""hooks"":$deep}"
 
-        $app = Get-KitAppSettingsText -SettingsText $text -AppTools 'Set-AgentMode.ps1' -WarningAction SilentlyContinue
+        $app = Get-KitAppSettingsText -SettingsText $text -AppTools 'Set-AgentMode.ps1'
 
         ($app | ConvertFrom-Json -AsHashtable -Depth 100 | ConvertTo-Json -Depth 100 -Compress) |
             Should -BeExactly ($text | ConvertFrom-Json -AsHashtable -Depth 100 | ConvertTo-Json -Depth 100 -Compress)

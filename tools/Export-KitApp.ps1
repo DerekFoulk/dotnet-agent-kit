@@ -186,7 +186,8 @@ function Get-KitAppSettingsText {
             $settings['permissions'][$list] = @($settings['permissions'][$list] | Where-Object { -not (Test-KitOnlyRule -Rule $_ -AppTools $AppTools) })
         }
     }
-    "$(($settings | ConvertTo-Json -Depth 10) -replace "`r`n", "`n")`n"
+    # 100 is ConvertTo-Json's maximum.
+    "$(($settings | ConvertTo-Json -Depth 100) -replace "`r`n", "`n")`n"
 }
 
 # Drops the ItemGroup labelled "Sample app", with the comment line above it, from Directory.Packages.props.
