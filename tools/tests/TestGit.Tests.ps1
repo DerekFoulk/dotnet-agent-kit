@@ -668,6 +668,33 @@ Describe 'TestGit.psm1' {
             @(Get-ChildItem -LiteralPath $temp -Force).Name | Should -BeNullOrEmpty -Because 'the scratch repo and its template are removed'
         }
 
+        It 'stops when it can''t copy .gitignore, rather than judging an empty repo' {
+            # Review 2 of the helper: fb87e7f made a failed copy stop, untested.
+            # A failing cmdlet's error is non-terminating unless its caller says -ErrorAction Stop; the mock passes on
+            # whatever the helper says, as Copy-Item itself would.
+            Mock -ModuleName TestGit Copy-Item {
+                $action = if ($PesterBoundParameters.ContainsKey('ErrorAction')) { $PesterBoundParameters['ErrorAction'] } else { 'Continue' }
+                Write-Error 'the copy failed' -ErrorAction $action
+            }
+
+            { Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*the copy failed*'
+        }
+
+        It 'removes its folder even when putting the git variables back fails' {
+            # Review 2 of the helper: fb87e7f made the removal run when Restore throws, untested. The mock puts the
+            # variables back with the real Restore first, so the rest of the run isn't affected.
+            $script:realRestore = Get-Command -Module TestGit -Name Restore-TestGitEnvironment
+            Mock -ModuleName TestGit Restore-TestGitEnvironment { & $script:realRestore @PesterBoundParameters; throw 'putting back failed' }
+            $temp = Join-Path $TestDrive "temp-$(New-Guid)"
+            New-Item -ItemType Directory -Path $temp | Out-Null
+            $outer = @{}
+            foreach ($name in 'TMP', 'TEMP', 'TMPDIR') { $outer[$name] = [Environment]::GetEnvironmentVariable($name); Set-Item -LiteralPath "env:$name" -Value $temp }
+            try { { Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*putting back failed*' }
+            finally { Restore-TestGitEnvironment -Saved $outer }
+
+            @(Get-ChildItem -LiteralPath $temp -Force).Name | Should -BeNullOrEmpty -Because 'the scratch repo is removed'
+        }
+
         It 'stops when the repo has no .gitignore' {
             $saved = Set-TestGitEnvironment
             try { $bare = New-TestRepo }
