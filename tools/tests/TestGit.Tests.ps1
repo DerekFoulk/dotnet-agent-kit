@@ -112,6 +112,36 @@ Describe 'TestGit.psm1' {
         finally { Restore-TestGitEnvironment -Saved $outer }
     }
 
+    It 'keeps this machine''s default ignore and attributes files out of every test repo' {
+        # Review 4 of PR 24: with no global config, git still reads its default per-user files
+        # ($XDG_CONFIG_HOME/git/ignore and git/attributes) and the system attributes file. A ".vscode/" line there
+        # failed 19 Export-KitApp tests, since the fixture's git add skipped the kit's .vscode files.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $xdg = Join-Path $TestDrive "machine-xdg-$(New-Guid)"
+        New-Item -ItemType Directory -Path (Join-Path $xdg 'git') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $xdg 'git' 'ignore'), "machine-ignored.txt`n")
+        [IO.File]::WriteAllText((Join-Path $xdg 'git' 'attributes'), "*.txt probeattr=machine`n")
+        $outer = @{ XDG_CONFIG_HOME = [Environment]::GetEnvironmentVariable('XDG_CONFIG_HOME') }
+        Set-Item -LiteralPath 'env:XDG_CONFIG_HOME' -Value $xdg
+        try {
+            $saved = Set-TestGitEnvironment
+            try {
+                $repo = New-TestRepo
+                git -C $repo check-ignore -q --no-index machine-ignored.txt
+                $LASTEXITCODE | Should -Be 1 -Because 'the machine''s ignore file is left out'
+                git -C $repo check-attr probeattr -- a.txt | Should -Be 'a.txt: probeattr: unspecified' -Because 'the machine''s attributes files are left out'
+                # The system attributes file can't be pointed elsewhere; where it sets an attribute (Git for Windows
+                # gives *.doc diff=astextplain), that attribute mustn't reach a test repo.
+                $system = "$(git var GIT_ATTR_SYSTEM 2>$null)"
+                if ($system -and (Test-Path -LiteralPath $system) -and (Get-Content -Raw -LiteralPath $system) -match '(?m)^\*\.doc\s+diff=astextplain') {
+                    git -C $repo check-attr diff -- probe.doc | Should -Be 'probe.doc: diff: unspecified' -Because 'the machine''s system attributes file is left out'
+                }
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+        }
+        finally { Restore-TestGitEnvironment -Saved $outer }
+    }
+
     It 'starts no file-system monitor daemon for a test repo, even where this machine turns it on' {
         # Review of PR 24: with core.fsmonitor=true, every test repo got a daemon holding handles in TestDrive.
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
