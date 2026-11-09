@@ -5,7 +5,9 @@
 
 .DESCRIPTION
     The app gets the kit's build files, agent files, rules and checking scripts exactly as they are at the
-    chosen commit, so an app pinned to a kit version has that version's files. The files come from a clean
+    chosen commit, so an app pinned to a kit version has that version's files, except .claude/settings.json:
+    its permission rules for kit scripts the app doesn't get (./tools/New-KitApp) are left out, since they could
+    never fire there. The files come from a clean
     checkout of the commit (a temporary git worktree), never from the kit's working tree, so an unfinished
     local edit can't slip into an app.
 
