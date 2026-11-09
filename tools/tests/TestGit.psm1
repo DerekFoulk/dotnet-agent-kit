@@ -145,15 +145,13 @@ function New-TestGitRemote {
     $Path
 }
 
-# The NUL-separated names a git listing (-z) prints, read as UTF-8 apart from anything git writes to stderr (a
-# trace, a warning), which goes into the error only when git fails.
+# The NUL-separated names a git listing (-z, which also leaves names unquoted) prints, read as UTF-8 apart from
+# anything git writes to stderr (a trace, a warning), which goes into the error only when git fails. Its caller,
+# Test-RepoGitIgnore, turns $PSNativeCommandUseErrorActionPreference off, so the exit code is read here.
 function Get-GitListing([string] $RepoRoot, [string[]] $Arguments) {
-    # git's exit code is checked here, so a caller's $PSNativeCommandUseErrorActionPreference mustn't turn it into
-    # an error first.
-    $PSNativeCommandUseErrorActionPreference = $false
     $encoding = [Console]::OutputEncoding
     [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-    try { $output = @(git -C $RepoRoot -c core.quotePath=false @Arguments 2>&1); $code = $LASTEXITCODE }
+    try { $output = @(git -C $RepoRoot @Arguments 2>&1); $code = $LASTEXITCODE }
     finally { [Console]::OutputEncoding = $encoding }
     $errors = @($output | Where-Object { $_ -is [Management.Automation.ErrorRecord] })
     if ($code -ne 0) { throw "git $($Arguments[0]) failed in ${RepoRoot} (exit $code): $(($errors | ForEach-Object { "$_" }) -join ' ')" }

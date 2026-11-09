@@ -729,8 +729,11 @@ Describe 'TestGit.psm1' {
 
         It 'stops when git can''t list the repo''s files, rather than judging the root file alone' {
             # Review 3 of the helper: with the failure ignored, an empty listing would read as "no nested .gitignore".
-            $notRepo = Join-Path $TestDrive "not-a-repo-$(New-Guid)"
+            # A .git file pointing nowhere makes git fail here, even where a repo sits above the temp folder (a home
+            # folder that's a repo, say), which a plain folder would find instead (review 4).
+            $notRepo = Join-Path $TestDrive "broken-repo-$(New-Guid)"
             New-Item -ItemType Directory -Path $notRepo | Out-Null
+            [IO.File]::WriteAllText((Join-Path $notRepo '.git'), "gitdir: $(Join-Path $TestDrive 'no-such-git-dir')`n")
             [IO.File]::WriteAllText((Join-Path $notRepo '.gitignore'), "committed.txt`n")
 
             { Test-RepoGitIgnore -RepoRoot $notRepo -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*ls-files failed*'
