@@ -552,6 +552,23 @@ Describe 'TestGit.psm1' {
         { Test-RepoGitIgnore -RepoRoot $checkout -Path '../outside.txt' } | Should -Throw -ExpectedMessage '*outside repository*'
     }
 
+    It 'stops when the repo commits a .gitignore below the root, which judging the root file alone would miss' {
+        # Review of the helper: a nested .gitignore can un-ignore a path ("!settings.local.json"), and then judging
+        # the root file alone would pass a file that every clone commits.
+        $saved = Set-TestGitEnvironment
+        try {
+            $checkout = New-TestRepo
+            New-Item -ItemType Directory -Path (Join-Path $checkout 'sub') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $checkout '.gitignore'), "*.local.json`n")
+            [IO.File]::WriteAllText((Join-Path $checkout 'sub' '.gitignore'), "!settings.local.json`n")
+            git -C $checkout add .gitignore sub/.gitignore
+            git -C $checkout commit -q -m 'chore: fixture'
+        }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+
+        { Test-RepoGitIgnore -RepoRoot $checkout -Path 'sub/settings.local.json' } | Should -Throw -ExpectedMessage '*sub/.gitignore*'
+    }
+
     It 'commits as the fixture, unsigned, whatever this machine''s own git identity and signing are' {
         # Review of PR 24: author.* and committer.* config, and the GIT_AUTHOR_* and GIT_COMMITTER_* variables, all
         # rank above user.name, so a machine that sets any of them changed every fixture commit.
