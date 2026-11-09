@@ -110,7 +110,27 @@ Describe 'TestGit.psm1' {
             foreach ($name in $Snapshot.Keys) { Set-Item -LiteralPath "env:$name" -Value $Snapshot[$name] }
         }
 
-        function Get-TemplateFolder { @(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'dotnet-agent-kit-git-template-*' | ForEach-Object FullName) }
+        # Makes the last change Set makes fail, once, and records the template folder Set makes; every other
+        # Set-Item runs as normal, Restore's own included. The folder is recorded rather than found by listing
+        # %TEMP%, so another run's folder is never mistaken for this one (review 9 of PR 24).
+        function Use-FailingLastStep {
+            $script:probeFailed = $false
+            $script:madeTemplate = $null
+            Mock -ModuleName TestGit Set-Item { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
+            Mock -ModuleName TestGit Set-Item {
+                $script:madeTemplate = $Value
+                Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters
+            } -ParameterFilter { $LiteralPath -eq 'env:GIT_TEMPLATE_DIR' }
+            Mock -ModuleName TestGit Set-Item {
+                if ($script:probeFailed) { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
+                else { $script:probeFailed = $true; throw 'probe failure' }
+            } -ParameterFilter { $LiteralPath -eq 'env:GIT_CONFIG_COUNT' }
+        }
+
+        # Removes the folder Use-FailingLastStep recorded, if a test left it.
+        function Remove-MadeTemplate {
+            if ($script:madeTemplate -and (Test-Path -LiteralPath $script:madeTemplate)) { Remove-Item -LiteralPath $script:madeTemplate -Recurse -Force }
+        }
 
         function New-TestRepo {
             $repo = Join-Path $TestDrive "repo-$(New-Guid)"
@@ -367,46 +387,35 @@ Describe 'TestGit.psm1' {
     It 'undoes every change when a step after the template fails, and removes the template' {
         # Review 8 of PR 24: the test above fails before Set changes anything, so Set's own undo never ran.
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
-        # The last change Set makes fails, once; every other Set-Item runs as normal, Restore's own included.
-        $script:probeFailed = $false
-        Mock -ModuleName TestGit Set-Item { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
-        Mock -ModuleName TestGit Set-Item {
-            if ($script:probeFailed) { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
-            else { $script:probeFailed = $true; throw 'probe failure' }
-        } -ParameterFilter { $LiteralPath -eq 'env:GIT_CONFIG_COUNT' }
+        Use-FailingLastStep
         $outer = @{ GIT_PROBE_KEEP = $env:GIT_PROBE_KEEP }
         $env:GIT_PROBE_KEEP = 'kept'
         $before = Get-GitVariable
-        $templates = Get-TemplateFolder
         try {
             { Set-TestGitEnvironment } | Should -Throw '*probe failure*'
             $after = Get-GitVariable
             @($after.Keys) | Sort-Object | Should -Be (@($before.Keys) | Sort-Object)
             foreach ($name in $before.Keys) { $after[$name] | Should -Be $before[$name] -Because "$name is as it was" }
-            @(Get-TemplateFolder | Where-Object { $_ -notin $templates }) | Should -BeNullOrEmpty -Because 'the template is removed'
+            $script:madeTemplate | Should -Not -BeNullOrEmpty -Because 'Set got as far as making its template'
+            $script:madeTemplate | Should -Not -Exist -Because 'the template is removed'
         }
-        finally { Set-GitVariable $before; Restore-TestGitEnvironment -Saved $outer }
+        finally { Set-GitVariable $before; Restore-TestGitEnvironment -Saved $outer; Remove-MadeTemplate }
     }
 
-    It 'reports the step that failed, even when putting things back fails too' {
-        # Review 8 of PR 24: an error from the undo in Set's catch replaced the one that caused it.
+    It 'reports the step that failed, and warns when putting things back fails too' {
+        # Review 8 of PR 24: an error from the undo in Set's catch replaced the one that caused it. Review 9: the
+        # warning it now gives was untested, and showed up in every run's output.
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
-        $script:probeFailed = $false
-        Mock -ModuleName TestGit Set-Item { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
-        Mock -ModuleName TestGit Set-Item {
-            if ($script:probeFailed) { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
-            else { $script:probeFailed = $true; throw 'probe failure' }
-        } -ParameterFilter { $LiteralPath -eq 'env:GIT_CONFIG_COUNT' }
+        Use-FailingLastStep
         Mock -ModuleName TestGit Restore-TestGitEnvironment { throw 'restore failure' }
         $before = Get-GitVariable
-        $templates = Get-TemplateFolder
         try {
-            { Set-TestGitEnvironment } | Should -Throw '*probe failure*'
+            $script:setError = $null
+            $warnings = & { try { Set-TestGitEnvironment } catch { $script:setError = $_ } } 3>&1
+            "$script:setError" | Should -BeLike '*probe failure*' -Because 'the step that failed is the error'
+            "$warnings" | Should -BeLike '*restore failure*' -Because 'the failed undo is a warning'
         }
-        finally {
-            Set-GitVariable $before
-            Get-TemplateFolder | Where-Object { $_ -notin $templates } | ForEach-Object { Remove-Item -LiteralPath $_ -Recurse -Force }
-        }
+        finally { Set-GitVariable $before; Remove-MadeTemplate }
     }
 
     It 'adds no second error when Set failed, so the first one is the one people see' {
