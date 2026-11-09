@@ -46,6 +46,37 @@ Describe 'TestGit.psm1' {
         finally { Restore-TestGitEnvironment -Saved $saved }
     }
 
+    It 'keeps this machine''s global and system git config out of every test repo, and puts it back after' {
+        # Review 2 of PR 24: the settings above cover a handful of keys; any other global setting, such as a
+        # core.hooksPath whose commit-msg hook rejects every commit, still reached every test repo.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $hooks = Join-Path $TestDrive "machine-hooks-$(New-Guid)"
+        New-Item -ItemType Directory -Path $hooks | Out-Null
+        [IO.File]::WriteAllText((Join-Path $hooks 'commit-msg'), "#!/bin/sh`necho 'machine hook rejected the commit' >&2`nexit 1`n")
+        $global = Join-Path $TestDrive "machine-global-$(New-Guid).gitconfig"
+        $system = Join-Path $TestDrive "machine-system-$(New-Guid).gitconfig"
+        [IO.File]::WriteAllText($global, "[core]`n`thooksPath = $($hooks -replace '\\', '/')`n[probe]`n`tglobal = machine`n")
+        [IO.File]::WriteAllText($system, "[probe]`n`tsystem = machine`n")
+        $machine = @{ GIT_CONFIG_GLOBAL = $global; GIT_CONFIG_SYSTEM = $system; GIT_CONFIG_NOSYSTEM = $null }
+        $outer = @{}
+        foreach ($name in $machine.Keys) { $outer[$name] = [Environment]::GetEnvironmentVariable($name) }
+        Restore-TestGitEnvironment -Saved $machine
+        try {
+            $saved = Set-TestGitEnvironment
+            try {
+                $repo = New-TestRepo
+                git -C $repo config --get probe.global | Should -BeNullOrEmpty -Because 'the machine''s global config is left out'
+                git -C $repo config --get probe.system | Should -BeNullOrEmpty -Because 'the machine''s system config is left out'
+                git -C $repo commit -q --allow-empty -m 'chore: fixture' 2>&1 | Out-Null
+                $LASTEXITCODE | Should -Be 0 -Because 'the machine''s global hook doesn''t run'
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+
+            foreach ($name in $machine.Keys) { [Environment]::GetEnvironmentVariable($name) | Should -Be $machine[$name] -Because "$name comes back" }
+        }
+        finally { Restore-TestGitEnvironment -Saved $outer }
+    }
+
     It 'starts no file-system monitor daemon for a test repo, even where this machine turns it on' {
         # Review of PR 24: with core.fsmonitor=true, every test repo got a daemon holding handles in TestDrive.
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
