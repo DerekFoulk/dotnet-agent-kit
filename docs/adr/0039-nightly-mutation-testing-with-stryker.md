@@ -31,7 +31,7 @@ Each fact lives in one place, in the kit, which the workflow reads at its own pi
 After Stryker, `tools/Test-MutationReport.ps1` checks the report against one rule: a test may only kill a mutant it ran against. A kill by any other test means that test fails whatever is mutated, so the score is false.
 
 Assessment:
-- **Trade-offs:** TST-004's score is checked for real, and a false score is refused. No app needs a config file or a package; the kit owns the version and the settings. A run takes minutes, which is why it runs nightly rather than on every pull request.
+- **Trade-offs:** TST-004's score is checked for real, and a false score is refused. No app needs a config file or a package; the kit owns the version and the settings. A run takes minutes, which is why apps run it nightly rather than on every pull request, and why it isn't a required check in the kit either, where it also runs on pull requests that can change it.
 - **Reversibility:** easy. It's one workflow, two kit files and one caller per repo.
 - **Risk:** low to medium. The MTP runner is a preview.
 
@@ -78,7 +78,7 @@ Accepted, in auto mode (ADR-0035). Stryker.NET is the tool TST-005 names. The ow
 
 - **Reliability:** tests are checked for whether they'd notice a wrong change, not just whether code ran, and a false score fails the run.
 - **Operational Excellence:** one shared workflow, one version and one settings file, with a report to read when a night fails.
-- **Cost Optimization:** free on public repos' standard runners; nightly keeps it off the pull request path.
+- **Cost Optimization:** free on public repos' standard runners; in apps, nightly keeps it off the pull request path, and in the kit it isn't a required check, so a pull request never waits on it.
 - **Security:** the job has a read-only token, and Stryker is pinned to an exact version that Dependabot updates.
 - **Performance Efficiency:** n/a for the apps themselves.
 
