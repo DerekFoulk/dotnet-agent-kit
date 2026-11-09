@@ -570,6 +570,67 @@ Describe 'TestGit.psm1' {
         { Test-RepoGitIgnore -RepoRoot $checkout -Path 'sub/settings.local.json' } | Should -Throw -ExpectedMessage '*sub/.gitignore*'
     }
 
+    Context 'Test-RepoGitIgnore, in isolation' {
+        # Review of the helper: these held, but no test pinned them; each fails when its line is taken out.
+        BeforeAll {
+            $saved = Set-TestGitEnvironment
+            try {
+                $script:ignoreCheckout = New-TestRepo
+                [IO.File]::WriteAllText((Join-Path $script:ignoreCheckout '.gitignore'), "committed.txt`n")
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+        }
+
+        It 'leaves out this machine''s own ignore file' {
+            $xdg = Join-Path $TestDrive "machine-xdg-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $xdg 'git') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $xdg 'git' 'ignore'), "machine.txt`n")
+            $outer = @{ XDG_CONFIG_HOME = [Environment]::GetEnvironmentVariable('XDG_CONFIG_HOME') }
+            Set-Item -LiteralPath 'env:XDG_CONFIG_HOME' -Value $xdg
+            try { $ignored = Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'machine.txt' }
+            finally { Restore-TestGitEnvironment -Saved $outer }
+
+            $ignored | Should -BeFalse -Because 'only this machine has that ignore file'
+        }
+
+        It 'puts back the caller''s git variables, with or without the test settings around it' {
+            $outer = @{ GIT_PROBE_CALLER = [Environment]::GetEnvironmentVariable('GIT_PROBE_CALLER') }
+            Set-Item -LiteralPath 'env:GIT_PROBE_CALLER' -Value 'kept'
+            try {
+                foreach ($around in $false, $true) {
+                    $saved = if ($around) { Set-TestGitEnvironment } else { $null }
+                    try {
+                        $before = @(Get-ChildItem -Path env: | Where-Object Name -Like 'GIT_*' | ForEach-Object { "$($_.Name)=$($_.Value)" } | Sort-Object)
+                        Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'committed.txt' | Should -BeTrue
+                        $after = @(Get-ChildItem -Path env: | Where-Object Name -Like 'GIT_*' | ForEach-Object { "$($_.Name)=$($_.Value)" } | Sort-Object)
+                        $after | Should -Be $before -Because "the variables come back (test settings around it: $around)"
+                    }
+                    finally { Restore-TestGitEnvironment -Saved $saved }
+                }
+            }
+            finally { Restore-TestGitEnvironment -Saved $outer }
+        }
+
+        It 'removes the folder it judges in' {
+            $temp = Join-Path $TestDrive "temp-$(New-Guid)"
+            New-Item -ItemType Directory -Path $temp | Out-Null
+            $outer = @{}
+            foreach ($name in 'TMP', 'TEMP', 'TMPDIR') { $outer[$name] = [Environment]::GetEnvironmentVariable($name); Set-Item -LiteralPath "env:$name" -Value $temp }
+            try { Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'committed.txt' | Should -BeTrue }
+            finally { Restore-TestGitEnvironment -Saved $outer }
+
+            @(Get-ChildItem -LiteralPath $temp -Force).Name | Should -BeNullOrEmpty -Because 'the scratch repo and its template are removed'
+        }
+
+        It 'stops when the repo has no .gitignore' {
+            $saved = Set-TestGitEnvironment
+            try { $bare = New-TestRepo }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+
+            { Test-RepoGitIgnore -RepoRoot $bare -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*no .gitignore*'
+        }
+    }
+
     It 'commits as the fixture, unsigned, whatever this machine''s own git identity and signing are' {
         # Review of PR 24: author.* and committer.* config, and the GIT_AUTHOR_* and GIT_COMMITTER_* variables, all
         # rank above user.name, so a machine that sets any of them changed every fixture commit.
