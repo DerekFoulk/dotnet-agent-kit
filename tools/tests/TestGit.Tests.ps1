@@ -269,6 +269,29 @@ Describe 'TestGit.psm1' {
         $templates | ForEach-Object { $_ | Should -Not -Exist -Because 'Restore removes the run''s template' }
     }
 
+    It 'removes the template its own Set made, whatever GIT_TEMPLATE_DIR says by then, and never another folder' {
+        # Review 7 of PR 24: Restore removed the folder GIT_TEMPLATE_DIR named at Restore time, so a test that
+        # changed it, or Restores out of order, left the module's folder behind.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $foreign = Join-Path $TestDrive "foreign-template-$(New-Guid)"
+        New-Item -ItemType Directory -Path $foreign | Out-Null
+
+        $saved = Set-TestGitEnvironment
+        $own = $env:GIT_TEMPLATE_DIR
+        $env:GIT_TEMPLATE_DIR = $foreign
+        Restore-TestGitEnvironment -Saved $saved
+        $own | Should -Not -Exist -Because 'Restore removes the folder its Set made'
+        $foreign | Should -Exist -Because 'Restore never removes a folder it didn''t make'
+
+        $first = Set-TestGitEnvironment
+        $firstTemplate = $env:GIT_TEMPLATE_DIR
+        $second = Set-TestGitEnvironment
+        $secondTemplate = $env:GIT_TEMPLATE_DIR
+        Restore-TestGitEnvironment -Saved $first
+        Restore-TestGitEnvironment -Saved $second
+        $firstTemplate, $secondTemplate | ForEach-Object { $_ | Should -Not -Exist -Because 'Restores out of order still remove each folder' }
+    }
+
     It 'changes nothing when Set fails, so the caller''s git variables are still there' {
         # Review 7 of PR 24: Set removed the inherited variables before making the template; when that threw, the
         # caller never got what Set saved, so the variables were gone for the rest of the session.
