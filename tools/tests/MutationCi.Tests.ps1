@@ -4,10 +4,13 @@
 # Mutation testing (GAP-003, TST-004's 85% score, ADR-0039). A shared workflow runs Stryker.NET over a solution
 # and fails when the mutation score is below 85%. The kit runs it nightly; apps get the same nightly caller.
 
+# At file level, like every file's TestGit setup: a -Force re-import inside a Describe would reset the module's
+# record of the template folders a file-level Set made, and Restore would leave them behind.
+BeforeAll { Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force }
+
 Describe 'Mutation testing in CI' {
     BeforeAll {
         Import-Module powershell-yaml
-        Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
         $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
 
         function Read-Yaml([string] $RelativePath) {

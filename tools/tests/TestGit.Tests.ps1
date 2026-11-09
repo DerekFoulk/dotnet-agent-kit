@@ -521,7 +521,7 @@ Describe 'TestGit.psm1' {
         @($byHand.Name) | Should -BeNullOrEmpty -Because 'New-TestGitRemote gives a remote the settings a push needs'
     }
 
-    It 'judges a path ignored only by the checkout''s .gitignore files, never by its own .git/info/exclude' {
+    It 'judges a path by the checkout''s root .gitignore, never by its own .git/info/exclude' {
         # Review of PR 28: a path in this clone's .git/info/exclude, which no other clone or app has, made the
         # kit's ignore tests pass for a line missing from .gitignore.
         Get-Command Test-RepoGitIgnore -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
