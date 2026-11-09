@@ -583,6 +583,29 @@ Describe 'TestGit.psm1' {
         { Test-RepoGitIgnore -RepoRoot $checkout -Path 'sub/settings.local.json' } | Should -Throw -ExpectedMessage '*sub/.gitignore*'
     }
 
+    It 'names a nested .gitignore exactly, spaces and accents included' {
+        # Review 3 of the helper: git writes names as UTF-8, and a console on another code page would garble them.
+        $folder = "$([char] 0xE9) dir"
+        $saved = Set-TestGitEnvironment
+        try {
+            $checkout = New-TestRepo
+            New-Item -ItemType Directory -Path (Join-Path $checkout $folder) | Out-Null
+            [IO.File]::WriteAllText((Join-Path $checkout '.gitignore'), "x`n")
+            [IO.File]::WriteAllText((Join-Path $checkout $folder '.gitignore'), "y`n")
+            git -C $checkout add -A
+            git -C $checkout commit -q -m 'chore: fixture'
+        }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+
+        # A console on another code page, whatever this run's is (Pester's own may already be UTF-8).
+        $encoding = [Console]::OutputEncoding
+        [Console]::OutputEncoding = [Text.Encoding]::Latin1
+        try { $message = try { Test-RepoGitIgnore -RepoRoot $checkout -Path 'x' | Out-Null; 'nothing thrown' } catch { $_.Exception.Message } }
+        finally { [Console]::OutputEncoding = $encoding }
+
+        $message.Contains("$folder/.gitignore") | Should -BeTrue -Because "the message names it exactly: $message"
+    }
+
     It 'reads the repo''s own files whatever git variable the caller has set (<Name>)' -ForEach @(
         @{ Name = 'GIT_LITERAL_PATHSPECS'; Value = '1' }
         @{ Name = 'GIT_INDEX_FILE'; Value = 'missing-index' }
