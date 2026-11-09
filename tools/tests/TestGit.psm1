@@ -9,7 +9,9 @@
     - no git config, ignore or attributes file from this machine: no global or system config
       (GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM), no system attributes (GIT_ATTR_NOSYSTEM), and the
       default per-user ignore and attributes files replaced by an empty one (core.excludesFile and
-      core.attributesFile below). A global hook, or a ".vscode/" line in ~/.config/git/ignore, can't change a test;
+      core.attributesFile below). Nor a template directory (GIT_TEMPLATE_DIR points at an empty one), nor config
+      handed down from a parent git (GIT_CONFIG_PARAMETERS removed, GIT_CONFIG_COUNT replaced). A global hook, a
+      team template, or a ".vscode/" line in ~/.config/git/ignore, can't change a test;
     - the fixture identity, in GIT_AUTHOR_* and GIT_COMMITTER_*, which outrank every identity config key;
     - the rest through GIT_CONFIG_COUNT, GIT_CONFIG_KEY_<n> and GIT_CONFIG_VALUE_<n>, which outrank a repo's own
       config too: no signing, no background maintenance, no file-system monitor, those empty ignore and
