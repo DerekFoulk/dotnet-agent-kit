@@ -4,8 +4,9 @@
     Switches how agents work in this repo: auto (the default) or review (ADR-0035).
 
 .DESCRIPTION
-    Auto: the agent plans, builds and merges its own pull requests and Dependabot's patch and minor updates
-    (ADR-0041), and asks only for the hard limits in AGENTS.md ("Working modes"). Review: the owner approves plans and merges each PR, as before ADR-0035.
+    Auto: the agent plans, builds and merges its own pull requests and Dependabot's patch and minor
+    updates (ADR-0041), and asks only for the hard limits in AGENTS.md ("Working modes"). Review: the owner
+    approves plans and merges each PR, as before ADR-0035.
 
     Review mode writes "review" to .agent-mode (gitignored), which every agent reads, and adds ask rules to the
     owner's own .claude/settings.local.json, so Claude Code asks before merging a PR, editing build or CI files,

@@ -52,10 +52,11 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
   - this skill or `.claude/agents/reviewer.md`;
   - a ruleset, branch protection or the merge settings;
   - a CI check, if removed or weakened;
-  - the Dependabot cooldown in `.github/dependabot.yml`, if shortened.
+  - the Dependabot cooldown in `.github/dependabot.yml`, if shortened or narrowed (an `exclude` or `include` list).
 
   A PR that changes any of them is the owner's to merge.
 - **If it's Dependabot's, it's only a patch or minor update of NuGet packages, .NET tools or the .NET SDK** (ADR-0041). All of these must hold, or the PR is the owner's to merge:
+  - **GitHub says it's Dependabot's.** `gh pr view <n> --json author,isCrossRepository,headRefName` shows the author `app/dependabot`, `isCrossRepository` false, and a head branch starting `dependabot/`. A title or a commit author alone proves nothing: anyone can set them.
   - **The version change is a patch or minor.** Read it in the title and in the diff of `Directory.Packages.props`, `.config/dotnet-tools.json` or `global.json`. A major update, a GitHub Actions bump, a grouped PR with any major in it, or one you can't classify is the owner's. A minor of a 0.x package (0.13 → 0.14) counts as a major, since SemVer lets it break anything. For the SDK, the third number holds the feature band: 10.0.403 → 10.0.500 is a minor, and 10.x → 11.x a major.
   - **It changes only those files and `packages.lock.json` files, and every commit is Dependabot's or the lock-file workflow's** (`github-actions[bot]`). Check with `gh pr view <n> --json files,commits`.
   - **You've read the new version's release notes and checked its license and deprecation status.** A license change, new telemetry, or new build-time behavior (MSBuild targets, analyzers, source generators) makes it the owner's.

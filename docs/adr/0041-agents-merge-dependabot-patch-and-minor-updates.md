@@ -17,7 +17,7 @@ Auto mode lets an agent merge only its own PR (ADR-0035, AGENTS.md "Working mode
 
 Two risks set the limits:
 - **A version that changes behavior.** SemVer (major.minor.patch) promises that only a major version breaks things, but a minor or patch update can still change behavior. Tests, the coverage gate and mutation testing catch most of this.
-- **A compromised release.** A hijacked package or Action that otherwise works normally passes every test. Waiting a few days before a version is even proposed gives others time to find and pull a bad release. Dependabot already waits 3 days before proposing a version update, even when `cooldown` isn't configured. Its `cooldown` option sets other waits, in general or for majors alone. Security updates never wait. An Action is the more sensitive case, because it runs inside CI with the repo's permissions.
+- **A compromised release.** A hijacked package or Action that otherwise works normally passes every test. Waiting a few days before a version is even proposed gives others time to find and pull a bad release. Dependabot already waits 3 days before proposing a version update, even when `cooldown` isn't configured. Its `cooldown` option sets other waits: a default, and one each for major, minor and patch updates, with `include` and `exclude` lists that limit which dependencies wait. Security updates never wait. An Action is the more sensitive case, because it runs inside CI with the repo's permissions.
 
 The owner asked for more information, weighed four options, and chose Option C (2026-11-09).
 
@@ -68,11 +68,11 @@ The owner chose Option C on 2026-11-09 ("Option C it is"), after asking for more
 ## Consequences
 
 - AGENTS.md "Working modes" lets an agent in auto mode merge a Dependabot PR for a patch or minor update of a NuGet package, a .NET tool or the .NET SDK. It does so on its own PR's conditions plus DOD-006's comment at the head commit. A major update, a GitHub Actions bump, or a PR mixing either with anything else stays the owner's. Review mode doesn't change: the owner merges every PR.
-- The `finish-work` skill's step 5 says the same, and tells how to tell the update type from Dependabot's own PR: the title and the version change. A minor of a 0.x package counts as a major, since SemVer lets it break anything. For the SDK, a new feature band (10.0.403 → 10.0.500) is a minor. The PR must change only the manifests and lock files, in commits by Dependabot or the lock-file workflow. The agent reads the new version's release notes and checks its license and deprecation status; a license change, new telemetry or new build-time behavior makes the PR the owner's. The `reviewer` agent checks the same.
-- Shortening the cooldown in `.github/dependabot.yml` joins the guardrails, so an agent can't loosen the wait and merge that change itself.
+- The `finish-work` skill's step 5 says the same, and tells how to tell the update type from Dependabot's own PR: the title and the version change. A minor of a 0.x package counts as a major, since SemVer lets it break anything. For the SDK, a new feature band (10.0.403 → 10.0.500) is a minor. GitHub must show the PR as Dependabot's (its author, not a fork, a `dependabot/` branch), since a title or commit author can be set by anyone. The PR must change only the manifests and lock files, in commits by Dependabot or the lock-file workflow. The agent reads the new version's release notes and checks its license and deprecation status; a license change, new telemetry or new build-time behavior makes the PR the owner's. The `reviewer` agent checks the same.
+- Shortening the cooldown in `.github/dependabot.yml`, or narrowing it with an `exclude` or `include` list, joins the guardrails, so an agent can't loosen the wait and merge that change itself. The test rejects both lists.
 - `.github/dependabot.yml` gives every ecosystem `cooldown: default-days: 7`, and NuGet and the SDK `semver-major-days: 14`. The app template does the same for NuGet. `tools/tests/Dependabot.Tests.ps1` checks both.
 - DOD-006 is accepted. DOD-004, AGENTS.md "Done means" (kit and app template), "Working modes" and `finish-work` steps 4 and 5 now point a bot's PR to it.
-- This amends ADR-0035: auto mode's merge rights now include these Dependabot PRs, not only the agent's own.
+- This amends ADR-0035: auto mode's merge rights now include these Dependabot PRs, not only the agent's own, and its guardrails include the cooldown.
 - What gets harder: an agent must read the version change correctly. A grouped Dependabot PR, which bumps several packages, counts as major if any one bump is major. If the agent can't tell, the PR is the owner's.
 
 ## Pillars affected
