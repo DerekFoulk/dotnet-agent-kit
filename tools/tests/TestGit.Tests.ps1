@@ -117,9 +117,11 @@ Describe 'TestGit.psm1' {
             $script:probeFailed = $false
             $script:madeTemplate = $null
             Mock -ModuleName TestGit Set-Item { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
-            # Only Set's own write, its first: Restore writes the caller's folder back the same way (review 10).
+            # Only a write Set itself makes, never Restore's: Restore writes the caller's folder back the same way, from
+            # Set's undo or a test's own cleanup (reviews 10 and 11).
             Mock -ModuleName TestGit Set-Item {
-                if ($null -eq $script:madeTemplate) { $script:madeTemplate = $Value }
+                $callers = @(Get-PSCallStack | ForEach-Object Command)
+                if ($callers -contains 'Set-TestGitEnvironment' -and $callers -notcontains 'Restore-TestGitEnvironment') { $script:madeTemplate = $Value }
                 Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters
             } -ParameterFilter { $LiteralPath -eq 'env:GIT_TEMPLATE_DIR' }
             Mock -ModuleName TestGit Set-Item {
@@ -414,8 +416,31 @@ Describe 'TestGit.psm1' {
         }
         finally {
             Set-GitVariable $before; Restore-TestGitEnvironment -Saved $outer; Remove-MadeTemplate
-            Join-Path $theirs 'keep.txt' | Should -Exist -Because 'the caller''s own template folder is never touched'
         }
+        # After the cleanup, not in it, so a failure above keeps its own message (review 11 of PR 24).
+        Join-Path $theirs 'keep.txt' | Should -Exist -Because 'the caller''s own template folder is never touched'
+    }
+
+    It 'has a test cleanup that removes only the module''s own template folders, directly in the temp folder' {
+        # Review 11 of PR 24: nothing pinned Remove-MadeTemplate's guard, the backstop if a recording is ever wrong.
+        $temp = Join-Path $TestDrive "temp-$(New-Guid)"
+        New-Item -ItemType Directory -Path $temp | Out-Null
+        $outer = @{ TMP = $env:TMP; TEMP = $env:TEMP; TMPDIR = $env:TMPDIR }
+        Restore-TestGitEnvironment -Saved @{ TMP = $temp; TEMP = $temp; TMPDIR = $temp }
+        try {
+            $otherName = New-Item -ItemType Directory -Path (Join-Path $temp 'someone-elses-folder')
+            $otherPlace = New-Item -ItemType Directory -Path (Join-Path $TestDrive "dotnet-agent-kit-git-template-$(New-Guid)")
+            $own = New-Item -ItemType Directory -Path (Join-Path $temp "dotnet-agent-kit-git-template-$(New-Guid)")
+            foreach ($folder in $otherName, $otherPlace) {
+                $script:madeTemplate = $folder.FullName
+                Remove-MadeTemplate
+                $folder.FullName | Should -Exist -Because 'it isn''t one of the module''s own'
+            }
+            $script:madeTemplate = $own.FullName
+            Remove-MadeTemplate
+            $own.FullName | Should -Not -Exist
+        }
+        finally { $script:madeTemplate = $null; Restore-TestGitEnvironment -Saved $outer }
     }
 
     It 'reports the step that failed, and warns when putting things back fails too' {
