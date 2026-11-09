@@ -67,13 +67,14 @@ function Set-TestGitEnvironment {
     [OutputType([hashtable])]
     param()
 
-    # Settings already given this way are kept, ahead of the test's own, and come back with Restore-TestGitEnvironment.
+    # Settings a parent process already gave this way are replaced, since they come from outside the test too;
+    # Restore-TestGitEnvironment brings them back.
     $existing = 0
     [void] [int]::TryParse([Environment]::GetEnvironmentVariable('GIT_CONFIG_COUNT'), [ref] $existing)
-    $count = $existing + $script:Settings.Count
+    $count = $script:Settings.Count
 
     $saved = @{}
-    foreach ($name in @(Get-GitConfigVariableName $count) + $script:Variables.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+    foreach ($name in @(Get-GitConfigVariableName ([Math]::Max($existing, $count))) + $script:Variables.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 
     $template = $script:Variables['GIT_TEMPLATE_DIR']
     if (-not (Test-Path -LiteralPath $template)) { New-Item -ItemType Directory -Path $template | Out-Null }
@@ -84,7 +85,7 @@ function Set-TestGitEnvironment {
         if ($null -eq $variable.Value) { Remove-Item -LiteralPath "env:$($variable.Key)" -ErrorAction SilentlyContinue }
         else { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
     }
-    $i = $existing
+    $i = 0
     foreach ($setting in $script:Settings.GetEnumerator()) {
         Set-Item -LiteralPath "env:GIT_CONFIG_KEY_$i" -Value $setting.Key
         Set-Item -LiteralPath "env:GIT_CONFIG_VALUE_$i" -Value $setting.Value
