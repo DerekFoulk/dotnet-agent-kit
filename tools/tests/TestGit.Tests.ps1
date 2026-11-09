@@ -521,6 +521,28 @@ Describe 'TestGit.psm1' {
         @($byHand.Name) | Should -BeNullOrEmpty -Because 'New-TestGitRemote gives a remote the settings a push needs'
     }
 
+    It 'judges a path ignored only by the checkout''s .gitignore files, never by its own .git/info/exclude' {
+        # Review of PR 28: a path in this clone's .git/info/exclude, which no other clone or app has, made the
+        # kit's ignore tests pass for a line missing from .gitignore.
+        Get-Command Test-RepoGitIgnore -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $saved = Set-TestGitEnvironment
+        try {
+            $checkout = New-TestRepo
+            [IO.File]::WriteAllText((Join-Path $checkout '.gitignore'), "committed.txt`n")
+            git -C $checkout add .gitignore
+            git -C $checkout commit -q -m 'chore: fixture'
+            # An edit not committed yet counts: it's what the next commit will carry.
+            [IO.File]::AppendAllText((Join-Path $checkout '.gitignore'), "edited.txt`n")
+            New-Item -ItemType Directory -Path (Join-Path $checkout '.git' 'info') -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $checkout '.git' 'info' 'exclude'), "local.txt`n")
+        }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+
+        Test-RepoGitIgnore -RepoRoot $checkout -Path 'committed.txt' | Should -BeTrue
+        Test-RepoGitIgnore -RepoRoot $checkout -Path 'edited.txt' | Should -BeTrue
+        Test-RepoGitIgnore -RepoRoot $checkout -Path 'local.txt' | Should -BeFalse -Because 'only this clone has .git/info/exclude'
+    }
+
     It 'commits as the fixture, unsigned, whatever this machine''s own git identity and signing are' {
         # Review of PR 24: author.* and committer.* config, and the GIT_AUTHOR_* and GIT_COMMITTER_* variables, all
         # rank above user.name, so a machine that sets any of them changed every fixture commit.
