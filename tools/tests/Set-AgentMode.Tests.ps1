@@ -208,6 +208,8 @@ Describe 'Set-AgentMode.ps1' {
             $report = pwsh -NoProfile -File $script -RepoRoot $root 2>&1 | Out-String
 
             $report | Should -Match 'Dependabot''s patch and minor updates'
+            # Review 3 of PR 33: without the scope, an app that adds github-actions could read Actions bumps in.
+            $report | Should -Match 'of NuGet packages, \.NET tools and the SDK'
         }
     }
 }
