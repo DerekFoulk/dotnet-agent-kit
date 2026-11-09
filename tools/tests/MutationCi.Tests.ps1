@@ -65,7 +65,7 @@ Describe 'Mutation testing in CI' {
             @($on['pull_request']['paths-ignore']).Count | Should -BeGreaterThan 0
         }
 
-        It 'never ignores a file the mutation run reads: the solution''s projects, the root build files, the kit files the workflow calls' {
+        It 'never ignores a file the mutation run reads: the solution''s projects, every build file between them and the root, the kit files the workflow calls' {
             $read = [System.Collections.Generic.List[string]]::new()
             $read.Add('.github/workflows/mutation.yml')
             $read.Add('.github/workflows/mutation.reusable.yml')
@@ -75,15 +75,27 @@ Describe 'Mutation testing in CI' {
             # Paths as git writes them, with '/', on every OS; Split-Path would give '\' on Windows (review 7 of PR 23:
             # the walk below then missed every folder past the first). '' is the repo root.
             function Get-GitParent([string] $Path) { $at = $Path.LastIndexOf('/'); if ($at -lt 0) { '' } else { $Path.Substring(0, $at) } }
-            # Every tracked file in a folder and below; the folder is literal, so [, * or ? in a name stay plain.
-            function Get-TrackedFile([string] $Folder) { if ($Folder) { git -C $root ls-files -- ":(literal)$Folder" } else { git -C $root ls-files } }
+            # Every tracked file in a folder and below. The folder is literal, so [, * or ? in a name stay plain. Paths
+            # come NUL-separated, unquoted and read as UTF-8, so a name like café/ or one with a quote isn't escaped
+            # out of reach of the patterns (review 8 of PR 23).
+            function Get-TrackedFile([string] $Folder) {
+                $spec = if ($Folder) { @('--', ":(literal)$Folder") } else { @() }
+                $encoding = [Console]::OutputEncoding
+                try {
+                    [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+                    $listing = (git -C $root -c core.quotePath=false ls-files -z @spec) -join ''
+                }
+                finally { [Console]::OutputEncoding = $encoding }
+                $listing.Split([char] 0, [StringSplitOptions]::RemoveEmptyEntries)
+            }
 
             # The solution, and every tracked file in each of its projects' folders: Stryker builds and mutates them.
             # A project at the repo root reads every tracked file.
             $solution = [string] @($kit.Yaml['jobs'].Values)[0]['with']['solution']
             $read.Add($solution)
             $projectFolders = foreach ($project in ([xml] (Get-Content -Raw (Join-Path $root $solution))).SelectNodes('//Project')) {
-                Get-GitParent ($project.Path -replace '\\', '/')
+                # As git writes it: '/' throughout, and no leading './' (review 8 of PR 23).
+                Get-GitParent (($project.Path -replace '\\', '/') -replace '^(\./)+', '')
             }
             foreach ($folder in $projectFolders) { Get-TrackedFile $folder | ForEach-Object { $read.Add($_) } }
             # What dotnet, MSBuild and the analyzers find by themselves on the way from each project up to the repo
@@ -104,7 +116,8 @@ Describe 'Mutation testing in CI' {
 
             $patterns = Get-IgnorePattern
             $read.Count | Should -BeGreaterThan 50 -Because 'the sample alone has more tracked files than that'
-            foreach ($file in ($read | Sort-Object -Unique)) {
+            # Case-exact, as the patterns are: a.cs and A.cs are two files (review 8 of PR 23).
+            foreach ($file in ($read | Sort-Object -Unique -CaseSensitive)) {
                 @($patterns | Where-Object { $file -cmatch $_ }) | Should -BeNullOrEmpty -Because "the mutation run reads $file"
             }
         }
