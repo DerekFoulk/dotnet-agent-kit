@@ -51,6 +51,8 @@ Accepted (owner, 2026-11-07: "Yes, set it up… default to the auto mode", and k
 
 ## Consequences
 
+- **Amended by ADR-0041 (2026-11-09):** in auto mode an agent may also merge a Dependabot PR for a patch or minor update of NuGet packages, .NET tools or the .NET SDK, on its own PR's conditions plus DOD-006's comment; majors and GitHub Actions bumps stay the owner's.
+
 - **`AGENTS.md`** gets a "Working modes" section, an "Always ask" list for both modes, and an "Also ask in review mode" list. The "Always ask" list covers:
   - cost and cloud resources;
   - deleting or rewriting anything on GitHub, and unmerged work;
