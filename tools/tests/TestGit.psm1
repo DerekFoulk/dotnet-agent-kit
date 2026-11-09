@@ -1,24 +1,27 @@
-#Requires -Version 7.0
+#Requires -Version 7.4
 <#
 .SYNOPSIS
     The git settings every repo a test makes runs with (TestGit.Tests.ps1).
 
 .DESCRIPTION
     Set-TestGitEnvironment sets them in the environment, so they reach the scripts under test and the processes
-    they start:
-    - no git config, ignore or attributes file from this machine: no global or system config
-      (GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM), no system attributes (GIT_ATTR_NOSYSTEM), and the
-      default per-user ignore and attributes files replaced by an empty one (core.excludesFile and
-      core.attributesFile below). Nor a template directory (GIT_TEMPLATE_DIR points at an empty one), nor config
-      handed down from a parent git (GIT_CONFIG_PARAMETERS removed, GIT_CONFIG_COUNT replaced). A global hook, a
-      team template, or a ".vscode/" line in ~/.config/git/ignore, can't change a test;
-    - the fixture identity, in GIT_AUTHOR_* and GIT_COMMITTER_*, which outrank every identity config key;
-    - the rest through GIT_CONFIG_COUNT, GIT_CONFIG_KEY_<n> and GIT_CONFIG_VALUE_<n>, which outrank a repo's own
-      config too: no signing, no background maintenance, no file-system monitor, those empty ignore and
-      attributes files.
-    A fixture commit once started git's background maintenance, whose repack raced the test's next lookups of the
-    fixture commit (New-KitApp.Tests on Windows, PR 23). Restore-TestGitEnvironment puts back what was there before.
-    Call the first in a test file's BeforeAll and the second in its AfterAll.
+    they start. Restore-TestGitEnvironment puts back what was there before. Call the first in a test file's
+    BeforeAll and the second in its AfterAll.
+    - Nothing git reads from the parent environment: every GIT_* variable is removed while tests run (GIT_CONFIG,
+      GIT_DIR, GIT_DEFAULT_HASH, GIT_CONFIG_PARAMETERS, GIT_CONFIG_COUNT, a date...). Only GIT_TRACE* stays, which
+      records what git does without changing it.
+    - No git config, ignore or attributes file from this machine: no global or system config
+      (GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM), no system attributes (GIT_ATTR_NOSYSTEM), and the default
+      per-user ignore and attributes files replaced by an empty one (core.excludesFile and core.attributesFile).
+    - No template: GIT_TEMPLATE_DIR points at an empty directory of this run's own, private to this account, which
+      Restore removes. A test repo's .git so has no sample hooks, info/exclude or description; nothing here uses
+      them.
+    - The fixture identity, in GIT_AUTHOR_* and GIT_COMMITTER_*, which outrank every identity config key.
+    - The rest through GIT_CONFIG_COUNT, GIT_CONFIG_KEY_<n> and GIT_CONFIG_VALUE_<n>, which outrank a repo's own
+      config too: no signing, no background maintenance, no file-system monitor.
+    So a global hook, a team template, or a ".vscode/" line in ~/.config/git/ignore can't change a test. A fixture
+    commit once started git's background maintenance, whose repack raced the test's next lookups of the fixture
+    commit (New-KitApp.Tests on Windows, PR 23).
 
     With no global or system config, a safe.directory entry there doesn't apply either: a checkout owned by another
     account makes git stop with "dubious ownership". Run the tests from a checkout of your own. A test that reads
@@ -41,22 +44,22 @@ $script:Variables = [ordered]@{
     GIT_CONFIG_NOSYSTEM = '1'
     # Nor the system attributes file, which GIT_CONFIG_NOSYSTEM doesn't cover.
     GIT_ATTR_NOSYSTEM   = '1'
-    # Nor a template directory: git init would copy its hooks, info/exclude and config into every repo. An empty
-    # one, since git warns about a missing one.
-    GIT_TEMPLATE_DIR    = Join-Path ([IO.Path]::GetTempPath()) 'dotnet-agent-kit-empty-git-template'
 }
 
 $script:Settings = [ordered]@{
-    'commit.gpgsign'   = 'false'
-    'tag.gpgsign'      = 'false'
-    'maintenance.auto' = 'false'
-    'gc.auto'          = '0'
-    'core.fsmonitor'   = 'false' # a daemon per repo, holding handles in TestDrive
+    'commit.gpgsign'      = 'false'
+    'tag.gpgsign'         = 'false'
+    'maintenance.auto'    = 'false'
+    'gc.auto'             = '0'
+    'core.fsmonitor'      = 'false' # a daemon per repo, holding handles in TestDrive
     # With no global config, git would still read its default per-user files, $XDG_CONFIG_HOME/git/ignore and
     # git/attributes; pointing these at an empty file leaves those out too.
     'core.excludesFile'   = '/dev/null'
     'core.attributesFile' = '/dev/null'
 }
+
+# The template directories this module made, so Restore removes only its own.
+$script:Templates = [System.Collections.Generic.HashSet[string]]::new()
 
 function Get-GitConfigVariableName([int] $Count) {
     'GIT_CONFIG_COUNT'
@@ -67,21 +70,21 @@ function Set-TestGitEnvironment {
     [OutputType([hashtable])]
     param()
 
-    # Every git variable the parent environment has is removed while tests run, since each one comes from outside
-    # the test (GIT_CONFIG, GIT_DIR, GIT_DEFAULT_HASH, GIT_CONFIG_PARAMETERS, a date...). Only git's GIT_TRACE*
-    # variables stay: they record what git does without changing it. Restore-TestGitEnvironment brings back all.
     $inherited = @(Get-ChildItem -Path env: | Where-Object { $_.Name -like 'GIT_*' -and $_.Name -notlike 'GIT_TRACE*' } | ForEach-Object Name)
     $count = $script:Settings.Count
 
     $saved = @{}
-    foreach ($name in $inherited + @(Get-GitConfigVariableName $count) + $script:Variables.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+    foreach ($name in $inherited + @(Get-GitConfigVariableName $count) + $script:Variables.Keys + 'GIT_TEMPLATE_DIR') {
+        $saved[$name] = [Environment]::GetEnvironmentVariable($name)
+    }
     foreach ($name in $inherited) { Remove-Item -LiteralPath "env:$name" }
 
-    $template = $script:Variables['GIT_TEMPLATE_DIR']
-    if (-not (Test-Path -LiteralPath $template)) { New-Item -ItemType Directory -Path $template | Out-Null }
-    if (@(Get-ChildItem -LiteralPath $template -Force).Count -gt 0) {
-        throw "$template should be empty: it's the test repos' git template, and anything in it reaches every one."
-    }
+    # A new, uniquely named directory, made in one step and private to this account (0700 on Linux and macOS):
+    # nobody else can make it first or put a hook or config in it, and two runs at once can't collide.
+    $template = [IO.Directory]::CreateTempSubdirectory('dotnet-agent-kit-git-template-').FullName
+    [void] $script:Templates.Add($template)
+    Set-Item -LiteralPath 'env:GIT_TEMPLATE_DIR' -Value $template
+
     foreach ($variable in $script:Variables.GetEnumerator()) { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
     $i = 0
     foreach ($setting in $script:Settings.GetEnumerator()) {
@@ -94,7 +97,12 @@ function Set-TestGitEnvironment {
 }
 
 function Restore-TestGitEnvironment {
-    param([Parameter(Mandatory)] [hashtable] $Saved)
+    # $null when Set failed: the file's AfterAll then adds no second error to the one people need to see.
+    param([Parameter(Mandatory)] [AllowNull()] [hashtable] $Saved)
+
+    if ($null -eq $Saved) { return }
+    $template = $env:GIT_TEMPLATE_DIR
+    if ($template -and $script:Templates.Remove($template)) { Remove-Item -LiteralPath $template -Recurse -Force -ErrorAction SilentlyContinue }
 
     # A variable that wasn't set is removed. PowerShell would pass $null to SetEnvironmentVariable as '', and git
     # reads an empty GIT_CONFIG_COUNT as an error.
