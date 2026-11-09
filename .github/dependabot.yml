@@ -1,6 +1,8 @@
 # Keeps packages, dotnet tools (.config/dotnet-tools.json), pinned GitHub Actions and the global.json SDK pin
 # current (SUP-008, ADR-0025).
-# The "chore(deps)" prefix makes each PR title a Conventional Commit, which CI requires.
+# The "chore" prefix makes each PR title a Conventional Commit, which CI requires, and "include: scope" adds
+# "(deps)": "chore(deps): bump ...". The NuGet updater ignores the scope for now (dependabot-core#15158), so
+# NuGet PRs come as "chore: Bump ...", which CI accepts too; keep "include: scope" for when that's fixed.
 # Not covered: the gitleaks image in dotnet-ci.reusable.yml is pinned inside a run command, so bump it
 # by hand with its release.
 # NuGet PRs: dependabot-lockfiles.yml refreshes the lock files Dependabot misses (dependabot-core#13950).
