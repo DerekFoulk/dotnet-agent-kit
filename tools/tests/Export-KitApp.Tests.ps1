@@ -420,4 +420,21 @@ Describe 'Export-KitApp' {
         }
         $appSettings['$schema'] | Should -Be $kitSettings['$schema']
     }
+
+    It 'drops a rule for any kit script the app doesn''t get, worked out from the tools it does get' {
+        # No list of kit-only scripts to keep in step: a new one's rules are dropped as New-KitApp's are.
+        $kit = [ordered]@{ permissions = [ordered]@{
+                allow = @('PowerShell(./tools/*)', 'PowerShell(./.kit/tools/*)')
+                ask   = @('PowerShell(./tools/Publish-Kit*)', 'Bash(pwsh -NoProfile -File .\tools\Publish-Kit.ps1 *)',
+                    'PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)')
+                deny  = @('Read(./.env)')
+            }
+        } | ConvertTo-Json -Depth 5
+
+        $appSettings = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1', 'Initialize-DevMachine.ps1' | ConvertFrom-Json -AsHashtable
+
+        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)')
+        @($appSettings['permissions']['allow']) | Should -Be @('PowerShell(./tools/*)', 'PowerShell(./.kit/tools/*)') -Because 'a wildcard names no one script'
+        @($appSettings['permissions']['deny']) | Should -Be @('Read(./.env)')
+    }
 }
