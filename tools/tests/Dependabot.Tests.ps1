@@ -16,7 +16,9 @@ Describe 'Dependabot configuration' {
         }
     }
 
-    It 'waits at least 3 days before proposing any new version, in <Path>' -ForEach @(
+    # The owner, 2026-11-09: 7 days, and 14 for a major. Dependabot's own default is 3, and security updates
+    # never wait, so a longer wait only delays routine updates.
+    It 'waits at least 7 days before proposing any new version, in <Path>' -ForEach @(
         @{ Path = '.github/dependabot.yml' }, @{ Path = 'templates/app/.github/dependabot.yml' }
     ) {
         $updates = Get-Update $Path
@@ -24,11 +26,11 @@ Describe 'Dependabot configuration' {
         $updates.Count | Should -BeGreaterThan 0
         foreach ($update in $updates) {
             $update.Contains('cooldown') | Should -BeTrue -Because "$($update['package-ecosystem']) needs a cooldown"
-            [int] $update['cooldown']['default-days'] | Should -BeGreaterOrEqual 3
+            [int] $update['cooldown']['default-days'] | Should -BeGreaterOrEqual 7
         }
     }
 
-    It 'waits at least 7 days before proposing a major version of a package or the SDK, in <Path>' -ForEach @(
+    It 'waits at least 14 days before proposing a major version of a package or the SDK, in <Path>' -ForEach @(
         @{ Path = '.github/dependabot.yml' }, @{ Path = 'templates/app/.github/dependabot.yml' }
     ) {
         $updates = @(Get-Update $Path | Where-Object { $_['package-ecosystem'] -in 'nuget', 'dotnet-sdk' })
@@ -36,7 +38,7 @@ Describe 'Dependabot configuration' {
         $updates.Count | Should -BeGreaterThan 0
         foreach ($update in $updates) {
             $cooldown = if ($update.Contains('cooldown')) { $update['cooldown'] } else { @{} }
-            [int] $cooldown['semver-major-days'] | Should -BeGreaterOrEqual 7 -Because "$($update['package-ecosystem']) majors are the owner's, after a longer wait"
+            [int] $cooldown['semver-major-days'] | Should -BeGreaterOrEqual 14 -Because "$($update['package-ecosystem']) majors are the owner's, after a longer wait"
         }
     }
 }
