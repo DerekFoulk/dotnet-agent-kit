@@ -51,7 +51,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 - Every check passes: the coverage gate, ADR sections, and generated files current.
 - Docs and ADRs are updated in the same PR.
 - The `reviewer` agent has reviewed the change, and its findings are fixed or answered.
-- The PR uses `.github/pull_request_template.md`, including the red→green evidence table.
+- The PR uses `.github/pull_request_template.md`, including the red→green evidence table. A PR whose description a bot writes gets DOD-006's comment instead.
 
 <!-- kit:end -->
 
