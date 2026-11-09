@@ -28,11 +28,13 @@ Describe 'Export-KitApp' {
             New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
             Copy-Item -LiteralPath $source -Destination $target
         }
-        # Review 4 of PR 32: an ask for a kit script the app does get, so the export test fails if the export
-        # ever filters with the wrong list of app tools (the real settings name only New-KitApp under tools/).
+        # Reviews 4 and 5 of PR 32: an ask for every kit script the app does get, so the export test fails if the
+        # export ever filters with the wrong list of app tools (the real settings name only New-KitApp under tools/).
+        . $script
+        $script:KitTools | Should -Not -BeNullOrEmpty
         $fixtureSettings = Join-Path $kit '.claude/settings.json'
         $settings = Get-Content -Raw -LiteralPath $fixtureSettings | ConvertFrom-Json -AsHashtable
-        $settings['permissions']['ask'] += 'PowerShell(./tools/Set-AgentMode.ps1 -Mode Fixture*)'
+        $settings['permissions']['ask'] += @($script:KitTools | ForEach-Object { "PowerShell(./tools/$_ -Fixture*)" })
         [IO.File]::WriteAllText($fixtureSettings, ($settings | ConvertTo-Json -Depth 100))
         git -C $kit init -q -b main
         git -C $kit add -A
@@ -54,7 +56,6 @@ Describe 'Export-KitApp' {
         & $script -Name 'Contoso.Orders' -Destination $app -KitRef $commit -KitRoot $kit
         $exportExit = $LASTEXITCODE
 
-        . $script
         $map = @(Get-KitAppFileMap -KitRoot $kit -Commit $commit -Name 'Contoso.Orders')
 
         # The expected bytes: a clean checkout of the commit, line endings as .gitattributes gives them.
@@ -441,12 +442,14 @@ Describe 'Export-KitApp' {
                     'PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)',
                     # Review 3 of PR 32: a rule naming two scripts is dropped if either is kit-only, not judged by
                     # its first.
-                    'Bash(./tools/Set-AgentMode.ps1 && ./tools/Publish-Kit.ps1)')
+                    'Bash(./tools/Set-AgentMode.ps1 && ./tools/Publish-Kit.ps1)',
+                    # Review 5: a rule names a script by the start of its name, so "Review*" can't match KitReview.
+                    'PowerShell(./tools/Review*)')
                 deny  = @('Read(./.env)')
             }
         } | ConvertTo-Json -Depth 5
 
-        $appSettings = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1', 'Initialize-DevMachine.ps1' | ConvertFrom-Json -AsHashtable
+        $appSettings = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1', 'Initialize-DevMachine.ps1', 'KitReview.psm1' | ConvertFrom-Json -AsHashtable
 
         @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)')
         @($appSettings['permissions']['allow']) | Should -Be @('PowerShell(./tools/*)', 'PowerShell(./.kit/tools/*)') -Because 'a wildcard names no one script'

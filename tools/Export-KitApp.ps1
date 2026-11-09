@@ -155,7 +155,8 @@ function Write-KitManifest {
 }
 
 # Whether a permission rule names a kit script in the repo's own tools folder that the app doesn't get, such as
-# "./tools/New-KitApp*": it could never fire in the app, whose kit scripts are the KitTools in .kit/tools. Only
+# "./tools/New-KitApp*": the app has no such script, in tools/ or .kit/tools, so the rule only adds noise. A
+# rule for a script the app does get (a KitTools entry) is kept, even under tools/: keeping errs safe. Only
 # the root tools folder counts ("./tools/", ".\tools\" or a bare "tools/" starting an argument), in any case; a
 # tools folder deeper in a path is the app's own.
 function Test-KitOnlyRule {
