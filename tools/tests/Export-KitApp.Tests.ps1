@@ -28,6 +28,12 @@ Describe 'Export-KitApp' {
             New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
             Copy-Item -LiteralPath $source -Destination $target
         }
+        # Review 4 of PR 32: an ask for a kit script the app does get, so the export test fails if the export
+        # ever filters with the wrong list of app tools (the real settings name only New-KitApp under tools/).
+        $fixtureSettings = Join-Path $kit '.claude/settings.json'
+        $settings = Get-Content -Raw -LiteralPath $fixtureSettings | ConvertFrom-Json -AsHashtable
+        $settings['permissions']['ask'] += 'PowerShell(./tools/Set-AgentMode.ps1 -Mode Fixture*)'
+        [IO.File]::WriteAllText($fixtureSettings, ($settings | ConvertTo-Json -Depth 100))
         git -C $kit init -q -b main
         git -C $kit add -A
         git -C $kit commit -q -m 'chore: kit fixture'
@@ -143,6 +149,8 @@ Describe 'Export-KitApp' {
         foreach ($file in $manifest['files']) { $listed[$file['path']] = $file }
         $kitOwned = @($map | Where-Object { $_.Owner -eq 'Kit' } | ForEach-Object { $_.Target })
         $kitOwned | Should -Contain '.github/workflows/ci.yml'
+        # Review 4 of PR 32: the sync job keeps an app's settings current only while they're kit-managed.
+        $kitOwned | Should -Contain '.claude/settings.json'
         foreach ($path in $kitOwned) {
             $listed.ContainsKey($path) | Should -BeTrue -Because "$path is kit-managed"
             $lf = [IO.File]::ReadAllText((Join-Path $app $path)) -replace "`r`n", "`n"
@@ -496,6 +504,9 @@ Describe 'Export-KitApp' {
         # Review 3 of PR 32: the error was PowerShell's preference message, which didn't say which file failed.
         { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' } |
             Should -Throw "In the kit's .claude/settings.json, a setting is nested deeper than 100 levels*"
+        # Review 4: only that error, without ConvertTo-Json's own warning printed before it.
+        $warnings = & { try { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' } catch { } } 3>&1
+        @($warnings | Where-Object { $_ -is [Management.Automation.WarningRecord] }) | Should -BeNullOrEmpty
     }
 
     # Review 2 of PR 32: a null list or an empty rule stopped with PowerShell's parameter-binding error, which
