@@ -9,8 +9,7 @@
     BeforeAll and the second in its AfterAll, passing Restore the very hashtable Set returned: Restore finds the
     run's template folder by it, so a copy restores the variables but leaves the folder behind. If Set fails, it
     puts everything back and reports its own error; if putting things back fails too, it warns about that. Restore
-    given Set's $null result does nothing. Needs
-    PowerShell 7.4 or later, for [IO.Directory]::CreateTempSubdirectory.
+    given Set's $null result does nothing. Needs PowerShell 7.4 or later, for [IO.Directory]::CreateTempSubdirectory.
     - Nothing git reads from the parent environment: every GIT_* variable is removed while tests run (GIT_CONFIG,
       GIT_DIR, GIT_DEFAULT_HASH, GIT_CONFIG_PARAMETERS, GIT_CONFIG_COUNT, a date...). Only GIT_TRACE* stays, which
       records what git does without changing it.
