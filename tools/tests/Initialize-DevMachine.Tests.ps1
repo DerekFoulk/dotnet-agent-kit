@@ -125,6 +125,26 @@ Describe 'Get-DevMachineCheck' {
             & (Get-Check $Name).Test | Should -BeFalse
         }
 
+        # The check runs in Windows PowerShell 5.1 too, so it asks pwsh itself rather than reading $PSVersionTable.
+        It 'the PowerShell check is <Expected> when pwsh reports <Reported> and exits <ExitCode>' -ForEach @(
+            @{ Reported = @('7.3.9'); ExitCode = 0; Expected = $false }
+            @{ Reported = @('7.4.20'); ExitCode = 0; Expected = $false }
+            @{ Reported = @('7.5.11'); ExitCode = 0; Expected = $false }
+            @{ Reported = @('7.6.0'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('7.6.9'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('7.7.0-preview.3'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('8.0.0'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('7.6.9'); ExitCode = 1; Expected = $false }
+            @{ Reported = @('not a version'); ExitCode = 0; Expected = $false }
+            @{ Reported = @(); ExitCode = 0; Expected = $false }
+        ) {
+            Mock Test-CommandAvailable { $true }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = $ExitCode; Output = $Reported } } -ParameterFilter { $FilePath -eq 'pwsh' -and ($Arguments -join ' ') -like '-NoProfile -Command *PSVersionTable.PSVersion*' }
+
+            & (Get-Check 'PowerShell 7.6+').Test | Should -Be $Expected
+        }
+
         It 'GitHub sign-in is <Expected> when gh auth status exits <ExitCode>' -ForEach @(
             @{ ExitCode = 0; Expected = $true }
             @{ ExitCode = 1; Expected = $false }
