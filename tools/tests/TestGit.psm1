@@ -158,7 +158,7 @@ function Test-RepoGitIgnore {
         $saved = Set-TestGitEnvironment
         $init = git init -q $scratch 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { throw "Couldn't make the repo that judges .gitignore: $($init.Trim())" }
-        git -C $scratch check-ignore --no-index -q -- $Path
+        $reason = git -C $scratch check-ignore --no-index -q -- $Path 2>&1 | Out-String
         $code = $LASTEXITCODE
     }
     finally {
@@ -168,7 +168,7 @@ function Test-RepoGitIgnore {
     switch ($code) {
         0 { $true }
         1 { $false }
-        default { throw "git check-ignore failed for '$Path' (exit $code)" }
+        default { throw "git check-ignore failed for '$Path' (exit $code): $($reason.Trim())" }
     }
 }
 
