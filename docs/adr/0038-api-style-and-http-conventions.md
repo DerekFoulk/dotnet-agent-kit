@@ -52,7 +52,7 @@ Option 1: Microsoft's built-in pieces cover every convention, with no package to
 
 ## Decision
 
-Accepted, in auto mode (ADR-0035). The six rules stay `proposed` until the owner ratifies them. The owner can reverse this, as with any merged change.
+Accepted, in auto mode (ADR-0035). The six rules stay `proposed` until the owner ratifies them (he accepted API-002 to API-004 on 2026-11-09). The owner can reverse this, as with any merged change.
 
 ## Consequences
 

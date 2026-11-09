@@ -268,7 +268,7 @@ Applied 2026-11-09 with the owner's OK:
 | Setting | Value | Why |
 |---|---|---|
 | Actions: require actions pinned to a full-length commit SHA | On | Enforces SUP-008. The shared workflows' `$/.github/actions/kit-tools` resolves to a full SHA, so it passes |
-| "main protection" ruleset: require code scanning results | CodeQL; blocks on an error, or a security alert high or higher, on lines the pull request changes, or while CodeQL hasn't run | Enforces SEC-006 at merge time; CodeQL runs on every pull request |
+| "main protection" ruleset: require code scanning results | CodeQL; blocks on an alert of severity error, or a security alert high or higher, on lines the pull request changes, or while CodeQL's analysis is in progress or missing | Enforces SEC-006 at merge time; CodeQL runs on every pull request |
 | "main protection" ruleset: require conversation resolution | On | Every review thread is resolved before merging; that each one was answered with evidence (DOD-005) is still the agents' and the reviewer's job |
 
 ## Run the tests
