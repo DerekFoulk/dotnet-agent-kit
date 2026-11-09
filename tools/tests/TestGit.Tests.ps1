@@ -521,6 +521,19 @@ Describe 'TestGit.psm1' {
         @($byHand.Name) | Should -BeNullOrEmpty -Because 'New-TestGitRemote gives a remote the settings a push needs'
     }
 
+    It 'is how every test file checks that a file stays out of commits' {
+        # Review of Test-RepoGitIgnore: check-ignore in the checkout also reads that clone's .git/info/exclude.
+        $byHand = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' | Where-Object {
+            $_.Name -ne 'TestGit.Tests.ps1' -and
+            @(Get-GitCall (Get-FileAst $_) | Where-Object {
+                    $name = Split-Path -Leaf $_.Ast.GetCommandName()
+                    if ($name -match '^git(\.exe|\.cmd)?$') { (Get-GitSubcommand $_.Arguments) -ceq 'check-ignore' } else { $_.Arguments -ccontains 'check-ignore' }
+                }).Count -gt 0
+        }
+
+        @($byHand.Name) | Should -BeNullOrEmpty -Because 'Test-RepoGitIgnore judges the root .gitignore alone'
+    }
+
     It 'judges a path by the checkout''s root .gitignore, never by its own .git/info/exclude' {
         # Review of PR 28: a path in this clone's .git/info/exclude, which no other clone or app has, made the
         # kit's ignore tests pass for a line missing from .gitignore.
