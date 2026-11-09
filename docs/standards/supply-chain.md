@@ -14,8 +14,8 @@ rules:
     statement: "Package versions live only in Directory.Packages.props (central package management), with transitive pinning on."
     why: "One reviewed file controls every version, including transitive ones."
     layer: owner
-    status: proposed
-    sources: ["ADR-0020"]
+    status: accepted
+    sources: ["ADR-0020", "owner, 2026-11-09"]
     enforcement: "build: ManagePackageVersionsCentrally makes a version in a project file a restore error (NU1008)"
     scope: core
     paths: ["Directory.Packages.props", "**/*.csproj"]
@@ -23,8 +23,8 @@ rules:
     statement: "Packages come only from nuget.org, enforced by package source mapping in nuget.config."
     why: "Stops a package with the same name resolving from another feed (dependency confusion)."
     layer: owner
-    status: proposed
-    sources: ["owner, 2026-11-01"]
+    status: accepted
+    sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     enforcement: "restore: nuget.config clears other sources and maps every package to nuget.org"
     scope: core
     paths: ["nuget.config"]
@@ -32,8 +32,8 @@ rules:
     statement: "NuGet audits direct and transitive packages, and any known vulnerability fails the build."
     why: "A vulnerable package is caught on the PR that adds it."
     layer: owner
-    status: proposed
-    sources: ["owner, 2026-11-01"]
+    status: accepted
+    sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     enforcement: "build: NuGetAudit with NuGetAuditMode all and TreatWarningsAsErrors"
     scope: core
     paths: ["Directory.Build.props"]
@@ -68,17 +68,13 @@ rules:
     statement: "GitHub Actions are pinned to a full commit SHA, and Dependabot keeps actions and packages current."
     why: "A tag can be moved to malicious code; a SHA can't."
     layer: owner
-    status: proposed
-    sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: every action in .github/workflows is pinned by commit SHA and .github/dependabot.yml updates them; Pester tests check the pins in the release, Dependabot lock-file and shared app workflows, but GitHub's SHA-pinning requirement is off and the other workflows' pins aren't checked"
+    status: accepted
+    sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
+    enforcement: "settings: the kit repo requires actions pinned to a full-length commit SHA (GitHub's Actions setting, on since 2026-11-09), and .github/dependabot.yml updates the pins; Pester tests also check the pins in the release, Dependabot lock-file and shared app workflows; New-KitApp doesn't yet turn the setting on for apps"
     scope: core
     paths: [".github/**"]
 ---
 
 # Supply chain
 
-Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project. Its individual items stay `proposed` here until he ratifies them for all repos.
-
-## Pending ratification
-
-SUP-002, SUP-003, SUP-004 and SUP-008 come from the supply-chain checklist you agreed to in one project. Everything except SUP-008 is already active in this repo's config.
+Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project and accepted its items for all repos on 2026-11-09.

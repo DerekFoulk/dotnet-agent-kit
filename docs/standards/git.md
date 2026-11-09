@@ -23,8 +23,8 @@ rules:
     statement: "Nobody pushes directly to main or force-pushes it; agents merge a PR only as the working mode allows (in review mode, when the owner says so for that PR), and never a release PR or a change to the guardrails."
     why: "Branch protection was approved in one project; the owner then chose auto mode by default, where the agent merges its own PRs once they're green and reviewed, and kept releases his (ADR-0035)."
     layer: owner
-    status: proposed
-    sources: ["ADR-0007", "ADR-0010", "ADR-0035"]
+    status: accepted
+    sources: ["ADR-0007", "ADR-0010", "ADR-0035", "owner, 2026-11-09"]
     enforcement: "ruleset: main protection blocks force-pushes and deletion and requires a pull request; merging by mode is advisory, backed in review mode by the gh pr merge ask rule Set-AgentMode.ps1 adds to .claude/settings.local.json"
     scope: core
     paths: ["**"]
@@ -62,7 +62,3 @@ Co-Authored-By: ...
 ```
 
 Trailers must share the final paragraph. Git reads only the last paragraph as trailers, so a `TDD:` line in its own paragraph followed by `Co-Authored-By:` isn't one (ADR-0006). The red→green check also accepts the line anywhere in the body, so build steps 1 and 2 still count.
-
-## Pending ratification
-
-GIT-003 was approved in one project, and the brief recommends it for all of them (brief §7). It stays `proposed` until you accept it.

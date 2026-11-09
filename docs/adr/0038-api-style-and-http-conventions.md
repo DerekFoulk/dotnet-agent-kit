@@ -52,11 +52,12 @@ Option 1: Microsoft's built-in pieces cover every convention, with no package to
 
 ## Decision
 
-Accepted, in auto mode (ADR-0035). The six rules stay `proposed` until the owner ratifies them. The owner can reverse this, as with any merged change.
+Accepted, in auto mode (ADR-0035). The six rules stay `proposed` until the owner ratifies them (he accepted API-002 to API-004 on 2026-11-09). The owner can reverse this, as with any merged change.
 
 ## Consequences
 
 - **Rules:** API-001 to API-006, proposed, in `docs/standards/api-design.md`.
+  - **Update (2026-11-09):** the owner accepted API-002 to API-004; API-001, API-005 and API-006 wait for the first real app.
 - **Plans:** the `plan-checklist` skill asks for the API style.
 - **The sample:**
   - every error response is Problem Details, and a 500 in Production hides the exception. A binding failure keeps its 400 in Development too, through the exception handler's `StatusCodeSelector` (review 1 of PR 22), and the OpenAPI document declares each error body;
