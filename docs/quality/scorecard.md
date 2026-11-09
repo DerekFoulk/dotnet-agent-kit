@@ -45,8 +45,8 @@ areas:
     rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, GIT-005]
     gaps:
       - id: GAP-003
-        gap: "Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1."
-        status: planned
+        gap: "Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1. Closed by ADR-0039: a shared nightly Stryker.NET workflow for the kit and every app, failing below 85%."
+        status: closed
         needs: "a dotnet tool (Stryker) and a CI change"
       - id: GAP-004
         gap: "Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI."
@@ -212,7 +212,7 @@ Each area in the front matter above has:
 | Architecture | 5 | 2 | 3 | 1 | 1 |
 | Proportion | 0 | 0 | 0 | 0 | 1 |
 | Code | 4 | 3 | 1 | 2 | 0 |
-| Tests | 7 | 4 | 3 | 0 | 2 |
+| Tests | 7 | 4 | 3 | 0 | 1 |
 | Security | 6 | 4 | 2 | 1 | 1 |
 | Reliability | 1 | 0 | 1 | 2 | 1 |
 | Observability | 1 | 0 | 1 | 1 | 0 |
@@ -224,13 +224,12 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
 | Process | 14 | 4 | 10 | 1 | 0 |
 
-**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 19 proposed; 13 open gaps.
+**Overall:** 40 rules in force, 21 checked by a tool and 19 advisory; 19 proposed; 12 open gaps.
 
 Open gaps:
 
 - **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
-- **GAP-003** (Tests, planned; needs a dotnet tool (Stryker) and a CI change): Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-006** (Security, proposed): No rules for authentication, authorization or input validation defaults beyond the threat model in plans.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).

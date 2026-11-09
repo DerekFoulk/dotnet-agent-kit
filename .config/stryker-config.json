@@ -1,0 +1,19 @@
+{
+  "stryker-config": {
+    "test-runner": "mtp",
+    "configuration": "Release",
+    "thresholds": {
+      "high": 95,
+      "low": 85,
+      "break": 85
+    },
+    "reporters": [
+      "cleartext",
+      "html",
+      "json"
+    ],
+    "ignore-methods": [
+      "ConfigureAwait"
+    ]
+  }
+}

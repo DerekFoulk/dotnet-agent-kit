@@ -7,6 +7,13 @@
 # app always runs the scripts of the version it pins. (The kit was private when this was built, so a
 # checkout of the kit wasn't possible; ADR-0031 made it public, and $/ still keeps the versions matched.)
 
+BeforeAll {
+    # Every repo these tests make runs with the same git settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
+}
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
 Describe 'Shared CI for app repos' {
     BeforeAll {
         Import-Module powershell-yaml

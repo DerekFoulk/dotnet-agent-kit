@@ -5,6 +5,13 @@
 # Each fixture project is copied with the root config files into an isolated, tagged git
 # workspace, so the real files are tested and nothing builds inside the repo itself.
 
+BeforeAll {
+    # Every repo these tests make runs with the same git settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
+}
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
 Describe 'Repo build configuration' -Tag 'Build' {
     BeforeAll {
         $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
@@ -25,7 +32,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
 
             git -C $workspace init --quiet --initial-branch main
             git -C $workspace -c core.autocrlf=false add --all
-            git -C $workspace -c user.name=fixture -c user.email=fixture@example.invalid commit --quiet --message fixture
+            git -C $workspace commit --quiet --message fixture
             git -C $workspace tag v1.2.3
             $workspace
         }
