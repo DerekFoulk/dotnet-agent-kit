@@ -76,16 +76,21 @@ Describe 'Mutation testing in CI' {
             # the walk below then missed every folder past the first). '' is the repo root.
             function Get-GitParent([string] $Path) { $at = $Path.LastIndexOf('/'); if ($at -lt 0) { '' } else { $Path.Substring(0, $at) } }
             # Every tracked file in a folder and below. The folder is literal, so [, * or ? in a name stay plain. Paths
-            # come NUL-separated, unquoted and read as UTF-8, so a name like café/ or one with a quote isn't escaped
-            # out of reach of the patterns (review 8 of PR 23).
+            # come NUL-separated and unquoted, read as UTF-8 straight from git's output, so no name (café/, a quote, a
+            # tab, even a line break) is escaped or split out of reach of the patterns (reviews 8 and 9 of PR 23).
+            # PowerShell's own capture would split on line breaks and decode with the console's code page.
             function Get-TrackedFile([string] $Folder) {
-                $spec = if ($Folder) { @('--', ":(literal)$Folder") } else { @() }
-                $encoding = [Console]::OutputEncoding
-                try {
-                    [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-                    $listing = (git -C $root -c core.quotePath=false ls-files -z @spec) -join ''
+                $start = [Diagnostics.ProcessStartInfo]::new('git')
+                foreach ($argument in @('-C', $root, '-c', 'core.quotePath=false', 'ls-files', '-z') + $(if ($Folder) { '--', ":(literal)$Folder" })) {
+                    $start.ArgumentList.Add($argument)
                 }
-                finally { [Console]::OutputEncoding = $encoding }
+                $start.RedirectStandardOutput = $true
+                $start.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+                $start.UseShellExecute = $false
+                $git = [Diagnostics.Process]::Start($start)
+                $listing = $git.StandardOutput.ReadToEnd()
+                $git.WaitForExit()
+                if ($git.ExitCode -ne 0) { throw "git ls-files failed for '$Folder' (exit $($git.ExitCode))" }
                 $listing.Split([char] 0, [StringSplitOptions]::RemoveEmptyEntries)
             }
 
