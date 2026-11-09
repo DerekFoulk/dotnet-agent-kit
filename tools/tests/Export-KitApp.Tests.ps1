@@ -6,6 +6,9 @@
 # that commit, so they run before the kit's own changes are committed.
 
 BeforeAll {
+    # The kit's files, listed first, with this checkout's own ignore rules, global ones included: it's the
+    # person's checkout, not a test repo.
+    $kitFiles = git -C (Join-Path $PSScriptRoot '..' '..') ls-files --cached --others --exclude-standard
     # Every repo these tests make runs with the same git settings (TestGit.psm1).
     Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
     $savedGit = Set-TestGitEnvironment
@@ -18,8 +21,7 @@ Describe 'Export-KitApp' {
         $script = Join-Path $root 'tools' 'Export-KitApp.ps1'
 
         $kit = Join-Path $TestDrive 'kit'
-        $files = git -C $root ls-files --cached --others --exclude-standard
-        foreach ($file in $files) {
+        foreach ($file in $kitFiles) {
             $source = Join-Path $root $file
             if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue } # deleted but not yet staged
             $target = Join-Path $kit $file

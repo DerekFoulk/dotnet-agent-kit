@@ -2,7 +2,8 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # TestGit.psm1 gives every git repo a test makes the same settings, through environment variables that reach the
-# scripts under test and the processes they start (all but a local push's receive-pack, which git strips them from).
+# scripts under test and the processes they start. The one exception: git strips the GIT_CONFIG_COUNT settings (and
+# only those) from the receive-pack or upload-pack a push or fetch through a local path starts.
 # Without them, a fixture commit could start git's background maintenance, whose repack raced New-KitApp.Tests'
 # lookups of the fixture commit on Windows: 11 tests failed, but only for some file contents, since git's "enough
 # loose objects?" estimate depends on hashes.
@@ -26,15 +27,17 @@ Describe 'TestGit.psm1' {
         }
 
         # The arguments of every git command (or a file's own Invoke-Git* wrapper) the file runs, one array each.
+        # Command names are matched as PowerShell resolves them: in any case, with or without .exe.
         function Get-GitCall([System.IO.FileInfo] $File) {
             $commands = (Get-FileAst $File).FindAll({
                     param($node)
-                    $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -cmatch '^(git|Invoke-Git\w*)$'
+                    $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -match '^(git|Invoke-Git\w*)(\.exe)?$'
                 }, $true)
             foreach ($command in $commands) { , @($command.CommandElements | Select-Object -Skip 1 | ForEach-Object { $_.Extent.Text.Trim('''', '"') }) }
         }
 
-        # The names of the commands inside the file's own BeforeAll or AfterAll, the one outside every Describe.
+        # The names of the commands the file's own BeforeAll or AfterAll (the one outside every Describe) runs
+        # itself; a call inside a function it only defines doesn't count.
         function Get-FileLevelSetup([System.IO.FileInfo] $File, [string] $Block) {
             $root = Get-FileAst $File
             $blocks = $root.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -eq $Block }, $true)
@@ -43,7 +46,12 @@ Describe 'TestGit.psm1' {
                 while ($scope -isnot [System.Management.Automation.Language.ScriptBlockAst]) { $scope = $scope.Parent }
                 if ($scope -ne $root) { continue }
                 foreach ($body in $call.CommandElements | Where-Object { $_ -is [System.Management.Automation.Language.ScriptBlockExpressionAst] }) {
-                    $body.ScriptBlock.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true) | ForEach-Object { $_.GetCommandName() }
+                    $direct = $body.ScriptBlock.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true) | Where-Object {
+                        $node = $_.Parent
+                        while ($node -ne $body.ScriptBlock -and $node -isnot [System.Management.Automation.Language.FunctionDefinitionAst]) { $node = $node.Parent }
+                        $node -eq $body.ScriptBlock
+                    }
+                    $direct | ForEach-Object { $_.GetCommandName() }
                 }
             }
         }
@@ -76,7 +84,10 @@ Describe 'TestGit.psm1' {
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $hooks = Join-Path $TestDrive "machine-hooks-$(New-Guid)"
         New-Item -ItemType Directory -Path $hooks | Out-Null
-        [IO.File]::WriteAllText((Join-Path $hooks 'commit-msg'), "#!/bin/sh`necho 'machine hook rejected the commit' >&2`nexit 1`n")
+        $hook = Join-Path $hooks 'commit-msg'
+        [IO.File]::WriteAllText($hook, "#!/bin/sh`necho 'machine hook rejected the commit' >&2`nexit 1`n")
+        # Review 3 of PR 24: git skips a hook that isn't executable, so off Windows this half couldn't fail.
+        if (-not $IsWindows) { [IO.File]::SetUnixFileMode($hook, 'UserRead, UserWrite, UserExecute') }
         $global = Join-Path $TestDrive "machine-global-$(New-Guid).gitconfig"
         $system = Join-Path $TestDrive "machine-system-$(New-Guid).gitconfig"
         [IO.File]::WriteAllText($global, "[core]`n`thooksPath = $($hooks -replace '\\', '/')`n[probe]`n`tglobal = machine`n")

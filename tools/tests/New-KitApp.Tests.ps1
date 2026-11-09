@@ -5,8 +5,11 @@
 # and the "main protection" ruleset are data in templates/github, so the sync job (PR D3) can apply them again.
 
 BeforeAll {
+    # The kit's files, listed first, with this checkout's own ignore rules, global ones included: it's the
+    # person's checkout, not a test repo.
+    $kitFiles = git -C (Join-Path $PSScriptRoot '..' '..') ls-files --cached --others --exclude-standard
     # Every repo these tests make, and every one New-KitApp makes under test, runs with the same git settings:
-    # no dependence on this machine's identity or signing, and no background maintenance (TestGit.psm1).
+    # none of this machine's git config, and no background maintenance (TestGit.psm1).
     Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
     $savedGit = Set-TestGitEnvironment
 }
@@ -129,7 +132,7 @@ Describe 'New-KitApp run' {
         $script = Join-Path $root 'tools' 'New-KitApp.ps1'
 
         $kit = Join-Path $TestDrive 'kit'
-        foreach ($file in git -C $root ls-files --cached --others --exclude-standard) {
+        foreach ($file in $kitFiles) {
             $source = Join-Path $root $file
             if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue } # deleted but not yet staged
             $target = Join-Path $kit $file
