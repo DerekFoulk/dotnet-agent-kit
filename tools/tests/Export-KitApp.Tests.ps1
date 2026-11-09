@@ -447,7 +447,8 @@ Describe 'Export-KitApp' {
         # list), and a tools/ folder anywhere in a path counted.
         $kit = [ordered]@{ permissions = [ordered]@{
                 allow                 = @('Read(./src/tools/**)', 'PowerShell(./TOOLS/Publish-Kit*)')
-                ask                   = @('PowerShell(./src/tools/Build-Thing*)', 'Bash(pwsh -NoProfile -File tools/Publish-Kit.ps1 *)')
+                ask                   = @('PowerShell(./src/tools/Build-Thing*)', 'Bash(pwsh -NoProfile -File tools/Publish-Kit.ps1 *)',
+                    'PowerShell(& "./tools/Publish-Kit.ps1" *)', "Bash(pwsh -File '.\tools\Publish-Kit.ps1' *)")
                 deny                  = @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)')
                 defaultMode           = 'acceptEdits'
                 additionalDirectories = @('../shared/tools/foo')
@@ -461,5 +462,13 @@ Describe 'Export-KitApp' {
         @($appSettings['permissions']['deny']) | Should -Be @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)') -Because 'a deny rule only ever protects'
         $appSettings['permissions']['defaultMode'] | Should -BeExactly 'acceptEdits'
         @($appSettings['permissions']['additionalDirectories']) | Should -Be @('../shared/tools/foo')
+    }
+
+    It 'stops with a clear error when the kit''s settings have no permissions object, in <Case>' -ForEach @(
+        @{ Case = 'an object without one'; Text = '{"x":1}' }
+        @{ Case = 'a permissions list'; Text = '{"permissions":[]}' }
+        @{ Case = 'a top-level list'; Text = '[]' }
+    ) {
+        { Get-KitAppSettingsText -SettingsText $Text -AppTools 'Set-AgentMode.ps1' } | Should -Throw '*has no "permissions" object*'
     }
 }
