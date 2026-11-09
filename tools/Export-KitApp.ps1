@@ -186,8 +186,9 @@ function Get-KitAppSettingsText {
             $settings['permissions'][$list] = @($settings['permissions'][$list] | Where-Object { -not (Test-KitOnlyRule -Rule $_ -AppTools $AppTools) })
         }
     }
-    # 100 is ConvertTo-Json's maximum.
-    "$(($settings | ConvertTo-Json -Depth 100) -replace "`r`n", "`n")`n"
+    # 100 is ConvertTo-Json's maximum. Anything deeper would be written as a type name with only a warning, so the
+    # warning stops the export instead.
+    "$(($settings | ConvertTo-Json -Depth 100 -WarningAction Stop) -replace "`r`n", "`n")`n"
 }
 
 # Drops the ItemGroup labelled "Sample app", with the comment line above it, from Directory.Packages.props.
