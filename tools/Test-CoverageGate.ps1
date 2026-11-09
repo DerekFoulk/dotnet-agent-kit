@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Fails when line coverage is below the TST-004 minimums: 100% for *.Domain, 95% for *.Application,

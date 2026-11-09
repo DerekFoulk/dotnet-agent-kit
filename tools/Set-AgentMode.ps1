@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Switches how agents work in this repo: auto (the default) or review (ADR-0035).

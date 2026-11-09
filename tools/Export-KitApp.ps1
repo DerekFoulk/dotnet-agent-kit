@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Writes a new app repo's files, taken from the kit at one commit, into an empty folder (PR D2a, ADR-0032).

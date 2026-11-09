@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # The commit-msg hook (ADR-0027): the same Conventional Commit rule as CI, applied before a commit exists,

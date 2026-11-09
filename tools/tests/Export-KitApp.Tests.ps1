@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # Export-KitApp writes a new app repo's files from the kit at one version (PR D2a, ADR-0032). The tests

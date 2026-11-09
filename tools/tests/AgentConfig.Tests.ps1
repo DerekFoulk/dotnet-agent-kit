@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }, @{ ModuleName = 'powershell-yaml'; ModuleVersion = '0.4.12' }
 
 # Guards the repo's agent configuration: a silently dropped deny rule or a broken skill is a real gap.

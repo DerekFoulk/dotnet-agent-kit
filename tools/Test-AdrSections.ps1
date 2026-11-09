@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Fails when any ADR is missing a required section (brief §5, checkpoint §3).

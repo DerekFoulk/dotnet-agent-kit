@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # The release workflow and release-please config, as proven by the step 5 spike

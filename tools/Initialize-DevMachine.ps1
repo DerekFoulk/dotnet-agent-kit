@@ -3,14 +3,14 @@
     Checks this machine for the dotnet-agent-kit toolchain and, with -Install, installs what's missing.
 
 .DESCRIPTION
-    Required: PowerShell 7, Pester 6 (runs the kit's script tests), powershell-yaml (reads rule metadata), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
+    Required: PowerShell 7.6 or later (the current LTS), Pester 6 (runs the kit's script tests), powershell-yaml (reads rule metadata), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
     Later in the build: VS Code with the PowerShell extension, Docker.
 
     Nothing is installed unless you pass -Install; each install command is shown first, and -WhatIf
     shows them without running them. GitHub sign-in is always yours to do (gh auth login): this script
     never handles credentials.
 
-    Runs on Windows PowerShell 5.1 too, so a new machine can find out that it needs PowerShell 7.
+    Runs on Windows PowerShell 5.1 too, so a new machine can find out that it needs PowerShell 7.6 or later.
     Exit code: 0 when every required tool is ready, otherwise 1.
 
 .PARAMETER Install
@@ -122,6 +122,27 @@ function Test-DotNetSdk {
     Test-SdkSatisfiesPin -Installed $installed -Pinned $Pinned -RollForward $RollForward
 }
 
+# The oldest PowerShell the kit's scripts run on: the current LTS (ADR-0040). Their '#Requires -Version' names it too.
+function Get-MinimumPwshVersion {
+    [version] '7.6'
+}
+
+# Asks pwsh itself: in Windows PowerShell 5.1, $PSVersionTable describes 5.1, not the pwsh the kit's scripts run in.
+function Test-PwshVersion {
+    param([Parameter(Mandatory)] [version] $Minimum)
+    if (-not (Test-CommandAvailable -Name 'pwsh')) {
+        return $false
+    }
+    $result = Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-Command', '$PSVersionTable.PSVersion.ToString()'
+    # Invoke-Native merges stderr into the output, in no set order, so take the line that reads as a version.
+    # A preview reads "7.7.0-preview.3"; its major and minor are enough to compare.
+    $version = "$($result.Output | Where-Object { $_ -match '^\s*\d+\.\d+' } | Select-Object -Last 1)"
+    if ($result.ExitCode -ne 0 -or $version -notmatch '^\s*(\d+)\.(\d+)') {
+        return $false
+    }
+    [version] "$($Matches[1]).$($Matches[2])" -ge $Minimum
+}
+
 # Asks PowerShell 7 itself: Windows PowerShell 5.1 reads a different module folder, and the kit's scripts run in 7.
 function Test-PwshModule {
     param(
@@ -184,7 +205,10 @@ function Get-DevMachineCheck {
     $sdkVersion = [version] $pin.Version
     $sdkTest = [scriptblock]::Create("Test-DotNetSdk -Pinned '$sdkVersion' -RollForward '$($pin.RollForward)'")
 
-    New-DevMachineCheck -Name 'PowerShell 7' -Required $true -Test { Test-CommandAvailable -Name 'pwsh' } `
+    $pwshMinimum = Get-MinimumPwshVersion
+    $pwshTest = [scriptblock]::Create("Test-PwshVersion -Minimum '$pwshMinimum'")
+    # winget install upgrades an older pwsh too, unless told --no-upgrade.
+    New-DevMachineCheck -Name "PowerShell $pwshMinimum+" -Required $true -Test $pwshTest `
         -InstallCommand 'winget install --id Microsoft.PowerShell --exact'
     New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PwshModule -Name 'Pester' -MinimumVersion '6.0.0' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0')

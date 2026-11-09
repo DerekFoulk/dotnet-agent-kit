@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Fails when the quality scorecard (docs/quality/scorecard.md) doesn't match the kit's rules (ADR-0034).

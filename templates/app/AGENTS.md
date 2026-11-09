@@ -26,7 +26,7 @@ CI runs the kit's shared checks on every pull request: `.github/workflows/ci.yml
 
 The commit-msg hook in `.githooks/` rejects a commit whose subject isn't a Conventional Commit. `./.kit/tools/Initialize-DevMachine.ps1 -RepoRoot .` reports whether it's on for this clone. If the hook rejects a commit, fix the subject; never skip the hook.
 
-Scripts target PowerShell 7 (`pwsh`).
+Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 
 ## Where things are
 

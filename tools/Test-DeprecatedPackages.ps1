@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Fails when a project references a deprecated NuGet package (SUP-007, ADR-0016).

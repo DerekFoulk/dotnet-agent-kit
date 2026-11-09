@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 # Shared by the kit's scripts that read YAML front matter from Markdown files (docs/standards, skills).
 
 Set-StrictMode -Version Latest

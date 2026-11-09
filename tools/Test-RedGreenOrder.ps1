@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Fails when a branch's TDD commits are out of order: every red must be made green, and every green

@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 BeforeAll {
@@ -60,7 +60,7 @@ Describe 'Get-DevMachineCheck' {
         $checks = Get-DevMachineCheck -RepoRoot $TestDrive
 
         $checks.Name | Should -Be @(
-            'PowerShell 7', 'Pester 6', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403',
+            'PowerShell 7.6+', 'Pester 6', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403',
             'Claude Code', 'Git commit-msg hook', 'VS Code', 'VS Code PowerShell extension', 'Docker'
         )
         @($checks | Where-Object Required).Count | Should -Be 9
@@ -89,6 +89,11 @@ Describe 'Get-DevMachineCheck' {
         (Get-Check $Name).InstallCommand | Should -Be "pwsh -NoProfile -Command `"Install-PSResource -Name $Module -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository`""
     }
 
+    # winget install upgrades an installed older pwsh too: only --no-upgrade stops it (ADR-0040).
+    It 'installs or upgrades PowerShell with winget, without --no-upgrade' {
+        (Get-Check 'PowerShell 7.6+').InstallCommand | Should -Be 'winget install --id Microsoft.PowerShell --exact'
+    }
+
     It 'installs the exact pinned SDK version' {
         (Get-Check '.NET SDK 10.0.403').InstallCommand | Should -Be 'winget install --id Microsoft.DotNet.SDK.10 --exact --version 10.0.403'
     }
@@ -102,7 +107,6 @@ Describe 'Get-DevMachineCheck' {
 
     Context 'probes' {
         It '<Name> passes when its command is on PATH' -ForEach @(
-            @{ Name = 'PowerShell 7'; Command = 'pwsh' }
             @{ Name = 'Git'; Command = 'git' }
             @{ Name = 'GitHub CLI'; Command = 'gh' }
             @{ Name = 'Claude Code'; Command = 'claude' }
@@ -116,13 +120,35 @@ Describe 'Get-DevMachineCheck' {
         }
 
         It '<Name> fails when its command is missing' -ForEach @(
-            @{ Name = 'PowerShell 7' }, @{ Name = 'Pester 6' }, @{ Name = 'powershell-yaml' }, @{ Name = 'Git' }, @{ Name = 'GitHub CLI' }, @{ Name = 'GitHub CLI signed in' },
+            @{ Name = 'PowerShell 7.6+' }, @{ Name = 'Pester 6' }, @{ Name = 'powershell-yaml' }, @{ Name = 'Git' }, @{ Name = 'GitHub CLI' }, @{ Name = 'GitHub CLI signed in' },
             @{ Name = '.NET SDK 10.0.403' }, @{ Name = 'Claude Code' }, @{ Name = 'Git commit-msg hook' }, @{ Name = 'VS Code' },
             @{ Name = 'VS Code PowerShell extension' }, @{ Name = 'Docker' }
         ) {
             Mock Test-CommandAvailable { $false }
 
             & (Get-Check $Name).Test | Should -BeFalse
+        }
+
+        # The check runs in Windows PowerShell 5.1 too, so it asks pwsh itself rather than reading $PSVersionTable.
+        It 'the PowerShell check is <Expected> when pwsh reports <Reported> and exits <ExitCode>' -ForEach @(
+            @{ Reported = @('7.3.9'); ExitCode = 0; Expected = $false }
+            @{ Reported = @('7.4.20'); ExitCode = 0; Expected = $false }
+            @{ Reported = @('7.5.11'); ExitCode = 0; Expected = $false }
+            @{ Reported = @('7.6.0'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('7.6.9'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('7.7.0-preview.3'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('8.0.0'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('7.6.9'); ExitCode = 1; Expected = $false }
+            @{ Reported = @('a warning on stderr', '7.6.9'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('7.6.9', 'a warning on stderr'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('not a version'); ExitCode = 0; Expected = $false }
+            @{ Reported = @(); ExitCode = 0; Expected = $false }
+        ) {
+            Mock Test-CommandAvailable { $true }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = $ExitCode; Output = $Reported } } -ParameterFilter { $FilePath -eq 'pwsh' -and ($Arguments -join ' ') -like '-NoProfile -Command *PSVersionTable.PSVersion*' }
+
+            & (Get-Check 'PowerShell 7.6+').Test | Should -Be $Expected
         }
 
         It 'GitHub sign-in is <Expected> when gh auth status exits <ExitCode>' -ForEach @(
@@ -167,6 +193,23 @@ Describe 'Get-DevMachineCheck' {
 
             & (Get-Check 'VS Code PowerShell extension').Test | Should -Be $Expected
         }
+    }
+}
+
+Describe 'the minimum PowerShell' {
+    # One minimum (ADR-0040): a script that runs on an older pwsh than this check asks for is never tested there.
+    It 'is what every kit script requires, except this one, which runs in Windows PowerShell 5.1' {
+        $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        $expected = "#Requires -Version $(Get-MinimumPwshVersion)"
+
+        $scripts = @(git -C $root ls-files -- '*.ps1' '*.psm1' | Where-Object { $_ -ne 'tools/Initialize-DevMachine.ps1' })
+        $wrong = foreach ($path in $scripts) {
+            $first = Get-Content -LiteralPath (Join-Path $root $path) -TotalCount 1
+            if ($first -ne $expected) { "$path ($first)" }
+        }
+
+        $scripts.Count | Should -BeGreaterThan 0
+        @($wrong) | Should -BeNullOrEmpty -Because "each should start with '$expected'"
     }
 }
 
