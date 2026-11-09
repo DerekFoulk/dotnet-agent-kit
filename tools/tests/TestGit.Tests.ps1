@@ -543,6 +543,15 @@ Describe 'TestGit.psm1' {
         Test-RepoGitIgnore -RepoRoot $checkout -Path 'local.txt' | Should -BeFalse -Because 'only this clone has .git/info/exclude'
     }
 
+    It 'stops with git''s own reason when it can''t judge a path, such as one outside the repo' {
+        # Review of the helper: the error gave only check-ignore's exit code.
+        $checkout = Join-Path $TestDrive "checkout-$(New-Guid)"
+        New-Item -ItemType Directory -Path $checkout | Out-Null
+        [IO.File]::WriteAllText((Join-Path $checkout '.gitignore'), "committed.txt`n")
+
+        { Test-RepoGitIgnore -RepoRoot $checkout -Path '../outside.txt' } | Should -Throw -ExpectedMessage '*outside repository*'
+    }
+
     It 'commits as the fixture, unsigned, whatever this machine''s own git identity and signing are' {
         # Review of PR 24: author.* and committer.* config, and the GIT_AUTHOR_* and GIT_COMMITTER_* variables, all
         # rank above user.name, so a machine that sets any of them changed every fixture commit.
