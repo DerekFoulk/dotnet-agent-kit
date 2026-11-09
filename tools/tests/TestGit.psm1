@@ -4,18 +4,22 @@
     The git settings every repo a test makes runs with (TestGit.Tests.ps1).
 
 .DESCRIPTION
-    Set-TestGitEnvironment applies them through git's GIT_CONFIG_COUNT, GIT_CONFIG_KEY_<n> and GIT_CONFIG_VALUE_<n>
-    environment variables. Those rank above every config file, so this machine's identity or signing can't change a
-    test, and they reach the scripts under test and every process they start. They also turn off git's background
-    maintenance: a fixture commit could start a repack that raced the test's next lookups (New-KitApp.Tests on
-    Windows, PR 23). Restore-TestGitEnvironment puts back what was there before. Call the first in a test file's
-    BeforeAll and the second in its AfterAll. New-TestGitRemote makes a bare repo for a test to push into, with
-    the one setting a push's receive-pack needs in the remote's own config.
+    Set-TestGitEnvironment sets them in the environment, so they reach the scripts under test and the processes
+    they start:
+    - the fixture identity, in GIT_AUTHOR_* and GIT_COMMITTER_*, which outrank every identity config key;
+    - the rest through GIT_CONFIG_COUNT, GIT_CONFIG_KEY_<n> and GIT_CONFIG_VALUE_<n>, which outrank every config
+      file: no signing, no background maintenance, no file-system monitor.
+    A fixture commit once started git's background maintenance, whose repack raced the test's next lookups of the
+    fixture commit (New-KitApp.Tests on Windows, PR 23). Restore-TestGitEnvironment puts back what was there before.
+    Call the first in a test file's BeforeAll and the second in its AfterAll.
+
+    One exception: git strips GIT_CONFIG_COUNT from the receive-pack a push to a local path starts. So
+    New-TestGitRemote makes a bare repo for a test to push into, with the setting receive-pack needs in its own
+    config.
 #>
 
 Set-StrictMode -Version Latest
 
-# The identity goes in git's own variables, which rank above every config key (user.*, author.*, committer.*).
 $script:Identity = [ordered]@{
     GIT_AUTHOR_NAME     = 'fixture'
     GIT_AUTHOR_EMAIL    = 'fixture@example.invalid'
@@ -37,7 +41,6 @@ function Get-GitConfigVariableName([int] $Count) {
 }
 
 function Set-TestGitEnvironment {
-    [CmdletBinding(SupportsShouldProcess)]
     [OutputType([hashtable])]
     param()
 
@@ -48,45 +51,39 @@ function Set-TestGitEnvironment {
 
     $saved = @{}
     foreach ($name in @(Get-GitConfigVariableName $count) + $script:Identity.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
-    if (-not $PSCmdlet.ShouldProcess('git settings for test repos', 'Set')) { return $saved }
 
     foreach ($variable in $script:Identity.GetEnumerator()) { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
     $i = $existing
     foreach ($setting in $script:Settings.GetEnumerator()) {
-        [Environment]::SetEnvironmentVariable("GIT_CONFIG_KEY_$i", $setting.Key)
-        [Environment]::SetEnvironmentVariable("GIT_CONFIG_VALUE_$i", $setting.Value)
+        Set-Item -LiteralPath "env:GIT_CONFIG_KEY_$i" -Value $setting.Key
+        Set-Item -LiteralPath "env:GIT_CONFIG_VALUE_$i" -Value $setting.Value
         $i++
     }
-    [Environment]::SetEnvironmentVariable('GIT_CONFIG_COUNT', [string] $count)
+    Set-Item -LiteralPath 'env:GIT_CONFIG_COUNT' -Value ([string] $count)
     $saved
 }
 
-function New-TestGitRemote {
-    [CmdletBinding(SupportsShouldProcess)]
-    [OutputType([string])]
-    param([Parameter(Mandatory)] [string] $Path)
-
-    # A bare repo a test pushes into, as if it were GitHub. git strips GIT_CONFIG_COUNT from the receive-pack a
-    # local push starts, so Set-TestGitEnvironment can't reach it: the remote gets the setting in its own config.
-    if (-not $PSCmdlet.ShouldProcess($Path, 'Create a bare git repo')) { return $Path }
-    foreach ($arguments in @(('init', '-q', '--bare', $Path), ('-C', $Path, 'config', 'receive.autoGC', 'false'))) {
-        $output = git @arguments 2>&1 | Out-String
-        if ($LASTEXITCODE -ne 0) { throw "Couldn't make the test remote at ${Path}: $($output.Trim())" }
-    }
-    $Path
-}
-
 function Restore-TestGitEnvironment {
-    [CmdletBinding(SupportsShouldProcess)]
     param([Parameter(Mandatory)] [hashtable] $Saved)
 
-    if (-not $PSCmdlet.ShouldProcess('git settings for test repos', 'Restore')) { return }
     # A variable that wasn't set is removed. PowerShell would pass $null to SetEnvironmentVariable as '', and git
     # reads an empty GIT_CONFIG_COUNT as an error.
     foreach ($name in $Saved.Keys) {
         if ($null -eq $Saved[$name]) { Remove-Item -LiteralPath "env:$name" -ErrorAction SilentlyContinue }
         else { Set-Item -LiteralPath "env:$name" -Value $Saved[$name] }
     }
+}
+
+function New-TestGitRemote {
+    [OutputType([string])]
+    param([Parameter(Mandatory)] [string] $Path)
+
+    # A bare repo a test pushes into, as if it were GitHub.
+    foreach ($arguments in @(('init', '-q', '--bare', $Path), ('-C', $Path, 'config', 'receive.autoGC', 'false'))) {
+        $output = git @arguments 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't make the test remote at ${Path}: $($output.Trim())" }
+    }
+    $Path
 }
 
 Export-ModuleMember -Function Set-TestGitEnvironment, Restore-TestGitEnvironment, New-TestGitRemote
