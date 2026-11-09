@@ -77,6 +77,15 @@ Describe 'TestGit.psm1' {
         finally { $env:GIT_TRACE2_EVENT = $outerTrace; Restore-TestGitEnvironment -Saved $saved }
     }
 
+    It 'stops with git''s reason when it can''t make the remote, rather than handing back a path to nothing' {
+        # Review of PR 24: git's exit codes were ignored, so a later push failed far from the cause.
+        Get-Command New-TestGitRemote -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $taken = Join-Path $TestDrive "taken-$(New-Guid).git"
+        Set-Content -LiteralPath $taken -Value 'a file, not a folder'
+
+        { New-TestGitRemote -Path $taken } | Should -Throw "*Couldn't make the test remote at*"
+    }
+
     It 'is how every test file makes a bare remote' {
         $byHand = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' |
             Where-Object { $_.Name -ne 'TestGit.Tests.ps1' -and (Get-Content -Raw -LiteralPath $_.FullName) -cmatch '\bgit\b[^\r\n]*\binit\b[^\r\n]*--bare\b' }
