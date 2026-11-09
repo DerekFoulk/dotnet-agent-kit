@@ -60,7 +60,7 @@ Describe 'Get-DevMachineCheck' {
         $checks = Get-DevMachineCheck -RepoRoot $TestDrive
 
         $checks.Name | Should -Be @(
-            'PowerShell 7', 'Pester 6', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403',
+            'PowerShell 7.6+', 'Pester 6', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403',
             'Claude Code', 'Git commit-msg hook', 'VS Code', 'VS Code PowerShell extension', 'Docker'
         )
         @($checks | Where-Object Required).Count | Should -Be 9
