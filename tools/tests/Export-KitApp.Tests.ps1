@@ -493,8 +493,9 @@ Describe 'Export-KitApp' {
         $deep = '"leaf"'
         foreach ($level in 1..101) { $deep = "{""k$level"":$deep}" }
 
-        { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' } |
-            Should -Throw '*truncated*'
+        # Review 3 of PR 32: the error was PowerShell's preference message, which didn't say which file failed.
+        { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' -WarningAction SilentlyContinue } |
+            Should -Throw "In the kit's .claude/settings.json, a setting is nested deeper than 100 levels*"
     }
 
     # Review 2 of PR 32: a null list or an empty rule stopped with PowerShell's parameter-binding error, which
