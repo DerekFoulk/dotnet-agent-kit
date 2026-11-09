@@ -475,6 +475,17 @@ Describe 'Export-KitApp' {
         @($appSettings['permissions']['additionalDirectories']) | Should -Be @('../shared/tools/foo')
     }
 
+    It 'keeps a date-like string exactly as written, whatever the machine''s time zone' {
+        # Review 5 of PR 32: ConvertFrom-Json read ISO dates as DateTime, and ConvertTo-Json wrote them back in
+        # local time, so exports on machines in different time zones differed.
+        $text = '{"permissions":{"allow":[]},"env":{"A":"2026-11-09T10:00:00+02:00","B":"2026-11-09T10:00:00.1234567Z"}}'
+
+        $app = Get-KitAppSettingsText -SettingsText $text -AppTools 'Set-AgentMode.ps1' | ConvertFrom-Json -AsHashtable -DateKind String
+
+        $app['env']['A'] | Should -BeExactly '2026-11-09T10:00:00+02:00'
+        $app['env']['B'] | Should -BeExactly '2026-11-09T10:00:00.1234567Z'
+    }
+
     It 'stops with a clear error when the kit''s settings have no permissions object, in <Case>' -ForEach @(
         @{ Case = 'an object without one'; Text = '{"x":1}' }
         @{ Case = 'a permissions list'; Text = '{"permissions":[]}' }
