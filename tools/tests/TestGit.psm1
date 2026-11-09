@@ -142,13 +142,29 @@ function Test-RepoGitIgnore {
     [OutputType([bool])]
     param([Parameter(Mandatory)] [string] $RepoRoot, [Parameter(Mandatory)] [string] $Path)
 
-    # Whether the repo's own .gitignore ignores Path, so every clone and every app that copies it does too, not
-    # just this machine.
-    git -C $RepoRoot -c 'core.excludesFile=/dev/null' check-ignore --no-index -q -- $Path
-    switch ($LASTEXITCODE) {
+    # Whether the repo's root .gitignore, as it stands in the work tree, ignores Path. That's the file every clone
+    # gets, and every app (Export-KitApp copies it); this clone's .git/info/exclude and this machine's excludes
+    # aren't, so it's judged on its own, copied into a repo made with the test settings.
+    $gitignore = Join-Path $RepoRoot '.gitignore'
+    if (-not (Test-Path -LiteralPath $gitignore -PathType Leaf)) { throw "There's no .gitignore in $RepoRoot." }
+    $scratch = [IO.Directory]::CreateTempSubdirectory('dotnet-agent-kit-ignore-').FullName
+    $saved = $null
+    try {
+        Copy-Item -LiteralPath $gitignore -Destination $scratch
+        $saved = Set-TestGitEnvironment
+        $init = git init -q $scratch 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't make the repo that judges .gitignore: $($init.Trim())" }
+        git -C $scratch check-ignore --no-index -q -- $Path
+        $code = $LASTEXITCODE
+    }
+    finally {
+        Restore-TestGitEnvironment -Saved $saved
+        Remove-Item -LiteralPath $scratch -Recurse -Force
+    }
+    switch ($code) {
         0 { $true }
         1 { $false }
-        default { throw "git check-ignore failed for '$Path' in $RepoRoot (exit $LASTEXITCODE)" }
+        default { throw "git check-ignore failed for '$Path' (exit $code)" }
     }
 }
 
