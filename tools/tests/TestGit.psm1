@@ -143,6 +143,18 @@ function New-TestGitRemote {
     $Path
 }
 
+# The NUL-separated names a git listing (-z) prints, read as UTF-8 apart from anything git writes to stderr (a
+# trace, a warning), which goes into the error only when git fails.
+function Get-GitListing([string] $RepoRoot, [string[]] $Arguments) {
+    $encoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+    try { $output = @(git -C $RepoRoot -c core.quotePath=false @Arguments 2>&1); $code = $LASTEXITCODE }
+    finally { [Console]::OutputEncoding = $encoding }
+    $errors = @($output | Where-Object { $_ -is [Management.Automation.ErrorRecord] })
+    if ($code -ne 0) { throw "git $($Arguments[0]) failed in ${RepoRoot} (exit $code): $(($errors | ForEach-Object { "$_" }) -join ' ')" }
+    $output | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] } | ForEach-Object { "$_".Split([char] 0, [StringSplitOptions]::RemoveEmptyEntries) }
+}
+
 function Test-RepoGitIgnore {
     [OutputType([bool])]
     param([Parameter(Mandatory)] [string] $RepoRoot, [Parameter(Mandatory)] [string] $Path)
@@ -154,17 +166,18 @@ function Test-RepoGitIgnore {
     # matches a path beneath it ("StrykerOutput/x.json"), not the folder's own name.
     $gitignore = Join-Path $RepoRoot '.gitignore'
     if (-not (Test-Path -LiteralPath $gitignore -PathType Leaf)) { throw "There's no .gitignore in $RepoRoot." }
-    # A .gitignore below the root can un-ignore what the root one ignores, so judging the root file alone would
-    # be wrong there. The kit has none; stop rather than give a false answer if one is ever committed.
-    $nested = git -C $RepoRoot ls-files -- ':(glob)*/**/.gitignore' 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0) { throw "git ls-files failed in ${RepoRoot}: $($nested.Trim())" }
-    if ($nested.Trim()) { throw "Test-RepoGitIgnore judges the root .gitignore only, but $RepoRoot also commits: $($nested.Trim() -replace '\s+', ', ')" }
     $scratch = [IO.Directory]::CreateTempSubdirectory('dotnet-agent-kit-ignore-').FullName
     $saved = $null
     try {
+        # Every git call runs with the test settings, so a caller's GIT_LITERAL_PATHSPECS or GIT_INDEX_FILE can't
+        # change what git reads (GIT_TRACE stays, and goes to stderr).
+        $saved = Set-TestGitEnvironment
+        # A .gitignore below the root can un-ignore what the root one ignores, so judging the root file alone would
+        # be wrong there. The kit has none; stop rather than give a false answer if one is ever committed.
+        $nested = @(Get-GitListing -RepoRoot $RepoRoot -Arguments 'ls-files', '-z', '--', ':(glob)*/**/.gitignore')
+        if ($nested) { throw "Test-RepoGitIgnore judges the root .gitignore only, but $RepoRoot also commits: $($nested -join ', ')" }
         # A copy that fails must stop here: an empty repo would judge every path not ignored.
         Copy-Item -LiteralPath $gitignore -Destination $scratch -ErrorAction Stop
-        $saved = Set-TestGitEnvironment
         $init = git init -q $scratch 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { throw "Couldn't make the repo that judges .gitignore: $($init.Trim())" }
         $reason = git -C $scratch check-ignore --no-index -q -- $Path 2>&1 | Out-String
