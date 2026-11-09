@@ -12,6 +12,11 @@ on:
     paths-ignore:
       - docs/**
       - '*.md'
+      # Made from the docs, or only recording them: the agent rule files and the release files.
+      - .github/copilot-instructions.md
+      - .github/instructions/**
+      - .github/pull_request_template.md
+      - .release-please-manifest.json
       - .claude/**
       - .githooks/**
       - .vscode/**
