@@ -388,8 +388,14 @@ Describe 'TestGit.psm1' {
         # Review 8 of PR 24: the test above fails before Set changes anything, so Set's own undo never ran.
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         Use-FailingLastStep
-        $outer = @{ GIT_PROBE_KEEP = $env:GIT_PROBE_KEEP }
+        # The caller has a template folder of their own, as a team might (review 10 of PR 24: Restore's write putting
+        # it back was taken for Set's, and the test's cleanup deleted the caller's folder).
+        $theirs = Join-Path $TestDrive "their-template-$(New-Guid)"
+        New-Item -ItemType Directory -Path $theirs | Out-Null
+        Set-Content -LiteralPath (Join-Path $theirs 'keep.txt') -Value 'their file'
+        $outer = @{ GIT_PROBE_KEEP = $env:GIT_PROBE_KEEP; GIT_TEMPLATE_DIR = $env:GIT_TEMPLATE_DIR }
         $env:GIT_PROBE_KEEP = 'kept'
+        $env:GIT_TEMPLATE_DIR = $theirs
         $before = Get-GitVariable
         try {
             { Set-TestGitEnvironment } | Should -Throw '*probe failure*'
@@ -397,9 +403,13 @@ Describe 'TestGit.psm1' {
             @($after.Keys) | Sort-Object | Should -Be (@($before.Keys) | Sort-Object)
             foreach ($name in $before.Keys) { $after[$name] | Should -Be $before[$name] -Because "$name is as it was" }
             $script:madeTemplate | Should -Not -BeNullOrEmpty -Because 'Set got as far as making its template'
+            $script:madeTemplate | Should -Not -Be $theirs -Because 'the recorded folder is the one Set made'
             $script:madeTemplate | Should -Not -Exist -Because 'the template is removed'
         }
-        finally { Set-GitVariable $before; Restore-TestGitEnvironment -Saved $outer; Remove-MadeTemplate }
+        finally {
+            Set-GitVariable $before; Restore-TestGitEnvironment -Saved $outer; Remove-MadeTemplate
+            Join-Path $theirs 'keep.txt' | Should -Exist -Because 'the caller''s own template folder is never touched'
+        }
     }
 
     It 'reports the step that failed, and warns when putting things back fails too' {
