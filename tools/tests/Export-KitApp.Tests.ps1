@@ -472,6 +472,18 @@ Describe 'Export-KitApp' {
         { Get-KitAppSettingsText -SettingsText $Text -AppTools 'Set-AgentMode.ps1' } | Should -Throw '*has no "permissions" object*'
     }
 
+    # Review 2 of PR 32: ConvertTo-Json's -Depth 10 wrote anything deeper as a type name, with only a warning.
+    It 'keeps a setting nested 20 levels deep whole' {
+        $deep = '"leaf"'
+        foreach ($level in 1..20) { $deep = "{""k$level"":$deep}" }
+        $text = "{""permissions"":{""allow"":[]},""hooks"":$deep}"
+
+        $app = Get-KitAppSettingsText -SettingsText $text -AppTools 'Set-AgentMode.ps1' -WarningAction SilentlyContinue
+
+        ($app | ConvertFrom-Json -AsHashtable -Depth 100 | ConvertTo-Json -Depth 100 -Compress) |
+            Should -BeExactly ($text | ConvertFrom-Json -AsHashtable -Depth 100 | ConvertTo-Json -Depth 100 -Compress)
+    }
+
     # Review 2 of PR 32: a null list or an empty rule stopped with PowerShell's parameter-binding error, which
     # doesn't say which setting is wrong.
     It 'stops with a clear error when <List> isn''t a list of rules, in <Case>' -ForEach @(
