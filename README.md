@@ -38,13 +38,13 @@ gh repo clone DerekFoulk/dotnet-agent-kit "$env:USERPROFILE\source\repos\DerekFo
 cd "$env:USERPROFILE\source\repos\DerekFoulk\dotnet-agent-kit"
 ```
 
-Then let the script install the rest. It runs in Windows PowerShell 5.1 as well, so it can install PowerShell 7 for you:
+Then let the script install the rest. It runs in Windows PowerShell 5.1 as well, so it can install PowerShell 7.6 for you, or upgrade an older one:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\Initialize-DevMachine.ps1 -Install
 ```
 
-Add `-WhatIf` first if you want to see the install commands without running them. When the installs finish, open a new PowerShell 7 window (`pwsh`) and run the check again until every line says `[ok]`:
+Add `-WhatIf` first if you want to see the install commands without running them. When the installs finish, open a new PowerShell 7.6 window (`pwsh`) and run the check again until every line says `[ok]`:
 
 ```powershell
 ./tools/Initialize-DevMachine.ps1

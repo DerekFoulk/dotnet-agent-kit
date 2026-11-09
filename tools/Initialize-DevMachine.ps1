@@ -10,7 +10,7 @@
     shows them without running them. GitHub sign-in is always yours to do (gh auth login): this script
     never handles credentials.
 
-    Runs on Windows PowerShell 5.1 too, so a new machine can find out that it needs PowerShell 7.
+    Runs on Windows PowerShell 5.1 too, so a new machine can find out that it needs PowerShell 7.6 or later.
     Exit code: 0 when every required tool is ready, otherwise 1.
 
 .PARAMETER Install
