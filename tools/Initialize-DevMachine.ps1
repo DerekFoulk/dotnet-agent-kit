@@ -134,8 +134,10 @@ function Test-PwshVersion {
         return $false
     }
     $result = Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-Command', '$PSVersionTable.PSVersion.ToString()'
-    # A preview reads "7.7.0-preview.3"; its major and minor are enough to compare.
-    if ($result.ExitCode -ne 0 -or "$($result.Output)" -notmatch '^\s*(\d+)\.(\d+)') {
+    # The version is the last line: Invoke-Native keeps any stderr warning before it. A preview reads
+    # "7.7.0-preview.3"; its major and minor are enough to compare.
+    $version = "$($result.Output | Select-Object -Last 1)"
+    if ($result.ExitCode -ne 0 -or $version -notmatch '^\s*(\d+)\.(\d+)') {
         return $false
     }
     [version] "$($Matches[1]).$($Matches[2])" -ge $Minimum
