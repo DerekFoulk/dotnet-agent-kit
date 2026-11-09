@@ -6,15 +6,16 @@
 .DESCRIPTION
     Set-TestGitEnvironment sets them in the environment, so they reach the scripts under test and the processes
     they start. Restore-TestGitEnvironment puts back what was there before. Call the first in a test file's
-    BeforeAll and the second in its AfterAll.
+    BeforeAll and the second in its AfterAll. If Set fails, it changes nothing, and Restore given its $null result
+    does nothing either. Needs PowerShell 7.4 or later, for [IO.Directory]::CreateTempSubdirectory.
     - Nothing git reads from the parent environment: every GIT_* variable is removed while tests run (GIT_CONFIG,
       GIT_DIR, GIT_DEFAULT_HASH, GIT_CONFIG_PARAMETERS, GIT_CONFIG_COUNT, a date...). Only GIT_TRACE* stays, which
       records what git does without changing it.
     - No git config, ignore or attributes file from this machine: no global or system config
       (GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM), no system attributes (GIT_ATTR_NOSYSTEM), and the default
       per-user ignore and attributes files replaced by an empty one (core.excludesFile and core.attributesFile).
-    - No template: GIT_TEMPLATE_DIR points at an empty directory of this run's own, private to this account, which
-      Restore removes. A test repo's .git so has no sample hooks, info/exclude or description; nothing here uses
+    - No template: GIT_TEMPLATE_DIR points at an empty directory of this run's own, which Restore removes. It's
+      private to this account: 0700 on Linux and macOS, and on Windows as private as the account's own %TEMP%. A test repo's .git so has no sample hooks, info/exclude or description; nothing here uses
       them.
     - The fixture identity, in GIT_AUTHOR_* and GIT_COMMITTER_*, which outrank every identity config key.
     - The rest through GIT_CONFIG_COUNT, GIT_CONFIG_KEY_<n> and GIT_CONFIG_VALUE_<n>, which outrank a repo's own
