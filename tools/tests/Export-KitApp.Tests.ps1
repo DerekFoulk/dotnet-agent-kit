@@ -437,4 +437,25 @@ Describe 'Export-KitApp' {
         @($appSettings['permissions']['allow']) | Should -Be @('PowerShell(./tools/*)', 'PowerShell(./.kit/tools/*)') -Because 'a wildcard names no one script'
         @($appSettings['permissions']['deny']) | Should -Be @('Read(./.env)')
     }
+
+    It 'filters only allow and ask rules naming the repo''s own tools folder, and leaves everything else as it is' {
+        # Review 1 of PR 32: deny rules and other permission settings were filtered too ("defaultMode" became a
+        # list), and a tools/ folder anywhere in a path counted.
+        $kit = [ordered]@{ permissions = [ordered]@{
+                allow                 = @('Read(./src/tools/**)', 'PowerShell(./TOOLS/Publish-Kit*)')
+                ask                   = @('PowerShell(./src/tools/Build-Thing*)', 'Bash(pwsh -NoProfile -File tools/Publish-Kit.ps1 *)')
+                deny                  = @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)')
+                defaultMode           = 'acceptEdits'
+                additionalDirectories = @('../shared/tools/foo')
+            }
+        } | ConvertTo-Json -Depth 5
+
+        $appSettings = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1' | ConvertFrom-Json -AsHashtable
+
+        @($appSettings['permissions']['allow']) | Should -Be @('Read(./src/tools/**)') -Because 'a tools folder below the root is the app''s own; the root one matches in any case'
+        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./src/tools/Build-Thing*)')
+        @($appSettings['permissions']['deny']) | Should -Be @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)') -Because 'a deny rule only ever protects'
+        $appSettings['permissions']['defaultMode'] | Should -BeExactly 'acceptEdits'
+        @($appSettings['permissions']['additionalDirectories']) | Should -Be @('../shared/tools/foo')
+    }
 }
