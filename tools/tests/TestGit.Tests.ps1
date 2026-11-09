@@ -263,6 +263,23 @@ Describe 'TestGit.psm1' {
         }
     }
 
+    It 'leaves out settings a parent process passed the same way, since they come from outside the test too' {
+        # Found in review 5 of PR 24: Set kept GIT_CONFIG_COUNT settings it found, so they reached every test repo.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $before = @{ GIT_CONFIG_COUNT = '1'; GIT_CONFIG_KEY_0 = 'probe.inheritedCount'; GIT_CONFIG_VALUE_0 = 'machine' }
+        $outer = @{}
+        foreach ($name in $before.Keys) { $outer[$name] = [Environment]::GetEnvironmentVariable($name) }
+        Restore-TestGitEnvironment -Saved $before
+        try {
+            $saved = Set-TestGitEnvironment
+            try {
+                git -C (New-TestRepo) config --get probe.inheritedCount | Should -BeNullOrEmpty
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+        }
+        finally { Restore-TestGitEnvironment -Saved $outer }
+    }
+
     It 'puts back exactly the environment it found, including settings someone else set the same way' {
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $before = @{ GIT_CONFIG_COUNT = '1'; GIT_CONFIG_KEY_0 = 'core.example'; GIT_CONFIG_VALUE_0 = 'kept' }
