@@ -29,7 +29,7 @@ $ErrorActionPreference = 'Stop'
 $script:KitCopies = @(
     '.editorconfig', '.gitattributes', '.gitignore', 'global.json', 'nuget.config', 'Directory.Build.props',
     'CLAUDE.md', '.mcp.json', '.vscode/mcp.json', '.vscode/settings.json',
-    '.claude/settings.json', '.claude/agents/reviewer.md', '.claude/skills/', 'docs/standards/', '.githooks/',
+    '.claude/agents/reviewer.md', '.claude/skills/', 'docs/standards/', '.githooks/',
     '.github/pull_request_template.md', 'docs/adr/0000-template.md'
 )
 
@@ -82,6 +82,9 @@ function Get-KitAppFileMap {
     foreach ($tool in $script:KitTools) {
         [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = "tools/$tool"; Target = ".kit/tools/$tool" }
     }
+
+    # Claude Code's permission rules, without those for kit scripts the app doesn't get.
+    [pscustomobject]@{ Kind = 'Settings'; Owner = 'Kit'; Source = '.claude/settings.json'; Target = '.claude/settings.json' }
 
     # Central package versions: the kit's build and test toolset, without its sample app's packages. The
     # app adds its own packages, so the app owns the file.
@@ -147,6 +150,30 @@ function Write-KitManifest {
     $json = ($manifest | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
     New-Item -ItemType Directory -Force -Path (Join-Path $Destination '.kit') | Out-Null
     [IO.File]::WriteAllText((Join-Path $Destination '.kit/manifest.json'), "$json`n", [Text.UTF8Encoding]::new($false))
+}
+
+# Whether a permission rule names a kit script under tools/ that the app doesn't get, such as
+# "./tools/New-KitApp*": it could never fire in the app, whose kit scripts are the KitTools in .kit/tools.
+function Test-KitOnlyRule {
+    param([Parameter(Mandatory)] [string] $Rule, [Parameter(Mandatory)] [string[]] $AppTools)
+
+    foreach ($match in [regex]::Matches($Rule, '(?<![\w.])tools[/\\]([A-Za-z][\w.-]*)')) {
+        $named = $match.Groups[1].Value
+        if (-not ($AppTools | Where-Object { $_.StartsWith($named, [StringComparison]::OrdinalIgnoreCase) })) { return $true }
+    }
+    $false
+}
+
+# The kit's .claude/settings.json for an app: every permission rule but the kit-only ones. Worked out from the
+# tools an app gets, so a rule for a new kit-only script is dropped without being listed anywhere.
+function Get-KitAppSettingsText {
+    param([Parameter(Mandatory)] [string] $SettingsText, [Parameter(Mandatory)] [string[]] $AppTools)
+
+    $settings = $SettingsText | ConvertFrom-Json -AsHashtable
+    foreach ($list in @($settings['permissions'].Keys)) {
+        $settings['permissions'][$list] = @($settings['permissions'][$list] | Where-Object { -not (Test-KitOnlyRule -Rule $_ -AppTools $AppTools) })
+    }
+    "$(($settings | ConvertTo-Json -Depth 10) -replace "`r`n", "`n")`n"
 }
 
 # Drops the ItemGroup labelled "Sample app", with the comment line above it, from Directory.Packages.props.
@@ -267,6 +294,9 @@ function Export-KitApp {
             }
             elseif ($entry.Kind -eq 'Packages') {
                 [IO.File]::WriteAllText($target, (Remove-KitSamplePackage -PropsText ([IO.File]::ReadAllText($source))), [Text.UTF8Encoding]::new($false))
+            }
+            elseif ($entry.Kind -eq 'Settings') {
+                [IO.File]::WriteAllText($target, (Get-KitAppSettingsText -SettingsText ([IO.File]::ReadAllText($source)) -AppTools $script:KitTools), [Text.UTF8Encoding]::new($false))
             }
             else {
                 Copy-Item -LiteralPath $source -Destination $target
