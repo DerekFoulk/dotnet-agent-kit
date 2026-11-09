@@ -15,9 +15,15 @@
 
 Set-StrictMode -Version Latest
 
+# The identity goes in git's own variables, which rank above every config key (user.*, author.*, committer.*).
+$script:Identity = [ordered]@{
+    GIT_AUTHOR_NAME     = 'fixture'
+    GIT_AUTHOR_EMAIL    = 'fixture@example.invalid'
+    GIT_COMMITTER_NAME  = 'fixture'
+    GIT_COMMITTER_EMAIL = 'fixture@example.invalid'
+}
+
 $script:Settings = [ordered]@{
-    'user.name'        = 'fixture'
-    'user.email'       = 'fixture@example.invalid'
     'commit.gpgsign'   = 'false'
     'tag.gpgsign'      = 'false'
     'maintenance.auto' = 'false'
@@ -40,9 +46,10 @@ function Set-TestGitEnvironment {
     $count = $existing + $script:Settings.Count
 
     $saved = @{}
-    foreach ($name in (Get-GitConfigVariableName $count)) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+    foreach ($name in @(Get-GitConfigVariableName $count) + $script:Identity.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
     if (-not $PSCmdlet.ShouldProcess('git settings for test repos', 'Set')) { return $saved }
 
+    foreach ($variable in $script:Identity.GetEnumerator()) { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
     $i = $existing
     foreach ($setting in $script:Settings.GetEnumerator()) {
         [Environment]::SetEnvironmentVariable("GIT_CONFIG_KEY_$i", $setting.Key)
