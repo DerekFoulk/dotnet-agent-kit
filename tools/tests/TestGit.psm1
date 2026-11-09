@@ -28,6 +28,7 @@ $script:Settings = [ordered]@{
     'tag.gpgsign'      = 'false'
     'maintenance.auto' = 'false'
     'gc.auto'          = '0'
+    'core.fsmonitor'   = 'false' # a daemon per repo, holding handles in TestDrive
 }
 
 function Get-GitConfigVariableName([int] $Count) {
