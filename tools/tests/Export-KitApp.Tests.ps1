@@ -494,7 +494,7 @@ Describe 'Export-KitApp' {
         foreach ($level in 1..101) { $deep = "{""k$level"":$deep}" }
 
         # Review 3 of PR 32: the error was PowerShell's preference message, which didn't say which file failed.
-        { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' -WarningAction SilentlyContinue } |
+        { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' } |
             Should -Throw "In the kit's .claude/settings.json, a setting is nested deeper than 100 levels*"
     }
 

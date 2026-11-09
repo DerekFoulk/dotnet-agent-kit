@@ -5,9 +5,9 @@
 
 .DESCRIPTION
     The app gets the kit's build files, agent files, rules and checking scripts exactly as they are at the
-    chosen commit, so an app pinned to a kit version has that version's files. One exception: .claude/settings.json
-    leaves out the allow and ask rules for kit scripts the app doesn't get (./tools/New-KitApp), since they could
-    never fire there. The files come from a clean checkout of the commit (a temporary git worktree), never from
+    chosen commit, so an app pinned to a kit version has that version's files. Two exceptions:
+    Directory.Packages.props leaves out the sample app's packages, and .claude/settings.json leaves out the allow
+    and ask rules for kit scripts the app doesn't get (./tools/New-KitApp), since they could never fire there. The files come from a clean checkout of the commit (a temporary git worktree), never from
     the kit's working tree, so an unfinished local edit can't slip into an app.
 
     New-KitApp (PR D2b) calls this, then creates the GitHub repo.
@@ -188,7 +188,11 @@ function Get-KitAppSettingsText {
     }
     # 100 is ConvertTo-Json's maximum. Anything deeper would be written as a type name with only a warning, so the
     # warning stops the export instead.
-    "$(($settings | ConvertTo-Json -Depth 100 -WarningAction Stop) -replace "`r`n", "`n")`n"
+    $json = $settings | ConvertTo-Json -Depth 100 -WarningAction SilentlyContinue -WarningVariable truncated
+    if ($truncated) {
+        throw "In the kit's .claude/settings.json, a setting is nested deeper than 100 levels, more than ConvertTo-Json can write."
+    }
+    "$($json -replace "`r`n", "`n")`n"
 }
 
 # Drops the ItemGroup labelled "Sample app", with the comment line above it, from Directory.Packages.props.
