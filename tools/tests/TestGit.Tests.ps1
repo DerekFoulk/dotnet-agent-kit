@@ -427,7 +427,7 @@ Describe 'TestGit.psm1' {
         New-Item -ItemType Directory -Path $temp | Out-Null
         $outer = @{ TMP = $env:TMP; TEMP = $env:TEMP; TMPDIR = $env:TMPDIR }
         try {
-            # Inside the try, so the finally puts the temp folder back even if this fails partway (review 12).
+            # Review 12 of PR 24: inside the try, so the finally puts the temp folder back even if this fails partway.
             Restore-TestGitEnvironment -Saved @{ TMP = $temp; TEMP = $temp; TMPDIR = $temp }
             $otherName = New-Item -ItemType Directory -Path (Join-Path $temp 'someone-elses-folder')
             $otherPlace = New-Item -ItemType Directory -Path (Join-Path $TestDrive "dotnet-agent-kit-git-template-$(New-Guid)")
