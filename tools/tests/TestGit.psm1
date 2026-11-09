@@ -28,8 +28,10 @@
     commit (New-KitApp.Tests on Windows, PR 23).
 
     With no global or system config, a safe.directory entry there doesn't apply either: a checkout owned by another
-    account makes git stop with "dubious ownership". Run the tests from a checkout of your own. A test that reads
-    the checkout itself (its file list, say) does so before calling Set-TestGitEnvironment, with its own config.
+    account makes git stop with "dubious ownership". Run the tests from a checkout of your own. A test that lists
+    the checkout's own files does so before calling Set-TestGitEnvironment, so your global ignore rules apply to
+    that list. Test-RepoGitIgnore is the exception: it reads the checkout with the test settings on, so a caller's
+    git variables can't change its answer, and so it too needs a checkout of your own.
 
     One exception: for a push or fetch through a local path, git strips GIT_CONFIG_COUNT from the receive-pack or
     upload-pack it starts. Only receive-pack runs maintenance, so New-TestGitRemote makes a bare repo for a test to
