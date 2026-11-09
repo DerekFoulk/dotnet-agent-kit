@@ -20,11 +20,14 @@
 
 Set-StrictMode -Version Latest
 
-$script:Identity = [ordered]@{
+$script:Variables = [ordered]@{
     GIT_AUTHOR_NAME     = 'fixture'
     GIT_AUTHOR_EMAIL    = 'fixture@example.invalid'
     GIT_COMMITTER_NAME  = 'fixture'
     GIT_COMMITTER_EMAIL = 'fixture@example.invalid'
+    # No global or system config at all: git reads /dev/null as an empty file, on Windows too.
+    GIT_CONFIG_GLOBAL   = '/dev/null'
+    GIT_CONFIG_NOSYSTEM = '1'
 }
 
 $script:Settings = [ordered]@{
@@ -50,9 +53,9 @@ function Set-TestGitEnvironment {
     $count = $existing + $script:Settings.Count
 
     $saved = @{}
-    foreach ($name in @(Get-GitConfigVariableName $count) + $script:Identity.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+    foreach ($name in @(Get-GitConfigVariableName $count) + $script:Variables.Keys) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 
-    foreach ($variable in $script:Identity.GetEnumerator()) { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
+    foreach ($variable in $script:Variables.GetEnumerator()) { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
     $i = $existing
     foreach ($setting in $script:Settings.GetEnumerator()) {
         Set-Item -LiteralPath "env:GIT_CONFIG_KEY_$i" -Value $setting.Key
