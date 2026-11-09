@@ -206,6 +206,41 @@ Describe 'TestGit.psm1' {
         finally { Restore-TestGitEnvironment -Saved $outer }
     }
 
+    It 'lets no git variable from the parent environment reach a test repo, and puts every one back after' {
+        # Review 6 of PR 24, after five rounds that each found one more: GIT_CONFIG made New-TestGitRemote write
+        # into another file, GIT_DIR made git init re-initialize the outer repo, GIT_DEFAULT_HASH changed the hash.
+        # Set now removes every GIT_* variable while tests run, rather than a list of known ones.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $outerRepo = Join-Path $TestDrive "outer-$(New-Guid)"
+        git init -q $outerRepo
+        $legacy = Join-Path $TestDrive "legacy-$(New-Guid).gitconfig"
+        [IO.File]::WriteAllText($legacy, "[probe]`n`tlegacy = machine`n")
+        $machine = @{
+            GIT_CONFIG = $legacy; GIT_DIR = (Join-Path $outerRepo '.git'); GIT_DEFAULT_HASH = 'sha256'
+            GIT_COMMITTER_DATE = '2001-02-03T04:05:06Z'
+        }
+        $outer = @{}
+        foreach ($name in $machine.Keys) { $outer[$name] = [Environment]::GetEnvironmentVariable($name) }
+        Restore-TestGitEnvironment -Saved $machine
+        try {
+            $saved = Set-TestGitEnvironment
+            try {
+                $repo = New-TestRepo
+                Join-Path $repo '.git' | Should -Exist -Because 'git init made the test repo, not the outer one again'
+                git -C $repo rev-parse --show-object-format | Should -Be 'sha1'
+                git -C $repo config --get probe.legacy | Should -BeNullOrEmpty -Because 'the parent''s GIT_CONFIG is left out'
+                git -C $repo commit -q --allow-empty -m 'chore: fixture'
+                git -C $repo log -1 --format=%cI | Should -Not -BeLike '2001-*'
+                $remote = New-TestGitRemote -Path (Join-Path $TestDrive "remote-$(New-Guid).git")
+                git config --file (Join-Path $remote 'config') --get receive.autogc | Should -Be 'false' -Because 'the setting lands in the remote''s own config'
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+
+            foreach ($name in $machine.Keys) { [Environment]::GetEnvironmentVariable($name) | Should -Be $machine[$name] -Because "$name comes back" }
+        }
+        finally { Restore-TestGitEnvironment -Saved $outer }
+    }
+
     It 'starts no file-system monitor daemon for a test repo, even where this machine turns it on' {
         # Review of PR 24: with core.fsmonitor=true, every test repo got a daemon holding handles in TestDrive.
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
