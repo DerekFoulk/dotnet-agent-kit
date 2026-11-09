@@ -713,6 +713,22 @@ Describe 'TestGit.psm1' {
             { Test-RepoGitIgnore -RepoRoot $notRepo -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*ls-files failed*'
         }
 
+        It 'answers false for a path that isn''t ignored, even where native commands'' exit codes are errors' {
+            # Review 3 of the helper: with $PSNativeCommandUseErrorActionPreference on and $ErrorActionPreference
+            # Stop, check-ignore's exit 1 ("not ignored") became a thrown error. The module reads global preferences.
+            $outer = @{ Native = $global:PSNativeCommandUseErrorActionPreference; Action = $global:ErrorActionPreference }
+            $global:PSNativeCommandUseErrorActionPreference = $true
+            $global:ErrorActionPreference = 'Stop'
+            try { $ignored = try { Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'kept.txt' } catch { "threw: $($_.Exception.Message)" } }
+            finally {
+                $global:PSNativeCommandUseErrorActionPreference = $outer.Native
+                $global:ErrorActionPreference = $outer.Action
+            }
+
+            $ignored | Should -BeOfType [bool]
+            $ignored | Should -BeFalse
+        }
+
         It 'stops when the repo has no .gitignore' {
             $saved = Set-TestGitEnvironment
             try { $bare = New-TestRepo }
