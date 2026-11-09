@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Fails when a PR title or a commit subject isn't a Conventional Commit (GIT-004, ADR-0006, ADR-0022).

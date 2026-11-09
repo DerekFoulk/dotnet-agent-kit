@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 # Reads Copilot code reviews and resolves review threads on GitHub pull requests (ADR-0028).
 # Every GitHub call goes through Invoke-Gh, the one place the tests replace. It isn't exported:
 # callers use the functions below, not a raw gh passthrough.

@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Fails when any kit rule lacks a traceable source or an enforcement entry (brief §7, checkpoint §2).

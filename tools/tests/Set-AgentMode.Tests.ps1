@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # Two working modes (ADR-0035). Auto, the default: the agent plans, builds and merges its own PRs, asking only

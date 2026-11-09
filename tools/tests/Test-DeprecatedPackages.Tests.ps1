@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 # The JSON shapes below are real `dotnet list package --deprecated --format json` output (SDK 10.0.403,

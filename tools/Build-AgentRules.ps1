@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     Generates the agents' path-scoped rule files from docs/standards (checkpoint §2).

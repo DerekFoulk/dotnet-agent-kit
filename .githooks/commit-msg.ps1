@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.6
 <#
 .SYNOPSIS
     The commit-msg hook: rejects a commit whose subject isn't a Conventional Commit (GIT-004, ADR-0027).
