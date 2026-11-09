@@ -65,12 +65,12 @@ rules:
     scope: core
     paths: ["Directory.Packages.props"]
   - id: SUP-008
-    statement: "GitHub Actions are pinned to a full commit SHA, and Dependabot keeps actions and packages current."
-    why: "A tag can be moved to malicious code; a SHA can't."
+    statement: "GitHub Actions are pinned to a full commit SHA, and Dependabot keeps actions and packages current, waiting 7 days before proposing a version and 14 for a major."
+    why: "A tag can be moved to malicious code; a SHA can't. A release that's pulled or found compromised in its first days never reaches a PR."
     layer: owner
     status: accepted
-    sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
-    enforcement: "settings: the kit repo requires actions pinned to a full-length commit SHA (GitHub's Actions setting, on since 2026-11-09), and .github/dependabot.yml updates the pins; Pester tests also check the pins in the release, Dependabot lock-file and shared app workflows; New-KitApp doesn't yet turn the setting on for apps"
+    sources: ["owner, 2026-11-01", "owner, 2026-11-09", "ADR-0041"]
+    enforcement: "settings: the kit repo requires actions pinned to a full-length commit SHA (GitHub's Actions setting, on since 2026-11-09), and .github/dependabot.yml updates the pins; Pester tests also check the pins in the release, Dependabot lock-file and shared app workflows, and Dependabot.Tests.ps1 checks the waits in the kit's and the app template's dependabot.yml; New-KitApp doesn't yet turn the setting on for apps"
     scope: core
     paths: [".github/**"]
 ---
