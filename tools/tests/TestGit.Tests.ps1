@@ -269,6 +269,26 @@ Describe 'TestGit.psm1' {
         $templates | ForEach-Object { $_ | Should -Not -Exist -Because 'Restore removes the run''s template' }
     }
 
+    It 'keeps git''s trace variables, so a whole test run can still be traced' {
+        # Review 7 of PR 24: GIT_TRACE* records what git does without changing it; tracing a whole run is how this
+        # PR's root cause was found.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $trace = Join-Path $TestDrive "run-trace-$(New-Guid).jsonl"
+        $outer = @{ GIT_TRACE2_EVENT = $env:GIT_TRACE2_EVENT }
+        $env:GIT_TRACE2_EVENT = $trace
+        try {
+            $saved = Set-TestGitEnvironment
+            try {
+                $env:GIT_TRACE2_EVENT | Should -Be $trace
+                New-TestRepo | Out-Null
+                $trace | Should -Exist -Because 'git traced the test''s init'
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+            $env:GIT_TRACE2_EVENT | Should -Be $trace
+        }
+        finally { Restore-TestGitEnvironment -Saved $outer }
+    }
+
     It 'removes the template its own Set made, whatever GIT_TEMPLATE_DIR says by then, and never another folder' {
         # Review 7 of PR 24: Restore removed the folder GIT_TEMPLATE_DIR named at Restore time, so a test that
         # changed it, or Restores out of order, left the module's folder behind.
