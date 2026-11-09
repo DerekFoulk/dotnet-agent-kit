@@ -77,22 +77,28 @@ function Set-TestGitEnvironment {
     foreach ($name in $inherited + @(Get-GitConfigVariableName $count) + $script:Variables.Keys + 'GIT_TEMPLATE_DIR') {
         $saved[$name] = [Environment]::GetEnvironmentVariable($name)
     }
-    foreach ($name in $inherited) { Remove-Item -LiteralPath "env:$name" }
 
-    # A new, uniquely named directory, made in one step and private to this account (0700 on Linux and macOS):
-    # nobody else can make it first or put a hook or config in it, and two runs at once can't collide.
+    # Made before anything changes, so if it can't be made, nothing has. A new, uniquely named directory, made in
+    # one step and private to this account (0700 on Linux and macOS): nobody else can make it first or put a hook
+    # or config in it, and two runs at once can't collide.
     $template = [IO.Directory]::CreateTempSubdirectory('dotnet-agent-kit-git-template-').FullName
     [void] $script:Templates.Add($template)
-    Set-Item -LiteralPath 'env:GIT_TEMPLATE_DIR' -Value $template
-
-    foreach ($variable in $script:Variables.GetEnumerator()) { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
-    $i = 0
-    foreach ($setting in $script:Settings.GetEnumerator()) {
-        Set-Item -LiteralPath "env:GIT_CONFIG_KEY_$i" -Value $setting.Key
-        Set-Item -LiteralPath "env:GIT_CONFIG_VALUE_$i" -Value $setting.Value
-        $i++
+    try {
+        foreach ($name in $inherited) { Remove-Item -LiteralPath "env:$name" }
+        Set-Item -LiteralPath 'env:GIT_TEMPLATE_DIR' -Value $template
+        foreach ($variable in $script:Variables.GetEnumerator()) { Set-Item -LiteralPath "env:$($variable.Key)" -Value $variable.Value }
+        $i = 0
+        foreach ($setting in $script:Settings.GetEnumerator()) {
+            Set-Item -LiteralPath "env:GIT_CONFIG_KEY_$i" -Value $setting.Key
+            Set-Item -LiteralPath "env:GIT_CONFIG_VALUE_$i" -Value $setting.Value
+            $i++
+        }
+        Set-Item -LiteralPath 'env:GIT_CONFIG_COUNT' -Value ([string] $count)
     }
-    Set-Item -LiteralPath 'env:GIT_CONFIG_COUNT' -Value ([string] $count)
+    catch {
+        Restore-TestGitEnvironment -Saved $saved
+        throw
+    }
     $saved
 }
 
