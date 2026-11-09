@@ -58,8 +58,9 @@ $script:Settings = [ordered]@{
     'core.attributesFile' = '/dev/null'
 }
 
-# The template directories this module made, so Restore removes only its own.
-$script:Templates = [System.Collections.Generic.HashSet[string]]::new()
+# The template directory each Set made, by the hashtable it returned, so Restore removes exactly that one and
+# only directories this module made, whatever GIT_TEMPLATE_DIR says by then and in whatever order Restores come.
+$script:Templates = [System.Collections.Generic.Dictionary[object, string]]::new([System.Collections.Generic.ReferenceEqualityComparer]::Instance)
 
 function Get-GitConfigVariableName([int] $Count) {
     'GIT_CONFIG_COUNT'
@@ -82,7 +83,7 @@ function Set-TestGitEnvironment {
     # one step and private to this account (0700 on Linux and macOS): nobody else can make it first or put a hook
     # or config in it, and two runs at once can't collide.
     $template = [IO.Directory]::CreateTempSubdirectory('dotnet-agent-kit-git-template-').FullName
-    [void] $script:Templates.Add($template)
+    $script:Templates[$saved] = $template
     try {
         foreach ($name in $inherited) { Remove-Item -LiteralPath "env:$name" }
         Set-Item -LiteralPath 'env:GIT_TEMPLATE_DIR' -Value $template
@@ -107,8 +108,8 @@ function Restore-TestGitEnvironment {
     param([Parameter(Mandatory)] [AllowNull()] [hashtable] $Saved)
 
     if ($null -eq $Saved) { return }
-    $template = $env:GIT_TEMPLATE_DIR
-    if ($template -and $script:Templates.Remove($template)) { Remove-Item -LiteralPath $template -Recurse -Force -ErrorAction SilentlyContinue }
+    $template = $null
+    if ($script:Templates.Remove($Saved, [ref] $template)) { Remove-Item -LiteralPath $template -Recurse -Force -ErrorAction SilentlyContinue }
 
     # A variable that wasn't set is removed. PowerShell would pass $null to SetEnvironmentVariable as '', and git
     # reads an empty GIT_CONFIG_COUNT as an error.

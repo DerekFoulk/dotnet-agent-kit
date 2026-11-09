@@ -289,6 +289,8 @@ Describe 'TestGit.psm1' {
         $secondTemplate = $env:GIT_TEMPLATE_DIR
         Restore-TestGitEnvironment -Saved $first
         Restore-TestGitEnvironment -Saved $second
+        # Out of order, the environment ends as the first Set left it; $first holds what was there before both.
+        Restore-TestGitEnvironment -Saved $first
         $firstTemplate, $secondTemplate | ForEach-Object { $_ | Should -Not -Exist -Because 'Restores out of order still remove each folder' }
     }
 
