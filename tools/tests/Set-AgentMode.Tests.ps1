@@ -6,13 +6,14 @@
 # mode writes .agent-mode and adds the ask rules to the owner's own .claude/settings.local.json, which Claude Code
 # merges with the project's settings (an ask rule from any file beats an allow rule).
 
-# At file level, like every file's TestGit setup: a -Force re-import inside a Describe would reset the module's
-# record of the template folders a file-level Set made, and Restore would leave them behind.
+# At file level, where the files that make repos import it too: if this file ever adds a file-level Set, a -Force
+# re-import inside a Describe would reset the module's record of that Set's template folder, and Restore would
+# leave it behind.
 BeforeAll { Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force }
 
 Describe 'Set-AgentMode.ps1' {
     BeforeAll {
-        $script =Join-Path $PSScriptRoot '..' 'Set-AgentMode.ps1'
+        $script = Join-Path $PSScriptRoot '..' 'Set-AgentMode.ps1'
         if (Test-Path -LiteralPath $script) { . $script }
 
         function New-Repo {

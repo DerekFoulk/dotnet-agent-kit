@@ -631,8 +631,14 @@ Describe 'TestGit.psm1' {
             $xdg = Join-Path $TestDrive "machine-xdg-$(New-Guid)"
             New-Item -ItemType Directory -Path (Join-Path $xdg 'git') | Out-Null
             [IO.File]::WriteAllText((Join-Path $xdg 'git' 'ignore'), "machine.txt`n")
-            $outer = @{ XDG_CONFIG_HOME = [Environment]::GetEnvironmentVariable('XDG_CONFIG_HOME') }
+            # An empty global config too: a machine whose global config sets core.excludesFile never reads the
+            # XDG file, and the test would then pass even without the helper's isolation.
+            $emptyGlobal = Join-Path $TestDrive "empty-global-$(New-Guid)"
+            [IO.File]::WriteAllText($emptyGlobal, '')
+            $outer = @{}
+            foreach ($name in 'XDG_CONFIG_HOME', 'GIT_CONFIG_GLOBAL') { $outer[$name] = [Environment]::GetEnvironmentVariable($name) }
             Set-Item -LiteralPath 'env:XDG_CONFIG_HOME' -Value $xdg
+            Set-Item -LiteralPath 'env:GIT_CONFIG_GLOBAL' -Value $emptyGlobal
             try { $ignored = Test-RepoGitIgnore -RepoRoot $script:ignoreCheckout -Path 'machine.txt' }
             finally { Restore-TestGitEnvironment -Saved $outer }
 
