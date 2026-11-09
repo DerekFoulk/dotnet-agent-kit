@@ -154,26 +154,34 @@ function Write-KitManifest {
     [IO.File]::WriteAllText((Join-Path $Destination '.kit/manifest.json'), "$json`n", [Text.UTF8Encoding]::new($false))
 }
 
-# Whether a permission rule names a kit script under tools/ that the app doesn't get, such as
-# "./tools/New-KitApp*": it could never fire in the app, whose kit scripts are the KitTools in .kit/tools.
+# Whether a permission rule names a kit script in the repo's own tools folder that the app doesn't get, such as
+# "./tools/New-KitApp*": it could never fire in the app, whose kit scripts are the KitTools in .kit/tools. Only
+# the root tools folder counts ("./tools/", ".\tools\" or a bare "tools/" starting an argument), in any case; a
+# tools folder deeper in a path is the app's own.
 function Test-KitOnlyRule {
     param([Parameter(Mandatory)] [string] $Rule, [Parameter(Mandatory)] [string[]] $AppTools)
 
-    foreach ($match in [regex]::Matches($Rule, '(?<![\w.])tools[/\\]([A-Za-z][\w.-]*)')) {
+    foreach ($match in [regex]::Matches($Rule, '(?i)(?:^|[\s(''"])(?:\.[/\\])?tools[/\\]([a-z][\w.-]*)')) {
         $named = $match.Groups[1].Value
         if (-not ($AppTools | Where-Object { $_.StartsWith($named, [StringComparison]::OrdinalIgnoreCase) })) { return $true }
     }
     $false
 }
 
-# The kit's .claude/settings.json for an app: every permission rule but the kit-only ones. Worked out from the
-# tools an app gets, so a rule for a new kit-only script is dropped without being listed anywhere.
+# The kit's .claude/settings.json for an app: every setting as it is, except the allow and ask rules that are
+# kit-only. Worked out from the tools an app gets, so a rule for a new kit-only script is dropped without being
+# listed anywhere. Deny rules are never dropped: they only ever protect.
 function Get-KitAppSettingsText {
     param([Parameter(Mandatory)] [string] $SettingsText, [Parameter(Mandatory)] [string[]] $AppTools)
 
     $settings = $SettingsText | ConvertFrom-Json -AsHashtable
-    foreach ($list in @($settings['permissions'].Keys)) {
-        $settings['permissions'][$list] = @($settings['permissions'][$list] | Where-Object { -not (Test-KitOnlyRule -Rule $_ -AppTools $AppTools) })
+    if ($settings -isnot [Collections.IDictionary] -or $settings['permissions'] -isnot [Collections.IDictionary]) {
+        throw "The kit's .claude/settings.json has no ""permissions"" object."
+    }
+    foreach ($list in 'allow', 'ask') {
+        if ($settings['permissions'].Contains($list)) {
+            $settings['permissions'][$list] = @($settings['permissions'][$list] | Where-Object { -not (Test-KitOnlyRule -Rule $_ -AppTools $AppTools) })
+        }
     }
     "$(($settings | ConvertTo-Json -Depth 10) -replace "`r`n", "`n")`n"
 }
