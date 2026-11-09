@@ -81,7 +81,7 @@ Describe 'Mutation testing in CI' {
             # PowerShell's own capture would split on line breaks and decode with the console's code page.
             function Get-TrackedFile([string] $Folder) {
                 # The git PowerShell's own lookup finds (PATH and PATHEXT), as the rest of this file runs (review 10).
-                $start = [Diagnostics.ProcessStartInfo]::new((Get-Command git -CommandType Application -TotalCount 1).Source)
+                $start = [Diagnostics.ProcessStartInfo]::new((Get-Command git -CommandType Application -TotalCount 1 -ErrorAction Stop).Source)
                 foreach ($argument in @('-C', $root, '-c', 'core.quotePath=false', 'ls-files', '-z') + $(if ($Folder) { '--', ":(literal)$Folder" })) {
                     $start.ArgumentList.Add($argument)
                 }
