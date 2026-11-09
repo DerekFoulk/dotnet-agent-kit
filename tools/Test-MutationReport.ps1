@@ -1,0 +1,97 @@
+#Requires -Version 7.0
+<#
+.SYNOPSIS
+    Fails when Stryker.NET's mutation score can't be trusted (ADR-0039).
+
+.DESCRIPTION
+    Reads the JSON report Stryker.NET writes (mutation-report.json) and checks one rule: a test may only kill a mutant
+    it ran against. Stryker records the tests that reach each mutant (coveredBy) and the tests that killed it
+    (killedBy). A kill by a test outside coveredBy means that test fails whatever is mutated, so the mutant was never
+    really tested and the score is falsely high. On PR 23 the API tests failed to start under Stryker, coverage capture
+    failed, and the run reported 100%. Static mutants (code that runs once, such as a static constructor) run against
+    every test, so they're exempt. Exit code: 0 when the report passes, otherwise 1.
+
+.EXAMPLE
+    ./tools/Test-MutationReport.ps1 -Path StrykerOutput/reports/mutation-report.json
+#>
+[CmdletBinding()]
+param(
+    [string] $Path
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# The items of a report field, written to the pipeline; nothing when the report leaves the field out. Callers
+# collect them with @().
+function Get-ReportList {
+    param([System.Collections.IDictionary] $Object, [Parameter(Mandatory)] [string] $Key)
+
+    if ($null -eq $Object -or -not $Object.Contains($Key) -or $null -eq $Object[$Key]) { return }
+    $value = $Object[$Key]
+    if ($value -is [System.Collections.IDictionary]) { $value.Values } else { $value }
+}
+
+function Get-MutationReportProblem {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "No mutation report at '$Path': Stryker.NET stopped before writing one. Its log above says why."
+    }
+    $report = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json -AsHashtable
+
+    # Ids compare as JSON strings do, case-sensitively, everywhere: here, in the counts and in the coverage set.
+    $names = [hashtable]::new([System.StringComparer]::Ordinal)
+    foreach ($testFile in (Get-ReportList $report 'testFiles')) {
+        foreach ($test in (Get-ReportList $testFile 'tests')) { $names[[string] $test['id']] = [string] $test['name'] }
+    }
+
+    # For each test id, the number of killed mutants it never reached. Keyed by id, not name: two tests can share a name.
+    $unreached = [hashtable]::new([System.StringComparer]::Ordinal)
+    foreach ($file in (Get-ReportList $report 'files')) {
+        foreach ($mutant in (Get-ReportList $file 'mutants')) {
+            if ($mutant['status'] -ne 'Killed' -or $mutant['static'] -eq $true) { continue }
+            $covered = [System.Collections.Generic.HashSet[string]]::new([string[]] @(Get-ReportList $mutant 'coveredBy'))
+            foreach ($killer in (Get-ReportList $mutant 'killedBy')) {
+                $id = [string] $killer
+                if (-not $covered.Contains($id)) { $unreached[$id] = [int] $unreached[$id] + 1 }
+            }
+        }
+    }
+
+    # By name, for the reader, then by id, so the order is the same every run. A test the report doesn't name goes by
+    # its id, and tests that share a name are told apart by theirs.
+    $flagged = foreach ($id in $unreached.Keys) {
+        [pscustomobject]@{ Id = $id; Name = if ($names[$id]) { $names[$id] } else { $id }; Count = $unreached[$id] }
+    }
+    # Case-exact, as the ids are compared: Group-Object, Sort-Object and -contains ignore case unless told not to.
+    $shared = @($flagged | Group-Object Name -CaseSensitive | Where-Object Count -GT 1 | ForEach-Object Name)
+    foreach ($test in ($flagged | Sort-Object Name, Id -CaseSensitive)) {
+        $label = if ($shared -ccontains $test.Name) { "$($test.Name) (id $($test.Id))" } else { $test.Name }
+        "$label killed $($test.Count) mutant(s) it never reached, so it fails whatever is mutated and the score " +
+        'can''t be trusted. Run that test under Stryker and fix why it fails there.'
+    }
+}
+
+function Invoke-MutationReportCheck {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $problems = @(Get-MutationReportProblem -Path $Path)
+    foreach ($problem in $problems) {
+        Write-Host "  $problem" -ForegroundColor Red
+    }
+
+    if ($problems) {
+        Write-Host "`n$($problems.Count) test(s) killed mutants they never reached; the mutation score is not trustworthy." -ForegroundColor Red
+        return 1
+    }
+
+    Write-Host 'The mutation report checks out: every kill came from a test that reached the mutant.' -ForegroundColor Green
+    0
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    if (-not $Path) { throw 'Give the path of the mutation-report.json Stryker.NET wrote, with -Path.' }
+    exit (Invoke-MutationReportCheck -Path $Path)
+}

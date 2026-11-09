@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-10-25", "owner, 2026-10-26"]
-    enforcement: "ci: the sample's unit, integration, functional, contract and architecture test projects run in dotnet-ci.reusable.yml; advisory for the rest: mutation runs nightly after v0.1, UI tests apply only to apps with a UI, and a production project without its own test project (the sample's Contracts, Infrastructure, Api) is covered by the shared IntegrationTests and FunctionalTests"
+    enforcement: "ci: the sample's unit, integration, functional, contract and architecture test projects run in dotnet-ci.reusable.yml; mutation testing runs nightly in mutation.reusable.yml (ADR-0039); advisory for the rest: UI tests apply only to apps with a UI, and a production project without its own test project (the sample's Contracts, Infrastructure, Api) is covered by the shared IntegrationTests and FunctionalTests"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
@@ -33,8 +33,8 @@ rules:
     why: "Thresholds approved in one project's plan, then ratified as kit defaults."
     layer: owner
     status: accepted
-    sources: ["owner, 2026-11-01", "owner, 2026-11-04"]
-    enforcement: "ci: tools/Test-CoverageGate.ps1 in dotnet-ci.reusable.yml fails a build below the line-coverage minimums (tools/tests/Test-CoverageGate.Tests.ps1); the mutation score stays advisory until the nightly Stryker run (after v0.1)"
+    sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039"]
+    enforcement: "ci: tools/Test-CoverageGate.ps1 in dotnet-ci.reusable.yml fails a build below the line-coverage minimums (tools/tests/Test-CoverageGate.Tests.ps1); mutation.reusable.yml runs Stryker.NET nightly and fails below a mutation score of 85% (ADR-0039, tools/tests/MutationCi.Tests.ps1); it isn't a required check, so a low score shows as a failed nightly run, not a blocked pull request"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
@@ -64,6 +64,14 @@ Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which 
 ## Coverage
 
 `dotnet test --coverage --coverage-output-format cobertura --results-directory <dir>` writes one Cobertura report per test project (Microsoft.Testing.Extensions.CodeCoverage, on Microsoft Testing Platform via `global.json`). `./tools/Test-CoverageGate.ps1 -Path <dir>` merges them and applies TST-004. It leaves out test assemblies and generated files (`*.g.cs`, `*.generated.cs`, anything under `obj/`), and it fails when it finds no report.
+
+## Mutation testing
+
+`.github/workflows/mutation.yml` runs Stryker.NET nightly with the kit's `.config/stryker-config.json` and fails below a mutation score of 85% (TST-004, ADR-0039). Then `Test-MutationReport.ps1` checks that every kill came from a test that reached the mutant, so a test that fails whatever is mutated can't fake a high score. Each run that gets as far as a report uploads it as a `mutation-report` artifact, which lists each surviving mutant.
+
+An app needs no Stryker install, config file or tool manifest of its own: the shared workflow reads the version and settings from the kit at its pinned commit. The report artifact shows each survivor's line and change, which is what a local run would show, so apps get no local setup until one is needed (YAGNI). The kit itself has a tool manifest for working on the kit's own settings (the kit's [AGENTS.md](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/AGENTS.md#commands), Commands).
+
+**API tests set the API's content root themselves.** `WebApplicationFactory` looks the API's folder up in `MvcTestingAppManifest.json` by the API assembly's full name. Stryker compiles from a design-time build, which MinVer (SUP-006) skips, so Stryker's API has a different version, the lookup fails, and every API test fails under Stryker. Give the app's factory a `ConfigureWebHost` override that calls `builder.UseSolutionRelativeContentRoot(...)` with the API project's path from the solution folder, and a test that the API still starts when the content root it's given is wrong. The kit's sample does both: [`ApiFactory.cs`](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/sample/tests/Bookmarks.FunctionalTests/ApiFactory.cs) and [`ContentRootTests.cs`](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/sample/tests/Bookmarks.FunctionalTests/ContentRootTests.cs).
 
 ## Script tests
 

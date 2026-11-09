@@ -9,7 +9,7 @@ namespace Bookmarks.FunctionalTests;
 internal sealed class ApiHost : IDisposable
 {
     private readonly SqliteConnection _keepAlive;
-    private readonly WebApplicationFactory<Program> _baseFactory = new();
+    private readonly WebApplicationFactory<Program> _baseFactory = new ApiFactory();
     private readonly WebApplicationFactory<Program> _factory;
 
     public ApiHost(string environment = "Development", IReadOnlyDictionary<string, string>? settings = null, Action<IServiceCollection>? services = null)

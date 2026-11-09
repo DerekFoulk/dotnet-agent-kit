@@ -1,0 +1,93 @@
+# Mutation testing for any repo that uses the kit (GAP-003, TST-004, ADR-0039). Stryker.NET changes the code in
+# small ways ("mutants") and runs the tests against each change; a mutant the tests don't notice survived. The
+# mutation score is the share of mutants the tests killed, and TST-004 asks for at least 85%.
+# Called nightly by this repo's mutation.yml, and by app repos pinned to the commit a kit release tag points to:
+#   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/mutation.reusable.yml@<commit SHA> # v0.1.0
+name: Mutation testing (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      solution:
+        description: Solution file to mutate (.slnx).
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  stryker:
+    name: Mutation score (Stryker.NET)
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      # Through the environment, never pasted into a script, so the name can't break quoting.
+      SOLUTION: ${{ inputs.solution }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # MinVer reads version tags from history
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      # The kit's scripts and Stryker files, at this workflow's own commit (as in dotnet-ci.reusable.yml).
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      # A new app has no projects until its first task adds them; there's nothing to mutate until then.
+      - name: Count projects
+        id: projects
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $count = & "$env:KIT/tools/Get-SolutionProjectCount.ps1" -Solution $env:SOLUTION
+          "count=$count" >> $env:GITHUB_OUTPUT
+          "Projects in ${env:SOLUTION}: $count"
+
+      # Stryker.NET (Apache-2.0), installed for this run only, at the version the kit's tool manifest pins
+      # (.config/dotnet-tools.json, which Dependabot keeps current).
+      - name: Install Stryker.NET
+        if: steps.projects.outputs.count != '0'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.'dotnet-stryker'.version
+          dotnet tool install dotnet-stryker --version $version --tool-path "$env:RUNNER_TEMP/stryker"
+
+      # Every setting (the MTP runner, the 85% threshold, the reporters, the ConfigureAwait skip) is in the kit's
+      # .config/stryker-config.json, which a person running Stryker locally uses too (ADR-0039).
+      - name: Mutation test
+        if: steps.projects.outputs.count != '0'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: >-
+          "$RUNNER_TEMP/stryker/dotnet-stryker"
+          --config-file "$KIT/.config/stryker-config.json"
+          --solution "$SOLUTION"
+          --output "$RUNNER_TEMP/stryker-output"
+
+      # A kill by a test that never reached the mutant means that test fails whatever is mutated, so the score can't
+      # be trusted (PR 23, ADR-0039).
+      - name: Check the report can be trusted
+        if: always() && steps.projects.outputs.count != '0'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-MutationReport.ps1" -Path "$env:RUNNER_TEMP/stryker-output/reports/mutation-report.json"'
+
+      # The report names every surviving mutant: the line, the change, and the tests that ran against it.
+      - name: Upload the mutation report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-report
+          path: ${{ runner.temp }}/stryker-output/reports
+          if-no-files-found: ignore
+          retention-days: 14
