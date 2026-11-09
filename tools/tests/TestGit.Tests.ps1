@@ -545,8 +545,9 @@ Describe 'TestGit.psm1' {
 
     It 'stops with git''s own reason when it can''t judge a path, such as one outside the repo' {
         # Review of the helper: the error gave only check-ignore's exit code.
-        $checkout = Join-Path $TestDrive "checkout-$(New-Guid)"
-        New-Item -ItemType Directory -Path $checkout | Out-Null
+        $saved = Set-TestGitEnvironment
+        try { $checkout = New-TestRepo }
+        finally { Restore-TestGitEnvironment -Saved $saved }
         [IO.File]::WriteAllText((Join-Path $checkout '.gitignore'), "committed.txt`n")
 
         { Test-RepoGitIgnore -RepoRoot $checkout -Path '../outside.txt' } | Should -Throw -ExpectedMessage '*outside repository*'

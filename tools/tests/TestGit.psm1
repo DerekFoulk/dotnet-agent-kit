@@ -151,6 +151,11 @@ function Test-RepoGitIgnore {
     # aren't, so it's judged on its own, copied into a repo made with the test settings.
     $gitignore = Join-Path $RepoRoot '.gitignore'
     if (-not (Test-Path -LiteralPath $gitignore -PathType Leaf)) { throw "There's no .gitignore in $RepoRoot." }
+    # A .gitignore below the root can un-ignore what the root one ignores, so judging the root file alone would
+    # be wrong there. The kit has none; stop rather than give a false answer if one is ever committed.
+    $nested = git -C $RepoRoot ls-files -- ':(glob)*/**/.gitignore' 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "git ls-files failed in ${RepoRoot}: $($nested.Trim())" }
+    if ($nested.Trim()) { throw "Test-RepoGitIgnore judges the root .gitignore only, but $RepoRoot also commits: $($nested.Trim() -replace '\s+', ', ')" }
     $scratch = [IO.Directory]::CreateTempSubdirectory('dotnet-agent-kit-ignore-').FullName
     $saved = $null
     try {
