@@ -40,6 +40,18 @@ Describe 'TestGit.psm1' {
         finally { Restore-TestGitEnvironment -Saved $saved }
     }
 
+    It 'starts no file-system monitor daemon for a test repo, even where this machine turns it on' {
+        # Review of PR 24: with core.fsmonitor=true, every test repo got a daemon holding handles in TestDrive.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $saved = Set-TestGitEnvironment
+        try {
+            $repo = New-TestRepo
+            git -C $repo config core.fsmonitor true
+            git -C $repo config --get core.fsmonitor | Should -Be 'false'
+        }
+        finally { Restore-TestGitEnvironment -Saved $saved }
+    }
+
     It 'makes a bare "remote" that a test can push into without starting background maintenance' {
         # git strips GIT_CONFIG_COUNT from the receive-pack a local push starts, so the remote needs its own config.
         # git's trace shows every git process a push starts, receive-pack's own included.
