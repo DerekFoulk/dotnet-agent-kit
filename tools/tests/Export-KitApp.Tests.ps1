@@ -484,6 +484,14 @@ Describe 'Export-KitApp' {
             Should -BeExactly ($text | ConvertFrom-Json -AsHashtable -Depth 100 | ConvertTo-Json -Depth 100 -Compress)
     }
 
+    It 'stops instead of writing a setting nested deeper than ConvertTo-Json can go' {
+        $deep = '"leaf"'
+        foreach ($level in 1..105) { $deep = "{""k$level"":$deep}" }
+
+        { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' } |
+            Should -Throw '*truncated*'
+    }
+
     # Review 2 of PR 32: a null list or an empty rule stopped with PowerShell's parameter-binding error, which
     # doesn't say which setting is wrong.
     It 'stops with a clear error when <List> isn''t a list of rules, in <Case>' -ForEach @(
