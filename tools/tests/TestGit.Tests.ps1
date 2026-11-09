@@ -607,12 +607,15 @@ Describe 'TestGit.psm1' {
 
         Set-Item -LiteralPath "env:$Name" -Value $value
         try {
-            $nestedError = try { Test-RepoGitIgnore -RepoRoot $nested -Path 'sub/settings.local.json'; $null } catch { $_.Exception.Message }
-            $plainResult = try { Test-RepoGitIgnore -RepoRoot $plain -Path 'committed.txt' } catch { "threw: $($_.Exception.Message)" }
+            $nestedError = try { Test-RepoGitIgnore -RepoRoot $nested -Path 'sub/settings.local.json' | Out-Null; 'nothing thrown' } catch { $_.Exception.Message }
+            # No catch: a throw (trace lines read as file names, say) fails the test. Review 3: a caught message is a
+            # non-empty string, which -BeTrue accepts.
+            $plainResult = Test-RepoGitIgnore -RepoRoot $plain -Path 'committed.txt'
         }
         finally { Restore-TestGitEnvironment -Saved $outer }
 
         $nestedError | Should -BeLike '*sub/.gitignore*' -Because 'the nested .gitignore is found'
+        $plainResult | Should -BeOfType [bool]
         $plainResult | Should -BeTrue -Because 'a repo with no nested .gitignore is judged'
     }
 
@@ -699,6 +702,15 @@ Describe 'TestGit.psm1' {
             finally { Restore-TestGitEnvironment -Saved $outer }
 
             @(Get-ChildItem -LiteralPath $temp -Force).Name | Should -BeNullOrEmpty -Because 'the scratch repo is removed'
+        }
+
+        It 'stops when git can''t list the repo''s files, rather than judging the root file alone' {
+            # Review 3 of the helper: with the failure ignored, an empty listing would read as "no nested .gitignore".
+            $notRepo = Join-Path $TestDrive "not-a-repo-$(New-Guid)"
+            New-Item -ItemType Directory -Path $notRepo | Out-Null
+            [IO.File]::WriteAllText((Join-Path $notRepo '.gitignore'), "committed.txt`n")
+
+            { Test-RepoGitIgnore -RepoRoot $notRepo -Path 'committed.txt' } | Should -Throw -ExpectedMessage '*ls-files failed*'
         }
 
         It 'stops when the repo has no .gitignore' {
