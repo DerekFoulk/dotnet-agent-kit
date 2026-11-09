@@ -419,6 +419,10 @@ Describe 'Export-KitApp' {
             @($appSettings['permissions'][$list]) | Should -Be $expected -Because "the app keeps every other $list rule, in order"
         }
         $appSettings['$schema'] | Should -Be $kitSettings['$schema']
+        # Written like every other kit file: LF line endings and a final newline, whatever the platform.
+        $raw = [IO.File]::ReadAllText((Join-Path $app '.claude/settings.json'))
+        $raw.Contains("`r") | Should -BeFalse
+        $raw.EndsWith("`n") | Should -BeTrue
     }
 
     It 'drops a rule for any kit script the app doesn''t get, worked out from the tools it does get' {
