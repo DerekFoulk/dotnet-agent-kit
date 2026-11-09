@@ -179,6 +179,10 @@ function Get-KitAppSettingsText {
     }
     foreach ($list in 'allow', 'ask') {
         if ($settings['permissions'].Contains($list)) {
+            $rules = $settings['permissions'][$list]
+            if ($rules -isnot [Collections.IList] -or @($rules | Where-Object { $_ -isnot [string] -or $_ -eq '' }).Count) {
+                throw "In the kit's .claude/settings.json, ""permissions.$list"" isn't a list of rules."
+            }
             $settings['permissions'][$list] = @($settings['permissions'][$list] | Where-Object { -not (Test-KitOnlyRule -Rule $_ -AppTools $AppTools) })
         }
     }
