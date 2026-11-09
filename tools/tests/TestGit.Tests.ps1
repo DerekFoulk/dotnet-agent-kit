@@ -26,7 +26,7 @@ Describe 'TestGit.psm1' {
             [System.Management.Automation.Language.Parser]::ParseFile($File.FullName, [ref] $null, [ref] $null)
         }
 
-        # The arguments of every git command (or a file's own Invoke-Git* wrapper) under an AST, one array each.
+        # Every git command (or a file's own Invoke-Git* wrapper) under an AST, with its arguments.
         # Command names are matched as PowerShell resolves them: in any case, by file name when given as a path,
         # with or without .exe or .cmd. A command named only at run time (& $git, git @args) can't be read.
         function Get-GitCall([System.Management.Automation.Language.Ast] $Root) {
@@ -35,7 +35,36 @@ Describe 'TestGit.psm1' {
                     $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -and
                     (Split-Path -Leaf $node.GetCommandName()) -match '^(git|Invoke-Git\w*)(\.exe|\.cmd)?$'
                 }, $true)
-            foreach ($command in $commands) { , @($command.CommandElements | Select-Object -Skip 1 | ForEach-Object { $_.Extent.Text.Trim('''', '"') }) }
+            foreach ($command in $commands) {
+                [pscustomobject]@{
+                    Ast       = $command
+                    Arguments = @($command.CommandElements | Select-Object -Skip 1 | ForEach-Object { $_.Extent.Text.Trim('''', '"') })
+                }
+            }
+        }
+
+        # git's subcommand: the first argument that isn't an option or an option's value (git -C <path> init).
+        # Review 5 of PR 24: matching any argument took "git log --grep init" for making a repo.
+        function Get-GitSubcommand([string[]] $Arguments) {
+            for ($i = 0; $i -lt $Arguments.Count; $i++) {
+                if ($Arguments[$i] -cin '-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path') { $i++; continue }
+                if ($Arguments[$i].StartsWith('-')) { continue }
+                return $Arguments[$i]
+            }
+        }
+
+        function Test-MakesRepo($Call) { (Get-GitSubcommand $Call.Arguments) -cin 'init', 'clone' }
+
+        # Whether a command runs while Pester discovers the tests: anywhere outside an It, a Before*/After* block
+        # or a function (a Describe or Context body, BeforeDiscovery, the file's top level).
+        function Test-RunsAtDiscovery([System.Management.Automation.Language.Ast] $Node) {
+            for ($parent = $Node.Parent; $parent; $parent = $parent.Parent) {
+                if ($parent -is [System.Management.Automation.Language.FunctionDefinitionAst]) { return $false }
+                if ($parent -is [System.Management.Automation.Language.ScriptBlockExpressionAst] -and
+                    $parent.Parent -is [System.Management.Automation.Language.CommandAst] -and
+                    $parent.Parent.GetCommandName() -in 'It', 'BeforeAll', 'AfterAll', 'BeforeEach', 'AfterEach') { return $false }
+            }
+            $true
         }
 
         # The names of the commands the file's own BeforeAll or AfterAll (the one outside every Describe) runs
@@ -125,6 +154,11 @@ Describe 'TestGit.psm1' {
         [IO.File]::WriteAllText((Join-Path $xdg 'git' 'attributes'), "*.txt probeattr=machine`n")
         $outer = @{ XDG_CONFIG_HOME = [Environment]::GetEnvironmentVariable('XDG_CONFIG_HOME') }
         Set-Item -LiteralPath 'env:XDG_CONFIG_HOME' -Value $xdg
+        # The system attributes file can't be pointed elsewhere; where it sets an attribute (Git for Windows gives
+        # *.doc diff=astextplain), that attribute mustn't reach a test repo. Its path is read before Set, which
+        # hides it (review 5 of PR 24: read after, the check never ran).
+        $system = "$(git var GIT_ATTR_SYSTEM 2>$null)"
+        $systemSetsDocDiff = $system -and (Test-Path -LiteralPath $system) -and (Get-Content -Raw -LiteralPath $system) -match '(?m)^\*\.doc\s+diff=astextplain'
         try {
             $saved = Set-TestGitEnvironment
             try {
@@ -132,10 +166,7 @@ Describe 'TestGit.psm1' {
                 git -C $repo check-ignore -q --no-index machine-ignored.txt
                 $LASTEXITCODE | Should -Be 1 -Because 'the machine''s ignore file is left out'
                 git -C $repo check-attr probeattr -- a.txt | Should -Be 'a.txt: probeattr: unspecified' -Because 'the machine''s attributes files are left out'
-                # The system attributes file can't be pointed elsewhere; where it sets an attribute (Git for Windows
-                # gives *.doc diff=astextplain), that attribute mustn't reach a test repo.
-                $system = "$(git var GIT_ATTR_SYSTEM 2>$null)"
-                if ($system -and (Test-Path -LiteralPath $system) -and (Get-Content -Raw -LiteralPath $system) -match '(?m)^\*\.doc\s+diff=astextplain') {
+                if ($systemSetsDocDiff) {
                     git -C $repo check-attr diff -- probe.doc | Should -Be 'probe.doc: diff: unspecified' -Because 'the machine''s system attributes file is left out'
                 }
             }
@@ -225,7 +256,7 @@ Describe 'TestGit.psm1' {
         # init or clone with --bare or --mirror, anywhere in the call (git --bare init too).
         $byHand = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' | Where-Object {
             $_.Name -ne 'TestGit.Tests.ps1' -and
-            @(Get-GitCall (Get-FileAst $_) | Where-Object { ($_ -ccontains 'init' -or $_ -ccontains 'clone') -and ($_ -ccontains '--bare' -or $_ -ccontains '--mirror') }).Count -gt 0
+            @(Get-GitCall (Get-FileAst $_) | Where-Object { (Test-MakesRepo $_) -and ($_.Arguments -ccontains '--bare' -or $_.Arguments -ccontains '--mirror') }).Count -gt 0
         }
 
         @($byHand.Name) | Should -BeNullOrEmpty -Because 'New-TestGitRemote gives a remote the settings a push needs'
@@ -296,13 +327,11 @@ Describe 'TestGit.psm1' {
         finally { Restore-TestGitEnvironment -Saved $outer }
     }
 
-    It 'makes no git repo in any test file''s BeforeDiscovery, which runs before the setup and has no TestDrive' {
-        # Review 4 of PR 24: discovery only builds test data; a repo made there would get none of the settings.
+    It 'makes no git repo while Pester discovers the tests, which runs before the setup and has no TestDrive' {
+        # Reviews 4 and 5 of PR 24: discovery only builds test data, and a repo made then (in BeforeDiscovery, a
+        # Describe or Context body, or at the file's top level) would get none of the settings.
         $inDiscovery = foreach ($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1') {
-            $blocks = (Get-FileAst $file).FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -eq 'BeforeDiscovery' }, $true)
-            foreach ($block in $blocks) {
-                if (@(Get-GitCall $block | Where-Object { $_ -ccontains 'init' -or $_ -ccontains 'clone' }).Count -gt 0) { $file.Name }
-            }
+            if (@(Get-GitCall (Get-FileAst $file) | Where-Object { (Test-MakesRepo $_) -and (Test-RunsAtDiscovery $_.Ast) }).Count -gt 0) { $file.Name }
         }
 
         @($inDiscovery) | Should -BeNullOrEmpty
@@ -314,7 +343,7 @@ Describe 'TestGit.psm1' {
         # The setup runs in the file's own BeforeAll and AfterAll, so it wraps every Describe. TestGit.Tests.ps1 is
         # the exception: it tests the helper, setting and restoring it in each test.
         $makesRepos = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' | Where-Object {
-            $_.Name -ne 'TestGit.Tests.ps1' -and @(Get-GitCall (Get-FileAst $_) | Where-Object { $_ -ccontains 'init' -or $_ -ccontains 'clone' }).Count -gt 0
+            $_.Name -ne 'TestGit.Tests.ps1' -and @(Get-GitCall (Get-FileAst $_) | Where-Object { Test-MakesRepo $_ }).Count -gt 0
         }
 
         @($makesRepos).Count | Should -BeGreaterThan 5
