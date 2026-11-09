@@ -1,10 +1,11 @@
 #Requires -Version 7.0
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
-# TestGit.psm1 gives every git repo a test makes the same settings, through git's GIT_CONFIG_COUNT environment
-# variables, which reach the scripts under test and any process they start. Without them, a fixture commit could
-# start git's background maintenance, whose repack raced New-KitApp.Tests' lookups of the fixture commit on Windows:
-# 11 tests failed, but only for some file contents, since git's "enough loose objects?" estimate depends on hashes.
+# TestGit.psm1 gives every git repo a test makes the same settings, through environment variables that reach the
+# scripts under test and the processes they start (all but a local push's receive-pack, which git strips them from).
+# Without them, a fixture commit could start git's background maintenance, whose repack raced New-KitApp.Tests'
+# lookups of the fixture commit on Windows: 11 tests failed, but only for some file contents, since git's "enough
+# loose objects?" estimate depends on hashes.
 
 Describe 'TestGit.psm1' {
     BeforeAll {
@@ -16,6 +17,11 @@ Describe 'TestGit.psm1' {
             $values = [ordered]@{}
             foreach ($name in $names) { $values[$name] = [Environment]::GetEnvironmentVariable($name) }
             $values
+        }
+
+        # A test file's code without its comment lines, so a comment can neither trigger nor satisfy a check.
+        function Get-TestCode([System.IO.FileInfo] $File) {
+            (Get-Content -LiteralPath $File.FullName | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
         }
 
         function New-TestRepo {
@@ -87,8 +93,9 @@ Describe 'TestGit.psm1' {
     }
 
     It 'is how every test file makes a bare remote' {
+        # Review of PR 24: also clone --bare and --mirror, and a file's own Invoke-Git* wrapper.
         $byHand = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' |
-            Where-Object { $_.Name -ne 'TestGit.Tests.ps1' -and (Get-Content -Raw -LiteralPath $_.FullName) -cmatch '\bgit\b[^\r\n]*\binit\b[^\r\n]*--bare\b' }
+            Where-Object { $_.Name -ne 'TestGit.Tests.ps1' -and (Get-TestCode $_) -cmatch '\b(git|Invoke-Git\w*)\b[^\n]*\s(init|clone)\b[^\n]*\s--(bare|mirror)\b' }
 
         @($byHand.Name) | Should -BeNullOrEmpty -Because 'New-TestGitRemote gives a remote the settings a push needs'
     }
@@ -128,7 +135,9 @@ Describe 'TestGit.psm1' {
     It 'puts back exactly the environment it found, including settings someone else set the same way' {
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $before = @{ GIT_CONFIG_COUNT = '1'; GIT_CONFIG_KEY_0 = 'core.example'; GIT_CONFIG_VALUE_0 = 'kept' }
-        foreach ($name in $before.Keys) { [Environment]::SetEnvironmentVariable($name, $before[$name]) }
+        # Review of PR 24: put back whatever the person running the tests had, rather than deleting it.
+        $outer = @{}
+        foreach ($name in $before.Keys) { $outer[$name] = [Environment]::GetEnvironmentVariable($name); Set-Item -LiteralPath "env:$name" -Value $before[$name] }
         try {
             $expected = Get-GitConfigEnvironment
 
@@ -136,18 +145,22 @@ Describe 'TestGit.psm1' {
 
             (Get-GitConfigEnvironment).GetEnumerator() | ForEach-Object { $_.Value | Should -Be $expected[$_.Key] -Because $_.Key }
         }
-        finally { foreach ($name in $before.Keys) { Remove-Item -LiteralPath "env:$name" -ErrorAction SilentlyContinue } }
+        finally { Restore-TestGitEnvironment -Saved $outer }
     }
 
     It 'is used by every test file that makes a git repo' {
         # A repo is made by git init or git clone, directly or through a file's own Invoke-Git wrapper; its commits
         # then run with the settings.
+        # Review of PR 24: any options before the command (quoted paths, --git-dir), any Invoke-Git* wrapper, comments
+        # ignored, and both halves of the setup required.
         $makesRepos = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' |
-            Where-Object { (Get-Content -Raw -LiteralPath $_.FullName) -cmatch '\b(git|Invoke-Git)\b(?:\s+-[Cc]\s+\S+)*\s+(init|clone)\b' }
+            Where-Object { (Get-TestCode $_) -cmatch '\b(git|Invoke-Git\w*)\b[^\n]*\s(init|clone)\b' }
 
         @($makesRepos).Count | Should -BeGreaterThan 5
         foreach ($file in $makesRepos) {
-            Get-Content -Raw -LiteralPath $file.FullName | Should -Match 'Set-TestGitEnvironment' -Because "$($file.Name) makes git repos"
+            $code = Get-TestCode $file
+            $code | Should -Match '\bSet-TestGitEnvironment\b' -Because "$($file.Name) makes git repos"
+            $code | Should -Match '\bRestore-TestGitEnvironment\b' -Because "$($file.Name) must put the environment back"
         }
     }
 }
