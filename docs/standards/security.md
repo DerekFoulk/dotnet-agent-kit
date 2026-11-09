@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01", "owner, 2026-11-07", "ADR-0035"]
-    enforcement: "claude settings: .claude/settings.json asks in both modes before installs, New-KitApp, switching with Set-AgentMode, git reset --hard, git clean, deleting or force-pushing, changing visibility, rulesets, branch protection or merge settings, deleting a repo, releases, DELETE API calls, and edits to agent config, connectors and the mode files; review mode adds asks before merging, repo-settings edits, packages and build or CI edits, in .claude/settings.local.json through Set-AgentMode.ps1; the rest, release PRs included, is advisory (ADR-0026, ADR-0035)"
+    enforcement: "claude settings: .claude/settings.json asks in both modes before installs, New-KitApp (in the kit only: an app's copy leaves out rules for kit scripts the app doesn't get), switching with Set-AgentMode, git reset --hard, git clean, deleting or force-pushing, changing visibility, rulesets, branch protection or merge settings, deleting a repo, releases, DELETE API calls, and edits to agent config, connectors and the mode files; review mode adds asks before merging, repo-settings edits, packages and build or CI edits, in .claude/settings.local.json through Set-AgentMode.ps1; the rest, release PRs included, is advisory (ADR-0026, ADR-0035)"
     scope: core
     paths: ["**"]
   - id: SEC-004
