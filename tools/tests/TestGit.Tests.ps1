@@ -144,6 +144,37 @@ Describe 'TestGit.psm1' {
         finally { Restore-TestGitEnvironment -Saved $outer }
     }
 
+    It 'leaves out a template directory and config handed down from a parent git, and puts both back after' {
+        # Review 5 of PR 24: git init copied the GIT_TEMPLATE_DIR template (its hooks, info/exclude, config) into
+        # every test repo, and a GIT_CONFIG_PARAMETERS a parent git passes on (git -c, aliases) outranks the rest.
+        Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $template = Join-Path $TestDrive "machine-template-$(New-Guid)"
+        New-Item -ItemType Directory -Path (Join-Path $template 'info'), (Join-Path $template 'hooks') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $template 'info' 'exclude'), "template-ignored.txt`n")
+        $hook = Join-Path $template 'hooks' 'commit-msg'
+        [IO.File]::WriteAllText($hook, "#!/bin/sh`necho 'template hook rejected the commit' >&2`nexit 1`n")
+        if (-not $IsWindows) { [IO.File]::SetUnixFileMode($hook, 'UserRead, UserWrite, UserExecute') }
+        $machine = @{ GIT_TEMPLATE_DIR = $template; GIT_CONFIG_PARAMETERS = "'probe.inherited'='machine'" }
+        $outer = @{}
+        foreach ($name in $machine.Keys) { $outer[$name] = [Environment]::GetEnvironmentVariable($name) }
+        Restore-TestGitEnvironment -Saved $machine
+        try {
+            $saved = Set-TestGitEnvironment
+            try {
+                $repo = New-TestRepo
+                git -C $repo check-ignore -q --no-index template-ignored.txt
+                $LASTEXITCODE | Should -Be 1 -Because 'the machine''s template is left out'
+                git -C $repo config --get probe.inherited | Should -BeNullOrEmpty -Because 'config handed down from a parent git is left out'
+                git -C $repo commit -q --allow-empty -m 'chore: fixture' 2>&1 | Out-Null
+                $LASTEXITCODE | Should -Be 0 -Because 'the template''s hook doesn''t run'
+            }
+            finally { Restore-TestGitEnvironment -Saved $saved }
+
+            foreach ($name in $machine.Keys) { [Environment]::GetEnvironmentVariable($name) | Should -Be $machine[$name] -Because "$name comes back" }
+        }
+        finally { Restore-TestGitEnvironment -Saved $outer }
+    }
+
     It 'starts no file-system monitor daemon for a test repo, even where this machine turns it on' {
         # Review of PR 24: with core.fsmonitor=true, every test repo got a daemon holding handles in TestDrive.
         Get-Command Set-TestGitEnvironment -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
