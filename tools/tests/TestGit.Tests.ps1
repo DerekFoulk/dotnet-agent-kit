@@ -117,8 +117,9 @@ Describe 'TestGit.psm1' {
             $script:probeFailed = $false
             $script:madeTemplate = $null
             Mock -ModuleName TestGit Set-Item { Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters }
+            # Only Set's own write, its first: Restore writes the caller's folder back the same way (review 10).
             Mock -ModuleName TestGit Set-Item {
-                $script:madeTemplate = $Value
+                if ($null -eq $script:madeTemplate) { $script:madeTemplate = $Value }
                 Microsoft.PowerShell.Management\Set-Item @PesterBoundParameters
             } -ParameterFilter { $LiteralPath -eq 'env:GIT_TEMPLATE_DIR' }
             Mock -ModuleName TestGit Set-Item {
@@ -127,9 +128,14 @@ Describe 'TestGit.psm1' {
             } -ParameterFilter { $LiteralPath -eq 'env:GIT_CONFIG_COUNT' }
         }
 
-        # Removes the folder Use-FailingLastStep recorded, if a test left it.
+        # Removes the folder Use-FailingLastStep recorded, if a test left it, and only if it's one of the module's own:
+        # a dotnet-agent-kit-git-template-* folder directly in the temp folder.
         function Remove-MadeTemplate {
-            if ($script:madeTemplate -and (Test-Path -LiteralPath $script:madeTemplate)) { Remove-Item -LiteralPath $script:madeTemplate -Recurse -Force }
+            $made = $script:madeTemplate
+            if (-not $made -or -not (Test-Path -LiteralPath $made)) { return }
+            $own = (Split-Path -Leaf $made) -like 'dotnet-agent-kit-git-template-*' -and
+                [IO.Path]::GetFullPath((Split-Path -Parent $made)).TrimEnd('\', '/') -eq [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\', '/')
+            if ($own) { Remove-Item -LiteralPath $made -Recurse -Force }
         }
 
         function New-TestRepo {
