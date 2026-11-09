@@ -140,6 +140,7 @@ Describe 'Get-DevMachineCheck' {
             @{ Reported = @('8.0.0'); ExitCode = 0; Expected = $true }
             @{ Reported = @('7.6.9'); ExitCode = 1; Expected = $false }
             @{ Reported = @('a warning on stderr', '7.6.9'); ExitCode = 0; Expected = $true }
+            @{ Reported = @('7.6.9', 'a warning on stderr'); ExitCode = 0; Expected = $true }
             @{ Reported = @('not a version'); ExitCode = 0; Expected = $false }
             @{ Reported = @(); ExitCode = 0; Expected = $false }
         ) {
