@@ -41,7 +41,7 @@ The agent merges any Dependabot patch or minor update on the same conditions as 
 
 ### Option C: Option B for NuGet, .NET tools and the SDK; a cooldown; majors and Actions stay the owner's
 
-As Option B, but only for NuGet packages, .NET tools and the SDK. Every major update and every GitHub Actions bump stays the owner's to merge. `.github/dependabot.yml` states the 3-day wait Dependabot applies anyway, so a test guards it, and makes NuGet and SDK majors wait 7.
+As Option B, but only for NuGet packages, .NET tools and the SDK. Every major update and every GitHub Actions bump stays the owner's to merge. `.github/dependabot.yml` states the 3-day wait Dependabot applies anyway, so a test guards it, and makes NuGet and SDK majors wait 7. (The owner later lengthened both waits; see the Decision.)
 
 - **Trade-offs:** Most bumps are hands-off, while the two riskiest kinds still reach the owner. Its real gain over Option B is keeping Actions bumps with the owner: the 3-day wait applies under every option, and only majors, which the owner merges, wait longer.
 - **Reversibility:** Easy: the cooldown is a few lines in `.github/dependabot.yml`, and the merge rights are text in "Working modes" and `finish-work`.
@@ -63,23 +63,23 @@ Option C: it takes the routine bumps off the owner's plate while keeping majors 
 
 The owner chose Option C on 2026-11-09 ("Option C it is"), after asking for more information. He also accepted DOD-006.
 
-**Correction (2026-11-09):** the options as first shown to the owner said the cooldown added a wait. Review 1 of PR 33 found that Dependabot already waits 3 days by default, which the options above now say. The owner was told in the chat before this PR merged.
+**Correction (2026-11-09):** the options as first shown to the owner said the cooldown added a wait. Review 1 of PR 33 found that Dependabot already waits 3 days by default, which the options above now say. The owner was told in the chat, with a recommendation to wait longer: security updates never wait, so a longer wait only delays routine updates, and it gives a bad release more time to be caught before an agent merges it. He chose 7 days for every version update, and 14 for NuGet and SDK majors ("Yes, 7 and 14", 2026-11-09).
 
 ## Consequences
 
 - AGENTS.md "Working modes" lets an agent in auto mode merge a Dependabot PR for a patch or minor update of a NuGet package, a .NET tool or the .NET SDK. It does so on its own PR's conditions plus DOD-006's comment at the head commit. A major update, a GitHub Actions bump, or a PR mixing either with anything else stays the owner's. Review mode doesn't change: the owner merges every PR.
 - The `finish-work` skill's step 5 says the same, and tells how to tell the update type from Dependabot's own PR: the title and the version change. A minor of a 0.x package counts as a major, since SemVer lets it break anything. For the SDK, a new feature band (10.0.403 → 10.0.500) is a minor. The PR must change only the manifests and lock files, in commits by Dependabot or the lock-file workflow. The agent reads the new version's release notes and checks its license and deprecation status; a license change, new telemetry or new build-time behavior makes the PR the owner's. The `reviewer` agent checks the same.
 - Shortening the cooldown in `.github/dependabot.yml` joins the guardrails, so an agent can't loosen the wait and merge that change itself.
-- `.github/dependabot.yml` gives every ecosystem `cooldown: default-days: 3`, and NuGet and the SDK `semver-major-days: 7`. The app template does the same for NuGet. `tools/tests/Dependabot.Tests.ps1` checks both.
+- `.github/dependabot.yml` gives every ecosystem `cooldown: default-days: 7`, and NuGet and the SDK `semver-major-days: 14`. The app template does the same for NuGet. `tools/tests/Dependabot.Tests.ps1` checks both.
 - DOD-006 is accepted. DOD-004, AGENTS.md "Done means" (kit and app template), "Working modes" and `finish-work` steps 4 and 5 now point a bot's PR to it.
 - This amends ADR-0035: auto mode's merge rights now include these Dependabot PRs, not only the agent's own.
 - What gets harder: an agent must read the version change correctly. A grouped Dependabot PR, which bumps several packages, counts as major if any one bump is major. If the agent can't tell, the PR is the owner's.
 
 ## Pillars affected
 
-- **Security:** the 3-day wait, now stated and tested, keeps most compromised releases out; an agent reads each new version's release notes and license before merging; and Actions bumps, which run with CI's permissions, stay with the owner.
+- **Security:** the 7-day wait, more than twice Dependabot's default and tested, keeps most compromised releases out; an agent reads each new version's release notes and license before merging; and Actions bumps, which run with CI's permissions, stay with the owner.
 - **Reliability:** majors, the updates allowed to break things, stay with the owner. The checks, the reviewer and mutation testing guard the rest.
-- **Operational excellence:** routine updates no longer wait for the owner, so the kit stays current with less of his time.
+- **Operational excellence:** routine updates no longer wait for the owner, so the kit stays current with less of his time. They arrive a week after release, and majors two; a security update doesn't wait.
 - **Cost optimization, performance efficiency:** no change.
 
 ## Sources
