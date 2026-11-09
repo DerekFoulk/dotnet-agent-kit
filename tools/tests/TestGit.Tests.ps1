@@ -47,16 +47,24 @@ Describe 'TestGit.psm1' {
         # Review 5 of PR 24: matching any argument took "git log --grep init" for making a repo.
         function Get-GitSubcommand([string[]] $Arguments) {
             for ($i = 0; $i -lt $Arguments.Count; $i++) {
-                if ($Arguments[$i] -cin '-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path') { $i++; continue }
+                if ($Arguments[$i] -cin '-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env', '--attr-source') { $i++; continue }
                 if ($Arguments[$i].StartsWith('-')) { continue }
                 return $Arguments[$i]
             }
         }
 
-        function Test-MakesRepo($Call) { (Get-GitSubcommand $Call.Arguments) -cin 'init', 'clone' }
+        # git itself by its subcommand; a file's own Invoke-Git* wrapper by any argument, since a wrapper may take
+        # arguments of its own first (Invoke-GitAt <date> init; review 6 of PR 24).
+        function Test-MakesRepo($Call) {
+            $name = Split-Path -Leaf $Call.Ast.GetCommandName()
+            if ($name -match '^git(\.exe|\.cmd)?$') { (Get-GitSubcommand $Call.Arguments) -cin 'init', 'clone' }
+            else { $Call.Arguments -ccontains 'init' -or $Call.Arguments -ccontains 'clone' }
+        }
 
         # Whether a command runs while Pester discovers the tests: anywhere outside an It, a Before*/After* block
-        # or a function (a Describe or Context body, BeforeDiscovery, the file's top level).
+        # or a function (a Describe or Context body, BeforeDiscovery, the file's top level). It errs toward
+        # flagging: a script block stored in a Describe body and run only in an It, or a module-qualified Pester\It,
+        # counts as discovery. A function defined and called in a Describe body doesn't count. No file does either.
         function Test-RunsAtDiscovery([System.Management.Automation.Language.Ast] $Node) {
             for ($parent = $Node.Parent; $parent; $parent = $parent.Parent) {
                 if ($parent -is [System.Management.Automation.Language.FunctionDefinitionAst]) { return $false }
