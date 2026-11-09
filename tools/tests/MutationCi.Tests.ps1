@@ -72,24 +72,35 @@ Describe 'Mutation testing in CI' {
             foreach ($match in [regex]::Matches($reusable.Text, '\$(?:env:)?KIT/(?<path>[^"''\s]+)')) { $read.Add($match.Groups['path'].Value) }
             foreach ($match in [regex]::Matches($reusable.Text, 'uses: \$/(?<path>\S+)')) { $read.Add("$($match.Groups['path'].Value)/action.yml") }
             foreach ($match in [regex]::Matches($reusable.Text, 'global-json-file: (?<path>\S+)')) { $read.Add($match.Groups['path'].Value) }
+            # Paths as git writes them, with '/', on every OS; Split-Path would give '\' on Windows (review 7 of PR 23:
+            # the walk below then missed every folder past the first). '' is the repo root.
+            function Get-GitParent([string] $Path) { $at = $Path.LastIndexOf('/'); if ($at -lt 0) { '' } else { $Path.Substring(0, $at) } }
+            # Every tracked file in a folder and below; the folder is literal, so [, * or ? in a name stay plain.
+            function Get-TrackedFile([string] $Folder) { if ($Folder) { git -C $root ls-files -- ":(literal)$Folder" } else { git -C $root ls-files } }
+
             # The solution, and every tracked file in each of its projects' folders: Stryker builds and mutates them.
+            # A project at the repo root reads every tracked file.
             $solution = [string] @($kit.Yaml['jobs'].Values)[0]['with']['solution']
             $read.Add($solution)
             $projectFolders = foreach ($project in ([xml] (Get-Content -Raw (Join-Path $root $solution))).SelectNodes('//Project')) {
-                Split-Path ($project.Path -replace '\\', '/') -Parent
+                Get-GitParent ($project.Path -replace '\\', '/')
             }
-            foreach ($folder in $projectFolders) { git -C $root ls-files -- $folder | ForEach-Object { $read.Add($_) } }
-            # What dotnet, MSBuild and the analyzers read on the way from each project up to the repo root, as MSBuild
-            # looks Directory.Build.props up: every such file in every folder between (review 6 of PR 23 found
-            # sample/Directory.Build.props, which the root-only list missed).
-            $buildInput = '^(global\.json|nuget\.config|\.editorconfig|Directory\.[^.]+\.(props|targets|rsp))$'
+            foreach ($folder in $projectFolders) { Get-TrackedFile $folder | ForEach-Object { $read.Add($_) } }
+            # What dotnet, MSBuild and the analyzers find by themselves on the way from each project up to the repo
+            # root, as MSBuild looks Directory.Build.props up: every such file in every folder between, the root
+            # included (review 6 of PR 23 found sample/Directory.Build.props, which a root-only list missed). A file
+            # a build file names instead (a ruleset, stylecop.json, BannedSymbols.txt) belongs in a project folder,
+            # where the line above covers it, or in this list.
+            $buildInput = '^(global\.json|nuget\.config|\.editorconfig|\.globalconfig|Directory\.[^.]+\.(props|targets|rsp))$'
             foreach ($folder in $projectFolders) {
-                for ($dir = $folder; $dir; $dir = Split-Path $dir -Parent) {
-                    git -C $root ls-files -- "$dir/*" | Where-Object { ((Split-Path $_ -Parent) -replace '\\', '/') -eq $dir -and (Split-Path -Leaf $_) -match $buildInput } |
+                $dir = $folder
+                while ($true) {
+                    Get-TrackedFile $dir | Where-Object { (Get-GitParent $_) -ceq $dir -and ($_.Substring($_.LastIndexOf('/') + 1)) -match $buildInput } |
                         ForEach-Object { $read.Add($_) }
+                    if (-not $dir) { break }
+                    $dir = Get-GitParent $dir
                 }
             }
-            Get-ChildItem -LiteralPath $root -File -Force | Where-Object Name -Match $buildInput | ForEach-Object { $read.Add($_.Name) }
 
             $patterns = Get-IgnorePattern
             $read.Count | Should -BeGreaterThan 50 -Because 'the sample alone has more tracked files than that'
