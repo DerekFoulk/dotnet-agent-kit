@@ -2,6 +2,7 @@
 
 # Definition of done
 
+- DOD-001: Work is done when it builds with zero warnings, every test passes, every CI gate passes, and docs and ADRs are updated in the same PR.
 - DOD-002: Report done only with evidence (commands run, counts, links), and state "not verified" wherever something wasn't.
 - DOD-003: Before the owner reviews, an independent read-only reviewer that hasn't seen the work runs the gates and reports ranked findings.
 - DOD-004: Every PR uses the PR template, including the red-to-green evidence table.

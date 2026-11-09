@@ -14,8 +14,8 @@ rules:
     statement: "Every HTTP API error response is Problem Details (RFC 9457): AddProblemDetails, UseExceptionHandler and UseStatusCodePages; a client error such as malformed input stays a 400 in every environment, and outside Development a 500 never carries the exception's message or stack."
     why: "Clients handle one error format whichever error it is, and exception details would tell an attacker how the app is built (GAP-011)."
     layer: outside
-    status: proposed
-    sources: ["ADR-0038", "https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-07", "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api, retrieved 2026-11-08"]
+    status: accepted
+    sources: ["ADR-0038", "https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-07", "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling-api, retrieved 2026-11-08", "owner, 2026-11-09"]
     enforcement: "ci: the sample's FunctionalTests check that a 400, 404, 409, 415 and 500 are Problem Details, that malformed input is a 400 in Development, that a 500 in Production hides the exception, and that every error the OpenAPI document declares is Problem Details; advisory in an app until it follows the sample"
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs"]
@@ -23,8 +23,8 @@ rules:
     statement: "An HTTP API describes itself with the built-in OpenAPI document (Microsoft.AspNetCore.OpenApi) and typed results; the document, and any UI for it such as Scalar or Swagger UI, is mapped in Development only; a contract test snapshots the document, so every change to the API shows in review."
     why: "The document is the API's contract and the source for generated clients, but published in production it maps the whole API for an attacker; Microsoft's templates map it in Development only (GAP-011)."
     layer: outside
-    status: proposed
-    sources: ["ADR-0038", "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview, retrieved 2026-11-08", "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/using-openapi-documents, retrieved 2026-11-08"]
+    status: accepted
+    sources: ["ADR-0038", "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview, retrieved 2026-11-08", "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/using-openapi-documents, retrieved 2026-11-08", "owner, 2026-11-09"]
     enforcement: "ci: the sample's ContractTests compare the document with its snapshot and check it isn't served in Production; advisory in an app until it follows the sample"
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/Contract/**"]
@@ -32,8 +32,8 @@ rules:
     statement: "Every HTTP endpoint that lists a collection pages it in the data store, in a deterministic order, with limit (default 25, at most 100) and offset (at most 10,000) query parameters, and answers an object with the page's items and a nextLink to the next page, null on the last page or the last one the offset cap allows."
     why: "A list without a cap returns the whole table, which is slow and an easy denial of service; Azure's API design guidance asks for limit and offset with meaningful defaults, an upper limit, and a next-page link (GAP-011)."
     layer: outside
-    status: proposed
-    sources: ["ADR-0038", "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design#implement-data-pagination-and-filtering, retrieved 2026-11-08", "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-implementation#handling-large-requests-and-responses, retrieved 2026-11-08", "https://learn.microsoft.com/en-us/sql/connect/ado-net/sql/compare-guid-uniqueidentifier-values, retrieved 2026-11-08"]
+    status: accepted
+    sources: ["ADR-0038", "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design#implement-data-pagination-and-filtering, retrieved 2026-11-08", "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-implementation#handling-large-requests-and-responses, retrieved 2026-11-08", "https://learn.microsoft.com/en-us/sql/connect/ado-net/sql/compare-guid-uniqueidentifier-values, retrieved 2026-11-08", "owner, 2026-11-09"]
     enforcement: "ci: the sample's tests check the pages and nextLink (FunctionalTests), the extra row that says another page follows, a full last page, the last page the offset cap allows and the service's own limits at and past their edges (Application.Tests), pages in creation order whatever order the rows were saved in (IntegrationTests) and time-ordered ids (Domain.Tests); advisory in an app until it follows the sample"
     scope: core
     paths: ["**/*Endpoints*.cs", "**/*Repository*.cs", "**/*Contracts*/**"]
@@ -90,4 +90,4 @@ An app can mix them, for example an HTTP API for its UI and SignalR for live upd
 
 ## Pending ratification
 
-API-001 to API-006 were added in auto mode (ADR-0035), so they stay `proposed` until the owner accepts them.
+API-001, API-005 and API-006 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them. You accepted API-002 to API-004 on 2026-11-09, and chose to wait on these three until the first real app uses them.

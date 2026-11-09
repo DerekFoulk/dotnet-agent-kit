@@ -66,6 +66,7 @@ Accepted, in auto mode (ADR-0035). The packages are the ones the template and Mi
   - OPS-001: OpenTelemetry through one ServiceDefaults project;
   - OPS-002: `/health` and `/alive`;
   - OPS-003: resilience on every `HttpClient`.
+  - **Update (2026-11-09):** the owner accepted all three.
 
   An app with a web project follows the sample.
 - **GAP-007 and GAP-009 are closed** in the scorecard. GAP-008, safe database migrations, stays open.
