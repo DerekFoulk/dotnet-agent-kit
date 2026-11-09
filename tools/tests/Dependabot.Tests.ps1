@@ -31,6 +31,11 @@ Describe 'Dependabot configuration' {
             # wait only for what it names, so either would narrow the wait without shortening a number.
             $update['cooldown'].Keys | Should -Not -Contain 'exclude' -Because 'every dependency waits'
             $update['cooldown'].Keys | Should -Not -Contain 'include' -Because 'every dependency waits'
+            # Review 3 of PR 33: default-days covers only updates without their own wait, so a semver-minor-days
+            # or semver-patch-days below it would shorten the wait for exactly the updates agents merge.
+            foreach ($key in @($update['cooldown'].Keys | Where-Object { $_ -like '*-days' })) {
+                [int] $update['cooldown'][$key] | Should -BeGreaterOrEqual 7 -Because "$($update['package-ecosystem'])'s $key is a wait too"
+            }
         }
     }
 
