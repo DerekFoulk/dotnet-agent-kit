@@ -444,7 +444,9 @@ Describe 'Export-KitApp' {
                     # its first.
                     'Bash(./tools/Set-AgentMode.ps1 && ./tools/Publish-Kit.ps1)',
                     # Review 5: a rule names a script by the start of its name, so "Review*" can't match KitReview.
-                    'PowerShell(./tools/Review*)')
+                    'PowerShell(./tools/Review*)',
+                    # Review 6: a script name may start with any word character, not only a letter.
+                    'Bash(./tools/_Private.ps1 *)', 'Bash(./tools/1Thing.ps1)')
                 deny  = @('Read(./.env)')
             }
         } | ConvertTo-Json -Depth 5
