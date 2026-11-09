@@ -471,4 +471,16 @@ Describe 'Export-KitApp' {
     ) {
         { Get-KitAppSettingsText -SettingsText $Text -AppTools 'Set-AgentMode.ps1' } | Should -Throw '*has no "permissions" object*'
     }
+
+    # Review 2 of PR 32: a null list or an empty rule stopped with PowerShell's parameter-binding error, which
+    # doesn't say which setting is wrong.
+    It 'stops with a clear error when <List> isn''t a list of rules, in <Case>' -ForEach @(
+        @{ List = 'allow'; Case = 'a null list'; Text = '{"permissions":{"allow":null}}' }
+        @{ List = 'ask'; Case = 'an empty rule'; Text = '{"permissions":{"ask":["Read(./x)",""]}}' }
+        @{ List = 'allow'; Case = 'a number'; Text = '{"permissions":{"allow":[1]}}' }
+        @{ List = 'ask'; Case = 'a single string'; Text = '{"permissions":{"ask":"Read(./x)"}}' }
+    ) {
+        { Get-KitAppSettingsText -SettingsText $Text -AppTools 'Set-AgentMode.ps1' } |
+            Should -Throw "*""permissions.$List"" isn't a list of rules*"
+    }
 }
