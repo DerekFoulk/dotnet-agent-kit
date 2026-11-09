@@ -34,6 +34,10 @@
     One exception: for a push or fetch through a local path, git strips GIT_CONFIG_COUNT from the receive-pack or
     upload-pack it starts. Only receive-pack runs maintenance, so New-TestGitRemote makes a bare repo for a test to
     push into, with the setting receive-pack needs in its own config.
+
+    Test-RepoGitIgnore says whether a repo's root .gitignore ignores a path, judging that file alone: the kit's
+    tests use it to check that a file stays out of commits in every clone and every app, which a line in this
+    clone's .git/info/exclude or this machine's excludes would otherwise hide.
 #>
 
 Set-StrictMode -Version Latest
