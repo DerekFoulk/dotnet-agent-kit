@@ -430,7 +430,10 @@ Describe 'Export-KitApp' {
         $kit = [ordered]@{ permissions = [ordered]@{
                 allow = @('PowerShell(./tools/*)', 'PowerShell(./.kit/tools/*)')
                 ask   = @('PowerShell(./tools/Publish-Kit*)', 'Bash(pwsh -NoProfile -File .\tools\Publish-Kit.ps1 *)',
-                    'PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)')
+                    'PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)',
+                    # Review 3 of PR 32: a rule naming two scripts is dropped if either is kit-only, not judged by
+                    # its first.
+                    'Bash(./tools/Set-AgentMode.ps1 && ./tools/Publish-Kit.ps1)')
                 deny  = @('Read(./.env)')
             }
         } | ConvertTo-Json -Depth 5
@@ -473,20 +476,22 @@ Describe 'Export-KitApp' {
     }
 
     # Review 2 of PR 32: ConvertTo-Json's -Depth 10 wrote anything deeper as a type name, with only a warning.
-    It 'keeps a setting nested 20 levels deep whole' {
+    # Review 3: 100 levels below a setting is the most ConvertTo-Json's maximum depth can write, and 101 is
+    # one too many, so these two tests pin the depth exactly.
+    It 'keeps a setting nested 100 levels deep whole' {
         $deep = '"leaf"'
-        foreach ($level in 1..20) { $deep = "{""k$level"":$deep}" }
+        foreach ($level in 1..100) { $deep = "{""k$level"":$deep}" }
         $text = "{""permissions"":{""allow"":[]},""hooks"":$deep}"
 
         $app = Get-KitAppSettingsText -SettingsText $text -AppTools 'Set-AgentMode.ps1'
 
-        ($app | ConvertFrom-Json -AsHashtable -Depth 100 | ConvertTo-Json -Depth 100 -Compress) |
-            Should -BeExactly ($text | ConvertFrom-Json -AsHashtable -Depth 100 | ConvertTo-Json -Depth 100 -Compress)
+        $app | Should -Match '"k100": \{' -Because 'the outermost level is written'
+        $app | Should -Match '"k1": "leaf"' -Because 'the innermost level is written, not a type name'
     }
 
     It 'stops instead of writing a setting nested deeper than ConvertTo-Json can go' {
         $deep = '"leaf"'
-        foreach ($level in 1..105) { $deep = "{""k$level"":$deep}" }
+        foreach ($level in 1..101) { $deep = "{""k$level"":$deep}" }
 
         { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' } |
             Should -Throw '*truncated*'
