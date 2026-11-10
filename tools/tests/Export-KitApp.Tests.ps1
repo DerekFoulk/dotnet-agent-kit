@@ -449,7 +449,9 @@ Describe 'Export-KitApp' {
                     'Bash(./tools/_Private.ps1 *)', 'Bash(./tools/1Thing.ps1)',
                     # Review 7: names match whatever their case, and a hyphen is part of a name, so a kit-only
                     # Test-* script isn't kept because an app tool also starts "Test".
-                    'PowerShell(./tools/set-agentmode.ps1 -Mode*)', 'PowerShell(./tools/Test-RuleSources.ps1)')
+                    'PowerShell(./tools/set-agentmode.ps1 -Mode*)', 'PowerShell(./tools/Test-RuleSources.ps1)',
+                    # Review 8: a dot is part of a name, so this isn't taken for Set-AgentMode.ps1.
+                    'Bash(./tools/Set-AgentMode.old.ps1)')
                 deny  = @('Read(./.env)')
             }
         } | ConvertTo-Json -Depth 5
@@ -468,20 +470,28 @@ Describe 'Export-KitApp' {
                 allow                 = @('Read(./src/tools/**)', 'PowerShell(./TOOLS/Publish-Kit*)')
                 # Review 7: a path that leaves tools/ with ".." names no script there, so its ask stays.
                 ask                   = @('PowerShell(./src/tools/Build-Thing*)', 'PowerShell(./tools/../eng/Deploy.ps1*)', 'Bash(rm -rf tools/Generated)', 'PowerShell(./tools/tests/*)', 'Bash(pwsh -NoProfile -File tools/Publish-Kit.ps1 *)',
-                    'PowerShell(& "./tools/Publish-Kit.ps1" *)', "Bash(pwsh -File '.\tools\Publish-Kit.ps1' *)")
+                    'PowerShell(& "./tools/Publish-Kit.ps1" *)', "Bash(pwsh -File '.\tools\Publish-Kit.ps1' *)",
+                    # Review 8: a path after a character other than a space, "(" or quote isn't recognised; kept.
+                    'PowerShell(pwsh -File=./tools/New-KitApp.ps1)')
                 deny                  = @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)')
                 defaultMode           = 'acceptEdits'
                 additionalDirectories = @('../shared/tools/foo')
             }
         } | ConvertTo-Json -Depth 5
 
-        $appSettings = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1' | ConvertFrom-Json -AsHashtable
+        $raw = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1'
+        $appSettings = $raw | ConvertFrom-Json -AsHashtable
 
         @($appSettings['permissions']['allow']) | Should -Be @('Read(./src/tools/**)') -Because 'a tools folder below the root is the app''s own; the root one matches in any case'
-        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./src/tools/Build-Thing*)', 'PowerShell(./tools/../eng/Deploy.ps1*)', 'Bash(rm -rf tools/Generated)', 'PowerShell(./tools/tests/*)') -Because 'review 8: a folder, or a name with no script extension or glob, names no script'
+        # Review 8: a list filtered down to one rule is still a JSON list, as Claude Code's schema requires.
+        $raw | Should -Match '"allow": \[\s*"Read\(\./src/tools/\*\*\)"\s*\]'
+        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./src/tools/Build-Thing*)', 'PowerShell(./tools/../eng/Deploy.ps1*)', 'Bash(rm -rf tools/Generated)', 'PowerShell(./tools/tests/*)', 'PowerShell(pwsh -File=./tools/New-KitApp.ps1)') -Because 'review 8: a folder, or a name with no script extension or glob, names no script'
         @($appSettings['permissions']['deny']) | Should -Be @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)') -Because 'a deny rule only ever protects'
         $appSettings['permissions']['defaultMode'] | Should -BeExactly 'acceptEdits'
         @($appSettings['permissions']['additionalDirectories']) | Should -Be @('../shared/tools/foo')
+        # And one filtered down to none is an empty list, not null.
+        Get-KitAppSettingsText -SettingsText '{"permissions":{"ask":["PowerShell(./tools/New-KitApp*)"]}}' -AppTools 'Set-AgentMode.ps1' |
+            Should -Match '"ask": \[\]'
     }
 
     It 'keeps a date-like string exactly as written, whatever the machine''s time zone' {
