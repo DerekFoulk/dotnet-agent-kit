@@ -52,7 +52,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0036", "https://docs.github.com/en/code-security/concepts/code-scanning/codeql/codeql-code-scanning, retrieved 2026-11-07", "owner, 2026-11-09"]
-    enforcement: "ci: codeql.reusable.yml, called from the kit's ci.yml and every app's ci.yml (skipped on private repos); in the kit, the main ruleset's code scanning rule blocks a merge on a CodeQL alert of severity error, or a security alert high or higher, on lines the pull request changes, or while CodeQL's analysis is in progress or missing; apps' rulesets don't have that rule yet"
+    enforcement: "ci: codeql.reusable.yml, called from the kit's ci.yml and every app's ci.yml (skipped on private repos); in the kit, the main ruleset's code scanning rule blocks a merge on a CodeQL alert of severity error, or a security alert high or higher, on lines the pull request changes, or while CodeQL's analysis is in progress or missing; New-KitApp gives every public app the same rule as its own ruleset (templates/github/code-scanning.json), added once the app is public"
     scope: core
     paths: [".github/workflows/**", "**/*.cs"]
 ---
