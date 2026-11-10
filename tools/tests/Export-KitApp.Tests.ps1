@@ -446,14 +446,17 @@ Describe 'Export-KitApp' {
                     # Review 5: a rule names a script by the start of its name, so "Review*" can't match KitReview.
                     'PowerShell(./tools/Review*)',
                     # Review 6: a script name may start with any word character, not only a letter.
-                    'Bash(./tools/_Private.ps1 *)', 'Bash(./tools/1Thing.ps1)')
+                    'Bash(./tools/_Private.ps1 *)', 'Bash(./tools/1Thing.ps1)',
+                    # Review 7: names match whatever their case, and a hyphen is part of a name, so a kit-only
+                    # Test-* script isn't kept because an app tool also starts "Test".
+                    'PowerShell(./tools/set-agentmode.ps1 -Mode*)', 'PowerShell(./tools/Test-RuleSources.ps1)')
                 deny  = @('Read(./.env)')
             }
         } | ConvertTo-Json -Depth 5
 
-        $appSettings = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1', 'Initialize-DevMachine.ps1', 'KitReview.psm1' | ConvertFrom-Json -AsHashtable
+        $appSettings = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1', 'Initialize-DevMachine.ps1', 'KitReview.psm1', 'Test-ConventionalTitle.ps1' | ConvertFrom-Json -AsHashtable
 
-        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)')
+        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)', 'PowerShell(./tools/set-agentmode.ps1 -Mode*)')
         @($appSettings['permissions']['allow']) | Should -Be @('PowerShell(./tools/*)', 'PowerShell(./.kit/tools/*)') -Because 'a wildcard names no one script'
         @($appSettings['permissions']['deny']) | Should -Be @('Read(./.env)')
     }
