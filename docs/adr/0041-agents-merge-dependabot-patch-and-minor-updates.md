@@ -82,7 +82,7 @@ The owner chose Option C on 2026-11-09 ("Option C it is"), after asking for more
 
 - **Security:** the 7-day wait, more than twice Dependabot's default and tested, keeps most compromised releases out; an agent reads each new version's release notes and license before merging; and Actions bumps, which run with CI's permissions, stay with the owner.
 - **Reliability:** majors, the updates allowed to break things, stay with the owner. The checks, the reviewer and mutation testing guard the rest.
-- **Operational excellence:** routine updates no longer wait for the owner, so the kit stays current with less of his time. They arrive a week after release, and majors two; a security update doesn't wait.
+- **Operational excellence:** routine updates no longer wait for the owner, so the kit stays current with less of his time. They arrive a week after release, and NuGet and SDK majors two; a security update doesn't wait.
 - **Cost optimization, performance efficiency:** no change.
 
 ## Sources
