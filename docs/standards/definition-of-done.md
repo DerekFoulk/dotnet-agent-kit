@@ -43,7 +43,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-03", "ADR-0028", "owner, 2026-11-07", "ADR-0035"]
-    enforcement: "ruleset: in the kit, main protection requires review conversations resolved before merging (since 2026-11-09), and apps' rulesets don't yet; answering each with evidence stays advisory: the address-review skill and tools/KitReview.psm1 guide it; the module refuses won't fix without -OwnerApproved, a switch it takes on trust, passed in auto mode under ADR-0035's standing approval"
+    enforcement: "ruleset: main protection requires review conversations resolved before merging, in the kit (since 2026-11-09) and in every app New-KitApp creates; answering each with evidence stays advisory: the address-review skill and tools/KitReview.psm1 guide it; the module refuses won't fix without -OwnerApproved, a switch it takes on trust, passed in auto mode under ADR-0035's standing approval"
     scope: core
     paths: ["**"]
   - id: DOD-006

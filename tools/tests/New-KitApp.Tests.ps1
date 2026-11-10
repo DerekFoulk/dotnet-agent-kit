@@ -84,7 +84,7 @@ Describe 'New-KitApp settings' {
     }
 
     It 'requires every review thread to be resolved before merging, as the kit''s ruleset does' {
-        # The owner, 2026-11-09: new apps get the merge protections the kit has (README, "GitHub settings").
+        # The owner, 2026-11-10: new apps get the merge protections the kit has (README, "GitHub settings").
         $pullRequest = ((Get-Content -Raw -LiteralPath $rulesetPath | ConvertFrom-Json).rules | Where-Object type -EQ 'pull_request').parameters
 
         $pullRequest.required_review_thread_resolution | Should -BeTrue
@@ -236,7 +236,7 @@ Describe 'New-KitApp run' {
             )
         }
 
-        # The owner, 2026-11-09: new apps get the kit's merge protections. A workflow may use an action only at
+        # The owner, 2026-11-10: new apps get the kit's merge protections. A workflow may use an action only at
         # a full commit SHA, which no one can move to other code (SUP-008), private or public.
         It 'then requires every action to be pinned to a full commit SHA' {
             $permissions = @(Get-WriteCall | Where-Object Arguments -Match '/actions/permissions ')
@@ -305,7 +305,7 @@ Describe 'New-KitApp run' {
             ((Get-WriteCall)[7].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
         }
 
-        # The owner, 2026-11-09: new apps get the kit's merge protections. Only once public: CodeQL runs only on
+        # The owner, 2026-11-10: new apps get the kit's merge protections. Only once public: CodeQL runs only on
         # a public app, and a rule requiring it would block every merge in a private one.
         It 'last, requires CodeQL results to merge, now that CodeQL runs' {
             @(Get-WriteCall).Count | Should -Be 9

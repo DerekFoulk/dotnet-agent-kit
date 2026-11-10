@@ -56,6 +56,7 @@ Accepted (owner, 2026-11-06: approved the D2b plan, including the throwaway end-
 - Rulesets need a paid plan on private repos. GitHub's availability note for rulesets says they "are available in public repositories with GitHub Free and GitHub Free for organizations, and in public and private repositories with GitHub Pro, GitHub Team, and GitHub Enterprise Cloud" (the note on the rulesets page, from its docs source). So a `-Private` app on a Free personal account gets no protected `main`. Under the owner's account, the end-to-end private app's ruleset rejected a direct push to `main` (GH013), so his plan enforces it. On a plan that doesn't, the ruleset step may fail after the push, and the report then lists the ruleset as left. Or GitHub may accept the ruleset without enforcing it, and then nothing flags it: `New-KitApp` reports success while `main` is unprotected (review 2 of PR 17). Which of the two happens on Free isn't verified. A public app on Free meets the same question, because its ruleset goes on while the repo is still private; whether it's enforced once the repo turns public isn't verified either (review 4 of PR 17). So before handing `New-KitApp` to another account, check its plan, or try a direct push to `main` in its first app.
 - The sync job (PR D3) can apply `templates/github/` to existing apps. A kit version from before this ADR has no such folder, and `New-KitApp` refuses it before any change.
 - **Update (2026-11-09):** after the ruleset, `New-KitApp` also turns on Dependabot alerts and security updates, for private and public apps alike (owner, 2026-11-09; ADR-0041).
+- **Update (2026-11-10):** new apps get the kit's three merge protections (owner, 2026-11-10). Every app's "main protection" ruleset requires review threads resolved, and every app requires actions pinned to a full commit SHA (`templates/github/actions.json`). A public app also gets a second ruleset, "code scanning", once it's public (`templates/github/code-scanning.json`): a rule requiring a tool the repo doesn't run blocks every merge (GitHub's "Available rules for rulesets"), and a private app doesn't run CodeQL.
 
 ## Pillars affected
 
@@ -67,6 +68,8 @@ Security: every app is given the ruleset right after its first push (whether Git
 - https://docs.github.com/en/rest/repos/repos#create-a-repository-for-the-authenticated-user, retrieved 2026-11-06
 - https://docs.github.com/en/rest/repos/rules, retrieved 2026-11-02
 - https://docs.github.com/en/rest/repos/repos#enable-vulnerability-alerts, retrieved 2026-11-09
+- https://docs.github.com/en/rest/actions/permissions#set-github-actions-permissions-for-a-repository, retrieved 2026-11-10
+- https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets, retrieved 2026-11-10
 - https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets, retrieved 2026-11-07
 - https://docs.github.com/en/get-started/learning-about-github/githubs-plans, retrieved 2026-11-07
 - https://github.com/github/docs/blob/main/data/reusables/gated-features/repo-rules.md (the rulesets availability note, last changed 2026-06-09), retrieved 2026-11-07
