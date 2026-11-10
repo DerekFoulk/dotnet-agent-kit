@@ -189,6 +189,14 @@ function New-KitApp {
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
             }
         }
+        # Private or public: security updates skip Dependabot's 7- and 14-day wait, so a known vulnerability gets
+        # its fix PR at once (ADR-0041). Alerts first: turning them on also turns on the dependency graph that
+        # security updates need.
+        [pscustomobject]@{ Description = 'Turn on Dependabot alerts and security updates'; Action = {
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/vulnerability-alerts", '--method', 'PUT' | Out-Null
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/automated-security-fixes", '--method', 'PUT' | Out-Null
+            }
+        }
         # Public unless -Private: CI is free on public repos, and GitHub Free offers rulesets only there
         # (ADR-0033). A public repo gets what the kit has (README, "GitHub settings on this repo"): secret
         # scanning and push protection, free on public repos, and no fork PR runs until the owner approves it.
