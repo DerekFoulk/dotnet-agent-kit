@@ -189,11 +189,23 @@ Describe 'New-KitApp run' {
             (git -C $remote log -1 --format=%s main) | Should -Match '^chore: start from dotnet-agent-kit'
 
             $writes = Get-WriteCall
-            @($writes.Arguments) | Should -Be @('api user/repos --method POST --input -', 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -')
+            @($writes.Arguments)[0..1] | Should -Be @('api user/repos --method POST --input -', 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -')
             ($writes[0].Input | ConvertFrom-Json).name | Should -Be 'Contoso.Orders'
             ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
             $writes[1].Pushed | Should -BeTrue -Because 'the ruleset would reject the first push'
             ($writes[1].Input | ConvertFrom-Json).name | Should -Be 'main protection'
+        }
+
+        # The owner, 2026-11-09 (ADR-0041): Dependabot security updates skip the 7- and 14-day wait version
+        # updates have, so a known vulnerability gets its fix PR at once, and the alerts say it's there. Turning
+        # alerts on also turns on the dependency graph security updates need, private repos included.
+        It 'then turns on Dependabot alerts and security updates, private or public' {
+            @((Get-WriteCall).Arguments) | Should -Be @(
+                'api user/repos --method POST --input -'
+                'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -'
+                'api repos/fixture-owner/Contoso.Orders/vulnerability-alerts --method PUT'
+                'api repos/fixture-owner/Contoso.Orders/automated-security-fixes --method PUT'
+            )
         }
 
         It 'stores the commit hook as executable, which git on Linux and macOS needs to run it' {
@@ -229,25 +241,27 @@ Describe 'New-KitApp run' {
             @($writes.Arguments) | Should -Be @(
                 'api user/repos --method POST --input -'
                 'api repos/fixture-owner/Public.Orders/rulesets --method POST --input -'
+                'api repos/fixture-owner/Public.Orders/vulnerability-alerts --method PUT'
+                'api repos/fixture-owner/Public.Orders/automated-security-fixes --method PUT'
                 'api repos/fixture-owner/Public.Orders --method PATCH --input -'
                 'api repos/fixture-owner/Public.Orders --method PATCH --input -'
                 'api repos/fixture-owner/Public.Orders/actions/permissions/fork-pr-contributor-approval --method PUT --input -'
             )
             ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
             ($writes[1].Pushed) | Should -BeTrue
-            ($writes[2].Input | ConvertFrom-Json).private | Should -BeFalse
+            ($writes[4].Input | ConvertFrom-Json).private | Should -BeFalse
         }
 
         It 'then turns on secret scanning and push protection, free on public repos (ADR-0031)' {
-            @(Get-WriteCall).Count | Should -Be 5
-            $security = ((Get-WriteCall)[3].Input | ConvertFrom-Json).security_and_analysis
+            @(Get-WriteCall).Count | Should -Be 7
+            $security = ((Get-WriteCall)[5].Input | ConvertFrom-Json).security_and_analysis
             $security.secret_scanning.status | Should -Be 'enabled'
             $security.secret_scanning_push_protection.status | Should -Be 'enabled'
         }
 
         It 'runs no fork''s PR until the owner approves it' {
-            @(Get-WriteCall).Count | Should -Be 5
-            ((Get-WriteCall)[4].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
+            @(Get-WriteCall).Count | Should -Be 7
+            ((Get-WriteCall)[6].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
         }
     }
 
@@ -416,7 +430,7 @@ Describe 'New-KitApp run' {
             $lines = "$runError" -split "`r?`n"
             $lines | Should -Contain "Done: Export the kit's files at $commit; Make the first commit; Create the private repo with the kit's merge settings; Push main."
             # The repo stays private: making it public comes after the ruleset.
-            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Turn the commit hook on in the local copy."
+            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn on Dependabot alerts and security updates; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Turn the commit hook on in the local copy."
             @($script:calls.Arguments) | Should -Not -Match '--method PATCH'
             (git -C $app config --local --get core.hooksPath) | Should -BeNullOrEmpty -Because 'no step runs after a failure'
         }
