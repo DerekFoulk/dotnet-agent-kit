@@ -74,4 +74,4 @@ Then run `gh pr merge <n> --merge` on its own, never inside a script. Run `git s
 
 ## 6. Report
 
-Tell the owner what changed and what the evidence shows, with links. In auto mode, say what merged. Say what wasn't verified. Ask one question, if one is pending.
+Tell the owner what changed and what the evidence shows, with links. In auto mode, say what merged. Say what wasn't verified. Ask every pending question in the chat, one at a time (COM-007).

@@ -68,7 +68,7 @@ rules:
 
 # Communication
 
-How agents talk to the owner. Each rule comes from repeated owner feedback (brief §1, themes 5–8). No tool can check a conversation, so these rules are advisory. The practice tasks score them on every run (checkpoint §4), and the advisory list is expected to stay here.
+How agents talk to the owner. Each rule comes from owner feedback: COM-001 to COM-005 from repeated feedback (brief §1, themes 5–8), COM-006 and COM-007 from one correction each. No tool can check a conversation, so these rules are advisory. The practice tasks are to score COM-001 to COM-005 on every run (checkpoint §4), and the advisory list is expected to stay here.
 
 ## In practice
 
