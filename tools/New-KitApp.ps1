@@ -8,7 +8,7 @@
     with the kit's merge settings, pushes main, adds the ruleset (review threads resolved before merging),
     turns on Dependabot alerts and security updates, and requires actions pinned to a full commit SHA. The app
     is public, with secret scanning, push protection and a ruleset requiring CodeQL results to merge, unless
-    -Private says otherwise. The settings and the ruleset come from
+    -Private says otherwise. The settings and both rulesets come from
     templates/github at the same kit commit as the files.
 
 .EXAMPLE
