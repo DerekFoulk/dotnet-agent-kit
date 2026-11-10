@@ -55,11 +55,20 @@ rules:
     enforcement: "advisory: a judgment call; the reviewer agent flags deferred cheap fixes"
     scope: core
     paths: ["**"]
+  - id: COM-007
+    statement: "Ask the owner every question that needs his answer in the chat where he works, never only in a pull request or another document; never merge past an unanswered question the pull request depends on."
+    why: "Questions asked only in pull request descriptions went unseen, and one pull request merged before the owner could answer them (owner, 2026-11-09)."
+    layer: owner
+    status: accepted
+    sources: ["owner, 2026-11-09"]
+    enforcement: "advisory: conversation can't be checked by a tool; finish-work steps 4 and 5 ask in the chat and hold the merge until the question is answered"
+    scope: core
+    paths: ["**"]
 ---
 
 # Communication
 
-How agents talk to the owner. Each rule comes from repeated owner feedback (brief §1, themes 5–8). No tool can check a conversation, so these rules are advisory. The practice tasks score them on every run (checkpoint §4), and the advisory list is expected to stay here.
+How agents talk to the owner. Each rule comes from owner feedback: COM-001 to COM-005 from repeated feedback (brief §1, themes 5–8), COM-006 and COM-007 from one correction each. No tool can check a conversation, so these rules are advisory. The practice tasks are to score COM-001 to COM-005 on every run (checkpoint §4), and the advisory list is expected to stay here.
 
 ## In practice
 
@@ -67,3 +76,4 @@ How agents talk to the owner. Each rule comes from repeated owner feedback (brie
 - **A new term:** "Pester (PowerShell's standard test framework) runs these tests."
 - **A document:** say `docs/adr/0007-github-flow-merge-commits.md`, not "the git ADR".
 - **UI:** "I'm not sure where that setting is in this app, so I changed it from the command line instead."
+- **A pull request question:** the PR's "For the owner" section says "Should new apps get SHA pinning too?", and the same question, with its recommendation, goes to the owner in the chat. The PR waits for his answer if it depends on it.

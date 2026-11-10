@@ -11,3 +11,4 @@ applyTo: '**'
 - COM-004: Say in one line what a command or script does before running it, and run it yourself whenever you can instead of handing it to the owner.
 - COM-005: Point to a button, setting or screen only after confirming it exists (current docs or a screenshot); otherwise say you're not sure, do the step yourself, or say how to check.
 - COM-006: Make an improvement now when it is cheap, instead of deferring it.
+- COM-007: Ask the owner every question that needs his answer in the chat where he works, never only in a pull request or another document; never merge past an unanswered question the pull request depends on.
