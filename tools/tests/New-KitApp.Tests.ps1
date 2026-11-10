@@ -63,6 +63,13 @@ Describe 'New-KitApp settings' {
         $pullRequest.required_approving_review_count | Should -Be 0 # one owner: the reviewer agent reviews, not a second person
     }
 
+    It 'requires every review thread to be resolved before merging, as the kit''s ruleset does' {
+        # The owner, 2026-11-09: new apps get the merge protections the kit has (README, "GitHub settings").
+        $pullRequest = ((Get-Content -Raw -LiteralPath $rulesetPath | ConvertFrom-Json).rules | Where-Object type -EQ 'pull_request').parameters
+
+        $pullRequest.required_review_thread_resolution | Should -BeTrue
+    }
+
     Context 'the create-repo request' {
         BeforeAll {
             $script = Join-Path $root 'tools' 'New-KitApp.ps1'
