@@ -144,7 +144,7 @@ function New-KitApp {
     if ($existing.Error -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Error)" }
     # The settings and ruleset come from the same kit commit as the files.
     $github = @{}
-    foreach ($file in 'repo.json', 'main-protection.json', 'actions.json', 'public.json') {
+    foreach ($file in 'repo.json', 'main-protection.json', 'actions.json', 'public.json', 'code-scanning.json') {
         $text = git -C $KitRoot show "${commit}:templates/github/$file" 2>$null | Out-String
         if ($LASTEXITCODE -ne 0 -or -not $text.Trim()) {
             throw "The kit at $KitRef has no templates/github/$file, so it's older than this New-KitApp. Pass a newer -KitRef."
@@ -155,6 +155,7 @@ function New-KitApp {
     $rulesetText = $github['main-protection.json']
     $actionsText = $github['actions.json']
     $publicText = $github['public.json']
+    $codeScanningText = $github['code-scanning.json']
 
     # The steps, in order. Each runs in this function's scope (dot-sourced), so later steps see what earlier
     # ones set. -WhatIf lists them instead.
@@ -219,6 +220,12 @@ function New-KitApp {
                     Invoke-KitGhChecked -Arguments 'api', "repos/$repo", '--method', 'PATCH', '--input', '-' -InputText $security | Out-Null
                     $approval = $publicSettings.fork_pr_contributor_approval | ConvertTo-Json
                     Invoke-KitGhChecked -Arguments 'api', "repos/$repo/actions/permissions/fork-pr-contributor-approval", '--method', 'PUT', '--input', '-' -InputText $approval | Out-Null
+                }
+            }
+            # Public only, and only now: CodeQL runs only on a public app (ADR-0036), and a rule requiring a tool the
+            # repo doesn't run blocks every merge. Its own ruleset, as the kit's code scanning rule does (SEC-006).
+            [pscustomobject]@{ Description = 'Require CodeQL results to merge'; Action = {
+                    Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $codeScanningText | Out-Null
                 }
             }
         }
