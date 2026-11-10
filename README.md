@@ -112,7 +112,7 @@ In both modes, the agent asks before:
 - deleting or rewriting anything;
 - creating an app repo, or making something public;
 - adding a connector, or installing software;
-- changing a ruleset or merge settings, turning off Dependabot alerts or security updates, or weakening a CI check;
+- changing a ruleset, branch protection or merge settings, turning off Dependabot alerts or security updates, or weakening a CI check;
 - switching the mode;
 - anything else that can't be undone.
 
