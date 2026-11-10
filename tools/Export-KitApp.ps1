@@ -159,11 +159,12 @@ function Write-KitManifest {
 # rule for a script the app does get (a KitTools entry) is kept, even under tools/: keeping errs safe. Only
 # the root tools folder counts ("./tools/", ".\tools\" or a bare "tools/" starting an argument), in any case; a
 # tools folder deeper in a path is the app's own. A rule always starts with its tool's name, as in "Bash(", so
-# a space, "(" or quote always comes before the path.
+# a space, "(" or quote always comes before the path. A script's name starts with a word character, so
+# "./tools/../x", which leaves the folder, names no script there.
 function Test-KitOnlyRule {
     param([Parameter(Mandatory)] [string] $Rule, [Parameter(Mandatory)] [string[]] $AppTools)
 
-    foreach ($match in [regex]::Matches($Rule, '(?i)[\s(''"](?:\.[/\\])?tools[/\\]([\w.-]+)')) {
+    foreach ($match in [regex]::Matches($Rule, '(?i)[\s(''"](?:\.[/\\])?tools[/\\](\w[\w.-]*)')) {
         $named = $match.Groups[1].Value
         if (-not ($AppTools | Where-Object { $_.StartsWith($named, [StringComparison]::OrdinalIgnoreCase) })) { return $true }
     }
