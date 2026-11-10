@@ -63,6 +63,26 @@ Describe 'New-KitApp settings' {
         $pullRequest.required_approving_review_count | Should -Be 0 # one owner: the reviewer agent reviews, not a second person
     }
 
+    It 'has a code scanning ruleset that blocks a merge on CodeQL''s errors or high security alerts, as the kit''s does' {
+        # A public app's CodeQL job runs on every PR (ADR-0036); a rule requiring a tool the repo doesn't run
+        # blocks every merge, so this ruleset is separate and goes on public apps only.
+        $path = Join-Path $root 'templates' 'github' 'code-scanning.json'
+        Test-Path -LiteralPath $path | Should -BeTrue -Because 'the CodeQL merge rule is data in templates/github'
+        $ruleset = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+
+        $ruleset.name | Should -Be 'code scanning'
+        $ruleset.target | Should -Be 'branch'
+        $ruleset.enforcement | Should -Be 'active'
+        @($ruleset.bypass_actors) | Should -BeNullOrEmpty
+        @($ruleset.conditions.ref_name.include) | Should -Be @('~DEFAULT_BRANCH')
+        @($ruleset.rules.type) | Should -Be @('code_scanning')
+        $tools = @($ruleset.rules[0].parameters.code_scanning_tools)
+        $tools | Should -HaveCount 1
+        $tools[0].tool | Should -Be 'CodeQL'
+        $tools[0].alerts_threshold | Should -Be 'errors'
+        $tools[0].security_alerts_threshold | Should -Be 'high_or_higher'
+    }
+
     It 'requires every review thread to be resolved before merging, as the kit''s ruleset does' {
         # The owner, 2026-11-09: new apps get the merge protections the kit has (README, "GitHub settings").
         $pullRequest = ((Get-Content -Raw -LiteralPath $rulesetPath | ConvertFrom-Json).rules | Where-Object type -EQ 'pull_request').parameters
@@ -266,6 +286,7 @@ Describe 'New-KitApp run' {
                 'api repos/fixture-owner/Public.Orders --method PATCH --input -'
                 'api repos/fixture-owner/Public.Orders --method PATCH --input -'
                 'api repos/fixture-owner/Public.Orders/actions/permissions/fork-pr-contributor-approval --method PUT --input -'
+                'api repos/fixture-owner/Public.Orders/rulesets --method POST --input -'
             )
             ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
             ($writes[1].Pushed) | Should -BeTrue
@@ -273,15 +294,22 @@ Describe 'New-KitApp run' {
         }
 
         It 'then turns on secret scanning and push protection, free on public repos (ADR-0031)' {
-            @(Get-WriteCall).Count | Should -Be 8
+            @(Get-WriteCall).Count | Should -Be 9
             $security = ((Get-WriteCall)[6].Input | ConvertFrom-Json).security_and_analysis
             $security.secret_scanning.status | Should -Be 'enabled'
             $security.secret_scanning_push_protection.status | Should -Be 'enabled'
         }
 
         It 'runs no fork''s PR until the owner approves it' {
-            @(Get-WriteCall).Count | Should -Be 8
+            @(Get-WriteCall).Count | Should -Be 9
             ((Get-WriteCall)[7].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
+        }
+
+        # The owner, 2026-11-09: new apps get the kit's merge protections. Only once public: CodeQL runs only on
+        # a public app, and a rule requiring it would block every merge in a private one.
+        It 'last, requires CodeQL results to merge, now that CodeQL runs' {
+            @(Get-WriteCall).Count | Should -Be 9
+            ((Get-WriteCall)[8].Input | ConvertFrom-Json).name | Should -Be 'code scanning'
         }
     }
 
@@ -450,7 +478,7 @@ Describe 'New-KitApp run' {
             $lines = "$runError" -split "`r?`n"
             $lines | Should -Contain "Done: Export the kit's files at $commit; Make the first commit; Create the private repo with the kit's merge settings; Push main."
             # The repo stays private: making it public comes after the ruleset.
-            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn on Dependabot alerts and security updates; Require actions pinned to a full commit SHA; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Turn the commit hook on in the local copy."
+            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn on Dependabot alerts and security updates; Require actions pinned to a full commit SHA; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Require CodeQL results to merge; Turn the commit hook on in the local copy."
             @($script:calls.Arguments) | Should -Not -Match '--method PATCH'
             (git -C $app config --local --get core.hooksPath) | Should -BeNullOrEmpty -Because 'no step runs after a failure'
         }
