@@ -148,7 +148,7 @@ Two more workflows act rather than check:
 
 Both push with the workflow's own token, so CI on the PR they create or update waits for approval, and they approve it. If a release or Dependabot PR is ever stuck with no checks reporting, close and reopen it: that runs CI as you. Expect the first CI run on each Dependabot NuGet PR to fail locked restore; the lock-file commit replaces it. Once that commit is on the branch, Dependabot may stop rebasing the PR on its own; comment `@dependabot rebase` on it, and the workflow adds the lock files again.
 
-Each action is pinned by commit SHA, and the gitleaks image by digest. `.github/dependabot.yml` keeps NuGet packages, the actions and the `global.json` SDK pin current; bump the gitleaks image by hand. Dependabot waits 7 days before proposing a version (its own default is 3), and 14 for a NuGet or SDK major (by the first number, as SemVer counts it); security updates don't wait. In auto mode an agent merges its patch and minor updates of NuGet packages, .NET tools and the SDK; majors, any update of a 0.x package, and Actions bumps are the owner's (ADR-0041). The "main protection" ruleset on GitHub requires a pull request and these checks to pass ("dotnet / Build, test and package checks", "dotnet / Secret scan (gitleaks)", "kit / Kit checks", "PR title"). It allows merge commits only, and blocks force-pushes and deletion of `main`. It doesn't require a branch to be up to date with `main` before merging, so the merge result itself isn't re-tested; with merge commits that's a deliberate trade against rebuilding after every merge.
+Each action is pinned by commit SHA, and the gitleaks image by digest. `.github/dependabot.yml` keeps NuGet packages, the actions and the `global.json` SDK pin current; bump the gitleaks image by hand. Dependabot waits 7 days before proposing a version (its own default is 3), and 14 for a NuGet or SDK major (by the first number, as SemVer counts it); security updates, which are on, don't wait. In auto mode an agent merges its patch and minor updates of NuGet packages, .NET tools and the SDK; majors, any update of a 0.x package, and Actions bumps are the owner's (ADR-0041). The "main protection" ruleset on GitHub requires a pull request and these checks to pass ("dotnet / Build, test and package checks", "dotnet / Secret scan (gitleaks)", "kit / Kit checks", "PR title"). It allows merge commits only, and blocks force-pushes and deletion of `main`. It doesn't require a branch to be up to date with `main` before merging, so the merge result itself isn't re-tested; with merge commits that's a deliberate trade against rebuilding after every merge.
 
 ### Using the kit's CI from an app repo
 
@@ -245,8 +245,9 @@ It checks first, before changing anything: the app and repo names, an empty fold
 3. Creates the repo, private for now, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
 4. Pushes `main`.
 5. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`.
-6. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, and requires approval before any fork's PR runs (`templates/github/public.json`). Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
-7. Turns the commit hook on in the local copy.
+6. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
+7. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, and requires approval before any fork's PR runs (`templates/github/public.json`). Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
+8. Turns the commit hook on in the local copy.
 
 If a step fails, it stops and says what's done and what's left, and whether the repo or the folder is kept. It never deletes a repo. Claude Code asks before running it.
 
@@ -261,7 +262,7 @@ Applied 2026-11-06 with the owner's OK, after the repo went public:
 | Issues | Only collaborators can open them (set by the owner in the browser; GitHub documents no API for it) | The repo isn't open for outside contributions |
 | Pull requests | Anyone can open them (unchanged) | Left open so Dependabot and release-please keep opening PRs; fork PRs still wait for approval |
 | Wiki | Off | Until it's published from the repo (planned after D2a) |
-| Dependabot security updates | Off (unchanged) | Not reviewed yet; `.github/dependabot.yml` version updates run weekly |
+| Dependabot security updates | Off (unchanged); turned on 2026-11-09, see below | Not reviewed yet; `.github/dependabot.yml` version updates run weekly |
 
 Applied 2026-11-09 with the owner's OK:
 
@@ -270,6 +271,7 @@ Applied 2026-11-09 with the owner's OK:
 | Actions: require actions pinned to a full-length commit SHA | On | Enforces SUP-008. The shared workflows' `$/.github/actions/kit-tools` resolves to a full SHA, so it passes |
 | "main protection" ruleset: require code scanning results | CodeQL; blocks on an alert of severity error, or a security alert high or higher, on lines the pull request changes, or while CodeQL's analysis is in progress or missing | Enforces SEC-006 at merge time; CodeQL runs on every pull request |
 | "main protection" ruleset: require conversation resolution | On | Every review thread is resolved before merging; that each one was answered with evidence (DOD-005) is still the agents' and the reviewer's job |
+| Dependabot alerts and security updates | On | A known vulnerability gets its fix PR at once, without the 7- and 14-day wait version updates have (ADR-0041); New-KitApp turns both on for every app |
 
 ## Run the tests
 

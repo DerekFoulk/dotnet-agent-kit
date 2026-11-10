@@ -52,7 +52,7 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
   - this skill or `.claude/agents/reviewer.md`;
   - a ruleset, branch protection or the merge settings;
   - a CI check, if removed or weakened;
-  - the Dependabot cooldown in `.github/dependabot.yml`, if shortened (any `*-days` value lowered, or a new `semver-minor-days` or `semver-patch-days` below the default) or narrowed (an `exclude` or `include` list).
+  - the Dependabot cooldown in `.github/dependabot.yml` or `templates/app/.github/dependabot.yml`, if shortened (any `*-days` value lowered, or any wait below 7 days, 14 for a NuGet or SDK major) or narrowed (an `exclude` or `include` list).
 
   A PR that changes any of them is the owner's to merge.
 - **If it's Dependabot's, it's only a patch or minor update of NuGet packages, .NET tools or the .NET SDK** (ADR-0041). All of these must hold, or the PR is the owner's to merge:
