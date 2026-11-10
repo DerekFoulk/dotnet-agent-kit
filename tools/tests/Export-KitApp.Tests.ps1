@@ -463,7 +463,8 @@ Describe 'Export-KitApp' {
         # list), and a tools/ folder anywhere in a path counted.
         $kit = [ordered]@{ permissions = [ordered]@{
                 allow                 = @('Read(./src/tools/**)', 'PowerShell(./TOOLS/Publish-Kit*)')
-                ask                   = @('PowerShell(./src/tools/Build-Thing*)', 'Bash(pwsh -NoProfile -File tools/Publish-Kit.ps1 *)',
+                # Review 7: a path that leaves tools/ with ".." names no script there, so its ask stays.
+                ask                   = @('PowerShell(./src/tools/Build-Thing*)', 'PowerShell(./tools/../eng/Deploy.ps1*)', 'Bash(pwsh -NoProfile -File tools/Publish-Kit.ps1 *)',
                     'PowerShell(& "./tools/Publish-Kit.ps1" *)', "Bash(pwsh -File '.\tools\Publish-Kit.ps1' *)")
                 deny                  = @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)')
                 defaultMode           = 'acceptEdits'
@@ -474,7 +475,7 @@ Describe 'Export-KitApp' {
         $appSettings = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1' | ConvertFrom-Json -AsHashtable
 
         @($appSettings['permissions']['allow']) | Should -Be @('Read(./src/tools/**)') -Because 'a tools folder below the root is the app''s own; the root one matches in any case'
-        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./src/tools/Build-Thing*)')
+        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./src/tools/Build-Thing*)', 'PowerShell(./tools/../eng/Deploy.ps1*)')
         @($appSettings['permissions']['deny']) | Should -Be @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)') -Because 'a deny rule only ever protects'
         $appSettings['permissions']['defaultMode'] | Should -BeExactly 'acceptEdits'
         @($appSettings['permissions']['additionalDirectories']) | Should -Be @('../shared/tools/foo')
