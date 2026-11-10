@@ -144,15 +144,16 @@ function New-KitApp {
     if ($existing.Error -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Error)" }
     # The settings and ruleset come from the same kit commit as the files.
     $github = @{}
-    foreach ($file in 'repo.json', 'main-protection.json', 'public.json') {
+    foreach ($file in 'repo.json', 'main-protection.json', 'actions.json', 'public.json') {
         $text = git -C $KitRoot show "${commit}:templates/github/$file" 2>$null | Out-String
         if ($LASTEXITCODE -ne 0 -or -not $text.Trim()) {
-            throw "The kit at $KitRef has no templates/github/$file, so it predates New-KitApp. Pass a newer -KitRef."
+            throw "The kit at $KitRef has no templates/github/$file, so it's older than this New-KitApp. Pass a newer -KitRef."
         }
         $github[$file] = $text
     }
     $settingsText = $github['repo.json']
     $rulesetText = $github['main-protection.json']
+    $actionsText = $github['actions.json']
     $publicText = $github['public.json']
 
     # The steps, in order. Each runs in this function's scope (dot-sourced), so later steps see what earlier
@@ -196,6 +197,12 @@ function New-KitApp {
         [pscustomobject]@{ Description = 'Turn on Dependabot alerts and security updates'; Action = {
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/vulnerability-alerts", '--method', 'PUT' | Out-Null
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/automated-security-fixes", '--method', 'PUT' | Out-Null
+            }
+        }
+        # Private or public: a workflow may use an action only at a full commit SHA, which no one can move to other
+        # code (SUP-008), as the kit requires of itself (templates/github/actions.json).
+        [pscustomobject]@{ Description = 'Require actions pinned to a full commit SHA'; Action = {
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/actions/permissions", '--method', 'PUT', '--input', '-' -InputText $actionsText | Out-Null
             }
         }
         # Public unless -Private: CI is free on public repos, and GitHub Free offers rulesets only there
