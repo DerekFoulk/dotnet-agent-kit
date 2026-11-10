@@ -103,6 +103,8 @@ Accepted (owner, 2026-11-07: "Yes, set it up… default to the auto mode", and k
   - `.gitignore` lists `.agent-mode` and `.claude/settings.local.json`; apps copy it.
   - Apps get `Set-AgentMode.ps1` in `.kit/tools`.
 - **What changes for the brief:** the brief's success measure counts how often the owner has to correct an agent. In auto mode he sees work after it merges, not before, so corrections come later and may be fewer only because he looks less. The practice run should be done in review mode, or say which mode it used.
+- **Amended by ADR-0041 (2026-11-09):** in auto mode an agent may also merge a Dependabot PR for a patch or minor update of NuGet packages, .NET tools or the .NET SDK, on its own PR's conditions plus DOD-006's comment; majors, any update of a 0.x package, and GitHub Actions bumps stay the owner's. Shortening or narrowing the Dependabot cooldown in `.github/dependabot.yml` or the app template's, and removing `New-KitApp`'s step that turns on Dependabot alerts and security updates, join the guardrails; turning those off joins "Always ask".
+- **Update (2026-11-09):** the owner's stopping rule: a `reviewer` round with nothing blocking or should-fix ends the reviews, and its cheap nit fixes, which change no behavior, get no further round. So the merge condition also accepts a head a few commits past that round when those commits only fix its nits and are listed in its PR comment (`finish-work` steps 2 and 5).
 
 ## Pillars affected
 

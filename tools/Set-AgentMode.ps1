@@ -4,7 +4,8 @@
     Switches how agents work in this repo: auto (the default) or review (ADR-0035).
 
 .DESCRIPTION
-    Auto: the agent plans, builds and merges its own pull requests, and asks only for the hard limits in
+    Auto: the agent plans, builds and merges its own pull requests and Dependabot's patch and minor
+    updates of NuGet packages, .NET tools and the SDK (ADR-0041), and asks only for the hard limits in
     AGENTS.md ("Working modes"). Review: the owner approves plans and merges each PR, as before ADR-0035.
 
     Review mode writes "review" to .agent-mode (gitignored), which every agent reads, and adds ask rules to the
@@ -92,7 +93,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     try {
         if ($Mode) { Set-AgentMode -Mode $Mode -RepoRoot $RepoRoot }
         $current = Get-AgentMode -RepoRoot $RepoRoot
-        $meaning = if ($current -eq 'review') { 'the owner approves plans and merges each PR' } else { 'the agent works and merges its own PRs, asking only for the hard limits' }
+        $meaning = if ($current -eq 'review') { 'the owner approves plans and merges each PR' } else { 'the agent works and merges its own PRs and Dependabot''s patch and minor updates of NuGet packages, .NET tools and the SDK, asking only for the hard limits' }
         Write-Host "Mode: $current ($meaning)."
     }
     catch {

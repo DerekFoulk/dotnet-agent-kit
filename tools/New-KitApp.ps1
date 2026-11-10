@@ -5,7 +5,8 @@
 
 .DESCRIPTION
     Exports the app's files with Export-KitApp, commits them, creates the repo on your own GitHub account
-    with the kit's merge settings, pushes main, then adds the ruleset. The app is public, with secret scanning
+    with the kit's merge settings, pushes main, adds the ruleset, then turns on Dependabot alerts and security
+    updates. The app is public, with secret scanning
     and push protection, unless -Private says otherwise. The settings and the ruleset come from
     templates/github at the same kit commit as the files.
 
@@ -187,6 +188,14 @@ function New-KitApp {
         # After the push: before it, the ruleset would reject the first push.
         [pscustomobject]@{ Description = "Add the 'main protection' ruleset"; Action = {
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
+            }
+        }
+        # Private or public: security updates skip Dependabot's 7- and 14-day wait, so a known vulnerability gets
+        # its fix PR at once (ADR-0041). Alerts first: turning them on also turns on the dependency graph that
+        # security updates need.
+        [pscustomobject]@{ Description = 'Turn on Dependabot alerts and security updates'; Action = {
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/vulnerability-alerts", '--method', 'PUT' | Out-Null
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/automated-security-fixes", '--method', 'PUT' | Out-Null
             }
         }
         # Public unless -Private: CI is free on public repos, and GitHub Free offers rulesets only there

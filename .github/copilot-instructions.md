@@ -16,12 +16,14 @@ Anything an agent suggests is **proposed** until the owner accepts it. Rules mar
 
 Agents work in one of two modes (ADR-0035). At the start of each task, check which. Read `.agent-mode` at the repo root: it's **auto** unless that file says `review`. `Set-AgentMode.ps1` with no `-Mode` also prints the mode, without a prompt (`./tools/` in the kit, `./.kit/tools/` with `-RepoRoot .` in an app). The file is gitignored, so each person's mode is their own, and each checkout's: a new worktree starts in auto. Switching is the owner's call: Claude Code asks before any run with `-Mode`, and other agents follow this rule.
 
-- **Auto, the default.** Work through the agreed roadmap without waiting for approval: post the plan in chat, then build it. You may add a dependency that the kit's standards or ADRs, or the official docs they cite, name for the task; say so in the PR. Merge your own PR with a merge commit (`gh pr merge <n> --merge`) once CI has passed at its head commit, the latest `reviewer` run on that commit has no unanswered blocking or should-fix finding, and the description is complete. Then report what merged. Decide a "won't fix" yourself, with the reason in the reply. "Always ask" still applies, and so does one exception: a PR that changes the guardrails themselves is the owner's to merge. That means:
+- **Auto, the default.** Work through the agreed roadmap without waiting for approval: post the plan in chat, then build it. You may add a dependency that the kit's standards or ADRs, or the official docs they cite, name for the task; say so in the PR. Merge your own PR with a merge commit (`gh pr merge <n> --merge`) once CI has passed at its head commit, the latest `reviewer` run on that commit has no unanswered blocking or should-fix finding (or on the commit before the final round's nit fixes, when those change no behavior and are listed in its PR comment; `finish-work` steps 2 and 5), and the description is complete (for a PR whose description a bot writes, DOD-006's comment at that commit). Then report what merged. You may merge a Dependabot PR the same way when it's only a patch or minor update of NuGet packages, .NET tools or the .NET SDK; a major update, any update of a 0.x package, or a GitHub Actions bump is the owner's to merge (ADR-0041). Decide a "won't fix" yourself, with the reason in the reply. "Always ask" still applies, and so does one exception: a PR that changes the guardrails themselves is the owner's to merge. That means:
   - the "Working modes" or "Always ask" sections, or SEC-003;
   - `.claude/settings.json` or the `Set-AgentMode.ps1` script;
   - the `finish-work` skill or the `reviewer` agent, which enforce these rules;
   - a ruleset, branch protection or the merge settings;
-  - a CI check, if removed or weakened.
+  - a CI check, if removed or weakened;
+  - the Dependabot cooldown in `.github/dependabot.yml` (in the kit, the app template's too), if shortened or narrowed;
+  - `New-KitApp`'s step that turns on Dependabot alerts and security updates, if removed or weakened.
 - **Review.** The owner approves non-trivial plans before work starts, decides each "won't fix", and merges each PR, or says to for that PR. "Also ask in review mode" applies too.
 
 **Release PRs are never merged by an agent, in either mode.** Those are release-please's PRs, on a `release-please--` branch: releases are the owner's (owner, 2026-11-07).
@@ -73,7 +75,7 @@ In both modes, ask the owner first before you:
 - delete anything on GitHub, or work that isn't merged; force-push or rewrite history;
 - create a new app repo (`New-KitApp`), or make anything public;
 - merge a release PR, or publish a release;
-- change a ruleset, branch protection or the repo's merge settings, or remove or weaken a CI check;
+- change a ruleset, branch protection or the repo's merge settings, turn off Dependabot alerts or security updates, or remove or weaken a CI check;
 - add a connector (MCP server);
 - install software on the owner's machine;
 - switch the working mode, or merge a change to the guardrails (see "Working modes");
@@ -140,4 +142,4 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS (ADR-0040). Eve
 - Every check passes: rule sources, the quality scorecard, ADR sections, and generated files current.
 - Docs and ADRs are updated in the same PR.
 - The `reviewer` agent has reviewed the change, and its findings are fixed or answered.
-- The PR uses `.github/pull_request_template.md`, including the red→green evidence table.
+- The PR uses `.github/pull_request_template.md`, including the red→green evidence table. A PR whose description a bot writes gets DOD-006's comment instead.

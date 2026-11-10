@@ -26,6 +26,8 @@ Run the `reviewer` subagent on the branch. Fix each finding test-first, or answe
 
 **Every fix gets its own review.** After fixing findings, run the `reviewer` again on the new commits (`git log <reviewed head>..HEAD`), and repeat until a run finds nothing blocking or should-fix. A fix that nobody reviewed can break something the first review passed.
 
+**A run with nothing blocking or should-fix ends the reviews** (owner, 2026-11-09). Fix its nits only when they're cheap and change no behavior, with no further run, and list those commits in that run's PR comment; answer the rest with a reason, or note them for a later PR. A nit whose fix would change behavior goes to a later PR: fixing it here would need another run, and each run finds new nits.
+
 Keep each review's report: it goes on the PR (step 4).
 
 ## 3. Check the PR state
@@ -35,7 +37,7 @@ If a PR already exists for this branch, run `gh pr view <n> --json state,mergedA
 ## 4. Open the PR
 
 - The title is a Conventional Commit (it becomes the merge commit message).
-- Use `.github/pull_request_template.md` and fill in the red→green table from `git log`.
+- Use `.github/pull_request_template.md` and fill in the red→green table from `git log`. A PR whose description a bot writes, such as Dependabot's, keeps it: post the template's sections as a PR comment instead, naming the head commit (DOD-006), and a new one whenever the head moves.
 - List the decisions the owner must make and any `proposed` rules he must ratify.
 - **Post the reviews on the PR.** Add each `reviewer` report, with how every finding was fixed or answered, as a PR comment (`gh pr comment <n> --body-file <file>`), so the owner sees what was checked without reading the session. Post a new comment for each later review.
 - In review mode, don't merge: the owner merges, or tells you to for that PR.
@@ -43,7 +45,7 @@ If a PR already exists for this branch, run `gh pr view <n> --json state,mergedA
 
 ## 5. Merge, in auto mode
 
-Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your own PR when all of these hold; otherwise fix what's missing, or report and stop:
+Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your own PR, or a Dependabot PR this step allows, when all of these hold; otherwise fix what's missing, or report and stop:
 
 - **It isn't a release PR.** `gh pr view <n> --json headRefName` doesn't start with `release-please--`. Never merge one, in either mode: releases are the owner's (ADR-0035).
 - **It doesn't change the guardrails.** Run `gh pr diff <n> --name-only`, then read those files' changes. The guardrails are:
@@ -51,12 +53,21 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
   - `.claude/settings.json` or the `Set-AgentMode.ps1` script;
   - this skill or `.claude/agents/reviewer.md`;
   - a ruleset, branch protection or the merge settings;
-  - a CI check, if removed or weakened.
+  - a CI check, if removed or weakened;
+  - the Dependabot cooldown in `.github/dependabot.yml` (in the kit, `templates/app/.github/dependabot.yml` too), if shortened (any `*-days` value lowered, or any wait below 7 days, 14 for a NuGet or SDK major) or narrowed (an `exclude` or `include` list);
+  - `New-KitApp`'s step that turns on Dependabot alerts and security updates, if removed or weakened.
 
   A PR that changes any of them is the owner's to merge.
+- **If it's Dependabot's, it's only a patch or minor update of NuGet packages, .NET tools or the .NET SDK** (ADR-0041). All of these must hold, or the PR is the owner's to merge:
+  - **GitHub says it's Dependabot's.** `gh pr view <n> --json author,isCrossRepository,headRefName` shows the author `app/dependabot`, `isCrossRepository` false, and a head branch starting `dependabot/`. A title or a commit author alone proves nothing: anyone can set them.
+  - **The version change is a patch or minor.** Read it in the title and in the diff of `Directory.Packages.props`, `.config/dotnet-tools.json` or `global.json`. A major update, a GitHub Actions bump, a grouped PR with any major in it, or one you can't classify is the owner's. Any update of a 0.x package (0.13.5 → 0.13.6 as much as 0.13 → 0.14) is the owner's, since SemVer lets a 0.x version break anything. For the SDK, the third number holds the feature band: 10.0.403 → 10.0.500 is a minor, and 10.x → 11.x a major.
+  - **It changes only those files and `packages.lock.json` files, and every commit is Dependabot's or the lock-file workflow's** (`github-actions[bot]`). Check with `gh pr view <n> --json files,commits`. A security update that fixes a transitive package may add a direct reference to a `.csproj`; that makes it the owner's.
+  - **You've read the new version's release notes and checked its license and deprecation status.** A license change, new telemetry, or new build-time behavior (MSBuild targets, analyzers, source generators) makes it the owner's.
+
+  Any other bot's PR is the owner's too.
 - **It's open, and CI has passed at its head commit:** `gh pr view <n> --json state,headRefOid,mergeStateStatus` shows `OPEN` and `CLEAN`, and `gh pr checks <n>` passes.
-- **The latest `reviewer` run is on that head commit,** with no unanswered blocking or should-fix finding, and it's posted on the PR. `Get-OpenFinding` lists nothing open from Copilot or a person.
-- **The description is complete:** the template's sections are filled in, with the red→green table and counts from the head commit.
+- **The latest `reviewer` run is on that head commit,** with no unanswered blocking or should-fix finding, and it's posted on the PR. The one exception is step 2's final round: the head may be a few commits past it when those commits only fix that round's nits, change no behavior, and are listed in its PR comment. `Get-OpenFinding` lists nothing open from Copilot or a person.
+- **The description is complete:** the template's sections are filled in, with the red→green table and counts from the head commit. For a PR whose description a bot writes, DOD-006's comment holds them, and it names this head commit.
 
 Then run `gh pr merge <n> --merge` on its own, never inside a script. Run `git switch main` and `git pull --ff-only`. If the merge updated the release PR, check its CI.
 

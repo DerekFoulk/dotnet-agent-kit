@@ -6,4 +6,4 @@ paths:
 
 # Supply chain
 
-- SUP-008: GitHub Actions are pinned to a full commit SHA, and Dependabot keeps actions and packages current.
+- SUP-008: GitHub Actions are pinned to a full commit SHA, and Dependabot keeps actions and packages current, waiting 7 days before proposing a version and 14 for a NuGet or SDK major.

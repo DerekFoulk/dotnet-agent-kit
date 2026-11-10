@@ -5,6 +5,10 @@
 # kit release, so they aren't listed here (ADR-0032). This file is the app's: add an ecosystem when the app
 # adds one of its own, such as github-actions for its own workflows, and check any kit pin Dependabot
 # proposes against a kit release tag before merging (ADR-0031).
+# Each update waits before Dependabot proposes it: 7 days, and 14 for a major, so a release that's pulled or
+# found compromised in its first days never reaches a PR (the kit's ADR-0041); give an ecosystem you add the
+# same cooldown (github-actions supports only default-days). Security updates, which New-KitApp turns on,
+# don't wait. Shortening or narrowing the wait is the owner's to merge.
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -14,3 +18,6 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    cooldown:
+      default-days: 7
+      semver-major-days: 14

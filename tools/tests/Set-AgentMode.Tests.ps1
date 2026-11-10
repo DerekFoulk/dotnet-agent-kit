@@ -200,5 +200,16 @@ Describe 'Set-AgentMode.ps1' {
             $switched | Should -Match 'review'
             Get-AgentMode -RepoRoot $root | Should -Be 'review'
         }
+
+        It 'says auto mode''s merges include Dependabot''s patch and minor updates' {
+            # Review 1 of PR 33: the message still said only "merges its own PRs" after ADR-0041.
+            $root = New-Repo
+
+            $report = pwsh -NoProfile -File $script -RepoRoot $root 2>&1 | Out-String
+
+            $report | Should -Match 'Dependabot''s patch and minor updates'
+            # Review 3 of PR 33: without the scope, an app that adds github-actions could read Actions bumps in.
+            $report | Should -Match 'of NuGet packages, \.NET tools and the SDK'
+        }
     }
 }
