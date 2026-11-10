@@ -26,6 +26,8 @@ Run the `reviewer` subagent on the branch. Fix each finding test-first, or answe
 
 **Every fix gets its own review.** After fixing findings, run the `reviewer` again on the new commits (`git log <reviewed head>..HEAD`), and repeat until a run finds nothing blocking or should-fix. A fix that nobody reviewed can break something the first review passed.
 
+**A run with nothing blocking or should-fix ends the reviews** (owner, 2026-11-09). Fix its nits only when they're cheap and change no behavior, with no further run; answer the rest with a reason, or note them for a later PR. A nit whose fix would change behavior goes to a later PR: fixing it here would need another run, and each run finds new nits.
+
 Keep each review's report: it goes on the PR (step 4).
 
 ## 3. Check the PR state
