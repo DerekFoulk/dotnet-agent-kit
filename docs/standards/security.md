@@ -20,7 +20,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: SEC-003
-    statement: "Agents ask the owner before spending money or touching cloud resources, deleting or rewriting anything on GitHub or unmerged work, creating an app repo or making anything public, merging a release PR or publishing a release, changing a ruleset, branch protection or merge settings, removing or weakening a CI check, adding a connector, installing software, switching the working mode or merging a change to the guardrails, or doing anything else that can't be undone; in review mode, also before adding a dependency, changing CI or other repo settings, or acting outside the repo."
+    statement: "Agents ask the owner before spending money or touching cloud resources, deleting or rewriting anything on GitHub or unmerged work, creating an app repo or making anything public, merging a release PR or publishing a release, changing a ruleset, branch protection or merge settings, turning off Dependabot alerts or security updates, removing or weakening a CI check, adding a connector, installing software, switching the working mode or merging a change to the guardrails, or doing anything else that can't be undone; in review mode, also before adding a dependency, changing CI or other repo settings, or acting outside the repo."
     why: "These are the changes that cost money, reach outside the repo, or can't be undone; in auto mode, the owner's default, the rest goes ahead without him (ADR-0035)."
     layer: owner
     status: accepted

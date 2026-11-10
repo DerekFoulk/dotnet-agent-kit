@@ -5,7 +5,8 @@
 
 .DESCRIPTION
     Exports the app's files with Export-KitApp, commits them, creates the repo on your own GitHub account
-    with the kit's merge settings, pushes main, then adds the ruleset. The app is public, with secret scanning
+    with the kit's merge settings, pushes main, adds the ruleset, then turns on Dependabot alerts and security
+    updates. The app is public, with secret scanning
     and push protection, unless -Private says otherwise. The settings and the ruleset come from
     templates/github at the same kit commit as the files.
 

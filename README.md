@@ -262,7 +262,7 @@ Applied 2026-11-06 with the owner's OK, after the repo went public:
 | Issues | Only collaborators can open them (set by the owner in the browser; GitHub documents no API for it) | The repo isn't open for outside contributions |
 | Pull requests | Anyone can open them (unchanged) | Left open so Dependabot and release-please keep opening PRs; fork PRs still wait for approval |
 | Wiki | Off | Until it's published from the repo (planned after D2a) |
-| Dependabot security updates | Off (unchanged); turned on 2026-11-09, see below | Not reviewed yet; `.github/dependabot.yml` version updates run weekly |
+| Dependabot security updates | Off (unchanged); turned on 2026-11-09, see below | Reviewed 2026-11-09: the cooldown on version updates relies on them (ADR-0041) |
 
 Applied 2026-11-09 with the owner's OK:
 
