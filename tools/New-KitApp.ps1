@@ -224,7 +224,8 @@ function New-KitApp {
                 }
             }
             # Public only, and only now: CodeQL runs only on a public app (ADR-0036), and a rule requiring a tool the
-            # repo doesn't run blocks every merge. Its own ruleset, as the kit's code scanning rule does (SEC-006).
+            # repo doesn't run blocks every merge. A ruleset of its own, so it can be added only now; the kit keeps the same
+            # rule inside "main protection" (SEC-006).
             [pscustomobject]@{ Description = 'Require CodeQL results to merge'; Action = {
                     Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $codeScanningText | Out-Null
                 }
