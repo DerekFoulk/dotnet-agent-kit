@@ -188,7 +188,7 @@ areas:
       - "ADR-0010"
       - "ADR-0026"
       - "owner, 2026-10-26"
-    rules: [GIT-001, GIT-002, GIT-003, GIT-004, GIT-005, COM-001, COM-002, COM-003, COM-004, COM-005, COM-006, DOD-002, DOD-003, DOD-004, DOD-005, DOD-006]
+    rules: [GIT-001, GIT-002, GIT-003, GIT-004, GIT-005, COM-001, COM-002, COM-003, COM-004, COM-005, COM-006, COM-007, DOD-002, DOD-003, DOD-004, DOD-005, DOD-006]
     gaps: []
 ---
 
@@ -222,9 +222,9 @@ Each area in the front matter above has:
 | Delivery | 1 | 1 | 0 | 0 | 2 |
 | Docs and decisions | 3 | 2 | 1 | 0 | 1 |
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
-| Process | 16 | 6 | 10 | 0 | 0 |
+| Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 57 rules in force, 37 checked by a tool and 20 advisory; 3 proposed; 12 open gaps.
+**Overall:** 58 rules in force, 37 checked by a tool and 21 advisory; 3 proposed; 12 open gaps.
 
 Open gaps:
 

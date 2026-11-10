@@ -46,6 +46,7 @@ Each task runs through these steps, in order. The skills in `.claude/skills/` wa
 - Say in one line what a command does, then run it yourself. Don't hand him commands you can run.
 - Describe a button or screen only after confirming it exists (current docs or a screenshot).
 - Make cheap improvements now instead of deferring them.
+- Ask every question that needs his answer in the chat where he works, never only in a pull request or another document. Don't merge past an unanswered question the pull request depends on.
 - Report done only with evidence: commands run, counts, links. Say "not verified" wherever something wasn't.
 
 Details and sources: `docs/standards/communication.md`.

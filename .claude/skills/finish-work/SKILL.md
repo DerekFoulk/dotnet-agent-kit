@@ -38,7 +38,7 @@ If a PR already exists for this branch, run `gh pr view <n> --json state,mergedA
 
 - The title is a Conventional Commit (it becomes the merge commit message).
 - Use `.github/pull_request_template.md` and fill in the red→green table from `git log`. A PR whose description a bot writes, such as Dependabot's, keeps it: post the template's sections as a PR comment instead, naming the head commit (DOD-006), and a new one whenever the head moves.
-- List the decisions the owner must make and any `proposed` rules he must ratify.
+- List the decisions the owner must make and any `proposed` rules he must ratify. **Ask each one in the chat too, with its recommendation** (COM-007): he may not read the PR before it merges.
 - **Post the reviews on the PR.** Add each `reviewer` report, with how every finding was fixed or answered, as a PR comment (`gh pr comment <n> --body-file <file>`), so the owner sees what was checked without reading the session. Post a new comment for each later review.
 - In review mode, don't merge: the owner merges, or tells you to for that PR.
 - **Watch for reviews.** In the Claude Code desktop app, turn on the PR monitor with auto-fix for the new PR; the owner approves it. Per the app's tool description, the app then wakes the session when a review, a CI failure or a merge conflict arrives. When a review lands, from Copilot or a person, run `address-review`. In other tools, run `Get-OpenFinding` (from `KitReview.psm1`) before reporting on the PR.
@@ -67,6 +67,7 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
   Any other bot's PR is the owner's too.
 - **It's open, and CI has passed at its head commit:** `gh pr view <n> --json state,headRefOid,mergeStateStatus` shows `OPEN` and `CLEAN`, and `gh pr checks <n>` passes.
 - **The latest `reviewer` run is on that head commit,** with no unanswered blocking or should-fix finding, and it's posted on the PR. The one exception is step 2's final round: the head may be a few commits past it when those commits only fix that round's nits, change no behavior, and are listed in its PR comment. `Get-OpenFinding` lists nothing open from Copilot or a person.
+- **No question the PR depends on is waiting for the owner** (COM-007). A question that a later PR can settle doesn't hold this one; say so in the chat.
 - **The description is complete:** the template's sections are filled in, with the red→green table and counts from the head commit. For a PR whose description a bot writes, DOD-006's comment holds them, and it names this head commit.
 
 Then run `gh pr merge <n> --merge` on its own, never inside a script. Run `git switch main` and `git pull --ff-only`. If the merge updated the release PR, check its CI.
