@@ -28,6 +28,14 @@ Describe 'Export-KitApp' {
             New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
             Copy-Item -LiteralPath $source -Destination $target
         }
+        # Reviews 4 and 5 of PR 32: an ask for every kit script the app does get, so the export test fails if the
+        # export ever filters with the wrong list of app tools (the real settings name only New-KitApp under tools/).
+        . $script
+        $script:KitTools | Should -Not -BeNullOrEmpty
+        $fixtureSettings = Join-Path $kit '.claude/settings.json'
+        $settings = Get-Content -Raw -LiteralPath $fixtureSettings | ConvertFrom-Json -AsHashtable
+        $settings['permissions']['ask'] += @($script:KitTools | ForEach-Object { "PowerShell(./tools/$_ -Fixture*)" })
+        [IO.File]::WriteAllText($fixtureSettings, ($settings | ConvertTo-Json -Depth 100))
         git -C $kit init -q -b main
         git -C $kit add -A
         git -C $kit commit -q -m 'chore: kit fixture'
@@ -48,7 +56,6 @@ Describe 'Export-KitApp' {
         & $script -Name 'Contoso.Orders' -Destination $app -KitRef $commit -KitRoot $kit
         $exportExit = $LASTEXITCODE
 
-        . $script
         $map = @(Get-KitAppFileMap -KitRoot $kit -Commit $commit -Name 'Contoso.Orders')
 
         # The expected bytes: a clean checkout of the commit, line endings as .gitattributes gives them.
@@ -143,6 +150,8 @@ Describe 'Export-KitApp' {
         foreach ($file in $manifest['files']) { $listed[$file['path']] = $file }
         $kitOwned = @($map | Where-Object { $_.Owner -eq 'Kit' } | ForEach-Object { $_.Target })
         $kitOwned | Should -Contain '.github/workflows/ci.yml'
+        # Review 4 of PR 32: the sync job keeps an app's settings current only while they're kit-managed.
+        $kitOwned | Should -Contain '.claude/settings.json'
         foreach ($path in $kitOwned) {
             $listed.ContainsKey($path) | Should -BeTrue -Because "$path is kit-managed"
             $lf = [IO.File]::ReadAllText((Join-Path $app $path)) -replace "`r`n", "`n"
@@ -406,5 +415,139 @@ Describe 'Export-KitApp' {
     It 'leaves out New-KitApp and the GitHub settings, which only the kit runs' {
         @($map | Where-Object { $_.Source -match 'New-KitApp|^templates/github/' }) | Should -BeNullOrEmpty
         Get-ChildItem -LiteralPath $app -Recurse -File -Filter 'New-KitApp*' | Should -BeNullOrEmpty
+    }
+
+    # The owner, 2026-11-09: an app's settings shouldn't carry rules for kit scripts it doesn't have, such as
+    # the asks before ./tools/New-KitApp (review 1 of PR 17, finding 10).
+    It 'gives the app the kit''s permission rules, without those for kit scripts the app doesn''t get' {
+        $kitSettings = Get-Content -Raw -LiteralPath (Join-Path $checkout '.claude/settings.json') | ConvertFrom-Json -AsHashtable
+        $appSettings = Get-Content -Raw -LiteralPath (Join-Path $app '.claude/settings.json') | ConvertFrom-Json -AsHashtable
+
+        foreach ($list in 'allow', 'ask', 'deny') {
+            $expected = @($kitSettings['permissions'][$list] | Where-Object { $_ -notmatch 'New-KitApp' })
+            @($appSettings['permissions'][$list]) | Should -Be $expected -Because "the app keeps every other $list rule, in order"
+        }
+        $appSettings['$schema'] | Should -Be $kitSettings['$schema']
+        # Written like every other kit file: LF line endings and a final newline, whatever the platform.
+        $raw = [IO.File]::ReadAllText((Join-Path $app '.claude/settings.json'))
+        $raw.Contains("`r") | Should -BeFalse
+        $raw.EndsWith("`n") | Should -BeTrue
+    }
+
+    It 'drops a rule for any kit script the app doesn''t get, worked out from the tools it does get' {
+        # No list of kit-only scripts to keep in step: a new one's rules are dropped as New-KitApp's are.
+        $kit = [ordered]@{ permissions = [ordered]@{
+                allow = @('PowerShell(./tools/*)', 'PowerShell(./.kit/tools/*)')
+                ask   = @('PowerShell(./tools/Publish-Kit*)', 'Bash(pwsh -NoProfile -File .\tools\Publish-Kit.ps1 *)',
+                    'PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)',
+                    # Review 3 of PR 32: a rule naming two scripts is dropped if either is kit-only, not judged by
+                    # its first.
+                    'Bash(./tools/Set-AgentMode.ps1 && ./tools/Publish-Kit.ps1)',
+                    # Review 5: a rule names a script by the start of its name, so "Review*" can't match KitReview.
+                    'PowerShell(./tools/Review*)',
+                    # Review 6: a script name may start with any word character, not only a letter.
+                    'Bash(./tools/_Private.ps1 *)', 'Bash(./tools/1Thing.ps1)',
+                    # Review 7: names match whatever their case, and a hyphen is part of a name, so a kit-only
+                    # Test-* script isn't kept because an app tool also starts "Test".
+                    'PowerShell(./tools/set-agentmode.ps1 -Mode*)', 'PowerShell(./tools/Test-RuleSources.ps1)',
+                    # Review 8: a dot is part of a name, so this isn't taken for Set-AgentMode.ps1.
+                    'Bash(./tools/Set-AgentMode.old.ps1)')
+                deny  = @('Read(./.env)')
+            }
+        } | ConvertTo-Json -Depth 5
+
+        $appSettings = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1', 'Initialize-DevMachine.ps1', 'KitReview.psm1', 'Test-ConventionalTitle.ps1' | ConvertFrom-Json -AsHashtable
+
+        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./tools/Set-AgentMode* -Mode*)', 'PowerShell(*Initialize-DevMachine*-I*)', 'PowerShell(./tools/set-agentmode.ps1 -Mode*)')
+        @($appSettings['permissions']['allow']) | Should -Be @('PowerShell(./tools/*)', 'PowerShell(./.kit/tools/*)') -Because 'a wildcard names no one script'
+        @($appSettings['permissions']['deny']) | Should -Be @('Read(./.env)')
+    }
+
+    It 'filters only allow and ask rules naming the repo''s own tools folder, and leaves everything else as it is' {
+        # Review 1 of PR 32: deny rules and other permission settings were filtered too ("defaultMode" became a
+        # list), and a tools/ folder anywhere in a path counted.
+        $kit = [ordered]@{ permissions = [ordered]@{
+                allow                 = @('Read(./src/tools/**)', 'PowerShell(./TOOLS/Publish-Kit*)')
+                # Review 7: a path that leaves tools/ with ".." names no script there, so its ask stays.
+                ask                   = @('PowerShell(./src/tools/Build-Thing*)', 'PowerShell(./tools/../eng/Deploy.ps1*)', 'Bash(rm -rf tools/Generated)', 'PowerShell(./tools/tests/*)', 'Bash(pwsh -NoProfile -File tools/Publish-Kit.ps1 *)',
+                    'PowerShell(& "./tools/Publish-Kit.ps1" *)', "Bash(pwsh -File '.\tools\Publish-Kit.ps1' *)",
+                    # Review 8: a path after a character other than a space, "(" or quote isn't recognised; kept.
+                    'PowerShell(pwsh -File=./tools/New-KitApp.ps1)')
+                deny                  = @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)')
+                defaultMode           = 'acceptEdits'
+                additionalDirectories = @('../shared/tools/foo')
+            }
+        } | ConvertTo-Json -Depth 5
+
+        $raw = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1'
+        $appSettings = $raw | ConvertFrom-Json -AsHashtable
+
+        @($appSettings['permissions']['allow']) | Should -Be @('Read(./src/tools/**)') -Because 'a tools folder below the root is the app''s own; the root one matches in any case'
+        # Review 8: a list filtered down to one rule is still a JSON list, as Claude Code's schema requires.
+        $raw | Should -Match '"allow": \[\s*"Read\(\./src/tools/\*\*\)"\s*\]'
+        @($appSettings['permissions']['ask']) | Should -Be @('PowerShell(./src/tools/Build-Thing*)', 'PowerShell(./tools/../eng/Deploy.ps1*)', 'Bash(rm -rf tools/Generated)', 'PowerShell(./tools/tests/*)', 'PowerShell(pwsh -File=./tools/New-KitApp.ps1)') -Because 'review 8: a folder, or a name with no script extension or glob, names no script'
+        @($appSettings['permissions']['deny']) | Should -Be @('Read(./**/tools/secret/**)', 'Read(./tools/Publish-Kit.ps1)') -Because 'a deny rule only ever protects'
+        $appSettings['permissions']['defaultMode'] | Should -BeExactly 'acceptEdits'
+        @($appSettings['permissions']['additionalDirectories']) | Should -Be @('../shared/tools/foo')
+        # And one filtered down to none is an empty list, not null.
+        Get-KitAppSettingsText -SettingsText '{"permissions":{"ask":["PowerShell(./tools/New-KitApp*)"]}}' -AppTools 'Set-AgentMode.ps1' |
+            Should -Match '"ask": \[\]'
+    }
+
+    It 'keeps a date-like string exactly as written, whatever the machine''s time zone' {
+        # Review 5 of PR 32: ConvertFrom-Json read ISO dates as DateTime, and ConvertTo-Json wrote them back in
+        # local time, so exports on machines in different time zones differed.
+        $text = '{"permissions":{"allow":[]},"env":{"A":"2026-11-09T10:00:00+02:00","B":"2026-11-09T10:00:00.1234567Z"}}'
+
+        $app = Get-KitAppSettingsText -SettingsText $text -AppTools 'Set-AgentMode.ps1' | ConvertFrom-Json -AsHashtable -DateKind String
+
+        $app['env']['A'] | Should -BeExactly '2026-11-09T10:00:00+02:00'
+        $app['env']['B'] | Should -BeExactly '2026-11-09T10:00:00.1234567Z'
+    }
+
+    It 'stops with a clear error when the kit''s settings have no permissions object, in <Case>' -ForEach @(
+        @{ Case = 'an object without one'; Text = '{"x":1}' }
+        @{ Case = 'a permissions list'; Text = '{"permissions":[]}' }
+        @{ Case = 'a top-level list'; Text = '[]' }
+    ) {
+        { Get-KitAppSettingsText -SettingsText $Text -AppTools 'Set-AgentMode.ps1' } | Should -Throw '*has no "permissions" object*'
+    }
+
+    # Review 2 of PR 32: ConvertTo-Json's -Depth 10 wrote anything deeper as a type name, with only a warning.
+    # Review 3: 100 levels below a setting is the most ConvertTo-Json's maximum depth can write, and 101 is
+    # one too many, so these two tests pin the depth exactly.
+    It 'keeps a setting nested 100 levels deep whole' {
+        $deep = '"leaf"'
+        foreach ($level in 1..100) { $deep = "{""k$level"":$deep}" }
+        $text = "{""permissions"":{""allow"":[]},""hooks"":$deep}"
+
+        $app = Get-KitAppSettingsText -SettingsText $text -AppTools 'Set-AgentMode.ps1'
+
+        $app | Should -Match '"k100": \{' -Because 'the outermost level is written'
+        $app | Should -Match '"k1": "leaf"' -Because 'the innermost level is written, not a type name'
+    }
+
+    It 'stops instead of writing a setting nested deeper than ConvertTo-Json can go' {
+        $deep = '"leaf"'
+        foreach ($level in 1..101) { $deep = "{""k$level"":$deep}" }
+
+        # Review 3 of PR 32: the error was PowerShell's preference message, which didn't say which file failed.
+        { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' } |
+            Should -Throw "In the kit's .claude/settings.json, a setting is nested deeper than 100 levels*"
+        # Review 4: only that error, without ConvertTo-Json's own warning printed before it.
+        $warnings = & { try { Get-KitAppSettingsText -SettingsText "{""permissions"":{},""hooks"":$deep}" -AppTools 'Set-AgentMode.ps1' } catch { } } 3>&1
+        @($warnings | Where-Object { $_ -is [Management.Automation.WarningRecord] }) | Should -BeNullOrEmpty
+    }
+
+    # Review 2 of PR 32: a null list or an empty rule stopped with PowerShell's parameter-binding error, which
+    # doesn't say which setting is wrong.
+    It 'stops with a clear error when <List> isn''t a list of rules, in <Case>' -ForEach @(
+        @{ List = 'allow'; Case = 'a null list'; Text = '{"permissions":{"allow":null}}' }
+        @{ List = 'ask'; Case = 'an empty rule'; Text = '{"permissions":{"ask":["Read(./x)",""]}}' }
+        @{ List = 'allow'; Case = 'a number'; Text = '{"permissions":{"allow":[1]}}' }
+        @{ List = 'ask'; Case = 'a single string'; Text = '{"permissions":{"ask":"Read(./x)"}}' }
+    ) {
+        { Get-KitAppSettingsText -SettingsText $Text -AppTools 'Set-AgentMode.ps1' } |
+            Should -Throw "*""permissions.$List"" isn't a list of rules*"
     }
 }

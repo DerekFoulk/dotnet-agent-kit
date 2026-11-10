@@ -5,9 +5,11 @@
 
 .DESCRIPTION
     The app gets the kit's build files, agent files, rules and checking scripts exactly as they are at the
-    chosen commit, so an app pinned to a kit version has that version's files. The files come from a clean
-    checkout of the commit (a temporary git worktree), never from the kit's working tree, so an unfinished
-    local edit can't slip into an app.
+    chosen commit, so an app pinned to a kit version has that version's files. Two exceptions:
+    Directory.Packages.props leaves out the sample app's packages, and .claude/settings.json leaves out the
+    allow and ask rules for kit scripts the app doesn't get (./tools/New-KitApp), since they could never fire
+    there. The files come from a clean checkout of the commit (a temporary git worktree), never from the kit's
+    working tree, so an unfinished local edit can't slip into an app.
 
     New-KitApp (PR D2b) calls this, then creates the GitHub repo.
 
@@ -29,7 +31,7 @@ $ErrorActionPreference = 'Stop'
 $script:KitCopies = @(
     '.editorconfig', '.gitattributes', '.gitignore', 'global.json', 'nuget.config', 'Directory.Build.props',
     'CLAUDE.md', '.mcp.json', '.vscode/mcp.json', '.vscode/settings.json',
-    '.claude/settings.json', '.claude/agents/reviewer.md', '.claude/skills/', 'docs/standards/', '.githooks/',
+    '.claude/agents/reviewer.md', '.claude/skills/', 'docs/standards/', '.githooks/',
     '.github/pull_request_template.md', 'docs/adr/0000-template.md'
 )
 
@@ -82,6 +84,9 @@ function Get-KitAppFileMap {
     foreach ($tool in $script:KitTools) {
         [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = "tools/$tool"; Target = ".kit/tools/$tool" }
     }
+
+    # Claude Code's permission rules, without those for kit scripts the app doesn't get.
+    [pscustomobject]@{ Kind = 'Settings'; Owner = 'Kit'; Source = '.claude/settings.json'; Target = '.claude/settings.json' }
 
     # Central package versions: the kit's build and test toolset, without its sample app's packages. The
     # app adds its own packages, so the app owns the file.
@@ -147,6 +152,54 @@ function Write-KitManifest {
     $json = ($manifest | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
     New-Item -ItemType Directory -Force -Path (Join-Path $Destination '.kit') | Out-Null
     [IO.File]::WriteAllText((Join-Path $Destination '.kit/manifest.json'), "$json`n", [Text.UTF8Encoding]::new($false))
+}
+
+# Whether a permission rule names a kit script in the repo's own tools folder that the app doesn't get, such as
+# "./tools/New-KitApp*": the app has no such script, in tools/ or .kit/tools, so the rule only adds noise. A
+# rule for a script the app does get (a KitTools entry) is kept, even under tools/: keeping errs safe. Only
+# the root tools folder counts ("./tools/", ".\tools\" or a bare "tools/" starting an argument), in any case; a
+# tools folder deeper in a path is the app's own. The path counts after a space, "(" or quote; one after any
+# other character (as in "-File=./tools/x.ps1") isn't recognised, and its rule is kept. A script is named by a
+# word character, then a name ending in ".ps1", ".psm1" or a "*" glob: so "./tools/../x" (leaving the folder),
+# "./tools/tests/*" (a folder) and "tools/Generated" (no script) name none, and their rules are kept.
+function Test-KitOnlyRule {
+    param([Parameter(Mandatory)] [string] $Rule, [Parameter(Mandatory)] [string[]] $AppTools)
+
+    $pattern = '(?i)[\s(''"](?:\.[/\\])?tools[/\\](?<name>\w[\w.-]*?)(?:\*|(?<extension>\.psm?1)(?![\w.-]))'
+    foreach ($match in [regex]::Matches($Rule, $pattern)) {
+        $named = $match.Groups['name'].Value + $match.Groups['extension'].Value
+        if (-not ($AppTools | Where-Object { $_.StartsWith($named, [StringComparison]::OrdinalIgnoreCase) })) { return $true }
+    }
+    $false
+}
+
+# The kit's .claude/settings.json for an app: every setting as it is, except the allow and ask rules that are
+# kit-only. Worked out from the tools an app gets, so a rule for a new kit-only script is dropped without being
+# listed anywhere. Deny rules are never dropped: they only ever protect.
+function Get-KitAppSettingsText {
+    param([Parameter(Mandatory)] [string] $SettingsText, [Parameter(Mandatory)] [string[]] $AppTools)
+
+    # -DateKind String: otherwise ISO dates become DateTime and are written back in this machine's time zone.
+    $settings = $SettingsText | ConvertFrom-Json -AsHashtable -DateKind String
+    if ($settings -isnot [Collections.IDictionary] -or $settings['permissions'] -isnot [Collections.IDictionary]) {
+        throw "The kit's .claude/settings.json has no ""permissions"" object."
+    }
+    foreach ($list in 'allow', 'ask') {
+        if ($settings['permissions'].Contains($list)) {
+            $rules = $settings['permissions'][$list]
+            if ($rules -isnot [Collections.IList] -or @($rules | Where-Object { $_ -isnot [string] -or $_ -eq '' }).Count) {
+                throw "In the kit's .claude/settings.json, ""permissions.$list"" isn't a list of rules."
+            }
+            $settings['permissions'][$list] = @($settings['permissions'][$list] | Where-Object { -not (Test-KitOnlyRule -Rule $_ -AppTools $AppTools) })
+        }
+    }
+    # 100 is ConvertTo-Json's maximum. Anything deeper would be written as a type name with only a warning, so the
+    # warning stops the export instead.
+    $json = $settings | ConvertTo-Json -Depth 100 -WarningAction SilentlyContinue -WarningVariable truncated
+    if ($truncated) {
+        throw "In the kit's .claude/settings.json, a setting is nested deeper than 100 levels, more than ConvertTo-Json can write."
+    }
+    "$($json -replace "`r`n", "`n")`n"
 }
 
 # Drops the ItemGroup labelled "Sample app", with the comment line above it, from Directory.Packages.props.
@@ -267,6 +320,9 @@ function Export-KitApp {
             }
             elseif ($entry.Kind -eq 'Packages') {
                 [IO.File]::WriteAllText($target, (Remove-KitSamplePackage -PropsText ([IO.File]::ReadAllText($source))), [Text.UTF8Encoding]::new($false))
+            }
+            elseif ($entry.Kind -eq 'Settings') {
+                [IO.File]::WriteAllText($target, (Get-KitAppSettingsText -SettingsText ([IO.File]::ReadAllText($source)) -AppTools $script:KitTools), [Text.UTF8Encoding]::new($false))
             }
             else {
                 Copy-Item -LiteralPath $source -Destination $target
