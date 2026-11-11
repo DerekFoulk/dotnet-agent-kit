@@ -114,18 +114,26 @@ function Sync-KitApp {
         $new = Export-KitAppAt -KitRoot $KitRoot -KitRef $KitRef -Name $manifest['appName'] -Destination $newRoot
         $oldEntries = @{}
         foreach ($entry in $manifest['files']) { $oldEntries[$entry['path']] = $entry }
+        $newEntries = @{}
+        foreach ($entry in $new['files']) { $newEntries[$entry['path']] = $entry }
 
-        $files = foreach ($entry in $new['files']) {
-            $path = $entry['path']
-            $ours = Get-KitEntryText -Root $AppRoot -Entry $entry
+        $paths = @($oldEntries.Keys) + @($newEntries.Keys) | Sort-Object -Unique
+        $files = foreach ($path in $paths) {
             $old = $oldEntries[$path]
+            $theirs = $newEntries[$path]
+            $ours = Get-KitEntryText -Root $AppRoot -Entry ($theirs ?? $old)
             $target = Join-Path $AppRoot $path
+            $unedited = $old -and $null -ne $ours -and (& $script:TextHash -Text $ours) -eq $old['sha256']
             if (-not $old -and $null -eq $ours) {
                 New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
                 Copy-Item -LiteralPath (Join-Path $newRoot $path) -Destination $target
                 [pscustomobject]@{ Path = $path; Action = 'Added' }
             }
-            elseif ($old -and $null -ne $ours -and (& $script:TextHash -Text $ours) -eq $old['sha256'] -and $old['sha256'] -ne $entry['sha256']) {
+            elseif ($unedited -and -not $theirs) {
+                Remove-Item -LiteralPath $target
+                [pscustomobject]@{ Path = $path; Action = 'Removed' }
+            }
+            elseif ($unedited -and $old['sha256'] -ne $theirs['sha256']) {
                 Copy-Item -LiteralPath (Join-Path $newRoot $path) -Destination $target -Force
                 [pscustomobject]@{ Path = $path; Action = 'Updated' }
             }
