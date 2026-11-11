@@ -200,6 +200,9 @@ Describe 'Sync-KitApp' {
             @{ Case = 'a kit block the kit no longer has'; Old = @{ path = 'AGENTS.md'; block = 'kit'; sha256 = 'a' * 64 }; Theirs = $null; Ours = 'a' * 64; Generated = $false; Expected = 'NowAppOwned' }
             @{ Case = 'an app file that already is the kit''s new file'; Old = $null; Theirs = @{ path = 'x'; sha256 = 'b' * 64 }; Ours = 'b' * 64; Generated = $false; Expected = 'None' }
             @{ Case = 'an edited generated file the kit no longer makes'; Old = @{ path = '.claude/rules/x.md'; sha256 = 'a' * 64 }; Theirs = $null; Ours = 'c' * 64; Generated = $true; Expected = 'Removed' }
+            # Review: an edit the kit's release doesn't touch has nothing to merge, so it needs no look.
+            @{ Case = 'an edited file the kit didn''t change'; Old = @{ path = '.gitignore'; sha256 = 'a' * 64 }; Theirs = @{ path = '.gitignore'; sha256 = 'a' * 64 }; Ours = 'c' * 64; Generated = $false; Expected = 'None' }
+            @{ Case = 'an edited generated file the kit didn''t change, which the rebuild replaces anyway'; Old = @{ path = '.claude/rules/x.md'; sha256 = 'a' * 64 }; Theirs = @{ path = '.claude/rules/x.md'; sha256 = 'a' * 64 }; Ours = 'c' * 64; Generated = $true; Expected = 'Regenerated' }
         ) {
             Get-KitSyncAction -Old $Old -Theirs $Theirs -OursHash $Ours -Generated $Generated | Should -Be $Expected
         }
