@@ -119,8 +119,15 @@ Describe 'Repo build configuration' -Tag 'Build' {
             $first | Should -Exist
         }
 
-        # A workspace with no commit or no tag would still build, and only MinVer's version would show it.
-        It 'stops when a git step fails, instead of returning an untagged workspace' {
+        # A workspace with no commit or no tag would still build, and only MinVer's version would show it. With
+        # $PSNativeCommandUseErrorActionPreference on (a profile can turn it on), pwsh's own NativeCommandExitException
+        # mustn't replace the error that names the git step (review 10 of PR 36).
+        It 'stops when a git step fails, instead of returning an untagged workspace (native exit codes as errors: <NativeErrors>)' -ForEach @(
+            @{ NativeErrors = $false }
+            @{ NativeErrors = $true }
+        ) {
+            $ErrorActionPreference = 'Stop'
+            $PSNativeCommandUseErrorActionPreference = $NativeErrors
             $savedDate = $env:GIT_COMMITTER_DATE
             try {
                 $env:GIT_COMMITTER_DATE = 'not a date'
