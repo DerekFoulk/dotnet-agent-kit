@@ -217,8 +217,9 @@ function Get-KitPackageItem {
 
 # Directory.Packages.props is the app's, but a kit file can need a package (an analyzer for BannedSymbols.txt,
 # say). Adds each item the release's export adds, compared with the base, that the app's file lacks, in an
-# ItemGroup of its own. A package the app removed, or a version it changed, stays as the app has it. Returns the
-# items added, as written.
+# ItemGroup of its own. A package the app removed, or a version it changed, stays as the app has it. A package
+# the app has in the other form (PackageVersion or GlobalPackageReference) isn't added, since NuGet rejects one
+# listed both ways. Returns the items added and those left out, as the release writes them.
 function Add-KitPackage {
     param(
         [Parameter(Mandatory)] [string] $AppRoot,
@@ -227,14 +228,22 @@ function Add-KitPackage {
     )
 
     $path = Join-Path $AppRoot 'Directory.Packages.props'
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @() }
+    $result = [pscustomobject]@{ Added = @(); Skipped = @() }
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $result }
     $base = Get-KitPackageItem -Path (Join-Path $BaseRoot 'Directory.Packages.props')
-    $ours = Get-KitPackageItem -Path $path
     $theirs = Get-KitPackageItem -Path (Join-Path $NewRoot 'Directory.Packages.props')
-    $added = @(foreach ($key in $theirs.Keys) {
-            if (-not $base.Contains($key) -and -not $ours.Contains($key)) { $theirs[$key].OuterXml }
-        })
-    if (-not $added) { return @() }
+    # The app's packages by name alone: in either form, the app has it.
+    $ours = @{}
+    foreach ($node in (Get-KitPackageItem -Path $path).Values) { $ours[$node.GetAttribute('Include').ToLowerInvariant()] = $node.LocalName }
+    foreach ($key in $theirs.Keys) {
+        if ($base.Contains($key)) { continue }
+        $node = $theirs[$key]
+        $form = $ours[$node.GetAttribute('Include').ToLowerInvariant()]
+        if (-not $form) { $result.Added += $node.OuterXml }
+        elseif ($form -cne $node.LocalName) { $result.Skipped += $node.OuterXml }
+    }
+    $added = $result.Added
+    if (-not $added) { return $result }
 
     $text = [IO.File]::ReadAllText($path)
     $eol = $text.Contains("`r`n") ? "`r`n" : "`n"
@@ -249,7 +258,7 @@ function Add-KitPackage {
         $text.Insert($end, "  <!-- Added by the kit sync: packages the kit's files need (kit ADR-0044). -->$eol  <ItemGroup Label=""dotnet-agent-kit"">$eol$lines$eol  </ItemGroup>$eol$eol")
     }
     [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($false))
-    $added
+    $result
 }
 
 # The commit a release tag (vX.Y.Z) in the kit repo points to. Only a tag counts: ADR-0031 trusts a kit pin only
@@ -369,9 +378,9 @@ function Sync-KitApp {
             }
             if ($action -ne 'None') { [pscustomobject]@{ Path = $path; Action = $action; Detail = $null } }
         }
-        $packages = @(Add-KitPackage -AppRoot $AppRoot -BaseRoot $baseRoot -NewRoot $newRoot)
-        if ($packages) {
-            $files = @($files) + [pscustomobject]@{ Path = 'Directory.Packages.props'; Action = 'PackagesAdded'; Detail = ($packages | ForEach-Object { "``$_``" }) -join ', ' }
+        $packages = Add-KitPackage -AppRoot $AppRoot -BaseRoot $baseRoot -NewRoot $newRoot
+        if ($packages.Added) {
+            $files = @($files) + [pscustomobject]@{ Path = 'Directory.Packages.props'; Action = 'PackagesAdded'; Detail = ($packages.Added | ForEach-Object { "``$_``" }) -join ', ' }
         }
         # Build-AgentRules rebuilds every generated file: the rule files, and copilot-instructions.md, which copies
         # the app's AGENTS.md with its new kit block. It's this script's own copy, from the same kit version as the
