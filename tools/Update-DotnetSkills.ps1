@@ -35,5 +35,21 @@ function Get-DotnetSkillDrift {
         [Parameter(Mandatory)] [Collections.IDictionary] $Lock
     )
 
-    'not written yet'
+    foreach ($skill in $Lock['skills']) {
+        $folder = Join-Path $SkillsRoot $skill['name']
+        $listed = $skill['files']
+        foreach ($file in @($listed.Keys | Sort-Object -Culture ([cultureinfo]::InvariantCulture))) {
+            $path = Join-Path $folder $file
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { "$($skill['name'])/$file is missing" }
+            elseif ((Get-DotnetSkillBlobId -Path $path) -ne $listed[$file]) { "$($skill['name'])/$file differs from the upstream commit" }
+        }
+        if (Test-Path -LiteralPath $folder -PathType Container) {
+            $present = Get-ChildItem -LiteralPath $folder -Recurse -File -Force |
+                ForEach-Object { [IO.Path]::GetRelativePath($folder, $_.FullName) -replace '\\', '/' } |
+                Sort-Object -Culture ([cultureinfo]::InvariantCulture)
+            foreach ($file in $present) {
+                if (-not $listed.Contains($file)) { "$($skill['name'])/$file isn't in the upstream commit" }
+            }
+        }
+    }
 }
