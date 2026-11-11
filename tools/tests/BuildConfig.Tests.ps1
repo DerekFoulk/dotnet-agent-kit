@@ -288,17 +288,21 @@ Describe 'CodeMetricsConfig.txt' {
 # one that silently doesn't fire, can't slip in (review 4 of PR 36).
 Describe '.globalconfig' {
     BeforeAll {
-        # The IDs of the rules these lines turn on: any severity but none. Like Roslyn's analyzer config parser, it takes
-        # '=' or ':' between key and value, ignores case, and drops a comment that starts with '#' or ';'. Unlike it, it
-        # reads a rule ID as word characters only, which every CA, IDE and RS ID is. It stops at any other line but
-        # is_global and global_level, so nothing in the file turns rules on unseen.
+        # The IDs of the rules these lines turn on: any severity but none. It reads them as Roslyn's analyzer config
+        # parser does, at dotnet/roslyn e141f0d31c796c99f5a7c31e54e0b597c03381be:
+        #   https://github.com/dotnet/roslyn/blob/e141f0d31c796c99f5a7c31e54e0b597c03381be/src/Compilers/Core/Portable/CommandLine/AnalyzerConfig.cs
+        #   https://github.com/dotnet/roslyn/blob/e141f0d31c796c99f5a7c31e54e0b597c03381be/src/Compilers/Core/Portable/CommandLine/AnalyzerConfigSet.cs
+        # A key is [\w.-]+ ('_' is in \w), then '=' or ':', then the value; a comment starts at the first '#' or ';';
+        # case doesn't matter; the ID is everything between dotnet_diagnostic. and .severity; and the severities are
+        # TryParseSeverity's. It stops at any other line but is_global and global_level, so nothing in the file turns
+        # rules on unseen: a section, a bulk severity, an option, a typo.
         function Get-EnabledRule([string[]] $Line) {
             $severities = 'default', 'error', 'warning', 'suggestion', 'silent', 'refactoring', 'none'
             foreach ($text in $Line) {
                 $setting = ($text -replace '[#;].*$', '').Trim()
                 if (-not $setting) { continue }
                 if ($setting -match '^(?<key>[\w.-]+)\s*[=:]\s*(?<value>.*)$' -and $Matches['key'] -in 'is_global', 'global_level') { continue }
-                if ($setting -notmatch '^dotnet_diagnostic\.(?<id>\w+)\.severity\s*[=:]\s*(?<severity>\w+)$' -or $Matches['severity'] -notin $severities) {
+                if ($setting -notmatch '^dotnet_diagnostic\.(?<id>[\w.-]+)\.severity\s*[=:]\s*(?<severity>\w+)$' -or $Matches['severity'] -notin $severities) {
                     throw "Get-EnabledRule doesn't recognise this .globalconfig line: '$text'"
                 }
                 if ($Matches['severity'] -ne 'none') { $Matches['id'] }
