@@ -202,6 +202,56 @@ function Remove-KitPin {
     $Text -replace "(uses:\s*$([regex]::Escape($Repository))/\S*@)[0-9a-f]{40}(?:[ \t]*#[ \t]*v\d+\.\d+\.\d+)?", '${1}' -replace "`r`n", "`n"
 }
 
+# The PackageVersion and GlobalPackageReference items of a Directory.Packages.props, keyed by kind and package.
+function Get-KitPackageItem {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $items = [ordered]@{}
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $items }
+    $xml = [xml] [IO.File]::ReadAllText($Path)
+    foreach ($node in $xml.SelectNodes('//PackageVersion | //GlobalPackageReference')) {
+        $items["$($node.LocalName)|$($node.GetAttribute('Include'))".ToLowerInvariant()] = $node
+    }
+    $items
+}
+
+# Directory.Packages.props is the app's, but a kit file can need a package (an analyzer for BannedSymbols.txt,
+# say). Adds each item the release's export adds, compared with the base, that the app's file lacks, in an
+# ItemGroup of its own. A package the app removed, or a version it changed, stays as the app has it. Returns the
+# items added, as written.
+function Add-KitPackage {
+    param(
+        [Parameter(Mandatory)] [string] $AppRoot,
+        [Parameter(Mandatory)] [string] $BaseRoot,
+        [Parameter(Mandatory)] [string] $NewRoot
+    )
+
+    $path = Join-Path $AppRoot 'Directory.Packages.props'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @() }
+    $base = Get-KitPackageItem -Path (Join-Path $BaseRoot 'Directory.Packages.props')
+    $ours = Get-KitPackageItem -Path $path
+    $theirs = Get-KitPackageItem -Path (Join-Path $NewRoot 'Directory.Packages.props')
+    $added = @(foreach ($key in $theirs.Keys) {
+            if (-not $base.Contains($key) -and -not $ours.Contains($key)) { $theirs[$key].OuterXml }
+        })
+    if (-not $added) { return @() }
+
+    $text = [IO.File]::ReadAllText($path)
+    $eol = $text.Contains("`r`n") ? "`r`n" : "`n"
+    $lines = ($added | ForEach-Object { "    $_" }) -join $eol
+    $group = [regex]::Match($text, '(?s)<ItemGroup Label="dotnet-agent-kit">.*?(?=[ \t]*</ItemGroup>)')
+    $text = if ($group.Success) {
+        $text.Insert($group.Index + $group.Length, "$lines$eol")
+    }
+    else {
+        $end = $text.LastIndexOf('</Project>', [StringComparison]::Ordinal)
+        if ($end -lt 0) { throw "The app's Directory.Packages.props has no </Project>." }
+        $text.Insert($end, "  <!-- Added by the kit sync: packages the kit's files need (kit ADR-0044). -->$eol  <ItemGroup Label=""dotnet-agent-kit"">$eol$lines$eol  </ItemGroup>$eol$eol")
+    }
+    [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($false))
+    $added
+}
+
 # The commit a release tag (vX.Y.Z) in the kit repo points to. Only a tag counts: ADR-0031 trusts a kit pin only
 # when a release tag in the kit's own repo points to it.
 function Get-KitReleaseCommit {
@@ -317,7 +367,11 @@ function Sync-KitApp {
                     if ($null -ne $merged) { Set-KitEntryText -Root $AppRoot -Entry $theirs -Text $merged }
                 }
             }
-            if ($action -ne 'None') { [pscustomobject]@{ Path = $path; Action = $action } }
+            if ($action -ne 'None') { [pscustomobject]@{ Path = $path; Action = $action; Detail = $null } }
+        }
+        $packages = @(Add-KitPackage -AppRoot $AppRoot -BaseRoot $baseRoot -NewRoot $newRoot)
+        if ($packages) {
+            $files = @($files) + [pscustomobject]@{ Path = 'Directory.Packages.props'; Action = 'PackagesAdded'; Detail = ($packages | ForEach-Object { "``$_``" }) -join ', ' }
         }
         # Build-AgentRules rebuilds every generated file: the rule files, and copilot-instructions.md, which copies
         # the app's AGENTS.md with its new kit block. It's this script's own copy, from the same kit version as the
