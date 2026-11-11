@@ -95,8 +95,15 @@ Describe 'Export-KitApp' {
         }
         Get-Content -Raw (Join-Path $app 'README.md') | Should -Match '# Contoso\.Orders'
 
-        # ${{ github.ref }} in a workflow is GitHub's syntax, not a template placeholder.
-        $leftovers = Get-ChildItem -LiteralPath $app -Recurse -File | Select-String -Pattern '\{\{[A-Za-z]+\}\}'
+        # ${{ github.ref }} in a workflow is GitHub's syntax, not a template placeholder. The curated skills' folders
+        # are left out: they keep upstream's text, such as {{baseUrl}} in an .http example (ADR-0042).
+        $lock = Get-Content -Raw (Join-Path $checkout 'tools' 'dotnet-skills.json') | ConvertFrom-Json -AsHashtable
+        $curated = @($lock['skills'] | ForEach-Object { (Join-Path $app '.claude' 'skills' $_['name']) + [IO.Path]::DirectorySeparatorChar })
+        $curated.Count | Should -BeGreaterThan 0
+        # -Force: on Linux, folders such as .github and .claude count as hidden.
+        $leftovers = Get-ChildItem -LiteralPath $app -Recurse -File -Force |
+            Where-Object { $path = $_.FullName; -not ($curated | Where-Object { $path.StartsWith($_, [StringComparison]::Ordinal) }) } |
+            Select-String -Pattern '\{\{[A-Za-z]+\}\}'
         @($leftovers | ForEach-Object { "$($_.Path):$($_.LineNumber)" }) | Should -BeNullOrEmpty
     }
 
@@ -449,6 +456,23 @@ Describe 'Export-KitApp' {
             '.github/pull_request_template.md', 'docs/adr/0000-template.md', '.kit/tools/Test-ConventionalTitle.ps1') {
             $targets | Should -Contain $path
         }
+    }
+
+    # The curated skills from dotnet/skills reach an app like the kit's own (ADR-0042); the lock and the update
+    # script stay in the kit, which moves the pin, and the sync job brings the result to apps.
+    It 'gives the app the curated .NET skills unchanged, as kit-managed files, without the lock or the update script' {
+        . (Join-Path $checkout 'tools' 'Update-DotnetSkills.ps1')
+        $lock = Read-DotnetSkillLock -RepoRoot $checkout
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        $managed = @($manifest['files'] | ForEach-Object { $_['path'] })
+
+        @($lock['skills']).Count | Should -BeGreaterThan 0
+        @(Get-DotnetSkillDrift -SkillsRoot (Join-Path $app '.claude' 'skills') -Lock $lock) | Should -BeNullOrEmpty
+        foreach ($skill in $lock['skills']) {
+            foreach ($file in $skill['files'].Keys) { $managed | Should -Contain ".claude/skills/$($skill['name'])/$file" }
+        }
+        @(Get-ChildItem -LiteralPath $app -Recurse -File -Force | Where-Object { $_.Name -in 'dotnet-skills.json', 'Update-DotnetSkills.ps1' }) |
+            Should -BeNullOrEmpty
     }
 
     # ADR-0043: Directory.Build.props points every project at files beside it (CodeMetricsConfig.txt,

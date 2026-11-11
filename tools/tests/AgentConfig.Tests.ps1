@@ -250,13 +250,31 @@ Describe 'Agent configuration' {
     }
 
     Context 'skills' {
+        BeforeDiscovery {
+            # Every skill folder: the kit's own and the curated ones from dotnet/skills (ADR-0042).
+            $skillFolders = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot '..' '..' '.claude' 'skills') -Directory |
+                    ForEach-Object { @{ Skill = $_.Name } })
+            $kitSkills = @('start-work', 'plan-checklist', 'tdd-cycle', 'write-adr', 'finish-work', 'address-review')
+        }
+
+        It 'has the kit''s <Skill> skill' -ForEach @($kitSkills | ForEach-Object { @{ Skill = $_ } }) {
+            Join-Path $repoRoot '.claude' 'skills' $Skill 'SKILL.md' | Should -Exist
+        }
+
+        # A skill taken out of tools/dotnet-skills.json would otherwise stay behind: unpinned, unchecked, and still
+        # copied into every app.
+        It 'has no skill folder besides the kit''s own and the curated ones in tools/dotnet-skills.json' -ForEach @(@{ KitSkills = $kitSkills }) {
+            $lock = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'tools' 'dotnet-skills.json') | ConvertFrom-Json -AsHashtable
+            $expected = @($KitSkills) + @($lock['skills'] | ForEach-Object { $_['name'] }) | Sort-Object
+            $folders = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot '.claude' 'skills') -Directory | ForEach-Object Name | Sort-Object)
+
+            $folders | Should -Be $expected
+        }
+
         # Claude Code truncates description + when_to_use at 1,536 characters. The reviewer recalled a
         # 1,024 cap in the Agent Skills spec that Visual Studio and VS Code follow (not verified), so the
         # test uses the stricter number.
-        It 'has the <Skill> skill, named after its folder, with a description under 1,024 characters' -ForEach @(
-            @{ Skill = 'start-work' }, @{ Skill = 'plan-checklist' }, @{ Skill = 'tdd-cycle' },
-            @{ Skill = 'write-adr' }, @{ Skill = 'finish-work' }, @{ Skill = 'address-review' }
-        ) {
+        It 'names the <Skill> skill after its folder, with a description under 1,024 characters' -ForEach $skillFolders {
             $path = Join-Path $repoRoot '.claude' 'skills' $Skill 'SKILL.md'
             $path | Should -Exist
             $frontMatter = Read-FrontMatter -Path $path
@@ -264,6 +282,21 @@ Describe 'Agent configuration' {
             $frontMatter['name'] | Should -Be $Skill
             "$($frontMatter['description'])".Length | Should -BeGreaterThan 0
             "$($frontMatter['description'])".Length | Should -BeLessThan 1024
+        }
+
+        # Claude Code lists every skill's description in each session and drops descriptions once the listing passes
+        # 1% of the context window (code.claude.com/docs/en/skills, "Skill descriptions are cut short"). On a
+        # 200,000-token window at about four characters a token, that's 8,000 characters; the exact count Claude Code
+        # uses isn't verified. Adding a skill may mean taking one out (ADR-0042, docs/dotnet-skills.md). That doc states
+        # the totals, and DotnetSkills.Tests.ps1 checks them, so changing any skill's description means updating it.
+        It 'keeps every skill''s description together within 8,000 characters' {
+            $total = 0
+            foreach ($file in Get-ChildItem -LiteralPath (Join-Path $repoRoot '.claude' 'skills') -Directory) {
+                $total += "$((Read-FrontMatter -Path (Join-Path $file.FullName 'SKILL.md'))['description'])".Length
+            }
+
+            $total | Should -BeGreaterThan 0
+            $total | Should -BeLessOrEqual 8000 -Because 'Claude Code drops descriptions past its listing budget'
         }
     }
 }

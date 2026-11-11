@@ -112,6 +112,7 @@ In review mode, also ask the owner first before you:
 | Build | `dotnet build` |
 | .NET tests with coverage, then the coverage gate (TST-004) | Delete `TestResults` first (the gate merges every report it finds), then `dotnet test --coverage --coverage-output-format cobertura --results-directory TestResults` and `./tools/Test-CoverageGate.ps1 -Path TestResults -Solution dotnet-agent-kit.slnx` |
 | Mutation score (TST-004, ADR-0039): nightly in CI; optional locally | CI: `.github/workflows/mutation.yml`; read the `mutation-report` artifact of a failed run. Locally: `dotnet tool restore` installs the pinned Stryker (installing is the owner's call), then `dotnet tool run dotnet-stryker --config-file .config/stryker-config.json --solution dotnet-agent-kit.slnx`, and `./tools/Test-MutationReport.ps1 -Path <its mutation-report.json>` |
+| Move the curated .NET skills to a newer dotnet/skills commit (ADR-0042) | `./tools/Update-DotnetSkills.ps1` (upstream `main`), or `-Commit <sha>`; then read the diff and follow `docs/dotnet-skills.md`. The script tests check the copies match the pinned commit |
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request, plus a gitleaks secret scan. The "main protection" ruleset requires them to pass. Mutation testing runs nightly instead, and on every pull request that changes more than docs (and the agent files generated from them), the PR template, release files, agent or editor config, git hooks, spikes, templates or Pester tests; it isn't a required check.
 
@@ -129,7 +130,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS (ADR-0040). Eve
 | `docs/adr/` | Decisions. ADR numbers match the brief's decision numbers (D8 is ADR-0008) |
 | `docs/quality/scorecard.md` | What a "perfect" .NET app is, area by area; the rules that cover each area and its open gaps (ADR-0034). A new rule names its area here |
 | `docs/corrections-log.md` | Every owner correction and what it became |
-| `.claude/skills/` | The workflow skills, read by Claude Code, Visual Studio and VS Code |
+| `.claude/skills/` | The workflow skills, read by Claude Code, Visual Studio and VS Code. Some are curated .NET skills, copied unchanged from Microsoft's dotnet/skills at one pinned commit (`docs/dotnet-skills.md`, ADR-0042): never edit those copies, and where one disagrees with a kit rule, the kit rule wins |
 | `.claude/agents/reviewer.md` | The independent reviewer |
 | `tools/` | PowerShell 7 scripts, with tests in `tools/tests/` |
 
