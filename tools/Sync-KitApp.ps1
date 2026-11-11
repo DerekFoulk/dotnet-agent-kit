@@ -320,7 +320,10 @@ function Add-KitPackage {
     }
     else {
         $lines = ($added | ForEach-Object { "    $_" }) -join $eol
-        $text.Insert($ends.Project, "  <!-- Added by the kit sync: packages the kit's files need (kit ADR-0044). -->$eol  <ItemGroup Label=""dotnet-agent-kit"">$eol$lines$eol  </ItemGroup>$eol$eol")
+        # A new group just before </Project>, on lines of its own.
+        $lineStart = & $lineStartOf $ends.Project
+        $break = $text.Substring($lineStart, $ends.Project - $lineStart).Trim() ? $eol : ''
+        $text.Insert($ends.Project, "$break  <!-- Added by the kit sync: packages the kit's files need (kit ADR-0044). -->$eol  <ItemGroup Label=""dotnet-agent-kit"">$eol$lines$eol  </ItemGroup>$eol$eol")
     }
     [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($false))
     $result
