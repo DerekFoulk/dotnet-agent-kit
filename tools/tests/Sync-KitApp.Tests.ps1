@@ -76,7 +76,8 @@ Describe 'Sync-KitApp' {
         Add-Content -LiteralPath (Join-Path $app $instructions) -Value 'app-generated-edit'
         $packagesPath = Join-Path $app 'Directory.Packages.props'
         Set-FileText $packagesPath ([IO.File]::ReadAllText($packagesPath) -replace '(?m)^[ \t]*<PackageVersion Include="Moq"[^\r\n]*\r?\n', '') # the app drops a kit package
-        $appOwned = 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'Directory.Packages.props', '.github/dependabot.yml'
+        Edit-FileText (Join-Path $app 'docs/runbook.md') '- **Status:** Draft' '- **Status:** In use' # the app fills in its runbook
+        $appOwned = 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md', 'Directory.Packages.props', '.github/dependabot.yml'
         $appOwnedBefore = @{}
         foreach ($path in $appOwned) { $appOwnedBefore[$path] = [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) }
 
@@ -89,6 +90,7 @@ Describe 'Sync-KitApp' {
         Edit-FileText (Join-Path $kit '.editorconfig') '# Microsoft .NET code-style baseline (D9).' '# Microsoft .NET code-style baseline (D9), kit-v2-marker.'
         Edit-FileText (Join-Path $kit '.gitignore') '# dotenv files' '# dotenv files (kit v2)'
         Add-Content -LiteralPath (Join-Path $kit '.claude/skills/plan-checklist/SKILL.md') -Value 'kit-v2-plan-marker'
+        Edit-FileText (Join-Path $kit 'templates/app/docs/runbook.md') '1. Check that CI passed' '1. Check (kit v2) that CI passed'
         Remove-Item -LiteralPath (Join-Path $kit '.claude/skills/tdd-cycle/SKILL.md'), (Join-Path $kit '.claude/skills/write-adr/SKILL.md')
         Set-FileText (Join-Path $kit '.claude/skills/fresh-skill/SKILL.md') "# A new kit skill`n"
         Set-FileText (Join-Path $kit '.claude/skills/app-skill/SKILL.md') "# The kit's skill of the same name`n"
