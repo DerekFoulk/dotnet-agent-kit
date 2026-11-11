@@ -221,7 +221,7 @@ function Get-KitPackageItem {
 # first ItemGroup labelled dotnet-agent-kit directly under <Project> (GroupStart and Group, $null when there's
 # none), and of </Project>. An XML reader finds them, so a group in a comment, a self-closing one with nowhere to
 # add to, or a '>' inside an attribute can't mislead it.
-function Get-KitPackageGroupEnd {
+function Get-KitPackageGroupPosition {
     param([Parameter(Mandatory)] [string] $Text)
 
     # The reader gives a line and column; the offset of each line's start turns them into an offset in the text.
@@ -232,7 +232,9 @@ function Get-KitPackageGroupEnd {
     $settings = [Xml.XmlReaderSettings]@{ DtdProcessing = [Xml.DtdProcessing]::Prohibit }
     $reader = [Xml.XmlReader]::Create([IO.StringReader]::new($Text), $settings)
     $ends = [pscustomobject]@{ GroupStart = $null; Group = $null; Project = $null }
-    # The column is the name's, just after '<' or '</'; the tag must start there, or the arithmetic is wrong.
+    # The column is the name's, just after '<' or '</'. Safety net (CRF-001): the tag must start there. If the
+    # line arithmetic ever disagrees with the reader's, as a lone CR once made it, the sync stops rather than
+    # write packages into the middle of a tag.
     $offsetOf = {
         param([string] $Tag)
         $offset = $lineStarts[$reader.LineNumber - 1] + $reader.LinePosition - 1 - $Tag.Length
@@ -301,7 +303,7 @@ function Add-KitPackage {
 
     $text = [IO.File]::ReadAllText($path)
     $eol = $text.Contains("`r`n") ? "`r`n" : "`n"
-    $ends = Get-KitPackageGroupEnd -Text $text
+    $ends = Get-KitPackageGroupPosition -Text $text
     # Where the line holding an offset starts.
     $lineStartOf = { param([int] $Offset) $text.LastIndexOfAny([char[]] "`r`n", [Math]::Max($Offset - 1, 0)) + 1 }
     $text = if ($null -ne $ends.Group) {
