@@ -41,9 +41,7 @@ function Invoke-TestRun([string] $TestPath) {
     # Pester reads Run.Path as a wildcard pattern, so a folder named "x [1]" needs escaping.
     $literal = [WildcardPattern]::Escape($TestPath) -replace "'", "''"
     $marker = 'Invoke-Mutant result: '
-    # Stop, so a throw from Invoke-Pester ends the process instead of printing an empty result.
     $command = @"
-`$ErrorActionPreference = 'Stop'
 `$c = New-PesterConfiguration
 `$c.Run.Path = '$literal'
 `$c.Run.PassThru = `$true
@@ -56,6 +54,8 @@ function Invoke-TestRun([string] $TestPath) {
     $resultLine = $lines | Where-Object { $_.StartsWith($marker) } | Select-Object -Last 1
     $printed = (@($lines | Where-Object { -not $_.StartsWith($marker) -and $_.Trim() } | ForEach-Object Trim) -join ' ')
     $run = if ($resultLine) { $resultLine.Substring($marker.Length) | ConvertFrom-Json }
+    # Invoke-Pester prints its own failure, such as "No test files were found", and returns nothing, so the result
+    # line then holds no counts.
     if ($null -eq $run -or $null -eq $run.Total) {
         return [pscustomobject]@{ Returned = $false; Total = 0; Failed = 0; Broken = 0; Printed = $printed }
     }
