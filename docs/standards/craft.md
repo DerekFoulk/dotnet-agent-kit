@@ -38,11 +38,11 @@ rules:
     scope: core
     paths: ["**"]
   - id: CRF-005
-    statement: "Classes follow SOLID: one reason to change (single responsibility), extended without being edited (open-closed), usable wherever their base type is (Liskov substitution), small interfaces shaped by their clients (interface segregation), and every dependency explicit, passed in as a constructor or method parameter, and on an abstraction where it crosses a boundary (dependency inversion, explicit dependencies)."
+    statement: "Classes follow SOLID: one reason to change (single responsibility), extended without being edited (open-closed), usable wherever their base type is (Liskov substitution), small interfaces shaped by their clients (interface segregation), and every dependency explicit, passed in as a constructor or method parameter, and pointing toward abstractions, never from business code to infrastructure details (dependency inversion, explicit dependencies)."
     why: "Each principle keeps a change local: a class with one job, honest dependencies and substitutable subtypes can change or be replaced without breaking its callers."
     layer: owner
     status: accepted
-    sources: ["owner, 2026-11-08", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10", "https://en.wikipedia.org/wiki/SOLID, retrieved 2026-11-10", "https://en.wikipedia.org/wiki/Liskov_substitution_principle, retrieved 2026-11-10"]
+    sources: ["owner, 2026-11-08", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10", "https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod, retrieved 2026-11-10", "https://en.wikipedia.org/wiki/SOLID, retrieved 2026-11-10", "https://en.wikipedia.org/wiki/Liskov_substitution_principle, retrieved 2026-11-10"]
     enforcement: "advisory: CA1506 and CA1501 (CRF-008) fail the build on a class with too many collaborators or too deep a hierarchy, which often signals a broken principle, but only the reviewer agent can judge the principles themselves"
     scope: core
     paths: ["**/*.cs"]
@@ -60,8 +60,8 @@ rules:
     why: "A cycle makes every namespace in it change and test as one; depending on stable abstractions keeps volatile details from rippling inward."
     layer: owner
     status: accepted
-    sources: ["owner, 2026-11-08", "ADR-0043", "https://en.wikipedia.org/wiki/Acyclic_dependencies_principle, retrieved 2026-11-10"]
-    enforcement: "ci: the sample's NamespaceCycleTests (ArchUnitNET slices) fail on a cycle between any of the namespaces under Bookmarks in its five production assemblies; advisory in an app until its own Architecture.Tests (TST-003) carries the same test, following the sample; stable dependencies and component cohesion are advisory, checked by the reviewer agent"
+    sources: ["owner, 2026-11-08", "ADR-0043", "https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod, retrieved 2026-11-10", "https://en.wikipedia.org/wiki/Acyclic_dependencies_principle, retrieved 2026-11-10"]
+    enforcement: "ci: the sample's NamespaceCycleTests (ArchUnitNET slices) fail on a cycle among the Bookmarks namespace and the namespaces under it, in the five production assemblies that hold them; advisory in an app until its own Architecture.Tests (TST-003) carries the same test, following the sample; stable dependencies and component cohesion are advisory, checked by the reviewer agent"
     scope: core
     paths: ["**/*.cs", "**/*.csproj"]
   - id: CRF-008
@@ -74,7 +74,7 @@ rules:
     scope: core
     paths: ["**/*.cs", ".globalconfig", "CodeMetricsConfig.txt"]
   - id: CRF-009
-    statement: "Avoid the STUPID anti-patterns (Singletons and other mutable global state, tight coupling, untestable code, premature optimization, names that don't say what a thing is, duplication), and design each part to be tested in isolation and separable enough to be deployed on its own later (ARC-001: one deployable app, with modules that can become services)."
+    statement: "Avoid the STUPID anti-patterns (Singletons and other mutable global state, tight coupling, untestable code, premature optimization, names that don't say what a thing is, duplication), and design each part to be tested in isolation and each module separable enough to be deployed on its own later (ARC-001: one deployable app, with modules that can become services)."
     why: "Each of these makes code hard to change or to test; designing for testability and deployability keeps it honest."
     layer: owner
     status: accepted
@@ -83,12 +83,12 @@ rules:
     scope: core
     paths: ["**"]
   - id: CRF-010
-    statement: "Use every library, tool and service as its authors document for the version in use, through its public API and documented extension points; never reach into non-public members or rely on undocumented behavior; lifting a ban in BannedSymbols.txt needs an ADR."
+    statement: "Use every library, tool and service as its authors document for the version in use, through its public API and documented extension points; never reach into non-public members or rely on undocumented behavior; lifting a ban in BannedSymbols.txt, even for one member, needs an ADR."
     why: "Internals and undocumented behavior change without notice in any release; the documented surface is what the authors promise to keep working."
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-08", "ADR-0043"]
-    enforcement: "build: Microsoft.CodeAnalysis.BannedApiAnalyzers rejects the APIs in BannedSymbols.txt (BindingFlags.NonPublic, UnsafeAccessor, and the members that return or find non-public members without it) with RS0030 in every project (tools/tests/BuildConfig.Tests.ps1); relying on undocumented behavior is advisory, checked by the reviewer agent"
+    enforcement: "build: Microsoft.CodeAnalysis.BannedApiAnalyzers rejects the APIs in BannedSymbols.txt (BindingFlags.NonPublic, UnsafeAccessor, and the routes found so far that reach non-public members without it) with RS0030 in every project (tools/tests/BuildConfig.Tests.ps1); relying on undocumented behavior is advisory, checked by the reviewer agent"
     scope: core
     paths: ["**"]
 ---
@@ -101,31 +101,31 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 
 ## What each principle means here
 
-- **Root causes (CRF-001, CRF-002).** A fix removes the cause; a workaround makes the symptom go away and leaves the cause in place. A safety net that stays, such as a retry around a call that shouldn't fail, is labelled as a safety net in the code, with the reason, so nobody mistakes it for the fix. An argument check on a public method (CA1062 asks for one) isn't a safety net: it's the method's contract, validation at its boundary (CRF-006). A better design that has to wait is named and planned in the same PR, never left as "good enough".
+- **Root causes (CRF-001, CRF-002).** A fix removes the cause; a workaround makes the symptom go away and leaves the cause in place. A safety net that stays, such as a retry around a call that shouldn't fail, is labelled as a safety net in the code, with the reason, so nobody mistakes it for the fix. An argument check on a public method (CA1062 asks for one) isn't a safety net either: it's part of the method's contract. A better design that has to wait is named and planned in the same PR, never left as "good enough".
 - **DRY (CRF-003).** From *The Pragmatic Programmer* (Hunt and Thomas, tip 15): each piece of knowledge has one unambiguous, authoritative representation in the system. It's about knowledge, not text. Two constants with the same value but different meanings stay two constants; Microsoft's page puts it as "duplication is always preferable to coupling to the wrong abstraction".
 - **KISS, YAGNI, no big design up front (CRF-004).** YAGNI ("you aren't gonna need it") comes from Extreme Programming. The simplest design means the simplest one that's fully correct, never the quickest one. How much structure a small app gets (layers, projects, patterns) is a separate question, open as GAP-002 in the scorecard.
-- **SOLID (CRF-005).** Robert C. Martin set out the principles around 2000 ("Design Principles and Design Patterns"); Michael Feathers coined the acronym later. Dependencies are explicit: a class asks for what it needs through its constructor, and a Minimal API handler through its parameters, as the sample's endpoints do. The Liskov substitution principle is Barbara Liskov's (1987; with Jeannette Wing, "A behavioral notion of subtyping", 1994).
+- **SOLID (CRF-005).** Robert C. Martin set out the principles around 2000 ("Design Principles and Design Patterns"); Michael Feathers coined the acronym later. Dependencies are explicit: a class asks for what it needs through its constructor, and a Minimal API handler through its parameters, as the sample's endpoints do. They point toward abstractions where the direction matters, from business code toward its own interfaces, never toward infrastructure; an interface with one implementation and no such reason is speculation (CRF-004). Martin's own page lists the principles: [Principles of OOD](https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod) (archived copy). The Liskov substitution principle is Barbara Liskov's (1987; with Jeannette Wing, "A behavioral notion of subtyping", 1994).
 - **Separation of concerns and validation at the boundary (CRF-006).** Business rules sit in projects that depend on no infrastructure (ARC-001). Input is checked where it enters, once; code inside trusts its types.
-- **Dependencies and cohesion (CRF-007).** Martin's package principles (*Agile Software Development, Principles, Patterns, and Practices*, 2002): the acyclic dependencies, stable dependencies and stable abstractions principles for how components depend on each other, and the reuse/release equivalence, common closure and common reuse principles (REP, CCP, CRP) for what goes in a component.
+- **Dependencies and cohesion (CRF-007).** Martin's package principles (*Agile Software Development, Principles, Patterns, and Practices*, 2002): the acyclic dependencies, stable dependencies and stable abstractions principles for how components depend on each other, and the reuse/release equivalence, common closure and common reuse principles (REP, CCP, CRP) for what goes in a component. The same page of Martin's lists all six.
 - **Metric limits (CRF-008).** See below.
 - **STUPID (CRF-009).** William Durand's name (2013) for six habits that make code hard to change: Singleton, Tight coupling, Untestability, Premature optimization, Indescriptive naming, Duplication. Testability and deployability are design drivers: if a part can't be tested in isolation, the design changes, not the test.
-- **Documented use (CRF-010).** Use each library, tool and service the way its documentation describes for the version in use. Where there's no documented way to do something, ask its authors for one; don't reach into its internals.
+- **Documented use (CRF-010).** Use each library, tool and service the way its documentation describes for the version in use. Where there's no documented way to do something, ask its authors for one; don't reach into its internals. A banned member always has a public alternative, which its message names: for example, a dynamic `OrderBy` over an `IQueryable` builds its expression from `type.GetProperty(name)` and a `MethodInfo` taken from `typeof(Queryable).GetMethods()`, not from the by-name `Expression` factories.
 
 ## Checks
 
 | Check | Where | What fails |
 |---|---|---|
 | CA1502, cyclomatic complexity | `.globalconfig` turns it on; `CodeMetricsConfig.txt` sets the limit | a method over the limit |
-| CA1506, class coupling | same | a member or a type coupled to more types than its limit |
+| CA1506, class coupling | same | a type or one of its members coupled to more types than its limit |
 | CA1501, inheritance depth | same | a class deeper than the limit, counting base classes in its own module |
-| CA1505, maintainability index | same | a method or type under the limit |
+| CA1505, maintainability index | same | a type or one of its members under the limit |
 | CA1509, the limits file itself | `.globalconfig` | an entry in `CodeMetricsConfig.txt` the rules can't read |
-| CA1005, CA1021, CA1045, CA1060 | `.globalconfig` | the legacy design rules `latest-all` leaves off (STY-003) |
-| RS0030, banned APIs | `BannedSymbols.txt`, read by `Microsoft.CodeAnalysis.BannedApiAnalyzers` | `BindingFlags.NonPublic`, `[UnsafeAccessor]`, and the reflection and expression-tree members that reach non-public members without it |
+| The other rules `latest-all` leaves off | `.globalconfig` (which lists them), and `Directory.Build.props` for CA1017's `ComVisible(false)` | code that breaks one of them (STY-003) |
+| RS0030, banned APIs | `BannedSymbols.txt`, read by `Microsoft.CodeAnalysis.BannedApiAnalyzers` | `BindingFlags.NonPublic`, `[UnsafeAccessor]`, and the other routes into non-public members found so far |
 | Namespace cycles | the sample's `NamespaceCycleTests` (ArchUnitNET) | a cycle among the root namespace and the namespaces under it; an app copies the test into its own Architecture.Tests |
 
-`CodeMetricsConfig.txt` is the one source of the limits; CRF-008 states them for readers, and a Pester test fails if the two disagree. `AnalysisLevel latest-all` (STY-003) leaves eleven rules off, which Microsoft lists. `.globalconfig` turns on nine of them. CA1509 can only be turned on in a global config, which is why these rules live there and not in `.editorconfig`. CA1014 and CA1017 stay off for now: every project breaks them, so they need a decision of their own (GAP-021). ADR-0043 records the limits and why each is where it is.
+`CodeMetricsConfig.txt` is the one source of the limits; CRF-008 states them for readers, and a Pester test fails if the two disagree. `.globalconfig` is the one list of the rules `latest-all` leaves off and the kit turns on; each has a fixture in `tools/tests/BuildConfig.Tests.ps1`. CA1509 can only be turned on in a global config, which is why these rules live there and not in `.editorconfig`. The one rule still off is GAP-021's. ADR-0043 records the limits and why each is where it is.
 
-**What the checks miss.** CA1502 doesn't count the arms of a switch expression (measured with SDK 10.0.404), so a long one passes. A cast such as `(BindingFlags)32` slips past the ban, and so would a route into internals not yet on the list. No tool checks nesting depth, statements per method, file length or LCOM4 (GAP-019), or finds duplication (GAP-020). The reviewer agent checks all of these.
+**What the checks miss.** CA1502 doesn't count the arms of a switch expression (measured with SDK 10.0.404), so a long one passes. The ban stops the routes into internals found so far, not every route: a cast such as `(BindingFlags)32`, `Type.GetType` or `Assembly.GetType` with an internal type's name, `Type.GetInterfaceMap` and `Type.TypeInitializer` still get through. No tool checks nesting depth, statements per method, file length or LCOM4 (GAP-019), or finds duplication (GAP-020). The reviewer agent checks all of these.
 
-**Exceptions.** Suppressing one of these diagnostics for one member is a safety net under CRF-001: the suppression carries its reason (`Justification` on `[SuppressMessage]`, or a comment beside `#pragma warning disable`), and the reviewer checks the reason holds. Raising a limit, suppressing a rule for a whole project or lifting a ban, in the kit or in an app, needs an ADR (CRF-008, CRF-010).
+**Exceptions.** Suppressing a metric or design rule for one member is a safety net under CRF-001: the suppression carries its reason (`Justification` on `[SuppressMessage]`, or a comment beside `#pragma warning disable`), and the reviewer checks the reason holds. Raising a limit needs an ADR (CRF-008), and so does turning a rule off for a whole project (STY-003). RS0030 is never suppressed without an ADR, even for one member (CRF-010).

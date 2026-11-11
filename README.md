@@ -204,7 +204,7 @@ jobs:
 | `codeql.reusable.yml` | CodeQL code scanning of the workflows, and the C# once there is some. Skipped on a private app |
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`. Called from any other event, it fails rather than pass having checked nothing |
 
-The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the sync job (PR D3) keeps them current.
+The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), `.globalconfig`, `CodeMetricsConfig.txt` and `BannedSymbols.txt` (the craft checks, ADR-0043; without them the metric limits and bans do nothing), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the sync job (PR D3) keeps them current.
 
 ### Create an app repo's files
 
@@ -280,4 +280,4 @@ Applied 2026-11-09 with the owner's OK:
 Invoke-Pester -Path ./tools/tests
 ```
 
-`tools/tests/BuildConfig.Tests.ps1` copies the root build config (`global.json`, `Directory.*.props`, `.editorconfig`, `nuget.config`) into isolated workspaces and builds small fixture projects against it. It proves that clean code builds with a MinVer version and a lock file, and that `var`, nullable violations and `latest-all` analyzer findings fail the build.
+`tools/tests/BuildConfig.Tests.ps1` copies the root build config (`global.json`, `Directory.*.props`, `.editorconfig`, `nuget.config`, `.globalconfig`, `CodeMetricsConfig.txt`, `BannedSymbols.txt`) into isolated workspaces and builds small fixture projects against it. It proves that clean code builds with a MinVer version and a lock file, and that `var`, nullable violations, `latest-all` analyzer findings, the rules `latest-all` leaves off, the metric limits and the banned APIs fail the build, while code at each metric limit builds (ADR-0043). It also checks that every banned symbol exists and that CRF-008 states the limits `CodeMetricsConfig.txt` sets.
