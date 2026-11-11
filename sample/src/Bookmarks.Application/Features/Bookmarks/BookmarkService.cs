@@ -19,13 +19,14 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
     public async Task<AddBookmarkResult> AddAsync(string ownerId, CreateBookmarkRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        Bookmark? existing = await _repository.FindByUrlAsync(ownerId, request.Url, cancellationToken).ConfigureAwait(false);
+        // The domain checks the request before anything uses it (CRF-006); the lookup then uses the checked URL.
+        Bookmark bookmark = Bookmark.Create(ownerId, request.Url, request.Title, _timeProvider.GetUtcNow());
+        Bookmark? existing = await _repository.FindByUrlAsync(ownerId, bookmark.Url, cancellationToken).ConfigureAwait(false);
         if (existing is not null)
         {
             return new AddBookmarkResult(null, AlreadyExists: true);
         }
 
-        Bookmark bookmark = Bookmark.Create(ownerId, request.Url, request.Title, _timeProvider.GetUtcNow());
         await _repository.AddAsync(bookmark, cancellationToken).ConfigureAwait(false);
         return new AddBookmarkResult(ToResponse(bookmark), AlreadyExists: false);
     }
