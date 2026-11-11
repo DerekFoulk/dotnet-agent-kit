@@ -9,19 +9,19 @@ Describe 'Invoke-Mutant.ps1' {
         $script = Join-Path $PSScriptRoot '..' 'Invoke-Mutant.ps1'
 
         # A tiny function and the test that pins it, in a folder of their own.
-        function New-Fixture {
-            $folder = Join-Path $TestDrive "fixture-$(New-Guid)"
-            New-Item -ItemType Directory -Path $folder | Out-Null
-            $source = Join-Path $folder 'Add.ps1'
-            [IO.File]::WriteAllText($source, "function Add([int] `$a, [int] `$b) { `$a + `$b }`n")
-            $tests = Join-Path $folder 'Add.Tests.ps1'
-            [IO.File]::WriteAllText($tests, @'
+        function New-Fixture([string] $Folder = "fixture-$(New-Guid)", [string] $Tests = @'
 Describe 'Add' {
     BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
     It 'adds' { Add 1 2 | Should -Be 3 }
 }
-'@)
-            [pscustomobject]@{ Source = $source; Tests = $tests }
+'@) {
+            $folderPath = Join-Path $TestDrive $Folder
+            New-Item -ItemType Directory -Path $folderPath | Out-Null
+            $source = Join-Path $folderPath 'Add.ps1'
+            [IO.File]::WriteAllText($source, "function Add([int] `$a, [int] `$b) { `$a + `$b }`n")
+            $testsPath = Join-Path $folderPath 'Add.Tests.ps1'
+            [IO.File]::WriteAllText($testsPath, $Tests)
+            [pscustomobject]@{ Source = $source; Tests = $testsPath }
         }
     }
 
@@ -67,13 +67,53 @@ Describe 'Add' {
 
     It 'reports every mutant as an error, and changes nothing, when the tests run none on the unchanged file' {
         # "Survived" claims a test is missing. A test path that runs nothing proves nothing either way.
-        $fixture = New-Fixture
+        $fixture = New-Fixture -Tests "Describe 'Add' { }`n"
         $before = [IO.File]::ReadAllBytes($fixture.Source)
 
-        $result = & $script -Path $fixture.Source -TestPath $fixture.Source -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
 
         $result.Result | Should -Be 'Error'
-        $result.Message | Should -Match 'no tests'
+        $result.Message | Should -Match 'ran no tests on the unchanged file'
         [Convert]::ToHexString([IO.File]::ReadAllBytes($fixture.Source)) | Should -Be ([Convert]::ToHexString($before))
+    }
+
+    It 'reports every mutant as an error when the tests already fail on the unchanged file' {
+        $fixture = New-Fixture -Tests @'
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'adds' { Add 1 2 | Should -Be 4 }
+}
+'@
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match 'already fail'
+    }
+
+    It 'reports a mutant that breaks the test file''s discovery as killed' {
+        # Loading the source outside BeforeAll runs it during discovery, so a syntax error fails the whole file
+        # before any test runs: Pester counts no failed test, only a failed container. (Discovery's copy is gone
+        # by the time tests run, so BeforeAll loads it again.)
+        $fixture = New-Fixture -Tests @'
+. (Join-Path $PSScriptRoot 'Add.ps1')
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'adds' { Add 1 2 | Should -Be 3 }
+}
+'@
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'syntax'; Find = '$a + $b }'; Replace = '$a + $b' }
+
+        $result.Result | Should -Be 'Killed'
+    }
+
+    It 'runs tests in a folder whose name has a quote and wildcard brackets' {
+        $fixture = New-Fixture -Folder "it's here [x]"
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Killed'
+        $result.Total | Should -Be 1
     }
 }
