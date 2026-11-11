@@ -51,7 +51,10 @@ public sealed class Bookmark
             throw new ArgumentException("A bookmark needs an absolute http or https URL.", nameof(url));
         }
 
-        if (url.AbsoluteUri.Length > MaxUrlLength)
+        // The bookmark keeps the escaped absolute form, the one the limit measures and the database stores, so the URL
+        // it answers with is always the same and always within the limit.
+        Uri stored = new(url.AbsoluteUri);
+        if (stored.OriginalString.Length > MaxUrlLength)
         {
             throw new ArgumentException($"A bookmark's URL has at most {MaxUrlLength} characters.", nameof(url));
         }
@@ -65,6 +68,6 @@ public sealed class Bookmark
 
         // A UUID version 7 starts with its creation time (to the millisecond), so on SQLite ordering by Id is creation
         // order. It needs a time from 1970 on; createdAt comes from TimeProvider.
-        return new Bookmark(Guid.CreateVersion7(createdAt), ownerId, url, trimmed, createdAt);
+        return new Bookmark(Guid.CreateVersion7(createdAt), ownerId, stored, trimmed, createdAt);
     }
 }
