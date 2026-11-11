@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using Bookmarks.Application.Features.Bookmarks;
 using Bookmarks.Contracts;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -19,12 +20,12 @@ internal static class BookmarkEndpoints
     }
 
     private static async Task<Results<Created<BookmarkResponse>, Conflict, ProblemHttpResult>> CreateAsync(
-        CreateBookmarkRequest request, BookmarkService service, CancellationToken cancellationToken)
+        CreateBookmarkRequest request, ClaimsPrincipal user, BookmarkService service, CancellationToken cancellationToken)
     {
         AddBookmarkResult result;
         try
         {
-            result = await service.AddAsync(request, cancellationToken);
+            result = await service.AddAsync(user.UserId(), request, cancellationToken);
         }
         catch (ArgumentException ex)
         {

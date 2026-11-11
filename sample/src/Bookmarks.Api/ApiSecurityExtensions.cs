@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.JsonWebTokens;
 
@@ -23,4 +24,9 @@ internal static class ApiSecurityExtensions
                 .Build());
         return services;
     }
+
+    /// <summary>The signed-in user's id: the token's sub claim, which the fallback policy requires.</summary>
+    public static string UserId(this ClaimsPrincipal user) =>
+        user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+        ?? throw new InvalidOperationException("The fallback policy lets no request without a sub claim through.");
 }

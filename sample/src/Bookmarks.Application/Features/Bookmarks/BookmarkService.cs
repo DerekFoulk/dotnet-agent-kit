@@ -15,7 +15,8 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
     private readonly IBookmarkRepository _repository = repository;
     private readonly TimeProvider _timeProvider = timeProvider;
 
-    public async Task<AddBookmarkResult> AddAsync(CreateBookmarkRequest request, CancellationToken cancellationToken)
+    /// <summary>Saves a bookmark for the given user (SEC-009).</summary>
+    public async Task<AddBookmarkResult> AddAsync(string ownerId, CreateBookmarkRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         Bookmark? existing = await _repository.FindByUrlAsync(request.Url, cancellationToken).ConfigureAwait(false);
@@ -24,7 +25,7 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
             return new AddBookmarkResult(null, AlreadyExists: true);
         }
 
-        Bookmark bookmark = Bookmark.Create(request.Url, request.Title, _timeProvider.GetUtcNow());
+        Bookmark bookmark = Bookmark.Create(ownerId, request.Url, request.Title, _timeProvider.GetUtcNow());
         await _repository.AddAsync(bookmark, cancellationToken).ConfigureAwait(false);
         return new AddBookmarkResult(ToResponse(bookmark), AlreadyExists: false);
     }

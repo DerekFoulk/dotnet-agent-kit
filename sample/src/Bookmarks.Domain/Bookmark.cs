@@ -12,13 +12,16 @@ public sealed class Bookmark
 
     public Guid Id { get; }
 
+    /// <summary>The user who saved it: their id from the identity provider (the token's sub claim, SEC-009).</summary>
+    public string OwnerId { get; } = string.Empty;
+
     public Uri Url { get; }
 
     public string Title { get; }
 
     public DateTimeOffset CreatedAt { get; }
 
-    public static Bookmark Create(Uri url, string title, DateTimeOffset createdAt)
+    public static Bookmark Create(string ownerId, Uri url, string title, DateTimeOffset createdAt)
     {
         ArgumentNullException.ThrowIfNull(url);
         if (!url.IsAbsoluteUri || (url.Scheme != Uri.UriSchemeHttp && url.Scheme != Uri.UriSchemeHttps))

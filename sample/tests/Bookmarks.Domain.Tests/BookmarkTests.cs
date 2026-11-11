@@ -2,14 +2,16 @@ namespace Bookmarks.Domain.Tests;
 
 public sealed class BookmarkTests
 {
+    private const string Owner = "alice";
     private static readonly DateTimeOffset s_now = new(2026, 11, 4, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
     public void CreateKeepsTheUrlAndTrimsTheTitle()
     {
-        Bookmark bookmark = Bookmark.Create(new Uri("https://example.com/articles/1"), "  Clean code  ", s_now);
+        Bookmark bookmark = Bookmark.Create(Owner, new Uri("https://example.com/articles/1"), "  Clean code  ", s_now);
 
         bookmark.Id.Should().NotBe(Guid.Empty);
+        bookmark.OwnerId.Should().Be(Owner);
         bookmark.Url.Should().Be(new Uri("https://example.com/articles/1"));
         bookmark.Title.Should().Be("Clean code");
         bookmark.CreatedAt.Should().Be(s_now);
@@ -20,7 +22,7 @@ public sealed class BookmarkTests
     [InlineData("mailto:someone@example.com")]
     public void CreateRejectsAUrlThatIsNotHttpOrHttps(string address)
     {
-        Action create = () => Bookmark.Create(new Uri(address), "Title", s_now);
+        Action create = () => Bookmark.Create(Owner, new Uri(address), "Title", s_now);
 
         create.Should().Throw<ArgumentException>().WithParameterName("url");
     }
@@ -29,7 +31,7 @@ public sealed class BookmarkTests
     public void CreateRejectsAMissingUrlByName()
     {
         // Mutation testing (PR 23): without the guard, a null URL failed later with a NullReferenceException.
-        Action create = () => Bookmark.Create(null!, "Title", s_now);
+        Action create = () => Bookmark.Create(Owner, null!, "Title", s_now);
 
         create.Should().Throw<ArgumentNullException>().WithParameterName("url");
     }
@@ -38,15 +40,27 @@ public sealed class BookmarkTests
     public void CreateSaysWhatKindOfUrlItNeeds()
     {
         // Mutation testing (PR 23): the message reaches the API's 400 Problem Details, so it is part of the behaviour.
-        Action create = () => Bookmark.Create(new Uri("ftp://example.com/file"), "Title", s_now);
+        Action create = () => Bookmark.Create(Owner, new Uri("ftp://example.com/file"), "Title", s_now);
 
         create.Should().Throw<ArgumentException>().WithMessage("A bookmark needs an absolute http or https URL.*");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void CreateRejectsAMissingOwner(string? owner)
+    {
+        // SEC-009: every bookmark belongs to someone, or no query could tell whose it is.
+        Action create = () => Bookmark.Create(owner!, new Uri("https://example.com/"), "Title", s_now);
+
+        create.Should().Throw<ArgumentException>().WithParameterName("ownerId");
     }
 
     [Fact]
     public void CreateRejectsARelativeUrl()
     {
-        Action create = () => Bookmark.Create(new Uri("/articles/1", UriKind.Relative), "Title", s_now);
+        Action create = () => Bookmark.Create(Owner, new Uri("/articles/1", UriKind.Relative), "Title", s_now);
 
         create.Should().Throw<ArgumentException>().WithParameterName("url");
     }
@@ -58,7 +72,7 @@ public sealed class BookmarkTests
         // creation order, and a new bookmark lands on the last page instead of shifting a random one. Ordinal string
         // order is how the sample's SQLite compares them (SQL Server orders Guids differently: api-design.md).
         List<string> ids = [.. Enumerable.Range(0, 20)
-            .Select(minute => Bookmark.Create(new Uri($"https://example.com/{minute}"), "Title", s_now.AddMinutes(minute)).Id.ToString())];
+            .Select(minute => Bookmark.Create(Owner, new Uri($"https://example.com/{minute}"), "Title", s_now.AddMinutes(minute)).Id.ToString())];
 
         ids.Should().BeInAscendingOrder(StringComparer.Ordinal);
     }
@@ -68,7 +82,7 @@ public sealed class BookmarkTests
     [InlineData("   ")]
     public void CreateRejectsABlankTitle(string blankTitle)
     {
-        Action create = () => Bookmark.Create(new Uri("https://example.com/"), blankTitle, s_now);
+        Action create = () => Bookmark.Create(Owner, new Uri("https://example.com/"), blankTitle, s_now);
 
         create.Should().Throw<ArgumentException>().WithParameterName("title");
     }
