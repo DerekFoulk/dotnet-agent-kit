@@ -13,11 +13,15 @@ namespace Bookmarks.FunctionalTests;
 public sealed class HealthEndpointTests : IDisposable
 {
     private readonly ApiHost _host = new();
+    private readonly HttpClient _probe;
+
+    // Probes call without a token, so every test here does too (SEC-007: the health endpoints are anonymous).
+    public HealthEndpointTests() => _probe = _host.CreateClient(token: null);
 
     [Fact]
     public async Task AliveAnswersHealthyWhenTheAppIsRunning()
     {
-        using HttpResponseMessage response = await _host.Client.GetAsync(new Uri("/alive", UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await _probe.GetAsync(new Uri("/alive", UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("Healthy");
@@ -26,7 +30,7 @@ public sealed class HealthEndpointTests : IDisposable
     [Fact]
     public async Task HealthAnswersHealthyAndChecksTheDatabaseButAliveDoesNot()
     {
-        using HttpResponseMessage response = await _host.Client.GetAsync(new Uri("/health", UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await _probe.GetAsync(new Uri("/health", UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("Healthy");
@@ -43,8 +47,9 @@ public sealed class HealthEndpointTests : IDisposable
     {
         // Probes need them in production; the default response is the status word, with no details.
         using ApiHost production = new("Production");
+        using HttpClient probe = production.CreateClient(token: null);
 
-        using HttpResponseMessage response = await production.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await probe.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("Healthy");
@@ -62,8 +67,8 @@ public sealed class HealthEndpointTests : IDisposable
         endpoint.Metadata.GetMetadata<RequestTimeoutAttribute>().Should().NotBeNull("every health endpoint is time-boxed")
             .And.Subject.As<RequestTimeoutAttribute>().PolicyName.Should().Be("HealthChecks");
 
-        using HttpResponseMessage first = await _host.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
-        using HttpResponseMessage second = await _host.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage first = await _probe.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage second = await _probe.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
 
         second.Headers.Age.Should().NotBeNull("the second probe within the cache window is served from the output cache");
     }
@@ -91,9 +96,10 @@ public sealed class HealthEndpointTests : IDisposable
             });
             services.PostConfigure<RequestTimeoutOptions>(options => options.AddPolicy("HealthChecks", TimeSpan.FromMilliseconds(100)));
         });
+        using HttpClient probe = host.CreateClient(token: null);
         Stopwatch elapsed = Stopwatch.StartNew();
 
-        using HttpResponseMessage response = await host.Client.GetAsync(new Uri("/health", UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await probe.GetAsync(new Uri("/health", UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.GatewayTimeout);
         elapsed.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10));
@@ -114,13 +120,18 @@ public sealed class HealthEndpointTests : IDisposable
         // would restart a running app instead of only taking it out of rotation.
         using ApiHost host = new(services: services => services.AddHealthChecks()
             .AddCheck("dependency", () => HealthCheckResult.Unhealthy("down")));
+        using HttpClient probe = host.CreateClient(token: null);
 
-        using HttpResponseMessage health = await host.Client.GetAsync(new Uri("/health", UriKind.Relative), TestContext.Current.CancellationToken);
-        using HttpResponseMessage alive = await host.Client.GetAsync(new Uri("/alive", UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage health = await probe.GetAsync(new Uri("/health", UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage alive = await probe.GetAsync(new Uri("/alive", UriKind.Relative), TestContext.Current.CancellationToken);
 
         health.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         alive.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    public void Dispose() => _host.Dispose();
+    public void Dispose()
+    {
+        _probe.Dispose();
+        _host.Dispose();
+    }
 }

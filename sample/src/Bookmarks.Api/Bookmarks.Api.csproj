@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- dotnet user-jwts keeps its signing key in this project's user secrets, never in the repo (SEC-008). -->
+    <UserSecretsId>bookmarks-api-7d1c4b1e</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,6 +11,7 @@
     <ProjectReference Include="..\Bookmarks.Infrastructure\Bookmarks.Infrastructure.csproj" />
     <ProjectReference Include="..\Bookmarks.Contracts\Bookmarks.Contracts.csproj" />
     <ProjectReference Include="..\Bookmarks.ServiceDefaults\Bookmarks.ServiceDefaults.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
   </ItemGroup>
 

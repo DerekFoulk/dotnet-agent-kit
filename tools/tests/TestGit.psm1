@@ -137,7 +137,9 @@ function New-TestGitRemote {
     [OutputType([string])]
     param([Parameter(Mandatory)] [string] $Path)
 
-    # A bare repo a test pushes into, as if it were GitHub.
+    # A bare repo a test pushes into, as if it were GitHub. The exit codes are read here, so pwsh mustn't turn one
+    # into its own error first (as Test-RepoGitIgnore does).
+    $PSNativeCommandUseErrorActionPreference = $false
     foreach ($arguments in @(('init', '-q', '--bare', $Path), ('-C', $Path, 'config', 'receive.autoGC', 'false'))) {
         $output = git @arguments 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { throw "Couldn't make the test remote at ${Path}: $($output.Trim())" }

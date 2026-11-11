@@ -35,7 +35,9 @@ dotnet test --coverage --coverage-output-format cobertura --results-directory Te
 dotnet run --project sample/src/Bookmarks.Api
 ```
 
-The API keeps its data in `bookmarks.db` (SQLite) next to where it runs. In Development it serves its OpenAPI document at `/openapi/v1.json`; other environments don't (API-003). `GET /bookmarks` answers one page at a time (`?offset=0&limit=25`, at most 100) with a `nextLink` to the next, and every error is Problem Details (`docs/standards/api-design.md`). `/health` answers `Healthy` once the database is reachable, and `/alive` while the process runs. To see its telemetry, set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OTLP endpoint, such as the Aspire dashboard's.
+Every endpoint except `/health`, `/alive` and the Development OpenAPI document needs a bearer token, and each user sees only their own bookmarks (SEC-007 to SEC-010, ADR-0048). To get a token locally, run `dotnet user-jwts create --project sample/src/Bookmarks.Api`, which keeps its signing key in your user secrets, and send the token it prints as `Authorization: Bearer <token>`. In production the app trusts its OpenID Connect provider instead, set under `Authentication:Schemes:Bearer`.
+
+The API keeps its data in `bookmarks.db` (SQLite) next to where it runs. It creates the schema on first start, so after a change to the schema (such as the owner column ADR-0048 added), delete the old `bookmarks.db`. In Development it serves its OpenAPI document at `/openapi/v1.json`; other environments don't (API-003). `GET /bookmarks` answers one page at a time (`?offset=0&limit=25`, at most 100) with a `nextLink` to the next, and every error is Problem Details (`docs/standards/api-design.md`). `/health` answers `Healthy` once the database is reachable, and `/alive` while the process runs. To see its telemetry, set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OTLP endpoint, such as the Aspire dashboard's.
 
 ## The API contract
 
