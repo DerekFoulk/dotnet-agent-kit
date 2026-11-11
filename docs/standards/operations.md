@@ -7,7 +7,7 @@ rules:
     layer: outside
     status: accepted
     sources: ["ADR-0037", "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel, retrieved 2026-11-08", "owner, 2026-11-09"]
-    enforcement: "ci: the sample's Bookmarks.ServiceDefaults project and its FunctionalTests (ServiceDefaultsTests) in dotnet-ci.reusable.yml; advisory in an app until it has its own ServiceDefaults project, following the sample"
+    enforcement: "ci: the sample's Bookmarks.ServiceDefaults project and its FunctionalTests (TelemetryTests, which also sees a trace exported over OTLP only when an endpoint is set) in dotnet-ci.reusable.yml; advisory in an app until it has its own ServiceDefaults project, following the sample"
     scope: core
     paths: ["**/*.csproj", "**/Program.cs", "**/*ServiceDefaults*/**"]
   - id: OPS-002
