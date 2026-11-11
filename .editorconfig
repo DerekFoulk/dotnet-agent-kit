@@ -172,11 +172,6 @@ csharp_space_between_square_brackets = false
 # for application code: https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007
 dotnet_code_quality.CA2007.output_kind = DynamicallyLinkedLibrary
 
-# (kit) CRF-008, ADR-0043: Microsoft's code metric rules. AnalysisLevel latest-all leaves them off, so each is turned
-# on here; CodeMetricsConfig.txt at the repo root sets the limits.
-dotnet_diagnostic.CA1502.severity = warning
-dotnet_diagnostic.CA1506.severity = warning
-
 # (kit) ADR-0029: test projects are libraries too, but they're application code for CA2007's purposes.
 [{*Tests/**.cs,**/*Tests/**.cs}]
 dotnet_diagnostic.CA2007.severity = none

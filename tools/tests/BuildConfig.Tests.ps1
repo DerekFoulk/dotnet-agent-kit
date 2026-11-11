@@ -15,7 +15,7 @@ AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 Describe 'Repo build configuration' -Tag 'Build' {
     BeforeAll {
         $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
-        $configFiles = 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig', 'nuget.config', 'CodeMetricsConfig.txt'
+        $configFiles = 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig', 'nuget.config', '.globalconfig', 'CodeMetricsConfig.txt'
 
         function New-FixtureWorkspace {
             param([Parameter(Mandatory)] [string] $Fixture)

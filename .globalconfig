@@ -1,0 +1,16 @@
+is_global = true
+
+# Microsoft's code metric rules (CRF-008, ADR-0043). AnalysisLevel latest-all leaves them off, so each is turned on
+# here, and warnings fail the build (STY-004). CodeMetricsConfig.txt at the repo root sets their limits.
+#
+# They live in this file rather than .editorconfig because CA1509, which checks CodeMetricsConfig.txt itself, can only
+# be turned on in a global config:
+#   https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1509  retrieved 2026-11-10
+# A file named .globalconfig applies to every C# project under this folder without being referenced:
+#   https://learn.microsoft.com/dotnet/fundamentals/code-analysis/configuration-files#global-analyzerconfig  retrieved 2026-11-10
+
+# CA1502: Avoid excessive complexity
+dotnet_diagnostic.CA1502.severity = warning
+
+# CA1506: Avoid excessive class coupling
+dotnet_diagnostic.CA1506.severity = warning
