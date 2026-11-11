@@ -51,6 +51,10 @@ $script:KitTools = @(
 # Templates the app owns from the start: the sync job never changes them.
 $script:AppOwnedTemplates = @('README.md', 'App.slnx', 'docs/corrections-log.md', '.github/dependabot.yml')
 
+# The kit's block in such a file, from kit:begin to kit:end inclusive: the manifest hashes this text alone, and
+# the sync job replaces only it.
+$script:KitBlockPattern = '(?s)<!-- kit:begin.*?<!-- kit:end -->'
+
 # Templates the app owns except for the block between kit:begin and kit:end, which is the kit's.
 $script:KitBlockTemplates = @('AGENTS.md', 'THIRD-PARTY-NOTICES.md')
 
@@ -136,7 +140,7 @@ function Write-KitManifest {
     $files = foreach ($entry in $Map | Where-Object { $_.Owner -ne 'App' } | Sort-Object Target) {
         $path = Join-Path $Destination $entry.Target
         if ($entry.Owner -eq 'KitBlock') {
-            $block = [regex]::Match([IO.File]::ReadAllText($path), '(?s)<!-- kit:begin.*?<!-- kit:end -->')
+            $block = [regex]::Match([IO.File]::ReadAllText($path), $script:KitBlockPattern)
             if (-not $block.Success) { throw "$($entry.Target) has no kit:begin..kit:end block." }
             [ordered]@{ path = $entry.Target; block = 'kit'; sha256 = (Get-KitTextHash -Text $block.Value) }
         }

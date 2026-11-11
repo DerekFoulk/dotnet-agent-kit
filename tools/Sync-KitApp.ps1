@@ -21,9 +21,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Export-KitApp's text hash, loaded in a child scope so its parameters don't replace this script's. The manifest's
-# hashes must be computed exactly as the export computes them (ADR-0032).
-$script:TextHash = & { . (Join-Path $PSScriptRoot 'Export-KitApp.ps1'); ${function:Get-KitTextHash} }
+# Export-KitApp's text hash and kit block, loaded in a child scope so its parameters don't replace this script's.
+# The manifest's hashes must be computed exactly as the export computes them (ADR-0032).
+$script:TextHash, $script:BlockPattern = & {
+    . (Join-Path $PSScriptRoot 'Export-KitApp.ps1')
+    ${function:Get-KitTextHash}
+    $script:KitBlockPattern
+}
 
 # Exports the app at one kit commit with that commit's own Export-KitApp, so every file comes out as that version
 # makes it: templates rendered, .claude/settings.json made with that version's tools, rule files generated.
@@ -58,7 +62,47 @@ function Get-KitEntryText {
 
     $path = Join-Path $Root $Entry['path']
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
-    [IO.File]::ReadAllText($path)
+    $text = [IO.File]::ReadAllText($path)
+    if (-not $Entry.Contains('block')) { return $text }
+    $block = [regex]::Match($text, $script:BlockPattern)
+    if ($block.Success) { $block.Value } else { $null }
+}
+
+# Gives the app an entry as the release's export has it: the file byte for byte, or, in a file the app already
+# has, only the kit block.
+function Copy-KitEntry {
+    param(
+        [Parameter(Mandatory)] [string] $From,
+        [Parameter(Mandatory)] [string] $To,
+        [Parameter(Mandatory)] [Collections.IDictionary] $Entry
+    )
+
+    $target = Join-Path $To $Entry['path']
+    if ($Entry.Contains('block') -and (Test-Path -LiteralPath $target -PathType Leaf)) {
+        Set-KitEntryText -Root $To -Entry $Entry -Text (Get-KitEntryText -Root $From -Entry $Entry)
+        return
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+    Copy-Item -LiteralPath (Join-Path $From $Entry['path']) -Destination $target -Force
+}
+
+# Writes an entry's new text: the whole file, or only its kit block, in the line endings the file already has.
+function Set-KitEntryText {
+    param(
+        [Parameter(Mandatory)] [string] $Root,
+        [Parameter(Mandatory)] [Collections.IDictionary] $Entry,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text
+    )
+
+    $path = Join-Path $Root $Entry['path']
+    if ($Entry.Contains('block')) {
+        $file = [IO.File]::ReadAllText($path)
+        $block = [regex]::Match($file, $script:BlockPattern)
+        $lf = $Text -replace "`r`n", "`n"
+        $Text = $file.Substring(0, $block.Index) + ($file.Contains("`r`n") ? ($lf -replace "`n", "`r`n") : $lf) + $file.Substring($block.Index + $block.Length)
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path $path -Parent) | Out-Null
+    [IO.File]::WriteAllText($path, $Text, [Text.UTF8Encoding]::new($false))
 }
 
 # The commit a release tag (vX.Y.Z) in the kit repo points to. Only a tag counts: ADR-0031 trusts a kit pin only
@@ -125,8 +169,7 @@ function Sync-KitApp {
             $target = Join-Path $AppRoot $path
             $unedited = $old -and $null -ne $ours -and (& $script:TextHash -Text $ours) -eq $old['sha256']
             if (-not $old -and $null -eq $ours) {
-                New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-                Copy-Item -LiteralPath (Join-Path $newRoot $path) -Destination $target
+                Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs
                 [pscustomobject]@{ Path = $path; Action = 'Added' }
             }
             elseif ($unedited -and -not $theirs) {
@@ -134,7 +177,7 @@ function Sync-KitApp {
                 [pscustomobject]@{ Path = $path; Action = 'Removed' }
             }
             elseif ($unedited -and $old['sha256'] -ne $theirs['sha256']) {
-                Copy-Item -LiteralPath (Join-Path $newRoot $path) -Destination $target -Force
+                Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs
                 [pscustomobject]@{ Path = $path; Action = 'Updated' }
             }
         }
