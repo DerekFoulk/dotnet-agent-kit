@@ -55,7 +55,7 @@ function Get-DotnetSkillBlobId {
 }
 
 # How each curated skill's folder differs from the lock: a file changed, missing, or not upstream. Folders of skills
-# the lock doesn't name, such as the kit's own, aren't looked at.
+# the lock doesn't name, such as the kit's own, aren't looked at, and neither are files git ignores.
 function Get-DotnetSkillDrift {
     param(
         [Parameter(Mandatory)] [string] $SkillsRoot,
@@ -74,8 +74,13 @@ function Get-DotnetSkillDrift {
             $present = Get-ChildItem -LiteralPath $folder -Recurse -File -Force |
                 ForEach-Object { [IO.Path]::GetRelativePath($folder, $_.FullName) -replace '\\', '/' } |
                 Sort-Object -Culture ([cultureinfo]::InvariantCulture)
-            foreach ($file in $present) {
-                if (-not $listed.Contains($file)) { "$($skill['name'])/$file isn't in the upstream commit" }
+            $extra = @($present | Where-Object { -not $listed.Contains($_) })
+            # Files git ignores, such as .DS_Store or an editor's swap file, never reach a commit. Outside a git repo
+            # check-ignore fails and reports nothing, so every extra file counts. The paths go as arguments: piped,
+            # PowerShell on Windows would end each with CRLF, and git would read the CR as part of the name.
+            $ignored = if ($extra) { @(git -C $folder check-ignore -- @extra 2>$null) } else { @() }
+            foreach ($file in $extra) {
+                if ($file -notin $ignored) { "$($skill['name'])/$file isn't in the upstream commit" }
             }
         }
     }
