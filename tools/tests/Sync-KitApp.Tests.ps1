@@ -390,6 +390,18 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($expected -join "`n")
         }
 
+        # Review: added lines follow the file's own indentation, and the end tag keeps the group's.
+        It 'indents what it adds as the app''s kit group is indented' {
+            $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
+            $lines = '<Project>', "`t<ItemGroup Label=""dotnet-agent-kit"">", "`t`t<PackageVersion Include=""Kit.Earlier"" Version=""1.0.0"" /></ItemGroup>", '</Project>', ''
+            Set-FileText (Join-Path $appRoot 'Directory.Packages.props') ($lines -join "`n")
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            $expected = '<Project>', "`t<ItemGroup Label=""dotnet-agent-kit"">", "`t`t<PackageVersion Include=""Kit.Earlier"" Version=""1.0.0"" />", "`t`t$analyzer", "`t</ItemGroup>", '</Project>', ''
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($expected -join "`n")
+        }
+
         It 'adds to the app''s dotnet-agent-kit ItemGroup when it has one, in the file''s line endings' {
             $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
             $lines = '<Project>', '  <ItemGroup Label="dotnet-agent-kit">', '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
