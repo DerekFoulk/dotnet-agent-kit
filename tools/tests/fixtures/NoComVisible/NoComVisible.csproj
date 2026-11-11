@@ -4,7 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
-  <!-- A web app, where CA1017 fires (the web SDK gives the assembly a public type), without the kit's ComVisible(false). -->
+  <!-- CA1017 fires only when a public type sits in the global namespace, as the Program the web SDK generates does.
+       This web app removes the kit's ComVisible(false), so CA1017 must fire. -->
   <ItemGroup>
     <AssemblyAttribute Remove="System.Runtime.InteropServices.ComVisibleAttribute" />
   </ItemGroup>

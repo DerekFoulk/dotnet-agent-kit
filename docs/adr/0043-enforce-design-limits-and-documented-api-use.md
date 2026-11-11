@@ -17,11 +17,11 @@ What measurement on the kit showed (SDK 10.0.404):
 - **With those rules on, the sample broke three of them.** (Review 2 of PR 36 corrected the CA1017 count.)
   - CA1506: `ServiceDefaultsTests` coupled to 96 types, over the default of 95 per type, because it held three concerns (health, telemetry, resilience).
   - CA1014 (mark assemblies CLS-compliant): every project.
-  - CA1017 (mark assemblies with ComVisible): one project, `Bookmarks.Api`. It fires only in a web app, where the web SDK gives the assembly a public type.
+  - CA1017 (mark assemblies with ComVisible): one project, `Bookmarks.Api`. It fires only on an assembly with a public type in the global namespace (the analyzer's `AssemblyHasPublicTypes`); in the sample that's the `Program` the web SDK generates for `Bookmarks.Api`.
   - The highest member couplings were the API's top-level `Main` (36 types), test methods (up to 32), `ConfigureOpenTelemetry` (25), `MapDefaultEndpoints` (16) and `BookmarkService.AddAsync` (14). No method came near a cyclomatic complexity of 15.
 - **CA1502 doesn't count the arms of a switch expression.** A method whose `switch` expression has four arms reported nothing at a limit of 2, while an `if` chain did.
 - **CA1501 counts only base classes in the same module, and fires above the limit.** Microsoft's page says it fires at "five or more levels". Measured, the default limit of 5 fires at 6 levels: the last class in a chain of 7.
-- **Banning `BindingFlags.NonPublic` isn't enough.** `TypeInfo.DeclaredFields` and its siblings, `RuntimeReflectionExtensions.GetRuntimeFields` and its siblings, `Activator.CreateInstance(Type, bool)`, the `Expression` factories that look a member up by name, `Expression.New(Type)`, the `Delegate.CreateDelegate` overloads that bind a method by name, and `Assembly.GetTypes` and `DefinedTypes` all reach non-public members or types with no `BindingFlags`. Each was checked in PowerShell against a type with private members. These are the routes found so far, not a proof that no other exists.
+- **Banning `BindingFlags.NonPublic` isn't enough.** `TypeInfo.DeclaredFields` and its siblings, `RuntimeReflectionExtensions.GetRuntimeFields` and its siblings, `Activator.CreateInstance(Type, bool)`, the `Expression` factories that look a member up by name, `Expression.New(Type)`, the `Delegate.CreateDelegate` overloads that bind a method by name, and `Assembly.GetTypes`, `DefinedTypes`, `Module.GetTypes` and `FindTypes` all reach non-public members or types with no `BindingFlags`. Each was checked in PowerShell against a type with private members. These are the routes found so far, not a proof that no other exists.
 - **One known violation of CRF-010:** `ServiceDefaultsTests` read `TracerProvider`'s non-public `Processor` property by reflection.
 
 This ADR was decided in auto mode (ADR-0035), within the principles the owner set.
@@ -33,13 +33,13 @@ This ADR was decided in auto mode (ADR-0035), within the principles the owner se
 - **Metric limits.** Turn the rules on in a root `.globalconfig`, and set the limits in `CodeMetricsConfig.txt`. Warnings fail the build (STY-004). The limits file is an "additional file": a file a project hands to its analyzers along with its code, as Microsoft's CA1502 and CA1506 pages show.
   - **CA1502 at 15, the owner's limit.** Microsoft's cyclomatic complexity page quotes NIST 500-235: 10 is McCabe's original limit, and "limits as high as 15 have been used successfully as well". NIST reserves a limit over 10 for projects with several operational advantages over typical ones. Its examples are experienced staff, formal design, a modern language, structured programming, code walkthroughs and a comprehensive test plan, and it asks for a willingness to spend the extra testing effort. The kit has several of them:
     - formal design: plans with a checklist, and ADRs;
-    - a modern language, written in structured style: C#, with the metric rules themselves keeping methods small;
+    - a modern language, written in structured style: C#, with no `goto` in the kit's code, under Microsoft's full analyzer baseline (STY-003);
     - code walkthroughs: the reviewer agent on every PR, and the owner on the PRs his to merge (review mode, guardrails, releases);
     - a comprehensive test plan, with the extra effort spent: test-first, coverage gates and nightly mutation testing (TST-001, TST-004).
 
     Staff experience is something this ADR can't show.
   - **CA1501, CA1505 and CA1506 at Microsoft's defaults:** 5 levels, a maintainability index of 10, and 40 types per member and 95 per type. STY-003, the owner's rule, already says every analyzer rule is on, so turning them on at Microsoft's own limits adds no new choice. `CodeMetricsConfig.txt` writes the defaults out for methods and types; fields, properties and events keep CA1506's default of 40 without an entry.
-  - **Why not lower coupling limits.** Microsoft's class coupling page cites S2010's limit of 9 per member, but CA1506 counts framework types too: `Task`, `CancellationToken`, `string`. At 9, `BookmarkService.AddAsync` (14), `MapDefaultEndpoints` (16) and every test method would fail. A tighter number would be one the kit made up.
+  - **Why not lower coupling limits.** Microsoft's class coupling page cites S2010's upper limit of 9 classes that one class uses. But CA1506 counts framework types too: `Task`, `CancellationToken`, `string`. At 9 per type, nearly every class in the sample would fail (`BookmarkService` couples to 21 types, `EfBookmarkRepository` to 19), and so would most methods (`BookmarkService.AddAsync` 14, `MapDefaultEndpoints` 16). A tighter number would be one the kit made up.
 - **The other rules `latest-all` leaves off go on too**, each with a fixture: STY-003 asks for them.
   - CA1005, CA1021, CA1045, CA1060 and CA1516: the sample breaks none of them.
   - CA1017: `Directory.Build.props` gives every assembly `[assembly: ComVisible(false)]` through an `AssemblyAttribute` item, the documented MSBuild way to generate an assembly attribute (the WriteCodeFragment task). So no project needs a line of its own, and a type COM must see opts in with `[ComVisible(true)]`.
@@ -104,8 +104,8 @@ Option 1, decided in auto mode on 2026-11-10 under the owner's principles of 202
   - GAP-019: no tool checks nesting, statements per method, file length or LCOM4.
   - GAP-020: no tool finds duplicated code.
   - GAP-021: CA1014 is still off.
-  - Some cases slip past a check today: a long switch expression (CA1502), and routes into internals not on the list yet, such as a cast like `(BindingFlags)32`, `Type.GetType` with an internal type's name, `Type.GetInterfaceMap` or `Type.TypeInitializer` (the ban). The reviewer agent checks both. A follow-up PR adds them to its checklist, which is a guardrail, so the owner merges that one.
-- **Exceptions:** suppressing a metric or design rule for one member is a safety net under CRF-001 and carries its reason. Raising a limit needs an ADR (CRF-008), and so does turning a rule off for a whole project (STY-003). RS0030 is never suppressed without an ADR, even for one member (CRF-010).
+  - Some cases slip past a check today: a long switch expression (CA1502), and routes into internals not on the list yet (the ban). craft.md's "What the checks miss" keeps the list. The reviewer agent checks both. A follow-up PR adds them to its checklist, which is a guardrail, so the owner merges that one.
+- **Exceptions:** craft.md's "Exceptions" section says when a suppression needs an ADR (CRF-008, CRF-010, STY-003).
 - **Harder now:** a class that grows past 95 collaborators has to be split, and code that needs a library's internals has to find a documented way in. Both are intended.
 
 ## Pillars affected
@@ -126,6 +126,7 @@ Option 1, decided in auto mode on 2026-11-10 under the owner's principles of 202
 - https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1509, retrieved 2026-11-10
 - https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-files, retrieved 2026-11-10
 - https://learn.microsoft.com/en-us/visualstudio/msbuild/writecodefragment-task, retrieved 2026-11-10
+- https://github.com/dotnet/roslyn-analyzers/blob/main/src/NetAnalyzers/Core/Microsoft.CodeQuality.Analyzers/ApiDesignGuidelines/MarkAssembliesWithComVisible.cs (CA1017's `AssemblyHasPublicTypes`), retrieved 2026-11-10
 - C:\Program Files\dotnet\sdk\10.0.404\Sdks\Microsoft.NET.Sdk\analyzers\build\config\analysislevel_10_all.globalconfig (CA1516 set to none), read 2026-11-10
 - https://learn.microsoft.com/en-us/visualstudio/code-quality/code-metrics-cyclomatic-complexity, retrieved 2026-11-10
 - https://learn.microsoft.com/en-us/visualstudio/code-quality/code-metrics-class-coupling, retrieved 2026-11-10

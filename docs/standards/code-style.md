@@ -25,9 +25,9 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0009", "ADR-0043"]
-    enforcement: "build: AnalysisLevel latest-all, and the root .globalconfig for the rules latest-all leaves off, all but GAP-021's; tools/tests/BuildConfig.Tests.ps1 (the CatchAll fixture, and one fixture for each rule .globalconfig turns on)"
+    enforcement: "build: AnalysisLevel latest-all, and the root .globalconfig for the rules latest-all leaves off, all but GAP-021's; tools/tests/BuildConfig.Tests.ps1 (the CatchAll fixture, and fixtures that cover every rule .globalconfig turns on)"
     scope: core
-    paths: ["**/*.cs", "Directory.Build.props"]
+    paths: ["**/*.cs", "Directory.Build.props", ".globalconfig"]
   - id: STY-004
     statement: "Zero warnings: warnings are errors in every build."
     why: "A warning nobody must fix becomes noise that hides the next real one."

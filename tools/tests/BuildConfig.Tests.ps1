@@ -153,7 +153,8 @@ Describe 'BannedSymbols.txt' {
             $name = $Matches['name']
             if ($Matches['kind'] -eq 'T') { return $null -ne (Find-KitType $name) }
 
-            # Roslyn finds only members declared on the named type, so an inherited member mustn't count.
+            # Roslyn finds only members declared on the named type, so an inherited member mustn't count. Generic methods
+            # (`0) and ref or out parameters (@) aren't parsed; such an entry fails here until this function learns them.
             $declared = [Reflection.BindingFlags]'Public, NonPublic, Static, Instance, DeclaredOnly'
             $owner = Find-KitType ($name.Substring(0, $name.LastIndexOf('.')))
             $member = $name.Substring($name.LastIndexOf('.') + 1)

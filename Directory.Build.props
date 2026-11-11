@@ -9,14 +9,16 @@
     <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
   </PropertyGroup>
 
-  <!-- Analyzers: every rule on (latest-all), and code style (IDExxxx) enforced on command-line builds, not only in the IDE. -->
+  <!-- Analyzers: every rule on (latest-all, plus the root .globalconfig for the rules it leaves off), and code style (IDExxxx) enforced on command-line builds, not only in the IDE. -->
   <PropertyGroup>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
   <!-- Every assembly says COM can't see its types, which CA1017 asks for (STY-003, ADR-0043). A type that COM must
-       see says so itself with [ComVisible(true)]. -->
+       see says so itself with [ComVisible(true)]. A project that already declares an assembly-level ComVisible
+       (error CS0579, duplicate attribute) removes this one with
+       <AssemblyAttribute Remove="System.Runtime.InteropServices.ComVisibleAttribute" />. -->
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.InteropServices.ComVisibleAttribute">
       <_Parameter1>false</_Parameter1>
