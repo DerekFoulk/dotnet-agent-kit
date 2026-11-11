@@ -238,6 +238,11 @@ function Sync-KitApp {
             $ours = Get-KitEntryText -Root $AppRoot -Entry ($theirs ?? $old)
             $oursHash = if ($null -ne $ours) { & $script:TextHash -Text $ours }
             $action = Get-KitSyncAction -Old $old -Theirs $theirs -OursHash $oursHash -Generated (Test-KitGeneratedPath -Path $path)
+            # A workflow's own token can't push a change under .github/workflows, so the sync never makes one:
+            # Dependabot moves the kit pin there, and anything else is listed for a person (ADR-0042).
+            if ($path.StartsWith('.github/workflows/', [StringComparison]::Ordinal) -and $action -in 'Added', 'Updated', 'Removed', 'Regenerated', 'Merge') {
+                $action = 'WorkflowByHand'
+            }
             switch ($action) {
                 { $_ -in 'Added', 'Updated', 'Regenerated' } { Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs }
                 'Removed' { Remove-Item -LiteralPath (Join-Path $AppRoot $path) }
@@ -282,6 +287,7 @@ $script:Explanations = [ordered]@{
     KeptDeleted = 'This app had deleted it, so it stays deleted, though the kit changed it.', 'Restore it if the change matters here.'
     NowAppOwned = "The kit no longer manages it, but this app had edited it (or it's a kit block in this app's file), so it stays, as this app's own.", 'Keep it or delete it.'
     AppFileKept = 'The kit now has a file at this path, but this app already had its own, which stays.', "Rename the app's file and take the kit's, or keep the app's."
+    WorkflowByHand = "The kit changed this workflow beyond the pin Dependabot moves, and a workflow's own token can't change workflow files, so it's left as it is.", "Apply the kit's change on this branch: compare with templates/app/.github/workflows in the kit at this release, with this app's name for {{Name}}."
     Regenerated = "This app had edited a generated rule file, which is rebuilt from docs/standards, so the edit is gone.", "Put the change in an app-owned file, or propose it to the kit."
 }
 
