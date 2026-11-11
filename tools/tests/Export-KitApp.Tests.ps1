@@ -415,6 +415,23 @@ Describe 'Export-KitApp' {
         }
     }
 
+    # The curated skills from dotnet/skills reach an app like the kit's own (ADR-0042); the lock and the update
+    # script stay in the kit, which moves the pin, and the sync job brings the result to apps.
+    It 'gives the app the curated .NET skills unchanged, as kit-managed files, without the lock or the update script' {
+        . (Join-Path $checkout 'tools' 'Update-DotnetSkills.ps1')
+        $lock = Read-DotnetSkillLock -RepoRoot $checkout
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        $managed = @($manifest['files'] | ForEach-Object { $_['path'] })
+
+        @($lock['skills']).Count | Should -BeGreaterThan 0
+        @(Get-DotnetSkillDrift -SkillsRoot (Join-Path $app '.claude' 'skills') -Lock $lock) | Should -BeNullOrEmpty
+        foreach ($skill in $lock['skills']) {
+            foreach ($file in $skill['files'].Keys) { $managed | Should -Contain ".claude/skills/$($skill['name'])/$file" }
+        }
+        @(Get-ChildItem -LiteralPath $app -Recurse -File -Force | Where-Object { $_.Name -in 'dotnet-skills.json', 'Update-DotnetSkills.ps1' }) |
+            Should -BeNullOrEmpty
+    }
+
     It 'leaves out New-KitApp and the GitHub settings, which only the kit runs' {
         @($map | Where-Object { $_.Source -match 'New-KitApp|^templates/github/' }) | Should -BeNullOrEmpty
         Get-ChildItem -LiteralPath $app -Recurse -File -Filter 'New-KitApp*' | Should -BeNullOrEmpty
