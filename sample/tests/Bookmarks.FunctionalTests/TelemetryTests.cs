@@ -26,25 +26,26 @@ public sealed class TelemetryTests : IDisposable
     {
         _host.Services.GetService<TracerProvider>().Should().NotBeNull("traces are collected");
         _host.Services.GetService<MeterProvider>().Should().NotBeNull("metrics are collected");
-        _host.Services.GetServices<ILoggerProvider>().Select(provider => provider.GetType().Name)
-            .Should().Contain("OpenTelemetryLoggerProvider", "logs go through OpenTelemetry too");
+        _host.Services.GetServices<ILoggerProvider>().Should().ContainItemsAssignableTo<OpenTelemetryLoggerProvider>("logs go through OpenTelemetry too");
     }
 
     [Theory]
     [InlineData("http://127.0.0.1:9", true)]
-    [InlineData(null, false)]
-    public void TracesAreExportedOverOtlpOnlyWhenAnEndpointIsSet(string? endpoint, bool exported)
+    [InlineData("", false)]
+    public void TracesAreExportedOverOtlpOnlyWhenAnEndpointIsSet(string endpoint, bool exported)
     {
         // Review 1 of PR 21: traces leave the app only with OTEL_EXPORTER_OTLP_ENDPOINT set. The exporter sends them
         // through the named HttpClient "OtlpTraceExporter", which its README documents for this (v1.20.1, "Configure
         // HttpClient"), so a recording handler sees each export without a collector. If the app added the exporter
         // without an endpoint, its default (localhost:4318 over http/protobuf) would go through the same client.
+        // The empty endpoint counts as none, and overrides any endpoint the machine's environment sets (review 1 of
+        // PR 36), so the case doesn't depend on where the tests run.
         using RecordingHandler collector = new();
-        Dictionary<string, string> settings = new() { ["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf" };
-        if (endpoint is not null)
+        Dictionary<string, string> settings = new()
         {
-            settings["OTEL_EXPORTER_OTLP_ENDPOINT"] = endpoint;
-        }
+            ["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf",
+            ["OTEL_EXPORTER_OTLP_ENDPOINT"] = endpoint,
+        };
 
         // Metrics and logs go to the recorder too, through their own documented client names, so nothing reaches the
         // network.

@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
 
 namespace Bookmarks.FunctionalTests;
 
@@ -15,13 +16,13 @@ public sealed class ResilienceTests : IDisposable
         IHttpMessageHandlerFactory? factory = _host.Services.GetService<IHttpMessageHandlerFactory>();
         factory.Should().NotBeNull("the service defaults set up IHttpClientFactory with resilience");
         using HttpMessageHandler handler = factory!.CreateHandler("any-client");
-        List<string> chain = [];
+        List<HttpMessageHandler> chain = [];
         for (HttpMessageHandler? current = handler; current is not null; current = (current as DelegatingHandler)?.InnerHandler)
         {
-            chain.Add(current.GetType().Name);
+            chain.Add(current);
         }
 
-        chain.Should().Contain("ResilienceHandler");
+        chain.Should().ContainItemsAssignableTo<ResilienceHandler>();
     }
 
     [Fact]
