@@ -78,6 +78,15 @@ Describe 'Get-DotnetSkillDrift' {
         @(Get-DotnetSkillDrift -SkillsRoot $copy.Skills -Lock $copy.Lock) | Should -BeNullOrEmpty
     }
 
+    It 'skips an ignored file whose name isn''t ASCII' {
+        $copy = New-Copy
+        git -C $copy.Skills init -q
+        [IO.File]::WriteAllText((Join-Path $copy.Skills '.gitignore'), "*.swp`n")
+        [IO.File]::WriteAllText((Join-Path $copy.Skills 'tidy' "caf$([char]0xE9).md.swp"), "Editor.`n")
+
+        @(Get-DotnetSkillDrift -SkillsRoot $copy.Skills -Lock $copy.Lock) | Should -BeNullOrEmpty
+    }
+
     It 'leaves alone folders of skills the lock doesn''t name, such as the kit''s own' {
         $copy = New-Copy
         New-Item -ItemType Directory -Path (Join-Path $copy.Skills 'start-work') | Out-Null
