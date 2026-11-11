@@ -14,25 +14,26 @@ AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 
 BeforeDiscovery {
     # The fixtures that must fail the build, and the diagnostic each must fail with. The 'violations fail the build'
-    # tests run them, and the '.globalconfig' test checks that every rule .globalconfig turns on is among them.
+    # tests run them. GlobalConfig marks a rule that .globalconfig turns on, and the '.globalconfig' test checks that the
+    # marked rules are exactly the ones it turns on.
     $violations = @(
         @{ Fixture = 'UsesVar'; Diagnostic = 'IDE0008'; Description = 'var, because code style is enforced on build' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
         @{ Fixture = 'AwaitInLibrary'; Diagnostic = 'CA2007'; Description = 'an await without ConfigureAwait in a class library' }
-        @{ Fixture = 'TooComplex'; Diagnostic = 'CA1502'; Description = 'a method with a cyclomatic complexity of 16, over the limit of 15 (CRF-008)' }
-        @{ Fixture = 'TooCoupledMember'; Diagnostic = 'CA1506'; Description = 'a method coupled to 41 types, over the limit of 40 per member (CRF-008)' }
-        @{ Fixture = 'TooCoupledType'; Diagnostic = 'CA1506'; Description = 'a class coupled to 96 types, over the limit of 95 per type (CRF-008)' }
-        @{ Fixture = 'TooDeep'; Diagnostic = 'CA1501'; Description = 'a class 6 levels deep, over the limit of 5 (CRF-008)' }
-        @{ Fixture = 'Unmaintainable'; Diagnostic = 'CA1505'; Description = 'a method with a maintainability index of 7, under the limit of 10 (CRF-008)' }
-        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1005'; Description = 'a type with three type parameters, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1021'; Description = 'an out parameter outside the Try pattern, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1045'; Description = 'a ref parameter, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'PlatformIntrinsics'; Diagnostic = 'CA1516'; Description = 'an x86-only intrinsic where a cross-platform one exists, a rule latest-all sets to none (STY-003)' }
-        @{ Fixture = 'NoComVisible'; Diagnostic = 'CA1017'; Description = 'an assembly that doesn''t say whether COM sees it, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'PInvokeOutsideNativeMethods'; Diagnostic = 'CA1060'; Description = 'a P/Invoke outside a NativeMethods class, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'BadMetricsConfig'; Diagnostic = 'CA1509'; Description = 'a CodeMetricsConfig.txt entry the metric rules would ignore, so a typo can''t switch a limit off' }
+        @{ Fixture = 'TooComplex'; Diagnostic = 'CA1502'; Description = 'a method with a cyclomatic complexity of 16, over the limit of 15 (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'TooCoupledMember'; Diagnostic = 'CA1506'; Description = 'a method coupled to 41 types, over the limit of 40 per member (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'TooCoupledType'; Diagnostic = 'CA1506'; Description = 'a class coupled to 96 types, over the limit of 95 per type (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'TooDeep'; Diagnostic = 'CA1501'; Description = 'a class 6 levels deep, over the limit of 5 (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'Unmaintainable'; Diagnostic = 'CA1505'; Description = 'a method with a maintainability index of 7, under the limit of 10 (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1005'; Description = 'a type with three type parameters, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1021'; Description = 'an out parameter outside the Try pattern, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1045'; Description = 'a ref parameter, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'PlatformIntrinsics'; Diagnostic = 'CA1516'; Description = 'an x86-only intrinsic where a cross-platform one exists, a rule latest-all sets to none (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'NoComVisible'; Diagnostic = 'CA1017'; Description = 'an assembly that doesn''t say whether COM sees it, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'PInvokeOutsideNativeMethods'; Diagnostic = 'CA1060'; Description = 'a P/Invoke outside a NativeMethods class, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'BadMetricsConfig'; Diagnostic = 'CA1509'; Description = 'a CodeMetricsConfig.txt entry the metric rules would ignore, so a typo can''t switch a limit off'; GlobalConfig = $true }
         @{ Fixture = 'NonPublicReflection'; Diagnostic = 'RS0030'; Description = 'reading a non-public member by reflection (CRF-010)' }
         @{ Fixture = 'UnsafeAccessorUse'; Diagnostic = 'RS0030'; Description = 'reaching a non-public member through UnsafeAccessor (CRF-010)' }
         @{ Fixture = 'PrivateAccessor'; Diagnostic = 'RS0030'; Description = 'getting a property''s private setter with GetSetMethod(true) (CRF-010)' }
@@ -361,16 +362,15 @@ Describe '.globalconfig' {
     }
 
     # Any severity but none counts as on, so suggestion, silent and default ask for a fixture too, erring toward one;
-    # the table is the one the fixture builds run from, so a row that's
-    # commented out doesn't count.
-    It 'turns on only rules that have a failing fixture' -ForEach @(@{ Violations = $violations }) {
+    # the table is the one the fixture builds run from, so a row that's commented out doesn't count. Both ways, so a
+    # line the parser misread, or one taken out of .globalconfig, shows too (review 10 of PR 36).
+    It 'turns on exactly the rules whose failing fixtures are marked GlobalConfig' -ForEach @(@{ Violations = $violations }) {
         $root = Join-Path $PSScriptRoot '..' '..'
         $turnedOn = @(Get-EnabledRule -Line (Get-Content -LiteralPath (Join-Path $root '.globalconfig')))
-        $tested = @($Violations | ForEach-Object { $_.Diagnostic })
+        $marked = @($Violations | Where-Object { $_['GlobalConfig'] } | ForEach-Object { $_.Diagnostic } | Sort-Object -Unique)
 
-        $turnedOn.Count | Should -BeGreaterThan 0
-        foreach ($rule in $turnedOn) {
-            $tested | Should -Contain $rule -Because "$rule is on in .globalconfig, so a fixture should prove it fires"
-        }
+        $marked.Count | Should -BeGreaterThan 0
+        @($turnedOn | Where-Object { $_ -notin $marked }) | Should -BeNullOrEmpty -Because 'each rule on in .globalconfig needs a failing fixture marked GlobalConfig, to prove it fires'
+        @($marked | Where-Object { $_ -notin $turnedOn }) | Should -BeNullOrEmpty -Because 'each rule marked GlobalConfig should be on in .globalconfig'
     }
 }
