@@ -100,6 +100,11 @@ function Update-DotnetSkill {
         if ($gone) {
             throw "These skills aren't at $sha in ${RepositoryUrl}: $($gone -join ', '). Nothing was changed; remove them from $script:LockPath or pick another commit."
         }
+        # Plain files only: a symbolic link or a submodule could point outside the skill's folder.
+        $odd = @($plan | ForEach-Object { $skill = $_.Skill['name']; $_.Entries | Where-Object { $_.Type -ne 'blob' -or $_.Mode -notin '100644', '100755' } | ForEach-Object { "$skill/$($_.File)" } })
+        if ($odd) {
+            throw "These aren't plain files, which the kit doesn't copy: $($odd -join ', '). Nothing was changed."
+        }
 
         # git checks files out into a separate folder, which must exist first.
         $stage = Join-Path $work 'stage'
