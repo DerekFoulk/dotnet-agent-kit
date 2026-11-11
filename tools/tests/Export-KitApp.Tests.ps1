@@ -100,7 +100,8 @@ Describe 'Export-KitApp' {
         $lock = Get-Content -Raw (Join-Path $checkout 'tools' 'dotnet-skills.json') | ConvertFrom-Json -AsHashtable
         $curated = @($lock['skills'] | ForEach-Object { (Join-Path $app '.claude' 'skills' $_['name']) + [IO.Path]::DirectorySeparatorChar })
         $curated.Count | Should -BeGreaterThan 0
-        $leftovers = Get-ChildItem -LiteralPath $app -Recurse -File |
+        # -Force: on Linux, folders such as .github and .claude count as hidden.
+        $leftovers = Get-ChildItem -LiteralPath $app -Recurse -File -Force |
             Where-Object { $path = $_.FullName; -not ($curated | Where-Object { $path.StartsWith($_, [StringComparison]::Ordinal) }) } |
             Select-String -Pattern '\{\{[A-Za-z]+\}\}'
         @($leftovers | ForEach-Object { "$($_.Path):$($_.LineNumber)" }) | Should -BeNullOrEmpty
