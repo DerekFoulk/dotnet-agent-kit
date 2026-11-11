@@ -192,6 +192,17 @@ Describe 'Test-Runbook.ps1' {
             Get-RunbookField -Lines (Get-Content -LiteralPath $template) -Name 'Status' | Should -Be 'Draft'
             Get-Content -Raw -LiteralPath $template | Should -Match $script:PlaceholderPattern
         }
+
+        # Review 2: the template's own guidance named the placeholder form, so a filled-in runbook still failed.
+        It 'passes once an app fills in every step and sets it In use' {
+            $template = [IO.File]::ReadAllText((Join-Path $PSScriptRoot '..' '..' 'templates' 'app' 'docs' 'runbook.md')) -replace "`r`n", "`n"
+            $firstSection = $template.IndexOf("`n## ")
+            $header = $template.Substring(0, $firstSection) -replace '(?m)^- \*\*Status:\*\* .*$', '- **Status:** In use' -replace '(?m)^- \*\*Last reviewed:\*\* .*$', '- **Last reviewed:** 2026-11-11'
+            $steps = [regex]::Replace($template.Substring($firstSection), $script:PlaceholderPattern, 'the app''s own step')
+            Set-Content -Path $script:runbook -Value ($header + $steps)
+
+            Get-Message | Should -BeNullOrEmpty
+        }
     }
 
     Context 'runner' {
