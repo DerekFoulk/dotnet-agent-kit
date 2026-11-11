@@ -365,6 +365,18 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly (($Expected -join "`n") -f $analyzer)
         }
 
+        # Review: XML counts a lone CR as a line break, so the offsets must too, or the package lands mid-tag.
+        It 'adds to the kit group when a lone CR comes before it' {
+            $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
+            $head = "<Project>`r`n  <!-- a`rb -->`r`n  <ItemGroup Label=""dotnet-agent-kit"">`r`n    <PackageVersion Include=""Kit.Earlier"" Version=""1.0.0"" />`r`n"
+            $tail = "  </ItemGroup>`r`n</Project>`r`n"
+            Set-FileText (Join-Path $appRoot 'Directory.Packages.props') ($head + $tail)
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($head + "    $analyzer`r`n" + $tail)
+        }
+
         It 'adds to the app''s dotnet-agent-kit ItemGroup when it has one, in the file''s line endings' {
             $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
             $lines = '<Project>', '  <ItemGroup Label="dotnet-agent-kit">', '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
