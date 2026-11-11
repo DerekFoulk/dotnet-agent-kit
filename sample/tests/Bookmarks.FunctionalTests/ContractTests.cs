@@ -60,6 +60,35 @@ public sealed class ContractTests : IDisposable
     }
 
     [Fact]
+    public async Task TheDocumentSaysEveryOperationNeedsABearerTokenAndMayAnswer401Or403()
+    {
+        // SEC-007 and SEC-008: every documented operation needs a signed-in user, so a client generated from the
+        // document must know to send a bearer token, and what it gets without a valid one.
+        JsonNode document = JsonNode.Parse(await _host.Client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken))!;
+
+        JsonNode? scheme = document["components"]?["securitySchemes"]?["Bearer"];
+        scheme.Should().NotBeNull("the document declares the bearer scheme");
+        scheme!["type"]!.GetValue<string>().Should().Be("http");
+        scheme["scheme"]!.GetValue<string>().Should().Be("bearer");
+
+        List<string> unprotected = [];
+        foreach (KeyValuePair<string, JsonNode?> path in document["paths"]!.AsObject())
+        {
+            foreach (KeyValuePair<string, JsonNode?> operation in path.Value!.AsObject().Where(entry => s_methods.Contains(entry.Key)))
+            {
+                JsonNode responses = operation.Value!["responses"]!;
+                bool requiresBearer = operation.Value["security"]?.AsArray().Any(requirement => requirement!.AsObject().ContainsKey("Bearer")) ?? false;
+                if (!requiresBearer || responses["401"] is null || responses["403"] is null)
+                {
+                    unprotected.Add($"{operation.Key} {path.Key}");
+                }
+            }
+        }
+
+        unprotected.Should().BeEmpty("every operation needs a bearer token, and says it may answer 401 or 403");
+    }
+
+    [Fact]
     public async Task TheOpenApiDocumentIsNotServedInProduction()
     {
         // API-003: the document maps the whole API, so outside Development it isn't published.
