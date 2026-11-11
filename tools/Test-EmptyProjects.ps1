@@ -37,11 +37,16 @@ function Get-EmptyProjectProblem {
     foreach ($project in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $relative = $project.GetAttribute('Path')
         $projectFolder = Split-Path -Parent (Join-Path $solutionFolder $relative)
-        $sources = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File -Filter '*.cs' |
-            Where-Object { [IO.Path]::GetRelativePath($projectFolder, $_.FullName).Split([IO.Path]::DirectorySeparatorChar)[0] -notin $script:BuildFolders } |
-            Where-Object { -not (Test-PlaceholderFile -File $_) })
-        if (-not $sources) {
+        $files = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File -Filter '*.cs' |
+            Where-Object { [IO.Path]::GetRelativePath($projectFolder, $_.FullName).Split([IO.Path]::DirectorySeparatorChar)[0] -notin $script:BuildFolders })
+        $placeholders = @($files | Where-Object { Test-PlaceholderFile -File $_ })
+        if ($files.Count -eq $placeholders.Count) {
             New-Problem -Message "$relative has no source files of its own"
+            continue
+        }
+        foreach ($placeholder in $placeholders) {
+            $path = [IO.Path]::GetRelativePath($solutionFolder, $placeholder.FullName).Replace('\', '/')
+            New-Problem -Message "$path is the class library template's empty placeholder"
         }
     }
 }
