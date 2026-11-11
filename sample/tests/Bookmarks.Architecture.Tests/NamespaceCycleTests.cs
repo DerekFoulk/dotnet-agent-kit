@@ -28,6 +28,11 @@ public sealed class NamespaceCycleTests
             .Should().BeFalse("RootEnd, in the root namespace itself, and ChildEnd depend on each other");
 
     [Fact]
+    public void TheRuleAcceptsARootWhoseOnlyTypesSitInTheRootItself() =>
+        NamespaceCycles.Rule("Bookmarks.Architecture.Tests.RootOnly").HasNoViolations(s_fixtures)
+            .Should().BeTrue("the root's own types are checked, so the guard counts them (review 2 of PR 36)");
+
+    [Fact]
     public void TheRuleFailsWhenNoNamespaceSitsUnderTheRoot()
     {
         // A mistyped root would otherwise check nothing and pass.
