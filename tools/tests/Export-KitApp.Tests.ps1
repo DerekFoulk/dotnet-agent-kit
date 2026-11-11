@@ -405,9 +405,23 @@ Describe 'Export-KitApp' {
         $targets = @($map | ForEach-Object { $_.Target })
 
         foreach ($path in '.editorconfig', 'global.json', 'nuget.config', 'Directory.Build.props', 'tests/Directory.Build.props',
+            '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt',
             'THIRD-PARTY-NOTICES.md', 'CLAUDE.md', '.mcp.json', '.claude/settings.json', '.claude/agents/reviewer.md',
             '.claude/skills/tdd-cycle/SKILL.md', 'docs/standards/git.md', '.githooks/commit-msg', '.githooks/commit-msg.ps1',
             '.github/pull_request_template.md', 'docs/adr/0000-template.md', '.kit/tools/Test-ConventionalTitle.ps1') {
+            $targets | Should -Contain $path
+        }
+    }
+
+    # ADR-0043: Directory.Build.props points every project at files beside it (CodeMetricsConfig.txt,
+    # BannedSymbols.txt); an app without one of them would build without the check it feeds.
+    It 'includes every file the kit''s Directory.Build.props points to' {
+        $props = Get-Content -Raw -LiteralPath (Join-Path $checkout 'Directory.Build.props')
+        $referenced = @([regex]::Matches($props, '\$\(MSBuildThisFileDirectory\)([^"]+)') | ForEach-Object { $_.Groups[1].Value })
+        $targets = @($map | ForEach-Object { $_.Target })
+
+        $referenced | Should -Not -BeNullOrEmpty
+        foreach ($path in $referenced) {
             $targets | Should -Contain $path
         }
     }
