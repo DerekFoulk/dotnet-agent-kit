@@ -133,6 +133,19 @@ public sealed class BookmarksApiTests : IDisposable
     }
 
     [Fact]
+    public async Task AUrlPastTheLimitIsRefusedWithTheLimitInTheMessage()
+    {
+        // Mutation testing on PR for GAP-006: an empty UriLength message survived, so this pins what the client reads.
+        CreateBookmarkRequest request = new(new Uri(LongUrl(Bookmark.MaxUrlLength + 1)), "A");
+
+        using HttpResponseMessage response = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
+
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        string message = problem.GetProperty("errors").EnumerateObject().Single().Value[0].GetString()!;
+        message.Should().Contain("at most 2048 characters");
+    }
+
+    [Fact]
     public async Task ATitleAndAUrlAtTheirLongestAreSaved()
     {
         // SEC-010: the contract's limits are the domain's (Bookmark.MaxTitleLength and MaxUrlLength), checked here at
