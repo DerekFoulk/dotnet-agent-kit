@@ -91,7 +91,7 @@ Describe 'Add' {
     }
 
     It 'reports every mutant as an error with Pester''s reason when the test path is a folder with no test files' {
-        # Invoke-Pester throws here, and says why on stdout rather than stderr.
+        # Invoke-Pester doesn't throw here: it prints why on stdout and returns nothing.
         $fixture = New-Fixture
         $empty = Join-Path $TestDrive "empty-$(New-Guid)"
         New-Item -ItemType Directory -Path $empty | Out-Null
@@ -173,29 +173,35 @@ Describe 'Add' {
     }
 
     It 'reports a mutant as an error when, with it in place, <Case>' -ForEach @(
-        @{ Case = 'no tests run'; Message = 'No tests ran with the mutant in place'; Tests = @'
+        @{ Case = 'no tests run'; Message = 'No tests ran with the mutant in place.*mutant broke'; Tests = @'
 if ((Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Add.ps1') -Raw).Contains('+')) {
     Describe 'Add' {
         BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
         It 'adds' { Add 1 2 | Should -Be 3 }
     }
 }
+else { [Console]::Error.WriteLine('mutant broke') }
 '@ }
-        @{ Case = 'Pester returns no result'; Message = 'returned no result with the mutant in place'; Tests = @'
-if (-not (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Add.ps1') -Raw).Contains('+')) { [Environment]::Exit(3) }
+        @{ Case = 'Pester returns no result'; Message = 'returned no result with the mutant in place.*mutant broke'; Tests = @'
+if (-not (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Add.ps1') -Raw).Contains('+')) {
+    [Console]::Error.WriteLine('mutant broke')
+    [Environment]::Exit(3)
+}
 Describe 'Add' {
     BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
     It 'adds' { Add 1 2 | Should -Be 3 }
 }
 '@ }
     ) {
-        # The baseline passes, so only the mutant's own run can say nothing was tested.
+        # The baseline passes, so only the mutant's own run can say nothing was tested. The fixture prints only
+        # then, so the message must carry the mutant run's own output.
         $fixture = New-Fixture -Tests $Tests
 
         $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
 
         $result.Result | Should -Be 'Error'
         $result.Message | Should -Match $Message
+        $result.Message | Should -Not -Match 'Invoke-Mutant result' -Because 'the result line is data, not something the tests printed'
     }
 
     It 'runs the tests on the unchanged file once, however many mutants there are' {
