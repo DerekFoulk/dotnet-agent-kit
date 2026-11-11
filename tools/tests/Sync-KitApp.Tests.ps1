@@ -402,6 +402,18 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($expected -join "`n")
         }
 
+        # Review: a new group starts on a line of its own, even when </Project> follows other text on its line.
+        It 'starts a new group on a line of its own when the Project end tag isn''t first on its line' {
+            $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
+            $head = '<Project><ItemGroup><PackageVersion Include="Kit.Earlier" Version="1.0.0" /></ItemGroup>'
+            Set-FileText (Join-Path $appRoot 'Directory.Packages.props') "$head</Project>`n"
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            $expected = $head, "  <!-- Added by the kit sync: packages the kit's files need (kit ADR-0044). -->", '  <ItemGroup Label="dotnet-agent-kit">', "    $analyzer", '  </ItemGroup>', '', '</Project>', ''
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($expected -join "`n")
+        }
+
         It 'adds to the app''s dotnet-agent-kit ItemGroup when it has one, in the file''s line endings' {
             $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
             $lines = '<Project>', '  <ItemGroup Label="dotnet-agent-kit">', '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
