@@ -119,8 +119,14 @@ function Update-DotnetSkill {
         # Every file of every listed skill at the commit, before anything changes.
         $plan = foreach ($skill in $lock['skills']) {
             $source = $skill['source'].TrimEnd('/')
-            # -z: paths unquoted, each entry ending in NUL. By default git would quote a non-ASCII path.
-            $listing = (git -C $work ls-tree -r -z --full-tree $sha -- "$source/") -join "`n"
+            # -z: paths unquoted, as UTF-8, each entry ending in NUL. By default git would quote a non-ASCII path.
+            # PowerShell decodes git's output with the console's encoding, which may be a legacy code page.
+            $saved = [Console]::OutputEncoding
+            try {
+                [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+                $listing = (git -C $work ls-tree -r -z --full-tree $sha -- "$source/") -join "`n"
+            }
+            finally { [Console]::OutputEncoding = $saved }
             $entries = @($listing -split "`0" | Where-Object { $_ } | ForEach-Object {
                     $info, $path = $_ -split "`t", 2
                     $mode, $type, $id = $info -split ' '
