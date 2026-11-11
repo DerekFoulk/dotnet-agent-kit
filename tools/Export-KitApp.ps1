@@ -30,6 +30,7 @@ $ErrorActionPreference = 'Stop'
 # Kit files an app gets unchanged. A trailing slash means every file under that folder.
 $script:KitCopies = @(
     '.editorconfig', '.gitattributes', '.gitignore', 'global.json', 'nuget.config', 'Directory.Build.props',
+    '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt',
     'CLAUDE.md', '.mcp.json', '.vscode/mcp.json', '.vscode/settings.json',
     '.claude/agents/reviewer.md', '.claude/skills/', 'docs/standards/', '.githooks/',
     '.github/pull_request_template.md', 'docs/adr/0000-template.md'
