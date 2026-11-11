@@ -153,6 +153,22 @@ Describe 'Update-DotnetSkill' {
         Get-Content -Raw -LiteralPath (Join-Path $kit '.claude/skills/tidy/SKILL.md') | Should -Be "---`nname: tidy`n---`nTwo.`n"
     }
 
+    It 'copies and records a file whose name isn''t ASCII under that name' {
+        $name = "caf$([char]0xE9).md"
+        git -C $upstream switch -q -c accented $second
+        Write-Text (Join-Path $upstream "plugins/p/skills/tidy/references/$name") "Accented.`n"
+        git -C $upstream add -A
+        git -C $upstream commit -q -m 'accented'
+        $accented = (git -C $upstream rev-parse HEAD).Trim()
+        git -C $upstream switch -q main
+        $kit = New-Kit
+
+        Update-DotnetSkill -RepoRoot $kit -Commit $accented -RepositoryUrl $upstream -Retrieved '2026-11-10'
+
+        @((Read-Lock $kit)['skills'][0]['files'].Keys) | Should -Contain "references/$name"
+        Get-Content -Raw -LiteralPath (Join-Path $kit ".claude/skills/tidy/references/$name") | Should -Be "Accented.`n"
+    }
+
     It 'leaves the kit''s own skills and skills the lock doesn''t list alone' {
         $kit = New-Kit
 
