@@ -279,4 +279,18 @@ Describe 'the kit''s curated skills' {
         $text | Should -Match $lock['commit']
         $text | Should -Match $lock['retrieved']
     }
+
+    # Apps get the notices (in their kit block) but not the lock, so the notice names each folder itself.
+    It 'carry dotnet/skills'' MIT notice, naming each skill''s folder and the pinned commit' {
+        $text = Get-Content -Raw -LiteralPath (Join-Path $root 'THIRD-PARTY-NOTICES.md')
+        $row = @($text -split '\r?\n' | Where-Object { $_ -match '^\|.*github\.com/dotnet/skills/' })
+
+        $row.Count | Should -Be 1 -Because 'one row in the notices table covers the curated skills'
+        $row[0] | Should -Match ([regex]::Escape("https://github.com/dotnet/skills/tree/$($lock['commit'])"))
+        $row[0] | Should -Match 'MIT, Copyright \(c\) \.NET Foundation and Contributors'
+        foreach ($skill in $lock['skills']) {
+            $row[0] | Should -Match ([regex]::Escape("``.claude/skills/$($skill['name'])/``"))
+        }
+        $text | Should -Match '(?m)^## .*dotnet/skills'
+    }
 }
