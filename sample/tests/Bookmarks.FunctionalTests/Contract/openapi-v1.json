@@ -295,6 +295,7 @@
         "type": "object",
         "properties": {
           "url": {
+            "maxLength": 2048,
             "type": "string",
             "format": "uri"
           },
