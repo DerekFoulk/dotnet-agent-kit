@@ -377,6 +377,19 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($head + "    $analyzer`r`n" + $tail)
         }
 
+        # Review: a kit group under <Choose>/<When> or <Target> may never apply, so only one directly under <Project> counts.
+        It 'adds a new group when the app''s only kit group isn''t directly under Project' {
+            $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
+            $lines = '<Project>', '  <Choose>', "    <When Condition=""'`$(Ci)' == 'true'"">", '      <ItemGroup Label="dotnet-agent-kit">', '        <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '      </ItemGroup>', '    </When>', '  </Choose>', '', '</Project>', ''
+            Set-FileText (Join-Path $appRoot 'Directory.Packages.props') ($lines -join "`n")
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            $group = "  <!-- Added by the kit sync: packages the kit's files need (kit ADR-0044). -->", '  <ItemGroup Label="dotnet-agent-kit">', "    $analyzer", '  </ItemGroup>', ''
+            $expected = $lines[0..8] + $group + $lines[9..10]
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($expected -join "`n")
+        }
+
         It 'adds to the app''s dotnet-agent-kit ItemGroup when it has one, in the file''s line endings' {
             $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
             $lines = '<Project>', '  <ItemGroup Label="dotnet-agent-kit">', '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
