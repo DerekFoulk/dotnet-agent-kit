@@ -63,10 +63,11 @@ Describe 'Repo build configuration' -Tag 'Build' {
             }
             Copy-Item -Path (Join-Path $PSScriptRoot 'fixtures' $Fixture '*') -Destination $workspace -Recurse
 
-            git -C $workspace init --quiet --initial-branch main
-            git -C $workspace -c core.autocrlf=false add --all
-            git -C $workspace commit --quiet --message fixture
-            git -C $workspace tag v1.2.3
+            # git's output goes nowhere, so the function returns only the path.
+            git -C $workspace init --quiet --initial-branch main | Out-Null
+            git -C $workspace -c core.autocrlf=false add --all | Out-Null
+            git -C $workspace commit --quiet --message fixture | Out-Null
+            git -C $workspace tag v1.2.3 | Out-Null
             $workspace
         }
 
