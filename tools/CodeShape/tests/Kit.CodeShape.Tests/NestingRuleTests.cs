@@ -36,7 +36,7 @@ public sealed class NestingRuleTests
         {
             Path = "Deep.cs",
             Line = 15,
-            Column = 25,
+            Column = 29,
             Message = "Run nests 5 levels deep; the limit is 4 (CRF-008).",
         });
     }
