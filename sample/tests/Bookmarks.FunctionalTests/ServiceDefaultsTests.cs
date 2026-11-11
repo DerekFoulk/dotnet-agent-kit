@@ -1,6 +1,6 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
-using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Routing;
@@ -10,6 +10,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.AspNetCore;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 
 namespace Bookmarks.FunctionalTests;
 
@@ -19,6 +21,9 @@ namespace Bookmarks.FunctionalTests;
 /// </summary>
 public sealed class ServiceDefaultsTests : IDisposable
 {
+    // The HttpClient names the OTLP exporter documents for its trace, metric and log exporters.
+    private static readonly string[] s_otlpClients = ["OtlpTraceExporter", "OtlpMetricExporter", "OtlpLogExporter"];
+
     private readonly ApiHost _host = new();
 
     [Fact]
@@ -66,7 +71,7 @@ public sealed class ServiceDefaultsTests : IDisposable
         // database on every call needs a request timeout and a short output cache.
         Endpoint endpoint = _host.Services.GetRequiredService<EndpointDataSource>().Endpoints
             .Single(candidate => (candidate as RouteEndpoint)?.RoutePattern.RawText == path);
-        endpoint.Metadata.Select(metadata => metadata.GetType().Name).Should().Contain(name => name.Contains("RequestTimeout", StringComparison.Ordinal));
+        endpoint.Metadata.GetMetadata<RequestTimeoutAttribute>()?.PolicyName.Should().Be("HealthChecks");
 
         using HttpResponseMessage first = await _host.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
         using HttpResponseMessage second = await _host.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
@@ -108,29 +113,57 @@ public sealed class ServiceDefaultsTests : IDisposable
     [Fact]
     public void OpenTelemetryCollectsTracesMetricsAndLogs()
     {
-        // By type name, so the test doesn't depend on the OpenTelemetry packages itself (OPS-001).
-        Type? tracerProvider = Type.GetType("OpenTelemetry.Trace.TracerProvider, OpenTelemetry.Api");
-        Type? meterProvider = Type.GetType("OpenTelemetry.Metrics.MeterProvider, OpenTelemetry.Api");
-
-        tracerProvider.Should().NotBeNull("the app should reference OpenTelemetry");
-        _host.Services.GetService(tracerProvider!).Should().NotBeNull("traces are collected");
-        _host.Services.GetService(meterProvider!).Should().NotBeNull("metrics are collected");
+        _host.Services.GetService<TracerProvider>().Should().NotBeNull("traces are collected");
+        _host.Services.GetService<MeterProvider>().Should().NotBeNull("metrics are collected");
         _host.Services.GetServices<ILoggerProvider>().Select(provider => provider.GetType().Name)
             .Should().Contain("OpenTelemetryLoggerProvider", "logs go through OpenTelemetry too");
     }
 
-    [Fact]
-    public async Task TracesAreExportedOverOtlpOnlyWhenAnEndpointIsSet()
+    [Theory]
+    [InlineData("http://127.0.0.1:9", true)]
+    [InlineData(null, false)]
+    public async Task TracesAreExportedOverOtlpOnlyWhenAnEndpointIsSet(string? endpoint, bool exported)
     {
-        // Review 1 of PR 21: the tracer provider gets an export processor only with OTEL_EXPORTER_OTLP_ENDPOINT set.
-        // Its Processor property isn't public, so it's read by reflection; nothing listens on the endpoint here.
-        using ApiHost exporting = new(settings: new Dictionary<string, string> { ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4317" });
+        // Review 1 of PR 21: traces leave the app only with OTEL_EXPORTER_OTLP_ENDPOINT set. The exporter sends them
+        // through the named HttpClient "OtlpTraceExporter", which its README documents for this (v1.20.1, "Configure
+        // HttpClient"), so a recording handler sees each export without a collector. Without an endpoint, the
+        // exporter's default (localhost:4318 over http/protobuf) would go through the same client if it existed.
+        using RecordingHandler collector = new();
+        Dictionary<string, string> settings = new() { ["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf" };
+        if (endpoint is not null)
+        {
+            settings["OTEL_EXPORTER_OTLP_ENDPOINT"] = endpoint;
+        }
 
-        using HttpResponseMessage response = await exporting.Client.GetAsync(new Uri("/alive", UriKind.Relative), TestContext.Current.CancellationToken);
+        // Metrics and logs go to the recorder too, through their own documented client names, so nothing reaches the
+        // network.
+        using ApiHost host = new(settings: settings, services: services =>
+        {
+            foreach (string client in s_otlpClients)
+            {
+                services.AddHttpClient(client).ConfigurePrimaryHttpMessageHandler(() => collector);
+            }
+        });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        TraceProcessor(exporting).Should().Contain("Export", "an OTLP endpoint is set");
-        TraceProcessor(_host).Should().BeNull("no OTLP endpoint is set");
+        // A span from the app's own source, which the service defaults trace, ended before the flush, so the flush
+        // has a finished span to export whatever the timing of the host.
+        TracerProvider tracing = host.Services.GetRequiredService<TracerProvider>();
+        using (ActivitySource source = new(host.Services.GetRequiredService<IHostEnvironment>().ApplicationName))
+        using (Activity? span = source.StartActivity("work"))
+        {
+            span.Should().NotBeNull("the app's own source is traced");
+        }
+
+        tracing.ForceFlush(10_000).Should().BeTrue();
+
+        if (exported)
+        {
+            collector.Paths.Should().Contain("/v1/traces", "an OTLP endpoint is set");
+        }
+        else
+        {
+            collector.Paths.Should().BeEmpty("no OTLP endpoint is set");
+        }
     }
 
     [Theory]
@@ -195,13 +228,6 @@ public sealed class ServiceDefaultsTests : IDisposable
             .Should().Throw<ArgumentNullException>().WithParameterName("app");
     }
 
-    private static string? TraceProcessor(ApiHost host)
-    {
-        object? provider = host.Services.GetService(Type.GetType("OpenTelemetry.Trace.TracerProvider, OpenTelemetry.Api")!);
-        object? processor = provider?.GetType().GetProperty("Processor", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(provider);
-        return processor?.GetType().Name;
-    }
-
     [Fact]
     public void EveryHttpClientGetsTheStandardResilienceHandler()
     {
@@ -231,6 +257,27 @@ public sealed class ServiceDefaultsTests : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         server.Calls.Should().Be(1, "a POST isn't safe to repeat");
+    }
+
+    /// <summary>
+    /// An OTLP collector that answers 200 and records the path of each export it gets. The exporter sends
+    /// synchronously, so the handler overrides Send as well as SendAsync, as the exporter's HttpClientFactory
+    /// documentation asks of custom handlers.
+    /// </summary>
+    private sealed class RecordingHandler : HttpMessageHandler
+    {
+        private readonly ConcurrentQueue<string> _paths = new();
+
+        public IReadOnlyCollection<string> Paths => _paths;
+
+        protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            _paths.Enqueue(request.RequestUri!.AbsolutePath);
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(Send(request, cancellationToken));
     }
 
     /// <summary>A server that always answers 503, counting the calls it gets.</summary>
