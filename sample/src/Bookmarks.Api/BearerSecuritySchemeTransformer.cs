@@ -6,7 +6,8 @@ namespace Bookmarks.Api;
 
 /// <summary>
 /// Tells the OpenAPI document's readers that every operation needs a bearer token (SEC-007, SEC-008), after
-/// Microsoft's "Use document transformers" sample (learn.microsoft.com/aspnet/core/fundamentals/openapi/customize-openapi).
+/// Microsoft's "Use document transformers" sample (learn.microsoft.com/aspnet/core/fundamentals/openapi/customize-openapi,
+/// MIT; see THIRD-PARTY-NOTICES.md).
 /// Every operation the document lists needs one: the only anonymous endpoints, health and the document itself, aren't
 /// in it. A documented anonymous endpoint would need an operation transformer that skips it, as that page shows.
 /// </summary>
