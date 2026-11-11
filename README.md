@@ -56,7 +56,7 @@ The exit code is 0 when every required tool is ready and 1 otherwise, so agents 
 
 - **`docs/standards/`**: one file per topic. Each rule sits in the file's YAML front matter with its `id`, `statement`, `why`, `layer` (floor, owner or outside), `status` (proposed, accepted or retired), `sources` and `enforcement`. A `proposed` rule isn't in force until the owner accepts it.
 - **`docs/adr/`**: Architecture Decision Records. ADR numbers match the brief's decision numbers (D8 is ADR-0008). New ones start from `docs/adr/0000-template.md`.
-- **`docs/quality/scorecard.md`**: the quality scorecard. It says what a "perfect" .NET app looks like in 14 areas (architecture, tests, security, API design and the rest), which rules cover each area, how many of them a tool checks, and the open gaps, each with an id a later PR can close (ADR-0034).
+- **`docs/quality/scorecard.md`**: the quality scorecard. It says what a "perfect" .NET app looks like in 15 areas (architecture, tests, security, API design and the rest), which rules cover each area, how many of them a tool checks, and the open gaps, each with an id a later PR can close (ADR-0034).
 - **`docs/sources.md`** lists practitioner sources. **`docs/corrections-log.md`** records owner corrections and what each became.
 
 Three checks keep these honest. Each exits 0 when clean and 1 otherwise:

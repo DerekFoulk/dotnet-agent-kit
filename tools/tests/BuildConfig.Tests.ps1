@@ -172,3 +172,30 @@ Describe 'BannedSymbols.txt' {
         }
     }
 }
+
+# CodeMetricsConfig.txt is the one source of the metric limits; CRF-008 states them for readers, so the two must agree
+# (CRF-003, review 1 of PR 36).
+Describe 'CodeMetricsConfig.txt' {
+    It 'sets exactly the limits CRF-008 states' {
+        $root = Join-Path $PSScriptRoot '..' '..'
+        $statement = (Select-String -LiteralPath (Join-Path $root 'docs' 'standards' 'craft.md') -Pattern '^\s*statement: "Stay within the metric limits:.*').Line
+        $config = @{}
+        foreach ($line in Get-Content -LiteralPath (Join-Path $root 'CodeMetricsConfig.txt')) {
+            if ($line -match '^\s*(?<key>CA\d{4}(\(\w+\))?)\s*:\s*(?<limit>\d+)\s*$') { $config[$Matches['key']] = $Matches['limit'] }
+        }
+        $stated = [ordered]@{
+            'CA1502'         = 'cyclomatic complexity (\d+) per method'
+            'CA1506(Method)' = 'class coupling (\d+) types per member'
+            'CA1506(Type)'   = 'and (\d+) per type'
+            'CA1501'         = 'inheritance (\d+) levels deep'
+            'CA1505'         = 'maintainability index of at least (\d+)'
+        }
+
+        $statement | Should -Not -BeNullOrEmpty
+        @($config.Keys | Sort-Object) | Should -Be @($stated.Keys | Sort-Object) -Because 'every limit in the file is one CRF-008 states'
+        foreach ($key in $stated.Keys) {
+            $statement | Should -Match $stated[$key]
+            [regex]::Match($statement, $stated[$key]).Groups[1].Value | Should -Be $config[$key] -Because "CRF-008 and CodeMetricsConfig.txt should agree on $key"
+        }
+    }
+}

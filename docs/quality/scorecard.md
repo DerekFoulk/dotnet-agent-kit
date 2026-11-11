@@ -51,7 +51,10 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
     rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, CRF-008, CRF-010]
-    gaps: []
+    gaps:
+      - id: GAP-021
+        gap: "Two analyzer rules that latest-all leaves off are still off: CA1014 (mark assemblies CLS-compliant), which every project breaks, and CA1017 (ComVisible). STY-003 says every rule is on; whether web apps should declare either needs a decision of its own (ADR-0043)."
+        status: proposed
   - id: tests
     name: Tests
     perfect: "Test-first; fast unit tests, integration tests against a real database, API tests in memory, plus contract, browser and accessibility tests; mutation testing that proves the tests catch bugs; deterministic tests, with no sleeps or real clocks."
@@ -229,7 +232,7 @@ Each area in the front matter above has:
 | Architecture | 8 | 4 | 4 | 0 | 1 |
 | Craft | 10 | 4 | 6 | 0 | 2 |
 | Proportion | 1 | 0 | 1 | 0 | 1 |
-| Code | 8 | 7 | 1 | 0 | 0 |
+| Code | 8 | 7 | 1 | 0 | 1 |
 | Tests | 7 | 4 | 3 | 0 | 1 |
 | Security | 7 | 5 | 2 | 0 | 1 |
 | Reliability | 3 | 2 | 1 | 0 | 1 |
@@ -242,7 +245,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 3 proposed; 14 open gaps.
+**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 3 proposed; 15 open gaps.
 
 Open gaps:
 
@@ -250,6 +253,7 @@ Open gaps:
 - **GAP-019** (Craft, proposed; needs an analyzer package or a kit check, and a CI change): No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent.
 - **GAP-020** (Craft, proposed; needs a tool and a CI change): No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
+- **GAP-021** (Code, proposed): Two analyzer rules that latest-all leaves off are still off: CA1014 (mark assemblies CLS-compliant), which every project breaks, and CA1017 (ComVisible). STY-003 says every rule is on; whether web apps should declare either needs a decision of its own (ADR-0043).
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-006** (Security, proposed): No rules for authentication, authorization or input validation defaults beyond the threat model in plans.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).

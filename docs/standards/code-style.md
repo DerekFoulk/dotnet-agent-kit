@@ -24,8 +24,8 @@ rules:
     why: "Analyzer rules catch real defects; all of them on is the Microsoft baseline the owner asked for."
     layer: owner
     status: accepted
-    sources: ["ADR-0009"]
-    enforcement: "build: AnalysisLevel latest-all; tools/tests/BuildConfig.Tests.ps1 (CatchAll fixture)"
+    sources: ["ADR-0009", "ADR-0043"]
+    enforcement: "build: AnalysisLevel latest-all, and the root .globalconfig for the rules latest-all leaves off, except CA1014 and CA1017 (GAP-021); tools/tests/BuildConfig.Tests.ps1 (the CatchAll, LegacyDesign and PInvokeOutsideNativeMethods fixtures)"
     scope: core
     paths: ["**/*.cs", "Directory.Build.props"]
   - id: STY-004

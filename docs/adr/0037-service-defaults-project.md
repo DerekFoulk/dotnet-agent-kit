@@ -70,7 +70,7 @@ Accepted, in auto mode (ADR-0035). The packages are the ones the template and Mi
 
   An app with a web project follows the sample.
 - **GAP-007 and GAP-009 are closed** in the scorecard. GAP-008, safe database migrations, stays open.
-- **Tests:** `ServiceDefaultsTests` in the sample's FunctionalTests checks (**update, 2026-11-10:** split by concern into `HealthEndpointTests`, `TelemetryTests` and `ResilienceTests`, since one class coupled to more types than CA1506 allows; ADR-0043):
+- **Tests:** `ServiceDefaultsTests` in the sample's FunctionalTests checks (**update, 2026-11-10:** split by concern into `HealthEndpointTests`, `TelemetryTests` and `ResilienceTests`, with `ServiceDefaultsTests` keeping the argument guards, since one class coupled to more types than CA1506 allows; ADR-0043):
   - both endpoints, and the database check;
   - the status-only reply in Production;
   - the OpenTelemetry providers;

@@ -3,8 +3,8 @@
 # Craft
 
 - CRF-001: Fix the root cause of every defect, never work around it; a safety net that stays (a retry, a guard for a case that shouldn't happen, a suppressed warning) is labelled as one where it lives, with the reason it's needed.
-- CRF-002: Never ship a design known to be worse as good enough without saying so: name the better design and why it waits, and plan it (a scorecard gap, an issue or a follow-up PR) in the same PR.
-- CRF-003: Every piece of knowledge has one authoritative place (DRY is about knowledge, not text): a rule, value or behaviour is never stated twice, while code that only looks alike but changes for different reasons stays apart.
+- CRF-002: Never ship a design known to be worse as good enough without saying so: name the better design and why it waits, and plan it in the same PR (a scorecard gap, or a follow-up PR or session).
+- CRF-003: Every piece of knowledge has one authoritative source (DRY is about knowledge, not text): any other place that states a rule, value or behavior is generated from that source, checked against it or points to it, while code that only looks alike but changes for different reasons stays apart.
 - CRF-004: Build the simplest design that is fully correct for today's requirements (KISS, YAGNI): no speculative layer, option or abstraction and no big design up front, and never a simpler design that's less correct; how much structure an app gets is GAP-002's to settle.
-- CRF-009: Avoid the STUPID anti-patterns (Singletons and other mutable global state, tight coupling, untestable code, premature optimization, names that don't say what a thing is, duplication), and design each part to be tested in isolation and deployed on its own.
-- CRF-010: Use every library, tool and service as its authors document for the version in use, through its public API and documented extension points; never reach into non-public members or rely on undocumented behaviour.
+- CRF-009: Avoid the STUPID anti-patterns (Singletons and other mutable global state, tight coupling, untestable code, premature optimization, names that don't say what a thing is, duplication), and design each part to be tested in isolation and separable enough to be deployed on its own later (ARC-001: one deployable app, with modules that can become services).
+- CRF-010: Use every library, tool and service as its authors document for the version in use, through its public API and documented extension points; never reach into non-public members or rely on undocumented behavior; lifting a ban in BannedSymbols.txt needs an ADR.

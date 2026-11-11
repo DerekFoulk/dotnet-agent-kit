@@ -70,7 +70,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
-    enforcement: "advisory: until the banned-API analyzer for pure assemblies (web profile, after v0.1)"
+    enforcement: "advisory: the banned-API analyzer now runs in every project (ADR-0043), but the ban list for pure assemblies (clock, randomness, file and network access) isn't written yet (web profile, after v0.1)"
     scope: core
     paths: ["src/**"]
 ---
