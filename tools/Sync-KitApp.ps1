@@ -401,6 +401,7 @@ $script:Explanations = [ordered]@{
     NowAppOwned = "The kit no longer manages it, but this app had edited it (or it's a kit block in this app's file), so it stays, as this app's own.", 'Keep it or delete it.'
     AppFileKept = 'The kit now has a file at this path, but this app already had its own, which stays.', "Rename the app's file and take the kit's, or keep the app's."
     WorkflowByHand = "The kit changed this workflow beyond the pin Dependabot moves, and a workflow's own token can't change workflow files, so it's left as it is.", "Apply the kit's change on this branch: compare with templates/app/.github/workflows in the kit at this release, with this app's name for {{Name}}."
+    PackagesAdded = "The release adds packages the kit's files need, which this app's file lacked, so the sync added them in an ItemGroup labelled ``dotnet-agent-kit``:", 'Run `dotnet restore --force-evaluate` on this branch and commit the lock files: the sync doesn''t restore.'
     Regenerated = "This app had edited a generated rule file, which is rebuilt from docs/standards, so the edit is gone.", "Put the change in an app-owned file, or propose it to the kit."
 }
 
@@ -423,6 +424,7 @@ function Format-KitSyncReport {
         $lines.Add('|---|---|---|')
         foreach ($file in $look) {
             $what, $todo = $script:Explanations[$file.Action]
+            if ($file.Detail) { $what = "$what $($file.Detail)." }
             $lines.Add("| ``$($file.Path)`` | $what | $todo |")
         }
     }
