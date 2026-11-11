@@ -44,6 +44,13 @@ $original = [IO.File]::ReadAllBytes($file)
 $text = [Text.UTF8Encoding]::new($false).GetString($original)
 
 foreach ($m in $Mutant) {
+    # Exactly one match, or nothing runs: a typo would otherwise "survive", and several matches would change
+    # more than one place.
+    $occurrences = [regex]::Matches($text, [regex]::Escape($m.Find)).Count
+    if ($occurrences -ne 1) {
+        [pscustomobject]@{ Name = $m.Name; Result = if ($occurrences -eq 0) { 'NotFound' } else { 'Ambiguous' }; Failed = 0; Total = 0 }
+        continue
+    }
     try {
         [IO.File]::WriteAllText($file, $text.Replace($m.Find, $m.Replace), [Text.UTF8Encoding]::new($false))
         $run = Invoke-TestRun -TestPath $tests
