@@ -36,10 +36,11 @@ internal sealed class ApiHost : IDisposable
             }
 
             // Only the signing key is the test's own: a real app gets its provider's keys from the provider's
-            // metadata. Everything else the handler checks is the app's own configuration.
+            // metadata. Everything else the handler checks is the app's own configuration. The key list is replaced,
+            // not added to, so a key dotnet user-jwts left in this machine's user secrets isn't trusted here.
             host.ConfigureServices(collection => collection.PostConfigure<JwtBearerOptions>(
                 JwtBearerDefaults.AuthenticationScheme,
-                options => options.TokenValidationParameters.IssuerSigningKey = TestTokens.SigningKey));
+                options => options.TokenValidationParameters.IssuerSigningKeys = [TestTokens.SigningKey]));
             if (services is not null)
             {
                 host.ConfigureServices(services);
