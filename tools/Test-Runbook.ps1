@@ -1,7 +1,19 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Fails when an app's runbook is missing a required section (OPS-004, ADR-0046).
+    Fails when an app's runbook is missing a required part, or is In use with a step left to fill in (OPS-004,
+    ADR-0046).
+
+.DESCRIPTION
+    Checks one runbook, docs/runbook.md by default: a "- **Status:** " line that reads Draft or In use; a
+    "- **Last reviewed:** " line; and a non-empty "## " section for each task in $RequiredSections, each a
+    how-to guide. A "## " line inside a fenced code block is code, not a heading. A Draft may keep the
+    template's "[fill in: ...]" placeholders. An In use runbook, the status from the app's first production
+    deployment on, may not, and its review date must be YYYY-MM-DD. Exit code: 0 when the runbook passes,
+    otherwise 1.
+
+.EXAMPLE
+    ./.kit/tools/Test-Runbook.ps1 -Path ./docs/runbook.md
 #>
 [CmdletBinding()]
 param(
@@ -68,15 +80,13 @@ function Get-RunbookSection {
     $result
 }
 
-function Invoke-RunbookCheck {
-    param([Parameter(Mandatory)] [string] $Path)
-    0
-}
-
 function Get-RunbookProblem {
     param([Parameter(Mandatory)] [string] $Path)
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        New-Problem -Message "there's no runbook at '$Path'"
+        return
+    }
     $lines = @(Get-Content -LiteralPath $Path)
     $sections = Get-RunbookSection -Lines $lines
 
@@ -114,4 +124,27 @@ function Get-RunbookProblem {
             New-Problem -Message "section '$name' is empty"
         }
     }
+}
+
+# Prints every problem and returns 0 when the runbook passes, otherwise 1.
+function Invoke-RunbookCheck {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $problems = @(Get-RunbookProblem -Path $Path)
+    foreach ($problem in $problems) {
+        Write-Host "  $($problem.Message)" -ForegroundColor Red
+    }
+
+    if ($problems) {
+        Write-Host "`n$($problems.Count) runbook problem(s) in $Path." -ForegroundColor Red
+        return 1
+    }
+
+    Write-Host "The runbook at $Path is complete." -ForegroundColor Green
+    0
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    exit (Invoke-RunbookCheck -Path $Path)
 }
