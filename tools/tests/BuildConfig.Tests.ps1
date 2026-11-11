@@ -32,6 +32,7 @@ BeforeDiscovery {
         @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1045'; Description = 'a ref parameter, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
         @{ Fixture = 'PlatformIntrinsics'; Diagnostic = 'CA1516'; Description = 'an x86-only intrinsic where a cross-platform one exists, a rule latest-all sets to none (STY-003)'; GlobalConfig = $true }
         @{ Fixture = 'NoComVisible'; Diagnostic = 'CA1017'; Description = 'an assembly that doesn''t say whether COM sees it, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'NoClsCompliant'; Diagnostic = 'CA1014'; Description = 'an assembly that doesn''t say whether it''s CLS-compliant, a rule latest-all leaves off (STY-003, ADR-0049)'; GlobalConfig = $true }
         @{ Fixture = 'PInvokeOutsideNativeMethods'; Diagnostic = 'CA1060'; Description = 'a P/Invoke outside a NativeMethods class, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
         @{ Fixture = 'BadMetricsConfig'; Diagnostic = 'CA1509'; Description = 'a CodeMetricsConfig.txt entry the metric rules would ignore, so a typo can''t switch a limit off'; GlobalConfig = $true }
         @{ Fixture = 'NonPublicReflection'; Diagnostic = 'RS0030'; Description = 'reading a non-public member by reflection (CRF-010)' }
