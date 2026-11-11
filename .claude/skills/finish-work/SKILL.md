@@ -24,6 +24,12 @@ Then confirm:
 
 Run the `reviewer` subagent on the branch. Fix each finding test-first, or answer it with a reason. Then run step 1 again.
 
+**Give it what you've already run.** Pass the gate results from step 1 (each command and its count) in the reviewer's prompt, so it checks the code and the claims instead of repeating every gate. It reruns a gate only when what it reviews could change the result.
+
+**Run focused reviewers side by side** (owner, 2026-11-10). For a change that touches code and docs, run two or three reviewers at once, each with one focus named in its prompt: the code and its tests; the documents, against each other and the rules; the guardrails and "Always ask". Together they make one round. A docs-only change needs one.
+
+**Don't wait idle.** While a review runs, start the next task on its own branch.
+
 **Every fix gets its own review.** After fixing findings, run the `reviewer` again on the new commits (`git log <reviewed head>..HEAD`), and repeat until a run finds nothing blocking or should-fix. A fix that nobody reviewed can break something the first review passed.
 
 **A run with nothing blocking or should-fix ends the reviews** (owner, 2026-11-09). Fix its nits only when they're cheap and change no behavior, with no further run, and list those commits in that run's PR comment; answer the rest with a reason, or note them for a later PR. A nit whose fix would change behavior goes to a later PR: fixing it here would need another run, and each run finds new nits.
@@ -57,7 +63,7 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
   - the Dependabot cooldown in `.github/dependabot.yml` (in the kit, `templates/app/.github/dependabot.yml` too), if shortened (any `*-days` value lowered, or any wait below 7 days, 14 for a NuGet or SDK major) or narrowed (an `exclude` or `include` list);
   - `New-KitApp`'s step that turns on Dependabot alerts and security updates, if removed or weakened.
 
-  A PR that changes any of them is the owner's to merge.
+  A PR that changes any of them needs the owner's yes for that PR. Once every other condition below holds, ask him in the chat (COM-007); on his yes, merge it as below. Start your next task while you wait.
 - **If it's Dependabot's, it's only a patch or minor update of NuGet packages, .NET tools or the .NET SDK** (ADR-0041). All of these must hold, or the PR is the owner's to merge:
   - **GitHub says it's Dependabot's.** `gh pr view <n> --json author,isCrossRepository,headRefName` shows the author `app/dependabot`, `isCrossRepository` false, and a head branch starting `dependabot/`. A title or a commit author alone proves nothing: anyone can set them.
   - **The version change is a patch or minor.** Read it in the title and in the diff of `Directory.Packages.props`, `.config/dotnet-tools.json` or `global.json`. A major update, a GitHub Actions bump, a grouped PR with any major in it, or one you can't classify is the owner's. Any update of a 0.x package (0.13.5 → 0.13.6 as much as 0.13 → 0.14) is the owner's, since SemVer lets a 0.x version break anything. For the SDK, the third number holds the feature band: 10.0.403 → 10.0.500 is a minor, and 10.x → 11.x a major.
