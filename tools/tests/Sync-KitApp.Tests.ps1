@@ -241,5 +241,24 @@ Describe 'Sync-KitApp' {
                 [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"
             }
         }
+
+        It 'writes the release''s manifest, so a kept edit still shows as an edit next time' {
+            $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+
+            $manifest['kitVersion'] | Should -Be 'v0.2.0'
+            $manifest['kitCommit'] | Should -Be $v2
+            $manifest['appName'] | Should -Be 'Contoso.Orders'
+            ($manifest['files'] | ConvertTo-Json -Depth 4) | Should -Be ($expectedManifest['files'] | ConvertTo-Json -Depth 4)
+            $gitignore = $manifest['files'] | Where-Object { $_['path'] -eq '.gitignore' }
+            Get-LfHash ([IO.File]::ReadAllText((Join-Path $app '.gitignore'))) | Should -Not -Be $gitignore['sha256']
+        }
+
+        # Last: it runs the sync again on the synced app.
+        It 'changes nothing when run again for the same release' {
+            $before = Get-Tree $app
+
+            (Sync-KitApp -AppRoot $app -KitRoot $kit -KitRef v0.2.0).Changed | Should -BeFalse
+            Get-Tree $app | ConvertTo-Json | Should -Be ($before | ConvertTo-Json)
+        }
     }
 }
