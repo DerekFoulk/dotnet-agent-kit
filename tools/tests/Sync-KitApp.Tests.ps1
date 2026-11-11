@@ -261,6 +261,16 @@ Describe 'Sync-KitApp' {
 
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -Be $before
         }
+
+        # Review: an app's file may still declare MSBuild's old XML namespace.
+        It 'finds the app''s packages in a file with MSBuild''s old XML namespace' {
+            $appRoot = New-PackagesRoot @($analyzer) 'http://schemas.microsoft.com/developer/msbuild/2003'
+            $before = [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props'))
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -Be $before
+        }
     }
 
     Context 'run as a script' {
