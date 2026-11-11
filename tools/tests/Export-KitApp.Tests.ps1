@@ -322,12 +322,19 @@ Describe 'Export-KitApp' {
         $entry[0]['block'] | Should -Be 'kit'
     }
 
-    # The kit's sync job moves the kit pin and the SDK pin with each kit release, so Dependabot proposes only
-    # the app's NuGet packages; the app owns the file and adds ecosystems as it grows.
-    It 'gives the app its own Dependabot config, for its NuGet packages only' {
+    # Dependabot moves the kit pin in the app's workflows, which a workflow's own token can't change, and the kit's
+    # sync workflow brings the rest of the release into the same PR (ADR-0042). The SDK pin moves with the kit, so
+    # there's no dotnet-sdk entry; the app owns the file and adds ecosystems as it grows.
+    It 'gives the app its own Dependabot config, for its NuGet packages and the kit pin' {
+        Import-Module powershell-yaml
         $text = Get-Content -Raw (Join-Path $app '.github/dependabot.yml')
         $text | Should -Match 'package-ecosystem: nuget'
-        $text | Should -Not -Match 'package-ecosystem: (dotnet-sdk|github-actions)'
+        $text | Should -Not -Match 'package-ecosystem: dotnet-sdk'
+        $actions = @((ConvertFrom-Yaml $text)['updates'] | Where-Object { $_['package-ecosystem'] -eq 'github-actions' })
+        $actions.Count | Should -Be 1 -Because 'Dependabot moves the kit pin'
+        $actions[0]['directory'] | Should -Be '/'
+        # One PR for every kit reference, so the sync runs once, on all of them.
+        @($actions[0]['groups'].Values | ForEach-Object { $_['patterns'] }) | Should -Contain 'DerekFoulk/dotnet-agent-kit*'
 
         $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
         @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain '.github/dependabot.yml'
