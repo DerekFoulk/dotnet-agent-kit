@@ -377,6 +377,23 @@ Describe 'the kit''s curated skills' {
     BeforeAll {
         $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
         $lock = Read-DotnetSkillLock -RepoRoot $root
+        Import-Module (Join-Path $root 'tools' 'KitFrontMatter.psm1') -Force
+    }
+
+    # The doc's headroom is what the "waiting for room" table relies on, so its numbers must follow the files.
+    It 'have the description totals docs/dotnet-skills.md gives' {
+        $curated = 0
+        $all = 0
+        foreach ($folder in Get-ChildItem -LiteralPath (Join-Path $root '.claude' 'skills') -Directory) {
+            $length = "$((Read-FrontMatter -Path (Join-Path $folder.FullName 'SKILL.md'))['description'])".Length
+            $all += $length
+            if ($folder.Name -in @($lock['skills'] | ForEach-Object { $_['name'] })) { $curated += $length }
+        }
+        $doc = Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'dotnet-skills.md')
+        $culture = [cultureinfo]::GetCultureInfo('en-US')
+
+        $doc | Should -Match "Their descriptions total $([regex]::Escape($curated.ToString('N0', $culture))) characters"
+        $doc | Should -Match "that's $([regex]::Escape($all.ToString('N0', $culture))) of the"
     }
 
     It 'are pinned to one dotnet/skills commit, with the date it was retrieved' {
