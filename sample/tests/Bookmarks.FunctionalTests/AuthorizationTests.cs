@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Bookmarks.Contracts;
+using Bookmarks.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -52,6 +53,20 @@ public sealed class AuthorizationTests : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json", "a 403 is Problem Details too (API-002)");
+    }
+
+    [Fact]
+    public async Task ATokenWhoseSubIsTooLongToBeAnOwnerIsForbidden()
+    {
+        // Review 2: OpenID Connect caps sub at 255 characters, the owner's limit. A longer one is a property of the
+        // token, not of the request, so it's a 403 on every endpoint rather than a 400 on saving and a 200 on reading.
+        using HttpClient tooLong = _host.CreateClient(TestTokens.For(new string('u', Bookmark.MaxOwnerIdLength + 1)));
+
+        using HttpResponseMessage list = await tooLong.GetAsync(new Uri("/bookmarks", UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage save = await tooLong.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri("https://example.com/a"), "A"), TestContext.Current.CancellationToken);
+
+        list.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        save.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
