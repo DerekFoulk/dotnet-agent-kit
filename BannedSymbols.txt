@@ -41,6 +41,15 @@ M:System.Reflection.PropertyInfo.GetAccessors(System.Boolean);With true, returns
 M:System.Reflection.EventInfo.GetAddMethod(System.Boolean);With true, returns a non-public add accessor; use GetAddMethod() (CRF-010)
 M:System.Reflection.EventInfo.GetRemoveMethod(System.Boolean);With true, returns a non-public remove accessor; use GetRemoveMethod() (CRF-010)
 M:System.Reflection.EventInfo.GetRaiseMethod(System.Boolean);With true, returns a non-public raise accessor; use GetRaiseMethod() (CRF-010)
+M:System.Reflection.EventInfo.GetOtherMethods(System.Boolean);With true, returns non-public methods; use GetOtherMethods() (CRF-010)
+
+// Accessor properties, which return private accessors too; each has a getter method that returns only public ones.
+P:System.Reflection.PropertyInfo.GetMethod;Returns a non-public getter too; use GetGetMethod() (CRF-010)
+P:System.Reflection.PropertyInfo.SetMethod;Returns a non-public setter too; use GetSetMethod() (CRF-010)
+P:System.Reflection.EventInfo.AddMethod;Returns a non-public add accessor too; use GetAddMethod() (CRF-010)
+P:System.Reflection.EventInfo.RemoveMethod;Returns a non-public remove accessor too; use GetRemoveMethod() (CRF-010)
+P:System.Reflection.EventInfo.RaiseMethod;Returns a non-public raise accessor too; use GetRaiseMethod() (CRF-010)
+
 // These call or bind non-public members by name or by flag.
 M:System.Activator.CreateInstance(System.Type,System.Boolean);Its nonPublic argument calls non-public constructors; use Activator.CreateInstance(Type) (CRF-010)
 M:System.Delegate.CreateDelegate(System.Type,System.Object,System.String);Binds non-public methods by name; pass a public MethodInfo (CRF-010)
