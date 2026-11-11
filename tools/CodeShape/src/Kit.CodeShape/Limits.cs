@@ -6,4 +6,7 @@ internal static class Limits
 {
     /// <summary>The most control-flow statements a statement may sit inside, within one member.</summary>
     public const int NestingDepth = 4;
+
+    /// <summary>The most statements one member may hold, nested ones included.</summary>
+    public const int StatementsPerMember = 100;
 }

@@ -21,11 +21,9 @@ internal static class NestingRule
                 .MaxBy(pair => pair.Item2);
             if (deepest.Depth > Limits.NestingDepth)
             {
-                FileLinePositionSpan span = deepest.Statement.GetLocation().GetLineSpan();
-                yield return new Finding(
+                yield return Finding.At(
                     file.Path,
-                    span.StartLinePosition.Line + 1,
-                    span.StartLinePosition.Character + 1,
+                    deepest.Statement.GetLocation(),
                     $"{member.Name} nests {deepest.Depth} levels deep; the limit is {Limits.NestingDepth} (CRF-008).");
             }
         }

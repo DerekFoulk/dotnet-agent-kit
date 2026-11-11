@@ -6,9 +6,10 @@ namespace Kit.CodeShape;
 /// <summary>A member with a body of statements, as the limits measure it: a method, constructor, destructor, operator
 /// or accessor, with any local functions and lambdas inside it; or a file's top-level statements, taken as one.</summary>
 /// <param name="Name">The member's name, as findings report it.</param>
+/// <param name="Location">Where the member's name is, or the first top-level statement.</param>
 /// <param name="Node">The member's declaration, or the file's root for top-level statements.</param>
-/// <param name="Statements">Every statement in the member, nested ones included; a block isnt one, only what it holds.</param>
-internal sealed record Member(string Name, SyntaxNode Node, IReadOnlyList<StatementSyntax> Statements)
+/// <param name="Statements">Every statement in the member, nested ones included; a block isn't one, only what it holds.</param>
+internal sealed record Member(string Name, Location Location, SyntaxNode Node, IReadOnlyList<StatementSyntax> Statements)
 {
     /// <summary>The members of a file that hold statements, in the order they appear.</summary>
     public static IEnumerable<Member> Of(CompilationUnitSyntax root)
@@ -19,29 +20,34 @@ internal sealed record Member(string Name, SyntaxNode Node, IReadOnlyList<Statem
             .SelectMany(global => StatementsIn(global.Statement, includeSelf: true))];
         if (topLevel.Length > 0)
         {
-            yield return new Member("top-level statements", root, topLevel);
+            yield return new Member("top-level statements", topLevel[0].GetLocation(), root, topLevel);
         }
 
         foreach (SyntaxNode node in root.DescendantNodes())
         {
-            if (NameOf(node) is { } name)
+            if (NameOf(node) is var (name, token))
             {
-                yield return new Member(name, node, [.. StatementsIn(node, includeSelf: false)]);
+                yield return new Member(name, token.GetLocation(), node, [.. StatementsIn(node, includeSelf: false)]);
             }
         }
     }
 
     private static IEnumerable<StatementSyntax> StatementsIn(SyntaxNode node, bool includeSelf) =>
-        (includeSelf ? node.DescendantNodesAndSelf() : node.DescendantNodes()).OfType<StatementSyntax>().Where(statement => statement is not BlockSyntax);
+        (includeSelf ? node.DescendantNodesAndSelf() : node.DescendantNodes())
+            .OfType<StatementSyntax>()
+            .Where(statement => statement is not BlockSyntax);
 
-    private static string? NameOf(SyntaxNode node) => node switch
+    // The name a reader would look for, and the token that carries it.
+    private static (string Name, SyntaxToken Token)? NameOf(SyntaxNode node) => node switch
     {
-        MethodDeclarationSyntax method => method.Identifier.Text,
-        ConstructorDeclarationSyntax constructor => constructor.Identifier.Text,
-        DestructorDeclarationSyntax destructor => $"~{destructor.Identifier.Text}",
-        OperatorDeclarationSyntax op => $"operator {op.OperatorToken.Text}",
-        ConversionOperatorDeclarationSyntax conversion => $"{conversion.ImplicitOrExplicitKeyword.Text} operator {conversion.Type}",
-        AccessorDeclarationSyntax { Parent.Parent: BasePropertyDeclarationSyntax owner } accessor => $"{OwnerName(owner)}.{accessor.Keyword.Text}",
+        MethodDeclarationSyntax method => (method.Identifier.Text, method.Identifier),
+        ConstructorDeclarationSyntax constructor => (constructor.Identifier.Text, constructor.Identifier),
+        DestructorDeclarationSyntax destructor => ($"~{destructor.Identifier.Text}", destructor.Identifier),
+        OperatorDeclarationSyntax op => ($"operator {op.OperatorToken.Text}", op.OperatorToken),
+        ConversionOperatorDeclarationSyntax conversion =>
+            ($"{conversion.ImplicitOrExplicitKeyword.Text} operator {conversion.Type}", conversion.OperatorKeyword),
+        AccessorDeclarationSyntax { Parent.Parent: BasePropertyDeclarationSyntax owner } accessor =>
+            ($"{OwnerName(owner)}.{accessor.Keyword.Text}", accessor.Keyword),
         _ => null,
     };
 
