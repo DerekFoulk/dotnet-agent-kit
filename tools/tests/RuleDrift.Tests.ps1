@@ -11,20 +11,19 @@ Describe 'Rules stated in several places agree' {
 
         function Read-Text([string] $RelativePath) { [IO.File]::ReadAllText((Join-Path $root $RelativePath)) }
 
-        # The text from the line where $Start matches up to the first later match of $End. The start can't reach
-        # back past that line, so text above the section never counts.
+        # Only the list itself: the text after $Start, up to the first later match of $End. Neither the words that
+        # open the list nor anything around it can name an item for it.
         function Get-Between([string] $Text, [string] $Start, [string] $End) {
-            $match = [regex]::Match($Text, "(?ms)^[^\n]*?$Start.*?(?=$End)")
-            $match.Success | Should -BeTrue -Because "'$Start' should open a section that '$End' ends"
-            $match.Value
+            $match = [regex]::Match($Text, "(?s)$Start(.*?)(?=$End)")
+            $match.Success | Should -BeTrue -Because "'$Start' should open a list that '$End' ends"
+            $match.Groups[1].Value
         }
 
         $agents = Read-Text 'AGENTS.md'
-        $security = Read-Text 'docs/standards/security.md'
         $askCopies = [ordered]@{
-            'AGENTS.md "Always ask"' = Get-Between $agents '^## Always ask' '^## '
-            'SEC-003'                = Get-Between $security 'id: SEC-003' '\n    why:'
-            'README "both modes"'    = Get-Between (Read-Text 'README.md') 'In both modes, the agent asks before' '\r?\n\r?\n'
+            'AGENTS.md "Always ask"' = Get-Between $agents 'In both modes, ask the owner first before you:' '\r?\n\r?\n'
+            'SEC-003'                = Get-Between (Read-Text 'docs/standards/security.md') 'id: SEC-003\s+statement:' '; in review mode'
+            'README "both modes"'    = Get-Between (Read-Text 'README.md') 'In both modes, the agent asks before:' '\r?\n\r?\n'
         }
         $guardrailCopies = [ordered]@{
             'AGENTS.md "Working modes"' = Get-Between $agents 'That means:' '- \*\*Review\.\*\*'
@@ -32,33 +31,43 @@ Describe 'Rules stated in several places agree' {
         }
     }
 
+    # Items are regular expressions, so one item can match each copy's own wording.
     It 'every copy of the "always ask" list names <Item>' -ForEach @(
         @{ Item = 'money' }, @{ Item = 'cloud' }, @{ Item = 'delet' }, @{ Item = 'rewrit' }, @{ Item = 'app repo' }
         @{ Item = 'public' }, @{ Item = 'connector' }, @{ Item = 'install' }, @{ Item = 'ruleset' }
         @{ Item = 'branch protection' }, @{ Item = 'merge settings' }, @{ Item = 'Dependabot alerts' }
-        @{ Item = 'CI check' }, @{ Item = 'mode' }, @{ Item = 'undone' }
+        @{ Item = 'security updates' }, @{ Item = 'CI check' }, @{ Item = 'switch\w* the (working )?mode' }
+        @{ Item = 'undone' }
     ) {
         foreach ($copy in $askCopies.GetEnumerator()) {
-            $copy.Value | Should -Match ([regex]::Escape($Item)) -Because "$($copy.Key) should name '$Item'"
+            $copy.Value | Should -Match $Item -Because "$($copy.Key) should name '$Item'"
         }
     }
 
     It 'AGENTS.md and SEC-003 both ask before <Item>' -ForEach @(
-        @{ Item = 'release' }, @{ Item = 'guardrails' }
+        @{ Item = 'merg\w* a release PR' }, @{ Item = 'publish\w* a release' }, @{ Item = 'guardrails' }
+        @{ Item = 'unmerged work|work that isn''t merged' }
     ) {
-        # README says these in its own lines (releases are the owner's; guardrails in "Working modes").
+        # README says these in its own lines (releases are the owner's; guardrails in "Working modes"), and
+        # "deleting or rewriting anything" covers unmerged work.
         foreach ($name in 'AGENTS.md "Always ask"', 'SEC-003') {
-            $askCopies[$name] | Should -Match ([regex]::Escape($Item)) -Because "$name should name '$Item'"
+            $askCopies[$name] | Should -Match $Item -Because "$name should name '$Item'"
         }
     }
 
     It 'every copy of the guardrail list names <Item>' -ForEach @(
-        @{ Item = 'Working modes' }, @{ Item = 'Always ask' }, @{ Item = 'SEC-003' }, @{ Item = '.claude/settings.json' }
-        @{ Item = 'Set-AgentMode.ps1' }, @{ Item = 'reviewer' }, @{ Item = 'ruleset' }, @{ Item = 'branch protection' }
+        @{ Item = '"Working modes"' }, @{ Item = '"Always ask"' }, @{ Item = 'SEC-003' }, @{ Item = '\.claude/settings\.json' }
+        @{ Item = 'Set-AgentMode\.ps1' }, @{ Item = 'reviewer(` agent|\.md)' }, @{ Item = 'ruleset' }, @{ Item = 'branch protection' }
         @{ Item = 'merge settings' }, @{ Item = 'CI check' }, @{ Item = 'cooldown' }, @{ Item = 'New-KitApp' }
+        @{ Item = 'Dependabot alerts and security updates' }
     ) {
         foreach ($copy in $guardrailCopies.GetEnumerator()) {
-            $copy.Value | Should -Match ([regex]::Escape($Item)) -Because "$($copy.Key) should name '$Item'"
+            $copy.Value | Should -Match $Item -Because "$($copy.Key) should name '$Item'"
         }
+    }
+
+    It 'AGENTS.md''s guardrail list names the finish-work skill' {
+        # finish-work calls itself "this skill".
+        $guardrailCopies['AGENTS.md "Working modes"'] | Should -Match '`finish-work` skill'
     }
 }
