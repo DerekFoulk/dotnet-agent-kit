@@ -35,31 +35,35 @@ $ErrorActionPreference = 'Stop'
 
 # Runs the Pester tests at $TestPath in a fresh process, so no state from this session leaks in. Returns whether
 # Pester returned a result, how many tests ran and failed, whether a test file or block broke outside a test (a
-# failed discovery, BeforeAll or AfterAll), and what Pester wrote to stderr, for the message of an error.
+# failed discovery, BeforeAll or AfterAll), and everything else the process printed, on stdout or stderr, for the
+# message of an error.
 function Invoke-TestRun([string] $TestPath) {
     # Pester reads Run.Path as a wildcard pattern, so a folder named "x [1]" needs escaping.
     $literal = [WildcardPattern]::Escape($TestPath) -replace "'", "''"
+    $marker = 'Invoke-Mutant result: '
+    # Stop, so a throw from Invoke-Pester ends the process instead of printing an empty result.
     $command = @"
+`$ErrorActionPreference = 'Stop'
 `$c = New-PesterConfiguration
 `$c.Run.Path = '$literal'
 `$c.Run.PassThru = `$true
 `$c.Output.Verbosity = 'None'
 `$r = Invoke-Pester -Configuration `$c
-@{ Total = `$r.TotalCount; Failed = `$r.FailedCount; Broken = `$r.FailedContainersCount + `$r.FailedBlocksCount } | ConvertTo-Json -Compress
+'$marker' + (@{ Total = `$r.TotalCount; Failed = `$r.FailedCount; Broken = `$r.FailedContainersCount + `$r.FailedBlocksCount } | ConvertTo-Json -Compress)
 "@
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
-    $output = @(& pwsh -NoProfile -NonInteractive -EncodedCommand $encoded 2>&1)
-    $stderr = @($output | Where-Object { $_ -is [Management.Automation.ErrorRecord] }) -join [Environment]::NewLine
-    $last = $output | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] } | Select-Object -Last 1
-    try { $run = $last | ConvertFrom-Json } catch { $run = $null }
-    if ($null -eq $run) {
-        return [pscustomobject]@{ Returned = $false; Total = 0; Failed = 0; Broken = 0; Stderr = $stderr }
+    $lines = @(& pwsh -NoProfile -NonInteractive -EncodedCommand $encoded 2>&1 | ForEach-Object { "$_" })
+    $resultLine = $lines | Where-Object { $_.StartsWith($marker) } | Select-Object -Last 1
+    $printed = (@($lines | Where-Object { -not $_.StartsWith($marker) -and $_.Trim() } | ForEach-Object Trim) -join ' ')
+    $run = if ($resultLine) { $resultLine.Substring($marker.Length) | ConvertFrom-Json }
+    if ($null -eq $run -or $null -eq $run.Total) {
+        return [pscustomobject]@{ Returned = $false; Total = 0; Failed = 0; Broken = 0; Printed = $printed }
     }
-    [pscustomobject]@{ Returned = $true; Total = $run.Total; Failed = $run.Failed; Broken = $run.Broken; Stderr = $stderr }
+    [pscustomobject]@{ Returned = $true; Total = $run.Total; Failed = $run.Failed; Broken = $run.Broken; Printed = $printed }
 }
 
-# An error's reason, followed by Pester's own words when it wrote any.
-function Format-Problem([string] $Reason, $Run) { "$Reason $($Run.Stderr)".Trim() }
+# An error's reason, followed by what the test process printed, if anything.
+function Format-Problem([string] $Reason, $Run) { "$Reason $($Run.Printed)".Trim() }
 
 function New-Result([string] $Name, [string] $Result, $Run, [string] $Message) {
     [pscustomobject]@{
