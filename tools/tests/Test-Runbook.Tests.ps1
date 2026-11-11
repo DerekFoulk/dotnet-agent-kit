@@ -129,6 +129,21 @@ Describe 'Test-Runbook.ps1' {
             Get-Message | Should -BeNullOrEmpty
         }
 
+        # Review 2: CommonMark allows these heading forms; the section names must match exactly, as the status does.
+        It 'reads a heading written as ''<Heading>''' -ForEach @(
+            @{ Heading = '   ## Where it runs' }, @{ Heading = "##`tWhere it runs" }, @{ Heading = '##   Where it runs' }
+        ) {
+            $text = (New-RunbookText) -replace '(?m)^## Where it runs$', $Heading
+
+            @((Get-RunbookSection -Lines ($text -split "`n")).Name) | Should -Contain 'Where it runs'
+        }
+
+        It 'reports a section whose heading is in the wrong case as missing' {
+            Set-Content -Path $script:runbook -Value ((New-RunbookText) -replace '(?m)^## Where it runs$', '## where it runs')
+
+            Get-Message | Should -Be "section 'Where it runs' is missing"
+        }
+
         It 'reads a heading with trailing spaces' {
             $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs   '
 
