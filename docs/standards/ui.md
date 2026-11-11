@@ -2,12 +2,12 @@
 topic: ui
 rules:
   - id: UI-001
-    statement: "Every UI an app ships meets WCAG 2.2 level AA: web UI (Blazor, Razor) as written, native UI (MAUI, desktop) as W3C's WCAG2ICT note applies it. Building UI, an agent checks at least that: everything works by keyboard alone, in a logical order, with no trap; every control and meaningful image has an accessible name and every input a visible label; text contrasts at least 4.5:1 (3:1 for large text, and for what identifies a control or its state, such as a focus indicator); keyboard focus is visible and never fully hidden; pointer targets are at least 24 by 24 CSS pixels (dp, pt or epx natively) or spaced to match; and content reflows at 320 CSS pixels wide and text scales to 200% without loss. Each check keeps WCAG's own exceptions, such as a link inside a sentence or a data table that needs two dimensions."
-    why: "WCAG is the global accessibility standard and legal benchmark for web and mobile, and Microsoft's MAUI guidance points apps at it; level AA means every level A and AA criterion. 2.2 is W3C's current Recommendation and adds focus not obscured and target size to 2.1 (GAP-018)."
+    statement: "Every UI an app ships meets WCAG 2.2 level AA: web UI (Blazor, Razor) as written, native UI (MAUI, desktop) as W3C's WCAG2ICT note applies it. Building UI, an agent checks at least that: everything works by keyboard alone, in a logical order, with no trap; every control and meaningful image has an accessible name and every input a visible label; text contrasts at least 4.5:1 (3:1 for large text), and what identifies a control or its state, such as a focus indicator, at least 3:1; keyboard focus is visible and never fully hidden; pointer targets are at least 24 by 24 CSS pixels (dp, pt or epx natively) or spaced to match; and content reflows at 320 CSS pixels wide and text scales to 200% without loss. Each check keeps WCAG's own exceptions, such as a link inside a sentence or a data table that needs two dimensions."
+    why: "WCAG is the global accessibility standard and legal benchmark for web and mobile, and Microsoft's MAUI guidance points apps at it; level AA means every level A and AA criterion. 2.2 is W3C's current Recommendation and adds six level A and AA criteria to 2.1, among them focus not obscured, target size and accessible authentication (GAP-018)."
     layer: outside
     status: proposed
     sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-11", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/routing#focus-an-element-on-navigation, retrieved 2026-11-11"]
-    enforcement: "advisory: until GAP-004 adds Playwright with axe to web UI tests, no tool checks it; the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing), and the reviewer agent reviews UI changes against it. Native UI stays a manual check with each platform's tools"
+    enforcement: "advisory: until GAP-004 adds Playwright with axe to web UI tests, no tool checks it; the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing), and once it's accepted the reviewer agent reviews UI changes against it. Native UI stays a manual check with each platform's tools"
     scope: core
     paths: ["**/*.razor", "**/*.razor.cs", "**/*.cshtml", "**/*.css", "**/*.html", "**/*.xaml", "**/*.xaml.cs"]
 ---
@@ -31,7 +31,7 @@ The rule names six. They're the criteria a UI most often fails, not the whole st
 | Target size | 2.5.8 | Pointer targets are at least 24 by 24, or spaced so a 24-wide circle on each doesn't touch another. A link inside a sentence is exempt, as are a few other cases WCAG lists. |
 | Reflow and text size | 1.4.4, 1.4.10 | At 320 CSS pixels wide (a phone, or 400% zoom) content fits without scrolling sideways; text scales to 200% without being cut off. Don't hard-code heights for text. Content that needs two dimensions, such as a data table, map or diagram, may scroll both ways. |
 
-Don't rely on color alone to carry meaning (1.4.1): an error is red *and* says so.
+Don't rely on color alone to carry meaning (1.4.1): an error is red *and* says so. Don't make sign-in depend on remembering or retyping something (3.3.8): allow paste and password managers.
 
 ## Blazor and Razor
 

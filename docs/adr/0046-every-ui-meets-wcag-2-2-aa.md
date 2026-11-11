@@ -21,7 +21,7 @@ The kit's apps are Blazor web apps or native MAUI apps (ADR-0008). This ADR was 
 
 ### Option 2: WCAG 2.1 level AA
 
-- **Trade-offs:** The version that some regulations and procurement standards still reference. It leaves out target size and focus not obscured, which are cheap to meet when they're designed in.
+- **Trade-offs:** The version that some regulations and procurement standards still reference. It leaves out 2.2's six level A and AA additions, such as target size, focus not obscured and accessible authentication, which are cheap to meet when they're designed in.
 - **Reversibility:** Easy, as above.
 - **Risk:** Apps would aim below the current Recommendation, and moving up later means rework.
 
