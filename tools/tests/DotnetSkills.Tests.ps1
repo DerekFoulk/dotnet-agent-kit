@@ -11,6 +11,25 @@ BeforeAll {
     # Every repo these tests make runs with the same git settings (TestGit.psm1).
     Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
     $savedGit = Set-TestGitEnvironment
+
+    function Write-Text([string] $Path, [string] $Text) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $Path -Parent) | Out-Null
+        [IO.File]::WriteAllText($Path, $Text)
+    }
+
+    # A kit with its own skill and a lock that lists "tidy", from the given upstream repo, with no copy yet.
+    function New-Kit([string] $Upstream, [string] $Source = 'plugins/p/skills/tidy') {
+        $kit = Join-Path $TestDrive "kit-$(New-Guid)"
+        Write-Text (Join-Path $kit '.claude/skills/start-work/SKILL.md') "Kit skill.`n"
+        $lock = [ordered]@{
+            repository = 'dotnet/skills'; url = $Upstream; commit = ''; retrieved = ''
+            skills = @([ordered]@{ name = 'tidy'; source = $Source; files = [ordered]@{} })
+        }
+        Write-Text (Join-Path $kit 'tools/dotnet-skills.json') ($lock | ConvertTo-Json -Depth 5)
+        $kit
+    }
+
+    function Read-Lock([string] $Kit) { Read-DotnetSkillLock -RepoRoot $Kit }
 }
 AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 
@@ -134,11 +153,6 @@ Describe 'Get-DotnetSkillDrift' {
 
 Describe 'Update-DotnetSkill' {
     BeforeAll {
-        function Write-Text([string] $Path, [string] $Text) {
-            New-Item -ItemType Directory -Force -Path (Split-Path $Path -Parent) | Out-Null
-            [IO.File]::WriteAllText($Path, $Text)
-        }
-
         # A stand-in for dotnet/skills: commit 1 has the "tidy" skill with an old reference file; main (commit 2)
         # changes SKILL.md, drops the old reference and adds a new one.
         $upstream = Join-Path $TestDrive 'upstream'
@@ -155,23 +169,10 @@ Describe 'Update-DotnetSkill' {
         git -C $upstream add -A
         git -C $upstream commit -q -m 'second'
         $second = (git -C $upstream rev-parse HEAD).Trim()
-
-        # A kit with its own skill and a lock that lists "tidy" but has no copy yet.
-        function New-Kit([string] $Source = 'plugins/p/skills/tidy') {
-            $kit = Join-Path $TestDrive "kit-$(New-Guid)"
-            Write-Text (Join-Path $kit '.claude/skills/start-work/SKILL.md') "Kit skill.`n"
-            $lock = [ordered]@{
-                repository = 'dotnet/skills'; url = $upstream; commit = ''; retrieved = ''
-                skills = @([ordered]@{ name = 'tidy'; source = $Source; files = [ordered]@{} })
-            }
-            Write-Text (Join-Path $kit 'tools/dotnet-skills.json') ($lock | ConvertTo-Json -Depth 5)
-            $kit
-        }
-        function Read-Lock([string] $Kit) { Get-Content -Raw -LiteralPath (Join-Path $Kit 'tools/dotnet-skills.json') | ConvertFrom-Json -AsHashtable -DateKind String }
     }
 
     It 'copies each listed skill at the commit and records the commit, the date and each file''s blob id' {
-        $kit = New-Kit
+        $kit = New-Kit -Upstream $upstream
 
         Update-DotnetSkill -RepoRoot $kit -Commit $first -RepositoryUrl $upstream -Retrieved '2026-11-10'
 
@@ -186,7 +187,7 @@ Describe 'Update-DotnetSkill' {
     }
 
     It 'moves to a later commit by branch name, dropping files that are gone upstream' {
-        $kit = New-Kit
+        $kit = New-Kit -Upstream $upstream
         Update-DotnetSkill -RepoRoot $kit -Commit $first -RepositoryUrl $upstream -Retrieved '2026-11-10'
 
         Update-DotnetSkill -RepoRoot $kit -Commit 'main' -RepositoryUrl $upstream -Retrieved '2026-11-11'
@@ -210,7 +211,7 @@ Describe 'Update-DotnetSkill' {
         }
 
         It 'is copied and recorded under its name' {
-            $kit = New-Kit
+            $kit = New-Kit -Upstream $upstream
 
             Update-DotnetSkill -RepoRoot $kit -Commit $accented -RepositoryUrl $upstream -Retrieved '2026-11-10'
 
@@ -220,7 +221,7 @@ Describe 'Update-DotnetSkill' {
 
         # A Windows console often uses a legacy code page, and PowerShell decodes git's output with it.
         It 'is recorded under its name when the console isn''t UTF-8' {
-            $kit = New-Kit
+            $kit = New-Kit -Upstream $upstream
             $saved = [Console]::OutputEncoding
             try {
                 [Console]::OutputEncoding = [Text.Encoding]::Latin1
@@ -235,7 +236,7 @@ Describe 'Update-DotnetSkill' {
     }
 
     It 'leaves the kit''s own skills and skills the lock doesn''t list alone' {
-        $kit = New-Kit
+        $kit = New-Kit -Upstream $upstream
 
         Update-DotnetSkill -RepoRoot $kit -Commit $second -RepositoryUrl $upstream -Retrieved '2026-11-10'
 
@@ -243,9 +244,8 @@ Describe 'Update-DotnetSkill' {
         Join-Path $kit '.claude/skills/other' | Should -Not -Exist
     }
 
-
     It 'changes nothing when a listed skill isn''t at the commit' {
-        $kit = New-Kit -Source 'plugins/p/skills/gone'
+        $kit = New-Kit -Upstream $upstream -Source 'plugins/p/skills/gone'
         $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
 
         { Update-DotnetSkill -RepoRoot $kit -Commit $second -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
@@ -257,7 +257,7 @@ Describe 'Update-DotnetSkill' {
 
     It 'changes nothing, and says why, when git can''t list a skill''s files' {
         # An unknown pathspec magic word makes git ls-tree fail.
-        $kit = New-Kit -Source ':(nonsense)plugins/p/skills/tidy'
+        $kit = New-Kit -Upstream $upstream -Source ':(nonsense)plugins/p/skills/tidy'
         $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
 
         { Update-DotnetSkill -RepoRoot $kit -Commit $second -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
@@ -268,7 +268,7 @@ Describe 'Update-DotnetSkill' {
 
     It 'changes nothing, and says so, when the ref isn''t a commit' {
         git -C $upstream tag tree-only "${second}^{tree}"
-        $kit = New-Kit
+        $kit = New-Kit -Upstream $upstream
         $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
 
         { Update-DotnetSkill -RepoRoot $kit -Commit 'refs/tags/tree-only' -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
@@ -279,7 +279,7 @@ Describe 'Update-DotnetSkill' {
     }
 
     It 'changes nothing when a curated copy has an edit, which the update would lose' {
-        $kit = New-Kit
+        $kit = New-Kit -Upstream $upstream
         Update-DotnetSkill -RepoRoot $kit -Commit $first -RepositoryUrl $upstream -Retrieved '2026-11-10'
         $skill = Join-Path $kit '.claude/skills/tidy/SKILL.md'
         Add-Content -LiteralPath $skill -Value 'A local edit.'
@@ -299,7 +299,7 @@ Describe 'Update-DotnetSkill' {
         git -C $upstream commit -q -m 'link'
         $linked = (git -C $upstream rev-parse HEAD).Trim()
         git -C $upstream switch -q main
-        $kit = New-Kit
+        $kit = New-Kit -Upstream $upstream
         $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
 
         { Update-DotnetSkill -RepoRoot $kit -Commit $linked -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
@@ -315,7 +315,7 @@ Describe 'Update-DotnetSkill' {
         git -C $upstream commit -q -m 'submodule'
         $withSubmodule = (git -C $upstream rev-parse HEAD).Trim()
         git -C $upstream switch -q main
-        $kit = New-Kit
+        $kit = New-Kit -Upstream $upstream
         $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
 
         { Update-DotnetSkill -RepoRoot $kit -Commit $withSubmodule -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
@@ -329,42 +329,28 @@ Describe 'Update-DotnetSkill' {
 Describe 'Update-DotnetSkills.ps1 from the command line' {
     BeforeAll {
         $script = Join-Path $PSScriptRoot '..' 'Update-DotnetSkills.ps1'
-        function Write-Text([string] $Path, [string] $Text) {
-            New-Item -ItemType Directory -Force -Path (Split-Path $Path -Parent) | Out-Null
-            [IO.File]::WriteAllText($Path, $Text)
-        }
         $upstream = Join-Path $TestDrive 'upstream'
         Write-Text (Join-Path $upstream 'plugins/p/skills/tidy/SKILL.md') "---`nname: tidy`n---`n"
         git -C $upstream init -q -b main
         git -C $upstream add -A
         git -C $upstream commit -q -m 'first'
         $head = (git -C $upstream rev-parse HEAD).Trim()
-
-        function New-Kit([string] $Source) {
-            $kit = Join-Path $TestDrive "kit-$(New-Guid)"
-            $lock = [ordered]@{
-                repository = 'dotnet/skills'; url = $upstream; commit = ''; retrieved = ''
-                skills = @([ordered]@{ name = 'tidy'; source = $Source; files = [ordered]@{} })
-            }
-            Write-Text (Join-Path $kit 'tools/dotnet-skills.json') ($lock | ConvertTo-Json -Depth 5)
-            $kit
-        }
     }
 
     It 'moves to upstream main from the lock''s url, dated today, and says which commit' {
-        $kit = New-Kit -Source 'plugins/p/skills/tidy'
+        $kit = New-Kit -Upstream $upstream -Source 'plugins/p/skills/tidy'
 
         $output = & pwsh -NoProfile -File $script -RepoRoot $kit 6>&1 2>&1 | Out-String
 
         $LASTEXITCODE | Should -Be 0 -Because $output
-        $lock = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json') | ConvertFrom-Json -AsHashtable -DateKind String
+        $lock = Read-Lock $kit
         $lock['commit'] | Should -Be $head
         $lock['retrieved'] | Should -Be (Get-Date -Format 'yyyy-MM-dd')
         $output | Should -Match $head
     }
 
     It 'exits 1 with the reason when the update can''t run' {
-        $kit = New-Kit -Source 'plugins/p/skills/gone'
+        $kit = New-Kit -Upstream $upstream -Source 'plugins/p/skills/gone'
 
         $output = & pwsh -NoProfile -File $script -RepoRoot $kit 6>&1 2>&1 | Out-String
 
