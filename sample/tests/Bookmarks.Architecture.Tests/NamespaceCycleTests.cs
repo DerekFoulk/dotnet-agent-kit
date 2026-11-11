@@ -42,12 +42,14 @@ internal static class NamespaceCycles
     /// <summary>The cycle rule, guarded so that a root with nothing under it fails instead of checking nothing.</summary>
     public static IArchRule Rule(string rootNamespace) =>
         CycleRule(rootNamespace)
-            .And(Types().That().ResideInNamespaceMatching($@"^{Regex.Escape(rootNamespace)}\.").Should().Exist());
+            .And(Types().That().ResideInNamespaceMatching($@"^{Regex.Escape(rootNamespace)}(\.|$)").Should().Exist());
 
     /// <summary>
-    /// Each namespace under the root is a slice ((**) takes the rest of the name), so a cycle between any two fails.
-    /// ArchUnitNET passes a slice rule that matches nothing, which is why <see cref="Rule"/> adds a guard.
+    /// The root namespace and every namespace under it are slices, so a cycle between any two fails. The pattern has
+    /// no dot before (**), so the root's own types form a slice too; it also takes in namespaces whose names merely
+    /// start with the root's (RootX beside Root), and any cycle it finds there is still a real one. ArchUnitNET passes
+    /// a slice rule that matches nothing, which is why <see cref="Rule"/> adds a guard.
     /// </summary>
     public static IArchRule CycleRule(string rootNamespace) =>
-        SliceRuleDefinition.Slices().Matching(rootNamespace + ".(**)").Should().BeFreeOfCycles();
+        SliceRuleDefinition.Slices().Matching(rootNamespace + "(**)").Should().BeFreeOfCycles();
 }
