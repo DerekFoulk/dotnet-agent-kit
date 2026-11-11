@@ -37,6 +37,7 @@ Accepted as recommended (owner, 2026-11-01).
 - The step-5 spike measures `latest-all` noise; each opt-out needs an ADR.
 - **Spike result (2026-11-04):** workable. 31 warnings in about 200 lines of ordinary code, nearly all pointing to real fixes; CA2007 is limited to libraries by ADR-0029, and CA1303 stays on (owner). Step 6 re-measures on the sample solution. Details: `spikes/latest-all/README.md`.
 - **Update (2026-11-10, ADR-0043):** `latest-all` leaves some rules off: the code metric rules and legacy rules Microsoft lists, and CA1516, which the SDK's all-mode file sets to none. A root `.globalconfig` turns them on, all but the one GAP-021 holds back, and lists them.
+- **Update (2026-11-11, ADR-0049):** CA1014 is on too, so `.globalconfig` turns on every rule `latest-all` leaves off. `Directory.Build.props` declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be.
 - A repo's `.editorconfig` overrides settings shipped in a package, so the sync step owns it and CI flags local changes.
 
 ## Pillars affected

@@ -24,8 +24,8 @@ rules:
     why: "Analyzer rules catch real defects; all of them on is the Microsoft baseline the owner asked for."
     layer: owner
     status: accepted
-    sources: ["ADR-0009", "ADR-0043"]
-    enforcement: "build: AnalysisLevel latest-all, and the root .globalconfig for the rules latest-all leaves off, all but GAP-021's; tools/tests/BuildConfig.Tests.ps1 (the CatchAll fixture, and fixtures that cover every rule .globalconfig turns on)"
+    sources: ["ADR-0009", "ADR-0043", "ADR-0049"]
+    enforcement: "build: AnalysisLevel latest-all, and the root .globalconfig for every rule latest-all leaves off, with Directory.Build.props declaring ComVisible(false) and CLSCompliant(false) on every assembly for CA1017 and CA1014 (ADR-0049); tools/tests/BuildConfig.Tests.ps1 (the CatchAll fixture, and fixtures that cover every rule .globalconfig turns on)"
     scope: core
     paths: ["**/*.cs", "Directory.Build.props", ".globalconfig"]
   - id: STY-004
