@@ -89,4 +89,14 @@ Describe 'Test-EmptyProjects.ps1' {
         $problems | Should -HaveCount 1
         $problems[0].Message | Should -BeLike '*Class1.cs*placeholder*'
     }
+
+    # A Razor class library can hold only components or pages.
+    It 'counts <File> as source' -ForEach @(
+        @{ File = 'Components/Counter.razor'; Text = '<button @onclick="() => count++">@count</button>@code { int count; }' }
+        @{ File = 'Pages/Index.cshtml'; Text = '@page' }
+    ) {
+        $solution = New-Solution @{ 'App.Ui' = @{ $File = $Text } }
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
+    }
 }
