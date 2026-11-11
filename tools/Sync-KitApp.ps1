@@ -191,15 +191,15 @@ function Merge-KitText {
     [IO.File]::ReadAllText($files[0])
 }
 
-# A workflow's text without its kit pins (the commit SHA and its version comment), which Dependabot moves: what's
-# left is what a person would have to change.
+# A workflow's text without its kit pins (the commit SHA and any comment after it: a version, or 'unreleased'),
+# which Dependabot moves: what's left is what a person would have to change.
 function Remove-KitPin {
     param(
         [AllowNull()] [string] $Text,
         [Parameter(Mandatory)] [string] $Repository
     )
 
-    $Text -replace "(uses:\s*$([regex]::Escape($Repository))/\S*@)[0-9a-f]{40}(?:[ \t]*#[ \t]*v\d+\.\d+\.\d+)?", '${1}' -replace "`r`n", "`n"
+    $Text -replace "(uses:\s*$([regex]::Escape($Repository))/\S*@)[0-9a-f]{40}(?:[ \t]*#[^\r\n]*)?", '${1}' -replace "`r`n", "`n"
 }
 
 # The PackageVersion and GlobalPackageReference items of a Directory.Packages.props, keyed by kind and package,
