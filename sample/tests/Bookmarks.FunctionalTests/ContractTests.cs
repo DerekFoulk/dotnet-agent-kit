@@ -1,4 +1,5 @@
 using System.Reflection;
+using Bookmarks.Contracts;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -86,6 +87,18 @@ public sealed class ContractTests : IDisposable
         }
 
         unprotected.Should().BeEmpty("every operation needs a bearer token, and says it may answer 401 or 403");
+    }
+
+    [Fact]
+    public async Task TheDocumentShowsTheCreateRequestsLimits()
+    {
+        // Review 1: a client generated from the document should know each limit the API enforces (SEC-010). OpenAPI
+        // knows [MaxLength] but not the sample's own UriLength, so the URL's limit needs saying.
+        JsonNode document = JsonNode.Parse(await _host.Client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken))!;
+        JsonNode properties = document["components"]!["schemas"]!["CreateBookmarkRequest"]!["properties"]!;
+
+        (properties["title"]?["maxLength"]?.GetValue<int>()).Should().Be(CreateBookmarkRequest.MaxTitleLength);
+        (properties["url"]?["maxLength"]?.GetValue<int>()).Should().Be(CreateBookmarkRequest.MaxUrlLength, "the URL's limit is in the document");
     }
 
     [Fact]
