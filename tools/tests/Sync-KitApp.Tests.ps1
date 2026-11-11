@@ -122,4 +122,13 @@ Describe 'Sync-KitApp' {
             Get-Tree $untouched | ConvertTo-Json | Should -Be ($untouchedTree | ConvertTo-Json)
         }
     }
+
+    It 'leaves an app already at the release as it is, and says so' {
+        $result = Sync-KitApp -AppRoot $untouched -KitRoot $kit -KitRef v0.1.0
+
+        $result | Should -Not -BeNullOrEmpty -Because 'the sync reports what it did'
+        $result.Changed | Should -BeFalse
+        $result.ToVersion | Should -Be 'v0.1.0'
+        Get-Tree $untouched | ConvertTo-Json | Should -Be ($untouchedTree | ConvertTo-Json)
+    }
 }
