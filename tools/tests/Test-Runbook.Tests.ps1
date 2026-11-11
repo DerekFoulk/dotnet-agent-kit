@@ -120,4 +120,38 @@ Describe 'Test-Runbook.ps1' {
             Get-Message | Should -Be "review date '11/11/2026' must be YYYY-MM-DD"
         }
     }
+
+    Context 'runner' {
+        BeforeEach {
+            Mock Write-Host {}
+        }
+
+        It 'reports a runbook that isn''t there' {
+            Get-Message | Should -Be "there's no runbook at '$script:runbook'"
+        }
+
+        It 'returns 0 and says so when the runbook is complete' {
+            New-Runbook
+
+            Invoke-RunbookCheck -Path $script:runbook | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*runbook*complete*' }
+        }
+
+        It 'returns 1 and prints each problem' {
+            New-Runbook -Omit 'How to restore its data'
+
+            Invoke-RunbookCheck -Path $script:runbook | Should -Be 1
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like "*'How to restore its data' is missing*" }
+        }
+
+        It 'exits 1 when run as a script against an incomplete runbook' {
+            New-Runbook -Omit 'How to roll back a release'
+            $script = Join-Path $PSScriptRoot '..' 'Test-Runbook.ps1'
+
+            $output = pwsh -NoProfile -File $script -Path $script:runbook 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1 -Because $output
+            $output | Should -Match 'How to roll back a release'
+        }
+    }
 }

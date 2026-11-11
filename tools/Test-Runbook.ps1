@@ -68,9 +68,15 @@ function Get-RunbookSection {
     $result
 }
 
+function Invoke-RunbookCheck {
+    param([Parameter(Mandatory)] [string] $Path)
+    0
+}
+
 function Get-RunbookProblem {
     param([Parameter(Mandatory)] [string] $Path)
 
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
     $lines = @(Get-Content -LiteralPath $Path)
     $sections = Get-RunbookSection -Lines $lines
 
