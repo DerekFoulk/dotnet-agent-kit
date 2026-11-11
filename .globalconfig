@@ -14,3 +14,6 @@ dotnet_diagnostic.CA1502.severity = warning
 
 # CA1506: Avoid excessive class coupling
 dotnet_diagnostic.CA1506.severity = warning
+
+# CA1501: Avoid excessive inheritance
+dotnet_diagnostic.CA1501.severity = warning
