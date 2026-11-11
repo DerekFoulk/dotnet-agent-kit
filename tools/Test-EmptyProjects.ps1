@@ -23,6 +23,13 @@ function New-Problem {
     [pscustomobject]@{ Message = $Message }
 }
 
+# True for the file `dotnet new classlib` writes, Class1.cs with an empty class Class1, in either namespace style.
+function Test-PlaceholderFile {
+    param([Parameter(Mandatory)] [IO.FileInfo] $File)
+
+    $File.Name -eq 'Class1.cs' -and (Get-Content -LiteralPath $File.FullName -Raw) -match '\bclass\s+Class1\s*\{\s*\}'
+}
+
 function Get-EmptyProjectProblem {
     param([Parameter(Mandatory)] [string] $Solution)
 
@@ -32,7 +39,7 @@ function Get-EmptyProjectProblem {
         $projectFolder = Split-Path -Parent (Join-Path $solutionFolder $relative)
         $sources = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File -Filter '*.cs' |
             Where-Object { [IO.Path]::GetRelativePath($projectFolder, $_.FullName).Split([IO.Path]::DirectorySeparatorChar)[0] -notin $script:BuildFolders } |
-            Where-Object Name -NE 'Class1.cs')
+            Where-Object { -not (Test-PlaceholderFile -File $_) })
         if (-not $sources) {
             New-Problem -Message "$relative has no source files of its own"
         }
