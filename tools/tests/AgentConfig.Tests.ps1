@@ -254,13 +254,21 @@ Describe 'Agent configuration' {
             # Every skill folder: the kit's own and the curated ones from dotnet/skills (ADR-0042).
             $skillFolders = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot '..' '..' '.claude' 'skills') -Directory |
                     ForEach-Object { @{ Skill = $_.Name } })
+            $kitSkills = @('start-work', 'plan-checklist', 'tdd-cycle', 'write-adr', 'finish-work', 'address-review')
         }
 
-        It 'has the kit''s <Skill> skill' -ForEach @(
-            @{ Skill = 'start-work' }, @{ Skill = 'plan-checklist' }, @{ Skill = 'tdd-cycle' },
-            @{ Skill = 'write-adr' }, @{ Skill = 'finish-work' }, @{ Skill = 'address-review' }
-        ) {
+        It 'has the kit''s <Skill> skill' -ForEach @($kitSkills | ForEach-Object { @{ Skill = $_ } }) {
             Join-Path $repoRoot '.claude' 'skills' $Skill 'SKILL.md' | Should -Exist
+        }
+
+        # A skill taken out of tools/dotnet-skills.json would otherwise stay behind: unpinned, unchecked, and still
+        # copied into every app.
+        It 'has no skill folder besides the kit''s own and the curated ones in tools/dotnet-skills.json' -ForEach @(@{ KitSkills = $kitSkills }) {
+            $lock = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'tools' 'dotnet-skills.json') | ConvertFrom-Json -AsHashtable
+            $expected = @($KitSkills) + @($lock['skills'] | ForEach-Object { $_['name'] }) | Sort-Object
+            $folders = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot '.claude' 'skills') -Directory | ForEach-Object Name | Sort-Object)
+
+            $folders | Should -Be $expected
         }
 
         # Claude Code truncates description + when_to_use at 1,536 characters. The reviewer recalled a
