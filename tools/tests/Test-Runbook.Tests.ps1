@@ -99,4 +99,25 @@ Describe 'Test-Runbook.ps1' {
             Get-Message | Should -Be "the '- **Last reviewed:** ' line is missing"
         }
     }
+
+    Context 'placeholders' {
+        It 'lets a Draft keep its placeholders, the review date''s too' {
+            New-Runbook -Status 'Draft' -Reviewed '[fill in: YYYY-MM-DD]' -Body @{ 'Where it runs' = '- Production: [fill in: the production URL]' }
+
+            Get-Message | Should -BeNullOrEmpty
+        }
+
+        It 'reports each placeholder left in a runbook that''s In use, with its line' {
+            New-Runbook -Status 'In use' -Body @{ 'Where it runs' = '- Production: [fill in: the production URL]' }
+            $line = (Select-String -LiteralPath $script:runbook -SimpleMatch '[fill in:').LineNumber
+
+            Get-Message | Should -Be "line ${line}: '[fill in: the production URL]' must be filled in before the runbook is In use"
+        }
+
+        It 'reports a review date that isn''t YYYY-MM-DD in a runbook that''s In use' {
+            New-Runbook -Status 'In use' -Reviewed '11/11/2026'
+
+            Get-Message | Should -Be "review date '11/11/2026' must be YYYY-MM-DD"
+        }
+    }
 }
