@@ -106,7 +106,9 @@ public static class ServiceDefaultsExtensions
         app.UseRequestTimeouts();
         app.UseOutputCache();
         RouteGroupBuilder health = app.MapGroup(string.Empty);
-        health.CacheOutput(HealthPolicy).WithRequestTimeout(HealthPolicy);
+        // Probes call without a token, so the health endpoints stay public when the app requires a signed-in user
+        // everywhere else (SEC-007).
+        health.CacheOutput(HealthPolicy).WithRequestTimeout(HealthPolicy).AllowAnonymous();
         health.MapHealthChecks(HealthPath);
         health.MapHealthChecks(AlivePath, new HealthCheckOptions { Predicate = registration => registration.Tags.Contains(LiveTag) });
         return app;

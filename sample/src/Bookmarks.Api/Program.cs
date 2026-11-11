@@ -19,6 +19,9 @@ builder.Services.AddProblemDetails();
 // Validates endpoint parameters from their DataAnnotations and answers a validation problem (API-006).
 builder.Services.AddValidation();
 
+// Every endpoint needs a caller signed in with a valid access token, unless it opts out (SEC-007, SEC-008).
+builder.Services.AddApiSecurity();
+
 WebApplication app = builder.Build();
 
 // In Development a binding failure (bad JSON, a query value that isn't a number) throws BadHttpRequestException;
@@ -30,6 +33,10 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         : StatusCodes.Status500InternalServerError,
 });
 app.UseStatusCodePages();
+
+// Before MapDefaultEndpoints, whose output cache must run after them (see its remarks).
+app.UseAuthentication();
+app.UseAuthorization();
 
 // The sample creates its schema on startup; a real app would use migrations.
 using (IServiceScope scope = app.Services.CreateScope())
