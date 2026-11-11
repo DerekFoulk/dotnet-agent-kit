@@ -186,17 +186,41 @@ function Get-KitReleaseCommit {
     $commit
 }
 
+# The release the app's workflows pin the kit to: Dependabot moves that pin (ADR-0042). Every kit pin must name
+# the same commit, and a release tag must point to it, or it isn't trusted (ADR-0031).
+function Get-KitPinnedRelease {
+    param(
+        [Parameter(Mandatory)] [string] $AppRoot,
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [Parameter(Mandatory)] [string] $Repository
+    )
+
+    $pattern = "(?m)^\s*(?:-\s*)?uses:\s*$([regex]::Escape($Repository))/\S*@(?<sha>[0-9a-f]{40})\b"
+    $pins = @(Get-ChildItem -LiteralPath (Join-Path $AppRoot '.github/workflows') -File -Include '*.yml', '*.yaml' -ErrorAction SilentlyContinue |
+            ForEach-Object { [regex]::Matches([IO.File]::ReadAllText($_.FullName), $pattern) } |
+            ForEach-Object { $_.Groups['sha'].Value } | Sort-Object -Unique)
+    if ($pins.Count -eq 0) { throw "The app's workflows pin $Repository to no full commit SHA." }
+    if ($pins.Count -gt 1) { throw "The app's workflows pin $Repository to different commits, which disagree: $($pins -join ', ')." }
+    $releases = @(git -C $KitRoot tag --points-at $pins[0] 2>$null | Where-Object { $_ -cmatch '^v\d+\.\d+\.\d+$' })
+    if (-not $releases) { throw "The app's workflows pin $Repository to $($pins[0]), but no release tag points to it, so it isn't trusted (ADR-0031)." }
+    $releases | Sort-Object { [version] $_.Substring(1) } | Select-Object -Last 1
+}
+
 function Sync-KitApp {
     param(
         [Parameter(Mandatory)] [string] $AppRoot,
         [Parameter(Mandatory)] [string] $KitRoot,
-        [Parameter(Mandatory)] [string] $KitRef
+        # A release tag. Without it, the release the app's workflows pin the kit to.
+        [string] $KitRef
     )
 
     $AppRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($AppRoot)
     $KitRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($KitRoot)
-    $toCommit = Get-KitReleaseCommit -KitRoot $KitRoot -KitRef $KitRef
     $manifest = Read-KitManifest -AppRoot $AppRoot
+    if (-not $KitRef) {
+        $KitRef = Get-KitPinnedRelease -AppRoot $AppRoot -KitRoot $KitRoot -Repository ($manifest['kitRepository'] ?? 'DerekFoulk/dotnet-agent-kit')
+    }
+    $toCommit = Get-KitReleaseCommit -KitRoot $KitRoot -KitRef $KitRef
     $fromCommit = $manifest['kitCommit']
 
     # Only forward: the release must contain the app's kit commit. An app's files at a later kit version than the
