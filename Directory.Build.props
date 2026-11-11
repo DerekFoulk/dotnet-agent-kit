@@ -15,6 +15,15 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
+  <!-- Every assembly says COM can't see its types, which CA1017 asks for (STY-003, ADR-0043). A type that COM must
+       see says so itself with [ComVisible(true)]. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.InteropServices.ComVisibleAttribute">
+      <_Parameter1>false</_Parameter1>
+      <_Parameter1_IsLiteral>true</_Parameter1_IsLiteral>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <!-- Craft checks (ADR-0043): .globalconfig turns the metric rules on and CodeMetricsConfig.txt sets their limits
        (CRF-008); BannedSymbols.txt lists the APIs the banned-API analyzer rejects (CRF-010). -->
   <ItemGroup>

@@ -1,10 +1,11 @@
 is_global = true
 
 # The analyzer rules that AnalysisLevel latest-all leaves off, turned on here so that every rule is on (STY-003);
-# warnings fail the build (STY-004). Microsoft lists them: the code metric rules (CA1501, CA1502, CA1505, CA1506,
-# CA1509) and six legacy rules (CA1005, CA1014, CA1017, CA1021, CA1045, CA1060):
+# warnings fail the build (STY-004). Microsoft lists most of them, the code metric rules and six legacy rules:
 #   https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview#code-quality-analysis  retrieved 2026-11-10
-# CA1014 and CA1017 aren't turned on yet: every project breaks them, so they need a decision of their own (GAP-021).
+# The SDK's own all-mode file also sets CA1516 to none (sdk/10.0.404/Sdks/Microsoft.NET.Sdk/analyzers/build/config/
+# analysislevel_10_all.globalconfig). Each rule below has a fixture in tools/tests/BuildConfig.Tests.ps1. The one left
+# off, CA1014, waits for its own decision (GAP-021).
 #
 # They live in this file rather than .editorconfig because CA1509, which checks CodeMetricsConfig.txt itself, can only
 # be turned on in a global config:
@@ -42,3 +43,11 @@ dotnet_diagnostic.CA1045.severity = warning
 
 # CA1060: Move P/Invokes to NativeMethods class
 dotnet_diagnostic.CA1060.severity = warning
+
+# CA1017: Mark assemblies with ComVisible (Directory.Build.props marks every assembly ComVisible(false))
+dotnet_diagnostic.CA1017.severity = warning
+
+# Set to none by the SDK's all-mode file (STY-003, ADR-0043).
+
+# CA1516: Use cross-platform intrinsics
+dotnet_diagnostic.CA1516.severity = warning

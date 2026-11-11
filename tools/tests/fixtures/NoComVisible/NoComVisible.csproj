@@ -1,9 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <!-- Without generated assembly info the kit's ComVisible(false) attribute isn't added, so CA1017 must fire. -->
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
+
+  <!-- A web app, where CA1017 fires (the web SDK gives the assembly a public type), without the kit's ComVisible(false). -->
+  <ItemGroup>
+    <AssemblyAttribute Remove="System.Runtime.InteropServices.ComVisibleAttribute" />
+  </ItemGroup>
 
 </Project>
