@@ -132,6 +132,21 @@ Describe 'Sync-KitApp' {
         Get-Tree $untouched | ConvertTo-Json | Should -Be ($untouchedTree | ConvertTo-Json)
     }
 
+    It 'keeps an edited file instead of merging it when the kit''s earlier text can''t be rebuilt exactly' {
+        # A manifest hash no export reproduces: the merge would have no trustworthy base.
+        $copy = Join-Path $TestDrive 'unknown-base'
+        Copy-Item -LiteralPath $untouched -Destination $copy -Recurse
+        $manifestPath = Join-Path $copy '.kit/manifest.json'
+        $manifest = Get-Content -Raw $manifestPath | ConvertFrom-Json -AsHashtable
+        ($manifest['files'] | Where-Object { $_['path'] -eq '.editorconfig' })['sha256'] = '0' * 64
+        Set-FileText $manifestPath ($manifest | ConvertTo-Json -Depth 4)
+
+        $sync = Sync-KitApp -AppRoot $copy -KitRoot $kit -KitRef v0.2.0
+
+        @($sync.Files | Where-Object Path -EQ '.editorconfig' | ForEach-Object Action) | Should -Be @('Conflict')
+        Get-Content -Raw (Join-Path $copy '.editorconfig') | Should -Not -Match 'kit-v2-marker'
+    }
+
     Context 'from v0.1.0 to v0.2.0' {
         BeforeAll {
             # What a new app made at v0.2.0 gets: the text every unedited kit-managed file should have after the sync.
