@@ -18,7 +18,8 @@ public sealed class BookmarksDbContext(DbContextOptions<BookmarksDbContext> opti
             bookmark.Property(b => b.Url).IsRequired();
             bookmark.Property(b => b.Title).IsRequired().HasMaxLength(500);
             bookmark.Property(b => b.CreatedAt).IsRequired();
-            bookmark.HasIndex(b => b.Url);
+            // Every read filters by owner first (SEC-009), then by URL or by key.
+            bookmark.HasIndex(b => new { b.OwnerId, b.Url });
         });
     }
 }
