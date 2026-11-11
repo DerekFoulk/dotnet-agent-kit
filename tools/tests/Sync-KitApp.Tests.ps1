@@ -117,7 +117,10 @@ Describe 'Sync-KitApp' {
             }
         }
 
-        # Dependabot's PR: the kit pin, with its version comment, moved in every workflow (ADR-0044).
+        # The app's own job in a kit workflow, whose only kit change at v0.2.0 is the pin.
+        Add-Content -LiteralPath (Join-Path $app '.github/workflows/ci.yml') -Value '# app-ci-marker'
+
+        # Dependabot's PR: the kit pin, with its version comment, moved in every workflow (ADR-0045).
         foreach ($workflow in Get-ChildItem -LiteralPath (Join-Path $app '.github/workflows') -File) {
             Edit-FileText $workflow.FullName "@$v1 # v0.1.0" "@$v2 # v0.2.0"
         }
@@ -265,7 +268,7 @@ Describe 'Sync-KitApp' {
                 if ($file) { $file[0].Action } else { '(none)' }
             }
             $edited = '.editorconfig', '.gitignore', '.claude/skills/plan-checklist/SKILL.md', '.claude/skills/app-skill/SKILL.md', $instructions,
-            '.github/workflows/mutation.yml'
+            '.github/workflows/mutation.yml', '.github/workflows/ci.yml'
 
             # No -KitRef: the release is the one Dependabot pinned. An error is kept for the first test to show.
             $syncError = $null
@@ -305,7 +308,15 @@ Describe 'Sync-KitApp' {
             $mutation | Should -Not -Match 'kit-v2-workflow-marker'
             $mutation | Should -Match ([regex]::Escape("@$v2 # v0.2.0"))
             Get-SyncAction '.github/workflows/mutation.yml' | Should -Be 'WorkflowByHand'
-            Get-SyncAction '.github/workflows/ci.yml' | Should -Be '(none)' -Because "Dependabot's pin is all the kit changed there"
+            Get-SyncAction '.github/workflows/app-checks.yml' | Should -Be '(none)' -Because "Dependabot's pin is all the kit changed there"
+        }
+
+        # Review: Dependabot already moved the pin, so a workflow the app edited has nothing left to apply.
+        It 'reports nothing for a workflow the app edited, when the kit changed only its pin' {
+            Get-SyncAction '.github/workflows/ci.yml' | Should -Be '(none)'
+            $ci = Get-Content -Raw (Join-Path $app '.github/workflows/ci.yml')
+            $ci | Should -Match 'app-ci-marker'
+            $ci | Should -Match ([regex]::Escape("@$v2 # v0.2.0"))
         }
 
         It 'removes a file the kit no longer has, when the app didn''t edit it' {
