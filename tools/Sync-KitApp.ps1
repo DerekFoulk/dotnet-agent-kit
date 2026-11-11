@@ -63,8 +63,12 @@ function Get-KitSyncAction {
         # The kit now has a file where the app made its own: the app's stays, unless it's the kit's already.
         return ($OursHash -eq $Theirs['sha256'] ? 'None' : 'AppFileKept')
     }
-    # The app deleted a kit file (or its kit block): it isn't brought back.
-    if (-not $OursHash) { return ($Theirs ? 'KeptDeleted' : 'None') }
+    # The app deleted a kit file (or its kit block): it isn't brought back. A generated file is, since the
+    # rebuild writes every one.
+    if (-not $OursHash) {
+        if (-not $Theirs) { return 'None' }
+        return ($Generated ? 'Added' : 'KeptDeleted')
+    }
     $edited = $OursHash -ne $Old['sha256']
     if (-not $Theirs) {
         # A generated file the kit no longer makes goes, edited or not: the app's Build-AgentRules removes it anyway.
