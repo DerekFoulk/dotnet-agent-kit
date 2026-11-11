@@ -1,5 +1,5 @@
 # {{Name}}'s .NET gates, from dotnet-agent-kit's shared workflow. The kit is pinned to the commit its
-# release tag points to (ADR-0031); the sync job moves the pin with each kit release.
+# release tag points to (ADR-0031); Dependabot moves the pin with each kit release (kit ADR-0045).
 name: CI
 
 on:

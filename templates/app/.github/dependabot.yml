@@ -1,12 +1,14 @@
-# Keeps {{Name}}'s NuGet packages current. The "chore" prefix makes each PR title a Conventional Commit,
-# which CI requires. "include: scope" adds "(deps)", but the NuGet updater ignores it for now
-# (dependabot-core#15158), so PRs come as "chore: Bump ..."; keep it for when that's fixed.
-# The kit's sync job moves the kit pin (DerekFoulk/dotnet-agent-kit) and the global.json SDK pin with each
-# kit release, so they aren't listed here (ADR-0032). This file is the app's: add an ecosystem when the app
-# adds one of its own, such as github-actions for its own workflows, and check any kit pin Dependabot
-# proposes against a kit release tag before merging (ADR-0031).
-# Each update waits before Dependabot proposes it: 7 days, and 14 for a major, so a release that's pulled or
-# found compromised in its first days never reaches a PR (the kit's ADR-0041); give an ecosystem you add the
+# Keeps {{Name}}'s NuGet packages and its dotnet-agent-kit pin current. The "chore" prefix makes each PR title a
+# Conventional Commit, which CI requires. "include: scope" adds "(deps)", but the NuGet updater ignores it for now
+# (dependabot-core#15158), so NuGet PRs come as "chore: Bump ..."; keep it for when that's fixed.
+# Kit updates (the kit's ADR-0044): Dependabot moves the kit pin in this app's workflows to a new kit release, in
+# one PR for every kit reference, because a workflow's own token can't change workflow files. On that PR,
+# .github/workflows/kit-sync.yml brings in the release's other kit-managed files, global.json's SDK pin
+# included, so there's no dotnet-sdk entry here. Check the kit pin against a kit release tag before merging
+# (ADR-0031); the sync's comment on the PR says how.
+# This file is the app's: add an ecosystem when the app adds one of its own.
+# Each update waits before Dependabot proposes it: 7 days, and 14 for a NuGet major, so a release that's pulled
+# or found compromised in its first days never reaches a PR (the kit's ADR-0041); give an ecosystem you add the
 # same cooldown (github-actions supports only default-days). Security updates, which New-KitApp turns on,
 # don't wait. Shortening or narrowing the wait is the owner's to merge.
 version: 2
@@ -21,3 +23,17 @@ updates:
     cooldown:
       default-days: 7
       semver-major-days: 14
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
+    groups:
+      dotnet-agent-kit:
+        patterns:
+          - DerekFoulk/dotnet-agent-kit*
