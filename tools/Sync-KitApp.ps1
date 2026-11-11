@@ -224,9 +224,10 @@ function Get-KitPackageGroupEnd {
     param([Parameter(Mandatory)] [string] $Text)
 
     # The reader gives a line and column; the offset of each line's start turns them into an offset in the text.
+    # Line breaks as XML counts them: CRLF, LF, or a lone CR.
     $lineStarts = [Collections.Generic.List[int]]::new()
     $lineStarts.Add(0)
-    for ($i = $Text.IndexOf("`n"); $i -ge 0; $i = $Text.IndexOf("`n", $i + 1)) { $lineStarts.Add($i + 1) }
+    foreach ($break in [regex]::Matches($Text, "`r`n?|`n")) { $lineStarts.Add($break.Index + $break.Length) }
     $settings = [Xml.XmlReaderSettings]@{ DtdProcessing = [Xml.DtdProcessing]::Prohibit }
     $reader = [Xml.XmlReader]::Create([IO.StringReader]::new($Text), $settings)
     $ends = [pscustomobject]@{ Group = $null; Project = $null }
@@ -241,6 +242,9 @@ function Get-KitPackageGroupEnd {
             elseif ($reader.NodeType -eq 'EndElement') {
                 # The column is the name's, just after '</'.
                 $offset = $lineStarts[$reader.LineNumber - 1] + $reader.LinePosition - 3
+                if ($offset -lt 0 -or [string]::CompareOrdinal($Text, $offset, '</', 0, 2) -ne 0) {
+                    throw "Couldn't place the end tag of <$($reader.LocalName)> in the app's Directory.Packages.props (line $($reader.LineNumber))."
+                }
                 if ($isGroup -and $reader.Depth -eq $groupDepth) { $ends.Group = $offset; $groupDepth = -1 }
                 elseif ($reader.LocalName -ceq 'Project' -and $reader.Depth -eq 0) { $ends.Project = $offset }
             }
@@ -293,7 +297,7 @@ function Add-KitPackage {
     $ends = Get-KitPackageGroupEnd -Text $text
     $text = if ($null -ne $ends.Group) {
         # Into the app's group, just before its end tag: on lines of their own, in the end tag's indentation.
-        $lineStart = $text.LastIndexOf("`n", [Math]::Max($ends.Group - 1, 0)) + 1
+        $lineStart = $text.LastIndexOfAny([char[]] "`r`n", [Math]::Max($ends.Group - 1, 0)) + 1
         $before = $text.Substring($lineStart, $ends.Group - $lineStart)
         if ($before.Trim()) {
             $indent = [regex]::Match($text.Substring($lineStart), '^[ \t]*').Value
