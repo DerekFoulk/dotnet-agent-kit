@@ -165,7 +165,7 @@ Describe 'BannedSymbols.txt' {
                 'M' {
                     $wanted = if ($Matches['params']) { $Matches['params'].Split(',') } else { @() }
                     return [bool]($owner.GetMethods($declared) | Where-Object {
-                        $_.Name -eq $member -and ((@($_.GetParameters() | ForEach-Object { $_.ParameterType.FullName }) -join ',') -eq ($wanted -join ','))
+                        $_.Name -ceq $member -and ((@($_.GetParameters() | ForEach-Object { $_.ParameterType.FullName }) -join ',') -ceq ($wanted -join ','))
                     })
                 }
             }
