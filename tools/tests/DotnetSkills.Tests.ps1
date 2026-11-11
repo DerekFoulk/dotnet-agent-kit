@@ -8,7 +8,11 @@
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '..' 'Update-DotnetSkills.ps1')
+    # Every repo these tests make runs with the same git settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
 }
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 
 Describe 'Get-DotnetSkillBlobId' {
     It 'gives git''s blob id for a file, the same with LF or CRLF line endings' {
@@ -75,9 +79,6 @@ Describe 'Get-DotnetSkillDrift' {
 
 Describe 'Update-DotnetSkill' {
     BeforeAll {
-        Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
-        $savedGit = Set-TestGitEnvironment
-
         function Write-Text([string] $Path, [string] $Text) {
             New-Item -ItemType Directory -Force -Path (Split-Path $Path -Parent) | Out-Null
             [IO.File]::WriteAllText($Path, $Text)
@@ -113,7 +114,6 @@ Describe 'Update-DotnetSkill' {
         }
         function Read-Lock([string] $Kit) { Get-Content -Raw -LiteralPath (Join-Path $Kit 'tools/dotnet-skills.json') | ConvertFrom-Json -AsHashtable -DateKind String }
     }
-    AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 
     It 'copies each listed skill at the commit and records the commit, the date and each file''s blob id' {
         $kit = New-Kit

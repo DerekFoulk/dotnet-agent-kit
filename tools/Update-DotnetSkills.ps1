@@ -10,6 +10,9 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# The upstream repo, the pinned commit and each copied file's blob id, relative to the repo root.
+$script:LockPath = 'tools/dotnet-skills.json'
+
 # git's blob id for a file: the SHA-1 of "blob <length>\0" and the bytes, with CRLF read as LF.
 function Get-DotnetSkillBlobId {
     param([Parameter(Mandatory)] [string] $Path)
@@ -63,4 +66,66 @@ function Update-DotnetSkill {
         [Parameter(Mandatory)] [string] $RepositoryUrl,
         [Parameter(Mandatory)] [string] $Retrieved
     )
+
+    $lock = Read-DotnetSkillLock -RepoRoot $RepoRoot
+    $skillsRoot = Join-Path $RepoRoot '.claude' 'skills'
+
+    $work = Join-Path ([IO.Path]::GetTempPath()) "dotnet-skills-$([guid]::NewGuid().ToString('N'))"
+    try {
+        # A throwaway repo that fetches only the one commit: no clone of upstream's history, and no GitHub sign-in.
+        git init -q $work
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't make a temporary repo in $work." }
+        git -C $work fetch -q --depth 1 --no-tags $RepositoryUrl $Commit
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't fetch '$Commit' from $RepositoryUrl." }
+        $sha = (git -C $work rev-parse --verify 'FETCH_HEAD^{commit}' | Out-String).Trim()
+
+        # Every file of every listed skill at the commit, before anything changes.
+        $plan = foreach ($skill in $lock['skills']) {
+            $source = $skill['source'].TrimEnd('/')
+            $entries = @(git -C $work ls-tree -r --full-tree $sha -- "$source/" | ForEach-Object {
+                    $info, $path = $_ -split "`t", 2
+                    $mode, $type, $id = $info -split ' '
+                    [pscustomobject]@{ Mode = $mode; Type = $type; Id = $id; File = $path.Substring($source.Length + 1) }
+                })
+            [pscustomobject]@{ Skill = $skill; Source = $source; Entries = $entries }
+        }
+
+        # git checks files out into a separate folder, which must exist first.
+        $stage = Join-Path $work 'stage'
+        New-Item -ItemType Directory -Path $stage | Out-Null
+        $sources = @($plan | ForEach-Object { $_.Source })
+        # No line-ending conversion: the copies are upstream's bytes.
+        git -c core.autocrlf=false -C $work --work-tree $stage checkout -q $sha -- @($sources)
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't check out the skills at $sha." }
+
+        foreach ($step in $plan) {
+            $folder = Join-Path $skillsRoot $step.Skill['name']
+            if (Test-Path -LiteralPath $folder) { Remove-Item -LiteralPath $folder -Recurse -Force }
+            New-Item -ItemType Directory -Force -Path $folder | Out-Null
+            Copy-Item -Path (Join-Path $stage $step.Source '*') -Destination $folder -Recurse -Force
+            $files = [ordered]@{}
+            foreach ($entry in $step.Entries) { $files[$entry.File] = $entry.Id }
+            $step.Skill['files'] = $files
+        }
+        $lock['commit'] = $sha
+        $lock['retrieved'] = $Retrieved
+        Write-DotnetSkillLock -RepoRoot $RepoRoot -Lock $lock
+    }
+    finally {
+        if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
+    }
+}
+
+function Read-DotnetSkillLock {
+    param([Parameter(Mandatory)] [string] $RepoRoot)
+
+    # -DateKind String keeps the retrieval date as written.
+    Get-Content -Raw -LiteralPath (Join-Path $RepoRoot $script:LockPath) | ConvertFrom-Json -AsHashtable -DateKind String
+}
+
+function Write-DotnetSkillLock {
+    param([Parameter(Mandatory)] [string] $RepoRoot, [Parameter(Mandatory)] [Collections.IDictionary] $Lock)
+
+    $json = ($Lock | ConvertTo-Json -Depth 5) -replace "`r`n", "`n"
+    [IO.File]::WriteAllText((Join-Path $RepoRoot $script:LockPath), "$json`n", [Text.UTF8Encoding]::new($false))
 }
