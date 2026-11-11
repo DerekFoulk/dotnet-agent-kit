@@ -69,4 +69,10 @@ Describe 'Test-EmptyProjects.ps1' {
         $problems | Should -HaveCount 1
         $problems[0].Message | Should -BeLike '*App.Domain*has no source*'
     }
+
+    It 'passes a Class1 that someone has filled in' {
+        $solution = New-Solution @{ 'App.Domain' = @{ 'Class1.cs' = "namespace App.Domain;`n`npublic class Class1`n{`n    public int Count { get; init; }`n}" } }
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
+    }
 }
