@@ -35,5 +35,13 @@ internal static class NestingRule
     private static int DepthOf(StatementSyntax statement, SyntaxNode member) =>
         statement.Ancestors().TakeWhile(ancestor => ancestor != member).Count(IsLevel);
 
-    private static bool IsLevel(SyntaxNode node) => node is IfStatementSyntax;
+    // The statements that open a level. An else-if continues its chain: it sits in the else clause of the if before it,
+    // and the chain counts once.
+    private static bool IsLevel(SyntaxNode node) => node switch
+    {
+        IfStatementSyntax ifStatement => ifStatement.Parent is not ElseClauseSyntax,
+        SwitchStatementSyntax or ForStatementSyntax or ForEachStatementSyntax or WhileStatementSyntax or DoStatementSyntax
+            or TryStatementSyntax => true,
+        _ => false,
+    };
 }
