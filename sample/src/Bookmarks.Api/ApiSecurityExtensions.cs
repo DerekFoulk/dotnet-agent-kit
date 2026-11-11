@@ -26,12 +26,12 @@ internal static class ApiSecurityExtensions
         return services;
     }
 
-    // A sub that's there but blank would make every such caller one shared owner, and one past OpenID Connect's 255
-    // characters can't be an owner: both are the token's fault, so a 403 on every endpoint.
-    private static bool IsOwnerId(string? sub) => !string.IsNullOrWhiteSpace(sub) && sub.Length <= Bookmark.MaxOwnerIdLength;
-
     /// <summary>The signed-in user's id: the token's sub claim, which the fallback policy requires to be a valid owner id.</summary>
     public static string UserId(this ClaimsPrincipal user) =>
         user.FindFirstValue(JwtRegisteredClaimNames.Sub)
         ?? throw new InvalidOperationException("The fallback policy lets no request without a sub claim through.");
+
+    // A sub that's there but blank would make every such caller one shared owner, and one past OpenID Connect's 255
+    // characters can't be an owner: both are the token's fault, so a 403 on every endpoint.
+    private static bool IsOwnerId(string? sub) => !string.IsNullOrWhiteSpace(sub) && sub.Length <= Bookmark.MaxOwnerIdLength;
 }
