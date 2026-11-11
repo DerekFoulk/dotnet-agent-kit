@@ -210,6 +210,8 @@ Describe 'Sync-KitApp' {
             # Review: an edit the kit's release doesn't touch has nothing to merge, so it needs no look.
             @{ Case = 'an edited file the kit didn''t change'; Old = @{ path = '.gitignore'; sha256 = 'a' * 64 }; Theirs = @{ path = '.gitignore'; sha256 = 'a' * 64 }; Ours = 'c' * 64; Generated = $false; Expected = 'None' }
             @{ Case = 'an edited generated file the kit didn''t change, which the rebuild replaces anyway'; Old = @{ path = '.claude/rules/x.md'; sha256 = 'a' * 64 }; Theirs = @{ path = '.claude/rules/x.md'; sha256 = 'a' * 64 }; Ours = 'c' * 64; Generated = $true; Expected = 'Regenerated' }
+            # Review: the rebuild writes every generated file again, so a deleted one comes back.
+            @{ Case = 'a generated file the app deleted'; Old = @{ path = '.claude/rules/x.md'; sha256 = 'a' * 64 }; Theirs = @{ path = '.claude/rules/x.md'; sha256 = 'b' * 64 }; Ours = $null; Generated = $true; Expected = 'Added' }
         ) {
             Get-KitSyncAction -Old $Old -Theirs $Theirs -OursHash $Ours -Generated $Generated | Should -Be $Expected
         }
