@@ -41,6 +41,7 @@ BeforeDiscovery {
         @{ Fixture = 'ModuleTypes'; Diagnostic = 'RS0030'; Description = 'listing a module''s types, internal ones included (CRF-010)' }
         @{ Fixture = 'ByNameDelegate'; Diagnostic = 'RS0030'; Description = 'binding a delegate to a method by name, which finds private methods too (CRF-010)' }
         @{ Fixture = 'DeclaredMembersReflection'; Diagnostic = 'RS0030'; Description = 'listing non-public members through TypeInfo.DeclaredFields, with no BindingFlags (CRF-010)' }
+        @{ Fixture = 'TypeInitializerUse'; Diagnostic = 'RS0030'; Description = 'reading a type''s static constructor, which is always private, through Type.TypeInitializer (CRF-010)' }
     )
 }
 
