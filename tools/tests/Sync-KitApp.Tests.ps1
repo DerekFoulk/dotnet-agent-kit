@@ -76,7 +76,9 @@ Describe 'Sync-KitApp' {
         Add-Content -LiteralPath (Join-Path $app $instructions) -Value 'app-generated-edit'
         $packagesPath = Join-Path $app 'Directory.Packages.props'
         Set-FileText $packagesPath ([IO.File]::ReadAllText($packagesPath) -replace '(?m)^[ \t]*<PackageVersion Include="Moq"[^\r\n]*\r?\n', '') # the app drops a kit package
-        $appOwned = 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'Directory.Packages.props', '.github/dependabot.yml'
+        Edit-FileText (Join-Path $app 'docs/runbook.md') '- **Status:** Draft' '- **Status:** In use' # the app fills in its runbook
+        Set-FileText (Join-Path $app 'docs/glossary.md') "# Our own glossary`n" # where the kit will start every app with one
+        $appOwned = 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md', 'Directory.Packages.props', '.github/dependabot.yml'
         $appOwnedBefore = @{}
         foreach ($path in $appOwned) { $appOwnedBefore[$path] = [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) }
 
@@ -89,6 +91,11 @@ Describe 'Sync-KitApp' {
         Edit-FileText (Join-Path $kit '.editorconfig') '# Microsoft .NET code-style baseline (D9).' '# Microsoft .NET code-style baseline (D9), kit-v2-marker.'
         Edit-FileText (Join-Path $kit '.gitignore') '# dotenv files' '# dotenv files (kit v2)'
         Add-Content -LiteralPath (Join-Path $kit '.claude/skills/plan-checklist/SKILL.md') -Value 'kit-v2-plan-marker'
+        Edit-FileText (Join-Path $kit 'templates/app/docs/runbook.md') '1. Check that CI passed' '1. Check (kit v2) that CI passed'
+        # Two files v0.2.0 starts every app with, for the app to own, as v0.1.0 did with docs/runbook.md (ADR-0047).
+        Set-FileText (Join-Path $kit 'templates/app/docs/handbook.md') "# {{Name}} handbook`n"
+        Set-FileText (Join-Path $kit 'templates/app/docs/glossary.md') "# {{Name}} glossary`n"
+        Edit-FileText (Join-Path $kit 'tools/Export-KitApp.ps1') "'docs/runbook.md'," "'docs/runbook.md', 'docs/handbook.md', 'docs/glossary.md',"
         Remove-Item -LiteralPath (Join-Path $kit '.claude/skills/tdd-cycle/SKILL.md'), (Join-Path $kit '.claude/skills/write-adr/SKILL.md')
         Set-FileText (Join-Path $kit '.claude/skills/fresh-skill/SKILL.md') "# A new kit skill`n"
         Set-FileText (Join-Path $kit '.claude/skills/app-skill/SKILL.md') "# The kit's skill of the same name`n"
@@ -221,6 +228,79 @@ Describe 'Sync-KitApp' {
         @($file | ForEach-Object Action) | Should -Be @('PackageNotAdded')
         $report = Format-KitSyncReport -Result $sync
         [regex]::Match($report, '(?m)^\| `Directory\.Packages\.props` \|.*Kit\.Fixture\.Analyzer.*$').Value | Should -Match 'other form'
+    }
+
+    # Review 2 (mutants that survived): each branch of Add-KitAppOwnedFile, on small folders standing in for the
+    # app and the two exports.
+    Context 'adding the files a release starts every app with' {
+        BeforeEach {
+            $script:ownedRoot = Join-Path $TestDrive "owned-$(New-Guid)"
+            $script:newRoot = Join-Path $script:ownedRoot 'new'
+            $script:baseRoot = Join-Path $script:ownedRoot 'base'
+            $script:appRoot = Join-Path $script:ownedRoot 'app'
+            foreach ($folder in $script:newRoot, $script:baseRoot, $script:appRoot) { New-Item -ItemType Directory -Path $folder | Out-Null }
+        }
+
+        It 'adds a file new in the release that the app lacks, and reports it' {
+            Set-FileText (Join-Path $script:newRoot 'docs/runbook.md') "# Runbook`n"
+
+            $added = @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed @())
+
+            @($added | ForEach-Object { "$($_.Path) $($_.Action)" }) | Should -Be @('docs/runbook.md AppFileAdded')
+            Get-Content -Raw (Join-Path $script:appRoot 'docs/runbook.md') | Should -Be "# Runbook`n"
+        }
+
+        It 'keeps the app''s own file at that path, and reports it' {
+            Set-FileText (Join-Path $script:newRoot 'docs/runbook.md') "# Runbook`n"
+            Set-FileText (Join-Path $script:appRoot 'docs/runbook.md') "# Ours`n"
+
+            $added = @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed @())
+
+            @($added | ForEach-Object { "$($_.Path) $($_.Action)" }) | Should -Be @('docs/runbook.md AppFileKept')
+            Get-Content -Raw (Join-Path $script:appRoot 'docs/runbook.md') | Should -Be "# Ours`n"
+        }
+
+        It 'reports nothing when the app''s file is already the kit''s' {
+            Set-FileText (Join-Path $script:newRoot 'docs/runbook.md') "# Runbook`r`n"
+            Set-FileText (Join-Path $script:appRoot 'docs/runbook.md') "# Runbook`n"
+
+            @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed @()) | Should -BeNullOrEmpty
+        }
+
+        It 'skips <Case>' -ForEach @(
+            @{ Case = 'a file the app''s kit version already had, which the app deleted'; Path = 'docs/runbook.md'; InBase = $true; Managed = @() }
+            @{ Case = 'a kit-managed file, which the manifest handles'; Path = '.editorconfig'; InBase = $false; Managed = @('.editorconfig') }
+            @{ Case = 'a file under .kit'; Path = '.kit/manifest.json'; InBase = $false; Managed = @() }
+            @{ Case = 'a generated rule file'; Path = '.claude/rules/new.md'; InBase = $false; Managed = @() }
+        ) {
+            Set-FileText (Join-Path $script:newRoot $Path) "new`n"
+            if ($InBase) { Set-FileText (Join-Path $script:baseRoot $Path) "old`n" }
+
+            $added = @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed $Managed)
+
+            $added | Should -BeNullOrEmpty
+            Test-Path -LiteralPath (Join-Path $script:appRoot $Path) | Should -BeFalse
+        }
+
+        It 'lists a new workflow for a person, and doesn''t write it' {
+            Set-FileText (Join-Path $script:newRoot '.github/workflows/new.yml') "name: New`n"
+
+            $added = @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed @())
+
+            @($added | ForEach-Object { "$($_.Path) $($_.Action)" }) | Should -Be @('.github/workflows/new.yml WorkflowByHand')
+            Test-Path -LiteralPath (Join-Path $script:appRoot '.github/workflows/new.yml') | Should -BeFalse
+        }
+
+        It 'puts an added file under "Needs a look" in the PR''s description' {
+            $result = [pscustomobject]@{
+                Repository = 'DerekFoulk/dotnet-agent-kit'; FromVersion = 'v0.1.0'; FromCommit = 'a' * 40; ToVersion = 'v0.2.0'; ToCommit = 'b' * 40
+                Changed = $true; Files = @([pscustomobject]@{ Path = 'docs/runbook.md'; Action = 'AppFileAdded'; Detail = $null })
+            }
+
+            $report = Format-KitSyncReport -Result $result
+
+            [regex]::Match($report, '(?m)^\| `docs/runbook\.md` \|.*$').Value | Should -Match 'starts every app'
+        }
     }
 
     Context 'deciding each file' {
@@ -612,6 +692,21 @@ Describe 'Sync-KitApp' {
             $copilot = Get-Content -Raw (Join-Path $app '.github/copilot-instructions.md')
             $copilot | Should -Match 'kit-v2-agents-marker'
             $copilot | Should -Match 'app-notes-marker'
+        }
+
+        # Review of PR (GAP-017): the sync never touched app-owned files, so an app made before the kit started every
+        # app with a runbook would fail the runbook check at its next kit-pin PR.
+        It 'adds a file the release starts every app with, which the app lacks, as the app''s own, and reports it' {
+            $handbook = Join-Path $app 'docs/handbook.md'
+            Test-Path -LiteralPath $handbook | Should -BeTrue -Because 'v0.2.0 starts every app with it, and this app lacked it'
+            Get-Content -Raw $handbook | Should -Match '# Contoso\.Orders handbook'
+            @($expectedManifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain 'docs/handbook.md'
+            Get-SyncAction 'docs/handbook.md' | Should -Be 'AppFileAdded'
+        }
+
+        It 'keeps the app''s own file where the release starts every app with one, and reports it' {
+            Get-Content -Raw (Join-Path $app 'docs/glossary.md') | Should -Match 'Our own glossary'
+            Get-SyncAction 'docs/glossary.md' | Should -Be 'AppFileKept'
         }
 
         It 'leaves the app''s own files byte for byte as they were' {

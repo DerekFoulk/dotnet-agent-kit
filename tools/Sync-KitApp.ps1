@@ -5,8 +5,10 @@
 
 .DESCRIPTION
     Reads the app's .kit/manifest.json and updates every kit-managed file, and the kit blocks of AGENTS.md and
-    THIRD-PARTY-NOTICES.md, to a kit release. Files the app owns are left alone, with one exception: a package
-    the release adds is added to the app's Directory.Packages.props, if the app lacks it (Add-KitPackage).
+    THIRD-PARTY-NOTICES.md, to a kit release. Files the app owns are left alone, with two exceptions: a package
+    the release adds is added to the app's Directory.Packages.props, if the app lacks it (Add-KitPackage); and a
+    file the release is the first to start every app with, for the app to own, is added if the app lacks it
+    (Add-KitAppOwnedFile).
 
     The release is -KitRef, a release tag, or, without it, the release the app's workflows pin the kit to:
     Dependabot moves that pin, and a release tag must point to it (ADR-0031). The app is exported at its kit
@@ -331,6 +333,44 @@ function Add-KitPackage {
     $result
 }
 
+# Gives the app each file the release starts every app with for the app to own, such as its runbook (ADR-0047),
+# when the app's kit version didn't have it yet and the app lacks it: AppFileAdded. An app's own file at that path
+# stays: AppFileKept, unless it already has the kit's text (in any line endings). Only ever adds; a file the app owns
+# already is never changed, and one it deleted after its kit version added it isn't brought back. A workflow is
+# listed for a person instead, since the sync can't write one. The .kit/ and generated-path checks repeat what
+# $Managed and the base export already exclude today, so a later export that changes either can't make the sync
+# write there.
+function Add-KitAppOwnedFile {
+    param(
+        [Parameter(Mandatory)] [string] $AppRoot,
+        [Parameter(Mandatory)] [string] $BaseRoot,
+        [Parameter(Mandatory)] [string] $NewRoot,
+        # The release's kit-managed paths, which the manifest handles.
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Managed
+    )
+
+    $exported = Get-ChildItem -LiteralPath $NewRoot -Recurse -File -Force |
+        ForEach-Object { [IO.Path]::GetRelativePath($NewRoot, $_.FullName).Replace('\', '/') } | Sort-Object
+    foreach ($path in $exported) {
+        if ($path -cin $Managed -or $path.StartsWith('.kit/', [StringComparison]::Ordinal) -or (Test-KitGeneratedPath -Path $path)) { continue }
+        # The app's kit version already started apps with it: nothing new to add.
+        if (Test-Path -LiteralPath (Join-Path $BaseRoot $path)) { continue }
+        $target = Join-Path $AppRoot $path
+        if (Test-Path -LiteralPath $target) {
+            $same = (& $script:TextHash -Text ([IO.File]::ReadAllText($target))) -eq (& $script:TextHash -Text ([IO.File]::ReadAllText((Join-Path $NewRoot $path))))
+            if (-not $same) { [pscustomobject]@{ Path = $path; Action = 'AppFileKept'; Detail = $null } }
+        }
+        elseif ($path.StartsWith('.github/workflows/', [StringComparison]::Ordinal)) {
+            [pscustomobject]@{ Path = $path; Action = 'WorkflowByHand'; Detail = $null }
+        }
+        else {
+            New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+            Copy-Item -LiteralPath (Join-Path $NewRoot $path) -Destination $target
+            [pscustomobject]@{ Path = $path; Action = 'AppFileAdded'; Detail = $null }
+        }
+    }
+}
+
 # The commit a release tag (vX.Y.Z) in the kit repo points to. Only a tag counts: ADR-0031 trusts a kit pin only
 # when a release tag in the kit's own repo points to it.
 function Get-KitReleaseCommit {
@@ -448,6 +488,7 @@ function Sync-KitApp {
             }
             if ($action -ne 'None') { [pscustomobject]@{ Path = $path; Action = $action; Detail = $null } }
         }
+        $files = @($files) + @(Add-KitAppOwnedFile -AppRoot $AppRoot -BaseRoot $baseRoot -NewRoot $newRoot -Managed @($newEntries.Keys))
         $packages = Add-KitPackage -AppRoot $AppRoot -BaseRoot $baseRoot -NewRoot $newRoot
         if ($packages.Added) {
             $files = @($files) + [pscustomobject]@{ Path = 'Directory.Packages.props'; Action = 'PackagesAdded'; Detail = ($packages.Added | ForEach-Object { "``$_``" }) -join ', ' }
@@ -482,6 +523,7 @@ $script:Explanations = [ordered]@{
     KeptDeleted = 'This app had deleted it, so it stays deleted, though the kit changed it.', 'Restore it if the change matters here.'
     NowAppOwned = "The kit no longer manages it, but this app had edited it (or it's a kit block in this app's file), so it stays, as this app's own.", 'Keep it or delete it.'
     AppFileKept = 'The kit now has a file at this path, but this app already had its own, which stays.', "Rename the app's file and take the kit's, or keep the app's."
+    AppFileAdded = 'The release starts every app with this file, for the app to own, and this app lacked it, so the sync added the kit''s starting text. The kit never changes it again.', 'Fill it in as the file says, on this branch or in a later PR.'
     WorkflowByHand = "The release adds, changes or removes this workflow beyond the kit pin Dependabot moves. A workflow's own token can't write workflow files, so this PR doesn't.", "Apply the kit's change on this branch: compare with templates/app/.github/workflows in the kit at this release, with this app's name for {{Name}}."
     PackagesAdded = "The release adds packages the kit's files need, which this app's file lacked, so the sync added them in an ItemGroup labelled ``dotnet-agent-kit``:", 'Run `dotnet restore --force-evaluate` on this branch and commit the lock files: the sync doesn''t restore.'
     PackageNotAdded = "The release adds packages the kit's files need, but this app has them in the other form (PackageVersion or GlobalPackageReference), and NuGet rejects one listed both ways, so they weren't added:", 'Keep one entry per package: a GlobalPackageReference if every project needs it, or a PackageVersion with a PackageReference in each project that does.'
@@ -494,7 +536,7 @@ function Format-KitSyncReport {
 
     $kit = "https://github.com/$($Result.Repository)"
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add("Brings dotnet-agent-kit $($Result.ToVersion) (commit ``$($Result.ToCommit)``) into this app, from $($Result.FromVersion) (commit ``$($Result.FromCommit)``). The kit's sync job made it from ``.kit/manifest.json`` (kit ADR-0044): it updates the files the kit manages and the kit blocks of ``AGENTS.md`` and ``THIRD-PARTY-NOTICES.md``. Of this app's own files, it changes only ``Directory.Packages.props``, and only to add a package the kit's files need.")
+    $lines.Add("Brings dotnet-agent-kit $($Result.ToVersion) (commit ``$($Result.ToCommit)``) into this app, from $($Result.FromVersion) (commit ``$($Result.FromCommit)``). The kit's sync job made it from ``.kit/manifest.json`` (kit ADR-0044): it updates the files the kit manages and the kit blocks of ``AGENTS.md`` and ``THIRD-PARTY-NOTICES.md``. Of this app's own files, it changes only ``Directory.Packages.props``, and only to add a package the kit's files need; and it adds a file the release starts every app with, such as ``docs/runbook.md``, when this app lacks it.")
     $lines.Add('')
     $lines.Add("Release notes: $kit/releases/tag/$($Result.ToVersion). The kit's files at this release: $kit/tree/$($Result.ToCommit).")
 

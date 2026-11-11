@@ -221,5 +221,16 @@ Describe 'Shared CI for app repos' {
             $run | Should -Match 'Test-AdrSections\.ps1"? -AdrPath'
             $run | Should -Match 'docs/adr'
         }
+
+        # Every app gets docs/runbook.md, so a missing one fails rather than skipping the check (OPS-004).
+        It 'checks the app''s runbook on every run, failing when it''s missing' {
+            $step = @(Get-Steps $app.Yaml | Where-Object { "$($_['run'])" -match 'Test-Runbook\.ps1' })
+
+            $step.Count | Should -Be 1
+            $step[0]['run'] | Should -Match 'Test-Runbook\.ps1"? -Path'
+            $step[0]['run'] | Should -Match 'docs/runbook\.md'
+            $step[0]['run'] | Should -Not -Match 'Test-Path'
+            $step[0].ContainsKey('if') | Should -BeFalse
+        }
     }
 }

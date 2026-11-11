@@ -184,11 +184,11 @@ areas:
     sources:
       - "https://diataxis.fr/, retrieved 2026-11-07"
       - "ADR-0016"
-    rules: [ARC-005, ARC-006, DOD-001]
+    rules: [ARC-005, ARC-006, DOD-001, OPS-004]
     gaps:
       - id: GAP-017
-        gap: "No runbooks: nothing says how to operate, recover or roll back an app."
-        status: proposed
+        gap: "No runbooks: nothing says how to operate, recover or roll back an app. Closed by ADR-0047: every app gets docs/runbook.md from a template, a how-to guide for each operating task, and the shared app checks run Test-Runbook.ps1 on it (OPS-004, proposed)."
+        status: closed
   - id: ui
     name: UI and accessibility
     perfect: "Every UI meets WCAG 2.2 AA; UI logic lives in testable code (MVVM for MAUI), not in pages."
@@ -242,11 +242,11 @@ Each area in the front matter above has:
 | Performance | 1 | 0 | 1 | 0 | 1 |
 | Supply chain and build | 8 | 8 | 0 | 0 | 2 |
 | Delivery | 1 | 1 | 0 | 0 | 2 |
-| Docs and decisions | 3 | 2 | 1 | 0 | 1 |
+| Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 8 proposed; 13 open gaps.
+**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 9 proposed; 12 open gaps.
 
 Open gaps:
 
@@ -262,7 +262,6 @@ Open gaps:
 - **GAP-014** (Supply chain and build, proposed; needs a GitHub Action and a CI change): OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet.
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
-- **GAP-017** (Docs and decisions, proposed): No runbooks: nothing says how to operate, recover or roll back an app.
 <!-- scorecard-table:end -->
 
 ## Keeping it current

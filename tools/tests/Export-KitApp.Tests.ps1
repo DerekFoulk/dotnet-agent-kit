@@ -166,8 +166,8 @@ Describe 'Export-KitApp' {
             $listed[$path]['sha256'] | Should -Be $actual -Because "$path's hash should match the exported file"
         }
 
-        # The app owns these from the start; the sync job never touches them.
-        foreach ($path in 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md') {
+        # The app owns these from the start; the sync job never touches them. The runbook is the app's to fill in.
+        foreach ($path in 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md') {
             $listed.ContainsKey($path) | Should -BeFalse -Because "$path belongs to the app"
         }
 
@@ -248,6 +248,16 @@ Describe 'Export-KitApp' {
         $generated.Count | Should -BeGreaterThan 10
         foreach ($path in $generated) { $listed | Should -Contain $path }
         $listed | Should -Not -Contain '.github/copilot-instructions.md'
+    }
+
+    It 'gets a Draft runbook that passes its own runbook check' {
+        $runbook = Join-Path $app 'docs/runbook.md'
+        Test-Path -LiteralPath $runbook | Should -BeTrue -Because 'every app starts with a runbook to fill in (OPS-004)'
+        Get-Content -Raw -LiteralPath $runbook | Should -Match '# Contoso\.Orders runbook'
+
+        $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-Runbook.ps1') -Path $runbook 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $output
     }
 
     It 'passes its own ADR check, which skips the ADR template' {
