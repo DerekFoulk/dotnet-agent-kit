@@ -112,6 +112,19 @@ Describe 'Repo build configuration' -Tag 'Build' {
             @($script:second) | Should -HaveCount 1 -Because 'the function returns only the workspace path'
             Split-Path $script:second -Parent | Should -Not -Be (Split-Path $first -Parent) -Because 'a reused folder would share one build between rows'
         }
+
+        # A workspace with no commit or no tag would still build, and only MinVer's version would show it.
+        It 'stops when a git step fails, instead of returning an untagged workspace' {
+            $savedDate = $env:GIT_COMMITTER_DATE
+            try {
+                $env:GIT_COMMITTER_DATE = 'not a date'
+
+                { New-FixtureWorkspace -Fixture 'Clean' } | Should -Throw -ExpectedMessage '*git commit*'
+            }
+            finally {
+                $env:GIT_COMMITTER_DATE = $savedDate
+            }
+        }
     }
 
     Context 'violations fail the build' {
