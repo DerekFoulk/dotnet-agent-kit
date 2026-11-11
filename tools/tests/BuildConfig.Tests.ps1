@@ -330,6 +330,17 @@ Describe '.globalconfig' {
         $script:enabled | Should -Be $Expected
     }
 
+    # Roslyn keeps the last value a key gets, and lowercases keys first, so a later line turns a rule back off.
+    It 'lets the last line for a rule win: <Description>' -ForEach @(
+        @{ Description = 'on, then off'; Lines = @('dotnet_diagnostic.CA1014.severity = warning', 'dotnet_diagnostic.CA1014.severity = none'); Expected = @() }
+        @{ Description = 'on, then off in other case'; Lines = @('dotnet_diagnostic.CA1014.severity = warning', 'DOTNET_DIAGNOSTIC.ca1014.SEVERITY = none'); Expected = @() }
+        @{ Description = 'off, then on'; Lines = @('dotnet_diagnostic.CA1014.severity = none', 'dotnet_diagnostic.CA1014.severity = error'); Expected = @('CA1014') }
+        @{ Description = 'on twice'; Lines = @('dotnet_diagnostic.CA1014.severity = warning', 'dotnet_diagnostic.CA1014.severity = error'); Expected = @('CA1014') }
+    ) {
+        { $script:enabled = @(Get-EnabledRule -Line $Lines) } | Should -Not -Throw
+        $script:enabled | Should -Be $Expected
+    }
+
     # Review 10 of PR 36: a line the function can't read would turn nothing on in its eyes, so the real-file test
     # would pass while Roslyn read the line as something else (a bulk severity, say), or ignored a typo.
     It 'stops at <Line>, which it doesn''t recognise' -ForEach @(
