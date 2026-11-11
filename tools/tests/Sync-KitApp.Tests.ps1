@@ -303,6 +303,18 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -Be $before
         }
 
+        # Review: an app may reformat the group's start tag; a second group with the same label would be clutter.
+        It 'finds the app''s dotnet-agent-kit ItemGroup however its start tag is written' {
+            $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
+            $lines = '<Project>', "  <ItemGroup Condition=""'true'"" Label='dotnet-agent-kit'>", '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
+            Set-FileText (Join-Path $appRoot 'Directory.Packages.props') ($lines -join "`n")
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            $expected = $lines[0..2] + "    $analyzer" + $lines[3..6]
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($expected -join "`n")
+        }
+
         It 'adds to the app''s dotnet-agent-kit ItemGroup when it has one, in the file''s line endings' {
             $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
             $lines = '<Project>', '  <ItemGroup Label="dotnet-agent-kit">', '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
