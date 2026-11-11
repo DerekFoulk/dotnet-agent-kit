@@ -45,7 +45,7 @@ public sealed class BookmarkServiceTests
     public async Task AddRefusesAUrlThatIsAlreadySaved()
     {
         Bookmark existing = Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now);
-        _repository.Setup(r => r.FindByUrlAsync(existing.Url, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        _repository.Setup(r => r.FindByUrlAsync(Owner, existing.Url, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
 
         AddBookmarkResult result = await _service.AddAsync(Owner, new CreateBookmarkRequest(existing.Url, "Again"), TestContext.Current.CancellationToken);
 
@@ -58,10 +58,10 @@ public sealed class BookmarkServiceTests
     public async Task GetReturnsTheBookmarkOrNothing()
     {
         Bookmark saved = Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now);
-        _repository.Setup(r => r.FindAsync(saved.Id, It.IsAny<CancellationToken>())).ReturnsAsync(saved);
+        _repository.Setup(r => r.FindAsync(Owner, saved.Id, It.IsAny<CancellationToken>())).ReturnsAsync(saved);
 
-        BookmarkResponse? found = await _service.GetAsync(saved.Id, TestContext.Current.CancellationToken);
-        BookmarkResponse? missing = await _service.GetAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        BookmarkResponse? found = await _service.GetAsync(Owner, saved.Id, TestContext.Current.CancellationToken);
+        BookmarkResponse? missing = await _service.GetAsync(Owner, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         found.Should().Be(new BookmarkResponse(saved.Id, saved.Url, "A", s_now));
         missing.Should().BeNull();
@@ -74,12 +74,12 @@ public sealed class BookmarkServiceTests
         Bookmark a = Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now);
         Bookmark b = Bookmark.Create(Owner, new Uri("https://example.com/b"), "B", s_now);
         Bookmark c = Bookmark.Create(Owner, new Uri("https://example.com/c"), "C", s_now);
-        _repository.Setup(r => r.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
-        _repository.Setup(r => r.ListAsync(0, 3, It.IsAny<CancellationToken>())).ReturnsAsync([a, b, c]);
-        _repository.Setup(r => r.ListAsync(2, 3, It.IsAny<CancellationToken>())).ReturnsAsync([c]);
+        _repository.Setup(r => r.ListAsync(Owner, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        _repository.Setup(r => r.ListAsync(Owner, 0, 3, It.IsAny<CancellationToken>())).ReturnsAsync([a, b, c]);
+        _repository.Setup(r => r.ListAsync(Owner, 2, 3, It.IsAny<CancellationToken>())).ReturnsAsync([c]);
 
-        BookmarkListResult first = await _service.ListAsync(0, 2, TestContext.Current.CancellationToken);
-        BookmarkListResult last = await _service.ListAsync(2, 2, TestContext.Current.CancellationToken);
+        BookmarkListResult first = await _service.ListAsync(Owner, 0, 2, TestContext.Current.CancellationToken);
+        BookmarkListResult last = await _service.ListAsync(Owner, 2, 2, TestContext.Current.CancellationToken);
 
         first.Items.Select(bookmark => bookmark.Title).Should().Equal("A", "B");
         first.HasMore.Should().BeTrue();
@@ -93,9 +93,9 @@ public sealed class BookmarkServiceTests
         // Review 1 of PR 22: a last page holding exactly `limit` bookmarks must not link to an empty page.
         Bookmark a = Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now);
         Bookmark b = Bookmark.Create(Owner, new Uri("https://example.com/b"), "B", s_now);
-        _repository.Setup(r => r.ListAsync(0, 3, It.IsAny<CancellationToken>())).ReturnsAsync([a, b]);
+        _repository.Setup(r => r.ListAsync(Owner, 0, 3, It.IsAny<CancellationToken>())).ReturnsAsync([a, b]);
 
-        BookmarkListResult page = await _service.ListAsync(0, 2, TestContext.Current.CancellationToken);
+        BookmarkListResult page = await _service.ListAsync(Owner, 0, 2, TestContext.Current.CancellationToken);
 
         page.Items.Should().HaveCount(2);
         page.HasMore.Should().BeFalse();
@@ -111,9 +111,9 @@ public sealed class BookmarkServiceTests
     {
         // Review 1 of PR 22: only the endpoint's [Range] guarded the page, and int.MaxValue + 1 overflows into a
         // negative LIMIT, which SQLite reads as no limit at all.
-        _repository.Setup(r => r.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        _repository.Setup(r => r.ListAsync(Owner, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
-        Func<Task> list = () => _service.ListAsync(offset, limit, TestContext.Current.CancellationToken);
+        Func<Task> list = () => _service.ListAsync(Owner, offset, limit, TestContext.Current.CancellationToken);
 
         await list.Should().ThrowAsync<ArgumentOutOfRangeException>();
     }
@@ -125,9 +125,9 @@ public sealed class BookmarkServiceTests
     public async Task APageAtTheLimitsIsAccepted(int offset, int limit)
     {
         // Review 2 of PR 22: the endpoint's [Range] allows these, so the service must too, or a valid request is a 500.
-        _repository.Setup(r => r.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        _repository.Setup(r => r.ListAsync(Owner, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
-        Func<Task> list = () => _service.ListAsync(offset, limit, TestContext.Current.CancellationToken);
+        Func<Task> list = () => _service.ListAsync(Owner, offset, limit, TestContext.Current.CancellationToken);
 
         await list.Should().NotThrowAsync();
     }
@@ -137,9 +137,9 @@ public sealed class BookmarkServiceTests
     {
         // Review 3 of PR 22: a next page starting past MaxOffset would be refused, so the page before it is the last.
         Bookmark[] rows = [.. Enumerable.Range(0, 101).Select(i => Bookmark.Create(Owner, new Uri($"https://example.com/{i}"), $"{i}", s_now))];
-        _repository.Setup(r => r.ListAsync(9_950, 101, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        _repository.Setup(r => r.ListAsync(Owner, 9_950, 101, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
 
-        BookmarkListResult page = await _service.ListAsync(9_950, 100, TestContext.Current.CancellationToken);
+        BookmarkListResult page = await _service.ListAsync(Owner, 9_950, 100, TestContext.Current.CancellationToken);
 
         page.Items.Should().HaveCount(100);
         page.HasMore.Should().BeFalse("a page from offset 10,050 is past the deepest offset the API accepts");
@@ -150,9 +150,9 @@ public sealed class BookmarkServiceTests
     {
         // The edge of the fix above: a next page from offset 10,000 is still accepted, so it is linked.
         Bookmark[] rows = [.. Enumerable.Range(0, 101).Select(i => Bookmark.Create(Owner, new Uri($"https://example.com/{i}"), $"{i}", s_now))];
-        _repository.Setup(r => r.ListAsync(9_900, 101, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        _repository.Setup(r => r.ListAsync(Owner, 9_900, 101, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
 
-        BookmarkListResult page = await _service.ListAsync(9_900, 100, TestContext.Current.CancellationToken);
+        BookmarkListResult page = await _service.ListAsync(Owner, 9_900, 100, TestContext.Current.CancellationToken);
 
         page.HasMore.Should().BeTrue();
     }
@@ -166,9 +166,9 @@ public sealed class BookmarkServiceTests
     {
         // Review 4 of PR 22: both sides of the cap, so an off-by-one (a next page at 10,001) fails a test.
         Bookmark[] rows = [.. Enumerable.Range(0, limit + 1).Select(i => Bookmark.Create(Owner, new Uri($"https://example.com/{i}"), $"{i}", s_now))];
-        _repository.Setup(r => r.ListAsync(offset, limit + 1, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        _repository.Setup(r => r.ListAsync(Owner, offset, limit + 1, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
 
-        BookmarkListResult page = await _service.ListAsync(offset, limit, TestContext.Current.CancellationToken);
+        BookmarkListResult page = await _service.ListAsync(Owner, offset, limit, TestContext.Current.CancellationToken);
 
         page.HasMore.Should().Be(linked);
     }

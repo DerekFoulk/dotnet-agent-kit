@@ -28,10 +28,11 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         await SaveAsync(bookmark);
 
         await using BookmarksDbContext db = new(_options);
-        Bookmark? found = await new EfBookmarkRepository(db).FindAsync(bookmark.Id, TestContext.Current.CancellationToken);
+        Bookmark? found = await new EfBookmarkRepository(db).FindAsync(Owner, bookmark.Id, TestContext.Current.CancellationToken);
 
         found.Should().NotBeNull();
-        found!.Url.Should().Be(bookmark.Url);
+        found!.OwnerId.Should().Be(Owner);
+        found.Url.Should().Be(bookmark.Url);
         found.Title.Should().Be("A");
         found.CreatedAt.Should().Be(s_now);
     }
@@ -43,7 +44,7 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         await SaveAsync(bookmark);
 
         await using BookmarksDbContext db = new(_options);
-        Bookmark? found = await new EfBookmarkRepository(db).FindByUrlAsync(new Uri("https://example.com/a"), TestContext.Current.CancellationToken);
+        Bookmark? found = await new EfBookmarkRepository(db).FindByUrlAsync(Owner, new Uri("https://example.com/a"), TestContext.Current.CancellationToken);
 
         found.Should().NotBeNull();
         found!.Id.Should().Be(bookmark.Id);
@@ -60,8 +61,8 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         await using BookmarksDbContext db = new(_options);
         EfBookmarkRepository repository = new(db);
 
-        (await repository.FindAsync(second.Id, TestContext.Current.CancellationToken))!.Title.Should().Be("B");
-        (await repository.FindAsync(Guid.NewGuid(), TestContext.Current.CancellationToken)).Should().BeNull();
+        (await repository.FindAsync(Owner, second.Id, TestContext.Current.CancellationToken))!.Title.Should().Be("B");
+        (await repository.FindAsync(Owner, Guid.NewGuid(), TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [Fact]
@@ -73,8 +74,30 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         await using BookmarksDbContext db = new(_options);
         EfBookmarkRepository repository = new(db);
 
-        (await repository.FindByUrlAsync(new Uri("https://example.com/b"), TestContext.Current.CancellationToken))!.Title.Should().Be("B");
-        (await repository.FindByUrlAsync(new Uri("https://example.com/c"), TestContext.Current.CancellationToken)).Should().BeNull();
+        (await repository.FindByUrlAsync(Owner, new Uri("https://example.com/b"), TestContext.Current.CancellationToken))!.Title.Should().Be("B");
+        (await repository.FindByUrlAsync(Owner, new Uri("https://example.com/c"), TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task EveryReadSeesOnlyTheOwnersBookmarks()
+    {
+        // SEC-009: the filter is in the query, so no caller reaches another user's bookmark by its id or its URL, and
+        // two users can save the same URL.
+        Uri url = new("https://example.com/a");
+        Bookmark mine = Bookmark.Create(Owner, url, "Mine", s_now);
+        Bookmark theirs = Bookmark.Create("bob", url, "Theirs", s_now.AddMinutes(1));
+        await SaveAsync(mine);
+        await SaveAsync(theirs);
+
+        await using BookmarksDbContext db = new(_options);
+        EfBookmarkRepository repository = new(db);
+
+        (await repository.FindAsync(Owner, theirs.Id, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await repository.FindAsync("bob", theirs.Id, TestContext.Current.CancellationToken))!.OwnerId.Should().Be("bob");
+        (await repository.FindByUrlAsync(Owner, url, TestContext.Current.CancellationToken))!.Id.Should().Be(mine.Id);
+        (await repository.FindByUrlAsync("bob", url, TestContext.Current.CancellationToken))!.Id.Should().Be(theirs.Id);
+        (await repository.ListAsync(Owner, 0, 10, TestContext.Current.CancellationToken)).Select(b => b.Id).Should().Equal(mine.Id);
+        (await repository.ListAsync("carol", 0, 10, TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
     [Fact]
@@ -84,7 +107,7 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         await SaveAsync(Bookmark.Create(Owner, new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
 
         await using BookmarksDbContext db = new(_options);
-        IReadOnlyList<Bookmark> all = await new EfBookmarkRepository(db).ListAsync(0, 10, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> all = await new EfBookmarkRepository(db).ListAsync(Owner, 0, 10, TestContext.Current.CancellationToken);
 
         all.Select(b => b.Title).Should().BeEquivalentTo("A", "B");
     }
@@ -100,9 +123,9 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
 
         await using BookmarksDbContext db = new(_options);
         EfBookmarkRepository repository = new(db);
-        IReadOnlyList<Bookmark> first = await repository.ListAsync(0, 2, TestContext.Current.CancellationToken);
-        IReadOnlyList<Bookmark> second = await repository.ListAsync(2, 2, TestContext.Current.CancellationToken);
-        IReadOnlyList<Bookmark> firstAgain = await repository.ListAsync(0, 2, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> first = await repository.ListAsync(Owner, 0, 2, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> second = await repository.ListAsync(Owner, 2, 2, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> firstAgain = await repository.ListAsync(Owner, 0, 2, TestContext.Current.CancellationToken);
 
         first.Should().HaveCount(2);
         second.Should().ContainSingle();
@@ -121,14 +144,14 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
 
         await using BookmarksDbContext db = new(_options);
         EfBookmarkRepository repository = new(db);
-        IReadOnlyList<Bookmark> first = await repository.ListAsync(0, 2, TestContext.Current.CancellationToken);
-        IReadOnlyList<Bookmark> second = await repository.ListAsync(2, 2, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> first = await repository.ListAsync(Owner, 0, 2, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> second = await repository.ListAsync(Owner, 2, 2, TestContext.Current.CancellationToken);
 
         first.Concat(second).Select(b => b.Title).Should().Equal("A", "B", "C");
     }
 
     [Fact]
-    public void TheModelKeysOnIdRequiresEveryFieldCapsTheTitleAndIndexesTheUrl()
+    public void TheModelKeysOnIdRequiresEveryFieldCapsTheTitleAndIndexesEachOwnersUrls()
     {
         // Mutation testing (PR 23): SQLite doesn't enforce a length, and EF finds "Id" as the key by convention, so
         // no behaviour test noticed when a line of OnModelCreating was removed. These are the schema's promises.
@@ -140,11 +163,14 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         Microsoft.EntityFrameworkCore.Metadata.IEntityType bookmark = db.Model.FindEntityType(typeof(Bookmark))!;
 
         bookmark.FindPrimaryKey()!.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.Id));
+        bookmark.FindProperty(nameof(Bookmark.OwnerId))!.IsNullable.Should().BeFalse();
         bookmark.FindProperty(nameof(Bookmark.Url))!.IsNullable.Should().BeFalse();
         bookmark.FindProperty(nameof(Bookmark.Title))!.IsNullable.Should().BeFalse();
         bookmark.FindProperty(nameof(Bookmark.Title))!.GetMaxLength().Should().Be(500);
         bookmark.FindProperty(nameof(Bookmark.CreatedAt))!.IsNullable.Should().BeFalse();
-        bookmark.GetIndexes().Should().ContainSingle(index => index.Properties.Single().Name == nameof(Bookmark.Url));
+        // Every read filters by owner first (SEC-009), so the index leads with it.
+        bookmark.GetIndexes().Should().ContainSingle().Which.Properties.Select(p => p.Name)
+            .Should().Equal(nameof(Bookmark.OwnerId), nameof(Bookmark.Url));
     }
 
     [Theory]

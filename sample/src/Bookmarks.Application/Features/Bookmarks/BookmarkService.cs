@@ -19,7 +19,7 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
     public async Task<AddBookmarkResult> AddAsync(string ownerId, CreateBookmarkRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        Bookmark? existing = await _repository.FindByUrlAsync(request.Url, cancellationToken).ConfigureAwait(false);
+        Bookmark? existing = await _repository.FindByUrlAsync(ownerId, request.Url, cancellationToken).ConfigureAwait(false);
         if (existing is not null)
         {
             return new AddBookmarkResult(null, AlreadyExists: true);
@@ -30,9 +30,10 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
         return new AddBookmarkResult(ToResponse(bookmark), AlreadyExists: false);
     }
 
-    public async Task<BookmarkResponse?> GetAsync(Guid id, CancellationToken cancellationToken)
+    /// <summary>The user's bookmark with this id, or null when they have none: another user's bookmark is null too.</summary>
+    public async Task<BookmarkResponse?> GetAsync(string ownerId, Guid id, CancellationToken cancellationToken)
     {
-        Bookmark? bookmark = await _repository.FindAsync(id, cancellationToken).ConfigureAwait(false);
+        Bookmark? bookmark = await _repository.FindAsync(ownerId, id, cancellationToken).ConfigureAwait(false);
         return bookmark is null ? null : ToResponse(bookmark);
     }
 
@@ -42,7 +43,8 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
     /// <summary>The deepest offset: offset paging reads and skips every earlier row (Azure's API implementation guide).</summary>
     public const int MaxOffset = 10_000;
 
-    public async Task<BookmarkListResult> ListAsync(int offset, int limit, CancellationToken cancellationToken)
+    /// <summary>One page of the user's own bookmarks.</summary>
+    public async Task<BookmarkListResult> ListAsync(string ownerId, int offset, int limit, CancellationToken cancellationToken)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, MaxOffset);
@@ -51,7 +53,7 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
 
         // One row more than the page shows whether another page follows, without counting every row. A next page that
         // would start past MaxOffset couldn't be read, so this page is the last one reachable.
-        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(offset, limit + 1, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<Bookmark> bookmarks = await _repository.ListAsync(ownerId, offset, limit + 1, cancellationToken).ConfigureAwait(false);
         bool hasMore = bookmarks.Count > limit && offset + limit <= MaxOffset;
         return new BookmarkListResult([.. bookmarks.Take(limit).Select(ToResponse)], hasMore);
     }

@@ -160,11 +160,11 @@ public sealed class BookmarksApiTests : IDisposable
     {
         public const string Secret = "connection to db-prod-01 refused";
 
-        public Task<Bookmark?> FindAsync(Guid id, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+        public Task<Bookmark?> FindAsync(string ownerId, Guid id, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
 
-        public Task<Bookmark?> FindByUrlAsync(Uri url, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+        public Task<Bookmark?> FindByUrlAsync(string ownerId, Uri url, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
 
-        public Task<IReadOnlyList<Bookmark>> ListAsync(int offset, int limit, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+        public Task<IReadOnlyList<Bookmark>> ListAsync(string ownerId, int offset, int limit, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
 
         public Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
     }

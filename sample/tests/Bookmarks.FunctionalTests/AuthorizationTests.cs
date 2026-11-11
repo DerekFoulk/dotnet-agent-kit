@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Json;
+using Bookmarks.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -47,6 +49,25 @@ public sealed class AuthorizationTests : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json", "a 403 is Problem Details too (API-002)");
+    }
+
+    [Fact]
+    public async Task AUserSeesOnlyTheirOwnBookmarks()
+    {
+        // SEC-009 (OWASP API1, broken object-level authorization): another user's bookmark is answered as if it
+        // didn't exist, so its id can't even be confirmed, and a URL one user saved is no conflict for another.
+        CreateBookmarkRequest request = new(new Uri("https://example.com/a"), "A");
+        using HttpResponseMessage saved = await _host.Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
+        saved.StatusCode.Should().Be(HttpStatusCode.Created);
+        using HttpClient bob = _host.CreateClient(TestTokens.For("bob"));
+
+        using HttpResponseMessage get = await bob.GetAsync(saved.Headers.Location, TestContext.Current.CancellationToken);
+        BookmarkPage? list = await bob.GetFromJsonAsync<BookmarkPage>("/bookmarks", TestContext.Current.CancellationToken);
+        using HttpResponseMessage sameUrl = await bob.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
+
+        get.StatusCode.Should().Be(HttpStatusCode.NotFound, "alice's bookmark isn't bob's to see");
+        list!.Items.Should().BeEmpty("bob has saved nothing yet");
+        sameUrl.StatusCode.Should().Be(HttpStatusCode.Created, "bob's bookmarks are his own, so alice's URL is no conflict");
     }
 
     public void Dispose() => _host.Dispose();
