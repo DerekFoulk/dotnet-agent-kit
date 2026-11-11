@@ -69,8 +69,8 @@ Describe 'Test-Runbook.ps1' {
 
             $sections = Get-RunbookSection -Lines ($text -split "`n")
 
-            @($sections.Keys) | Should -Be $script:RequiredSections
-            $sections['How to deploy a release'] | Should -Match '## not a heading'
+            @($sections.Name) | Should -Be $script:RequiredSections
+            ($sections | Where-Object Name -EQ 'How to deploy a release').Body | Should -Match '## not a heading'
         }
 
         # Review 1 (mutants that survived): a fence closes only on the same character, at least as long, and may be
@@ -85,7 +85,7 @@ Describe 'Test-Runbook.ps1' {
 
             $sections = Get-RunbookSection -Lines ($text -split "`n")
 
-            @($sections.Keys) | Should -Be $script:RequiredSections
+            @($sections.Name) | Should -Be $script:RequiredSections
         }
 
         It 'keeps a fence open across a fence line with an info string, which can''t close one' {
@@ -94,13 +94,13 @@ Describe 'Test-Runbook.ps1' {
 
             $sections = Get-RunbookSection -Lines ($text -split "`n")
 
-            @($sections.Keys) | Should -Be $script:RequiredSections
+            @($sections.Name) | Should -Be $script:RequiredSections
         }
 
         It 'reads a heading with closing hashes' {
             $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs ##'
 
-            @((Get-RunbookSection -Lines ($text -split "`n")).Keys) | Should -Contain 'Where it runs'
+            @((Get-RunbookSection -Lines ($text -split "`n")).Name) | Should -Contain 'Where it runs'
         }
 
         It 'reports a section that appears twice' {
@@ -119,7 +119,7 @@ Describe 'Test-Runbook.ps1' {
         It 'reads a heading with trailing spaces' {
             $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs   '
 
-            @((Get-RunbookSection -Lines ($text -split "`n")).Keys) | Should -Contain 'Where it runs'
+            @((Get-RunbookSection -Lines ($text -split "`n")).Name) | Should -Contain 'Where it runs'
         }
     }
 

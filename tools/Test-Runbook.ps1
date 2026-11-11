@@ -52,32 +52,34 @@ function Get-RunbookField {
     ($line -replace $prefix, '').Trim()
 }
 
-# Splits a runbook into its "## " sections: an ordered map of heading to body text. A "## " line inside a
-# fenced code block is code, such as a shell comment, not a heading.
+# Splits a runbook into its "## " sections, in order: one Name and Body (trimmed text) each, a repeated heading
+# included. It reads them as Markdown (CommonMark) does: a "## " line inside a fenced code block is code, such as
+# a shell comment, not a heading; a fence closes only on a line of the same character, at least as long, with
+# nothing after it; and a heading's closing hashes aren't part of its name.
 function Get-RunbookSection {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Lines)
 
-    $sections = [ordered]@{}
-    $current = $null
+    $sections = [System.Collections.Generic.List[object]]::new()
+    $body = $null
     $fence = $null
     foreach ($line in $Lines) {
-        if ($line -match '^ {0,3}(?<marker>`{3,}|~{3,})') {
-            $marker = $Matches['marker']
-            if ($null -eq $fence) { $fence = $marker }
-            elseif ($marker[0] -eq $fence[0] -and $marker.Length -ge $fence.Length) { $fence = $null }
+        if ($null -eq $fence -and $line -match '^ {0,3}(?<marker>`{3,}|~{3,})') {
+            $fence = $Matches['marker']
         }
-        elseif ($null -eq $fence -and $line -match '^## (.+?)\s*$') {
-            $current = $Matches[1]
-            $sections[$current] = [System.Collections.Generic.List[string]]::new()
+        elseif ($null -ne $fence -and $line -match '^ {0,3}(?<marker>`{3,}|~{3,})\s*$' -and
+            $Matches['marker'][0] -eq $fence[0] -and $Matches['marker'].Length -ge $fence.Length) {
+            $fence = $null
+        }
+        elseif ($null -eq $fence -and $line -match '^## (?<name>.+?)(?:\s+#+)?\s*$') {
+            $body = [System.Collections.Generic.List[string]]::new()
+            $sections.Add([pscustomobject]@{ Name = $Matches['name']; Lines = $body })
             continue
         }
-        if ($null -ne $current) { $sections[$current].Add($line) }
+        if ($null -ne $body) { $body.Add($line) }
     }
-    $result = [ordered]@{}
-    foreach ($name in $sections.Keys) {
-        $result[$name] = ($sections[$name] -join "`n").Trim()
+    foreach ($section in $sections) {
+        [pscustomobject]@{ Name = $section.Name; Body = ($section.Lines -join "`n").Trim() }
     }
-    $result
 }
 
 function Get-RunbookProblem {
@@ -117,10 +119,15 @@ function Get-RunbookProblem {
     }
 
     foreach ($name in $script:RequiredSections) {
-        if (-not $sections.Contains($name)) {
+        $found = @($sections | Where-Object Name -EQ $name)
+        if (-not $found) {
             New-Problem -Message "section '$name' is missing"
         }
-        elseif (-not $sections[$name]) {
+        elseif ($found.Count -gt 1) {
+            New-Problem -Message "section '$name' appears more than once"
+        }
+        # An HTML comment doesn't show when the runbook is read, so it doesn't count as a step.
+        elseif (-not ($found[0].Body -replace '(?s)<!--.*?-->', '').Trim()) {
             New-Problem -Message "section '$name' is empty"
         }
     }
