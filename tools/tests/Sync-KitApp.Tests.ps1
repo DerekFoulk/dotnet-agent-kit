@@ -117,6 +117,22 @@ Describe 'Sync-KitApp' {
             Get-Tree $untouched | ConvertTo-Json | Should -Be ($untouchedTree | ConvertTo-Json)
         }
 
+        It 'refuses an app whose manifest <Case>, and changes nothing' -ForEach @(
+            @{ Case = 'is missing'; Change = { param($m) $null }; Message = '*has no .kit/manifest.json*' }
+            @{ Case = 'has no app name (made before ADR-0042)'; Change = { param($m) $m.Remove('appName'); $m }; Message = '*no "appName"*' }
+            @{ Case = 'has no full kit commit'; Change = { param($m) $m['kitCommit'] = 'v0.1.0'; $m }; Message = '*full kit commit*' }
+        ) {
+            $copy = Join-Path $TestDrive "manifest-$(New-Guid)"
+            Copy-Item -LiteralPath $untouched -Destination $copy -Recurse
+            $manifestPath = Join-Path $copy '.kit/manifest.json'
+            $changed = & $Change (Get-Content -Raw $manifestPath | ConvertFrom-Json -AsHashtable)
+            if ($null -eq $changed) { Remove-Item -LiteralPath $manifestPath } else { Set-FileText $manifestPath ($changed | ConvertTo-Json -Depth 4) }
+            $before = Get-Tree $copy
+
+            { Sync-KitApp -AppRoot $copy -KitRoot $kit -KitRef v0.2.0 } | Should -Throw $Message
+            Get-Tree $copy | ConvertTo-Json | Should -Be ($before | ConvertTo-Json)
+        }
+
         It 'refuses a release that doesn''t come after the app''s kit commit, so it never goes back' {
             { Sync-KitApp -AppRoot $untouched -KitRoot $kit -KitRef v0.0.9 } | Should -Throw "*doesn't come after*"
             Get-Tree $untouched | ConvertTo-Json | Should -Be ($untouchedTree | ConvertTo-Json)
