@@ -139,6 +139,12 @@ Describe 'Sync-KitApp' {
             & (Join-Path $kit 'tools' 'Export-KitApp.ps1') -Name 'Contoso.Orders' -Destination $expected -KitRef v0.2.0 -KitRoot $kit
             $LASTEXITCODE | Should -Be 0
             $expectedManifest = Get-Content -Raw (Join-Path $expected '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+
+            # What the sync reported for one file, or '(none)'.
+            function Get-SyncAction([string] $Path) {
+                $file = @($result.Files | Where-Object Path -EQ $Path)
+                if ($file) { $file[0].Action } else { '(none)' }
+            }
             $edited = '.editorconfig', '.gitignore', '.claude/skills/plan-checklist/SKILL.md', '.claude/skills/app-skill/SKILL.md', $instructions
 
             $result = Sync-KitApp -AppRoot $app -KitRoot $kit -KitRef v0.2.0
@@ -166,7 +172,7 @@ Describe 'Sync-KitApp' {
 
         It 'removes a file the kit no longer has, when the app didn''t edit it' {
             Test-Path -LiteralPath (Join-Path $app '.claude/skills/write-adr/SKILL.md') | Should -BeFalse
-            @($result.Files | Where-Object Path -EQ '.claude/skills/write-adr/SKILL.md').Action | Should -Be 'Removed'
+            Get-SyncAction '.claude/skills/write-adr/SKILL.md' | Should -Be 'Removed'
         }
 
         It 'replaces the kit block of <Path> with the release''s, and keeps the rest of the file' -ForEach @(
@@ -195,7 +201,7 @@ Describe 'Sync-KitApp' {
 
             $text | Should -Match 'kit-v2-marker'
             $text | Should -Match 'app-edit-marker'
-            @($result.Files | Where-Object Path -EQ '.editorconfig').Action | Should -Be 'Merged'
+            Get-SyncAction '.editorconfig' | Should -Be 'Merged'
         }
 
         It 'keeps the app''s text, and reports it, when the app''s edit and the kit''s change overlap' {
@@ -204,7 +210,18 @@ Describe 'Sync-KitApp' {
             $text | Should -Match '# dotenv files \(app\)'
             $text | Should -Not -Match 'kit v2'
             $text | Should -Not -Match '<<<<<<<|>>>>>>>'
-            @($result.Files | Where-Object Path -EQ '.gitignore').Action | Should -Be 'Conflict'
+            Get-SyncAction '.gitignore' | Should -Be 'Conflict'
+        }
+
+        It 'keeps the app''s choice for <Case>, and reports it as <Action>' -ForEach @(
+            @{ Case = 'a kit file the app deleted, which the kit changed'; Path = '.claude/skills/plan-checklist/SKILL.md'; Action = 'KeptDeleted'; Text = $null }
+            @{ Case = 'a kit file the app edited, which the kit dropped'; Path = '.claude/skills/tdd-cycle/SKILL.md'; Action = 'NowAppOwned'; Text = 'app-tdd-marker' }
+            @{ Case = 'the app''s own file where the kit adds one'; Path = '.claude/skills/app-skill/SKILL.md'; Action = 'AppFileKept'; Text = "The app's own skill" }
+        ) {
+            $file = Join-Path $app $Path
+            if ($null -eq $Text) { Test-Path -LiteralPath $file | Should -BeFalse }
+            else { Get-Content -Raw $file | Should -Match ([regex]::Escape($Text)) }
+            Get-SyncAction $Path | Should -Be $Action
         }
 
         It 'leaves the app''s own files byte for byte as they were' {
