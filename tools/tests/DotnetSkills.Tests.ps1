@@ -266,4 +266,17 @@ Describe 'the kit''s curated skills' {
         @(Get-DotnetSkillDrift -SkillsRoot (Join-Path $root '.claude' 'skills') -Lock $lock) |
             Should -BeNullOrEmpty -Because 'the copies are never edited; Update-DotnetSkills.ps1 moves them to another commit (ADR-0042)'
     }
+
+    It 'are the ones docs/dotnet-skills.md lists as in, at the commit and date it names' {
+        $doc = Join-Path $root 'docs' 'dotnet-skills.md'
+        $doc | Should -Exist
+        $text = Get-Content -Raw -LiteralPath $doc
+        # The first cell of each row in the "In" table names a skill, as in "| `dotnet-webapi` | ...".
+        $in = [regex]::Match($text, '(?ms)^## In\r?\n(.*?)(?=^## )').Groups[1].Value
+        $listed = @([regex]::Matches($in, '(?m)^\| `([a-z0-9-]+)` \|') | ForEach-Object { $_.Groups[1].Value })
+
+        $listed | Sort-Object | Should -Be (@($lock['skills'] | ForEach-Object { $_['name'] }) | Sort-Object)
+        $text | Should -Match $lock['commit']
+        $text | Should -Match $lock['retrieved']
+    }
 }
