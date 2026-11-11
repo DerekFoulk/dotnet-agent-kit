@@ -3,9 +3,33 @@
 .SYNOPSIS
     Copies the kit's curated skills from Microsoft's dotnet/skills repo at one commit, and records that commit
     (ADR-0042).
+
+.DESCRIPTION
+    tools/dotnet-skills.json lists the curated skills, each with its folder upstream. The script fetches only the
+    chosen commit (no GitHub sign-in), replaces each listed skill's folder in .claude/skills with upstream's files,
+    byte for byte, and rewrites the lock with the commit, today's date and git's blob id for every file. The kit's
+    own skills are never touched. It changes nothing when a listed skill isn't at the commit, holds a symbolic link
+    or submodule, or when a curated copy has an edit the update would overwrite.
+
+    Then read the diff: upstream text becomes instructions every agent follows. docs/dotnet-skills.md has the rest
+    of the steps.
+
+.PARAMETER Commit
+    The upstream commit SHA, branch or tag. Defaults to main.
+
+.EXAMPLE
+    ./tools/Update-DotnetSkills.ps1
+.EXAMPLE
+    ./tools/Update-DotnetSkills.ps1 -Commit 96c3d68dad2855e3ab5178aa1a262789d86a1466
 #>
 [CmdletBinding()]
-param()
+param(
+    [string] $Commit = 'main',
+    # Defaults to the url in the lock.
+    [string] $RepositoryUrl,
+    # Defaults to the repo this script is in.
+    [string] $RepoRoot
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -144,4 +168,19 @@ function Write-DotnetSkillLock {
 
     $json = ($Lock | ConvertTo-Json -Depth 5) -replace "`r`n", "`n"
     [IO.File]::WriteAllText((Join-Path $RepoRoot $script:LockPath), "$json`n", [Text.UTF8Encoding]::new($false))
+}
+
+if ($MyInvocation.InvocationName -ne '.') {
+    if (-not $RepoRoot) { $RepoRoot = Split-Path -Path $PSScriptRoot -Parent }
+    try {
+        if (-not $RepositoryUrl) { $RepositoryUrl = (Read-DotnetSkillLock -RepoRoot $RepoRoot)['url'] }
+        Update-DotnetSkill -RepoRoot $RepoRoot -Commit $Commit -RepositoryUrl $RepositoryUrl -Retrieved (Get-Date -Format 'yyyy-MM-dd')
+        $lock = Read-DotnetSkillLock -RepoRoot $RepoRoot
+        Write-Host "Copied $(@($lock['skills']).Count) skills from $RepositoryUrl at $($lock['commit']). Read the diff, then follow docs/dotnet-skills.md."
+    }
+    catch {
+        Write-Host $_.Exception.Message -ForegroundColor Red
+        exit 1
+    }
+    exit 0
 }
