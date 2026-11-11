@@ -9,4 +9,7 @@ internal static class Limits
 
     /// <summary>The most statements one member may hold, nested ones included.</summary>
     public const int StatementsPerMember = 100;
+
+    /// <summary>The most lines one source file may have.</summary>
+    public const int LinesPerFile = 800;
 }
