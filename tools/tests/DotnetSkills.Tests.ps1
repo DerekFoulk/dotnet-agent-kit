@@ -151,4 +151,30 @@ Describe 'Update-DotnetSkill' {
         Get-Content -Raw -LiteralPath (Join-Path $kit '.claude/skills/start-work/SKILL.md') | Should -Be "Kit skill.`n"
         Join-Path $kit '.claude/skills/other' | Should -Not -Exist
     }
+
+
+    It 'changes nothing when a listed skill isn''t at the commit' {
+        $kit = New-Kit -Source 'plugins/p/skills/gone'
+        $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
+
+        { Update-DotnetSkill -RepoRoot $kit -Commit $second -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
+            Should -Throw '*plugins/p/skills/gone*'
+
+        Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json') | Should -Be $before
+        Join-Path $kit '.claude/skills/tidy' | Should -Not -Exist
+    }
+
+    It 'changes nothing when a curated copy has an edit, which the update would lose' {
+        $kit = New-Kit
+        Update-DotnetSkill -RepoRoot $kit -Commit $first -RepositoryUrl $upstream -Retrieved '2026-11-10'
+        $skill = Join-Path $kit '.claude/skills/tidy/SKILL.md'
+        Add-Content -LiteralPath $skill -Value 'A local edit.'
+        $edited = Get-Content -Raw -LiteralPath $skill
+
+        { Update-DotnetSkill -RepoRoot $kit -Commit $second -RepositoryUrl $upstream -Retrieved '2026-11-11' } |
+            Should -Throw '*tidy/SKILL.md differs*'
+
+        Get-Content -Raw -LiteralPath $skill | Should -Be $edited
+        (Read-Lock $kit)['commit'] | Should -Be $first
+    }
 }
