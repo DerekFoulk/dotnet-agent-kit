@@ -57,6 +57,16 @@ function Sync-KitApp {
     if ($LASTEXITCODE -ne 0) {
         throw "$KitRef doesn't come after the app's kit commit $fromCommit ($($manifest['kitVersion'])), so syncing to it would take the app back."
     }
+
+    $result = [pscustomobject]@{
+        FromVersion = $manifest['kitVersion']
+        FromCommit  = $fromCommit
+        ToVersion   = $KitRef
+        ToCommit    = $toCommit
+        Changed     = $false
+        Files       = @()
+    }
+    $result
 }
 
 # The app's .kit/manifest.json, checked for what the sync needs.
