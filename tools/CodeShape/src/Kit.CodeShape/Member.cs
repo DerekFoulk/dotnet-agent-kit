@@ -37,6 +37,18 @@ internal sealed record Member(string Name, SyntaxNode Node, IReadOnlyList<Statem
     private static string? NameOf(SyntaxNode node) => node switch
     {
         MethodDeclarationSyntax method => method.Identifier.Text,
+        ConstructorDeclarationSyntax constructor => constructor.Identifier.Text,
+        DestructorDeclarationSyntax destructor => $"~{destructor.Identifier.Text}",
+        OperatorDeclarationSyntax op => $"operator {op.OperatorToken.Text}",
+        ConversionOperatorDeclarationSyntax conversion => $"{conversion.ImplicitOrExplicitKeyword.Text} operator {conversion.Type}",
+        AccessorDeclarationSyntax { Parent.Parent: BasePropertyDeclarationSyntax owner } accessor => $"{OwnerName(owner)}.{accessor.Keyword.Text}",
         _ => null,
+    };
+
+    private static string OwnerName(BasePropertyDeclarationSyntax owner) => owner switch
+    {
+        PropertyDeclarationSyntax property => property.Identifier.Text,
+        EventDeclarationSyntax eventDeclaration => eventDeclaration.Identifier.Text,
+        _ => "this[]",
     };
 }
