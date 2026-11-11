@@ -1,7 +1,7 @@
 using System.Reflection;
-using Bookmarks.Contracts;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bookmarks.Contracts;
 
 namespace Bookmarks.FunctionalTests;
 
