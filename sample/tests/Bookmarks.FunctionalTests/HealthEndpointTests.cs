@@ -59,7 +59,8 @@ public sealed class HealthEndpointTests : IDisposable
         // database on every call needs a request timeout and a short output cache.
         Endpoint endpoint = _host.Services.GetRequiredService<EndpointDataSource>().Endpoints
             .Single(candidate => (candidate as RouteEndpoint)?.RoutePattern.RawText == path);
-        endpoint.Metadata.GetMetadata<RequestTimeoutAttribute>()?.PolicyName.Should().Be("HealthChecks");
+        endpoint.Metadata.GetMetadata<RequestTimeoutAttribute>().Should().NotBeNull("every health endpoint is time-boxed")
+            .And.Subject.As<RequestTimeoutAttribute>().PolicyName.Should().Be("HealthChecks");
 
         using HttpResponseMessage first = await _host.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
         using HttpResponseMessage second = await _host.Client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
