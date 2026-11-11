@@ -312,8 +312,26 @@ Describe '.globalconfig' {
         @{ Line = 'dotnet_diagnostic.CA1014.severity = None'; Expected = $null }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = none # off for now'; Expected = $null }
         @{ Line = '# dotnet_diagnostic.CA1014.severity = warning'; Expected = $null }
+        @{ Line = 'is_global = true'; Expected = $null }
+        @{ Line = 'global_level = 100'; Expected = $null }
     ) {
         Get-EnabledRule -Line $Line | Should -Be $Expected
+    }
+
+    # Review 10 of PR 36: a line the function can't read would turn nothing on in its eyes, so the real-file test
+    # would pass while Roslyn read the line as something else (a bulk severity, say), or ignored a typo.
+    It 'stops at <Line>, which it doesn''t recognise' -ForEach @(
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = warn' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = info' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = warning error' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity warning' }
+        @{ Line = 'dotnet_diagnostic.CA1014 = warning' }
+        @{ Line = 'dotnet_analyzer_diagnostic.severity = warning' }
+        @{ Line = 'dotnet_analyzer_diagnostic.category-Design.severity = warning' }
+        @{ Line = 'dotnet_code_quality.CA1501.api_surface = public' }
+        @{ Line = '[*.cs]' }
+    ) {
+        { Get-EnabledRule -Line $Line } | Should -Throw -ExpectedMessage "*doesn't recognise*"
     }
 
     # Any severity but none counts as on, so suggestion, silent and default ask for a fixture too, erring toward one;
