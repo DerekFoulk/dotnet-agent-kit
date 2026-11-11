@@ -64,7 +64,9 @@ Describe 'Repo build configuration' -Tag 'Build' {
             Copy-Item -Path (Join-Path $PSScriptRoot 'fixtures' $Fixture '*') -Destination $workspace -Recurse
 
             # Each git step must succeed, or the workspace has no commit or tag to version from; git's output goes into
-            # the error, never into the path this returns (as New-TestGitRemote does, TestGit.psm1).
+            # the error, never into the path this returns (as New-TestGitRemote does, TestGit.psm1). The exit codes are
+            # read here, so pwsh mustn't turn one into its own error first (as Test-RepoGitIgnore does).
+            $PSNativeCommandUseErrorActionPreference = $false
             foreach ($step in @(
                     @('init', '--quiet', '--initial-branch', 'main'),
                     @('-c', 'core.autocrlf=false', 'add', '--all'),
