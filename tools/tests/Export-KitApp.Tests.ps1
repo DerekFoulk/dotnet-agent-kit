@@ -178,6 +178,16 @@ Describe 'Export-KitApp' {
         $manifest['appName'] | Should -Be 'Contoso.Orders'
     }
 
+    # The sync job replaces only the kit block, so a version line outside it would go stale after the first sync.
+    It 'says which kit version the app follows inside the kit block, so each sync keeps it current' {
+        $agents = Get-Content -Raw (Join-Path $app 'AGENTS.md')
+        $begin = $agents.IndexOf('<!-- kit:begin')
+        $begin | Should -BeGreaterThan 0
+
+        $agents.Substring(0, $begin) | Should -Not -Match ([regex]::Escape($commit))
+        $agents.Substring($begin) | Should -Match ([regex]::Escape("dotnet-agent-kit unreleased (commit ``$commit``)"))
+    }
+
     # git stores text with LF line endings, but a checkout may give CRLF (core.autocrlf, .gitattributes), so
     # the manifest hashes the text with LF line endings: the same on every machine and every checkout.
     It 'hashes each kit-managed file with LF line endings, whatever the checkout gave' {
