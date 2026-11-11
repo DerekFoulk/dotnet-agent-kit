@@ -11,24 +11,25 @@ The kit carries a few of the agent skills that Microsoft's .NET team publishes i
 The kit rule wins (AGENTS.md, "Whose rules win"). The copies are never edited, so the rule is applied when the agent writes the code, and the build enforces most of them. Known differences:
 
 - **`var`.** Many upstream code samples use `var`. The kit never does (STY-002), and the build fails on it.
+- **Packages and dependencies.** A package a curated skill names isn't approved by being named there: the kit's standards and ADRs approve dependencies, not the copies. Examples: `YTest.MTP.XUnit2` (a 0.x community package) and three `Microsoft.Testing.Extensions` packages in `migrate-vstest-to-mtp`, and Swashbuckle in `dotnet-webapi`. Adding one follows AGENTS.md's dependency rules: in auto mode only when the kit's standards, ADRs or the docs they cite name it for the task; in review mode, with the owner's OK. Every version goes in `Directory.Packages.props` (SUP-002), never inline as some samples show.
 - **Other skills named in the text.** Some curated skills hand work to an upstream skill the kit left out (for example, `run-tests` names `platform-detection` and `mtp-hot-reload`). The agent won't find those; it carries on with the curated skill or asks.
 
 ## In
 
 | Skill | Upstream plugin | Why it's in | Kit rules that say more |
 |---|---|---|---|
-| `dotnet-webapi` | `dotnet-aspnetcore` | Minimal API endpoints, typed results, built-in OpenAPI, Problem Details and validation, which API-001 to API-006 also choose | Paging (API-004), the OpenAPI document in Development only (API-003) and versioning (API-005). It allows Swashbuckle before .NET 9; the kit uses the built-in document on every version (API-003) |
+| `dotnet-webapi` | `dotnet-aspnetcore` | Minimal API endpoints, typed results, built-in OpenAPI, Problem Details and validation, which API-001 to API-006 also choose | It keeps controllers where a project has them, or when asked; the kit uses Minimal APIs, and controllers need an ADR (API-001). Paging (API-004), the OpenAPI document in Development only (API-003) and versioning (API-005). It allows Swashbuckle before .NET 9; the kit uses the built-in document on every version (API-003) |
 | `optimizing-ef-core-queries` | `dotnet-data` | EF Core is the kit's data access; N+1, projection, tracking and paging problems are common | API-004's paging limits |
 | `analyzing-dotnet-performance` | `dotnet-diag` | The Performance Efficiency pillar: finds allocation, async and LINQ problems in code review | STY-002 (`var` in samples) |
 | `run-tests` | `dotnet-test` | Runs tests on Microsoft Testing Platform, the kit's runner (`global.json`), with xUnit v3 | AGENTS.md's Commands table has the exact test and coverage commands. The skill also looks for `.agents/skill-overlays/dotnet-test/run-tests.md`, which the kit doesn't have |
-| `filter-syntax` | `dotnet-test` | Running one test or class while working through a test list (TST-002) | None known |
+| `filter-syntax` | `dotnet-test` | Reference only: agents don't call it, and `run-tests` reads it to run one test or class while working through a test list (TST-002) | None known |
 | `migrate-xunit-to-xunit-v3` | `dotnet-test-migration` | Moves a mature repo onto the kit's xUnit v3 (TST-005, ADR-0015) | None known |
-| `migrate-vstest-to-mtp` | `dotnet-test-migration` | Moves a mature repo onto Microsoft Testing Platform, as the kit's `global.json` sets | It also covers MSTest options; the kit uses xUnit v3 (TST-005) |
+| `migrate-vstest-to-mtp` | `dotnet-test-migration` | Moves a mature repo onto Microsoft Testing Platform, as the kit's `global.json` sets | It also covers MSTest options; the kit uses xUnit v3 (TST-005). For xUnit v2 it adds `YTest.MTP.XUnit2` with an inline version; the kit's route is `migrate-xunit-to-xunit-v3` first (TST-005), with versions in `Directory.Packages.props` (SUP-002). Its extension packages other than `Microsoft.Testing.Extensions.CodeCoverage`, which the kit already pins, are new dependencies |
 | `convert-to-cpm` | `dotnet-nuget` | Moves a mature repo onto central package management (SUP-002, ADR-0015) | SUP-002 turns on transitive pinning and SUP-001 adds lock files; the skill leaves both optional |
 | `author-component` | `dotnet-blazor` | Blazor Web App components, the kit's web UI (ADR-0008) | STY-002 (`var` in samples) |
 | `msbuild` | `dotnet` | Build files in every repo: `Directory.Build.props`, imports, incremental builds and build failures. It bundles the `dotnet-msbuild` plugin's skills as references | None known. It refuses to delete every `bin` and `obj` folder or clear shared NuGet caches without being told to, which fits SEC-003 |
 
-Their descriptions total 6,181 characters. With the kit's own skills that's 7,644 of the 8,000-character budget (ADR-0042).
+Their descriptions total 6,181 characters. With the kit's own skills that's 7,644 of the 8,000-character budget (ADR-0042). The count is on the safe side: it includes `filter-syntax`, whose description Claude Code doesn't list, and leaves out skill names and the owner's personal and plugin skills, which share the listing.
 
 ## Out
 
@@ -101,4 +102,6 @@ These fit the kit's stack and rules. Each would push the listing past its budget
 3. Update the commit and date in this file's "Pinned to" line and in `THIRD-PARTY-NOTICES.md`, and look upstream for new skills to add to the tables.
 4. Run every check in AGENTS.md's Commands table, then open the PR.
 
-To add or remove a skill, edit the `skills` list in `tools/dotnet-skills.json` (an added one needs `name`, `source` and an empty `files`), run the script, and move its row in the tables above.
+If the script stops partway, for example on a file another program has open, some folders are new and the lock isn't: discard the changes under `.claude/skills/` with `git restore`, then run it again.
+
+To add a skill, add it to the `skills` list in `tools/dotnet-skills.json` with `name`, `source` and an empty `files`, run the script, and move its row in the tables above. To remove one, take it out of the list, delete its folder in `.claude/skills/`, and move its row; the script tests fail on a skill folder that is neither the kit's own nor in the list. Either way, update its folder in `THIRD-PARTY-NOTICES.md`.

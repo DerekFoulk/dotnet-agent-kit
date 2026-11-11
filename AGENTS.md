@@ -130,7 +130,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS (ADR-0040). Eve
 | `docs/adr/` | Decisions. ADR numbers match the brief's decision numbers (D8 is ADR-0008) |
 | `docs/quality/scorecard.md` | What a "perfect" .NET app is, area by area; the rules that cover each area and its open gaps (ADR-0034). A new rule names its area here |
 | `docs/corrections-log.md` | Every owner correction and what it became |
-| `.claude/skills/` | The workflow skills, read by Claude Code, Visual Studio and VS Code. Ten of them are curated .NET skills, copied unchanged from Microsoft's dotnet/skills at one pinned commit (`docs/dotnet-skills.md`, ADR-0042): never edit those copies, and where one disagrees with a kit rule, the kit rule wins |
+| `.claude/skills/` | The workflow skills, read by Claude Code, Visual Studio and VS Code. Some are curated .NET skills, copied unchanged from Microsoft's dotnet/skills at one pinned commit (`docs/dotnet-skills.md`, ADR-0042): never edit those copies, and where one disagrees with a kit rule, the kit rule wins |
 | `.claude/agents/reviewer.md` | The independent reviewer |
 | `tools/` | PowerShell 7 scripts, with tests in `tools/tests/` |
 

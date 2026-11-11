@@ -36,7 +36,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 | `docs/adr/` | This app's decisions, numbered from ADR-0001 |
 | `docs/standards/` | The kit's rules, in full (managed by the kit) |
 | `docs/corrections-log.md` | Every owner correction and what it became |
-| `.claude/skills/`, `.claude/agents/reviewer.md` | The kit's workflow skills and independent reviewer. Ten skills are curated .NET skills that the kit copies unchanged from Microsoft's dotnet/skills at a pinned commit (kit ADR-0042): where one disagrees with a kit rule, the kit rule wins |
+| `.claude/skills/`, `.claude/agents/reviewer.md` | The kit's workflow skills and independent reviewer. Some skills are curated .NET skills that the kit copies unchanged from Microsoft's dotnet/skills at a pinned commit (kit ADR-0042): where one disagrees with a kit rule, the kit rule wins |
 | `.kit/` | The kit's checking scripts (`.kit/tools/`) and the manifest of kit-managed files (`.kit/manifest.json`) |
 
 **Kit ADRs:** "ADR-NNNN" inside a kit-managed file (`docs/standards/`, the skills, the reviewer, the kit sections of this file) means the kit's ADR, at https://github.com/DerekFoulk/dotnet-agent-kit/tree/{{KitCommit}}/docs/adr. This app's own ADRs are in `docs/adr/`. Likewise, a path under `tools/` or `sample/` in `docs/standards/` describes how the kit enforces a rule in its own repo; this repo's commands are the Commands table above.
