@@ -224,6 +224,7 @@
             "format": "uri"
           },
           "title": {
+            "maxLength": 500,
             "type": "string"
           }
         }
