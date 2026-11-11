@@ -10,7 +10,8 @@
     test pins. Text found zero times or more than once is "NotFound" or "Ambiguous", and nothing runs.
 
     The tests run once on the unchanged file first. If they fail there, run no tests, or return no result, every
-    mutant is an "Error", whose Message says why and adds what Pester wrote to stderr.
+    mutant is an "Error". So is a mutant whose own run returns no result or runs no tests. An error's Message says
+    why and adds what the test process printed.
 
     Run it in a fresh clone, never in your working copy: the file is changed in place. A Ctrl+C or an error still
     restores it, but a killed pwsh leaves the mutant on disk; `git checkout -- <file>` puts it back.
