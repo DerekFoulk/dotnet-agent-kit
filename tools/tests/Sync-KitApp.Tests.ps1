@@ -198,6 +198,15 @@ Describe 'Sync-KitApp' {
             @($result.Files | Where-Object Path -EQ '.editorconfig').Action | Should -Be 'Merged'
         }
 
+        It 'keeps the app''s text, and reports it, when the app''s edit and the kit''s change overlap' {
+            $text = Get-Content -Raw (Join-Path $app '.gitignore')
+
+            $text | Should -Match '# dotenv files \(app\)'
+            $text | Should -Not -Match 'kit v2'
+            $text | Should -Not -Match '<<<<<<<|>>>>>>>'
+            @($result.Files | Where-Object Path -EQ '.gitignore').Action | Should -Be 'Conflict'
+        }
+
         It 'leaves the app''s own files byte for byte as they were' {
             foreach ($path in $appOwned) {
                 [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"
