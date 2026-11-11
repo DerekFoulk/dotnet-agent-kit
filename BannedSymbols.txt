@@ -34,6 +34,13 @@ P:System.Reflection.Assembly.DefinedTypes;Returns non-public types too; register
 M:System.Reflection.Module.GetTypes;Returns non-public types too; register your own types explicitly, or use Assembly.GetExportedTypes() for a library's public ones (CRF-010)
 M:System.Reflection.Module.FindTypes(System.Reflection.TypeFilter,System.Object);Searches non-public types too; register your own types explicitly, or filter Assembly.GetExportedTypes() for a library's public ones (CRF-010)
 
+// Accessor getters whose nonPublic argument returns private accessors.
+M:System.Reflection.PropertyInfo.GetGetMethod(System.Boolean);With true, returns a non-public getter; use GetGetMethod() (CRF-010)
+M:System.Reflection.PropertyInfo.GetSetMethod(System.Boolean);With true, returns a non-public setter; use GetSetMethod() (CRF-010)
+M:System.Reflection.PropertyInfo.GetAccessors(System.Boolean);With true, returns non-public accessors; use GetAccessors() (CRF-010)
+M:System.Reflection.EventInfo.GetAddMethod(System.Boolean);With true, returns a non-public add accessor; use GetAddMethod() (CRF-010)
+M:System.Reflection.EventInfo.GetRemoveMethod(System.Boolean);With true, returns a non-public remove accessor; use GetRemoveMethod() (CRF-010)
+M:System.Reflection.EventInfo.GetRaiseMethod(System.Boolean);With true, returns a non-public raise accessor; use GetRaiseMethod() (CRF-010)
 // These call or bind non-public members by name or by flag.
 M:System.Activator.CreateInstance(System.Type,System.Boolean);Its nonPublic argument calls non-public constructors; use Activator.CreateInstance(Type) (CRF-010)
 M:System.Delegate.CreateDelegate(System.Type,System.Object,System.String);Binds non-public methods by name; pass a public MethodInfo (CRF-010)
