@@ -17,3 +17,6 @@ dotnet_diagnostic.CA1506.severity = warning
 
 # CA1501: Avoid excessive inheritance
 dotnet_diagnostic.CA1501.severity = warning
+
+# CA1509: Invalid entry in code metrics configuration file (only a global config can turn it on)
+dotnet_diagnostic.CA1509.severity = warning
