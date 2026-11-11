@@ -77,6 +77,7 @@ Describe 'Sync-KitApp' {
         $packagesPath = Join-Path $app 'Directory.Packages.props'
         Set-FileText $packagesPath ([IO.File]::ReadAllText($packagesPath) -replace '(?m)^[ \t]*<PackageVersion Include="Moq"[^\r\n]*\r?\n', '') # the app drops a kit package
         Edit-FileText (Join-Path $app 'docs/runbook.md') '- **Status:** Draft' '- **Status:** In use' # the app fills in its runbook
+        Set-FileText (Join-Path $app 'docs/glossary.md') "# Our own glossary`n" # where the kit will start every app with one
         $appOwned = 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md', 'Directory.Packages.props', '.github/dependabot.yml'
         $appOwnedBefore = @{}
         foreach ($path in $appOwned) { $appOwnedBefore[$path] = [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) }
@@ -91,6 +92,10 @@ Describe 'Sync-KitApp' {
         Edit-FileText (Join-Path $kit '.gitignore') '# dotenv files' '# dotenv files (kit v2)'
         Add-Content -LiteralPath (Join-Path $kit '.claude/skills/plan-checklist/SKILL.md') -Value 'kit-v2-plan-marker'
         Edit-FileText (Join-Path $kit 'templates/app/docs/runbook.md') '1. Check that CI passed' '1. Check (kit v2) that CI passed'
+        # Two files v0.2.0 starts every app with, for the app to own, as v0.1.0 did with docs/runbook.md (ADR-0046).
+        Set-FileText (Join-Path $kit 'templates/app/docs/handbook.md') "# {{Name}} handbook`n"
+        Set-FileText (Join-Path $kit 'templates/app/docs/glossary.md') "# {{Name}} glossary`n"
+        Edit-FileText (Join-Path $kit 'tools/Export-KitApp.ps1') "'docs/runbook.md'," "'docs/runbook.md', 'docs/handbook.md', 'docs/glossary.md',"
         Remove-Item -LiteralPath (Join-Path $kit '.claude/skills/tdd-cycle/SKILL.md'), (Join-Path $kit '.claude/skills/write-adr/SKILL.md')
         Set-FileText (Join-Path $kit '.claude/skills/fresh-skill/SKILL.md') "# A new kit skill`n"
         Set-FileText (Join-Path $kit '.claude/skills/app-skill/SKILL.md') "# The kit's skill of the same name`n"
@@ -616,6 +621,20 @@ Describe 'Sync-KitApp' {
             $copilot | Should -Match 'app-notes-marker'
         }
 
+        # Review of PR (GAP-017): the sync never touched app-owned files, so an app made before the kit started every
+        # app with a runbook would fail the runbook check at its next kit-pin PR.
+        It 'adds a file the release starts every app with, which the app lacks, as the app''s own, and reports it' {
+            $handbook = Join-Path $app 'docs/handbook.md'
+            Test-Path -LiteralPath $handbook | Should -BeTrue -Because 'v0.2.0 starts every app with it, and this app lacked it'
+            Get-Content -Raw $handbook | Should -Match '# Contoso\.Orders handbook'
+            @($expectedManifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain 'docs/handbook.md'
+            Get-SyncAction 'docs/handbook.md' | Should -Be 'AppFileAdded'
+        }
+
+        It 'keeps the app''s own file where the release starts every app with one, and reports it' {
+            Get-Content -Raw (Join-Path $app 'docs/glossary.md') | Should -Match 'Our own glossary'
+            Get-SyncAction 'docs/glossary.md' | Should -Be 'AppFileKept'
+        }
         It 'leaves the app''s own files byte for byte as they were' {
             foreach ($path in $appOwned | Where-Object { $_ -ne 'Directory.Packages.props' }) {
                 [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"
