@@ -13,15 +13,15 @@ On 2026-11-08 the owner set the craft principles that `docs/standards/craft.md` 
 
 What measurement on the kit showed (SDK 10.0.404):
 
-- **`AnalysisLevel latest-all` leaves twelve rules off.** Microsoft's code analysis overview lists eleven: the metric rules (CA1501, CA1502, CA1505, CA1506, CA1509) and six legacy rules (CA1005, CA1014, CA1017, CA1021, CA1045, CA1060). The SDK's own all-mode file (`analysislevel_10_all.globalconfig`) also sets CA1516 to none. So STY-003's "every analyzer rule on" didn't hold. Microsoft's CA1509 page says that rule can only be turned on in a global config, not `.editorconfig`.
+- **`AnalysisLevel latest-all` leaves twelve rules off.** Microsoft's code analysis overview lists eleven, and calls all of them legacy rules that might be deprecated in a future version: the metric rules (CA1501, CA1502, CA1505, CA1506, CA1509) and six design rules (CA1005, CA1014, CA1017, CA1021, CA1045, CA1060). The SDK's own all-mode file (`analysislevel_10_all.globalconfig`) also sets CA1516 to none. So STY-003's "every analyzer rule on" didn't hold. Microsoft's CA1509 page says that rule can only be turned on in a global config, not `.editorconfig`.
 - **With those rules on, the sample broke three of them.** (Review 2 of PR 36 corrected the CA1017 count.)
   - CA1506: `ServiceDefaultsTests` coupled to 96 types, over the default of 95 per type, because it held three concerns (health, telemetry, resilience).
   - CA1014 (mark assemblies CLS-compliant): every project.
-  - CA1017 (mark assemblies with ComVisible): one project, `Bookmarks.Api`. It fires only on an assembly with a public type in the global namespace (the analyzer's `AssemblyHasPublicTypes`); in the sample that's the `Program` the web SDK generates for `Bookmarks.Api`.
+  - CA1017 (mark assemblies with ComVisible): one project, `Bookmarks.Api`. It fires only on an assembly with a public type in the global namespace (the analyzer's `AssemblyHasPublicTypes`); in the sample that's `Bookmarks.Api`'s `Program`, which ASP.NET Core's source generator declares public.
   - The highest member couplings were the API's top-level `Main` (36 types), test methods (up to 32), `ConfigureOpenTelemetry` (25), `MapDefaultEndpoints` (16) and `BookmarkService.AddAsync` (14). No method came near a cyclomatic complexity of 15.
 - **CA1502 doesn't count the arms of a switch expression.** A method whose `switch` expression has four arms reported nothing at a limit of 2, while an `if` chain did.
 - **CA1501 counts only base classes in the same module, and fires above the limit.** Microsoft's page says it fires at "five or more levels". Measured, the default limit of 5 fires at 6 levels: the last class in a chain of 7.
-- **Banning `BindingFlags.NonPublic` isn't enough.** `TypeInfo.DeclaredFields` and its siblings, `RuntimeReflectionExtensions.GetRuntimeFields` and its siblings, `Activator.CreateInstance(Type, bool)`, the `Expression` factories that look a member up by name, `Expression.New(Type)`, the `Delegate.CreateDelegate` overloads that bind a method by name, and `Assembly.GetTypes`, `DefinedTypes`, `Module.GetTypes` and `FindTypes` all reach non-public members or types with no `BindingFlags`. Each was checked in PowerShell against a type with private members. These are the routes found so far, not a proof that no other exists.
+- **Banning `BindingFlags.NonPublic` isn't enough.** `TypeInfo.DeclaredFields` and its siblings, `RuntimeReflectionExtensions.GetRuntimeFields` and its siblings, `Activator.CreateInstance(Type, bool)`, the `Expression` factories that look a member up by name, `Expression.New(Type)`, the `Delegate.CreateDelegate` overloads that bind a method by name, and `Assembly.GetTypes`, `DefinedTypes`, `Module.GetTypes` and `FindTypes`, and the `PropertyInfo` and `EventInfo` accessor getters that take `nonPublic`, all reach non-public members or types with no `BindingFlags`. Each was checked in PowerShell against a type with private members. These are the routes found so far, not a proof that no other exists.
 - **One known violation of CRF-010:** `ServiceDefaultsTests` read `TracerProvider`'s non-public `Processor` property by reflection.
 
 This ADR was decided in auto mode (ADR-0035), within the principles the owner set.
@@ -33,7 +33,7 @@ This ADR was decided in auto mode (ADR-0035), within the principles the owner se
 - **Metric limits.** Turn the rules on in a root `.globalconfig`, and set the limits in `CodeMetricsConfig.txt`. Warnings fail the build (STY-004). The limits file is an "additional file": a file a project hands to its analyzers along with its code, as Microsoft's CA1502 and CA1506 pages show.
   - **CA1502 at 15, the owner's limit.** Microsoft's cyclomatic complexity page quotes NIST 500-235: 10 is McCabe's original limit, and "limits as high as 15 have been used successfully as well". NIST reserves a limit over 10 for projects with several operational advantages over typical ones. Its examples are experienced staff, formal design, a modern language, structured programming, code walkthroughs and a comprehensive test plan, and it asks for a willingness to spend the extra testing effort. The kit has several of them:
     - formal design: plans with a checklist, and ADRs;
-    - a modern language, written in structured style: C#, with no `goto` in the kit's code, under Microsoft's full analyzer baseline (STY-003);
+    - a modern language, written in structured style: C#, with no `goto` in the kit's code today;
     - code walkthroughs: the reviewer agent on every PR, and the owner on the PRs his to merge (review mode, guardrails, releases);
     - a comprehensive test plan, with the extra effort spent: test-first, coverage gates and nightly mutation testing (TST-001, TST-004).
 
@@ -50,7 +50,7 @@ This ADR was decided in auto mode (ADR-0035), within the principles the owner se
 - **Cycles.** An ArchUnitNET slice rule over the root namespace and every namespace under it. A slice is a group of types, here one per namespace, and the rule fails when any two groups depend on each other in a loop. ArchUnitNET is already the kit's architecture-test tool (TST-005).
 - **Trade-offs:** Microsoft's rules match the rest of the analyzer baseline (STY-003) and its documentation, and add no runtime dependency. They don't measure nesting depth, statements per method, file length or cohesion (LCOM4), so those stay advisory (GAP-019).
 - **Reversibility:** easy. Each check is one line in a config file.
-- **Risk:** low. An update could change how a metric counts; Dependabot PRs build the sample, so a change shows up there first.
+- **Risk:** low to medium. An update could change how a metric counts; Dependabot PRs build the sample, so a change shows up there first. Microsoft says these rules might be deprecated in a future version; if they are, the metric limits lose their check, and GAP-019's routes (a third-party analyzer, or a kit check) come back on the table.
 
 ### Option 2: A third-party analyzer package with more metrics
 
@@ -86,14 +86,7 @@ Option 1, decided in auto mode on 2026-11-10 under the owner's principles of 202
   - Export-KitApp's tests fail if `Directory.Build.props` points at a file an app doesn't get, or if the app's `Directory.Packages.props` lacks a kit global package reference.
 - **For the sync job (D3):** an existing app owns its `Directory.Packages.props`, so the kit's files alone would leave it with `BannedSymbols.txt` and no analyzer to read it. The sync job must carry the kit's global package references into an app's `Directory.Packages.props`. Until it does, CRF-010's build check reaches only apps created after this change.
 - **Tests:**
-  - `tools/tests/BuildConfig.Tests.ps1` builds one fixture for each check that must fail:
-    - complexity 16;
-    - coupling of 41 and 96 types;
-    - depth 6;
-    - a maintainability index of 7;
-    - the other rules `latest-all` leaves off (CA1005, CA1017, CA1021, CA1045, CA1060, CA1516);
-    - a malformed limit;
-    - `BindingFlags.NonPublic`, `UnsafeAccessor`, `DeclaredFields` and a delegate bound by name.
+  - `tools/tests/BuildConfig.Tests.ps1` builds one fixture for each check that must fail: each metric just over its limit, each other rule `.globalconfig` turns on, a malformed limit, and routes on the ban list. Its "violations fail the build" table is the list; a test there fails if a rule `.globalconfig` turns on has no row.
   - It builds one at each limit that must pass (complexity 15, coupling 40 and 95, depth 5, maintainability 10), so a limit can't quietly drift.
   - It checks that every `BannedSymbols.txt` entry names a symbol declared on the type it names, since the analyzer ignores one that doesn't, and that CRF-008's numbers match `CodeMetricsConfig.txt`.
   - The sample's `NamespaceCycleTests` proves the rule catches a cycle between two fixture namespaces, and one through a type in the root namespace itself. It also proves the rule fails when nothing sits under its root, since ArchUnitNET passes a slice rule that matches nothing, and accepts a root whose only types sit in the root itself. Then it checks the sample.
@@ -126,7 +119,7 @@ Option 1, decided in auto mode on 2026-11-10 under the owner's principles of 202
 - https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1509, retrieved 2026-11-10
 - https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-files, retrieved 2026-11-10
 - https://learn.microsoft.com/en-us/visualstudio/msbuild/writecodefragment-task, retrieved 2026-11-10
-- https://github.com/dotnet/roslyn-analyzers/blob/main/src/NetAnalyzers/Core/Microsoft.CodeQuality.Analyzers/ApiDesignGuidelines/MarkAssembliesWithComVisible.cs (CA1017's `AssemblyHasPublicTypes`), retrieved 2026-11-10
+- https://github.com/dotnet/sdk/blob/748f0c98b36da3cde0e7b47e3363203bf3feb9ff/src/Microsoft.CodeAnalysis.NetAnalyzers/src/Microsoft.CodeAnalysis.NetAnalyzers/Microsoft.CodeQuality.Analyzers/ApiDesignGuidelines/MarkAssembliesWithComVisible.cs (CA1017's `AssemblyHasPublicTypes`; the analyzers moved from dotnet/roslyn-analyzers to dotnet/sdk), retrieved 2026-11-11
 - C:\Program Files\dotnet\sdk\10.0.404\Sdks\Microsoft.NET.Sdk\analyzers\build\config\analysislevel_10_all.globalconfig (CA1516 set to none), read 2026-11-10
 - https://learn.microsoft.com/en-us/visualstudio/code-quality/code-metrics-cyclomatic-complexity, retrieved 2026-11-10
 - https://learn.microsoft.com/en-us/visualstudio/code-quality/code-metrics-class-coupling, retrieved 2026-11-10
