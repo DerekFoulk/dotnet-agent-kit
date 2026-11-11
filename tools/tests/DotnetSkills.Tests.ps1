@@ -242,3 +242,28 @@ Describe 'Update-DotnetSkills.ps1 from the command line' {
         $output | Should -Match 'plugins/p/skills/gone'
     }
 }
+
+Describe 'the kit''s curated skills' {
+    BeforeAll {
+        $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        $lock = Read-DotnetSkillLock -RepoRoot $root
+    }
+
+    It 'are pinned to one dotnet/skills commit, with the date it was retrieved' {
+        $lock['repository'] | Should -Be 'dotnet/skills'
+        $lock['url'] | Should -Be 'https://github.com/dotnet/skills'
+        $lock['commit'] | Should -Match '^[0-9a-f]{40}$' -Because 'a full SHA, which no one can move'
+        $lock['retrieved'] | Should -Match '^\d{4}-\d{2}-\d{2}$'
+    }
+
+    It 'record each skill''s files, SKILL.md among them' {
+        foreach ($skill in $lock['skills']) {
+            @($skill['files'].Keys) | Should -Contain 'SKILL.md' -Because "$($skill['name']) is a skill"
+        }
+    }
+
+    It 'match the pinned commit, file for file' {
+        @(Get-DotnetSkillDrift -SkillsRoot (Join-Path $root '.claude' 'skills') -Lock $lock) |
+            Should -BeNullOrEmpty -Because 'the copies are never edited; Update-DotnetSkills.ps1 moves them to another commit (ADR-0042)'
+    }
+}

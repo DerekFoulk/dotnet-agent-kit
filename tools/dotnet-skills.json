@@ -1,0 +1,18 @@
+{
+  "repository": "dotnet/skills",
+  "url": "https://github.com/dotnet/skills",
+  "commit": "",
+  "retrieved": "",
+  "skills": [
+    { "name": "dotnet-webapi", "source": "plugins/dotnet-aspnetcore/skills/dotnet-webapi", "files": {} },
+    { "name": "optimizing-ef-core-queries", "source": "plugins/dotnet-data/skills/optimizing-ef-core-queries", "files": {} },
+    { "name": "analyzing-dotnet-performance", "source": "plugins/dotnet-diag/skills/analyzing-dotnet-performance", "files": {} },
+    { "name": "run-tests", "source": "plugins/dotnet-test/skills/run-tests", "files": {} },
+    { "name": "filter-syntax", "source": "plugins/dotnet-test/skills/filter-syntax", "files": {} },
+    { "name": "migrate-xunit-to-xunit-v3", "source": "plugins/dotnet-test-migration/skills/migrate-xunit-to-xunit-v3", "files": {} },
+    { "name": "migrate-vstest-to-mtp", "source": "plugins/dotnet-test-migration/skills/migrate-vstest-to-mtp", "files": {} },
+    { "name": "convert-to-cpm", "source": "plugins/dotnet-nuget/skills/convert-to-cpm", "files": {} },
+    { "name": "author-component", "source": "plugins/dotnet-blazor/skills/author-component", "files": {} },
+    { "name": "msbuild", "source": "plugins/dotnet/skills/msbuild", "files": {} }
+  ]
+}
