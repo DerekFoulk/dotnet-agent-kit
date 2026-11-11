@@ -164,6 +164,7 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
 
         bookmark.FindPrimaryKey()!.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.Id));
         bookmark.FindProperty(nameof(Bookmark.OwnerId))!.IsNullable.Should().BeFalse();
+        bookmark.FindProperty(nameof(Bookmark.OwnerId))!.GetMaxLength().Should().Be(255, "OpenID Connect caps sub at 255 ASCII characters");
         bookmark.FindProperty(nameof(Bookmark.Url))!.IsNullable.Should().BeFalse();
         bookmark.FindProperty(nameof(Bookmark.Url))!.GetMaxLength().Should().Be(Bookmark.MaxUrlLength);
         bookmark.FindProperty(nameof(Bookmark.Title))!.IsNullable.Should().BeFalse();
