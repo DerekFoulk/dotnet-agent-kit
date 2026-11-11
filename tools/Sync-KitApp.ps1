@@ -237,12 +237,18 @@ function Add-KitPackage {
     # The app's packages by name alone: in either form, the app has it.
     $ours = @{}
     foreach ($node in (Get-KitPackageItem -Path $path).Values) { $ours[$node.GetAttribute('Include').ToLowerInvariant()] = $node.LocalName }
+    # The base's packages by name alone: one the app lacks, in either form, is one the app removed.
+    $baseNames = @{}
+    foreach ($node in $base.Values) { $baseNames[$node.GetAttribute('Include').ToLowerInvariant()] = $true }
     foreach ($key in $theirs.Keys) {
         if ($base.Contains($key)) { continue }
         $node = $theirs[$key]
-        $form = $ours[$node.GetAttribute('Include').ToLowerInvariant()]
-        if (-not $form) { $result.Added += $node.OuterXml }
-        elseif ($form -cne $node.LocalName) { $result.Skipped += $node.OuterXml }
+        $name = $node.GetAttribute('Include').ToLowerInvariant()
+        $form = $ours[$name]
+        if ($form) {
+            if ($form -cne $node.LocalName) { $result.Skipped += $node.OuterXml }
+        }
+        elseif (-not $baseNames.Contains($name)) { $result.Added += $node.OuterXml }
     }
     $added = $result.Added
     if (-not $added) { return $result }
