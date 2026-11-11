@@ -78,7 +78,7 @@ After changing a rule or a scorecard area, run `./tools/Test-Scorecard.ps1 -Upda
 | `.github/copilot-instructions.md` | Visual Studio, VS Code, Copilot on GitHub | Generated copy of `AGENTS.md` |
 | `.claude/rules/*.md` | Claude Code (and VS Code Claude sessions), loaded by path | Generated from `docs/standards` |
 | `.github/instructions/*.instructions.md` | Copilot, loaded by `applyTo` | Generated from `docs/standards` |
-| `.claude/skills/*/SKILL.md` | Claude Code, Visual Studio, VS Code | Hand |
+| `.claude/skills/*/SKILL.md` | Claude Code, Visual Studio, VS Code | Hand; the ten curated .NET skills are copied unchanged from dotnet/skills by `Update-DotnetSkills.ps1` (`docs/dotnet-skills.md`) |
 | `.claude/agents/reviewer.md` | Claude Code | Hand |
 | `.claude/settings.json` | Claude Code: permissions | Hand, owner-approved |
 | `.agent-mode`, `.claude/settings.local.json` (gitignored) | Every agent; Claude Code | `Set-AgentMode.ps1` ("Working modes") |

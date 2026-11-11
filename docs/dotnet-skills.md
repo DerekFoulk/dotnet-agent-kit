@@ -96,7 +96,7 @@ These fit the kit's stack and rules. Each would push the listing past its budget
 
 ## Move to a newer upstream commit
 
-1. Run `./tools/Update-DotnetSkills.ps1`. It fetches upstream's `main` (or `-Commit <sha>`), copies the listed skills, removes files that are gone upstream, and rewrites `tools/dotnet-skills.json` with the new commit and today's date. It changes nothing if a listed skill is gone or a copy has an edit.
+1. Run `./tools/Update-DotnetSkills.ps1`. It fetches upstream's `main` (or `-Commit <sha>`), copies the listed skills, removes files that are gone upstream, and rewrites `tools/dotnet-skills.json` with the new commit and today's date. It changes nothing if a listed skill is gone, holds a symbolic link or submodule, or a copy has an edit.
 2. Read the diff. Upstream text becomes instructions every agent follows, so check it against the kit's rules, as the tables above did.
 3. Update the commit and date in this file's "Pinned to" line and in `THIRD-PARTY-NOTICES.md`, and look upstream for new skills to add to the tables.
 4. Run every check in AGENTS.md's Commands table, then open the PR.
