@@ -228,8 +228,9 @@ Describe 'CodeMetricsConfig.txt' {
 # one that silently doesn't fire, can't slip in (review 4 of PR 36).
 Describe '.globalconfig' {
     BeforeAll {
-        # The IDs of the rules these lines turn on: any severity but none. Like Roslyn, it takes '=' or ':' between key
-        # and value, and drops a comment that starts with '#' or ';'.
+        # The IDs of the rules these lines turn on: any severity but none. Like Roslyn's analyzer config parser, it takes
+        # '=' or ':' between key and value, ignores case, and drops a comment that starts with '#' or ';'. Unlike it, it
+        # reads a rule ID as word characters only, which every CA, IDE and RS ID is.
         function Get-EnabledRule([string[]] $Line) {
             foreach ($text in $Line) {
                 $setting = ($text -replace '[#;].*$', '').Trim()
@@ -246,14 +247,17 @@ Describe '.globalconfig' {
         @{ Line = 'dotnet_diagnostic.CA1014.severity: warning'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = warning # a trailing comment'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = warning ; a trailing comment'; Expected = 'CA1014' }
+        @{ Line = '  dotnet_diagnostic.CA1014.severity = warning'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = none'; Expected = $null }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = None'; Expected = $null }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = none # off for now'; Expected = $null }
         @{ Line = '# dotnet_diagnostic.CA1014.severity = warning'; Expected = $null }
     ) {
         Get-EnabledRule -Line $Line | Should -Be $Expected
     }
 
-    # Any severity but none turns a rule on; the table is the one the fixture builds run from, so a row that's
+    # Any severity but none counts as on, so suggestion, silent and default ask for a fixture too, erring toward one;
+    # the table is the one the fixture builds run from, so a row that's
     # commented out doesn't count.
     It 'turns on only rules that have a failing fixture' -ForEach @(@{ Violations = $violations }) {
         $root = Join-Path $PSScriptRoot '..' '..'
