@@ -218,7 +218,7 @@ function Get-KitPackageItem {
 }
 
 # Where the sync can add packages to a Directory.Packages.props: the offset of the end tag of its first ItemGroup
-# labelled dotnet-agent-kit (Group, $null when there's none), and of </Project>. An XML reader finds them, so a
+# labelled dotnet-agent-kit directly under <Project> (Group, $null when there's none), and of </Project>. An XML reader finds them, so a
 # group in a comment, a self-closing one with nowhere to add to, or a '>' inside an attribute can't mislead it.
 function Get-KitPackageGroupEnd {
     param([Parameter(Mandatory)] [string] $Text)
@@ -235,7 +235,8 @@ function Get-KitPackageGroupEnd {
     try {
         while ($reader.Read()) {
             $isGroup = $reader.LocalName -ceq 'ItemGroup'
-            if ($reader.NodeType -eq 'Element' -and $isGroup -and $null -eq $ends.Group -and $groupDepth -lt 0 -and
+            # Only a group directly under <Project>: one under <Choose>/<When> or <Target> may never apply.
+            if ($reader.NodeType -eq 'Element' -and $isGroup -and $reader.Depth -eq 1 -and $null -eq $ends.Group -and $groupDepth -lt 0 -and
                 -not $reader.IsEmptyElement -and $reader.GetAttribute('Label') -ceq 'dotnet-agent-kit') {
                 $groupDepth = $reader.Depth
             }
