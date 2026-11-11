@@ -108,7 +108,8 @@ Describe 'Repo build configuration' -Tag 'Build' {
             $first = New-FixtureWorkspace -Fixture 'Clean'
 
             { $script:second = New-FixtureWorkspace -Fixture 'Clean' } | Should -Not -Throw
-            $script:second | Should -Not -Be $first
+            @($script:second) | Should -HaveCount 1 -Because 'the function returns only the workspace path'
+            Split-Path $script:second -Parent | Should -Not -Be (Split-Path $first -Parent) -Because 'a reused folder would share one build between rows'
         }
     }
 
