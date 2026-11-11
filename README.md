@@ -56,7 +56,7 @@ The exit code is 0 when every required tool is ready and 1 otherwise, so agents 
 
 - **`docs/standards/`**: one file per topic. Each rule sits in the file's YAML front matter with its `id`, `statement`, `why`, `layer` (floor, owner or outside), `status` (proposed, accepted or retired), `sources` and `enforcement`. A `proposed` rule isn't in force until the owner accepts it.
 - **`docs/adr/`**: Architecture Decision Records. ADR numbers match the brief's decision numbers (D8 is ADR-0008). New ones start from `docs/adr/0000-template.md`.
-- **`docs/quality/scorecard.md`**: the quality scorecard. It says what a "perfect" .NET app looks like in 14 areas (architecture, tests, security, API design and the rest), which rules cover each area, how many of them a tool checks, and the open gaps, each with an id a later PR can close (ADR-0034).
+- **`docs/quality/scorecard.md`**: the quality scorecard. It says what a "perfect" .NET app looks like, area by area (architecture, tests, security, API design and the rest), which rules cover each area, how many of them a tool checks, and the open gaps, each with an id a later PR can close (ADR-0034).
 - **`docs/sources.md`** lists practitioner sources. **`docs/corrections-log.md`** records owner corrections and what each became.
 
 Three checks keep these honest. Each exits 0 when clean and 1 otherwise:
@@ -205,7 +205,7 @@ jobs:
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`. Called from any other event, it fails rather than pass having checked nothing |
 | `kit-sync.reusable.yml` | Not a check: on Dependabot's kit-pin PR, brings the release's other kit-managed files into it (see "Keep an app current"). Called from anything but Dependabot's own GitHub Actions PR, it fails |
 
-The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the kit sync keeps them current (see "Keep an app current" below).
+The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), `.globalconfig`, `CodeMetricsConfig.txt` and `BannedSymbols.txt` (the craft checks, ADR-0043; without them the metric limits and bans do nothing), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the kit sync keeps them current (see "Keep an app current" below).
 
 ### Create an app repo's files
 
@@ -313,4 +313,4 @@ Applied 2026-11-09 with the owner's OK:
 Invoke-Pester -Path ./tools/tests
 ```
 
-`tools/tests/BuildConfig.Tests.ps1` copies the root build config (`global.json`, `Directory.*.props`, `.editorconfig`, `nuget.config`) into isolated workspaces and builds small fixture projects against it. It proves that clean code builds with a MinVer version and a lock file, and that `var`, nullable violations and `latest-all` analyzer findings fail the build.
+`tools/tests/BuildConfig.Tests.ps1` copies the root build config (`global.json`, `Directory.*.props`, `.editorconfig`, `nuget.config`, `.globalconfig`, `CodeMetricsConfig.txt`, `BannedSymbols.txt`) into isolated workspaces and builds small fixture projects against it. It proves that clean code builds with a MinVer version and a lock file, and that `var`, nullable violations, `latest-all` analyzer findings, the rules `latest-all` leaves off, the metric limits and the banned APIs fail the build, while code at each metric limit builds (ADR-0043). It also checks that every banned symbol exists and that CRF-008 states the limits `CodeMetricsConfig.txt` sets.

@@ -275,6 +275,20 @@ Describe 'Export-KitApp' {
         @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain 'Directory.Packages.props'
     }
 
+    # Review 1 of PR 36: a global package reference reaches every project, and the banned-API analyzer is the
+    # one that reads BannedSymbols.txt (CRF-010). Without it an app's build would ignore the bans and still pass.
+    It 'gives the app every global package reference outside the sample app''s group, the banned-API analyzer included' {
+        $props = [xml](Get-Content -Raw (Join-Path $app 'Directory.Packages.props'))
+        $kitProps = [xml](Get-Content -Raw (Join-Path $checkout 'Directory.Packages.props'))
+        $appGlobal = @{}
+        foreach ($node in $props.SelectNodes('//GlobalPackageReference')) { $appGlobal[$node.Include] = $node.Version }
+
+        $appGlobal.Keys | Should -Contain 'Microsoft.CodeAnalysis.BannedApiAnalyzers'
+        foreach ($node in $kitProps.SelectNodes('//ItemGroup[not(@Label="Sample app")]/GlobalPackageReference')) {
+            $appGlobal[$node.Include] | Should -Be $node.Version -Because "$($node.Include) applies to every project"
+        }
+    }
+
     # PowerShell's location and the process's current directory differ; .NET file calls use the latter.
     It 'writes a relative destination under PowerShell''s current location, all in one place' {
         $parent = Join-Path $TestDrive 'relative-parent'
@@ -429,9 +443,23 @@ Describe 'Export-KitApp' {
         $targets = @($map | ForEach-Object { $_.Target })
 
         foreach ($path in '.editorconfig', 'global.json', 'nuget.config', 'Directory.Build.props', 'tests/Directory.Build.props',
+            '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt',
             'THIRD-PARTY-NOTICES.md', 'CLAUDE.md', '.mcp.json', '.claude/settings.json', '.claude/agents/reviewer.md',
             '.claude/skills/tdd-cycle/SKILL.md', 'docs/standards/git.md', '.githooks/commit-msg', '.githooks/commit-msg.ps1',
             '.github/pull_request_template.md', 'docs/adr/0000-template.md', '.kit/tools/Test-ConventionalTitle.ps1') {
+            $targets | Should -Contain $path
+        }
+    }
+
+    # ADR-0043: Directory.Build.props points every project at files beside it (CodeMetricsConfig.txt,
+    # BannedSymbols.txt); an app without one of them would build without the check it feeds.
+    It 'includes every file the kit''s Directory.Build.props points to' {
+        $props = Get-Content -Raw -LiteralPath (Join-Path $checkout 'Directory.Build.props')
+        $referenced = @([regex]::Matches($props, '\$\(MSBuildThisFileDirectory\)([^"]+)') | ForEach-Object { $_.Groups[1].Value })
+        $targets = @($map | ForEach-Object { $_.Target })
+
+        $referenced | Should -Not -BeNullOrEmpty
+        foreach ($path in $referenced) {
             $targets | Should -Contain $path
         }
     }

@@ -1,0 +1,7 @@
+# The metric limits the build enforces (CRF-008, ADR-0043). Raising one needs an ADR. CRF-008 states the same numbers,
+# and tools/tests/BuildConfig.Tests.ps1 fails if the two disagree. Lines starting with '#' are comments (CA1509's page).
+CA1502: 15
+CA1506(Method): 40
+CA1506(Type): 95
+CA1501: 5
+CA1505: 10
