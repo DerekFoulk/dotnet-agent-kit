@@ -344,6 +344,27 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($expected -join "`n")
         }
 
+        # Review: a '>' may stand unescaped in an attribute; an empty group may sit on one line.
+        It 'adds <Case>' -ForEach @(
+            @{
+                Case     = 'a new group when the app''s self-closing kit group has a ''>'' in an attribute'
+                Lines    = '<Project>', "  <ItemGroup Label=""dotnet-agent-kit"" Condition=""'`$(A)' > '1'"" />", '  <ItemGroup>', '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
+                Expected = '<Project>', "  <ItemGroup Label=""dotnet-agent-kit"" Condition=""'`$(A)' > '1'"" />", '  <ItemGroup>', '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', "  <!-- Added by the kit sync: packages the kit's files need (kit ADR-0044). -->", '  <ItemGroup Label="dotnet-agent-kit">', '    {0}', '  </ItemGroup>', '', '</Project>', ''
+            }
+            @{
+                Case     = 'to an empty kit group on one line, on a line of its own'
+                Lines    = '<Project>', '  <ItemGroup Label="dotnet-agent-kit"></ItemGroup>', '', '</Project>', ''
+                Expected = '<Project>', '  <ItemGroup Label="dotnet-agent-kit">', '    {0}', '  </ItemGroup>', '', '</Project>', ''
+            }
+        ) {
+            $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
+            Set-FileText (Join-Path $appRoot 'Directory.Packages.props') ($Lines -join "`n")
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly (($Expected -join "`n") -f $analyzer)
+        }
+
         It 'adds to the app''s dotnet-agent-kit ItemGroup when it has one, in the file''s line endings' {
             $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
             $lines = '<Project>', '  <ItemGroup Label="dotnet-agent-kit">', '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
