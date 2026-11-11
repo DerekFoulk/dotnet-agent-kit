@@ -90,6 +90,18 @@ Describe 'Add' {
         $result.Message | Should -Match $Message
     }
 
+    It 'reports every mutant as an error with Pester''s reason when the test path is a folder with no test files' {
+        # Invoke-Pester throws here, and says why on stdout rather than stderr.
+        $fixture = New-Fixture
+        $empty = Join-Path $TestDrive "empty-$(New-Guid)"
+        New-Item -ItemType Directory -Path $empty | Out-Null
+
+        $result = & $script -Path $fixture.Source -TestPath $empty -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match 'No test files were found'
+    }
+
     It 'reports every mutant as an error when the tests already fail on the unchanged file' {
         $fixture = New-Fixture -Tests @'
 Describe 'Add' {
