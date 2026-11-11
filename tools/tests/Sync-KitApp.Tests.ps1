@@ -146,6 +146,11 @@ Describe 'Sync-KitApp' {
             @{ Case = 'is missing'; Change = { param($m) $null }; Message = '*has no .kit/manifest.json*' }
             @{ Case = 'has no app name (made before ADR-0044)'; Change = { param($m) $m.Remove('appName'); $m }; Message = '*no "appName"*' }
             @{ Case = 'has no full kit commit'; Change = { param($m) $m['kitCommit'] = 'v0.1.0'; $m }; Message = '*full kit commit*' }
+            # Review: the manifest's paths decide what the write-token job deletes, so none may leave the app.
+            @{ Case = 'names a path outside the app (..)'; Change = { param($m) $m['files'] += @{ path = '../outside.txt'; sha256 = 'a' * 64 }; $m }; Message = '*not a path inside the app*' }
+            @{ Case = 'names an absolute path'; Change = { param($m) $m['files'] += @{ path = '/etc/outside.txt'; sha256 = 'a' * 64 }; $m }; Message = '*not a path inside the app*' }
+            @{ Case = 'names a drive path'; Change = { param($m) $m['files'] += @{ path = 'C:/outside.txt'; sha256 = 'a' * 64 }; $m }; Message = '*not a path inside the app*' }
+            @{ Case = 'names a backslash path'; Change = { param($m) $m['files'] += @{ path = '..\outside.txt'; sha256 = 'a' * 64 }; $m }; Message = '*not a path inside the app*' }
         ) {
             $copy = Join-Path $TestDrive "manifest-$(New-Guid)"
             Copy-Item -LiteralPath $untouched -Destination $copy -Recurse
