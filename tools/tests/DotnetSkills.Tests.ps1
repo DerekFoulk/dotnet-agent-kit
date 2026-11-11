@@ -87,6 +87,24 @@ Describe 'Get-DotnetSkillDrift' {
         @(Get-DotnetSkillDrift -SkillsRoot $copy.Skills -Lock $copy.Lock) | Should -BeNullOrEmpty
     }
 
+    # A Windows console often uses a legacy code page, and PowerShell decodes git's output with it.
+    It 'skips an ignored file whose name isn''t ASCII when the console isn''t UTF-8' {
+        $copy = New-Copy
+        git -C $copy.Skills init -q
+        [IO.File]::WriteAllText((Join-Path $copy.Skills '.gitignore'), "*.swp`n")
+        [IO.File]::WriteAllText((Join-Path $copy.Skills 'tidy' "caf$([char]0xE9).md.swp"), "Editor.`n")
+        $saved = [Console]::OutputEncoding
+        try {
+            [Console]::OutputEncoding = [Text.Encoding]::Latin1
+            $drift = @(Get-DotnetSkillDrift -SkillsRoot $copy.Skills -Lock $copy.Lock)
+            $after = [Console]::OutputEncoding
+        }
+        finally { [Console]::OutputEncoding = $saved }
+
+        $drift | Should -BeNullOrEmpty
+        $after.WebName | Should -Be ([Text.Encoding]::Latin1.WebName) -Because 'the console is left as the caller set it'
+    }
+
     It 'leaves alone folders of skills the lock doesn''t name, such as the kit''s own' {
         $copy = New-Copy
         New-Item -ItemType Directory -Path (Join-Path $copy.Skills 'start-work') | Out-Null
