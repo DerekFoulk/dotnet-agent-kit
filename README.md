@@ -268,7 +268,7 @@ A kit-managed file the app edited is merged three ways with the kit's change. If
 - a file the kit dropped that the app had edited (it becomes the app's);
 - an app file where the kit now adds one (the app's stays);
 - an edited generated rule file (rebuilt);
-- packages added to `Directory.Packages.props` (refresh the lock files with `dotnet restore --force-evaluate`, since the sync doesn't restore);
+- packages added to `Directory.Packages.props` (refresh the lock files with `dotnet restore --force-evaluate`, since the sync doesn't restore), and any left out because the app lists them in the other form (`PackageVersion` or `GlobalPackageReference`), which NuGet rejects;
 - a kit change to a workflow beyond its pin ("WorkflowByHand": apply it on the PR's branch, since the sync never writes `.github/workflows/`). A workflow whose only kit change is the pin, which Dependabot moved, needs nothing.
 
 So an app may add its own lines to `.gitignore`, `global.json` or `.claude/settings.json`, and keep them across releases.
