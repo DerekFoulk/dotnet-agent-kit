@@ -26,3 +26,14 @@ function Get-DotnetSkillBlobId {
     $header = [Text.Encoding]::ASCII.GetBytes("blob $($lf.Count)`0")
     [Convert]::ToHexString([Security.Cryptography.SHA1]::HashData([byte[]] ($header + $lf.ToArray()))).ToLowerInvariant()
 }
+
+# How each curated skill's folder differs from the lock: a file changed, missing, or not upstream. Folders of skills
+# the lock doesn't name, such as the kit's own, aren't looked at.
+function Get-DotnetSkillDrift {
+    param(
+        [Parameter(Mandatory)] [string] $SkillsRoot,
+        [Parameter(Mandatory)] [Collections.IDictionary] $Lock
+    )
+
+    'not written yet'
+}
