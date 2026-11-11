@@ -51,9 +51,14 @@ public sealed class Bookmark
             throw new ArgumentException("A bookmark needs an absolute http or https URL.", nameof(url));
         }
 
-        // The bookmark keeps the escaped absolute form, the one the limit measures and the database stores, so the URL
-        // it answers with is always the same and always within the limit.
-        Uri stored = new(url.AbsoluteUri);
+        // The bookmark keeps the escaped absolute form, the one the limit measures; the database stores exactly that
+        // text, so the URL it answers with is always the same and always within the limit. A form that can't be read
+        // back (Uri drops bidi controls, which can leave no host) is the caller's bad URL.
+        if (!Uri.TryCreate(url.AbsoluteUri, UriKind.Absolute, out Uri? stored))
+        {
+            throw new ArgumentException("A bookmark needs an absolute http or https URL.", nameof(url));
+        }
+
         if (stored.OriginalString.Length > MaxUrlLength)
         {
             throw new ArgumentException($"A bookmark's URL has at most {MaxUrlLength} characters.", nameof(url));

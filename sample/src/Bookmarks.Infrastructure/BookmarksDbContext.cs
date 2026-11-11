@@ -15,10 +15,11 @@ public sealed class BookmarksDbContext(DbContextOptions<BookmarksDbContext> opti
         {
             bookmark.HasKey(b => b.Id);
             bookmark.Property(b => b.OwnerId).IsRequired().HasMaxLength(Bookmark.MaxOwnerIdLength);
-            // Stored in the escaped absolute form whose length the domain limits. EF's default, Uri.ToString(),
-            // unescapes some characters, so it can differ from what was measured.
+            // Stored as the exact text the bookmark holds (its escaped absolute form, whose length the domain limits),
+            // and read back unchanged. EF's default, Uri.ToString(), unescapes some characters, and even AbsoluteUri
+            // can change on a second pass, so either could differ from what was measured and answered.
             bookmark.Property(b => b.Url).IsRequired().HasMaxLength(Bookmark.MaxUrlLength)
-                .HasConversion(url => url.AbsoluteUri, text => new Uri(text));
+                .HasConversion(url => url.OriginalString, text => new Uri(text));
             bookmark.Property(b => b.Title).IsRequired().HasMaxLength(Bookmark.MaxTitleLength);
             bookmark.Property(b => b.CreatedAt).IsRequired();
             // Every read filters by owner first (SEC-009), then by URL or by key.
