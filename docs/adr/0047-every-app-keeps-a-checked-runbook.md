@@ -9,7 +9,7 @@ Nothing in the kit said how to operate an app once it's deployed: how to deploy 
 
 The Azure Well-Architected Framework asks for runbooks that are stored in version control, made from templates, and carry review dates (OE:02). It also asks for a documented incident process with defined roles and a postmortem (OE:08), and for a rollback to the last known good release (OE:11). Diátaxis calls this kind of page a how-to guide: steps toward one goal for someone who already knows the system, with no teaching or background.
 
-No app is deployed yet: the production workflow is GAP-015. No kit release has been published, but two test apps exist (`kit-app-test` and `kit-app-test-public`), pinned to earlier kit commits and without a runbook. So a runbook must exist before it can be complete, nothing can yet tell CI whether an app has been deployed, and the kit sync, which until now never touched an app-owned file, wouldn't give an existing app one.
+No app is deployed yet: the production workflow is GAP-015. No kit release has been published, but two test apps exist (`kit-app-test` and `kit-app-test-public`), pinned to earlier kit commits and without a runbook. They also predate the sync job (ADR-0044, ADR-0045): no `kit-sync.yml`, no Dependabot `github-actions` entry, and no `appName` in their manifests. So a runbook must exist before it can be complete, nothing can yet tell CI whether an app has been deployed, and the kit sync, which until now never touched an app-owned file, wouldn't give an app made after it one.
 
 ## Options
 
@@ -57,7 +57,8 @@ Proposed (auto mode, ADR-0035), with OPS-004; the owner accepts or changes it.
 - `tools/Test-Runbook.ps1`, with Pester tests. The required sections are listed once, in the script; the template is tested against it.
 - `templates/app/docs/runbook.md` is the template. Export-KitApp lists it as app-owned, so the sync job never overwrites an app's runbook, and it copies `Test-Runbook.ps1` to `.kit/tools/`.
 - `app-checks.reusable.yml` runs the check on every pull request and push. A missing runbook fails.
-- The kit sync (ADR-0044) now adds a file a release starts every app with, for the app to own, when the app's kit version didn't have it and the app lacks it; the PR lists it under "Needs a look". It never changes one the app has. So an existing app, such as the two test apps, gets a Draft runbook in the same kit-pin PR that brings in the check, and that PR passes.
+- The kit sync (ADR-0044) now adds a file a release is the first to start every app with, for the app to own, when the app's kit version didn't have it and the app lacks it; the PR lists it under "Needs a look". It never changes one the app has. So an app that has the sync job gets a Draft runbook in the same kit-pin PR that brings in the check, and that PR passes.
+- The two test apps predate the sync job, so moving their kit pin by hand past this change fails their App checks until each gets `docs/runbook.md` from the template (and, for the sync, the setup ADR-0044 and ADR-0045 describe).
 - **Follow-up:** the production workflow (GAP-015) should run `Test-Runbook.ps1` and refuse to deploy while the status is Draft. Until then, the switch to In use at the first deployment is advisory.
 - A later kit change to the template doesn't reach existing apps, because they own their copies. A new required section would fail every existing app's kit-pin PR until the app adds it, so it needs a release note that says so, or a change to the sync.
 

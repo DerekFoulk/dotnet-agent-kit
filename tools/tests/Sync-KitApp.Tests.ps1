@@ -266,6 +266,7 @@ Describe 'Sync-KitApp' {
 
             @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed @()) | Should -BeNullOrEmpty
         }
+
         It 'skips <Case>' -ForEach @(
             @{ Case = 'a file the app''s kit version already had, which the app deleted'; Path = 'docs/runbook.md'; InBase = $true; Managed = @() }
             @{ Case = 'a kit-managed file, which the manifest handles'; Path = '.editorconfig'; InBase = $false; Managed = @('.editorconfig') }
@@ -301,6 +302,7 @@ Describe 'Sync-KitApp' {
             [regex]::Match($report, '(?m)^\| `docs/runbook\.md` \|.*$').Value | Should -Match 'starts every app'
         }
     }
+
     Context 'deciding each file' {
         It 'gives <Expected> for <Case>' -ForEach @(
             # Review of the decision table: the kit dropping a kit block must never delete the app's whole file.
@@ -706,6 +708,7 @@ Describe 'Sync-KitApp' {
             Get-Content -Raw (Join-Path $app 'docs/glossary.md') | Should -Match 'Our own glossary'
             Get-SyncAction 'docs/glossary.md' | Should -Be 'AppFileKept'
         }
+
         It 'leaves the app''s own files byte for byte as they were' {
             foreach ($path in $appOwned | Where-Object { $_ -ne 'Directory.Packages.props' }) {
                 [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"

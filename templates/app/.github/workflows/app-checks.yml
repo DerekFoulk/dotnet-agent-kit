@@ -1,6 +1,6 @@
 # {{Name}}'s process checks, from dotnet-agent-kit's shared workflow: the PR title, commit subjects,
-# red-to-green order and ADR sections. It also runs when the PR is edited, because the title becomes the
-# merge commit's subject. Pinned like ci.yml.
+# red-to-green order, ADR sections and the runbook. It also runs when the PR is edited, because the title
+# becomes the merge commit's subject. Pinned like ci.yml.
 name: App checks
 
 on:
