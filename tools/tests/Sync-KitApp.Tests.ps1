@@ -163,6 +163,17 @@ Describe 'Sync-KitApp' {
         Get-Content -Raw (Join-Path $copy '.editorconfig') | Should -Not -Match 'kit-v2-marker'
     }
 
+    Context 'deciding each file' {
+        It 'gives <Expected> for <Case>' -ForEach @(
+            # Review of the decision table: the kit dropping a kit block must never delete the app's whole file.
+            @{ Case = 'a kit block the kit no longer has'; Old = @{ path = 'AGENTS.md'; block = 'kit'; sha256 = 'a' * 64 }; Theirs = $null; Ours = 'a' * 64; Generated = $false; Expected = 'NowAppOwned' }
+            @{ Case = 'an app file that already is the kit''s new file'; Old = $null; Theirs = @{ path = 'x'; sha256 = 'b' * 64 }; Ours = 'b' * 64; Generated = $false; Expected = 'None' }
+            @{ Case = 'an edited generated file the kit no longer makes'; Old = @{ path = '.claude/rules/x.md'; sha256 = 'a' * 64 }; Theirs = $null; Ours = 'c' * 64; Generated = $true; Expected = 'Removed' }
+        ) {
+            Get-KitSyncAction -Old $Old -Theirs $Theirs -OursHash $Ours -Generated $Generated | Should -Be $Expected
+        }
+    }
+
     Context 'run as a script' {
         BeforeAll {
             $cli = Join-Path $TestDrive 'cli'
