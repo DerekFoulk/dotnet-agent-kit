@@ -40,4 +40,20 @@ Describe 'Test-EmptyProjects.ps1' {
         $problems | Should -HaveCount 1
         $problems[0].Message | Should -BeLike '*App.Domain*has no source*'
     }
+
+    # A build writes generated C# (AssemblyInfo, global usings) into obj/, so every built project would pass otherwise.
+    It 'doesn''t count what the build writes under obj/ or bin/' {
+        $solution = New-Solution @{
+            'App.Domain' = @{
+                'obj/Debug/net10.0/App.Domain.AssemblyInfo.cs' = '[assembly: System.Reflection.AssemblyTitle("App.Domain")]'
+                'obj/Debug/net10.0/App.Domain.GlobalUsings.g.cs' = 'global using System;'
+                'bin/Debug/net10.0/Copied.cs' = 'class Copied { }'
+            }
+        }
+
+        $problems = @(Get-EmptyProjectProblem -Solution $solution)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike '*App.Domain*has no source*'
+    }
 }
