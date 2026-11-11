@@ -5,7 +5,7 @@
 
 How to operate {{Name}} once it's deployed. "Where it runs" is the reference the other sections use; each section after it is one task, written as steps to follow. The kit's rule OPS-004 (`docs/standards/operations.md`) says what this file needs, and `./.kit/tools/Test-Runbook.ps1` checks it in CI.
 
-Before {{Name}}'s first production deployment, replace every `[fill in: ...]` with this app's own steps, and set the status to `In use`. From then on, CI fails on any placeholder left. Review this file whenever how the app is deployed, hosted or stores data changes, and update the review date. Never write a secret here: name where it's kept, never its value.
+Before {{Name}}'s first production deployment, replace every placeholder in square brackets, which starts "fill in", with this app's own steps, and set the status to `In use`. From then on, CI fails on any placeholder left. Review this file whenever how the app is deployed, hosted or stores data changes, and update the review date. Never write a secret here: name where it's kept, never its value.
 
 ## Where it runs
 
