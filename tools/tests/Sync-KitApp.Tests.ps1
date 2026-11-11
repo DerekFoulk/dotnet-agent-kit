@@ -224,6 +224,18 @@ Describe 'Sync-KitApp' {
             Get-SyncAction $Path | Should -Be $Action
         }
 
+        It 'rebuilds the generated agent files from the release''s standards and the app''s AGENTS.md, and reports a lost edit' {
+            $file = $expectedManifest['files'] | Where-Object { $_['path'] -eq $instructions }
+            Get-LfHash ([IO.File]::ReadAllText((Join-Path $app $instructions))) | Should -Be $file['sha256']
+            Get-SyncAction $instructions | Should -Be 'Regenerated'
+            Get-Content -Raw (Join-Path $app '.claude/rules/git.md') | Should -Match 'kit-v2-rule-marker'
+
+            # copilot-instructions.md copies the app's AGENTS.md, so it isn't kit-managed but must be current.
+            $copilot = Get-Content -Raw (Join-Path $app '.github/copilot-instructions.md')
+            $copilot | Should -Match 'kit-v2-agents-marker'
+            $copilot | Should -Match 'app-notes-marker'
+        }
+
         It 'leaves the app''s own files byte for byte as they were' {
             foreach ($path in $appOwned) {
                 [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"
