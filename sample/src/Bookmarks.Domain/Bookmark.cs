@@ -40,6 +40,11 @@ public sealed class Bookmark
     public static Bookmark Create(string ownerId, Uri url, string title, DateTimeOffset createdAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ownerId.Length > MaxOwnerIdLength)
+        {
+            throw new ArgumentException($"A bookmark's owner id has at most {MaxOwnerIdLength} characters.", nameof(ownerId));
+        }
+
         ArgumentNullException.ThrowIfNull(url);
         if (!url.IsAbsoluteUri || (url.Scheme != Uri.UriSchemeHttp && url.Scheme != Uri.UriSchemeHttps))
         {

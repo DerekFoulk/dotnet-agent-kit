@@ -14,8 +14,7 @@ public sealed class BookmarksDbContext(DbContextOptions<BookmarksDbContext> opti
         modelBuilder.Entity<Bookmark>(bookmark =>
         {
             bookmark.HasKey(b => b.Id);
-            // The owner is the token's sub claim, which OpenID Connect caps at 255 ASCII characters (Core 1.0, section 2).
-            bookmark.Property(b => b.OwnerId).IsRequired().HasMaxLength(255);
+            bookmark.Property(b => b.OwnerId).IsRequired().HasMaxLength(Bookmark.MaxOwnerIdLength);
             // Stored in the escaped absolute form whose length the domain limits. EF's default, Uri.ToString(),
             // unescapes some characters, so it can differ from what was measured.
             bookmark.Property(b => b.Url).IsRequired().HasMaxLength(Bookmark.MaxUrlLength)
