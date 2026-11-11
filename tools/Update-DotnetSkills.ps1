@@ -142,6 +142,7 @@ function Update-DotnetSkill {
             $source = $skill['source'].TrimEnd('/')
             # -z: paths unquoted, each entry ending in NUL. By default git would quote a non-ASCII path.
             $listing = Invoke-GitText -Arguments @('-C', $work, 'ls-tree', '-r', '-z', '--full-tree', $sha, '--', "$source/")
+            if ($LASTEXITCODE -ne 0) { throw "Couldn't list the files of '$source' at $sha. Nothing was changed." }
             $entries = @($listing -split "`0" | Where-Object { $_ } | ForEach-Object {
                     $info, $path = $_ -split "`t", 2
                     $mode, $null, $id = $info -split ' '
