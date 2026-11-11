@@ -216,3 +216,20 @@ Describe 'CodeMetricsConfig.txt' {
         }
     }
 }
+
+# STY-003: every rule .globalconfig turns on has a fixture that must fail with it, so a rule added there without one, or
+# one that silently doesn't fire, can't slip in (review 4 of PR 36).
+Describe '.globalconfig' {
+    It 'turns on only rules that have a failing fixture' {
+        $root = Join-Path $PSScriptRoot '..' '..'
+        $turnedOn = @(Select-String -LiteralPath (Join-Path $root '.globalconfig') -Pattern '^\s*dotnet_diagnostic\.(?<id>CA\d{4})\.severity\s*=\s*warning\s*$' |
+            ForEach-Object { $_.Matches[0].Groups['id'].Value })
+        $tested = @(Select-String -LiteralPath $PSCommandPath -Pattern "Diagnostic = '(?<id>CA\d{4})'" |
+            ForEach-Object { $_.Matches[0].Groups['id'].Value })
+
+        $turnedOn.Count | Should -BeGreaterThan 0
+        foreach ($rule in $turnedOn) {
+            $tested | Should -Contain $rule -Because "$rule is on in .globalconfig, so a fixture should prove it fires"
+        }
+    }
+}
