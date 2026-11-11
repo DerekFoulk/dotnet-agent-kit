@@ -209,8 +209,15 @@ function Sync-KitApp {
             elseif ($old -and $theirs -and $null -ne $ours -and -not $unedited -and (& $script:TextHash -Text $ours) -ne $theirs['sha256']) {
                 $base = Get-KitEntryText -Root $baseRoot -Entry $old
                 $merged = Merge-KitText -Work $work -Ours $ours -Base $base -Theirs (Get-KitEntryText -Root $newRoot -Entry $theirs)
-                Set-KitEntryText -Root $AppRoot -Entry $theirs -Text $merged
-                [pscustomobject]@{ Path = $path; Action = 'Merged' }
+                if ($null -eq $merged) {
+                    # Overlapping changes: the app's text stays, and the PR says so. Conflict markers in a file
+                    # would only break the build or hide in a doc.
+                    [pscustomobject]@{ Path = $path; Action = 'Conflict' }
+                }
+                else {
+                    Set-KitEntryText -Root $AppRoot -Entry $theirs -Text $merged
+                    [pscustomobject]@{ Path = $path; Action = 'Merged' }
+                }
             }
         }
         $result.Files = @($files)
