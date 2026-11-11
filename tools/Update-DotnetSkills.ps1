@@ -113,7 +113,8 @@ function Update-DotnetSkill {
         if ($LASTEXITCODE -ne 0) { throw "Couldn't make a temporary repo in $work." }
         git -C $work fetch -q --depth 1 --no-tags $RepositoryUrl $Commit
         if ($LASTEXITCODE -ne 0) { throw "Couldn't fetch '$Commit' from $RepositoryUrl." }
-        $sha = (git -C $work rev-parse --verify 'FETCH_HEAD^{commit}' | Out-String).Trim()
+        $sha = (git -C $work rev-parse --verify --quiet 'FETCH_HEAD^{commit}' 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) { throw "'$Commit' isn't a commit in $RepositoryUrl. Nothing was changed." }
 
         # Every file of every listed skill at the commit, before anything changes.
         $plan = foreach ($skill in $lock['skills']) {
