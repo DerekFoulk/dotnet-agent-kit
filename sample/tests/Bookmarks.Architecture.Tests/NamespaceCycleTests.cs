@@ -1,6 +1,7 @@
 using ArchUnitNET.Fluent;
+using ArchUnitNET.Fluent.Slices;
 using ArchUnitNET.Loader;
-using static ArchUnitNET.Fluent.ArchRuleDefinition;
+using ArchUnitNET.xUnitV3;
 
 namespace Bookmarks.Architecture.Tests;
 
@@ -8,6 +9,10 @@ namespace Bookmarks.Architecture.Tests;
 public sealed class NamespaceCycleTests
 {
     private const string FixtureRoot = "Bookmarks.Architecture.Tests.CycleFixture";
+
+    [Fact]
+    public void TheSamplesNamespacesFormNoCycle() =>
+        NamespaceCycles.Rule("Bookmarks").Check(SampleArchitecture.Value);
 
     [Fact]
     public void TheRuleCatchesACycleBetweenTwoNamespaces()
@@ -21,6 +26,7 @@ public sealed class NamespaceCycleTests
 /// <summary>The rule that namespaces under a root form no cycle.</summary>
 internal static class NamespaceCycles
 {
-    // Red: a stand-in that every architecture passes, until the real rule replaces it.
-    public static IArchRule Rule(string rootNamespace) => Types().That().DoNotHaveFullName(rootNamespace).Should().Exist();
+    // Each namespace under the root is a slice ((**) takes the rest of the name), so a cycle between any two fails.
+    public static IArchRule Rule(string rootNamespace) =>
+        SliceRuleDefinition.Slices().Matching(rootNamespace + ".(**)").Should().BeFreeOfCycles();
 }
