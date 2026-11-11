@@ -129,8 +129,8 @@ function Update-DotnetSkill {
             finally { [Console]::OutputEncoding = $saved }
             $entries = @($listing -split "`0" | Where-Object { $_ } | ForEach-Object {
                     $info, $path = $_ -split "`t", 2
-                    $mode, $type, $id = $info -split ' '
-                    [pscustomobject]@{ Mode = $mode; Type = $type; Id = $id; File = $path.Substring($source.Length + 1) }
+                    $mode, $null, $id = $info -split ' '
+                    [pscustomobject]@{ Mode = $mode; Id = $id; File = $path.Substring($source.Length + 1) }
                 })
             [pscustomobject]@{ Skill = $skill; Source = $source; Entries = $entries }
         }
@@ -138,8 +138,9 @@ function Update-DotnetSkill {
         if ($gone) {
             throw "These skills aren't at $sha in ${RepositoryUrl}: $($gone -join ', '). Nothing was changed; remove them from $script:LockPath or pick another commit."
         }
-        # Plain files only: a symbolic link or a submodule could point outside the skill's folder.
-        $odd = @($plan | ForEach-Object { $skill = $_.Skill['name']; $_.Entries | Where-Object { $_.Type -ne 'blob' -or $_.Mode -notin '100644', '100755' } | ForEach-Object { "$skill/$($_.File)" } })
+        # Plain files only (mode 100644 or 100755): a symbolic link (120000) or a submodule (160000) could point
+        # outside the skill's folder.
+        $odd = @($plan | ForEach-Object { $skill = $_.Skill['name']; $_.Entries | Where-Object { $_.Mode -notin '100644', '100755' } | ForEach-Object { "$skill/$($_.File)" } })
         if ($odd) {
             throw "These aren't plain files, which the kit doesn't copy: $($odd -join ', '). Nothing was changed."
         }
