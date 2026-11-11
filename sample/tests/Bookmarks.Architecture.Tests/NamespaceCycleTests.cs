@@ -23,6 +23,11 @@ public sealed class NamespaceCycleTests
             .Should().BeFalse("Left and Right depend on each other");
 
     [Fact]
+    public void TheRuleCatchesACycleThroughATypeInTheRootNamespace() =>
+        NamespaceCycles.CycleRule("Bookmarks.Architecture.Tests.RootTypeCycle").HasNoViolations(s_fixtures)
+            .Should().BeFalse("RootEnd, in the root namespace itself, and ChildEnd depend on each other");
+
+    [Fact]
     public void TheRuleFailsWhenNoNamespaceSitsUnderTheRoot()
     {
         // A mistyped root would otherwise check nothing and pass.
