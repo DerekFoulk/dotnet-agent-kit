@@ -31,8 +31,8 @@ $script:RequiredSections = @(
 # Draft until the app's first production deployment; In use from then on.
 $script:Statuses = 'Draft', 'In use'
 
-# What the template marks for the app to fill in, such as "[fill in: the production URL]".
-$script:PlaceholderPattern = '\[fill in:[^\]]*\]'
+# What the template marks for the app to fill in, such as "[fill in: the production URL]", in any case.
+$script:PlaceholderPattern = '(?i)\[fill in:[^\]]*\]'
 
 function New-Problem {
     param([string] $Message)
@@ -53,24 +53,38 @@ function Get-RunbookField {
 }
 
 # Splits a runbook into its "## " sections, in order: one Name and Body (trimmed text) each, a repeated heading
-# included. It reads them as Markdown (CommonMark) does: a "## " line inside a fenced code block is code, such as
-# a shell comment, not a heading; a fence closes only on a line of the same character, at least as long, with
-# nothing after it; and a heading may be indented up to three spaces, and its closing hashes aren't part of its name.
+# included. It reads them as Markdown (CommonMark) does:
+# - a "## " line inside a fenced code block is code, such as a shell comment, not a heading, and one inside an HTML
+#   comment block is part of the comment;
+# - a backtick fence's info string has no backtick, and a fence closes only on a line of the same character, at
+#   least as long, with nothing after it;
+# - a heading may be indented up to three spaces, and its closing hashes aren't part of its name.
 function Get-RunbookSection {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Lines)
 
     $sections = [System.Collections.Generic.List[object]]::new()
     $body = $null
     $fence = $null
+    $inComment = $false
     foreach ($line in $Lines) {
-        if ($null -eq $fence -and $line -match '^ {0,3}(?<marker>`{3,}|~{3,})') {
+        if ($inComment) {
+            $inComment = -not $line.Contains('-->')
+        }
+        elseif ($null -ne $fence) {
+            if ($line -match '^ {0,3}(?<marker>`{3,}|~{3,})\s*$' -and
+                $Matches['marker'][0] -eq $fence[0] -and $Matches['marker'].Length -ge $fence.Length) {
+                $fence = $null
+            }
+        }
+        # A backtick fence's info string can't hold a backtick; a line like that is a code span.
+        elseif ($line -match '^ {0,3}(?:(?<marker>`{3,})[^`]*|(?<marker>~{3,}).*)$') {
             $fence = $Matches['marker']
         }
-        elseif ($null -ne $fence -and $line -match '^ {0,3}(?<marker>`{3,}|~{3,})\s*$' -and
-            $Matches['marker'][0] -eq $fence[0] -and $Matches['marker'].Length -ge $fence.Length) {
-            $fence = $null
+        # An HTML comment block runs to the line that holds "-->".
+        elseif ($line -match '^ {0,3}<!--(?<rest>.*)$') {
+            $inComment = -not $Matches['rest'].Contains('-->')
         }
-        elseif ($null -eq $fence -and $line -match '^ {0,3}##[ \t]+(?<name>.+?)(?:[ \t]+#+)?[ \t]*$') {
+        elseif ($line -match '^ {0,3}##[ \t]+(?<name>.+?)(?:[ \t]+#+)?[ \t]*$') {
             $body = [System.Collections.Generic.List[string]]::new()
             $sections.Add([pscustomobject]@{ Name = $Matches['name']; Lines = $body })
             continue
