@@ -382,6 +382,9 @@ function Sync-KitApp {
         if ($packages.Added) {
             $files = @($files) + [pscustomobject]@{ Path = 'Directory.Packages.props'; Action = 'PackagesAdded'; Detail = ($packages.Added | ForEach-Object { "``$_``" }) -join ', ' }
         }
+        if ($packages.Skipped) {
+            $files = @($files) + [pscustomobject]@{ Path = 'Directory.Packages.props'; Action = 'PackageNotAdded'; Detail = ($packages.Skipped | ForEach-Object { "``$_``" }) -join ', ' }
+        }
         # Build-AgentRules rebuilds every generated file: the rule files, and copilot-instructions.md, which copies
         # the app's AGENTS.md with its new kit block. It's this script's own copy, from the same kit version as the
         # app's .kit/tools now has, so the sync runs no code from the app's repo.
@@ -411,6 +414,7 @@ $script:Explanations = [ordered]@{
     AppFileKept = 'The kit now has a file at this path, but this app already had its own, which stays.', "Rename the app's file and take the kit's, or keep the app's."
     WorkflowByHand = "The release adds, changes or removes this workflow beyond the kit pin Dependabot moves. A workflow's own token can't write workflow files, so this PR doesn't.", "Apply the kit's change on this branch: compare with templates/app/.github/workflows in the kit at this release, with this app's name for {{Name}}."
     PackagesAdded = "The release adds packages the kit's files need, which this app's file lacked, so the sync added them in an ItemGroup labelled ``dotnet-agent-kit``:", 'Run `dotnet restore --force-evaluate` on this branch and commit the lock files: the sync doesn''t restore.'
+    PackageNotAdded = "The release adds packages the kit's files need, but this app has them in the other form (PackageVersion or GlobalPackageReference), and NuGet rejects one listed both ways, so they weren't added:", 'Keep one entry per package: a GlobalPackageReference if every project needs it, or a PackageVersion with a PackageReference in each project that does.'
     Regenerated = "This app had edited a generated rule file, which is rebuilt from docs/standards, so the edit is gone.", "Put the change in an app-owned file, or propose it to the kit."
 }
 
