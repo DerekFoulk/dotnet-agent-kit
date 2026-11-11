@@ -22,9 +22,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Runs the Pester tests at $TestPath in a fresh process, so no state from this session leaks in. Returns how many
-# tests ran and failed, whether a test file or block broke outside a test (a failed discovery, BeforeAll or
-# AfterAll), and, when Pester returned no result at all, what it wrote to stderr.
+# Runs the Pester tests at $TestPath in a fresh process, so no state from this session leaks in. Returns whether
+# Pester returned a result, how many tests ran and failed, whether a test file or block broke outside a test (a
+# failed discovery, BeforeAll or AfterAll), and what Pester wrote to stderr, for the message of an error.
 function Invoke-TestRun([string] $TestPath) {
     # Pester reads Run.Path as a wildcard pattern, so a folder named "x [1]" needs escaping.
     $literal = [WildcardPattern]::Escape($TestPath) -replace "'", "''"
@@ -42,10 +42,13 @@ function Invoke-TestRun([string] $TestPath) {
     $last = $output | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] } | Select-Object -Last 1
     try { $run = $last | ConvertFrom-Json } catch { $run = $null }
     if ($null -eq $run) {
-        return [pscustomobject]@{ Total = 0; Failed = 0; Broken = 0; Message = "Pester returned no result. $stderr".Trim() }
+        return [pscustomobject]@{ Returned = $false; Total = 0; Failed = 0; Broken = 0; Stderr = $stderr }
     }
-    [pscustomobject]@{ Total = $run.Total; Failed = $run.Failed; Broken = $run.Broken; Message = $null }
+    [pscustomobject]@{ Returned = $true; Total = $run.Total; Failed = $run.Failed; Broken = $run.Broken; Stderr = $stderr }
 }
+
+# An error's reason, followed by Pester's own words when it wrote any.
+function Format-Problem([string] $Reason, $Run) { "$Reason $($Run.Stderr)".Trim() }
 
 function New-Result([string] $Name, [string] $Result, $Run, [string] $Message) {
     [pscustomobject]@{
@@ -79,8 +82,8 @@ foreach ($m in $Mutant) {
     if (-not $baselineDone) {
         $baseline = Invoke-TestRun -TestPath $tests
         $baselineProblem =
-            if ($baseline.Message) { "The tests didn't run on the unchanged file. $($baseline.Message)" }
-            elseif ($baseline.Total -eq 0) { 'The tests ran no tests on the unchanged file.' }
+            if (-not $baseline.Returned) { Format-Problem 'Pester returned no result on the unchanged file.' $baseline }
+            elseif ($baseline.Total -eq 0) { Format-Problem 'The tests ran no tests on the unchanged file.' $baseline }
             elseif ($baseline.Failed -gt 0 -or $baseline.Broken -gt 0) { 'The tests already fail on the unchanged file.' }
         $baselineDone = $true
     }
@@ -92,15 +95,15 @@ foreach ($m in $Mutant) {
     try {
         [IO.File]::WriteAllText($file, $text.Replace($m.Find, $m.Replace), [Text.UTF8Encoding]::new($false))
         $run = Invoke-TestRun -TestPath $tests
-        if ($run.Message) {
-            New-Result $m.Name 'Error' $run $run.Message
+        if (-not $run.Returned) {
+            New-Result $m.Name 'Error' $run (Format-Problem 'Pester returned no result with the mutant in place.' $run)
         }
         elseif ($run.Failed -gt 0 -or $run.Broken -gt 0) {
             # A mutant that breaks a test file's discovery or setup is caught as surely as one that fails a test.
             New-Result $m.Name 'Killed' $run $null
         }
         elseif ($run.Total -eq 0) {
-            New-Result $m.Name 'Error' $run 'No tests ran with the mutant in place.'
+            New-Result $m.Name 'Error' $run (Format-Problem 'No tests ran with the mutant in place.' $run)
         }
         else {
             New-Result $m.Name 'Survived' $run $null
