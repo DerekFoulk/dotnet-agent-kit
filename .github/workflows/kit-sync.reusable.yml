@@ -1,0 +1,127 @@
+# Brings a kit release into an app repo, on the Dependabot PR that moves the app's kit pin (ADR-0042). An app
+# calls it from .github/workflows/kit-sync.yml on pull_request, pinned like its other kit workflows:
+#   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/kit-sync.reusable.yml@<commit SHA> # v0.2.0
+# Dependabot moves that pin too, so this file and the scripts it gets through kit-tools are the new release's.
+#
+# Sync-KitApp takes the release from the moved pins, and trusts it only when a release tag in the kit points to
+# it (ADR-0031). It updates every other kit-managed file, and this workflow pushes them to Dependabot's branch with
+# the workflow's own token. That token can't change workflow files, so the sync never does: anything else the kit
+# changed in a workflow is listed in the report for a person. Only the kit's own scripts run here, never the
+# app's, so the write token never meets code from the app's repo. No stored secret is needed.
+#
+# The push is made with GITHUB_TOKEN, so the PR's CI runs for it wait for approval, as on the kit's Dependabot
+# lock-file commits (dependabot-lockfiles.yml, whose approval step this mirrors); this approves them. If that
+# ever doesn't happen, close and reopen the PR so CI runs.
+name: Kit sync (reusable)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Kit sync
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the sync commit to Dependabot's branch
+      pull-requests: write # comment the report on the PR
+      actions: write # approve the CI runs the commit leaves waiting
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      # The caller checks this too; called any other way, the sync would push to a branch nobody reviews.
+      - name: Dependabot's own GitHub Actions PR in this repo
+        if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]' || github.event.pull_request.user.login != 'dependabot[bot]' || github.event.pull_request.head.repo.full_name != github.repository || !startsWith(github.head_ref, 'dependabot/github_actions/')
+        run: |
+          "::error::The kit sync runs only on Dependabot's own GitHub Actions PRs in this repo."
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      - name: Install PowerShell modules
+        run: Install-PSResource -Name powershell-yaml -Version 0.4.12 -Scope CurrentUser -Repository PSGallery -TrustRepository
+
+      # The sync exports the app at the app's kit version and at the release, from a clone with every release tag.
+      # The kit is public, so this needs no token.
+      - name: Clone the kit
+        run: git clone --quiet --filter=blob:none https://github.com/DerekFoulk/dotnet-agent-kit.git (Join-Path $env:RUNNER_TEMP 'kit')
+
+      - name: Sync the kit's files
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          & "$env:KIT/tools/Sync-KitApp.ps1" -AppRoot $env:GITHUB_WORKSPACE -KitRoot (Join-Path $env:RUNNER_TEMP 'kit') -ReportPath (Join-Path $env:RUNNER_TEMP 'kit-sync.md')
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Commit and push
+        id: push
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "The app's kit files are already current."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$(git status --porcelain -- .github/workflows)" ]; then
+            echo "::error::The sync changed a workflow file, which it never does and this token can't push"
+            exit 1
+          fi
+          version="$(jq -r .kitVersion .kit/manifest.json)"
+          if ! [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::The synced manifest names '$version', not a kit release"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit --quiet -m "chore(deps): bring in dotnet-agent-kit $version's files"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Dependabot writes the PR's description, so the report goes in a comment (DOD-006).
+      - name: Comment the report on the PR
+        if: steps.push.outputs.pushed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/kit-sync.md"
+
+      # The pushed commit's pull_request runs wait for approval; approve those, for this commit only. Then fail if
+      # CI (ci.yml) never started for it or anything is still waiting: the PR would be stuck.
+      - name: Approve CI for the new commit
+        if: steps.push.outputs.pushed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.push.outputs.sha }}
+        run: |
+          sha="$SHA"
+          for attempt in 1 2 3 4 5 6 7 8 9; do
+            ids="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --status action_required --json databaseId --jq '.[].databaseId')"
+            for id in $ids; do
+              echo "Approving run $id"
+              gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve" || echo "::warning::Could not approve run $id"
+            done
+            sleep 10
+          done
+          ci="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --workflow ci.yml --json databaseId --jq 'length')"
+          waiting="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --status action_required --json databaseId --jq 'length')"
+          echo "ci.yml runs on $sha: $ci; still waiting for approval: $waiting"
+          if [ "$ci" -eq 0 ] || [ "$waiting" -gt 0 ]; then
+            echo "::error::CI for the sync commit $sha never started or is still waiting for approval; close and reopen the PR to run it"
+            exit 1
+          fi

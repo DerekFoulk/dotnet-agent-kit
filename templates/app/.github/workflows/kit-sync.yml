@@ -1,0 +1,27 @@
+# {{Name}}'s kit updates (the kit's ADR-0042). Dependabot moves the kit pin in this app's workflows to a new kit
+# release; on that PR, the kit's shared workflow brings in the release's other kit-managed files, pushes them to
+# the PR and comments what needs a look. Pinned like ci.yml, and Dependabot moves this pin too, so the sync is
+# always the new release's. Check the pin against the release tag before merging (ADR-0031).
+name: Kit sync
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer Dependabot run for the same PR replaces an older one. The actor is in the group so the sync commit's own
+# runs (actor github-actions[bot]) never cancel this one.
+concurrency:
+  group: kit-sync-${{ github.head_ref }}-${{ github.actor }}
+  cancel-in-progress: true
+
+jobs:
+  kit:
+    # Dependabot's own GitHub Actions PR, from a branch in this repo, triggered by Dependabot.
+    if: github.actor == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'dependabot/github_actions/')
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/kit-sync.reusable.yml@{{KitCommit}} # {{KitVersion}}
