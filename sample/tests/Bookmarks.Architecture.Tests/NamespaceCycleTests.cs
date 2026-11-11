@@ -21,6 +21,14 @@ public sealed class NamespaceCycleTests
 
         NamespaceCycles.Rule(FixtureRoot).HasNoViolations(fixture).Should().BeFalse("Left and Right depend on each other");
     }
+
+    [Fact]
+    public void TheRuleFailsWhenNoNamespaceSitsUnderTheRoot()
+    {
+        // A mistyped root would otherwise check nothing and pass.
+        NamespaceCycles.Rule("Bookmarks.NoSuchNamespace").HasNoViolations(SampleArchitecture.Value)
+            .Should().BeFalse("no slice means nothing was checked");
+    }
 }
 
 /// <summary>The rule that namespaces under a root form no cycle.</summary>
