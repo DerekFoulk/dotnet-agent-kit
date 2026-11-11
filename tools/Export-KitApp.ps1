@@ -129,7 +129,8 @@ function Write-KitManifest {
         [Parameter(Mandatory)] [string] $Destination,
         [Parameter(Mandatory)] [object[]] $Map,
         [Parameter(Mandatory)] [string] $Commit,
-        [Parameter(Mandatory)] [string] $KitVersion
+        [Parameter(Mandatory)] [string] $KitVersion,
+        [Parameter(Mandatory)] [string] $Name
     )
 
     $files = foreach ($entry in $Map | Where-Object { $_.Owner -ne 'App' } | Sort-Object Target) {
@@ -147,6 +148,8 @@ function Write-KitManifest {
         kitRepository = 'DerekFoulk/dotnet-agent-kit'
         kitVersion    = $KitVersion
         kitCommit     = $Commit
+        # The sync job exports the app again at each kit version, under the same name (ADR-0042).
+        appName       = $Name
         files         = @($files)
     }
     $json = ($manifest | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
@@ -329,7 +332,7 @@ function Export-KitApp {
             }
         }
         $map += @(New-KitAgentRuleFile -Destination $Destination)
-        Write-KitManifest -Destination $Destination -Map $map -Commit $commit -KitVersion $KitVersion
+        Write-KitManifest -Destination $Destination -Map $map -Commit $commit -KitVersion $KitVersion -Name $Name
     }
     catch {
         # A half-written app would block the rerun ("isn't empty"); remove only what this run made.
