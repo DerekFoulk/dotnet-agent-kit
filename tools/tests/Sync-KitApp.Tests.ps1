@@ -131,4 +131,43 @@ Describe 'Sync-KitApp' {
         $result.ToVersion | Should -Be 'v0.1.0'
         Get-Tree $untouched | ConvertTo-Json | Should -Be ($untouchedTree | ConvertTo-Json)
     }
+
+    Context 'from v0.1.0 to v0.2.0' {
+        BeforeAll {
+            # What a new app made at v0.2.0 gets: the text every unedited kit-managed file should have after the sync.
+            $expected = Join-Path $TestDrive 'expected'
+            & (Join-Path $kit 'tools' 'Export-KitApp.ps1') -Name 'Contoso.Orders' -Destination $expected -KitRef v0.2.0 -KitRoot $kit
+            $LASTEXITCODE | Should -Be 0
+            $expectedManifest = Get-Content -Raw (Join-Path $expected '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+            $edited = '.editorconfig', '.gitignore', '.claude/skills/plan-checklist/SKILL.md', '.claude/skills/app-skill/SKILL.md', $instructions
+
+            $result = Sync-KitApp -AppRoot $app -KitRoot $kit -KitRef v0.2.0
+        }
+
+        It 'gives each kit-managed file the app didn''t edit the text a new app gets at the release' {
+            $result | Should -Not -BeNullOrEmpty -Because 'the sync reports what it did'
+            $result.Changed | Should -BeTrue
+            $whole = @($expectedManifest['files'] | Where-Object { -not $_.Contains('block') -and $_['path'] -notin $edited })
+            $whole.Count | Should -BeGreaterThan 40
+            foreach ($file in $whole) {
+                $path = Join-Path $app $file['path']
+                Test-Path -LiteralPath $path | Should -BeTrue -Because "$($file['path']) is kit-managed at v0.2.0"
+                Get-LfHash ([IO.File]::ReadAllText($path)) | Should -Be $file['sha256'] -Because "$($file['path']) should be the kit's at v0.2.0"
+            }
+
+            # Among them: the SDK pin, the CI pin, and the permission rules made again with v0.2.0's tools (ADR-0032),
+            # so a rule for a script apps don't get stays out.
+            Get-Content -Raw (Join-Path $app 'global.json') | Should -Match '"version": "10\.0\.404"'
+            Get-Content -Raw (Join-Path $app '.github/workflows/ci.yml') | Should -Match ([regex]::Escape("dotnet-ci.reusable.yml@$v2 # v0.2.0"))
+            $settings = Get-Content -Raw (Join-Path $app '.claude/settings.json') | ConvertFrom-Json
+            $settings.permissions.allow | Should -Contain 'PowerShell(dotnet --info)'
+            $settings.permissions.ask | Should -Not -Contain 'PowerShell(./tools/Kit-OnlyFixture.ps1*)'
+        }
+
+        It 'leaves the app''s own files byte for byte as they were' {
+            foreach ($path in $appOwned) {
+                [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"
+            }
+        }
+    }
 }
