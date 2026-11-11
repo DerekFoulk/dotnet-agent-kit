@@ -202,14 +202,15 @@ function Remove-KitPin {
     $Text -replace "(uses:\s*$([regex]::Escape($Repository))/\S*@)[0-9a-f]{40}(?:[ \t]*#[ \t]*v\d+\.\d+\.\d+)?", '${1}' -replace "`r`n", "`n"
 }
 
-# The PackageVersion and GlobalPackageReference items of a Directory.Packages.props, keyed by kind and package.
+# The PackageVersion and GlobalPackageReference items of a Directory.Packages.props, keyed by kind and package,
+# in any XML namespace (an older file may declare MSBuild's).
 function Get-KitPackageItem {
     param([Parameter(Mandatory)] [string] $Path)
 
     $items = [ordered]@{}
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $items }
     $xml = [xml] [IO.File]::ReadAllText($Path)
-    foreach ($node in $xml.SelectNodes('//PackageVersion | //GlobalPackageReference')) {
+    foreach ($node in $xml.SelectNodes("//*[local-name()='PackageVersion' or local-name()='GlobalPackageReference']")) {
         $items["$($node.LocalName)|$($node.GetAttribute('Include'))".ToLowerInvariant()] = $node
     }
     $items
