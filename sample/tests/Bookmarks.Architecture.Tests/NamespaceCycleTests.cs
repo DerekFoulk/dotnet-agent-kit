@@ -1,7 +1,9 @@
+using System.Text.RegularExpressions;
 using ArchUnitNET.Fluent;
 using ArchUnitNET.Fluent.Slices;
 using ArchUnitNET.Loader;
 using ArchUnitNET.xUnitV3;
+using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace Bookmarks.Architecture.Tests;
 
@@ -35,6 +37,8 @@ public sealed class NamespaceCycleTests
 internal static class NamespaceCycles
 {
     // Each namespace under the root is a slice ((**) takes the rest of the name), so a cycle between any two fails.
+    // ArchUnitNET passes a slice rule that matches nothing, so the rule also requires types under the root.
     public static IArchRule Rule(string rootNamespace) =>
-        SliceRuleDefinition.Slices().Matching(rootNamespace + ".(**)").Should().BeFreeOfCycles();
+        SliceRuleDefinition.Slices().Matching(rootNamespace + ".(**)").Should().BeFreeOfCycles()
+            .And(Types().That().ResideInNamespaceMatching($@"^{Regex.Escape(rootNamespace)}\.").Should().Exist());
 }
