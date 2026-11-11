@@ -183,6 +183,33 @@ Describe 'Test-Runbook.ps1' {
             Get-Message | Should -BeNullOrEmpty
         }
 
+        # Review 4 (mutants that survived): a comment block runs over every line to the one holding "-->", wherever
+        # it sits on that line; it opens only with up to three spaces of indent; and the fence limits hold for the
+        # closing line and for a tilde fence's info string.
+        It 'reads every line of an HTML comment block, to the one that holds -->, as the comment' {
+            $body = "1. Deploy it.`n<!--`nOld steps:`n## How to roll back a release`nend of the old steps -->"
+            New-Runbook -Body @{ 'How to deploy a release' = $body }
+
+            Get-Message | Should -BeNullOrEmpty
+        }
+
+        It 'reads ''<Open>'' as <What>, so the "## " line after it <Reads>' -ForEach @(
+            @{ Open = '    <!--'; Close = '-->'; What = 'code, not a comment'; Reads = 'is a heading'; Expected = 'appears more than once' }
+            @{ Open = '~~~ `a` b'; Close = '~~~'; What = 'a tilde fence, though its info string holds a backtick'; Reads = 'is code'; Expected = $null }
+        ) {
+            $body = "1. Deploy it.`n$Open`n## How to roll back a release`n$Close"
+            New-Runbook -Body @{ 'How to deploy a release' = $body }
+
+            if ($Expected) { Get-Message | Should -Match $Expected } else { Get-Message | Should -BeNullOrEmpty }
+        }
+
+        It 'keeps a fence open across a closing line indented four spaces' {
+            $fence = '```'
+            $text = New-RunbookText -Body @{ 'How to deploy a release' = "$fence`n    $fence`n## not a heading`n$fence" }
+
+            @((Get-RunbookSection -Lines ($text -split "`n")).Name) | Should -Be $script:RequiredSections
+        }
+
         It 'reads a heading with trailing spaces' {
             $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs   '
 
@@ -246,6 +273,14 @@ Describe 'Test-Runbook.ps1' {
             $line = (Select-String -LiteralPath $script:runbook -SimpleMatch '[fill in:').LineNumber
 
             Get-Message | Should -Be "line ${line}: '[fill in: the production URL]' must be filled in before the runbook is In use"
+        }
+
+        # Review 4: an editor that wraps long lines can split a placeholder over two.
+        It 'reports a placeholder split over two lines, at the line it starts on' {
+            New-Runbook -Status 'In use' -Body @{ 'Where it runs' = "- Telemetry: [fill in: the OpenTelemetry backend,`n  and how to open it]" }
+            $line = (Select-String -LiteralPath $script:runbook -SimpleMatch '[fill in:').LineNumber
+
+            Get-Message | Should -Be "line ${line}: '[fill in: the OpenTelemetry backend, and how to open it]' must be filled in before the runbook is In use"
         }
 
         It 'reports a placeholder whatever its case, as ''<Placeholder>''' -ForEach @(@{ Placeholder = '[Fill in: the URL]' }, @{ Placeholder = '[FILL IN: the URL]' }) {
