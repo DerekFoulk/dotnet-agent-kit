@@ -196,11 +196,11 @@ areas:
       - "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/architecture/maui/mvvm, retrieved 2026-11-07"
       - "ADR-0008"
-    rules: [ARC-003, ARC-004, ARC-006]
+    rules: [ARC-003, ARC-004, ARC-006, UI-001]
     gaps:
       - id: GAP-018
-        gap: "No rule requires WCAG 2.2 AA or checks it: only the plan checklist asks about accessibility (ARC-006, the plan-checklist skill). GAP-004 adds the tests."
-        status: proposed
+        gap: "No rule requires WCAG 2.2 AA or checks it: only the plan checklist asks about accessibility (ARC-006, the plan-checklist skill). GAP-004 adds the tests. Closed by ADR-0046: UI-001 (proposed) in docs/standards/ui.md, which the plan-checklist skill points at; its automated check waits for GAP-004."
+        status: closed
   - id: process
     name: Process
     perfect: "Short-lived branches merged by pull request with a merge commit, readable commit history, an independent review before the owner's, and an agent that reports with evidence and asks before risky steps."
@@ -243,10 +243,10 @@ Each area in the front matter above has:
 | Supply chain and build | 8 | 8 | 0 | 0 | 2 |
 | Delivery | 1 | 1 | 0 | 0 | 2 |
 | Docs and decisions | 3 | 2 | 1 | 0 | 1 |
-| UI and accessibility | 3 | 1 | 2 | 0 | 1 |
+| UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 3 proposed; 15 open gaps.
+**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 4 proposed; 14 open gaps.
 
 Open gaps:
 
@@ -264,7 +264,6 @@ Open gaps:
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet.
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 - **GAP-017** (Docs and decisions, proposed): No runbooks: nothing says how to operate, recover or roll back an app.
-- **GAP-018** (UI and accessibility, proposed): No rule requires WCAG 2.2 AA or checks it: only the plan checklist asks about accessibility (ARC-006, the plan-checklist skill). GAP-004 adds the tests.
 <!-- scorecard-table:end -->
 
 ## Keeping it current

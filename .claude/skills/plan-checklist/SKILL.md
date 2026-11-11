@@ -26,7 +26,7 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 - Are there hot paths, large data sets or new network calls? Is a benchmark or budget needed?
 
 ## Accessibility
-- For UI: does it meet WCAG 2.2 (keyboard, contrast, labels)? Is there an axe check in the UI tests?
+- For UI: does it meet WCAG 2.2 level AA, and which of UI-001's checks does it touch (`docs/standards/ui.md`)? Name how each is tested: an axe check in the browser tests once GAP-004 adds them, or a manual keyboard and screen-reader pass.
 
 ## Data
 - Schema changes, migrations, retention, personal data?
