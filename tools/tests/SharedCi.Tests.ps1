@@ -47,6 +47,7 @@ Describe 'Shared CI for app repos' {
     Context '<Name>' -ForEach @(
         @{ Name = 'dotnet-ci.reusable.yml'; File = '.github/workflows/dotnet-ci.reusable.yml' }
         @{ Name = 'app-checks.reusable.yml'; File = '.github/workflows/app-checks.reusable.yml' }
+        @{ Name = 'kit-sync.reusable.yml'; File = '.github/workflows/kit-sync.reusable.yml' }
     ) {
         BeforeAll {
             $workflow = Read-Yaml $File

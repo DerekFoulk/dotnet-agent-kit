@@ -1,6 +1,6 @@
 # {{Name}}'s mutation testing (kit ADR-0039): Stryker.NET nightly, failing below a mutation score of 85% (kit
 # TST-004). It's too slow for every pull request, so it isn't a required check; a failed night shows on the Actions
-# tab. The kit is pinned to the commit its release tag points to (ADR-0031); the sync job moves the pin.
+# tab. The kit is pinned to the commit its release tag points to (ADR-0031); Dependabot moves the pin (kit ADR-0045).
 name: Mutation testing
 
 on:

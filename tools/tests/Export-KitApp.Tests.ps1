@@ -95,8 +95,15 @@ Describe 'Export-KitApp' {
         }
         Get-Content -Raw (Join-Path $app 'README.md') | Should -Match '# Contoso\.Orders'
 
-        # ${{ github.ref }} in a workflow is GitHub's syntax, not a template placeholder.
-        $leftovers = Get-ChildItem -LiteralPath $app -Recurse -File | Select-String -Pattern '\{\{[A-Za-z]+\}\}'
+        # ${{ github.ref }} in a workflow is GitHub's syntax, not a template placeholder. The curated skills' folders
+        # are left out: they keep upstream's text, such as {{baseUrl}} in an .http example (ADR-0042).
+        $lock = Get-Content -Raw (Join-Path $checkout 'tools' 'dotnet-skills.json') | ConvertFrom-Json -AsHashtable
+        $curated = @($lock['skills'] | ForEach-Object { (Join-Path $app '.claude' 'skills' $_['name']) + [IO.Path]::DirectorySeparatorChar })
+        $curated.Count | Should -BeGreaterThan 0
+        # -Force: on Linux, folders such as .github and .claude count as hidden.
+        $leftovers = Get-ChildItem -LiteralPath $app -Recurse -File -Force |
+            Where-Object { $path = $_.FullName; -not ($curated | Where-Object { $path.StartsWith($_, [StringComparison]::Ordinal) }) } |
+            Select-String -Pattern '\{\{[A-Za-z]+\}\}'
         @($leftovers | ForEach-Object { "$($_.Path):$($_.LineNumber)" }) | Should -BeNullOrEmpty
     }
 
@@ -169,6 +176,23 @@ Describe 'Export-KitApp' {
         $blockHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes(($block -replace "`r`n", "`n")))).ToLowerInvariant()
         $listed['AGENTS.md']['block'] | Should -Be 'kit'
         $listed['AGENTS.md']['sha256'] | Should -Be $blockHash
+    }
+
+    # The sync job (PR D3, ADR-0044) exports the app again at each kit version, which needs the app's name.
+    It 'records the app''s name in the manifest, so the sync job can export the app again' {
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+
+        $manifest['appName'] | Should -Be 'Contoso.Orders'
+    }
+
+    # The sync job replaces only the kit block, so a version line outside it would go stale after the first sync.
+    It 'says which kit version the app follows inside the kit block, so each sync keeps it current' {
+        $agents = Get-Content -Raw (Join-Path $app 'AGENTS.md')
+        $begin = $agents.IndexOf('<!-- kit:begin')
+        $begin | Should -BeGreaterThan 0
+
+        $agents.Substring(0, $begin) | Should -Not -Match ([regex]::Escape($commit))
+        $agents.Substring($begin) | Should -Match ([regex]::Escape("dotnet-agent-kit unreleased (commit ``$commit``)"))
     }
 
     # git stores text with LF line endings, but a checkout may give CRLF (core.autocrlf, .gitattributes), so
@@ -319,12 +343,19 @@ Describe 'Export-KitApp' {
         $entry[0]['block'] | Should -Be 'kit'
     }
 
-    # The kit's sync job moves the kit pin and the SDK pin with each kit release, so Dependabot proposes only
-    # the app's NuGet packages; the app owns the file and adds ecosystems as it grows.
-    It 'gives the app its own Dependabot config, for its NuGet packages only' {
+    # Dependabot moves the kit pin in the app's workflows, which a workflow's own token can't change, and the kit's
+    # sync workflow brings the rest of the release into the same PR (ADR-0044). The SDK pin moves with the kit, so
+    # there's no dotnet-sdk entry; the app owns the file and adds ecosystems as it grows.
+    It 'gives the app its own Dependabot config, for its NuGet packages and the kit pin' {
+        Import-Module powershell-yaml
         $text = Get-Content -Raw (Join-Path $app '.github/dependabot.yml')
         $text | Should -Match 'package-ecosystem: nuget'
-        $text | Should -Not -Match 'package-ecosystem: (dotnet-sdk|github-actions)'
+        $text | Should -Not -Match 'package-ecosystem: dotnet-sdk'
+        $actions = @((ConvertFrom-Yaml $text)['updates'] | Where-Object { $_['package-ecosystem'] -eq 'github-actions' })
+        $actions.Count | Should -Be 1 -Because 'Dependabot moves the kit pin'
+        $actions[0]['directory'] | Should -Be '/'
+        # One PR for every kit reference, so the sync runs once, on all of them.
+        @($actions[0]['groups'].Values | ForEach-Object { $_['patterns'] }) | Should -Contain 'DerekFoulk/dotnet-agent-kit*'
 
         $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
         @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain '.github/dependabot.yml'
@@ -425,6 +456,23 @@ Describe 'Export-KitApp' {
             '.github/pull_request_template.md', 'docs/adr/0000-template.md', '.kit/tools/Test-ConventionalTitle.ps1') {
             $targets | Should -Contain $path
         }
+    }
+
+    # The curated skills from dotnet/skills reach an app like the kit's own (ADR-0042); the lock and the update
+    # script stay in the kit, which moves the pin, and the sync job brings the result to apps.
+    It 'gives the app the curated .NET skills unchanged, as kit-managed files, without the lock or the update script' {
+        . (Join-Path $checkout 'tools' 'Update-DotnetSkills.ps1')
+        $lock = Read-DotnetSkillLock -RepoRoot $checkout
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        $managed = @($manifest['files'] | ForEach-Object { $_['path'] })
+
+        @($lock['skills']).Count | Should -BeGreaterThan 0
+        @(Get-DotnetSkillDrift -SkillsRoot (Join-Path $app '.claude' 'skills') -Lock $lock) | Should -BeNullOrEmpty
+        foreach ($skill in $lock['skills']) {
+            foreach ($file in $skill['files'].Keys) { $managed | Should -Contain ".claude/skills/$($skill['name'])/$file" }
+        }
+        @(Get-ChildItem -LiteralPath $app -Recurse -File -Force | Where-Object { $_.Name -in 'dotnet-skills.json', 'Update-DotnetSkills.ps1' }) |
+            Should -BeNullOrEmpty
     }
 
     # ADR-0043: Directory.Build.props points every project at files beside it (CodeMetricsConfig.txt,
