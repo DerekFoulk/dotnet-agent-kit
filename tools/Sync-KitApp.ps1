@@ -410,6 +410,14 @@ function Read-KitManifest {
     }
     # A full SHA, never a branch or tag name, which could point somewhere else by now.
     if ($manifest['kitCommit'] -cnotmatch '^[0-9a-f]{40}$') { throw "The app's .kit/manifest.json names '$($manifest['kitCommit'])', not a full kit commit SHA." }
+    # Its paths decide what the sync deletes, so each must stay inside the app: relative, with forward slashes,
+    # and no '.', '..' or empty segment.
+    foreach ($entry in $manifest['files']) {
+        $path = "$($entry['path'])"
+        if ($path -match '[\\:]' -or @($path -split '/' | Where-Object { $_ -in '', '.', '..' }).Count -gt 0) {
+            throw "The app's .kit/manifest.json lists '$path', which is not a path inside the app."
+        }
+    }
     $manifest
 }
 
