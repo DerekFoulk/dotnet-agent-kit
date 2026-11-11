@@ -55,6 +55,17 @@ public sealed class BookmarkServiceTests
     }
 
     [Fact]
+    public async Task AddChecksTheRequestBeforeLookingForADuplicate()
+    {
+        // Review 1: input is validated before it's used (CRF-006). A relative URL reached the repository's duplicate
+        // check first, where the database's stored form (an absolute URL) can't be made from it, and failed as a 500.
+        Func<Task> add = () => _service.AddAsync(Owner, new CreateBookmarkRequest(new Uri("articles/1", UriKind.Relative), "A"), TestContext.Current.CancellationToken);
+
+        await add.Should().ThrowAsync<ArgumentException>();
+        _repository.Verify(r => r.FindByUrlAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GetReturnsTheBookmarkOrNothing()
     {
         Bookmark saved = Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now);

@@ -45,10 +45,14 @@ public sealed class BookmarksApiTests : IDisposable
         second.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
-    [Fact]
-    public async Task PostingAUrlThatIsNotHttpIsABadRequest()
+    [Theory]
+    [InlineData("ftp://example.com/file")]
+    [InlineData("articles/1")]
+    public async Task PostingAUrlThatIsNotHttpIsABadRequest(string address)
     {
-        CreateBookmarkRequest request = new(new Uri("ftp://example.com/file"), "File");
+        // Review 1: a relative URL has no absolute form for UriLength to measure, so it's measured as written and
+        // still reaches the domain's refusal, a 400, never a 500.
+        CreateBookmarkRequest request = new(new Uri(address, UriKind.RelativeOrAbsolute), "File");
 
         using HttpResponseMessage response = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
 
