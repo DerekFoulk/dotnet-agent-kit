@@ -226,6 +226,30 @@ Describe 'Sync-KitApp' {
         }
     }
 
+    Context 'adding the kit''s packages to the app''s Directory.Packages.props' {
+        BeforeAll {
+            # A folder with a Directory.Packages.props holding these items, in the given XML namespace, if any.
+            function New-PackagesRoot([string[]] $Items, [string] $Xmlns) {
+                $folder = Join-Path $TestDrive "packages-$(New-Guid)"
+                $project = $Xmlns ? "<Project xmlns=""$Xmlns"">" : '<Project>'
+                $lines = @($project, '  <ItemGroup>') + @($Items | ForEach-Object { "    $_" }) + @('  </ItemGroup>', '', '</Project>', '')
+                Set-FileText (Join-Path $folder 'Directory.Packages.props') ($lines -join "`n")
+                $folder
+            }
+            $analyzer = '<GlobalPackageReference Include="Kit.Analyzer" Version="1.0.0" />'
+        }
+
+        # Review: NuGet rejects a package listed both ways (NU1504, NU1506), and warnings are errors in an app.
+        It 'adds nothing for a package the app already has in the other form' {
+            $appRoot = New-PackagesRoot @('<PackageVersion Include="kit.analyzer" Version="0.9.0" />')
+            $before = [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props'))
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -Be $before
+        }
+    }
+
     Context 'run as a script' {
         BeforeAll {
             $cli = Join-Path $TestDrive 'cli'
