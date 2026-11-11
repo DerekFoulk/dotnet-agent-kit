@@ -256,7 +256,8 @@ function Add-KitPackage {
     $text = [IO.File]::ReadAllText($path)
     $eol = $text.Contains("`r`n") ? "`r`n" : "`n"
     $lines = ($added | ForEach-Object { "    $_" }) -join $eol
-    $group = [regex]::Match($text, '(?s)<ItemGroup Label="dotnet-agent-kit">.*?(?=[ \t]*</ItemGroup>)')
+    # The app's group, however its start tag is written: another attribute, or single quotes.
+    $group = [regex]::Match($text, '(?s)<ItemGroup\b[^>]*\bLabel\s*=\s*["'']dotnet-agent-kit["''][^>]*>.*?(?=[ \t]*</ItemGroup>)')
     $text = if ($group.Success) {
         $text.Insert($group.Index + $group.Length, "$lines$eol")
     }
