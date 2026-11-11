@@ -252,6 +252,17 @@ Describe 'Update-DotnetSkill' {
         Join-Path $kit '.claude/skills/tidy' | Should -Not -Exist
     }
 
+    It 'changes nothing, and says why, when git can''t list a skill''s files' {
+        # An unknown pathspec magic word makes git ls-tree fail.
+        $kit = New-Kit -Source ':(nonsense)plugins/p/skills/tidy'
+        $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
+
+        { Update-DotnetSkill -RepoRoot $kit -Commit $second -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
+            Should -Throw "Couldn't list the files of ':(nonsense)plugins/p/skills/tidy' at $second*"
+
+        Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json') | Should -Be $before
+    }
+
     It 'changes nothing, and says so, when the ref isn''t a commit' {
         git -C $upstream tag tree-only "${second}^{tree}"
         $kit = New-Kit
