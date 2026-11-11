@@ -53,12 +53,15 @@ function Get-RunbookField {
 }
 
 # Splits a runbook into its "## " sections, in order: one Name and Body (trimmed text) each, a repeated heading
-# included. It reads them as Markdown (CommonMark) does:
+# included. It reads the forms the template uses as Markdown (CommonMark) does: "## " headings, and fences and comment
+# blocks that start a line (indented up to three spaces, as in a list item):
 # - a "## " line inside a fenced code block is code, such as a shell comment, not a heading, and one inside an HTML
 #   comment block is part of the comment;
 # - a backtick fence's info string has no backtick, and a fence closes only on a line of the same character, at
 #   least as long, with nothing after it;
 # - a heading may be indented up to three spaces, and its closing hashes aren't part of its name.
+# A setext heading (a line underlined with ---) or a fence opened on a list marker's own line isn't read; either
+# shows up as a section missing, never as a pass.
 function Get-RunbookSection {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Lines)
 

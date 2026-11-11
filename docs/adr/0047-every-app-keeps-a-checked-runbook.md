@@ -9,7 +9,7 @@ Nothing in the kit said how to operate an app once it's deployed: how to deploy 
 
 The Azure Well-Architected Framework asks for runbooks that are stored in version control, made from templates, and carry review dates (OE:02). It also asks for a documented incident process with defined roles and a postmortem (OE:08), and for a rollback to the last known good release (OE:11). Diátaxis calls this kind of page a how-to guide: steps toward one goal for someone who already knows the system, with no teaching or background.
 
-No app is deployed yet: the production workflow is GAP-015. No kit release has been published, but two test apps exist (`kit-app-test` and `kit-app-test-public`), pinned to earlier kit commits and without a runbook. They also predate the sync job (ADR-0044, ADR-0045): no `kit-sync.yml`, no Dependabot `github-actions` entry, and no `appName` in their manifests. So a runbook must exist before it can be complete, nothing can yet tell CI whether an app has been deployed, and the kit sync, which until now never touched an app-owned file, wouldn't give an app made after it one.
+No app is deployed yet: the production workflow is GAP-015. No kit release has been published, but two test apps exist (`kit-app-test` and `kit-app-test-public`), pinned to earlier kit commits and without a runbook. They also predate the sync job (ADR-0044, ADR-0045): no `kit-sync.yml`, no Dependabot `github-actions` entry, and no `appName` in their manifests. So a runbook must exist before it can be complete, nothing can yet tell CI whether an app has been deployed, and the kit sync, which until now never touched an app-owned file, wouldn't give a runbook to an app made after the sync job but before this change.
 
 ## Options
 
