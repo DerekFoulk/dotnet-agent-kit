@@ -51,6 +51,10 @@ $script:KitTools = @(
 # Templates the app owns from the start: the sync job never changes them.
 $script:AppOwnedTemplates = @('README.md', 'App.slnx', 'docs/corrections-log.md', '.github/dependabot.yml')
 
+# Where the app's own Build-AgentRules writes the rule files it generates from the kit's standards. The kit
+# manages them, but they're rebuilt, never edited, so the sync job never merges them.
+$script:GeneratedFolders = @('.claude/rules', '.github/instructions')
+
 # The kit's block in such a file, from kit:begin to kit:end inclusive: the manifest hashes this text alone, and
 # the sync job replaces only it.
 $script:KitBlockPattern = '(?s)<!-- kit:begin.*?<!-- kit:end -->'
@@ -231,7 +235,7 @@ function New-KitAgentRuleFile {
     $output = & pwsh -NoProfile -File $builder -RepoRoot $Destination 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) { throw "Generating the app's agent rule files failed:`n$output" }
 
-    foreach ($folder in '.claude/rules', '.github/instructions') {
+    foreach ($folder in $script:GeneratedFolders) {
         $directory = Join-Path $Destination $folder
         if (-not (Test-Path -LiteralPath $directory)) { continue }
         foreach ($file in Get-ChildItem -LiteralPath $directory -File | Sort-Object Name) {

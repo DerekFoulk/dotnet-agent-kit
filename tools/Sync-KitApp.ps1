@@ -23,10 +23,18 @@ $ErrorActionPreference = 'Stop'
 
 # Export-KitApp's text hash and kit block, loaded in a child scope so its parameters don't replace this script's.
 # The manifest's hashes must be computed exactly as the export computes them (ADR-0032).
-$script:TextHash, $script:BlockPattern = & {
+$script:TextHash, $script:BlockPattern, $script:GeneratedFolders = & {
     . (Join-Path $PSScriptRoot 'Export-KitApp.ps1')
     ${function:Get-KitTextHash}
     $script:KitBlockPattern
+    , $script:GeneratedFolders
+}
+
+# Whether a kit-managed path is a rule file Build-AgentRules generates.
+function Test-KitGeneratedPath {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    [bool] ($script:GeneratedFolders | Where-Object { $Path.StartsWith("$_/", [StringComparison]::Ordinal) })
 }
 
 # Exports the app at one kit commit with that commit's own Export-KitApp, so every file comes out as that version
@@ -194,7 +202,12 @@ function Sync-KitApp {
             $ours = Get-KitEntryText -Root $AppRoot -Entry ($theirs ?? $old)
             $target = Join-Path $AppRoot $path
             $unedited = $old -and $null -ne $ours -and (& $script:TextHash -Text $ours) -eq $old['sha256']
-            if (-not $old -and $null -eq $ours) {
+            if ($old -and $theirs -and $null -ne $ours -and -not $unedited -and (Test-KitGeneratedPath -Path $path)) {
+                # Generated from the standards: an edit there is lost at the next build anyway, so it's replaced.
+                Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs
+                [pscustomobject]@{ Path = $path; Action = 'Regenerated' }
+            }
+            elseif (-not $old -and $null -eq $ours) {
                 Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs
                 [pscustomobject]@{ Path = $path; Action = 'Added' }
             }
@@ -232,6 +245,12 @@ function Sync-KitApp {
                 }
             }
         }
+        # The app's own Build-AgentRules, now at the release, rebuilds every generated file: the rule files, and
+        # copilot-instructions.md, which copies the app's AGENTS.md with its new kit block.
+        $builder = Join-Path $AppRoot '.kit/tools/Build-AgentRules.ps1'
+        $output = & pwsh -NoProfile -File $builder -RepoRoot $AppRoot 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "Rebuilding the app's agent rule files failed:`n$output" }
+
         $result.Files = @($files)
         $result.Changed = $result.Files.Count -gt 0
     }
