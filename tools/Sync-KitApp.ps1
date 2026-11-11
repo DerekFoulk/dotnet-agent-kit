@@ -30,6 +30,36 @@ $script:TextHash, $script:BlockPattern, $script:GeneratedFolders = & {
     , $script:GeneratedFolders
 }
 
+# What the sync does with one kit-managed path (ADR-0042), from the manifest entries at the app's version (Old) and
+# at the release (Theirs), and the hash of the app's text ($null when the app has no such file or block):
+#   Added, Updated, Removed, Regenerated: the app gets the release's text, or loses the file.
+#   Merge: the app edited it and the kit changed it, so the two are merged (Merged, or Conflict if they overlap).
+#   AppFileKept, KeptDeleted, NowAppOwned: the app's choice stands, and the PR says so.
+#   None: nothing to do or say.
+function Get-KitSyncAction {
+    param(
+        [Collections.IDictionary] $Old,
+        [Collections.IDictionary] $Theirs,
+        [AllowNull()] [string] $OursHash,
+        [bool] $Generated
+    )
+
+    if (-not $Old) {
+        # The kit now has a file where the app made its own: the app's stays.
+        return ($OursHash ? 'AppFileKept' : 'Added')
+    }
+    # The app deleted a kit file (or its kit block): it isn't brought back.
+    if (-not $OursHash) { return ($Theirs ? 'KeptDeleted' : 'None') }
+    $edited = $OursHash -ne $Old['sha256']
+    # The kit dropped it: the app's edited copy stays, and is the app's from now on.
+    if (-not $Theirs) { return ($edited ? 'NowAppOwned' : 'Removed') }
+    if ($OursHash -eq $Theirs['sha256']) { return 'None' }
+    if (-not $edited) { return 'Updated' }
+    # Generated from the standards: an edit there is lost at the next build anyway, so it's replaced.
+    if ($Generated) { return 'Regenerated' }
+    'Merge'
+}
+
 # Whether a kit-managed path is a rule file Build-AgentRules generates.
 function Test-KitGeneratedPath {
     param([Parameter(Mandatory)] [string] $Path)
@@ -201,54 +231,25 @@ function Sync-KitApp {
             $old = $oldEntries[$path]
             $theirs = $newEntries[$path]
             $ours = Get-KitEntryText -Root $AppRoot -Entry ($theirs ?? $old)
-            $target = Join-Path $AppRoot $path
-            $unedited = $old -and $null -ne $ours -and (& $script:TextHash -Text $ours) -eq $old['sha256']
-            if ($old -and $theirs -and $null -ne $ours -and -not $unedited -and (Test-KitGeneratedPath -Path $path)) {
-                # Generated from the standards: an edit there is lost at the next build anyway, so it's replaced.
-                Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs
-                [pscustomobject]@{ Path = $path; Action = 'Regenerated' }
-            }
-            elseif (-not $old -and $null -eq $ours) {
-                Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs
-                [pscustomobject]@{ Path = $path; Action = 'Added' }
-            }
-            elseif (-not $old) {
-                # The kit now has a file where the app made its own: the app's stays.
-                [pscustomobject]@{ Path = $path; Action = 'AppFileKept' }
-            }
-            elseif ($null -eq $ours) {
-                # The app deleted a kit file (or its kit block): it isn't brought back.
-                if ($theirs) { [pscustomobject]@{ Path = $path; Action = 'KeptDeleted' } }
-            }
-            elseif (-not $theirs -and -not $unedited) {
-                # The kit dropped a file the app edited: the app's copy stays, and is the app's from now on.
-                [pscustomobject]@{ Path = $path; Action = 'NowAppOwned' }
-            }
-            elseif ($unedited -and -not $theirs) {
-                Remove-Item -LiteralPath $target
-                [pscustomobject]@{ Path = $path; Action = 'Removed' }
-            }
-            elseif ($unedited -and $old['sha256'] -ne $theirs['sha256']) {
-                Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs
-                [pscustomobject]@{ Path = $path; Action = 'Updated' }
-            }
-            elseif ($old -and $theirs -and $null -ne $ours -and -not $unedited -and (& $script:TextHash -Text $ours) -ne $theirs['sha256']) {
-                # The base must be exactly the text the manifest recorded; anything else could merge in changes
-                # nobody made.
-                $base = Get-KitEntryText -Root $baseRoot -Entry $old
-                $merged = if ($null -ne $base -and (& $script:TextHash -Text $base) -eq $old['sha256']) {
-                    Merge-KitText -Work $work -Ours $ours -Base $base -Theirs (Get-KitEntryText -Root $newRoot -Entry $theirs)
-                }
-                if ($null -eq $merged) {
-                    # Overlapping changes: the app's text stays, and the PR says so. Conflict markers in a file
-                    # would only break the build or hide in a doc.
-                    [pscustomobject]@{ Path = $path; Action = 'Conflict' }
-                }
-                else {
-                    Set-KitEntryText -Root $AppRoot -Entry $theirs -Text $merged
-                    [pscustomobject]@{ Path = $path; Action = 'Merged' }
+            $oursHash = if ($null -ne $ours) { & $script:TextHash -Text $ours }
+            $action = Get-KitSyncAction -Old $old -Theirs $theirs -OursHash $oursHash -Generated (Test-KitGeneratedPath -Path $path)
+            switch ($action) {
+                { $_ -in 'Added', 'Updated', 'Regenerated' } { Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs }
+                'Removed' { Remove-Item -LiteralPath (Join-Path $AppRoot $path) }
+                'Merge' {
+                    # The base must be exactly the text the manifest recorded; anything else could merge in changes
+                    # nobody made.
+                    $base = Get-KitEntryText -Root $baseRoot -Entry $old
+                    $merged = if ($null -ne $base -and (& $script:TextHash -Text $base) -eq $old['sha256']) {
+                        Merge-KitText -Work $work -Ours $ours -Base $base -Theirs (Get-KitEntryText -Root $newRoot -Entry $theirs)
+                    }
+                    # Overlapping changes leave the app's text, and the PR says so: conflict markers in a file would
+                    # only break the build or hide in a doc.
+                    $action = if ($null -eq $merged) { 'Conflict' } else { 'Merged' }
+                    if ($null -ne $merged) { Set-KitEntryText -Root $AppRoot -Entry $theirs -Text $merged }
                 }
             }
+            if ($action -ne 'None') { [pscustomobject]@{ Path = $path; Action = $action } }
         }
         # The app's own Build-AgentRules, now at the release, rebuilds every generated file: the rule files, and
         # copilot-instructions.md, which copies the app's AGENTS.md with its new kit block.
