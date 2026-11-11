@@ -14,25 +14,26 @@ AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 
 BeforeDiscovery {
     # The fixtures that must fail the build, and the diagnostic each must fail with. The 'violations fail the build'
-    # tests run them, and the '.globalconfig' test checks that every rule .globalconfig turns on is among them.
+    # tests run them. GlobalConfig marks a rule that .globalconfig turns on, and the '.globalconfig' test checks that the
+    # marked rules are exactly the ones it turns on.
     $violations = @(
         @{ Fixture = 'UsesVar'; Diagnostic = 'IDE0008'; Description = 'var, because code style is enforced on build' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
         @{ Fixture = 'AwaitInLibrary'; Diagnostic = 'CA2007'; Description = 'an await without ConfigureAwait in a class library' }
-        @{ Fixture = 'TooComplex'; Diagnostic = 'CA1502'; Description = 'a method with a cyclomatic complexity of 16, over the limit of 15 (CRF-008)' }
-        @{ Fixture = 'TooCoupledMember'; Diagnostic = 'CA1506'; Description = 'a method coupled to 41 types, over the limit of 40 per member (CRF-008)' }
-        @{ Fixture = 'TooCoupledType'; Diagnostic = 'CA1506'; Description = 'a class coupled to 96 types, over the limit of 95 per type (CRF-008)' }
-        @{ Fixture = 'TooDeep'; Diagnostic = 'CA1501'; Description = 'a class 6 levels deep, over the limit of 5 (CRF-008)' }
-        @{ Fixture = 'Unmaintainable'; Diagnostic = 'CA1505'; Description = 'a method with a maintainability index of 7, under the limit of 10 (CRF-008)' }
-        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1005'; Description = 'a type with three type parameters, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1021'; Description = 'an out parameter outside the Try pattern, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1045'; Description = 'a ref parameter, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'PlatformIntrinsics'; Diagnostic = 'CA1516'; Description = 'an x86-only intrinsic where a cross-platform one exists, a rule latest-all sets to none (STY-003)' }
-        @{ Fixture = 'NoComVisible'; Diagnostic = 'CA1017'; Description = 'an assembly that doesn''t say whether COM sees it, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'PInvokeOutsideNativeMethods'; Diagnostic = 'CA1060'; Description = 'a P/Invoke outside a NativeMethods class, a rule latest-all leaves off (STY-003)' }
-        @{ Fixture = 'BadMetricsConfig'; Diagnostic = 'CA1509'; Description = 'a CodeMetricsConfig.txt entry the metric rules would ignore, so a typo can''t switch a limit off' }
+        @{ Fixture = 'TooComplex'; Diagnostic = 'CA1502'; Description = 'a method with a cyclomatic complexity of 16, over the limit of 15 (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'TooCoupledMember'; Diagnostic = 'CA1506'; Description = 'a method coupled to 41 types, over the limit of 40 per member (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'TooCoupledType'; Diagnostic = 'CA1506'; Description = 'a class coupled to 96 types, over the limit of 95 per type (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'TooDeep'; Diagnostic = 'CA1501'; Description = 'a class 6 levels deep, over the limit of 5 (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'Unmaintainable'; Diagnostic = 'CA1505'; Description = 'a method with a maintainability index of 7, under the limit of 10 (CRF-008)'; GlobalConfig = $true }
+        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1005'; Description = 'a type with three type parameters, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1021'; Description = 'an out parameter outside the Try pattern, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'LegacyDesign'; Diagnostic = 'CA1045'; Description = 'a ref parameter, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'PlatformIntrinsics'; Diagnostic = 'CA1516'; Description = 'an x86-only intrinsic where a cross-platform one exists, a rule latest-all sets to none (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'NoComVisible'; Diagnostic = 'CA1017'; Description = 'an assembly that doesn''t say whether COM sees it, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'PInvokeOutsideNativeMethods'; Diagnostic = 'CA1060'; Description = 'a P/Invoke outside a NativeMethods class, a rule latest-all leaves off (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'BadMetricsConfig'; Diagnostic = 'CA1509'; Description = 'a CodeMetricsConfig.txt entry the metric rules would ignore, so a typo can''t switch a limit off'; GlobalConfig = $true }
         @{ Fixture = 'NonPublicReflection'; Diagnostic = 'RS0030'; Description = 'reading a non-public member by reflection (CRF-010)' }
         @{ Fixture = 'UnsafeAccessorUse'; Diagnostic = 'RS0030'; Description = 'reaching a non-public member through UnsafeAccessor (CRF-010)' }
         @{ Fixture = 'PrivateAccessor'; Diagnostic = 'RS0030'; Description = 'getting a property''s private setter with GetSetMethod(true) (CRF-010)' }
@@ -40,6 +41,7 @@ BeforeDiscovery {
         @{ Fixture = 'ModuleTypes'; Diagnostic = 'RS0030'; Description = 'listing a module''s types, internal ones included (CRF-010)' }
         @{ Fixture = 'ByNameDelegate'; Diagnostic = 'RS0030'; Description = 'binding a delegate to a method by name, which finds private methods too (CRF-010)' }
         @{ Fixture = 'DeclaredMembersReflection'; Diagnostic = 'RS0030'; Description = 'listing non-public members through TypeInfo.DeclaredFields, with no BindingFlags (CRF-010)' }
+        @{ Fixture = 'TypeInitializerUse'; Diagnostic = 'RS0030'; Description = 'reading a type''s static constructor, which is always private, through Type.TypeInitializer (CRF-010)' }
     )
 }
 
@@ -64,7 +66,9 @@ Describe 'Repo build configuration' -Tag 'Build' {
             Copy-Item -Path (Join-Path $PSScriptRoot 'fixtures' $Fixture '*') -Destination $workspace -Recurse
 
             # Each git step must succeed, or the workspace has no commit or tag to version from; git's output goes into
-            # the error, never into the path this returns (as New-TestGitRemote does, TestGit.psm1).
+            # the error, never into the path this returns (as New-TestGitRemote does, TestGit.psm1). The exit codes are
+            # read here, so pwsh mustn't turn one into its own error first (as Test-RepoGitIgnore does).
+            $PSNativeCommandUseErrorActionPreference = $false
             foreach ($step in @(
                     @('init', '--quiet', '--initial-branch', 'main'),
                     @('-c', 'core.autocrlf=false', 'add', '--all'),
@@ -79,6 +83,8 @@ Describe 'Repo build configuration' -Tag 'Build' {
         function Invoke-FixtureBuild {
             param([Parameter(Mandatory)] [string] $Workspace, [string] $Project = '')
 
+            # A failed build is an answer the tests read, so its exit code mustn't become pwsh's error.
+            $PSNativeCommandUseErrorActionPreference = $false
             $target = if ($Project) { Join-Path $Workspace $Project } else { $Workspace }
             $output = dotnet build $target --configuration Release --nologo 2>&1 | Out-String
             [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
@@ -119,8 +125,15 @@ Describe 'Repo build configuration' -Tag 'Build' {
             $first | Should -Exist
         }
 
-        # A workspace with no commit or no tag would still build, and only MinVer's version would show it.
-        It 'stops when a git step fails, instead of returning an untagged workspace' {
+        # A workspace with no commit or no tag would still build, and only MinVer's version would show it. With
+        # $PSNativeCommandUseErrorActionPreference on (a profile can turn it on), pwsh's own NativeCommandExitException
+        # mustn't replace the error that names the git step (review 10 of PR 36).
+        It 'stops when a git step fails, instead of returning an untagged workspace (native exit codes as errors: <NativeErrors>)' -ForEach @(
+            @{ NativeErrors = $false }
+            @{ NativeErrors = $true }
+        ) {
+            $ErrorActionPreference = 'Stop'
+            $PSNativeCommandUseErrorActionPreference = $NativeErrors
             $savedDate = $env:GIT_COMMITTER_DATE
             try {
                 $env:GIT_COMMITTER_DATE = 'not a date'
@@ -130,6 +143,19 @@ Describe 'Repo build configuration' -Tag 'Build' {
             finally {
                 $env:GIT_COMMITTER_DATE = $savedDate
             }
+        }
+
+        # A build that fails is the answer the violation tests read, so it comes back as an exit code, not pwsh's error.
+        It 'returns a failed build''s exit code and output, even where native exit codes are errors' {
+            $ErrorActionPreference = 'Stop'
+            $PSNativeCommandUseErrorActionPreference = $true
+            $workspace = New-FixtureWorkspace -Fixture 'UsesVar'
+
+            $build = try { Invoke-FixtureBuild -Workspace $workspace } catch { [pscustomobject]@{ ExitCode = 'threw'; Output = $_.Exception.Message } }
+
+            $build.ExitCode | Should -BeOfType [int] -Because $build.Output
+            $build.ExitCode | Should -Not -Be 0
+            $build.Output | Should -Match 'error IDE0008'
         }
     }
 
@@ -264,22 +290,38 @@ Describe 'CodeMetricsConfig.txt' {
 # one that silently doesn't fire, can't slip in (review 4 of PR 36).
 Describe '.globalconfig' {
     BeforeAll {
-        # The IDs of the rules these lines turn on: any severity but none. Like Roslyn's analyzer config parser, it takes
-        # '=' or ':' between key and value, ignores case, and drops a comment that starts with '#' or ';'. Unlike it, it
-        # reads a rule ID as word characters only, which every CA, IDE and RS ID is.
+        # The IDs of the rules these lines turn on: any severity but none. It reads them as Roslyn's analyzer config
+        # parser does, at dotnet/roslyn e141f0d31c796c99f5a7c31e54e0b597c03381be:
+        #   https://github.com/dotnet/roslyn/blob/e141f0d31c796c99f5a7c31e54e0b597c03381be/src/Compilers/Core/Portable/CommandLine/AnalyzerConfig.cs
+        #   https://github.com/dotnet/roslyn/blob/e141f0d31c796c99f5a7c31e54e0b597c03381be/src/Compilers/Core/Portable/CommandLine/AnalyzerConfigSet.cs
+        # A key is [\w.-]+ ('_' is in \w), then '=' or ':', then the value; a comment starts at the first '#' or ';';
+        # case doesn't matter, and the last value a key gets wins; the ID is everything between dotnet_diagnostic. and
+        # .severity; and the severities are TryParseSeverity's. It stops at any other line but is_global and
+        # global_level, so nothing in the file turns rules on unseen: a section, a bulk severity, an option, a typo.
         function Get-EnabledRule([string[]] $Line) {
+            $severities = 'default', 'error', 'warning', 'suggestion', 'silent', 'refactoring', 'none'
+            $severityOf = [Collections.Specialized.OrderedDictionary]::new([StringComparer]::OrdinalIgnoreCase)
             foreach ($text in $Line) {
                 $setting = ($text -replace '[#;].*$', '').Trim()
-                if ($setting -match '^dotnet_diagnostic\.(?<id>\w+)\.severity\s*[=:]\s*(?<severity>\w+)$' -and $Matches['severity'] -ne 'none') {
-                    $Matches['id']
-                }
+                if (-not $setting) { continue }
+                $unrecognised = "Get-EnabledRule doesn't recognise this .globalconfig line: '$text'"
+                if ($setting -notmatch '^(?<key>[\w.-]+)\s*[=:]\s*(?<value>.*)$') { throw $unrecognised }
+                $key, $value = $Matches['key'], $Matches['value']
+                if ($key -in 'is_global', 'global_level') { continue }
+                if ($key -notmatch '^dotnet_diagnostic\.(?<id>[\w.-]+)\.severity$' -or $value -notin $severities) { throw $unrecognised }
+                $severityOf[$Matches['id']] = $value
             }
+            $severityOf.Keys | Where-Object { $severityOf[$_] -ne 'none' }
         }
     }
 
     It 'reads <Line> as turning on <Expected>' -ForEach @(
         @{ Line = 'dotnet_diagnostic.CA1014.severity = warning'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = error'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = suggestion'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = silent'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = refactoring'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = default'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity: warning'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = warning # a trailing comment'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = warning ; a trailing comment'; Expected = 'CA1014' }
@@ -288,21 +330,52 @@ Describe '.globalconfig' {
         @{ Line = 'dotnet_diagnostic.CA1014.severity = None'; Expected = $null }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = none # off for now'; Expected = $null }
         @{ Line = '# dotnet_diagnostic.CA1014.severity = warning'; Expected = $null }
+        # Roslyn's key takes '.' and '-' too, and everything between dotnet_diagnostic. and .severity is the ID.
+        @{ Line = 'dotnet_diagnostic.My-Rule.v2.severity = warning'; Expected = 'My-Rule.v2' }
+        @{ Line = 'is_global = true'; Expected = $null }
+        @{ Line = 'global_level = 100'; Expected = $null }
     ) {
-        Get-EnabledRule -Line $Line | Should -Be $Expected
+        { $script:enabled = Get-EnabledRule -Line $Line } | Should -Not -Throw
+        $script:enabled | Should -Be $Expected
+    }
+
+    # Roslyn keeps the last value a key gets, and lowercases keys first, so a later line turns a rule back off.
+    It 'lets the last line for a rule win: <Description>' -ForEach @(
+        @{ Description = 'on, then off'; Lines = @('dotnet_diagnostic.CA1014.severity = warning', 'dotnet_diagnostic.CA1014.severity = none'); Expected = @() }
+        @{ Description = 'on, then off in other case'; Lines = @('dotnet_diagnostic.CA1014.severity = warning', 'DOTNET_DIAGNOSTIC.ca1014.SEVERITY = none'); Expected = @() }
+        @{ Description = 'off, then on'; Lines = @('dotnet_diagnostic.CA1014.severity = none', 'dotnet_diagnostic.CA1014.severity = error'); Expected = @('CA1014') }
+        @{ Description = 'on twice'; Lines = @('dotnet_diagnostic.CA1014.severity = warning', 'dotnet_diagnostic.CA1014.severity = error'); Expected = @('CA1014') }
+    ) {
+        { $script:enabled = @(Get-EnabledRule -Line $Lines) } | Should -Not -Throw
+        $script:enabled | Should -Be $Expected
+    }
+
+    # Review 10 of PR 36: a line the function can't read would turn nothing on in its eyes, so the real-file test
+    # would pass while Roslyn read the line as something else (a bulk severity, say), or ignored a typo.
+    It 'stops at <Line>, which it doesn''t recognise' -ForEach @(
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = warn' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = info' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = warning error' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity warning' }
+        @{ Line = 'dotnet_diagnostic.CA1014 = warning' }
+        @{ Line = 'dotnet_analyzer_diagnostic.severity = warning' }
+        @{ Line = 'dotnet_analyzer_diagnostic.category-Design.severity = warning' }
+        @{ Line = 'dotnet_code_quality.CA1501.api_surface = public' }
+        @{ Line = '[*.cs]' }
+    ) {
+        { Get-EnabledRule -Line $Line } | Should -Throw -ExpectedMessage "*doesn't recognise*"
     }
 
     # Any severity but none counts as on, so suggestion, silent and default ask for a fixture too, erring toward one;
-    # the table is the one the fixture builds run from, so a row that's
-    # commented out doesn't count.
-    It 'turns on only rules that have a failing fixture' -ForEach @(@{ Violations = $violations }) {
+    # the table is the one the fixture builds run from, so a row that's commented out doesn't count. Both ways, so a
+    # line the parser misread, or one taken out of .globalconfig, shows too (review 10 of PR 36).
+    It 'turns on exactly the rules whose failing fixtures are marked GlobalConfig' -ForEach @(@{ Violations = $violations }) {
         $root = Join-Path $PSScriptRoot '..' '..'
         $turnedOn = @(Get-EnabledRule -Line (Get-Content -LiteralPath (Join-Path $root '.globalconfig')))
-        $tested = @($Violations | ForEach-Object { $_.Diagnostic })
+        $marked = @($Violations | Where-Object { $_['GlobalConfig'] } | ForEach-Object { $_.Diagnostic } | Sort-Object -Unique)
 
-        $turnedOn.Count | Should -BeGreaterThan 0
-        foreach ($rule in $turnedOn) {
-            $tested | Should -Contain $rule -Because "$rule is on in .globalconfig, so a fixture should prove it fires"
-        }
+        $marked.Count | Should -BeGreaterThan 0
+        @($turnedOn | Where-Object { $_ -notin $marked }) | Should -BeNullOrEmpty -Because 'each rule on in .globalconfig needs a failing fixture marked GlobalConfig, to prove it fires'
+        @($marked | Where-Object { $_ -notin $turnedOn }) | Should -BeNullOrEmpty -Because 'each rule marked GlobalConfig should be on in .globalconfig'
     }
 }

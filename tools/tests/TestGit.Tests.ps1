@@ -502,13 +502,27 @@ Describe 'TestGit.psm1' {
         finally { $env:GIT_TRACE2_EVENT = $outerTrace; Restore-TestGitEnvironment -Saved $saved }
     }
 
-    It 'stops with git''s reason when it can''t make the remote, rather than handing back a path to nothing' {
-        # Review of PR 24: git's exit codes were ignored, so a later push failed far from the cause.
+    It 'stops with git''s reason when it can''t make the remote, rather than handing back a path to nothing (native exit codes as errors: <NativeErrors>)' -ForEach @(
+        @{ NativeErrors = $false }
+        @{ NativeErrors = $true }
+    ) {
+        # Review of PR 24: git's exit codes were ignored, so a later push failed far from the cause. Review 10 of PR 36:
+        # with $PSNativeCommandUseErrorActionPreference on, pwsh's own NativeCommandExitException replaced that reason.
+        # The module reads global preferences.
         Get-Command New-TestGitRemote -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $taken = Join-Path $TestDrive "taken-$(New-Guid).git"
         Set-Content -LiteralPath $taken -Value 'a file, not a folder'
 
-        { New-TestGitRemote -Path $taken } | Should -Throw "*Couldn't make the test remote at*"
+        $outer = @{ Native = $global:PSNativeCommandUseErrorActionPreference; Action = $global:ErrorActionPreference }
+        $global:PSNativeCommandUseErrorActionPreference = $NativeErrors
+        $global:ErrorActionPreference = 'Stop'
+        try { $message = try { New-TestGitRemote -Path $taken; 'returned' } catch { $_.Exception.Message } }
+        finally {
+            $global:PSNativeCommandUseErrorActionPreference = $outer.Native
+            $global:ErrorActionPreference = $outer.Action
+        }
+
+        $message | Should -BeLike "*Couldn't make the test remote at*"
     }
 
     It 'is how every test file makes a bare remote' {
