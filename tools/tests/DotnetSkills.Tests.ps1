@@ -195,3 +195,50 @@ Describe 'Update-DotnetSkill' {
         Join-Path $kit '.claude/skills/tidy' | Should -Not -Exist
     }
 }
+
+Describe 'Update-DotnetSkills.ps1 from the command line' {
+    BeforeAll {
+        $script = Join-Path $PSScriptRoot '..' 'Update-DotnetSkills.ps1'
+        function Write-Text([string] $Path, [string] $Text) {
+            New-Item -ItemType Directory -Force -Path (Split-Path $Path -Parent) | Out-Null
+            [IO.File]::WriteAllText($Path, $Text)
+        }
+        $upstream = Join-Path $TestDrive 'upstream'
+        Write-Text (Join-Path $upstream 'plugins/p/skills/tidy/SKILL.md') "---`nname: tidy`n---`n"
+        git -C $upstream init -q -b main
+        git -C $upstream add -A
+        git -C $upstream commit -q -m 'first'
+        $head = (git -C $upstream rev-parse HEAD).Trim()
+
+        function New-Kit([string] $Source) {
+            $kit = Join-Path $TestDrive "kit-$(New-Guid)"
+            $lock = [ordered]@{
+                repository = 'dotnet/skills'; url = $upstream; commit = ''; retrieved = ''
+                skills = @([ordered]@{ name = 'tidy'; source = $Source; files = [ordered]@{} })
+            }
+            Write-Text (Join-Path $kit 'tools/dotnet-skills.json') ($lock | ConvertTo-Json -Depth 5)
+            $kit
+        }
+    }
+
+    It 'moves to upstream main from the lock''s url, dated today, and says which commit' {
+        $kit = New-Kit -Source 'plugins/p/skills/tidy'
+
+        $output = & pwsh -NoProfile -File $script -RepoRoot $kit 6>&1 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $output
+        $lock = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json') | ConvertFrom-Json -AsHashtable -DateKind String
+        $lock['commit'] | Should -Be $head
+        $lock['retrieved'] | Should -Be (Get-Date -Format 'yyyy-MM-dd')
+        $output | Should -Match $head
+    }
+
+    It 'exits 1 with the reason when the update can''t run' {
+        $kit = New-Kit -Source 'plugins/p/skills/gone'
+
+        $output = & pwsh -NoProfile -File $script -RepoRoot $kit 6>&1 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 1
+        $output | Should -Match 'plugins/p/skills/gone'
+    }
+}
