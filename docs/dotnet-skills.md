@@ -102,6 +102,6 @@ These fit the kit's stack and rules. Each would push the listing past its budget
 3. Update the commit and date in this file's "Pinned to" line and in `THIRD-PARTY-NOTICES.md`, and look upstream for new skills to add to the tables.
 4. Run every check in AGENTS.md's Commands table, then open the PR.
 
-If the script stops partway, for example on a file another program has open, some folders are new and the lock isn't: discard the changes under `.claude/skills/` with `git restore`, then run it again.
+If the script stops partway, for example on a file another program has open, some folders are new and the lock isn't, and the next run refuses. Put the folders back first: `git restore .claude/skills/` undoes changed and deleted files, and `git status --short .claude/skills/` lists the new ones (`??`), which you delete by hand. Then run it again. (`git clean` would also remove them, but it deletes for good, so it's the owner's call.)
 
 To add a skill, add it to the `skills` list in `tools/dotnet-skills.json` with `name`, `source` and an empty `files`, run the script, and move its row in the tables above. To remove one, take it out of the list, delete its folder in `.claude/skills/`, and move its row; the script tests fail on a skill folder that is neither the kit's own nor in the list. Either way, update its folder in `THIRD-PARTY-NOTICES.md`.
