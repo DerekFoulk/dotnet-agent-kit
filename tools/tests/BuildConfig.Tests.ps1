@@ -97,6 +97,19 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 
+    # Several rows build the same fixture (LegacyDesign covers three rules), so each build needs a workspace of its own,
+    # or the next row finds the last one's folder and fails before it builds (CI on PR 36).
+    Context 'fixture workspaces' {
+        # GitHub Actions runs pwsh with $ErrorActionPreference = 'stop', so the test does too.
+        It 'gives each build of the same fixture a workspace of its own' {
+            $ErrorActionPreference = 'Stop'
+            $first = New-FixtureWorkspace -Fixture 'Clean'
+
+            { $script:second = New-FixtureWorkspace -Fixture 'Clean' } | Should -Not -Throw
+            $script:second | Should -Not -Be $first
+        }
+    }
+
     Context 'violations fail the build' {
         It 'rejects <Description> (<Diagnostic>)' -ForEach $violations {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
