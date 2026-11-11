@@ -116,6 +116,19 @@ Describe 'Test-Runbook.ps1' {
             Get-Message | Should -Be "section 'How to restore its data' is empty"
         }
 
+        # Review 2 (mutants that survived): a comment may span lines, and one comment ends at its own -->.
+        It 'counts a section that holds only a comment over several lines as empty' {
+            New-Runbook -Body @{ 'How to restore its data' = "<!--`n  TODO: the restore steps`n-->" }
+
+            Get-Message | Should -Be "section 'How to restore its data' is empty"
+        }
+
+        It 'counts a step between two comments' {
+            New-Runbook -Body @{ 'How to restore its data' = '<!-- a --> 1. Restore it. <!-- b -->' }
+
+            Get-Message | Should -BeNullOrEmpty
+        }
+
         It 'reads a heading with trailing spaces' {
             $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs   '
 
