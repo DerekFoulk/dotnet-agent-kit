@@ -15,7 +15,7 @@ AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 Describe 'Repo build configuration' -Tag 'Build' {
     BeforeAll {
         $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
-        $configFiles = 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig', 'nuget.config'
+        $configFiles = 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig', 'nuget.config', 'CodeMetricsConfig.txt'
 
         function New-FixtureWorkspace {
             param([Parameter(Mandatory)] [string] $Fixture)
@@ -73,11 +73,23 @@ Describe 'Repo build configuration' -Tag 'Build' {
             @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
             @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
             @{ Fixture = 'AwaitInLibrary'; Diagnostic = 'CA2007'; Description = 'an await without ConfigureAwait in a class library' }
+            @{ Fixture = 'TooComplex'; Diagnostic = 'CA1502'; Description = 'a method with a cyclomatic complexity of 16, over the limit of 15 (CRF-008)' }
         ) {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
 
             $build.ExitCode | Should -Not -Be 0 -Because $build.Output
             $build.Output | Should -Match "error $Diagnostic"
+        }
+    }
+
+    # ADR-0043: the metric limits sit exactly where the ADR puts them, not lower.
+    Context 'code at the metric limits' {
+        It 'builds <Description>' -ForEach @(
+            @{ Fixture = 'AtComplexityLimit'; Description = 'a method with a cyclomatic complexity of 15' }
+        ) {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
+
+            $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
 
