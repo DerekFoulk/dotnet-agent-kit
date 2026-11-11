@@ -258,6 +258,20 @@ Describe 'Export-KitApp' {
         @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain 'Directory.Packages.props'
     }
 
+    # Review 1 of PR 36: a global package reference reaches every project, and the banned-API analyzer is the
+    # one that reads BannedSymbols.txt (CRF-010). Without it an app's build would ignore the bans and still pass.
+    It 'gives the app every global package reference outside the sample app''s group, the banned-API analyzer included' {
+        $props = [xml](Get-Content -Raw (Join-Path $app 'Directory.Packages.props'))
+        $kitProps = [xml](Get-Content -Raw (Join-Path $checkout 'Directory.Packages.props'))
+        $appGlobal = @{}
+        foreach ($node in $props.SelectNodes('//GlobalPackageReference')) { $appGlobal[$node.Include] = $node.Version }
+
+        $appGlobal.Keys | Should -Contain 'Microsoft.CodeAnalysis.BannedApiAnalyzers'
+        foreach ($node in $kitProps.SelectNodes('//ItemGroup[not(@Label="Sample app")]/GlobalPackageReference')) {
+            $appGlobal[$node.Include] | Should -Be $node.Version -Because "$($node.Include) applies to every project"
+        }
+    }
+
     # PowerShell's location and the process's current directory differ; .NET file calls use the latter.
     It 'writes a relative destination under PowerShell''s current location, all in one place' {
         $parent = Join-Path $TestDrive 'relative-parent'
