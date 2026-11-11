@@ -104,6 +104,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
             @{ Fixture = 'AtMemberCouplingLimit'; Description = 'a method coupled to 40 types' }
             @{ Fixture = 'AtTypeCouplingLimit'; Description = 'a class coupled to 95 types' }
             @{ Fixture = 'AtInheritanceLimit'; Description = 'a class 5 levels deep' }
+            @{ Fixture = 'AtMaintainabilityLimit'; Description = 'a method with a maintainability index of 10' }
         ) {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
 
