@@ -177,4 +177,21 @@ Describe 'Update-DotnetSkill' {
         Get-Content -Raw -LiteralPath $skill | Should -Be $edited
         (Read-Lock $kit)['commit'] | Should -Be $first
     }
+
+    It 'changes nothing when a listed skill has a symbolic link, which could point outside its folder' {
+        $target = ('../../../../../outside.md' | git -C $upstream hash-object -w --stdin).Trim()
+        git -C $upstream switch -q -c with-link $second
+        git -C $upstream update-index --add --cacheinfo "120000,$target,plugins/p/skills/tidy/link.md"
+        git -C $upstream commit -q -m 'link'
+        $linked = (git -C $upstream rev-parse HEAD).Trim()
+        git -C $upstream switch -q main
+        $kit = New-Kit
+        $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
+
+        { Update-DotnetSkill -RepoRoot $kit -Commit $linked -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
+            Should -Throw '*tidy/link.md*'
+
+        Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json') | Should -Be $before
+        Join-Path $kit '.claude/skills/tidy' | Should -Not -Exist
+    }
 }
