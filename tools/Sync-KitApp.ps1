@@ -174,6 +174,7 @@ function Sync-KitApp {
     }
 
     $result = [pscustomobject]@{
+        Repository  = $manifest['kitRepository'] ?? 'DerekFoulk/dotnet-agent-kit'
         FromVersion = $manifest['kitVersion']
         FromCommit  = $fromCommit
         ToVersion   = $KitRef
@@ -268,6 +269,62 @@ function Sync-KitApp {
     $result
 }
 
+# What each reported file needs from the person reviewing the PR: what happened, then what to do.
+$script:Explanations = [ordered]@{
+    Merged      = "This app had edited it; the kit's change merged into the edit without overlapping it.", 'Check the merged text.'
+    Conflict    = "This app had edited it, and the kit's change overlaps the edit (or the kit's earlier text couldn't be rebuilt to merge with), so the app's text is kept and the kit's change isn't in this PR.", "Bring the kit's change in by hand on this branch, keeping the app's edit, or move the edit out of the kit's file."
+    KeptDeleted = 'This app had deleted it, so it stays deleted, though the kit changed it.', 'Restore it if the change matters here.'
+    NowAppOwned = "The kit no longer has it, but this app had edited it, so the app's copy stays, as this app's own file.", 'Keep it or delete it.'
+    AppFileKept = 'The kit now has a file at this path, but this app already had its own, which stays.', "Rename the app's file and take the kit's, or keep the app's."
+    Regenerated = "This app had edited a generated rule file, which is rebuilt from docs/standards, so the edit is gone.", "Put the change in an app-owned file, or propose it to the kit."
+}
+
+# The pull request's description: the versions, the files that need a look, then everything else it changed.
+function Format-KitSyncReport {
+    param([Parameter(Mandatory)] [pscustomobject] $Result)
+
+    $kit = "https://github.com/$($Result.Repository)"
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add("Brings dotnet-agent-kit $($Result.ToVersion) (commit ``$($Result.ToCommit)``) into this app, from $($Result.FromVersion) (commit ``$($Result.FromCommit)``). The kit's sync job made it from ``.kit/manifest.json`` (kit ADR-0042): it updates the files the kit manages and the kit blocks of ``AGENTS.md`` and ``THIRD-PARTY-NOTICES.md``, and never touches this app's own files.")
+    $lines.Add('')
+    $lines.Add("Release notes: $kit/releases/tag/$($Result.ToVersion). The kit's files at this release: $kit/tree/$($Result.ToCommit).")
+
+    $look = @($Result.Files | Where-Object { $script:Explanations.Contains($_.Action) })
+    if ($look) {
+        $lines.Add('')
+        $lines.Add('## Needs a look')
+        $lines.Add('')
+        $lines.Add('| File | What happened | What to do |')
+        $lines.Add('|---|---|---|')
+        foreach ($file in $look) {
+            $what, $todo = $script:Explanations[$file.Action]
+            $lines.Add("| ``$($file.Path)`` | $what | $todo |")
+        }
+    }
+
+    $lines.Add('')
+    $lines.Add('## Updated')
+    $lines.Add('')
+    foreach ($action in 'Updated', 'Added', 'Removed') {
+        $files = @($Result.Files | Where-Object Action -EQ $action)
+        if (-not $files) { continue }
+        $lines.Add("<details><summary>$action ($($files.Count))</summary>")
+        $lines.Add('')
+        foreach ($file in $files) { $lines.Add("- ``$($file.Path)``") }
+        $lines.Add('')
+        $lines.Add('</details>')
+        $lines.Add('')
+    }
+    $lines.Add('`.kit/manifest.json` records the new version, and the generated agent files are rebuilt.')
+
+    $lines.Add('')
+    $lines.Add('## Before merging')
+    $lines.Add('')
+    $lines.Add("- The kit pin in this app's workflows moves to ``$($Result.ToCommit)``. Trust it only if the release tag points to it (kit ADR-0031): ``gh api repos/$($Result.Repository)/commits/$($Result.ToVersion) --jq .sha`` must print that SHA.")
+    $lines.Add("- A change to this app's guardrails (AGENTS.md, ""Working modes"") is the owner's to merge.")
+    ($lines -join "`n") + "`n"
+}
+
 # The app's .kit/manifest.json, checked for what the sync needs.
 function Read-KitManifest {
     param([Parameter(Mandatory)] [string] $AppRoot)
@@ -287,7 +344,14 @@ function Read-KitManifest {
 
 if ($MyInvocation.InvocationName -ne '.') {
     try {
-        Sync-KitApp -AppRoot $AppRoot -KitRoot $KitRoot -KitRef $KitRef | Out-Null
+        $result = Sync-KitApp -AppRoot $AppRoot -KitRoot $KitRoot -KitRef $KitRef
+        if ($result.Changed) {
+            Write-Host "Synced the app to dotnet-agent-kit $($result.ToVersion); $(@($result.Files).Count) file(s) changed or need a look."
+            if ($ReportPath) { [IO.File]::WriteAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ReportPath), (Format-KitSyncReport -Result $result), [Text.UTF8Encoding]::new($false)) }
+        }
+        else {
+            Write-Host "The app is already at dotnet-agent-kit $($result.ToVersion)."
+        }
     }
     catch {
         Write-Host $_.Exception.Message -ForegroundColor Red
