@@ -1,4 +1,6 @@
 using System.Net;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.FunctionalTests;
 
@@ -41,6 +43,24 @@ public sealed class AuthenticationTests : IDisposable
         using HttpResponseMessage response = await _host.Client.GetAsync(new Uri("/bookmarks", UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AFailureWhileSigningInIsAProblemWithoutItsDetails()
+    {
+        // Review 1: UseAuthentication runs inside the exception handler, so a sign-in that throws (say the provider's
+        // metadata can't be fetched) is still a Problem Details 500 that hides why (API-002). WebApplication would add
+        // authentication by itself without the call, but ahead of the exception handler, where this is a bare 500.
+        const string secret = "metadata from login.example.test unreachable";
+        using ApiHost production = new("Production", services: services => services.PostConfigure<JwtBearerOptions>(
+            JwtBearerDefaults.AuthenticationScheme,
+            options => options.Events = new JwtBearerEvents { OnMessageReceived = _ => throw new InvalidOperationException(secret) }));
+
+        using HttpResponseMessage response = await production.Client.GetAsync(new Uri("/bookmarks", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json");
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().NotContain(secret);
     }
 
     public void Dispose() => _host.Dispose();

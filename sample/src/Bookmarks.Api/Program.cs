@@ -34,7 +34,9 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
 });
 app.UseStatusCodePages();
 
-// Before MapDefaultEndpoints, whose output cache must run after them (see its remarks).
+// After the exception handler and status code pages, so a failed sign-in and the 401 or 403 that follows are Problem
+// Details (WebApplication would add them by itself, but ahead of both), and before MapDefaultEndpoints, whose output
+// cache must run after them (see its remarks).
 app.UseAuthentication();
 app.UseAuthorization();
 
