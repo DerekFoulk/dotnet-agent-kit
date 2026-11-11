@@ -227,12 +227,33 @@ Describe 'CodeMetricsConfig.txt' {
 # STY-003: every rule .globalconfig turns on has a fixture that must fail with it, so a rule added there without one, or
 # one that silently doesn't fire, can't slip in (review 4 of PR 36).
 Describe '.globalconfig' {
+    BeforeAll {
+        # The IDs of the rules these lines turn on: any severity but none.
+        function Get-EnabledRule([string[]] $Line) {
+            foreach ($text in $Line) {
+                if ($text -match '^\s*dotnet_diagnostic\.(?<id>\w+)\.severity\s*=\s*(?!none\s*$)\w+\s*$') { $Matches['id'] }
+            }
+        }
+    }
+
+    It 'reads <Line> as turning on <Expected>' -ForEach @(
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = warning'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = error'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity: warning'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = warning # a trailing comment'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = warning ; a trailing comment'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = none'; Expected = $null }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = none # off for now'; Expected = $null }
+        @{ Line = '# dotnet_diagnostic.CA1014.severity = warning'; Expected = $null }
+    ) {
+        Get-EnabledRule -Line $Line | Should -Be $Expected
+    }
+
     # Any severity but none turns a rule on; the table is the one the fixture builds run from, so a row that's
     # commented out doesn't count.
     It 'turns on only rules that have a failing fixture' -ForEach @(@{ Violations = $violations }) {
         $root = Join-Path $PSScriptRoot '..' '..'
-        $turnedOn = @(Select-String -LiteralPath (Join-Path $root '.globalconfig') -Pattern '^\s*dotnet_diagnostic\.(?<id>\w+)\.severity\s*=\s*(?!none\s*$)\w+\s*$' |
-            ForEach-Object { $_.Matches[0].Groups['id'].Value })
+        $turnedOn = @(Get-EnabledRule -Line (Get-Content -LiteralPath (Join-Path $root '.globalconfig')))
         $tested = @($Violations | ForEach-Object { $_.Diagnostic })
 
         $turnedOn.Count | Should -BeGreaterThan 0
