@@ -10,6 +10,10 @@ public interface IBookmarkRepository
 {
     Task<Bookmark?> FindAsync(string ownerId, Guid id, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The owner's bookmark whose stored URL is exactly this one's text, so pass a URL in its stored form: a
+    /// bookmark's own <see cref="Bookmark.Url"/>, from <see cref="Bookmark.Create"/>.
+    /// </summary>
     Task<Bookmark?> FindByUrlAsync(string ownerId, Uri url, CancellationToken cancellationToken);
 
     /// <summary>One page of the owner's bookmarks, in a stable order: <paramref name="limit"/> of them from <paramref name="offset"/>.</summary>

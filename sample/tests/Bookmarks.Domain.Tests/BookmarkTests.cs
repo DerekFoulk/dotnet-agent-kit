@@ -102,7 +102,7 @@ public sealed class BookmarkTests
         // Review 3: Uri drops bidi controls, so this parses as absolute http, but its stored form (http://user@/) has
         // no host and can't be parsed again. It's the caller's bad input: an ArgumentException naming the URL, not a
         // UriFormatException the API would answer with a 500.
-        Uri hostless = new("http://user@‮/");
+        Uri hostless = new("http://user@\u202E/");
 
         Action create = () => Bookmark.Create(Owner, hostless, "Title", s_now);
 

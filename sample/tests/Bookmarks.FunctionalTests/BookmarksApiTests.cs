@@ -63,6 +63,21 @@ public sealed class BookmarksApiTests : IDisposable
         second.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
+    [Fact]
+    public async Task TheSameUrlWrittenAnotherWayIsAConflictToo()
+    {
+        // Review 4: the lookup matches the stored text, so it must get the URL in its stored form (the bookmark's,
+        // not the request's); otherwise this second save is a 201 and a duplicate.
+        using HttpResponseMessage first = await Client.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri("HTTPS://Example.COM:443/a"), "A"), TestContext.Current.CancellationToken);
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        using HttpResponseMessage second = await Client.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri("https://example.com/a"), "A"), TestContext.Current.CancellationToken);
+        using HttpResponseMessage third = await Client.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri("HTTPS://Example.COM:443/a"), "A"), TestContext.Current.CancellationToken);
+
+        second.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        third.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
     [Theory]
     [InlineData("ftp://example.com/file")]
     [InlineData("articles/1")]

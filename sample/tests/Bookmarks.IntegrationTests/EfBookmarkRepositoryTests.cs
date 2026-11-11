@@ -83,6 +83,8 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     {
         // Review 1: the column holds the URL's escaped absolute form, the one Bookmark.MaxUrlLength measures. EF's
         // default stores Uri.ToString(), which unescapes (a%20b becomes "a b") and so differs from what was measured.
+        // Review 4: the lookup matches that stored text exactly, so it's given the URL in that form, as the service
+        // does with the bookmark's own URL.
         Bookmark bookmark = Bookmark.Create(Owner, new Uri("https://example.com?q=a%20b"), "A", s_now);
         await SaveAsync(bookmark);
 
@@ -92,7 +94,7 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         Bookmark? found = await new EfBookmarkRepository(db).FindByUrlAsync(Owner, new Uri("https://example.com/?q=a%20b"), TestContext.Current.CancellationToken);
 
         stored.Should().Be("https://example.com/?q=a%20b");
-        found.Should().NotBeNull("the same URL, written either way, is found");
+        found.Should().NotBeNull("the URL in its stored form is found");
     }
 
     [Fact]
