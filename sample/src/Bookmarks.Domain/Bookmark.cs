@@ -14,7 +14,10 @@ public sealed class Bookmark
     /// <summary>The longest title a bookmark keeps, after trimming (SEC-010).</summary>
     public const int MaxTitleLength = 500;
 
-    /// <summary>The longest URL a bookmark keeps, as written: the length browsers and servers commonly support (SEC-010).</summary>
+    /// <summary>
+    /// The longest URL a bookmark keeps, in its escaped absolute form (<see cref="Uri.AbsoluteUri"/>), the form it's
+    /// stored in: the length browsers and servers commonly support (SEC-010).
+    /// </summary>
     public const int MaxUrlLength = 2048;
 
     public Guid Id { get; }
@@ -37,7 +40,7 @@ public sealed class Bookmark
             throw new ArgumentException("A bookmark needs an absolute http or https URL.", nameof(url));
         }
 
-        if (url.OriginalString.Length > MaxUrlLength)
+        if (url.AbsoluteUri.Length > MaxUrlLength)
         {
             throw new ArgumentException($"A bookmark's URL has at most {MaxUrlLength} characters.", nameof(url));
         }
