@@ -4,3 +4,7 @@
 // Non-public reflection reaches into a library's internals, which change without notice. Use its public API or a
 // documented extension point; if there is none, ask the library's authors for one.
 F:System.Reflection.BindingFlags.NonPublic;Don't reflect into non-public members; use the library's public API or a documented extension point (CRF-010)
+
+// UnsafeAccessor reaches the same internals with no reflection at all.
+T:System.Runtime.CompilerServices.UnsafeAccessorAttribute;Don't reach into non-public members; use the library's public API or a documented extension point (CRF-010)
+T:System.Runtime.CompilerServices.UnsafeAccessorTypeAttribute;Don't reach into non-public types; use the library's public API or a documented extension point (CRF-010)
