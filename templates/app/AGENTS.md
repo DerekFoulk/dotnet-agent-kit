@@ -1,8 +1,10 @@
 # Agent instructions: {{Name}}
 
-This repo is **{{Name}}**. It follows dotnet-agent-kit {{KitVersion}} (commit `{{KitCommit}}`): the kit's rules, checks and agent instructions apply here.
+This repo is **{{Name}}**.
 
 <!-- kit:begin. Managed by dotnet-agent-kit: the sync job replaces everything from here to kit:end. Put this app's own notes under "This app", below kit:end. -->
+
+This repo follows dotnet-agent-kit {{KitVersion}} (commit `{{KitCommit}}`): the kit's rules, checks and agent instructions apply here.
 
 {{KitSections}}
 
