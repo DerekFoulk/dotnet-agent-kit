@@ -198,6 +198,18 @@ function Sync-KitApp {
                 Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs
                 [pscustomobject]@{ Path = $path; Action = 'Added' }
             }
+            elseif (-not $old) {
+                # The kit now has a file where the app made its own: the app's stays.
+                [pscustomobject]@{ Path = $path; Action = 'AppFileKept' }
+            }
+            elseif ($null -eq $ours) {
+                # The app deleted a kit file (or its kit block): it isn't brought back.
+                if ($theirs) { [pscustomobject]@{ Path = $path; Action = 'KeptDeleted' } }
+            }
+            elseif (-not $theirs -and -not $unedited) {
+                # The kit dropped a file the app edited: the app's copy stays, and is the app's from now on.
+                [pscustomobject]@{ Path = $path; Action = 'NowAppOwned' }
+            }
             elseif ($unedited -and -not $theirs) {
                 Remove-Item -LiteralPath $target
                 [pscustomobject]@{ Path = $path; Action = 'Removed' }
