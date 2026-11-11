@@ -51,4 +51,17 @@ Describe 'Add' {
         [Convert]::ToHexString([IO.File]::ReadAllBytes($fixture.Source)) | Should -Be ([Convert]::ToHexString($before))
     }
 
+    It 'reports text that isn''t in the file exactly once as <Expected>, and runs no tests for it' -ForEach @(
+        @{ Expected = 'NotFound'; Find = '$a * $b' }
+        @{ Expected = 'Ambiguous'; Find = '$a' }
+    ) {
+        # A mutant that changes nothing would "survive", which looks like a missing test when it's a typo; one
+        # matching several places would change more than the reviewer meant.
+        $fixture = New-Fixture
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'typo'; Find = $Find; Replace = '0' }
+
+        $result.Result | Should -Be $Expected
+        $result.Total | Should -Be 0
+    }
 }
