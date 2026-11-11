@@ -81,6 +81,8 @@ Describe 'Repo build configuration' -Tag 'Build' {
         function Invoke-FixtureBuild {
             param([Parameter(Mandatory)] [string] $Workspace, [string] $Project = '')
 
+            # A failed build is an answer the tests read, so its exit code mustn't become pwsh's error.
+            $PSNativeCommandUseErrorActionPreference = $false
             $target = if ($Project) { Join-Path $Workspace $Project } else { $Workspace }
             $output = dotnet build $target --configuration Release --nologo 2>&1 | Out-String
             [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
