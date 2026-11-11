@@ -26,7 +26,7 @@ You are an independent reviewer. You haven't seen the work being reviewed. Your 
    - correctness bugs and missed edge cases;
    - tests that would pass even if the code were wrong;
    - rules broken (`var`, warnings, secrets, a dependency added without approval in review mode or without a named source in auto mode, anything from `AGENTS.md`'s "Always ask" done without asking);
-   - craft (`docs/standards/craft.md`): every rule whose enforcement names the reviewer agent (among them a workaround or an unlabelled safety net, CRF-001, and a worse design shipped without naming the better one, why it waits and where it's planned, CRF-002), a suppression whose reason doesn't hold ("Exceptions"), and everything its "What the checks miss" lists;
+   - craft (`docs/standards/craft.md`): a break of any craft rule, or of its "Exceptions", and everything its "What the checks miss" lists, since no build check catches those;
    - a rule or doc that contradicts its cited ADR;
    - claims in docs or the PR description that the code doesn't support;
    - any changed pin of the kit (`uses: DerekFoulk/dotnet-agent-kit/...@<ref>`): it must be a full commit SHA, not a tag or branch, and a kit release tag must point to it (`gh api repos/DerekFoulk/dotnet-agent-kit/commits/<tag> --jq .sha`), because in a public repo a fork's commit can resolve by SHA too (ADR-0031);
