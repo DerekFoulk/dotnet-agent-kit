@@ -14,7 +14,8 @@ public sealed class BookmarksDbContext(DbContextOptions<BookmarksDbContext> opti
         modelBuilder.Entity<Bookmark>(bookmark =>
         {
             bookmark.HasKey(b => b.Id);
-            bookmark.Property(b => b.OwnerId).IsRequired();
+            // The owner is the token's sub claim, which OpenID Connect caps at 255 ASCII characters (Core 1.0, section 2).
+            bookmark.Property(b => b.OwnerId).IsRequired().HasMaxLength(255);
             bookmark.Property(b => b.Url).IsRequired().HasMaxLength(Bookmark.MaxUrlLength);
             bookmark.Property(b => b.Title).IsRequired().HasMaxLength(Bookmark.MaxTitleLength);
             bookmark.Property(b => b.CreatedAt).IsRequired();
