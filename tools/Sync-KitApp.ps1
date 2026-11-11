@@ -272,7 +272,17 @@ function Sync-KitApp {
 function Read-KitManifest {
     param([Parameter(Mandatory)] [string] $AppRoot)
 
-    Get-Content -Raw -LiteralPath (Join-Path $AppRoot '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+    $path = Join-Path $AppRoot '.kit/manifest.json'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "$AppRoot has no .kit/manifest.json, so it wasn't made from the kit." }
+    $manifest = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json -AsHashtable
+    foreach ($key in 'kitVersion', 'kitCommit', 'appName', 'files') {
+        if ($manifest -isnot [Collections.IDictionary] -or -not $manifest[$key]) {
+            throw "The app's .kit/manifest.json has no ""$key"". An app made before the sync job (ADR-0042) needs ""appName"", its solution's name, added by hand."
+        }
+    }
+    # A full SHA, never a branch or tag name, which could point somewhere else by now.
+    if ($manifest['kitCommit'] -cnotmatch '^[0-9a-f]{40}$') { throw "The app's .kit/manifest.json names '$($manifest['kitCommit'])', not a full kit commit SHA." }
+    $manifest
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
