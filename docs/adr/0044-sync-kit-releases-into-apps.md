@@ -1,6 +1,6 @@
-# ADR-0042: Sync kit releases into apps with a three-way merge of the app's edits
+# ADR-0044: Sync kit releases into apps with a three-way merge of the app's edits
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-10
 
 ## Context
@@ -48,25 +48,25 @@ Option 1: it keeps every app edit and delivers every kit change that doesn't col
 
 ## Decision
 
-Proposed: built as recommended in auto mode, and awaiting the owner. Reversing it means changing `Get-KitSyncAction` alone.
+Accepted, in auto mode (ADR-0035): the plan with this rule was posted in the D3 chat on 2026-11-10, and the owner's answer to it chose the route (ADR-0045) without changing the rule. The owner can reverse it, as with any merged change; that means changing `Get-KitSyncAction` alone.
 
 ## Consequences
 
-- `tools/Sync-KitApp.ps1 -AppRoot <app> -KitRoot <kit clone with tags> [-KitRef <vX.Y.Z>] -ReportPath <file>` does the file work. Without `-KitRef`, the release is the one the app's workflows pin the kit to, which Dependabot moves (ADR-0043). It refuses, before changing anything:
+- `tools/Sync-KitApp.ps1 -AppRoot <app> -KitRoot <kit clone with tags> [-KitRef <vX.Y.Z>] -ReportPath <file>` does the file work. Without `-KitRef`, the release is the one the app's workflows pin the kit to, which Dependabot moves (ADR-0045). It refuses, before changing anything:
   - a ref that isn't a release tag (`vX.Y.Z`) in the kit clone;
   - pins that disagree, or that no release tag points to (ADR-0031);
   - a release that doesn't come after the app's kit commit, so a sync never goes back;
   - a manifest that's missing, has no `appName`, or names no full commit SHA.
 
   When the app is already at the release, it changes nothing and writes no report.
-- The sync never writes `.github/workflows/`: Dependabot moves the kit pin there, and a workflow's own token can't push a workflow change (ADR-0043). A release that changes a workflow beyond its pin lists it as "WorkflowByHand", for a person to apply on the PR's branch.
+- The sync never writes `.github/workflows/`: Dependabot moves the kit pin there, and a workflow's own token can't push a workflow change (ADR-0045). A release that changes a workflow beyond its pin lists it as "WorkflowByHand", for a person to apply on the PR's branch.
 - It runs only the kit's own scripts (its exports, and its own `Build-AgentRules` for the generated files), never the app's `.kit/tools`, so the job that holds a write token runs no code from the app's repo.
 - `.kit/manifest.json` gains `appName`, the name the app was made with: the sync renders the app's files again under it. An app made before this ADR needs it added by hand.
 - The app's `AGENTS.md` names its kit version inside the kit block, so each sync updates that line.
 - `Export-KitApp.ps1` keeps the kit block pattern and the folders of generated rule files in one place each, `$KitBlockPattern` and `$GeneratedFolders`, which the sync reads.
 - A sync that changes the app's guardrails (its `AGENTS.md` "Working modes" or "Always ask", `.claude/settings.json`, the `finish-work` skill or the `reviewer` agent) is the owner's to merge, as any guardrail change is. Most will.
 - `Directory.Packages.props` stays the app's: a kit release that adds a package its build files need doesn't add it to the app. That shows as a failed restore in the sync PR's CI. Reporting it in the PR is a follow-up.
-- How the sync reaches an app as a pull request is ADR-0043.
+- How the sync reaches an app as a pull request is ADR-0045.
 - Not in scope: applying `templates/github/` settings and rulesets to an existing app, which needs an admin token (ADR-0033).
 
 ## Pillars affected

@@ -1,4 +1,4 @@
-# {{Name}}'s kit updates (the kit's ADR-0042). Dependabot moves the kit pin in this app's workflows to a new kit
+# {{Name}}'s kit updates (the kit's ADR-0044). Dependabot moves the kit pin in this app's workflows to a new kit
 # release; on that PR, the kit's shared workflow brings in the release's other kit-managed files, pushes them to
 # the PR and comments what needs a look. Pinned like ci.yml, and Dependabot moves this pin too, so the sync is
 # always the new release's. Check the pin against the release tag before merging (ADR-0031).

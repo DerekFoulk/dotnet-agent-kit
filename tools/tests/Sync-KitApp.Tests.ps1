@@ -1,9 +1,9 @@
 #Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
-# Sync-KitApp brings a newer kit release into an existing app (PR D3, ADR-0042). The tests build a throwaway kit
+# Sync-KitApp brings a newer kit release into an existing app (PR D3, ADR-0044). The tests build a throwaway kit
 # repo from this working tree with three release tags, export an app at v0.1.0 with Export-KitApp, edit the app the
-# ways ADR-0042 covers, change the kit for v0.2.0, and sync.
+# ways ADR-0044 covers, change the kit for v0.2.0, and sync.
 
 BeforeAll {
     # The kit's files, listed first, with this checkout's own ignore rules, global ones included: it's the
@@ -64,7 +64,7 @@ Describe 'Sync-KitApp' {
         $LASTEXITCODE | Should -Be 0
         $manifestBefore = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
 
-        # The app's own changes, one for each case ADR-0042 covers.
+        # The app's own changes, one for each case ADR-0044 covers.
         Add-Content -LiteralPath (Join-Path $app '.editorconfig') -Value '# app-edit-marker'   # merges with the kit's change
         Edit-FileText (Join-Path $app '.gitignore') '# dotenv files' '# dotenv files (app)'     # conflicts with the kit's change
         Remove-Item -LiteralPath (Join-Path $app '.claude/skills/plan-checklist/SKILL.md')       # deleted; the kit changes it
@@ -117,7 +117,7 @@ Describe 'Sync-KitApp' {
             }
         }
 
-        # Dependabot's PR: the kit pin, with its version comment, moved in every workflow (ADR-0042).
+        # Dependabot's PR: the kit pin, with its version comment, moved in every workflow (ADR-0044).
         foreach ($workflow in Get-ChildItem -LiteralPath (Join-Path $app '.github/workflows') -File) {
             Edit-FileText $workflow.FullName "@$v1 # v0.1.0" "@$v2 # v0.2.0"
         }
@@ -137,7 +137,7 @@ Describe 'Sync-KitApp' {
 
         It 'refuses an app whose manifest <Case>, and changes nothing' -ForEach @(
             @{ Case = 'is missing'; Change = { param($m) $null }; Message = '*has no .kit/manifest.json*' }
-            @{ Case = 'has no app name (made before ADR-0042)'; Change = { param($m) $m.Remove('appName'); $m }; Message = '*no "appName"*' }
+            @{ Case = 'has no app name (made before ADR-0044)'; Change = { param($m) $m.Remove('appName'); $m }; Message = '*no "appName"*' }
             @{ Case = 'has no full kit commit'; Change = { param($m) $m['kitCommit'] = 'v0.1.0'; $m }; Message = '*full kit commit*' }
         ) {
             $copy = Join-Path $TestDrive "manifest-$(New-Guid)"

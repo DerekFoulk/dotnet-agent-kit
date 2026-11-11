@@ -1,4 +1,4 @@
-# Brings a kit release into an app repo, on the Dependabot PR that moves the app's kit pin (ADR-0042). An app
+# Brings a kit release into an app repo, on the Dependabot PR that moves the app's kit pin (ADR-0044). An app
 # calls it from .github/workflows/kit-sync.yml on pull_request, pinned like its other kit workflows:
 #   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/kit-sync.reusable.yml@<commit SHA> # v0.2.0
 # Dependabot moves that pin too, so this file and the scripts it gets through kit-tools are the new release's.

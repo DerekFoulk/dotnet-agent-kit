@@ -156,7 +156,7 @@ function Write-KitManifest {
         kitRepository = 'DerekFoulk/dotnet-agent-kit'
         kitVersion    = $KitVersion
         kitCommit     = $Commit
-        # The sync job exports the app again at each kit version, under the same name (ADR-0042).
+        # The sync job exports the app again at each kit version, under the same name (ADR-0044).
         appName       = $Name
         files         = @($files)
     }

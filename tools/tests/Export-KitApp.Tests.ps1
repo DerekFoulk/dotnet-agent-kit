@@ -171,7 +171,7 @@ Describe 'Export-KitApp' {
         $listed['AGENTS.md']['sha256'] | Should -Be $blockHash
     }
 
-    # The sync job (PR D3, ADR-0042) exports the app again at each kit version, which needs the app's name.
+    # The sync job (PR D3, ADR-0044) exports the app again at each kit version, which needs the app's name.
     It 'records the app''s name in the manifest, so the sync job can export the app again' {
         $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
 
@@ -323,7 +323,7 @@ Describe 'Export-KitApp' {
     }
 
     # Dependabot moves the kit pin in the app's workflows, which a workflow's own token can't change, and the kit's
-    # sync workflow brings the rest of the release into the same PR (ADR-0042). The SDK pin moves with the kit, so
+    # sync workflow brings the rest of the release into the same PR (ADR-0044). The SDK pin moves with the kit, so
     # there's no dotnet-sdk entry; the app owns the file and adds ecosystems as it grows.
     It 'gives the app its own Dependabot config, for its NuGet packages and the kit pin' {
         Import-Module powershell-yaml

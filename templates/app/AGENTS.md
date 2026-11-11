@@ -43,7 +43,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 
 **Kit ADRs:** "ADR-NNNN" inside a kit-managed file (`docs/standards/`, the skills, the reviewer, the kit sections of this file) means the kit's ADR, at https://github.com/DerekFoulk/dotnet-agent-kit/tree/{{KitCommit}}/docs/adr. This app's own ADRs are in `docs/adr/`. Likewise, a path under `tools/` or `sample/` in `docs/standards/` describes how the kit enforces a rule in its own repo; this repo's commands are the Commands table above.
 
-**Kit-managed files, don't edit:** every file listed in `.kit/manifest.json`, and this file between `kit:begin` and `kit:end`. With each kit release, Dependabot opens a PR that moves the kit pin, and `.github/workflows/kit-sync.yml` adds the release's other kit-managed files to it, merging the kit's changes into any edit this app made and commenting each file that needs a look (kit ADR-0042, ADR-0043). To change one for good, change the kit.
+**Kit-managed files, don't edit:** every file listed in `.kit/manifest.json`, and this file between `kit:begin` and `kit:end`. With each kit release, Dependabot opens a PR that moves the kit pin, and `.github/workflows/kit-sync.yml` adds the release's other kit-managed files to it, merging the kit's changes into any edit this app made and commenting each file that needs a look (kit ADR-0044, ADR-0045). To change one for good, change the kit.
 
 **Generated files, don't edit:** `.github/copilot-instructions.md`, `.claude/rules/` and `.github/instructions/`. After editing this file, run `./.kit/tools/Build-AgentRules.ps1 -RepoRoot .` and commit both.
 

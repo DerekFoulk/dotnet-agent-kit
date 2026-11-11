@@ -1,11 +1,11 @@
-# ADR-0043: Dependabot moves an app's kit pin, and the kit sync adds the rest to its PR
+# ADR-0045: Dependabot moves an app's kit pin, and the kit sync adds the rest to its PR
 
 - **Status:** Accepted
 - **Date:** 2026-11-10
 
 ## Context
 
-The kit sync (ADR-0042) must reach each app as one pull request per kit release. That PR has to move the kit pin in the app's workflows (`uses: DerekFoulk/dotnet-agent-kit/.github/workflows/<file>@<commit SHA> # vX.Y.Z`), since the pin moves only with kit releases (ADR-0030, ADR-0032).
+The kit sync (ADR-0044) must reach each app as one pull request per kit release. That PR has to move the kit pin in the app's workflows (`uses: DerekFoulk/dotnet-agent-kit/.github/workflows/<file>@<commit SHA> # vX.Y.Z`), since the pin moves only with kit releases (ADR-0030, ADR-0032).
 
 A workflow's own token can't do that. GitHub refuses a push that creates or changes a file under `.github/workflows/` unless the token has the "workflows" permission, and `GITHUB_TOKEN` can't be given it. That's reported consistently in GitHub's community forum; no official page was found that says it outright. The owner has kept every app free of stored tokens so far (ADR-0030: tokens are the maintenance he wants to avoid). Agents never handle secrets (SEC-002).
 

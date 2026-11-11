@@ -255,7 +255,7 @@ If a step fails, it stops and says what's done and what's left, and whether the 
 
 ### Keep an app current
 
-Each new kit release reaches an app as one pull request, with no stored token (ADR-0042, ADR-0043):
+Each new kit release reaches an app as one pull request, with no stored token (ADR-0044, ADR-0045):
 
 1. The app's Dependabot (`.github/dependabot.yml`, its `github-actions` entry) opens a PR that moves the kit pin in the app's workflows to the new release, 7 days after it's out. Every kit reference is in one group, so it's one PR. Dependabot may change workflow files; a workflow's own token can't.
 2. On that PR, the app's `.github/workflows/kit-sync.yml` calls `kit-sync.reusable.yml` at the new pin, so the sync that runs is the release's own. It runs only on Dependabot's own GitHub Actions PRs from the app's repo.

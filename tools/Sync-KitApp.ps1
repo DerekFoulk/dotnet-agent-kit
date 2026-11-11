@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Brings a newer kit release into an existing app's files (PR D3, ADR-0042).
+    Brings a newer kit release into an existing app's files (PR D3, ADR-0044).
 
 .DESCRIPTION
     Reads the app's .kit/manifest.json and updates every kit-managed file, and the kit blocks of AGENTS.md and
@@ -12,7 +12,7 @@
     version and at the release, each with that version's own Export-KitApp, so every file comes out as that
     version makes it (.claude/settings.json included, ADR-0032). A file the app edited is merged three ways with
     the kit's change; overlapping changes keep the app's text. Workflow files are never written: a workflow's
-    own token can't push them. ADR-0042 has the full rule; -ReportPath gets the pull request's report of every
+    own token can't push them. ADR-0044 has the full rule; -ReportPath gets the pull request's report of every
     file that needs a look. When the app is already at the release, nothing changes and no report is written.
 
     kit-sync.reusable.yml runs it on Dependabot's kit-pin PR in an app. -KitRoot is a clone of the kit with its
@@ -44,7 +44,7 @@ $script:TextHash, $script:BlockPattern, $script:GeneratedFolders = & {
     , $script:GeneratedFolders
 }
 
-# What the sync does with one kit-managed path (ADR-0042), from the manifest entries at the app's version (Old) and
+# What the sync does with one kit-managed path (ADR-0044), from the manifest entries at the app's version (Old) and
 # at the release (Theirs), and the hash of the app's text ($null when the app has no such file or block):
 #   Added, Updated, Removed, Regenerated: the app gets the release's text, or loses the file.
 #   Merge: the app edited it and the kit changed it, so the two are merged (Merged, or Conflict if they overlap).
@@ -200,7 +200,7 @@ function Get-KitReleaseCommit {
     $commit
 }
 
-# The release the app's workflows pin the kit to: Dependabot moves that pin (ADR-0042). Every kit pin must name
+# The release the app's workflows pin the kit to: Dependabot moves that pin (ADR-0044). Every kit pin must name
 # the same commit, and a release tag must point to it, or it isn't trusted (ADR-0031).
 function Get-KitPinnedRelease {
     param(
@@ -277,7 +277,7 @@ function Sync-KitApp {
             $oursHash = if ($null -ne $ours) { & $script:TextHash -Text $ours }
             $action = Get-KitSyncAction -Old $old -Theirs $theirs -OursHash $oursHash -Generated (Test-KitGeneratedPath -Path $path)
             # A workflow's own token can't push a change under .github/workflows, so the sync never makes one:
-            # Dependabot moves the kit pin there, and anything else is listed for a person (ADR-0042).
+            # Dependabot moves the kit pin there, and anything else is listed for a person (ADR-0044).
             if ($path.StartsWith('.github/workflows/', [StringComparison]::Ordinal) -and $action -in 'Added', 'Updated', 'Removed', 'Regenerated', 'Merge') {
                 $action = 'WorkflowByHand'
             }
@@ -336,7 +336,7 @@ function Format-KitSyncReport {
 
     $kit = "https://github.com/$($Result.Repository)"
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add("Brings dotnet-agent-kit $($Result.ToVersion) (commit ``$($Result.ToCommit)``) into this app, from $($Result.FromVersion) (commit ``$($Result.FromCommit)``). The kit's sync job made it from ``.kit/manifest.json`` (kit ADR-0042): it updates the files the kit manages and the kit blocks of ``AGENTS.md`` and ``THIRD-PARTY-NOTICES.md``, and never touches this app's own files.")
+    $lines.Add("Brings dotnet-agent-kit $($Result.ToVersion) (commit ``$($Result.ToCommit)``) into this app, from $($Result.FromVersion) (commit ``$($Result.FromCommit)``). The kit's sync job made it from ``.kit/manifest.json`` (kit ADR-0044): it updates the files the kit manages and the kit blocks of ``AGENTS.md`` and ``THIRD-PARTY-NOTICES.md``, and never touches this app's own files.")
     $lines.Add('')
     $lines.Add("Release notes: $kit/releases/tag/$($Result.ToVersion). The kit's files at this release: $kit/tree/$($Result.ToCommit).")
 
@@ -385,7 +385,7 @@ function Read-KitManifest {
     $manifest = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json -AsHashtable
     foreach ($key in 'kitVersion', 'kitCommit', 'appName', 'files') {
         if ($manifest -isnot [Collections.IDictionary] -or -not $manifest[$key]) {
-            throw "The app's .kit/manifest.json has no ""$key"". An app made before the sync job (ADR-0042) needs ""appName"", its solution's name, added by hand."
+            throw "The app's .kit/manifest.json has no ""$key"". An app made before the sync job (ADR-0044) needs ""appName"", its solution's name, added by hand."
         }
     }
     # A full SHA, never a branch or tag name, which could point somewhere else by now.

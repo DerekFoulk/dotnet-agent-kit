@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
-# The kit sync in an app repo (PR D3, ADR-0042). Dependabot moves the kit pin in the app's workflows, which a
+# The kit sync in an app repo (PR D3, ADR-0044). Dependabot moves the kit pin in the app's workflows, which a
 # workflow's own token can't change; on that PR, the app's kit-sync.yml calls kit-sync.reusable.yml, which runs
 # Sync-KitApp and pushes the other kit-managed changes to the same PR with GITHUB_TOKEN. SharedCi.Tests.ps1 checks
 # what every shared workflow must do (kit-tools, pins, no ${{ }} in a script); this checks the rest.
