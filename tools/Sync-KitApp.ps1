@@ -187,6 +187,17 @@ function Merge-KitText {
     [IO.File]::ReadAllText($files[0])
 }
 
+# A workflow's text without its kit pins (the commit SHA and its version comment), which Dependabot moves: what's
+# left is what a person would have to change.
+function Remove-KitPin {
+    param(
+        [AllowNull()] [string] $Text,
+        [Parameter(Mandatory)] [string] $Repository
+    )
+
+    $Text -replace "(uses:\s*$([regex]::Escape($Repository))/\S*@)[0-9a-f]{40}(?:[ \t]*#[ \t]*v\d+\.\d+\.\d+)?", '${1}' -replace "`r`n", "`n"
+}
+
 # The commit a release tag (vX.Y.Z) in the kit repo points to. Only a tag counts: ADR-0031 trusts a kit pin only
 # when a release tag in the kit's own repo points to it.
 function Get-KitReleaseCommit {
@@ -279,9 +290,12 @@ function Sync-KitApp {
             $oursHash = if ($null -ne $ours) { & $script:TextHash -Text $ours }
             $action = Get-KitSyncAction -Old $old -Theirs $theirs -OursHash $oursHash -Generated (Test-KitGeneratedPath -Path $path)
             # A workflow's own token can't push a change under .github/workflows, so the sync never makes one:
-            # Dependabot moves the kit pin there, and anything else is listed for a person (ADR-0044).
+            # Dependabot moves the kit pin there, and anything else is listed for a person (ADR-0045).
             if ($path.StartsWith('.github/workflows/', [StringComparison]::Ordinal) -and $action -in 'Added', 'Updated', 'Removed', 'Regenerated', 'Merge') {
-                $action = 'WorkflowByHand'
+                $pinOnly = $old -and $theirs -and
+                    (Remove-KitPin -Text (Get-KitEntryText -Root $baseRoot -Entry $old) -Repository $result.Repository) -ceq
+                    (Remove-KitPin -Text (Get-KitEntryText -Root $newRoot -Entry $theirs) -Repository $result.Repository)
+                $action = $pinOnly ? 'None' : 'WorkflowByHand'
             }
             switch ($action) {
                 { $_ -in 'Added', 'Updated', 'Regenerated' } { Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs }
