@@ -140,6 +140,19 @@ Describe 'Repo build configuration' -Tag 'Build' {
                 $env:GIT_COMMITTER_DATE = $savedDate
             }
         }
+
+        # A build that fails is the answer the violation tests read, so it comes back as an exit code, not pwsh's error.
+        It 'returns a failed build''s exit code and output, even where native exit codes are errors' {
+            $ErrorActionPreference = 'Stop'
+            $PSNativeCommandUseErrorActionPreference = $true
+            $workspace = New-FixtureWorkspace -Fixture 'UsesVar'
+
+            $build = try { Invoke-FixtureBuild -Workspace $workspace } catch { [pscustomobject]@{ ExitCode = 'threw'; Output = $_.Exception.Message } }
+
+            $build.ExitCode | Should -BeOfType [int] -Because $build.Output
+            $build.ExitCode | Should -Not -Be 0
+            $build.Output | Should -Match 'error IDE0008'
+        }
     }
 
     Context 'violations fail the build' {
