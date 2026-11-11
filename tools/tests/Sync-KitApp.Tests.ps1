@@ -318,6 +318,19 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($expected -join "`n")
         }
 
+        # Review: an empty, self-closing kit group must not send the kit's packages into the next ItemGroup.
+        It 'adds a new group when the app''s dotnet-agent-kit ItemGroup is self-closing' {
+            $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
+            $lines = '<Project>', '  <ItemGroup Label="dotnet-agent-kit" />', "  <ItemGroup Condition=""'`$(Ci)' == 'true'"">", '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
+            Set-FileText (Join-Path $appRoot 'Directory.Packages.props') ($lines -join "`n")
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            $group = "  <!-- Added by the kit sync: packages the kit's files need (kit ADR-0044). -->", '  <ItemGroup Label="dotnet-agent-kit">', "    $analyzer", '  </ItemGroup>', ''
+            $expected = $lines[0..5] + $group + $lines[6..7]
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -BeExactly ($expected -join "`n")
+        }
+
         It 'adds to the app''s dotnet-agent-kit ItemGroup when it has one, in the file''s line endings' {
             $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
             $lines = '<Project>', '  <ItemGroup Label="dotnet-agent-kit">', '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
