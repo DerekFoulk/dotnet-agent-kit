@@ -114,6 +114,8 @@ public sealed class BookmarksApiTests : IDisposable
         { "no URL", "url", """{"title":"A"}""" },
         { "a URL past the limit", "url", $$"""{"url":"{{LongUrl(Bookmark.MaxUrlLength + 1)}}","title":"A"}""" },
         // Review 1: without a path, the stored form gains a "/", so a URL written in exactly the limit is past it.
+        // Review 2: a relative URL has no stored form, but it's still bounded where it enters (SEC-010).
+        { "a relative URL past the limit", "url", $$"""{"url":"articles/{{new string('a', Bookmark.MaxUrlLength)}}","title":"A"}""" },
         { "a URL with no path, past the limit as stored", "url", $$"""{"url":"https://example.com?q={{new string('a', Bookmark.MaxUrlLength - "https://example.com?q=".Length)}}","title":"A"}""" },
     };
 
