@@ -7,6 +7,8 @@ Describe 'Test-Runbook.ps1' {
 
         function New-RunbookText {
             param(
+                [string] $Status = 'Draft',
+                [string] $Reviewed = '2026-11-11',
                 [string[]] $Omit = @(),
                 [hashtable] $Body = @{}
             )
@@ -16,6 +18,8 @@ Describe 'Test-Runbook.ps1' {
             foreach ($key in $Body.Keys) { $sections[$key] = $Body[$key] }
 
             $lines = @('# Contoso.Orders runbook', '')
+            if ('Status' -notin $Omit) { $lines += "- **Status:** $Status" }
+            if ('Last reviewed' -notin $Omit) { $lines += "- **Last reviewed:** $Reviewed" }
             foreach ($name in $sections.Keys) {
                 if ($name -notin $Omit) { $lines += '', "## $name", '', $sections[$name] }
             }
@@ -67,6 +71,32 @@ Describe 'Test-Runbook.ps1' {
 
             @($sections.Keys) | Should -Be $script:RequiredSections
             $sections['How to deploy a release'] | Should -Match '## not a heading'
+        }
+    }
+
+    Context 'status and review date' {
+        It 'accepts the status ''<Status>''' -ForEach @(@{ Status = 'Draft' }, @{ Status = 'In use' }) {
+            New-Runbook -Status $Status
+
+            Get-Message | Should -BeNullOrEmpty
+        }
+
+        It 'reports a missing status line' {
+            New-Runbook -Omit 'Status'
+
+            Get-Message | Should -Be "the '- **Status:** ' line is missing"
+        }
+
+        It 'reports a status other than Draft or In use' {
+            New-Runbook -Status 'Live'
+
+            Get-Message | Should -Be "status 'Live' must be 'Draft' or 'In use'"
+        }
+
+        It 'reports a missing review date line' {
+            New-Runbook -Omit 'Last reviewed'
+
+            Get-Message | Should -Be "the '- **Last reviewed:** ' line is missing"
         }
     }
 }
