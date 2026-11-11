@@ -290,13 +290,18 @@ Describe '.globalconfig' {
     BeforeAll {
         # The IDs of the rules these lines turn on: any severity but none. Like Roslyn's analyzer config parser, it takes
         # '=' or ':' between key and value, ignores case, and drops a comment that starts with '#' or ';'. Unlike it, it
-        # reads a rule ID as word characters only, which every CA, IDE and RS ID is.
+        # reads a rule ID as word characters only, which every CA, IDE and RS ID is. It stops at any other line but
+        # is_global and global_level, so nothing in the file turns rules on unseen.
         function Get-EnabledRule([string[]] $Line) {
+            $severities = 'default', 'error', 'warning', 'suggestion', 'silent', 'refactoring', 'none'
             foreach ($text in $Line) {
                 $setting = ($text -replace '[#;].*$', '').Trim()
-                if ($setting -match '^dotnet_diagnostic\.(?<id>\w+)\.severity\s*[=:]\s*(?<severity>\w+)$' -and $Matches['severity'] -ne 'none') {
-                    $Matches['id']
+                if (-not $setting) { continue }
+                if ($setting -match '^(?<key>[\w.-]+)\s*[=:]\s*(?<value>.*)$' -and $Matches['key'] -in 'is_global', 'global_level') { continue }
+                if ($setting -notmatch '^dotnet_diagnostic\.(?<id>\w+)\.severity\s*[=:]\s*(?<severity>\w+)$' -or $Matches['severity'] -notin $severities) {
+                    throw "Get-EnabledRule doesn't recognise this .globalconfig line: '$text'"
                 }
+                if ($Matches['severity'] -ne 'none') { $Matches['id'] }
             }
         }
     }
