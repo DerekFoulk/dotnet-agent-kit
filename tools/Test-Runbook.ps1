@@ -31,8 +31,9 @@ $script:RequiredSections = @(
 # Draft until the app's first production deployment; In use from then on.
 $script:Statuses = 'Draft', 'In use'
 
-# What the template marks for the app to fill in, such as "[fill in: the production URL]", in any case.
-$script:PlaceholderPattern = '(?i)\[fill in:[^\]]*\]'
+# What the template marks for the app to fill in, such as "[fill in: the production URL]": in any case, wherever an editor
+# wraps it, and even inside an HTML comment (a reader doesn't see it there, but it errs on the safe side).
+$script:PlaceholderPattern = '(?i)\[\s*fill\s+in\s*:[^\]]*\]'
 
 function New-Problem {
     param([string] $Message)
