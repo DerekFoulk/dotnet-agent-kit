@@ -46,10 +46,10 @@ using (IServiceScope scope = app.Services.CreateScope())
 
 app.MapDefaultEndpoints();
 // The OpenAPI document maps the whole API, so it is served in Development only (API-003); the contract test
-// snapshots it.
+// snapshots it. It's anonymous, so a developer or a client generator can read it before having a token (SEC-007).
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
 }
 
 app.MapBookmarks();
