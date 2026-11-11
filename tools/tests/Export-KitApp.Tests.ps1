@@ -95,11 +95,14 @@ Describe 'Export-KitApp' {
         }
         Get-Content -Raw (Join-Path $app 'README.md') | Should -Match '# Contoso\.Orders'
 
-        # ${{ github.ref }} in a workflow is GitHub's syntax, not a template placeholder. Only the rendered files are
-        # looked at: a copied kit file keeps its own text, such as {{baseUrl}} in a curated skill's .http example.
-        $rendered = @($map | Where-Object { $_.Kind -eq 'Template' } | ForEach-Object { Join-Path $app $_.Target })
-        $rendered.Count | Should -BeGreaterThan 5
-        $leftovers = $rendered | ForEach-Object { Select-String -LiteralPath $_ -Pattern '\{\{[A-Za-z]+\}\}' }
+        # ${{ github.ref }} in a workflow is GitHub's syntax, not a template placeholder. The curated skills' folders
+        # are left out: they keep upstream's text, such as {{baseUrl}} in an .http example (ADR-0042).
+        $lock = Get-Content -Raw (Join-Path $checkout 'tools' 'dotnet-skills.json') | ConvertFrom-Json -AsHashtable
+        $curated = @($lock['skills'] | ForEach-Object { (Join-Path $app '.claude' 'skills' $_['name']) + [IO.Path]::DirectorySeparatorChar })
+        $curated.Count | Should -BeGreaterThan 0
+        $leftovers = Get-ChildItem -LiteralPath $app -Recurse -File |
+            Where-Object { $path = $_.FullName; -not ($curated | Where-Object { $path.StartsWith($_, [StringComparison]::Ordinal) }) } |
+            Select-String -Pattern '\{\{[A-Za-z]+\}\}'
         @($leftovers | ForEach-Object { "$($_.Path):$($_.LineNumber)" }) | Should -BeNullOrEmpty
     }
 
