@@ -33,18 +33,22 @@ public sealed class BookmarksApiTests : IDisposable
         all!.Items.Should().ContainSingle().Which.Should().Be(body);
     }
 
-    [Fact]
-    public async Task SavingAndReadingABookmarkAnswerTheSameUrl()
+    [Theory]
+    [InlineData("HTTPS://Example.COM:443/a/../b", "https://example.com/b")]
+    // Review 3: a stray % leaves %41 escaped in the first absolute form and decoded in the next, so the form the
+    // bookmark holds must be the very text that's stored.
+    [InlineData("http://x/%%41", "http://x/%25%41")]
+    public async Task SavingAndReadingABookmarkAnswerTheSameUrl(string written, string stored)
     {
         // Review 2: the 201 echoed the URL as written while GET answered its stored form; both now answer the stored one.
-        using StringContent body = new("""{"url":"HTTPS://Example.COM:443/a/../b","title":"A"}""", System.Text.Encoding.UTF8, "application/json");
+        using StringContent body = new($$"""{"url":"{{written}}","title":"A"}""", System.Text.Encoding.UTF8, "application/json");
 
         using HttpResponseMessage created = await Client.PostAsync(new Uri("/bookmarks", UriKind.Relative), body, TestContext.Current.CancellationToken);
         JsonElement saved = await created.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         JsonElement fetched = await Client.GetFromJsonAsync<JsonElement>(created.Headers.Location, TestContext.Current.CancellationToken);
 
-        saved.GetProperty("url").GetString().Should().Be("https://example.com/b");
-        fetched.GetProperty("url").GetString().Should().Be("https://example.com/b");
+        saved.GetProperty("url").GetString().Should().Be(stored);
+        fetched.GetProperty("url").GetString().Should().Be(stored);
     }
 
     [Fact]
@@ -62,6 +66,7 @@ public sealed class BookmarksApiTests : IDisposable
     [Theory]
     [InlineData("ftp://example.com/file")]
     [InlineData("articles/1")]
+    [InlineData("http://user@\u202E/")] // Review 3: absolute http, but its stored form has no host.
     public async Task PostingAUrlThatIsNotHttpIsABadRequest(string address)
     {
         // Review 1: a relative URL has no absolute form for UriLength to measure, so it's measured as written and

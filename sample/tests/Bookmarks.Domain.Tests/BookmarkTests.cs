@@ -97,6 +97,19 @@ public sealed class BookmarkTests
     }
 
     [Fact]
+    public void CreateRefusesAUrlWhoseStoredFormCanNotBeReadBack()
+    {
+        // Review 3: Uri drops bidi controls, so this parses as absolute http, but its stored form (http://user@/) has
+        // no host and can't be parsed again. It's the caller's bad input: an ArgumentException naming the URL, not a
+        // UriFormatException the API would answer with a 500.
+        Uri hostless = new("http://user@‮/");
+
+        Action create = () => Bookmark.Create(Owner, hostless, "Title", s_now);
+
+        create.Should().Throw<ArgumentException>().WithParameterName("url");
+    }
+
+    [Fact]
     public void CreateMeasuresTheUrlInItsStoredForm()
     {
         // Review 1: the limit is on the URL as stored, its escaped absolute form. Without a path, that form gains the
