@@ -35,4 +35,20 @@ Describe 'Add' {
         $result.Result | Should -Be 'Killed'
         $result.Failed | Should -BeGreaterThan 0
     }
+
+    It 'reports a mutant the tests miss as survived, and restores the file byte for byte after every mutant' {
+        $fixture = New-Fixture
+        $before = [IO.File]::ReadAllBytes($fixture.Source)
+
+        # Renaming a parameter changes nothing the test can see.
+        $results = @(& $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @(
+                @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+                @{ Name = 'rename'; Find = '[int] $b) { $a + $b }'; Replace = '[int] $c) { $a + $c }' }
+            ))
+
+        @($results.Result) | Should -Be @('Killed', 'Survived')
+        $results[1].Failed | Should -Be 0
+        [Convert]::ToHexString([IO.File]::ReadAllBytes($fixture.Source)) | Should -Be ([Convert]::ToHexString($before))
+    }
+
 }
