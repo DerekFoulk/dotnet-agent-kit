@@ -102,6 +102,50 @@ public sealed class BookmarksApiTests : IDisposable
         problem.TryGetProperty("errors", out _).Should().BeTrue("a validation problem names the invalid field");
     }
 
+    public static TheoryData<string, string, string> InvalidBodies() => new()
+    {
+        { "no title", "title", """{"url":"https://example.com/a"}""" },
+        { "a blank title", "title", """{"url":"https://example.com/a","title":"   "}""" },
+        { "a title past the limit", "title", $$"""{"url":"https://example.com/a","title":"{{new string('t', Bookmark.MaxTitleLength + 1)}}"}""" },
+        { "no URL", "url", """{"title":"A"}""" },
+        { "a URL past the limit", "url", $$"""{"url":"{{LongUrl(Bookmark.MaxUrlLength + 1)}}","title":"A"}""" },
+    };
+
+    [Theory]
+    [MemberData(nameof(InvalidBodies))]
+    public async Task AnInvalidBodyIsAValidationProblemThatNamesTheFieldButNotTheValue(string what, string field, string json)
+    {
+        // SEC-010 and API-006: the request is checked against the contract before the handler runs. The answer names
+        // the field and the rule, never the value, so nothing a client sent is reflected back.
+        using StringContent body = new(json, System.Text.Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await Client.PostAsync(new Uri("/bookmarks", UriKind.Relative), body, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, what);
+        (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json");
+        string text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using JsonDocument document = JsonDocument.Parse(text);
+        JsonElement problem = document.RootElement;
+        problem.TryGetProperty("errors", out JsonElement errors).Should().BeTrue($"{what} is a validation problem");
+        errors.EnumerateObject().Select(error => error.Name).Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(field, options => options.IgnoringCase(), $"{what} is the {field}'s fault");
+        text.Should().NotContain("ttttt").And.NotContain("aaaaa", "the answer never repeats what the client sent");
+    }
+
+    [Fact]
+    public async Task ATitleAndAUrlAtTheirLongestAreSaved()
+    {
+        // SEC-010: the contract's limits are the domain's (Bookmark.MaxTitleLength and MaxUrlLength), checked here at
+        // both edges: one past is refused above, and exactly at the limit is saved.
+        CreateBookmarkRequest request = new(new Uri(LongUrl(Bookmark.MaxUrlLength)), new string('t', Bookmark.MaxTitleLength));
+
+        using HttpResponseMessage response = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    private static string LongUrl(int length) => "https://example.com/" + new string('a', length - "https://example.com/".Length);
+
     [Fact]
     public async Task MalformedInputIsAClientErrorProblemInDevelopmentToo()
     {
