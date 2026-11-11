@@ -1,5 +1,6 @@
 // APIs the build rejects (RS0030), through Microsoft.CodeAnalysis.BannedApiAnalyzers (CRF-010, ADR-0043).
 // Format: a documentation comment ID, then an optional message after ';' (the analyzer's help page in dotnet/roslyn).
+// The analyzer ignores an ID that names nothing, so tools/tests/BuildConfig.Tests.ps1 checks that every ID resolves.
 
 // Non-public reflection reaches into a library's internals, which change without notice. Use its public API or a
 // documented extension point; if there is none, ask the library's authors for one.

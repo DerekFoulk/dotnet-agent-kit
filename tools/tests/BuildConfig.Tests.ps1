@@ -117,3 +117,53 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 }
+
+# The banned-API analyzer ignores an entry that names no symbol, so a typo in BannedSymbols.txt would lift a ban
+# without a sound (review 1 of PR 36). Each documentation comment ID must resolve on the runtime these tests use.
+Describe 'BannedSymbols.txt' {
+    BeforeAll {
+        $bannedPath = Join-Path $PSScriptRoot '..' '..' 'BannedSymbols.txt'
+
+        function Find-KitType {
+            param([Parameter(Mandatory)] [string] $FullName)
+
+            # Load the assembly named by the namespace, or a prefix of it, so types outside CoreLib resolve too.
+            $parts = $FullName.Split('.')
+            for ($length = $parts.Count - 1; $length -ge 1; $length--) {
+                try { [void][Reflection.Assembly]::Load(($parts[0..($length - 1)] -join '.')) } catch [IO.FileNotFoundException] { }
+            }
+            [AppDomain]::CurrentDomain.GetAssemblies() | ForEach-Object { $_.GetType($FullName, $false) } | Where-Object { $_ } | Select-Object -First 1
+        }
+
+        function Test-DocumentationId {
+            param([Parameter(Mandatory)] [string] $Id)
+
+            if ($Id -notmatch '^(?<kind>[TFPM]):(?<name>[^(]+)(\((?<params>.*)\))?$') { return $false }
+            $name = $Matches['name']
+            if ($Matches['kind'] -eq 'T') { return $null -ne (Find-KitType $name) }
+
+            $owner = Find-KitType ($name.Substring(0, $name.LastIndexOf('.')))
+            $member = $name.Substring($name.LastIndexOf('.') + 1)
+            if ($null -eq $owner) { return $false }
+            switch ($Matches['kind']) {
+                'F' { return $null -ne $owner.GetField($member) }
+                'P' { return $null -ne $owner.GetProperty($member) }
+                'M' {
+                    $wanted = if ($Matches['params']) { $Matches['params'].Split(',') } else { @() }
+                    return [bool]($owner.GetMethods() | Where-Object {
+                        $_.Name -eq $member -and ((@($_.GetParameters() | ForEach-Object { $_.ParameterType.FullName }) -join ',') -eq ($wanted -join ','))
+                    })
+                }
+            }
+        }
+    }
+
+    It 'names only symbols that exist' {
+        $ids = @(Get-Content -LiteralPath $bannedPath | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
+
+        $ids.Count | Should -BeGreaterThan 0
+        foreach ($id in $ids) {
+            Test-DocumentationId -Id $id | Should -BeTrue -Because "'$id' should name a real symbol, or the ban does nothing"
+        }
+    }
+}
