@@ -15,4 +15,9 @@
     <Project Path="sample/tests/Bookmarks.FunctionalTests/Bookmarks.FunctionalTests.csproj" />
     <Project Path="sample/tests/Bookmarks.IntegrationTests/Bookmarks.IntegrationTests.csproj" />
   </Folder>
+  <Folder Name="/tools/" />
+  <Folder Name="/tools/CodeShape/">
+    <Project Path="tools/CodeShape/src/Kit.CodeShape/Kit.CodeShape.csproj" />
+    <Project Path="tools/CodeShape/tests/Kit.CodeShape.Tests/Kit.CodeShape.Tests.csproj" />
+  </Folder>
 </Solution>
