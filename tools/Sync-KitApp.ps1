@@ -332,12 +332,13 @@ function Add-KitPackage {
     $result
 }
 
-# The commit a release tag (vX.Y.Z) in the kit repo points to. Only a tag counts: ADR-0031 trusts a kit pin only
-# when a release tag in the kit's own repo points to it.
 # Gives the app each file the release starts every app with for the app to own, such as its runbook (ADR-0047),
 # when the app's kit version didn't have it yet and the app lacks it: AppFileAdded. An app's own file at that path
-# stays: AppFileKept. Only ever adds; a file the app owns already is never changed, and one it deleted after its kit
-# version added it isn't brought back. A workflow is listed for a person instead, since the sync can't write one.
+# stays: AppFileKept, unless it already has the kit's text (in any line endings). Only ever adds; a file the app owns
+# already is never changed, and one it deleted after its kit version added it isn't brought back. A workflow is
+# listed for a person instead, since the sync can't write one. The .kit/ and generated-path checks repeat what
+# $Managed and the base export already exclude today, so a later export that changes either can't make the sync
+# write there.
 function Add-KitAppOwnedFile {
     param(
         [Parameter(Mandatory)] [string] $AppRoot,
@@ -355,7 +356,8 @@ function Add-KitAppOwnedFile {
         if (Test-Path -LiteralPath (Join-Path $BaseRoot $path)) { continue }
         $target = Join-Path $AppRoot $path
         if (Test-Path -LiteralPath $target) {
-            [pscustomobject]@{ Path = $path; Action = 'AppFileKept'; Detail = $null }
+            $same = (& $script:TextHash -Text ([IO.File]::ReadAllText($target))) -eq (& $script:TextHash -Text ([IO.File]::ReadAllText((Join-Path $NewRoot $path))))
+            if (-not $same) { [pscustomobject]@{ Path = $path; Action = 'AppFileKept'; Detail = $null } }
         }
         elseif ($path.StartsWith('.github/workflows/', [StringComparison]::Ordinal)) {
             [pscustomobject]@{ Path = $path; Action = 'WorkflowByHand'; Detail = $null }
@@ -368,6 +370,8 @@ function Add-KitAppOwnedFile {
     }
 }
 
+# The commit a release tag (vX.Y.Z) in the kit repo points to. Only a tag counts: ADR-0031 trusts a kit pin only
+# when a release tag in the kit's own repo points to it.
 function Get-KitReleaseCommit {
     param(
         [Parameter(Mandatory)] [string] $KitRoot,
