@@ -30,15 +30,18 @@ Describe 'Get-DotnetSkillBlobId' {
 Describe 'Invoke-GitText' {
     # git's errors go to the console, outside the output, so a child pwsh catches them.
     It 'lets git''s errors through, and drops them with -Quiet' {
-        $script = Join-Path $PSScriptRoot '..' 'Update-DotnetSkills.ps1'
-        $notRepo = New-Item -ItemType Directory -Path (Join-Path $TestDrive "not-a-repo-$(New-Guid)")
-        $call = ". '$script'; Invoke-GitText -Arguments @('-C', '$($notRepo.FullName)', 'ls-tree', 'HEAD')"
+        # An empty repo has no HEAD, so ls-tree fails whatever repo lies above it. Only "fatal:" is matched: git
+        # translates the rest. Quotes are doubled for the child's single-quoted strings.
+        $script = (Join-Path $PSScriptRoot '..' 'Update-DotnetSkills.ps1').Replace("'", "''")
+        $empty = Join-Path $TestDrive "empty-$(New-Guid)"
+        git init -q $empty
+        $call = ". '$script'; Invoke-GitText -Arguments @('-C', '$($empty.Replace("'", "''"))', 'ls-tree', 'HEAD')"
 
         $loud = (pwsh -NoProfile -Command $call 2>&1) -join "`n"
         $quiet = (pwsh -NoProfile -Command "$call -Quiet" 2>&1) -join "`n"
 
-        $loud | Should -Match 'fatal: not a git repository'
-        $quiet | Should -Not -Match 'fatal'
+        $loud | Should -Match 'fatal:'
+        $quiet | Should -Not -Match 'fatal:'
     }
 }
 
