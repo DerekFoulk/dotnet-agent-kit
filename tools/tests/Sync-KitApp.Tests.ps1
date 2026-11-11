@@ -117,6 +117,10 @@ Describe 'Sync-KitApp' {
             }
         }
 
+        # App code the sync must never run: the job that runs it holds a write token (ADR-0044).
+        $appCodeRan = Join-Path $TestDrive 'app-code-ran'
+        Edit-FileText (Join-Path $app '.kit/tools/Build-AgentRules.ps1') "`$ErrorActionPreference = 'Stop'" "`$ErrorActionPreference = 'Stop'`n[IO.File]::WriteAllText('$appCodeRan', 'ran')"
+
         # The app's own job in a kit workflow, whose only kit change at v0.2.0 is the pin.
         Add-Content -LiteralPath (Join-Path $app '.github/workflows/ci.yml') -Value '# app-ci-marker'
 
@@ -268,7 +272,7 @@ Describe 'Sync-KitApp' {
                 if ($file) { $file[0].Action } else { '(none)' }
             }
             $edited = '.editorconfig', '.gitignore', '.claude/skills/plan-checklist/SKILL.md', '.claude/skills/app-skill/SKILL.md', $instructions,
-            '.github/workflows/mutation.yml', '.github/workflows/ci.yml'
+            '.github/workflows/mutation.yml', '.github/workflows/ci.yml', '.kit/tools/Build-AgentRules.ps1'
 
             # No -KitRef: the release is the one Dependabot pinned. An error is kept for the first test to show.
             $syncError = $null
@@ -317,6 +321,12 @@ Describe 'Sync-KitApp' {
             $ci = Get-Content -Raw (Join-Path $app '.github/workflows/ci.yml')
             $ci | Should -Match 'app-ci-marker'
             $ci | Should -Match ([regex]::Escape("@$v2 # v0.2.0"))
+        }
+
+        # Review: the job that runs the sync holds a write token, so it runs only the kit's own scripts.
+        It 'runs none of the app''s code, not even its copy of the kit''s scripts' {
+            Test-Path -LiteralPath $appCodeRan | Should -BeFalse
+            Get-Content -Raw (Join-Path $app '.kit/tools/Build-AgentRules.ps1') | Should -Match 'app-code-ran' -Because 'the app''s edit to a file the kit didn''t change stays'
         }
 
         It 'removes a file the kit no longer has, when the app didn''t edit it' {
