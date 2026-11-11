@@ -8,7 +8,7 @@
 # Each update waits before Dependabot proposes it: 7 days, and 14 for a major, so a release that's pulled or
 # found compromised in its first days never reaches a PR (the kit's ADR-0041); give an ecosystem you add the
 # same cooldown (github-actions supports only default-days). Security updates, which New-KitApp turns on,
-# don't wait. Shortening or narrowing the wait is the owner's to merge.
+# don't wait. Shortening or narrowing the wait is a guardrail change: an agent merges it only on the owner's yes.
 version: 2
 updates:
   - package-ecosystem: nuget

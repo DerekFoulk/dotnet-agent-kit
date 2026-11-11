@@ -20,7 +20,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: GIT-003
-    statement: "Nobody pushes directly to main or force-pushes it; agents merge a PR only as the working mode allows (in review mode, when the owner says so for that PR), never a release PR, and a change to the guardrails only on the owner's yes for that PR."
+    statement: "Nobody pushes directly to main or force-pushes it; agents merge a PR only as the working mode allows (in review mode, when the owner says so for that PR), never a release PR, and a change to the guardrails only on the owner's yes for that PR at its head commit."
     why: "Branch protection was approved in one project; the owner then chose auto mode by default, where the agent merges its own PRs once they're green and reviewed, and kept releases his (ADR-0035)."
     layer: owner
     status: accepted

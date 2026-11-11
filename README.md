@@ -104,7 +104,7 @@ Agents work in **auto** mode unless you switch to **review** (ADR-0035):
 | Plans | The agent posts its plan and builds it | You approve each non-trivial plan first |
 | Packages | The agent adds one when the kit's sources name it, and says so in the PR | The agent asks you first |
 | CI and repo settings | The agent goes ahead, except for removing or weakening a check, changing a ruleset, branch protection or the merge settings, or turning off Dependabot alerts or security updates | The agent asks you first |
-| Merging | The agent merges its own PR once CI passes and the reviewer's findings are answered, and Dependabot's patch and minor updates of NuGet packages, .NET tools and the SDK (ADR-0041). A PR that changes the guardrails, a major, a 0.x package or Actions bump, and a release PR are yours | You merge, or tell the agent to for that PR |
+| Merging | The agent merges its own PR once CI passes and the reviewer's findings are answered, and Dependabot's patch and minor updates of NuGet packages, .NET tools and the SDK (ADR-0041). A PR that changes the guardrails merges on your yes, given in the chat for its head commit; a major, a 0.x package or Actions bump, and a release PR are yours | You merge, or tell the agent to for that PR |
 | "Won't fix" on a review finding | The agent decides, and gives the reason | You decide |
 
 In both modes, the agent asks before:
