@@ -10,19 +10,17 @@ namespace Bookmarks.Architecture.Tests;
 /// <summary>No two namespaces depend on each other, directly or through others (CRF-007, acyclic dependencies).</summary>
 public sealed class NamespaceCycleTests
 {
-    private const string FixtureRoot = "Bookmarks.Architecture.Tests.CycleFixture";
+    private static readonly ArchUnitNET.Domain.Architecture s_fixtures =
+        new ArchLoader().LoadAssemblies(typeof(NamespaceCycleTests).Assembly).Build();
 
     [Fact]
     public void TheSamplesNamespacesFormNoCycle() =>
         NamespaceCycles.Rule("Bookmarks").Check(SampleArchitecture.Value);
 
     [Fact]
-    public void TheRuleCatchesACycleBetweenTwoNamespaces()
-    {
-        ArchUnitNET.Domain.Architecture fixture = new ArchLoader().LoadAssemblies(typeof(NamespaceCycleTests).Assembly).Build();
-
-        NamespaceCycles.Rule(FixtureRoot).HasNoViolations(fixture).Should().BeFalse("Left and Right depend on each other");
-    }
+    public void TheRuleCatchesACycleBetweenTwoNamespaces() =>
+        NamespaceCycles.CycleRule("Bookmarks.Architecture.Tests.CycleFixture").HasNoViolations(s_fixtures)
+            .Should().BeFalse("Left and Right depend on each other");
 
     [Fact]
     public void TheRuleFailsWhenNoNamespaceSitsUnderTheRoot()
@@ -36,9 +34,15 @@ public sealed class NamespaceCycleTests
 /// <summary>The rule that namespaces under a root form no cycle.</summary>
 internal static class NamespaceCycles
 {
-    // Each namespace under the root is a slice ((**) takes the rest of the name), so a cycle between any two fails.
-    // ArchUnitNET passes a slice rule that matches nothing, so the rule also requires types under the root.
+    /// <summary>The cycle rule, guarded so that a root with nothing under it fails instead of checking nothing.</summary>
     public static IArchRule Rule(string rootNamespace) =>
-        SliceRuleDefinition.Slices().Matching(rootNamespace + ".(**)").Should().BeFreeOfCycles()
+        CycleRule(rootNamespace)
             .And(Types().That().ResideInNamespaceMatching($@"^{Regex.Escape(rootNamespace)}\.").Should().Exist());
+
+    /// <summary>
+    /// Each namespace under the root is a slice ((**) takes the rest of the name), so a cycle between any two fails.
+    /// ArchUnitNET passes a slice rule that matches nothing, which is why <see cref="Rule"/> adds a guard.
+    /// </summary>
+    public static IArchRule CycleRule(string rootNamespace) =>
+        SliceRuleDefinition.Slices().Matching(rootNamespace + ".(**)").Should().BeFreeOfCycles();
 }
