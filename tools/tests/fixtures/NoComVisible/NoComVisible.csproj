@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <!-- CA1017 fires only when a public type sits in the global namespace. ASP.NET Core's source generator declares Program
+       public there.
+       This web app removes the kit's ComVisible(false), so CA1017 must fire. -->
+  <ItemGroup>
+    <AssemblyAttribute Remove="System.Runtime.InteropServices.ComVisibleAttribute" />
+  </ItemGroup>
+
+</Project>

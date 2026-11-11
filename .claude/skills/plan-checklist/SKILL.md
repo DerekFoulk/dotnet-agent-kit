@@ -34,5 +34,10 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 ## API style
 - Does it add or change an API? Name its style (an HTTP API with Minimal APIs, gRPC or SignalR) and why; controllers or GraphQL need an ADR (API-001, `docs/standards/api-design.md`).
 
+## Craft
+- Does the change fix the root cause? Name any safety net that stays, and why (CRF-001); name any better design that has to wait, and where it's planned (CRF-002).
+- Is it the simplest design that's fully correct for today's requirements (CRF-004)? Does it state any fact that already lives somewhere else (CRF-003)?
+- Does it use every library, tool and service as its documentation describes for the version in use (CRF-010)? Cite the page.
+
 ## Docs and decisions
 - Which docs change in the same PR? Which choices need an ADR (`write-adr`)? Which dependencies does it add, and, in review mode, which need approval?
