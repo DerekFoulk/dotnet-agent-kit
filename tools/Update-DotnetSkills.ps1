@@ -70,6 +70,13 @@ function Update-DotnetSkill {
     $lock = Read-DotnetSkillLock -RepoRoot $RepoRoot
     $skillsRoot = Join-Path $RepoRoot '.claude' 'skills'
 
+    # The update replaces each curated skill's folder, so an edit there would be lost. A missing file is fine: it's
+    # what a newly listed skill looks like.
+    $edits = @(Get-DotnetSkillDrift -SkillsRoot $skillsRoot -Lock $lock | Where-Object { $_ -notmatch ' is missing$' })
+    if ($edits) {
+        throw "These curated files differ from the pinned commit, and the update would overwrite them. Commit or discard the edits first:`n$($edits -join "`n")"
+    }
+
     $work = Join-Path ([IO.Path]::GetTempPath()) "dotnet-skills-$([guid]::NewGuid().ToString('N'))"
     try {
         # A throwaway repo that fetches only the one commit: no clone of upstream's history, and no GitHub sign-in.
@@ -88,6 +95,10 @@ function Update-DotnetSkill {
                     [pscustomobject]@{ Mode = $mode; Type = $type; Id = $id; File = $path.Substring($source.Length + 1) }
                 })
             [pscustomobject]@{ Skill = $skill; Source = $source; Entries = $entries }
+        }
+        $gone = @($plan | Where-Object { -not $_.Entries } | ForEach-Object { $_.Source })
+        if ($gone) {
+            throw "These skills aren't at $sha in ${RepositoryUrl}: $($gone -join ', '). Nothing was changed; remove them from $script:LockPath or pick another commit."
         }
 
         # git checks files out into a separate folder, which must exist first.
