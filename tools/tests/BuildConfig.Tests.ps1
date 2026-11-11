@@ -228,10 +228,14 @@ Describe 'CodeMetricsConfig.txt' {
 # one that silently doesn't fire, can't slip in (review 4 of PR 36).
 Describe '.globalconfig' {
     BeforeAll {
-        # The IDs of the rules these lines turn on: any severity but none.
+        # The IDs of the rules these lines turn on: any severity but none. Like Roslyn, it takes '=' or ':' between key
+        # and value, and drops a comment that starts with '#' or ';'.
         function Get-EnabledRule([string[]] $Line) {
             foreach ($text in $Line) {
-                if ($text -match '^\s*dotnet_diagnostic\.(?<id>\w+)\.severity\s*=\s*(?!none\s*$)\w+\s*$') { $Matches['id'] }
+                $setting = ($text -replace '[#;].*$', '').Trim()
+                if ($setting -match '^dotnet_diagnostic\.(?<id>\w+)\.severity\s*[=:]\s*(?<severity>\w+)$' -and $Matches['severity'] -ne 'none') {
+                    $Matches['id']
+                }
             }
         }
     }
