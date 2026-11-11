@@ -271,7 +271,6 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -Be $before
         }
 
-        # Review: an app's file may still declare MSBuild's old XML namespace.
         # Review: the app has the package already, at its own version, so there's nothing to add or report.
         It 'adds and reports nothing for a package the app already has in the same form' {
             $appRoot = New-PackagesRoot @('<GlobalPackageReference Include="Kit.Analyzer" Version="0.5.0" />')
@@ -294,6 +293,7 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -Be $before
         }
 
+        # Review: an app's file may still declare MSBuild's old XML namespace.
         It 'finds the app''s packages in a file with MSBuild''s old XML namespace' {
             $appRoot = New-PackagesRoot @($analyzer) 'http://schemas.microsoft.com/developer/msbuild/2003'
             $before = [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props'))
@@ -304,9 +304,12 @@ Describe 'Sync-KitApp' {
         }
 
         # Review: an app may reformat the group's start tag; a second group with the same label would be clutter.
-        It 'finds the app''s dotnet-agent-kit ItemGroup however its start tag is written' {
+        It 'finds the app''s dotnet-agent-kit ItemGroup written as <Tag>' -ForEach @(
+            @{ Tag = "<ItemGroup Condition=""'true'"" Label='dotnet-agent-kit'>" }
+            @{ Tag = '<ItemGroup Label = "dotnet-agent-kit" Condition="true">' }
+        ) {
             $appRoot = Join-Path $TestDrive "packages-$(New-Guid)"
-            $lines = '<Project>', "  <ItemGroup Condition=""'true'"" Label='dotnet-agent-kit'>", '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
+            $lines = '<Project>', "  $Tag", '    <PackageVersion Include="Kit.Earlier" Version="1.0.0" />', '  </ItemGroup>', '', '</Project>', ''
             Set-FileText (Join-Path $appRoot 'Directory.Packages.props') ($lines -join "`n")
 
             $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
