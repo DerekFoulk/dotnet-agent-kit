@@ -71,6 +71,11 @@ public sealed class BookmarksApiTests : IDisposable
         using HttpResponseMessage response = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // Mutation testing (round 3): it's the domain's refusal, which says what kind of URL it needs, not a validation
+        // problem raised because UriLength couldn't measure it.
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.TryGetProperty("errors", out _).Should().BeFalse();
+        problem.GetProperty("detail").GetString().Should().StartWith("A bookmark needs an absolute http or https URL.");
     }
 
     [Fact]
