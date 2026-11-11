@@ -14,5 +14,15 @@ $ErrorActionPreference = 'Stop'
 function Get-DotnetSkillBlobId {
     param([Parameter(Mandatory)] [string] $Path)
 
-    ''
+    # Bytes, not text: decoding and re-encoding could change a byte-order mark or an invalid byte, and the id is of
+    # the exact bytes git stores. git stores this text with LF line endings (upstream's .gitattributes says
+    # eol=lf), while a Windows checkout may give CRLF.
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $lf = [Collections.Generic.List[byte]]::new($bytes.Length)
+    for ($i = 0; $i -lt $bytes.Length; $i++) {
+        if ($bytes[$i] -eq 13 -and $i + 1 -lt $bytes.Length -and $bytes[$i + 1] -eq 10) { continue }
+        $lf.Add($bytes[$i])
+    }
+    $header = [Text.Encoding]::ASCII.GetBytes("blob $($lf.Count)`0")
+    [Convert]::ToHexString([Security.Cryptography.SHA1]::HashData([byte[]] ($header + $lf.ToArray()))).ToLowerInvariant()
 }
