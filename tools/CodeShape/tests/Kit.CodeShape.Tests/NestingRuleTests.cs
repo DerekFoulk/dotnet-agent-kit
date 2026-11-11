@@ -68,4 +68,60 @@ public sealed class NestingRuleTests
 
         NestingRule.Check(file).Should().BeEmpty();
     }
+
+    // Four ifs deep around a statement; whatever wraps it decides whether it's over the limit.
+    private const string FourIfs = "if (a > 1) { if (a > 2) { if (a > 3) { if (a > 4) { a++; } } } }";
+
+    [Theory]
+    [InlineData("switch (a) { case 0: ", " break; }")]
+    [InlineData("for (;;) { ", " }")]
+    [InlineData("foreach (int x in new int[0]) { ", " }")]
+    [InlineData("while (a > 0) { ", " }")]
+    [InlineData("do { ", " } while (a > 0);")]
+    [InlineData("try { ", " } finally { }")]
+    [InlineData("try { } catch { ", " }")]
+    [InlineData("if (a > 0) { } else { ", " }")]
+    [InlineData("if (a > 0) { System.Action f = () => { ", " }; }")]
+    [InlineData("if (a > 0) { void Local() { ", " } Local(); }")]
+    public void EachControlFlowStatementAddsALevelAndLambdasKeepCounting(string before, string after)
+    {
+        NestingRule.Check(FourIfsIn(before, after)).Should().ContainSingle()
+            .Which.Message.Should().Be("Run nests 5 levels deep; the limit is 4 (CRF-008).");
+    }
+
+    [Theory]
+    [InlineData("{ ", " }")]
+    [InlineData("using (System.IDisposable d = null!) { ", " }")]
+    [InlineData("lock (this) { ", " }")]
+    [InlineData("checked { ", " }")]
+    [InlineData("System.Action f = () => { ", " };")]
+    public void BlocksUsingLockCheckedAndLambdasAddNoLevel(string before, string after) =>
+        NestingRule.Check(FourIfsIn(before, after)).Should().BeEmpty();
+
+    [Fact]
+    public void AnElseIfContinuesItsChainWithoutALevel()
+    {
+        SourceFile file = new("Chain.cs", """
+            class Chain
+            {
+                void Run(int a)
+                {
+                    if (a > 9) { } else if (a > 8) { } else if (a > 7) { if (a > 2) { if (a > 3) { if (a > 4) { a++; } } } }
+                }
+            }
+            """);
+
+        NestingRule.Check(file).Should().BeEmpty();
+    }
+
+    // A method whose body is four nested ifs, with the given text before and after them.
+    private static SourceFile FourIfsIn(string before, string after) => new("Wrapped.cs", $$"""
+        class Wrapped
+        {
+            void Run(int a)
+            {
+                {{before}}{{FourIfs}}{{after}}
+            }
+        }
+        """);
 }
