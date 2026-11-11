@@ -14,6 +14,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Where the build writes output and generated C# by default (BaseOutputPath and BaseIntermediateOutputPath): not the
+# project's own source.
+$script:BuildFolders = 'bin', 'obj'
+
 function New-Problem {
     param([string] $Message)
     [pscustomobject]@{ Message = $Message }
@@ -26,7 +30,8 @@ function Get-EmptyProjectProblem {
     foreach ($project in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $relative = $project.GetAttribute('Path')
         $projectFolder = Split-Path -Parent (Join-Path $solutionFolder $relative)
-        $sources = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File -Filter '*.cs')
+        $sources = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File -Filter '*.cs' |
+            Where-Object { [IO.Path]::GetRelativePath($projectFolder, $_.FullName).Split([IO.Path]::DirectorySeparatorChar)[0] -notin $script:BuildFolders })
         if (-not $sources) {
             New-Problem -Message "$relative has no source files of its own"
         }
