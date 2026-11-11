@@ -251,8 +251,12 @@ function Sync-KitApp {
         $output = & pwsh -NoProfile -File $builder -RepoRoot $AppRoot 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { throw "Rebuilding the app's agent rule files failed:`n$output" }
 
+        # The release's manifest: its version and the kit's hash of every file it manages. A file whose edit was
+        # kept keeps the kit's hash here, so the next sync sees the edit again and merges with this release's text.
+        Copy-Item -LiteralPath (Join-Path $newRoot '.kit/manifest.json') -Destination (Join-Path $AppRoot '.kit/manifest.json') -Force
+
         $result.Files = @($files)
-        $result.Changed = $result.Files.Count -gt 0
+        $result.Changed = $true
     }
     finally {
         if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
