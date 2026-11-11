@@ -2,9 +2,10 @@ namespace Bookmarks.Domain;
 
 public sealed class Bookmark
 {
-    private Bookmark(Guid id, Uri url, string title, DateTimeOffset createdAt)
+    private Bookmark(Guid id, string ownerId, Uri url, string title, DateTimeOffset createdAt)
     {
         Id = id;
+        OwnerId = ownerId;
         Url = url;
         Title = title;
         CreatedAt = createdAt;
@@ -13,7 +14,7 @@ public sealed class Bookmark
     public Guid Id { get; }
 
     /// <summary>The user who saved it: their id from the identity provider (the token's sub claim, SEC-009).</summary>
-    public string OwnerId { get; } = string.Empty;
+    public string OwnerId { get; }
 
     public Uri Url { get; }
 
@@ -23,6 +24,7 @@ public sealed class Bookmark
 
     public static Bookmark Create(string ownerId, Uri url, string title, DateTimeOffset createdAt)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         ArgumentNullException.ThrowIfNull(url);
         if (!url.IsAbsoluteUri || (url.Scheme != Uri.UriSchemeHttp && url.Scheme != Uri.UriSchemeHttps))
         {
@@ -32,6 +34,6 @@ public sealed class Bookmark
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         // A UUID version 7 starts with its creation time (to the millisecond), so on SQLite ordering by Id is creation
         // order. It needs a time from 1970 on; createdAt comes from TimeProvider.
-        return new Bookmark(Guid.CreateVersion7(createdAt), url, title.Trim(), createdAt);
+        return new Bookmark(Guid.CreateVersion7(createdAt), ownerId, url, title.Trim(), createdAt);
     }
 }

@@ -14,6 +14,7 @@ public sealed class BookmarksDbContext(DbContextOptions<BookmarksDbContext> opti
         modelBuilder.Entity<Bookmark>(bookmark =>
         {
             bookmark.HasKey(b => b.Id);
+            bookmark.Property(b => b.OwnerId).IsRequired();
             bookmark.Property(b => b.Url).IsRequired();
             bookmark.Property(b => b.Title).IsRequired().HasMaxLength(500);
             bookmark.Property(b => b.CreatedAt).IsRequired();
