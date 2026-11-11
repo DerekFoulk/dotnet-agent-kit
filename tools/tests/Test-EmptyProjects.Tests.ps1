@@ -75,4 +75,18 @@ Describe 'Test-EmptyProjects.ps1' {
 
         @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
     }
+
+    It 'fails the template''s empty Class1 left beside real code' {
+        $solution = New-Solution @{
+            'App.Domain' = @{
+                'Class1.cs' = "namespace App.Domain;`n`npublic class Class1`n{`n`n}"
+                'Order.cs' = "namespace App.Domain;`n`npublic sealed record Order(int Id);"
+            }
+        }
+
+        $problems = @(Get-EmptyProjectProblem -Solution $solution)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike '*Class1.cs*placeholder*'
+    }
 }
