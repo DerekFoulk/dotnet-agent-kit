@@ -10,7 +10,7 @@ string connectionString = builder.Configuration.GetConnectionString("Bookmarks")
 builder.Services.AddBookmarksInfrastructure(connectionString);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<BookmarkService>();
-builder.Services.AddOpenApi();
+builder.Services.AddApiDocument();
 
 // Every error response is Problem Details (RFC 9457): exceptions through the exception handler, and empty 4xx and
 // 5xx responses through status code pages (API-002).
