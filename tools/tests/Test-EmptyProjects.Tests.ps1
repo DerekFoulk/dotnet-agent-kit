@@ -56,4 +56,17 @@ Describe 'Test-EmptyProjects.ps1' {
         $problems | Should -HaveCount 1
         $problems[0].Message | Should -BeLike '*App.Domain*has no source*'
     }
+
+    # `dotnet new classlib` writes an empty Class1, so a layer scaffolded before anything needed it is never file-less.
+    It 'counts a project holding only the class library template''s empty Class1 (<Style>) as empty' -ForEach @(
+        @{ Style = 'file-scoped namespace'; Text = "namespace App.Domain;`n`npublic class Class1`n{`n`n}" }
+        @{ Style = 'block namespace'; Text = "namespace App.Domain`n{`n    public class Class1`n    {`n    }`n}" }
+    ) {
+        $solution = New-Solution @{ 'App.Domain' = @{ 'Class1.cs' = $Text } }
+
+        $problems = @(Get-EmptyProjectProblem -Solution $solution)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike '*App.Domain*has no source*'
+    }
 }
