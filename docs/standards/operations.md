@@ -29,14 +29,14 @@ rules:
     scope: core
     paths: ["**/*ServiceDefaults*/**"]
   - id: OPS-004
-    statement: "Every app keeps a runbook at docs/runbook.md, started from the kit's template: a Status line (Draft or In use), a Last reviewed date, and one how-to guide each for where it runs, deploying a release, rolling one back, checking its health, reading its telemetry, restoring its data and responding to an incident; before the app's first production deployment every placeholder is filled in and the status set to In use, and the runbook is reviewed whenever how the app is deployed, hosted or stores data changes."
+    statement: "Every app keeps a runbook at docs/runbook.md, started from the kit's template: a Status line (Draft or In use), a Last reviewed date, a reference section on where it runs, and one how-to guide each for deploying a release, rolling one back, checking its health, reading its telemetry, restoring its data and responding to an incident; before the app's first production deployment every placeholder is filled in and the status set to In use, and the runbook is reviewed whenever how the app is deployed, hosted or stores data changes."
     why: "Under pressure, whoever is on call follows written, tested steps instead of improvising; the Well-Architected Framework asks for version-controlled runbooks with review dates, a rollback to the last known good release, and a documented incident process (GAP-017)."
     layer: outside
     status: proposed
     sources: ["ADR-0046", "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/formalize-operations-tasks, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/incident-response, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/safe-deployments, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/manage/ready-cloud-operations, retrieved 2026-11-11", "https://diataxis.fr/how-to-guides/, retrieved 2026-11-11"]
     enforcement: "ci: Test-Runbook.ps1 in app-checks.reusable.yml fails on a missing runbook, status or review date, a missing or empty section, and a placeholder left once In use; advisory: that the status turns In use before the first production deployment, until the production workflow (GAP-015) refuses a Draft, and whether the steps are right, which the reviewer and a practised restore check"
     scope: core
-    paths: ["docs/runbook.md"]
+    paths: ["**/docs/runbook.md"]
 ---
 
 # Operations
@@ -47,7 +47,7 @@ The kit gives apps no starter projects, so the reference is the sample: `sample/
 
 ## The runbook
 
-Every app starts with `docs/runbook.md`, from the kit's `templates/app/docs/runbook.md` (OPS-004, ADR-0046). The app owns it: the kit's sync job never changes it. Each section is a how-to guide in Diátaxis's sense: one task, written as steps for someone who already knows the app, with no background. The template writes out what's true for every kit app, such as the `/health` and `/alive` endpoints (OPS-002) and the `OTEL_EXPORTER_OTLP_ENDPOINT` variable (OPS-001), and marks the rest `[fill in: ...]`.
+Every app starts with `docs/runbook.md`, from the kit's `templates/app/docs/runbook.md` (OPS-004, ADR-0046). The app owns it: the kit's sync job adds it to an app made before it existed, and never changes it after that. "Where it runs" is reference: the URLs, hosting and data stores the other sections use. Each section after it is a how-to guide in Diátaxis's sense: one task, written as steps for someone who already knows the app, with no background. The template writes out what's true for every kit app, such as the `/health` and `/alive` endpoints (OPS-002) and the `OTEL_EXPORTER_OTLP_ENDPOINT` variable (OPS-001), and marks the rest `[fill in: ...]`.
 
 - **Draft** is the status from the start. A Draft may keep its placeholders, so a new app passes CI.
 - **In use** is the status from the app's first production deployment on. The agent preparing that deployment fills in every placeholder, practises the restore on staging, and sets the status and review date. From then on, CI fails on any placeholder left.

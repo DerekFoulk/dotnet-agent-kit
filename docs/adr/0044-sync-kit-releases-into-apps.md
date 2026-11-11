@@ -5,7 +5,7 @@
 
 ## Context
 
-PR D3 is the sync job: when the kit has a newer release than an app's `.kit/manifest.json` records, it brings that release into the app as one pull request (ADR-0012, ADR-0030). ADR-0032 set what it works from: the manifest lists every kit-managed file, and the kit block of `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, with the SHA-256 of the text the kit gave the app. A file whose text no longer has that hash was edited in the app. App-owned files (`README.md`, the solution, `docs/corrections-log.md`, `Directory.Packages.props`, `.github/dependabot.yml`) are never touched; this ADR makes one exception for `Directory.Packages.props` (Consequences). ADR-0032's update of 2026-11-09 adds that `.claude/settings.json` must be made again with the new version's tools, not copied.
+PR D3 is the sync job: when the kit has a newer release than an app's `.kit/manifest.json` records, it brings that release into the app as one pull request (ADR-0012, ADR-0030). ADR-0032 set what it works from: the manifest lists every kit-managed file, and the kit block of `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, with the SHA-256 of the text the kit gave the app. A file whose text no longer has that hash was edited in the app. App-owned files (`README.md`, the solution, `docs/corrections-log.md`, `Directory.Packages.props`, `.github/dependabot.yml`) are never touched; this ADR makes one exception for `Directory.Packages.props` (Consequences). **Amended by ADR-0046 (2026-11-11):** `docs/runbook.md` is app-owned too, and the sync adds a file a release starts every app with, when the app lacks it. ADR-0032's update of 2026-11-09 adds that `.claude/settings.json` must be made again with the new version's tools, not copied.
 
 Three questions are left:
 

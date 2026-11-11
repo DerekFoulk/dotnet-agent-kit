@@ -3,7 +3,7 @@
 - **Status:** Draft
 - **Last reviewed:** [fill in: YYYY-MM-DD]
 
-How to operate {{Name}} once it's deployed: each section below is one task, written as steps to follow. The kit's rule OPS-004 (`docs/standards/operations.md`) says what this file needs, and `./.kit/tools/Test-Runbook.ps1` checks it in CI.
+How to operate {{Name}} once it's deployed. "Where it runs" is the reference the other sections use; each section after it is one task, written as steps to follow. The kit's rule OPS-004 (`docs/standards/operations.md`) says what this file needs, and `./.kit/tools/Test-Runbook.ps1` checks it in CI.
 
 Before {{Name}}'s first production deployment, replace every `[fill in: ...]` with this app's own steps, and set the status to `In use`. From then on, CI fails on any placeholder left. Review this file whenever how the app is deployed, hosted or stores data changes, and update the review date. Never write a secret here: name where it's kept, never its value.
 
@@ -38,21 +38,21 @@ Roll back to the last known good release: the last one that was healthy in produ
 
 ## How to check its health
 
-Every kit web app answers on two endpoints (OPS-002), with the status word alone: `Healthy`, `Degraded` or `Unhealthy`.
+Every kit web app answers on two endpoints (OPS-002) with an HTTP status and the status word alone: `200 Healthy` or `200 Degraded`, `503 Unhealthy`, or `504`, without the word, when a check was too slow and was cut off. A `Healthy` answer is cached for 10 seconds, so wait that long before checking again after a fix.
 
 1. Check that the app is alive, which runs only the checks tagged `live` and never touches the database:
 
    ```powershell
-   (Invoke-WebRequest -Uri '[fill in: the production URL]/alive' -SkipHttpErrorCheck).Content
+   $r = Invoke-WebRequest -Uri '[fill in: the production URL]/alive' -SkipHttpErrorCheck; "$($r.StatusCode) $($r.Content)"
    ```
 
 2. Check that it's ready to serve, which runs every check, the database's included:
 
    ```powershell
-   (Invoke-WebRequest -Uri '[fill in: the production URL]/health' -SkipHttpErrorCheck).Content
+   $r = Invoke-WebRequest -Uri '[fill in: the production URL]/health' -SkipHttpErrorCheck; "$($r.StatusCode) $($r.Content)"
    ```
 
-3. If `/alive` fails, the process is stuck or down: [fill in: how to see the hosting's restarts and logs]. If only `/health` fails, a dependency is down: find which check failed in the logs (see "How to read its telemetry"). A `504` means a check was too slow and was cut off.
+3. If `/alive` fails, the process is stuck or down: [fill in: how to see the hosting's restarts and logs]. If only `/health` fails, a dependency is down or slow: find which check failed in the logs (see "How to read its telemetry").
 4. Check that the hosting's probes and alerts use these endpoints: [fill in: where they're set up].
 
 ## How to read its telemetry

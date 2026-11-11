@@ -9,13 +9,13 @@ Nothing in the kit said how to operate an app once it's deployed: how to deploy 
 
 The Azure Well-Architected Framework asks for runbooks that are stored in version control, made from templates, and carry review dates (OE:02). It also asks for a documented incident process with defined roles and a postmortem (OE:08), and for a rollback to the last known good release (OE:11). Diátaxis calls this kind of page a how-to guide: steps toward one goal for someone who already knows the system, with no teaching or background.
 
-No app is deployed yet: the production workflow is GAP-015, and no kit release has made an app. So a runbook must exist before it can be complete, and nothing can yet tell CI whether an app has been deployed.
+No app is deployed yet: the production workflow is GAP-015. No kit release has been published, but two test apps exist (`kit-app-test` and `kit-app-test-public`), pinned to earlier kit commits and without a runbook. So a runbook must exist before it can be complete, nothing can yet tell CI whether an app has been deployed, and the kit sync, which until now never touched an app-owned file, wouldn't give an existing app one.
 
 ## Options
 
 ### Option 1: A required `docs/runbook.md` from a template, with a Draft or In use status, checked in CI
 
-Every new app gets `docs/runbook.md` from `templates/app/`, which the app owns. It has a status line, a review date, and one required "## How to ..." section per task. App-specific steps are `[fill in: ...]` placeholders. `Test-Runbook.ps1` runs in the shared app checks. It always checks the shape. Once the status is In use, it also fails on any placeholder left.
+Every new app gets `docs/runbook.md` from `templates/app/`, which the app owns. It has a status line, a review date, a "Where it runs" reference section, and one required "## How to ..." section per task. App-specific steps are `[fill in: ...]` placeholders. `Test-Runbook.ps1` runs in the shared app checks. It always checks the shape. Once the status is In use, it also fails on any placeholder left.
 
 - **Trade-offs:** A new app passes CI on day one, and a deployed app can't keep a half-written runbook. Cheap: one script and one template, no package. The agent has to remember to switch the status to In use at the first deployment, until GAP-015's production workflow can refuse a Draft.
 - **Reversibility:** Easy. Drop the step and the script; apps keep their runbooks as plain docs.
@@ -56,9 +56,10 @@ Proposed (auto mode, ADR-0035), with OPS-004; the owner accepts or changes it.
 - New rule OPS-004 (proposed) in `docs/standards/operations.md`, in the scorecard's "Docs and decisions" area. GAP-017 is closed.
 - `tools/Test-Runbook.ps1`, with Pester tests. The required sections are listed once, in the script; the template is tested against it.
 - `templates/app/docs/runbook.md` is the template. Export-KitApp lists it as app-owned, so the sync job never overwrites an app's runbook, and it copies `Test-Runbook.ps1` to `.kit/tools/`.
-- `app-checks.reusable.yml` runs the check on every pull request and push. A missing runbook fails. No kit release has made an app yet, so no existing app is broken by this.
+- `app-checks.reusable.yml` runs the check on every pull request and push. A missing runbook fails.
+- The kit sync (ADR-0044) now adds a file a release starts every app with, for the app to own, when the app's kit version didn't have it and the app lacks it; the PR lists it under "Needs a look". It never changes one the app has. So an existing app, such as the two test apps, gets a Draft runbook in the same kit-pin PR that brings in the check, and that PR passes.
 - **Follow-up:** the production workflow (GAP-015) should run `Test-Runbook.ps1` and refuse to deploy while the status is Draft. Until then, the switch to In use at the first deployment is advisory.
-- A future kit change to the template doesn't reach existing apps, because they own their copies. A new required section would need the sync job's report to tell them, or a release note.
+- A later kit change to the template doesn't reach existing apps, because they own their copies. A new required section would fail every existing app's kit-pin PR until the app adds it, so it needs a release note that says so, or a change to the sync.
 
 ## Pillars affected
 
