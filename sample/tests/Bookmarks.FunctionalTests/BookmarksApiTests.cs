@@ -33,6 +33,24 @@ public sealed class BookmarksApiTests : IDisposable
         all!.Items.Should().ContainSingle().Which.Should().Be(body);
     }
 
+    [Theory]
+    [InlineData("HTTPS://Example.COM:443/a/../b", "https://example.com/b")]
+    // Review 3: a stray % leaves %41 escaped in the first absolute form and decoded in the next, so the form the
+    // bookmark holds must be the very text that's stored.
+    [InlineData("http://x/%%41", "http://x/%25%41")]
+    public async Task SavingAndReadingABookmarkAnswerTheSameUrl(string written, string stored)
+    {
+        // Review 2: the 201 echoed the URL as written while GET answered its stored form; both now answer the stored one.
+        using StringContent body = new($$"""{"url":"{{written}}","title":"A"}""", System.Text.Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage created = await Client.PostAsync(new Uri("/bookmarks", UriKind.Relative), body, TestContext.Current.CancellationToken);
+        JsonElement saved = await created.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        JsonElement fetched = await Client.GetFromJsonAsync<JsonElement>(created.Headers.Location, TestContext.Current.CancellationToken);
+
+        saved.GetProperty("url").GetString().Should().Be(stored);
+        fetched.GetProperty("url").GetString().Should().Be(stored);
+    }
+
     [Fact]
     public async Task PostingASavedUrlAgainIsAConflict()
     {
@@ -46,13 +64,38 @@ public sealed class BookmarksApiTests : IDisposable
     }
 
     [Fact]
-    public async Task PostingAUrlThatIsNotHttpIsABadRequest()
+    public async Task TheSameUrlWrittenAnotherWayIsAConflictToo()
     {
-        CreateBookmarkRequest request = new(new Uri("ftp://example.com/file"), "File");
+        // Review 4: the lookup matches the stored text, so it must get the URL in its stored form (the bookmark's,
+        // not the request's); otherwise the third save, whose text differs from what's stored, is a 201 and a duplicate.
+        using HttpResponseMessage first = await Client.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri("HTTPS://Example.COM:443/a"), "A"), TestContext.Current.CancellationToken);
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        using HttpResponseMessage second = await Client.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri("https://example.com/a"), "A"), TestContext.Current.CancellationToken);
+        using HttpResponseMessage third = await Client.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri("HTTPS://Example.COM:443/a"), "A"), TestContext.Current.CancellationToken);
+
+        second.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        third.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Theory]
+    [InlineData("ftp://example.com/file")]
+    [InlineData("articles/1")]
+    [InlineData("http://user@\u202E/")] // Review 3: absolute http, but its stored form has no host.
+    public async Task PostingAUrlThatIsNotHttpIsABadRequest(string address)
+    {
+        // Review 1: a relative URL has no absolute form for UriLength to measure, so it's measured as written and
+        // still reaches the domain's refusal, a 400, never a 500.
+        CreateBookmarkRequest request = new(new Uri(address, UriKind.RelativeOrAbsolute), "File");
 
         using HttpResponseMessage response = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // Mutation testing (round 3): it's the domain's refusal, which says what kind of URL it needs, not a validation
+        // problem raised because UriLength couldn't measure it.
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.TryGetProperty("errors", out _).Should().BeFalse();
+        problem.GetProperty("detail").GetString().Should().StartWith("A bookmark needs an absolute http or https URL.");
     }
 
     [Fact]
@@ -101,6 +144,67 @@ public sealed class BookmarksApiTests : IDisposable
         JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         problem.TryGetProperty("errors", out _).Should().BeTrue("a validation problem names the invalid field");
     }
+
+    public static TheoryData<string, string, string> InvalidBodies() => new()
+    {
+        { "no title", "title", """{"url":"https://example.com/a"}""" },
+        { "a blank title", "title", """{"url":"https://example.com/a","title":"   "}""" },
+        { "a title past the limit", "title", $$"""{"url":"https://example.com/a","title":"{{new string('t', Bookmark.MaxTitleLength + 1)}}"}""" },
+        { "no URL", "url", """{"title":"A"}""" },
+        { "a URL past the limit", "url", $$"""{"url":"{{LongUrl(Bookmark.MaxUrlLength + 1)}}","title":"A"}""" },
+        // Review 1: without a path, the stored form gains a "/", so a URL written in exactly the limit is past it.
+        // Review 2: a relative URL has no stored form, but it's still bounded where it enters (SEC-010).
+        { "a relative URL past the limit", "url", $$"""{"url":"articles/{{new string('a', Bookmark.MaxUrlLength)}}","title":"A"}""" },
+        { "a URL with no path, past the limit as stored", "url", $$"""{"url":"https://example.com?q={{new string('a', Bookmark.MaxUrlLength - "https://example.com?q=".Length)}}","title":"A"}""" },
+    };
+
+    [Theory]
+    [MemberData(nameof(InvalidBodies))]
+    public async Task AnInvalidBodyIsAValidationProblemThatNamesTheFieldButNotTheValue(string what, string field, string json)
+    {
+        // SEC-010 and API-006: the request is checked against the contract before the handler runs. The answer names
+        // the field and the rule, never the value, so nothing a client sent is reflected back.
+        using StringContent body = new(json, System.Text.Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await Client.PostAsync(new Uri("/bookmarks", UriKind.Relative), body, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, what);
+        (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json");
+        string text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using JsonDocument document = JsonDocument.Parse(text);
+        JsonElement problem = document.RootElement;
+        problem.TryGetProperty("errors", out JsonElement errors).Should().BeTrue($"{what} is a validation problem");
+        errors.EnumerateObject().Select(error => error.Name).Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(field, options => options.IgnoringCase(), $"{what} is the {field}'s fault");
+        text.Should().NotContain("ttttt").And.NotContain("aaaaa", "the answer never repeats what the client sent");
+    }
+
+    [Fact]
+    public async Task AUrlPastTheLimitIsRefusedWithTheLimitInTheMessage()
+    {
+        // Mutation testing on PR for GAP-006: an empty UriLength message survived, so this pins what the client reads.
+        CreateBookmarkRequest request = new(new Uri(LongUrl(Bookmark.MaxUrlLength + 1)), "A");
+
+        using HttpResponseMessage response = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
+
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        string message = problem.GetProperty("errors").EnumerateObject().Single().Value[0].GetString()!;
+        message.Should().Contain("at most 2048 characters");
+    }
+
+    [Fact]
+    public async Task ATitleAndAUrlAtTheirLongestAreSaved()
+    {
+        // SEC-010: the contract's limits are the domain's (Bookmark.MaxTitleLength and MaxUrlLength), checked here at
+        // both edges: one past is refused above, and exactly at the limit is saved.
+        CreateBookmarkRequest request = new(new Uri(LongUrl(Bookmark.MaxUrlLength)), new string('t', Bookmark.MaxTitleLength));
+
+        using HttpResponseMessage response = await Client.PostAsJsonAsync("/bookmarks", request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    private static string LongUrl(int length) => "https://example.com/" + new string('a', length - "https://example.com/".Length);
 
     [Fact]
     public async Task MalformedInputIsAClientErrorProblemInDevelopmentToo()
@@ -160,11 +264,11 @@ public sealed class BookmarksApiTests : IDisposable
     {
         public const string Secret = "connection to db-prod-01 refused";
 
-        public Task<Bookmark?> FindAsync(Guid id, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+        public Task<Bookmark?> FindAsync(string ownerId, Guid id, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
 
-        public Task<Bookmark?> FindByUrlAsync(Uri url, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+        public Task<Bookmark?> FindByUrlAsync(string ownerId, Uri url, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
 
-        public Task<IReadOnlyList<Bookmark>> ListAsync(int offset, int limit, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
+        public Task<IReadOnlyList<Bookmark>> ListAsync(string ownerId, int offset, int limit, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
 
         public Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken) => throw new InvalidOperationException(Secret);
     }
