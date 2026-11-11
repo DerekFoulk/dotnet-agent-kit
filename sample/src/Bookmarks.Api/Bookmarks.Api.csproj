@@ -4,11 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
-  <!-- Program stays internal (CA1515); the functional tests host it through WebApplicationFactory. -->
-  <ItemGroup>
-    <InternalsVisibleTo Include="Bookmarks.FunctionalTests" />
-  </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Bookmarks.Application\Bookmarks.Application.csproj" />
     <ProjectReference Include="..\Bookmarks.Infrastructure\Bookmarks.Infrastructure.csproj" />

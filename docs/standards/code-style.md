@@ -20,14 +20,14 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: STY-003
-    statement: "Turn on every analyzer rule (AnalysisLevel latest-all); an opt-out needs an ADR."
+    statement: "Turn on every analyzer rule (AnalysisLevel latest-all, plus the root .globalconfig for the rules it leaves off); an opt-out needs an ADR."
     why: "Analyzer rules catch real defects; all of them on is the Microsoft baseline the owner asked for."
     layer: owner
     status: accepted
-    sources: ["ADR-0009"]
-    enforcement: "build: AnalysisLevel latest-all; tools/tests/BuildConfig.Tests.ps1 (CatchAll fixture)"
+    sources: ["ADR-0009", "ADR-0043"]
+    enforcement: "build: AnalysisLevel latest-all, and the root .globalconfig for the rules latest-all leaves off, all but GAP-021's; tools/tests/BuildConfig.Tests.ps1 (the CatchAll fixture, and fixtures that cover every rule .globalconfig turns on)"
     scope: core
-    paths: ["**/*.cs", "Directory.Build.props"]
+    paths: ["**/*.cs", "Directory.Build.props", ".globalconfig"]
   - id: STY-004
     statement: "Zero warnings: warnings are errors in every build."
     why: "A warning nobody must fix becomes noise that hides the next real one."

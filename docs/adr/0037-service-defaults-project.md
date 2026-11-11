@@ -70,7 +70,7 @@ Accepted, in auto mode (ADR-0035). The packages are the ones the template and Mi
 
   An app with a web project follows the sample.
 - **GAP-007 and GAP-009 are closed** in the scorecard. GAP-008, safe database migrations, stays open.
-- **Tests:** `ServiceDefaultsTests` in the sample's FunctionalTests checks:
+- **Tests:** `ServiceDefaultsTests` in the sample's FunctionalTests checks (**update, 2026-11-10:** split by concern into `HealthEndpointTests`, `TelemetryTests` and `ResilienceTests`, with `ServiceDefaultsTests` keeping the argument guards, since one class coupled to more types than CA1506 allows; ADR-0043):
   - both endpoints, and the database check;
   - the status-only reply in Production;
   - the OpenTelemetry providers;
@@ -78,7 +78,7 @@ Accepted, in auto mode (ADR-0035). The packages are the ones the template and Mi
   - the resilience handler.
 - **Retries:** they're on for safe methods only. A client that needs other resilience settings calls `RemoveAllResilienceHandlers()` before adding its own. Adding a second handler on top would keep the default one's retries. That method is experimental in Microsoft.Extensions.Http.Resilience 10.11.0 (diagnostic `EXTEXP0001`), so the call needs that diagnostic suppressed, with a reason in the code.
 - **Security:** the health endpoints are anonymous, reply with the status word only, and are cached and time-boxed. An app that wants them reachable only from its platform's probes adds authorization (`RequireAuthorization`) or a network rule. ASP.NET Core's health-check page warns that host-based filters such as `RequireHost` can be spoofed, so they're never enough on their own. With authorization, `UseCors`, `UseAuthentication` and `UseAuthorization` must come before `MapDefaultEndpoints`, because output caching has to run after them (Microsoft's output-caching page); the method's own comment says so.
-- **Not checked:** the exported telemetry itself isn't asserted, which would need a test collector. Nor is `/health` turning Unhealthy when the database can't be reached: an in-memory SQLite database can't be made unreachable from a test.
+- **Not checked:** the exported telemetry itself isn't asserted, which would need a test collector. (**Update, 2026-11-10:** `TelemetryTests` now sees a trace reach the exporter's documented `OtlpTraceExporter` HttpClient when an endpoint is set, and nothing without one; the payload itself still isn't checked.) Nor is `/health` turning Unhealthy when the database can't be reached: an in-memory SQLite database can't be made unreachable from a test.
 
 ## Pillars affected
 
