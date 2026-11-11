@@ -95,14 +95,37 @@ function Set-KitEntryText {
     )
 
     $path = Join-Path $Root $Entry['path']
+    $file = [IO.File]::ReadAllText($path)
+    $lf = $Text -replace "`r`n", "`n"
+    $Text = $file.Contains("`r`n") ? ($lf -replace "`n", "`r`n") : $lf
     if ($Entry.Contains('block')) {
-        $file = [IO.File]::ReadAllText($path)
         $block = [regex]::Match($file, $script:BlockPattern)
-        $lf = $Text -replace "`r`n", "`n"
-        $Text = $file.Substring(0, $block.Index) + ($file.Contains("`r`n") ? ($lf -replace "`n", "`r`n") : $lf) + $file.Substring($block.Index + $block.Length)
+        $Text = $file.Substring(0, $block.Index) + $Text + $file.Substring($block.Index + $block.Length)
     }
-    New-Item -ItemType Directory -Force -Path (Split-Path $path -Parent) | Out-Null
     [IO.File]::WriteAllText($path, $Text, [Text.UTF8Encoding]::new($false))
+}
+
+# Three-way merge of the app's text with the kit's change from Base to Theirs (git merge-file). Returns the merged
+# text, or $null when the two changes overlap.
+function Merge-KitText {
+    param(
+        [Parameter(Mandatory)] [string] $Work,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Ours,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Base,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Theirs
+    )
+
+    $folder = Join-Path $Work "merge-$([guid]::NewGuid().ToString('N'))"
+    New-Item -ItemType Directory -Path $folder | Out-Null
+    $files = foreach ($side in @{ Name = 'ours'; Text = $Ours }, @{ Name = 'base'; Text = $Base }, @{ Name = 'theirs'; Text = $Theirs }) {
+        $path = Join-Path $folder $side.Name
+        [IO.File]::WriteAllText($path, ($side.Text -replace "`r`n", "`n"), [Text.UTF8Encoding]::new($false))
+        $path
+    }
+    # Writes the result into the first file; the exit code is the number of conflicts, or negative on an error.
+    git merge-file --quiet $files[0] $files[1] $files[2] 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { return $null }
+    [IO.File]::ReadAllText($files[0])
 }
 
 # The commit a release tag (vX.Y.Z) in the kit repo points to. Only a tag counts: ADR-0031 trusts a kit pin only
@@ -156,6 +179,9 @@ function Sync-KitApp {
     try {
         $newRoot = Join-Path $work 'new'
         $new = Export-KitAppAt -KitRoot $KitRoot -KitRef $KitRef -Name $manifest['appName'] -Destination $newRoot
+        # The kit's text at the app's version: the base of a three-way merge with an app's edit.
+        $baseRoot = Join-Path $work 'base'
+        $null = Export-KitAppAt -KitRoot $KitRoot -KitRef $fromCommit -Name $manifest['appName'] -Destination $baseRoot
         $oldEntries = @{}
         foreach ($entry in $manifest['files']) { $oldEntries[$entry['path']] = $entry }
         $newEntries = @{}
@@ -179,6 +205,12 @@ function Sync-KitApp {
             elseif ($unedited -and $old['sha256'] -ne $theirs['sha256']) {
                 Copy-KitEntry -From $newRoot -To $AppRoot -Entry $theirs
                 [pscustomobject]@{ Path = $path; Action = 'Updated' }
+            }
+            elseif ($old -and $theirs -and $null -ne $ours -and -not $unedited -and (& $script:TextHash -Text $ours) -ne $theirs['sha256']) {
+                $base = Get-KitEntryText -Root $baseRoot -Entry $old
+                $merged = Merge-KitText -Work $work -Ours $ours -Base $base -Theirs (Get-KitEntryText -Root $newRoot -Entry $theirs)
+                Set-KitEntryText -Root $AppRoot -Entry $theirs -Text $merged
+                [pscustomobject]@{ Path = $path; Action = 'Merged' }
             }
         }
         $result.Files = @($files)
