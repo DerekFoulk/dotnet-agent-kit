@@ -217,9 +217,10 @@ function Get-KitPackageItem {
     $items
 }
 
-# Where the sync can add packages to a Directory.Packages.props: the offset of the end tag of its first ItemGroup
-# labelled dotnet-agent-kit directly under <Project> (Group, $null when there's none), and of </Project>. An XML reader finds them, so a
-# group in a comment, a self-closing one with nowhere to add to, or a '>' inside an attribute can't mislead it.
+# Where the sync can add packages to a Directory.Packages.props: the offsets of the start and end tags of its
+# first ItemGroup labelled dotnet-agent-kit directly under <Project> (GroupStart and Group, $null when there's
+# none), and of </Project>. An XML reader finds them, so a group in a comment, a self-closing one with nowhere to
+# add to, or a '>' inside an attribute can't mislead it.
 function Get-KitPackageGroupEnd {
     param([Parameter(Mandatory)] [string] $Text)
 
@@ -230,7 +231,16 @@ function Get-KitPackageGroupEnd {
     foreach ($break in [regex]::Matches($Text, "`r`n?|`n")) { $lineStarts.Add($break.Index + $break.Length) }
     $settings = [Xml.XmlReaderSettings]@{ DtdProcessing = [Xml.DtdProcessing]::Prohibit }
     $reader = [Xml.XmlReader]::Create([IO.StringReader]::new($Text), $settings)
-    $ends = [pscustomobject]@{ Group = $null; Project = $null }
+    $ends = [pscustomobject]@{ GroupStart = $null; Group = $null; Project = $null }
+    # The column is the name's, just after '<' or '</'; the tag must start there, or the arithmetic is wrong.
+    $offsetOf = {
+        param([string] $Tag)
+        $offset = $lineStarts[$reader.LineNumber - 1] + $reader.LinePosition - 1 - $Tag.Length
+        if ($offset -lt 0 -or [string]::CompareOrdinal($Text, $offset, $Tag, 0, $Tag.Length) -ne 0) {
+            throw "Couldn't place <$($reader.LocalName)> in the app's Directory.Packages.props (line $($reader.LineNumber))."
+        }
+        $offset
+    }
     $groupDepth = -1
     try {
         while ($reader.Read()) {
@@ -239,13 +249,10 @@ function Get-KitPackageGroupEnd {
             if ($reader.NodeType -eq 'Element' -and $isGroup -and $reader.Depth -eq 1 -and $null -eq $ends.Group -and $groupDepth -lt 0 -and
                 -not $reader.IsEmptyElement -and $reader.GetAttribute('Label') -ceq 'dotnet-agent-kit') {
                 $groupDepth = $reader.Depth
+                $ends.GroupStart = & $offsetOf '<'
             }
             elseif ($reader.NodeType -eq 'EndElement') {
-                # The column is the name's, just after '</'.
-                $offset = $lineStarts[$reader.LineNumber - 1] + $reader.LinePosition - 3
-                if ($offset -lt 0 -or [string]::CompareOrdinal($Text, $offset, '</', 0, 2) -ne 0) {
-                    throw "Couldn't place the end tag of <$($reader.LocalName)> in the app's Directory.Packages.props (line $($reader.LineNumber))."
-                }
+                $offset = & $offsetOf '</'
                 if ($isGroup -and $reader.Depth -eq $groupDepth) { $ends.Group = $offset; $groupDepth = -1 }
                 elseif ($reader.LocalName -ceq 'Project' -and $reader.Depth -eq 0) { $ends.Project = $offset }
             }
@@ -294,21 +301,25 @@ function Add-KitPackage {
 
     $text = [IO.File]::ReadAllText($path)
     $eol = $text.Contains("`r`n") ? "`r`n" : "`n"
-    $lines = ($added | ForEach-Object { "    $_" }) -join $eol
     $ends = Get-KitPackageGroupEnd -Text $text
+    # Where the line holding an offset starts.
+    $lineStartOf = { param([int] $Offset) $text.LastIndexOfAny([char[]] "`r`n", [Math]::Max($Offset - 1, 0)) + 1 }
     $text = if ($null -ne $ends.Group) {
-        # Into the app's group, just before its end tag: on lines of their own, in the end tag's indentation.
-        $lineStart = $text.LastIndexOfAny([char[]] "`r`n", [Math]::Max($ends.Group - 1, 0)) + 1
-        $before = $text.Substring($lineStart, $ends.Group - $lineStart)
-        if ($before.Trim()) {
-            $indent = [regex]::Match($text.Substring($lineStart), '^[ \t]*').Value
-            $text.Insert($ends.Group, "$eol$lines$eol$indent")
+        # Into the app's group, just before its end tag, one level in from the group's start tag, which the end
+        # tag lines up with.
+        $groupIndent = [regex]::Match($text.Substring((& $lineStartOf $ends.GroupStart)), '^[ \t]*').Value
+        $itemIndent = $groupIndent + ($groupIndent.Contains("`t") ? "`t" : '  ')
+        $lines = ($added | ForEach-Object { "$itemIndent$_" }) -join $eol
+        $lineStart = & $lineStartOf $ends.Group
+        if ($text.Substring($lineStart, $ends.Group - $lineStart).Trim()) {
+            $text.Insert($ends.Group, "$eol$lines$eol$groupIndent")
         }
         else {
             $text.Insert($lineStart, "$lines$eol")
         }
     }
     else {
+        $lines = ($added | ForEach-Object { "    $_" }) -join $eol
         $text.Insert($ends.Project, "  <!-- Added by the kit sync: packages the kit's files need (kit ADR-0044). -->$eol  <ItemGroup Label=""dotnet-agent-kit"">$eol$lines$eol  </ItemGroup>$eol$eol")
     }
     [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($false))
