@@ -210,6 +210,19 @@ Describe 'Sync-KitApp' {
         Get-Content -Raw (Join-Path $copy '.editorconfig') | Should -Not -Match 'kit-v2-marker'
     }
 
+    It 'reports a package it left out because the app has it in the other form' {
+        $copy = Join-Path $TestDrive 'other-form'
+        Copy-Item -LiteralPath $untouched -Destination $copy -Recurse
+        Edit-FileText (Join-Path $copy 'Directory.Packages.props') '<PackageVersion Include="FluentAssertions"' "<PackageVersion Include=""Kit.Fixture.Analyzer"" Version=""1.0.0"" />`n    <PackageVersion Include=""FluentAssertions"""
+
+        $sync = Sync-KitApp -AppRoot $copy -KitRoot $kit -KitRef v0.2.0
+
+        $file = @($sync.Files | Where-Object Path -EQ 'Directory.Packages.props' | Where-Object Detail -Match 'Kit\.Fixture\.Analyzer')
+        @($file | ForEach-Object Action) | Should -Be @('PackageNotAdded')
+        $report = Format-KitSyncReport -Result $sync
+        [regex]::Match($report, '(?m)^\| `Directory\.Packages\.props` \|.*Kit\.Fixture\.Analyzer.*$').Value | Should -Match 'other form'
+    }
+
     Context 'deciding each file' {
         It 'gives <Expected> for <Case>' -ForEach @(
             # Review of the decision table: the kit dropping a kit block must never delete the app's whole file.
