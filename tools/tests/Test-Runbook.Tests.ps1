@@ -210,6 +210,12 @@ Describe 'Test-Runbook.ps1' {
             @((Get-RunbookSection -Lines ($text -split "`n")).Name) | Should -Be $script:RequiredSections
         }
 
+        It 'reads ''##Where it runs'', with no space after the hashes, as text, not a heading' {
+            $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '##Where it runs'
+
+            @((Get-RunbookSection -Lines ($text -split "`n")).Name) | Should -Not -Contain 'Where it runs'
+        }
+
         It 'reads a heading with trailing spaces' {
             $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs   '
 
@@ -289,6 +295,22 @@ Describe 'Test-Runbook.ps1' {
             $line = (Select-String -LiteralPath $script:runbook -SimpleMatch '[fill').LineNumber
 
             Get-Message | Should -Be "line ${line}: '[fill in: where they're set up]' must be filled in before the runbook is In use"
+        }
+
+        # Review 6: whitespace, newlines included, may sit anywhere inside the marker, and every placeholder counts.
+        It 'reports ''<Written>'', with whitespace inside its marker' -ForEach @(
+            @{ Written = "[`nfill in: x]" }, @{ Written = "[fill in`n: x]" }
+        ) {
+            New-Runbook -Status 'In use' -Body @{ 'Where it runs' = "- Probes: $Written" }
+
+            @(Get-Message) | Should -HaveCount 1
+            Get-Message | Should -Match 'must be filled in before the runbook is In use$'
+        }
+
+        It 'reports each of two placeholders on one line' {
+            New-Runbook -Status 'In use' -Body @{ 'Where it runs' = '| Production | [fill in: the URL] | [fill in: the host] |' }
+
+            @(Get-Message) | Should -HaveCount 2
         }
 
         It 'reports a placeholder whatever its case, as ''<Placeholder>''' -ForEach @(@{ Placeholder = '[Fill in: the URL]' }, @{ Placeholder = '[FILL IN: the URL]' }) {

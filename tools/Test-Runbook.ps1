@@ -62,7 +62,7 @@ function Get-RunbookField {
 #   least as long, with nothing after it;
 # - a heading may be indented up to three spaces, and its closing hashes aren't part of its name.
 # A setext heading (a line underlined with ---) or a fence opened on a list marker's own line isn't read; either
-# shows up as a section missing, never as a pass.
+# usually shows up as a section missing.
 function Get-RunbookSection {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Lines)
 
