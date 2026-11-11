@@ -31,7 +31,8 @@ function Get-EmptyProjectProblem {
         $relative = $project.GetAttribute('Path')
         $projectFolder = Split-Path -Parent (Join-Path $solutionFolder $relative)
         $sources = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File -Filter '*.cs' |
-            Where-Object { [IO.Path]::GetRelativePath($projectFolder, $_.FullName).Split([IO.Path]::DirectorySeparatorChar)[0] -notin $script:BuildFolders })
+            Where-Object { [IO.Path]::GetRelativePath($projectFolder, $_.FullName).Split([IO.Path]::DirectorySeparatorChar)[0] -notin $script:BuildFolders } |
+            Where-Object Name -NE 'Class1.cs')
         if (-not $sources) {
             New-Problem -Message "$relative has no source files of its own"
         }
