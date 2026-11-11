@@ -27,6 +27,21 @@ Describe 'Get-DotnetSkillBlobId' {
     }
 }
 
+Describe 'Invoke-GitText' {
+    # git's errors go to the console, outside the output, so a child pwsh catches them.
+    It 'lets git''s errors through, and drops them with -Quiet' {
+        $script = Join-Path $PSScriptRoot '..' 'Update-DotnetSkills.ps1'
+        $notRepo = New-Item -ItemType Directory -Path (Join-Path $TestDrive "not-a-repo-$(New-Guid)")
+        $call = ". '$script'; Invoke-GitText -Arguments @('-C', '$($notRepo.FullName)', 'ls-tree', 'HEAD')"
+
+        $loud = (pwsh -NoProfile -Command $call 2>&1) -join "`n"
+        $quiet = (pwsh -NoProfile -Command "$call -Quiet" 2>&1) -join "`n"
+
+        $loud | Should -Match 'fatal: not a git repository'
+        $quiet | Should -Not -Match 'fatal'
+    }
+}
+
 Describe 'Get-DotnetSkillDrift' {
     BeforeAll {
         # A skills folder with one curated skill of two files, and the lock entry that matches it.
