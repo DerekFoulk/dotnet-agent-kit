@@ -51,7 +51,9 @@ Describe 'Repo build configuration' -Tag 'Build' {
         function New-FixtureWorkspace {
             param([Parameter(Mandatory)] [string] $Fixture)
 
-            $workspace = Join-Path $TestDrive $Fixture
+            # A folder of its own under a random name, so a fixture can back several tests; the leaf keeps the
+            # fixture's name.
+            $workspace = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName()) $Fixture
             New-Item -ItemType Directory -Path $workspace | Out-Null
             foreach ($file in $configFiles) {
                 $source = Join-Path $repoRoot $file
