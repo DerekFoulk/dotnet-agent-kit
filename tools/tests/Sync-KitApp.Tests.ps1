@@ -260,6 +260,12 @@ Describe 'Sync-KitApp' {
             Get-Content -Raw (Join-Path $script:appRoot 'docs/runbook.md') | Should -Be "# Ours`n"
         }
 
+        It 'reports nothing when the app''s file is already the kit''s' {
+            Set-FileText (Join-Path $script:newRoot 'docs/runbook.md') "# Runbook`r`n"
+            Set-FileText (Join-Path $script:appRoot 'docs/runbook.md') "# Runbook`n"
+
+            @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed @()) | Should -BeNullOrEmpty
+        }
         It 'skips <Case>' -ForEach @(
             @{ Case = 'a file the app''s kit version already had, which the app deleted'; Path = 'docs/runbook.md'; InBase = $true; Managed = @() }
             @{ Case = 'a kit-managed file, which the manifest handles'; Path = '.editorconfig'; InBase = $false; Managed = @('.editorconfig') }
