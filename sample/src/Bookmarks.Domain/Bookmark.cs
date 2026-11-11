@@ -37,9 +37,20 @@ public sealed class Bookmark
             throw new ArgumentException("A bookmark needs an absolute http or https URL.", nameof(url));
         }
 
+        if (url.OriginalString.Length > MaxUrlLength)
+        {
+            throw new ArgumentException($"A bookmark's URL has at most {MaxUrlLength} characters.", nameof(url));
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        string trimmed = title.Trim();
+        if (trimmed.Length > MaxTitleLength)
+        {
+            throw new ArgumentException($"A bookmark's title has at most {MaxTitleLength} characters.", nameof(title));
+        }
+
         // A UUID version 7 starts with its creation time (to the millisecond), so on SQLite ordering by Id is creation
         // order. It needs a time from 1970 on; createdAt comes from TimeProvider.
-        return new Bookmark(Guid.CreateVersion7(createdAt), ownerId, url, title.Trim(), createdAt);
+        return new Bookmark(Guid.CreateVersion7(createdAt), ownerId, url, trimmed, createdAt);
     }
 }

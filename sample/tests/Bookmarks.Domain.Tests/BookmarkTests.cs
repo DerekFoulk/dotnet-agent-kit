@@ -79,8 +79,11 @@ public sealed class BookmarkTests
         Action longTitle = () => Bookmark.Create(Owner, new Uri("https://example.com/"), new string('t', Bookmark.MaxTitleLength + 1), s_now);
         Action longUrl = () => Bookmark.Create(Owner, tooLong, "Title", s_now);
 
-        longTitle.Should().Throw<ArgumentException>().WithParameterName("title");
-        longUrl.Should().Throw<ArgumentException>().WithParameterName("url");
+        // The messages reach the API's 400 Problem Details, so they say the limit, never the value.
+        longTitle.Should().Throw<ArgumentException>().WithParameterName("title")
+            .WithMessage("A bookmark's title has at most 500 characters.*");
+        longUrl.Should().Throw<ArgumentException>().WithParameterName("url")
+            .WithMessage("A bookmark's URL has at most 2048 characters.*");
     }
 
     [Fact]
