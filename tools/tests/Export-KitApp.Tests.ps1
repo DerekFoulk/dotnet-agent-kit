@@ -95,8 +95,11 @@ Describe 'Export-KitApp' {
         }
         Get-Content -Raw (Join-Path $app 'README.md') | Should -Match '# Contoso\.Orders'
 
-        # ${{ github.ref }} in a workflow is GitHub's syntax, not a template placeholder.
-        $leftovers = Get-ChildItem -LiteralPath $app -Recurse -File | Select-String -Pattern '\{\{[A-Za-z]+\}\}'
+        # ${{ github.ref }} in a workflow is GitHub's syntax, not a template placeholder. Only the rendered files are
+        # looked at: a copied kit file keeps its own text, such as {{baseUrl}} in a curated skill's .http example.
+        $rendered = @($map | Where-Object { $_.Kind -eq 'Template' } | ForEach-Object { Join-Path $app $_.Target })
+        $rendered.Count | Should -BeGreaterThan 5
+        $leftovers = $rendered | ForEach-Object { Select-String -LiteralPath $_ -Pattern '\{\{[A-Za-z]+\}\}' }
         @($leftovers | ForEach-Object { "$($_.Path):$($_.LineNumber)" }) | Should -BeNullOrEmpty
     }
 

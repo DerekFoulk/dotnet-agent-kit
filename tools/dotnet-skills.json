@@ -1,18 +1,106 @@
 {
   "repository": "dotnet/skills",
   "url": "https://github.com/dotnet/skills",
-  "commit": "",
-  "retrieved": "",
+  "commit": "96c3d68dad2855e3ab5178aa1a262789d86a1466",
+  "retrieved": "2026-11-10",
   "skills": [
-    { "name": "dotnet-webapi", "source": "plugins/dotnet-aspnetcore/skills/dotnet-webapi", "files": {} },
-    { "name": "optimizing-ef-core-queries", "source": "plugins/dotnet-data/skills/optimizing-ef-core-queries", "files": {} },
-    { "name": "analyzing-dotnet-performance", "source": "plugins/dotnet-diag/skills/analyzing-dotnet-performance", "files": {} },
-    { "name": "run-tests", "source": "plugins/dotnet-test/skills/run-tests", "files": {} },
-    { "name": "filter-syntax", "source": "plugins/dotnet-test/skills/filter-syntax", "files": {} },
-    { "name": "migrate-xunit-to-xunit-v3", "source": "plugins/dotnet-test-migration/skills/migrate-xunit-to-xunit-v3", "files": {} },
-    { "name": "migrate-vstest-to-mtp", "source": "plugins/dotnet-test-migration/skills/migrate-vstest-to-mtp", "files": {} },
-    { "name": "convert-to-cpm", "source": "plugins/dotnet-nuget/skills/convert-to-cpm", "files": {} },
-    { "name": "author-component", "source": "plugins/dotnet-blazor/skills/author-component", "files": {} },
-    { "name": "msbuild", "source": "plugins/dotnet/skills/msbuild", "files": {} }
+    {
+      "name": "dotnet-webapi",
+      "source": "plugins/dotnet-aspnetcore/skills/dotnet-webapi",
+      "files": {
+        "SKILL.md": "c22ba5ca10cb48dd69c53dd87cebc165d6b21a58"
+      }
+    },
+    {
+      "name": "optimizing-ef-core-queries",
+      "source": "plugins/dotnet-data/skills/optimizing-ef-core-queries",
+      "files": {
+        "SKILL.md": "84f69884b0d02b42421d08a9e00888799a843ac3"
+      }
+    },
+    {
+      "name": "analyzing-dotnet-performance",
+      "source": "plugins/dotnet-diag/skills/analyzing-dotnet-performance",
+      "files": {
+        "SKILL.md": "0d648a3ddae21c73754da3be8bf907d56388c94d",
+        "references/async-patterns.md": "88cb211f2a0c2c8238129a3c0a888b8e6f48546f",
+        "references/collections-and-linq.md": "575038ee1ba1925fb7a66a40089160162bd32a96",
+        "references/critical-patterns.md": "63490a861c2f1c2f17c457e66d6c0fc74109af39",
+        "references/io-and-serialization.md": "8ff904c5ffe91ca382f9a3f820fd8b8cfab1cd1b",
+        "references/memory-and-strings.md": "4c6d78be24b84e32b9eda4c68499401d9e0e3b01",
+        "references/regex-patterns.md": "940a1b668788c63ec0e6268baadd193ee947ef67",
+        "references/structural-patterns.md": "9cf41b2849a5428ff6688c5c7951236dee592ac6"
+      }
+    },
+    {
+      "name": "run-tests",
+      "source": "plugins/dotnet-test/skills/run-tests",
+      "files": {
+        "SKILL.md": "f77df06a386c7b678ca5ff1aa94f754571a65d28"
+      }
+    },
+    {
+      "name": "filter-syntax",
+      "source": "plugins/dotnet-test/skills/filter-syntax",
+      "files": {
+        "SKILL.md": "130e9b11021ba285910d891cef163665990bc419"
+      }
+    },
+    {
+      "name": "migrate-xunit-to-xunit-v3",
+      "source": "plugins/dotnet-test-migration/skills/migrate-xunit-to-xunit-v3",
+      "files": {
+        "SKILL.md": "a934a8b91b0f21be235bb25125fec9313aacb7aa"
+      }
+    },
+    {
+      "name": "migrate-vstest-to-mtp",
+      "source": "plugins/dotnet-test-migration/skills/migrate-vstest-to-mtp",
+      "files": {
+        "SKILL.md": "fab185cb5f889319d28df9401aa6616d03a5a0bc"
+      }
+    },
+    {
+      "name": "convert-to-cpm",
+      "source": "plugins/dotnet-nuget/skills/convert-to-cpm",
+      "files": {
+        "SKILL.md": "63dc9f476e70b7f7366b6c679933670b26d557c9",
+        "references/audit-complexities.md": "3d95c72f8f9486d3a6943a123f1ceb2da491ad18",
+        "references/baseline-comparison.md": "91d99c61b421f6037addca8363affbced343a903",
+        "references/directory-packages-props.md": "ac748d98a64f3ff65dba6142d822a622d6de85e8",
+        "references/msbuild-property-handling.md": "02f40bfb57e3316459a156b384bc4a559072114a",
+        "references/report-template.md": "25aa55888504295116ea10509951707d1216d410",
+        "references/validation-and-errors.md": "0cc32b8a4b3de64a42cd6660b66af2b7399a0137"
+      }
+    },
+    {
+      "name": "author-component",
+      "source": "plugins/dotnet-blazor/skills/author-component",
+      "files": {
+        "SKILL.md": "58343e51d0ef54ab7b971238e6a8b7ebf4b85e57",
+        "references/async-programming-rules.md": "a332be96688cd63359761905f79d93c4d369ab8c",
+        "references/breaking-down-components.md": "919642514f3abccf54a72366fb96240a0a3ff02e",
+        "references/component-disposal.md": "58c82a0dc8eddfd70da0faab97ab225e2fec37bd"
+      }
+    },
+    {
+      "name": "msbuild",
+      "source": "plugins/dotnet/skills/msbuild",
+      "files": {
+        "SKILL.md": "f08087610805ae643a223e8081cf1346d230cc95",
+        "references/antipatterns/additional-antipatterns.md": "e0020d3d7d72ea128265fd76cc05e604cd9e2fd3",
+        "references/antipatterns/incremental-build-inputs-outputs.md": "940f36fcd5f04067aa85e42de840881dfa1d5681",
+        "references/antipatterns/private-assets.md": "23c6c38416403b07961605c08a42dfecd3e2eab6",
+        "references/binlog-failure-analysis.md": "5f92c0595ce01a7d853d4dca37062e3941df135e",
+        "references/binlog-generation.md": "9948f53c96ada01c33b4abee7ec9b983691323a2",
+        "references/build-perf-baseline.md": "17b8a165b1fc12c42f4054383b5d2e8bfa898bea",
+        "references/build-perf-diagnostics.md": "96eaf244283224d5c81b04db5f1a8a3e7fa717ac",
+        "references/copy-to-output-directory.md": "f148e003ca6b0ba4b5f5680e99960c41b170d945",
+        "references/eval-performance.md": "ac683b56005250fcd532db333c910eff1c314fd5",
+        "references/extension-points.md": "307fa8c992764d35b314b2695595889c252def3d",
+        "references/incremental-build.md": "bce8b940a2acf152686e1a56e46d927fa8aaba91",
+        "references/msbuild-antipatterns.md": "70a92bcd4621b2a7888045cd376d9576007ec4af"
+      }
+    }
   ]
 }
