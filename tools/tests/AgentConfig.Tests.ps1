@@ -287,7 +287,8 @@ Describe 'Agent configuration' {
         # Claude Code lists every skill's description in each session and drops descriptions once the listing passes
         # 1% of the context window (code.claude.com/docs/en/skills, "Skill descriptions are cut short"). On a
         # 200,000-token window at about four characters a token, that's 8,000 characters; the exact count Claude Code
-        # uses isn't verified. Adding a skill may mean taking one out (ADR-0042, docs/dotnet-skills.md).
+        # uses isn't verified. Adding a skill may mean taking one out (ADR-0042, docs/dotnet-skills.md). That doc states
+        # the totals, and DotnetSkills.Tests.ps1 checks them, so changing any skill's description means updating it.
         It 'keeps every skill''s description together within 8,000 characters' {
             $total = 0
             foreach ($file in Get-ChildItem -LiteralPath (Join-Path $repoRoot '.claude' 'skills') -Directory) {
