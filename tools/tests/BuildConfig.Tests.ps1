@@ -172,6 +172,12 @@ Describe 'BannedSymbols.txt' {
         }
     }
 
+    # Review 4 of PR 36: documentation comment IDs are case-sensitive, so a mis-cased entry bans nothing.
+    It 'rejects an ID that differs from the symbol only in case' {
+        Test-DocumentationId -Id 'M:System.Reflection.Module.gettypes' | Should -BeFalse
+        Test-DocumentationId -Id 'M:System.Reflection.Module.FindTypes(System.Reflection.typefilter,System.object)' | Should -BeFalse
+    }
+
     It 'names only symbols that exist' {
         $ids = @(Get-Content -LiteralPath $bannedPath | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
 
