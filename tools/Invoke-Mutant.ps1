@@ -5,8 +5,19 @@
 
 .DESCRIPTION
     Each mutant replaces one exact piece of text in -Path. The tests in -TestPath then run in a fresh pwsh
-    -NoProfile process, and the file is restored byte for byte before the next mutant. A mutant the tests fail on
-    is "Killed"; one they pass with "Survived" shows behavior no test pins.
+    -NoProfile process, and the file is restored byte for byte before the next mutant. A mutant the tests fail on,
+    or that breaks a test file's discovery or setup, is "Killed"; one they pass with "Survived" shows behavior no
+    test pins. Text found zero times or more than once is "NotFound" or "Ambiguous", and nothing runs.
+
+    The tests run once on the unchanged file first. If they fail there, run no tests, or return no result, every
+    mutant is an "Error", whose Message says why and adds what Pester wrote to stderr.
+
+    Run it in a fresh clone, never in your working copy: the file is changed in place. A Ctrl+C or an error still
+    restores it, but a killed pwsh leaves the mutant on disk; `git checkout -- <file>` puts it back.
+
+    -Find is matched exactly, line endings included, so a multi-line -Find must use the file's own: .ps1 files
+    are checked out with CRLF everywhere, and .md files with the platform's own. The file is read as UTF-8 (a
+    byte order mark is kept); a file in another encoding reports NotFound or changes the wrong bytes.
 
 .EXAMPLE
     ./tools/Invoke-Mutant.ps1 -Path tools/Export-KitApp.ps1 -TestPath tools/tests/Export-KitApp.Tests.ps1 `
