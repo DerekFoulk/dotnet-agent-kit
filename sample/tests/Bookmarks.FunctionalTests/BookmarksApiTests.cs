@@ -67,7 +67,7 @@ public sealed class BookmarksApiTests : IDisposable
     public async Task TheSameUrlWrittenAnotherWayIsAConflictToo()
     {
         // Review 4: the lookup matches the stored text, so it must get the URL in its stored form (the bookmark's,
-        // not the request's); otherwise this second save is a 201 and a duplicate.
+        // not the request's); otherwise the third save, whose text differs from what's stored, is a 201 and a duplicate.
         using HttpResponseMessage first = await Client.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri("HTTPS://Example.COM:443/a"), "A"), TestContext.Current.CancellationToken);
         first.StatusCode.Should().Be(HttpStatusCode.Created);
 
