@@ -72,3 +72,83 @@ Describe 'Get-DotnetSkillDrift' {
         @(Get-DotnetSkillDrift -SkillsRoot $copy.Skills -Lock $copy.Lock) | Should -BeNullOrEmpty
     }
 }
+
+Describe 'Update-DotnetSkill' {
+    BeforeAll {
+        Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+        $savedGit = Set-TestGitEnvironment
+
+        function Write-Text([string] $Path, [string] $Text) {
+            New-Item -ItemType Directory -Force -Path (Split-Path $Path -Parent) | Out-Null
+            [IO.File]::WriteAllText($Path, $Text)
+        }
+
+        # A stand-in for dotnet/skills: commit 1 has the "tidy" skill with an old reference file; main (commit 2)
+        # changes SKILL.md, drops the old reference and adds a new one.
+        $upstream = Join-Path $TestDrive 'upstream'
+        Write-Text (Join-Path $upstream 'plugins/p/skills/tidy/SKILL.md') "---`nname: tidy`n---`nOne.`n"
+        Write-Text (Join-Path $upstream 'plugins/p/skills/tidy/references/old.md') "Old.`n"
+        Write-Text (Join-Path $upstream 'plugins/q/skills/other/SKILL.md') "---`nname: other`n---`n"
+        git -C $upstream init -q -b main
+        git -C $upstream add -A
+        git -C $upstream commit -q -m 'first'
+        $first = (git -C $upstream rev-parse HEAD).Trim()
+        Write-Text (Join-Path $upstream 'plugins/p/skills/tidy/SKILL.md') "---`nname: tidy`n---`nTwo.`n"
+        Remove-Item -LiteralPath (Join-Path $upstream 'plugins/p/skills/tidy/references/old.md')
+        Write-Text (Join-Path $upstream 'plugins/p/skills/tidy/references/new.md') "New.`n"
+        git -C $upstream add -A
+        git -C $upstream commit -q -m 'second'
+        $second = (git -C $upstream rev-parse HEAD).Trim()
+
+        # A kit with its own skill and a lock that lists "tidy" but has no copy yet.
+        function New-Kit([string] $Source = 'plugins/p/skills/tidy') {
+            $kit = Join-Path $TestDrive "kit-$(New-Guid)"
+            Write-Text (Join-Path $kit '.claude/skills/start-work/SKILL.md') "Kit skill.`n"
+            $lock = [ordered]@{
+                repository = 'dotnet/skills'; url = $upstream; commit = ''; retrieved = ''
+                skills = @([ordered]@{ name = 'tidy'; source = $Source; files = [ordered]@{} })
+            }
+            Write-Text (Join-Path $kit 'tools/dotnet-skills.json') ($lock | ConvertTo-Json -Depth 5)
+            $kit
+        }
+        function Read-Lock([string] $Kit) { Get-Content -Raw -LiteralPath (Join-Path $Kit 'tools/dotnet-skills.json') | ConvertFrom-Json -AsHashtable -DateKind String }
+    }
+    AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
+    It 'copies each listed skill at the commit and records the commit, the date and each file''s blob id' {
+        $kit = New-Kit
+
+        Update-DotnetSkill -RepoRoot $kit -Commit $first -RepositoryUrl $upstream -Retrieved '2026-11-10'
+
+        $lock = Read-Lock $kit
+        $lock['commit'] | Should -Be $first
+        $lock['retrieved'] | Should -Be '2026-11-10'
+        $files = $lock['skills'][0]['files']
+        @($files.Keys) | Should -Be @('SKILL.md', 'references/old.md')
+        $files['SKILL.md'] | Should -Be (git -C $upstream rev-parse "${first}:plugins/p/skills/tidy/SKILL.md").Trim()
+        Get-Content -Raw -LiteralPath (Join-Path $kit '.claude/skills/tidy/SKILL.md') | Should -Be "---`nname: tidy`n---`nOne.`n"
+        @(Get-DotnetSkillDrift -SkillsRoot (Join-Path $kit '.claude/skills') -Lock $lock) | Should -BeNullOrEmpty
+    }
+
+    It 'moves to a later commit by branch name, dropping files that are gone upstream' {
+        $kit = New-Kit
+        Update-DotnetSkill -RepoRoot $kit -Commit $first -RepositoryUrl $upstream -Retrieved '2026-11-10'
+
+        Update-DotnetSkill -RepoRoot $kit -Commit 'main' -RepositoryUrl $upstream -Retrieved '2026-11-11'
+
+        $lock = Read-Lock $kit
+        $lock['commit'] | Should -Be $second
+        @($lock['skills'][0]['files'].Keys) | Should -Be @('SKILL.md', 'references/new.md')
+        Join-Path $kit '.claude/skills/tidy/references/old.md' | Should -Not -Exist
+        Get-Content -Raw -LiteralPath (Join-Path $kit '.claude/skills/tidy/SKILL.md') | Should -Be "---`nname: tidy`n---`nTwo.`n"
+    }
+
+    It 'leaves the kit''s own skills and skills the lock doesn''t list alone' {
+        $kit = New-Kit
+
+        Update-DotnetSkill -RepoRoot $kit -Commit $second -RepositoryUrl $upstream -Retrieved '2026-11-10'
+
+        Get-Content -Raw -LiteralPath (Join-Path $kit '.claude/skills/start-work/SKILL.md') | Should -Be "Kit skill.`n"
+        Join-Path $kit '.claude/skills/other' | Should -Not -Exist
+    }
+}

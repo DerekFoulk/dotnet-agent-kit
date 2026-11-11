@@ -53,3 +53,14 @@ function Get-DotnetSkillDrift {
         }
     }
 }
+
+# Copies every skill tools/dotnet-skills.json lists from the upstream repo at one commit into .claude/skills, and
+# rewrites the lock with that commit, the date and each file's blob id.
+function Update-DotnetSkill {
+    param(
+        [Parameter(Mandatory)] [string] $RepoRoot,
+        [Parameter(Mandatory)] [string] $Commit,
+        [Parameter(Mandatory)] [string] $RepositoryUrl,
+        [Parameter(Mandatory)] [string] $Retrieved
+    )
+}
