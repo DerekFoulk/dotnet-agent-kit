@@ -153,20 +153,40 @@ Describe 'Update-DotnetSkill' {
         Get-Content -Raw -LiteralPath (Join-Path $kit '.claude/skills/tidy/SKILL.md') | Should -Be "---`nname: tidy`n---`nTwo.`n"
     }
 
-    It 'copies and records a file whose name isn''t ASCII under that name' {
-        $name = "caf$([char]0xE9).md"
-        git -C $upstream switch -q -c accented $second
-        Write-Text (Join-Path $upstream "plugins/p/skills/tidy/references/$name") "Accented.`n"
-        git -C $upstream add -A
-        git -C $upstream commit -q -m 'accented'
-        $accented = (git -C $upstream rev-parse HEAD).Trim()
-        git -C $upstream switch -q main
-        $kit = New-Kit
+    Context 'a file whose name isn''t ASCII' {
+        BeforeAll {
+            $name = "caf$([char]0xE9).md"
+            git -C $upstream switch -q -c accented $second
+            Write-Text (Join-Path $upstream "plugins/p/skills/tidy/references/$name") "Accented.`n"
+            git -C $upstream add -A
+            git -C $upstream commit -q -m 'accented'
+            $accented = (git -C $upstream rev-parse HEAD).Trim()
+            git -C $upstream switch -q main
+        }
 
-        Update-DotnetSkill -RepoRoot $kit -Commit $accented -RepositoryUrl $upstream -Retrieved '2026-11-10'
+        It 'is copied and recorded under its name' {
+            $kit = New-Kit
 
-        @((Read-Lock $kit)['skills'][0]['files'].Keys) | Should -Contain "references/$name"
-        Get-Content -Raw -LiteralPath (Join-Path $kit ".claude/skills/tidy/references/$name") | Should -Be "Accented.`n"
+            Update-DotnetSkill -RepoRoot $kit -Commit $accented -RepositoryUrl $upstream -Retrieved '2026-11-10'
+
+            @((Read-Lock $kit)['skills'][0]['files'].Keys) | Should -Contain "references/$name"
+            Get-Content -Raw -LiteralPath (Join-Path $kit ".claude/skills/tidy/references/$name") | Should -Be "Accented.`n"
+        }
+
+        # A Windows console often uses a legacy code page, and PowerShell decodes git's output with it.
+        It 'is recorded under its name when the console isn''t UTF-8' {
+            $kit = New-Kit
+            $saved = [Console]::OutputEncoding
+            try {
+                [Console]::OutputEncoding = [Text.Encoding]::Latin1
+                Update-DotnetSkill -RepoRoot $kit -Commit $accented -RepositoryUrl $upstream -Retrieved '2026-11-10'
+                $after = [Console]::OutputEncoding
+            }
+            finally { [Console]::OutputEncoding = $saved }
+
+            @((Read-Lock $kit)['skills'][0]['files'].Keys) | Should -Contain "references/$name"
+            $after.WebName | Should -Be ([Text.Encoding]::Latin1.WebName) -Because 'the console is left as the caller set it'
+        }
     }
 
     It 'leaves the kit''s own skills and skills the lock doesn''t list alone' {
