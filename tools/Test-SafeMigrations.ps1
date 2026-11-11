@@ -21,7 +21,12 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # MigrationBuilder operations that remove or change what the running version reads or writes.
-$script:UnsafeOperations = @('DropColumn')
+$script:UnsafeOperations = @(
+    'DropTable', 'DropColumn', 'RenameTable', 'RenameColumn', 'AlterColumn', 'DropSchema', 'DropSequence', 'RenameSequence',
+    'DeleteData',
+    # Raw SQL could do anything, so it's reported too.
+    'Sql'
+)
 
 # Folders that hold build output or git's own files, never a migration to check.
 $script:SkippedFolders = @('bin', 'obj', '.git')

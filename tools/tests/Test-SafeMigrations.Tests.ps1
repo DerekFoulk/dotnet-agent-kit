@@ -88,7 +88,10 @@ Describe 'Test-SafeMigrations.ps1' {
         It 'reports every unsafe call in a migration, in order' {
             New-Migration -Up 'migrationBuilder.DropColumn(name: "Notes", table: "Orders");', 'migrationBuilder.DropTable(name: "Lines");'
 
-            Get-Message | Should -BeLike '*:13: Up calls DropColumn, *', '*:14: Up calls DropTable, *'
+            $messages = @(Get-Message)
+            $messages.Count | Should -Be 2
+            $messages[0] | Should -BeLike '*:13: Up calls DropColumn, *'
+            $messages[1] | Should -BeLike '*:14: Up calls DropTable, *'
         }
 
         It 'reads a builder parameter with another name' {
