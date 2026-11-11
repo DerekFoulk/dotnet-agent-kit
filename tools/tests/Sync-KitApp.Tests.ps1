@@ -230,6 +230,71 @@ Describe 'Sync-KitApp' {
         [regex]::Match($report, '(?m)^\| `Directory\.Packages\.props` \|.*Kit\.Fixture\.Analyzer.*$').Value | Should -Match 'other form'
     }
 
+    # Review 2 (mutants that survived): each branch of Add-KitAppOwnedFile, on small folders standing in for the
+    # app and the two exports.
+    Context 'adding the files a release starts every app with' {
+        BeforeEach {
+            $script:ownedRoot = Join-Path $TestDrive "owned-$(New-Guid)"
+            $script:newRoot = Join-Path $script:ownedRoot 'new'
+            $script:baseRoot = Join-Path $script:ownedRoot 'base'
+            $script:appRoot = Join-Path $script:ownedRoot 'app'
+            foreach ($folder in $script:newRoot, $script:baseRoot, $script:appRoot) { New-Item -ItemType Directory -Path $folder | Out-Null }
+        }
+
+        It 'adds a file new in the release that the app lacks, and reports it' {
+            Set-FileText (Join-Path $script:newRoot 'docs/runbook.md') "# Runbook`n"
+
+            $added = @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed @())
+
+            @($added | ForEach-Object { "$($_.Path) $($_.Action)" }) | Should -Be @('docs/runbook.md AppFileAdded')
+            Get-Content -Raw (Join-Path $script:appRoot 'docs/runbook.md') | Should -Be "# Runbook`n"
+        }
+
+        It 'keeps the app''s own file at that path, and reports it' {
+            Set-FileText (Join-Path $script:newRoot 'docs/runbook.md') "# Runbook`n"
+            Set-FileText (Join-Path $script:appRoot 'docs/runbook.md') "# Ours`n"
+
+            $added = @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed @())
+
+            @($added | ForEach-Object { "$($_.Path) $($_.Action)" }) | Should -Be @('docs/runbook.md AppFileKept')
+            Get-Content -Raw (Join-Path $script:appRoot 'docs/runbook.md') | Should -Be "# Ours`n"
+        }
+
+        It 'skips <Case>' -ForEach @(
+            @{ Case = 'a file the app''s kit version already had, which the app deleted'; Path = 'docs/runbook.md'; InBase = $true; Managed = @() }
+            @{ Case = 'a kit-managed file, which the manifest handles'; Path = '.editorconfig'; InBase = $false; Managed = @('.editorconfig') }
+            @{ Case = 'a file under .kit'; Path = '.kit/manifest.json'; InBase = $false; Managed = @() }
+            @{ Case = 'a generated rule file'; Path = '.claude/rules/new.md'; InBase = $false; Managed = @() }
+        ) {
+            Set-FileText (Join-Path $script:newRoot $Path) "new`n"
+            if ($InBase) { Set-FileText (Join-Path $script:baseRoot $Path) "old`n" }
+
+            $added = @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed $Managed)
+
+            $added | Should -BeNullOrEmpty
+            Test-Path -LiteralPath (Join-Path $script:appRoot $Path) | Should -BeFalse
+        }
+
+        It 'lists a new workflow for a person, and doesn''t write it' {
+            Set-FileText (Join-Path $script:newRoot '.github/workflows/new.yml') "name: New`n"
+
+            $added = @(Add-KitAppOwnedFile -AppRoot $script:appRoot -BaseRoot $script:baseRoot -NewRoot $script:newRoot -Managed @())
+
+            @($added | ForEach-Object { "$($_.Path) $($_.Action)" }) | Should -Be @('.github/workflows/new.yml WorkflowByHand')
+            Test-Path -LiteralPath (Join-Path $script:appRoot '.github/workflows/new.yml') | Should -BeFalse
+        }
+
+        It 'puts an added file under "Needs a look" in the PR''s description' {
+            $result = [pscustomobject]@{
+                Repository = 'DerekFoulk/dotnet-agent-kit'; FromVersion = 'v0.1.0'; FromCommit = 'a' * 40; ToVersion = 'v0.2.0'; ToCommit = 'b' * 40
+                Changed = $true; Files = @([pscustomobject]@{ Path = 'docs/runbook.md'; Action = 'AppFileAdded'; Detail = $null })
+            }
+
+            $report = Format-KitSyncReport -Result $result
+
+            [regex]::Match($report, '(?m)^\| `docs/runbook\.md` \|.*$').Value | Should -Match 'starts every app'
+        }
+    }
     Context 'deciding each file' {
         It 'gives <Expected> for <Case>' -ForEach @(
             # Review of the decision table: the kit dropping a kit block must never delete the app's whole file.
