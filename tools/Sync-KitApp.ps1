@@ -7,7 +7,8 @@
     Reads the app's .kit/manifest.json and updates every kit-managed file, and the kit blocks of AGENTS.md and
     THIRD-PARTY-NOTICES.md, to a kit release. Files the app owns are left alone, with two exceptions: a package
     the release adds is added to the app's Directory.Packages.props, if the app lacks it (Add-KitPackage); and a
-    file the release starts every app with, for the app to own, is added if the app lacks it (Add-KitAppOwnedFile).
+    file the release is the first to start every app with, for the app to own, is added if the app lacks it
+    (Add-KitAppOwnedFile).
 
     The release is -KitRef, a release tag, or, without it, the release the app's workflows pin the kit to:
     Dependabot moves that pin, and a release tag must point to it (ADR-0031). The app is exported at its kit
