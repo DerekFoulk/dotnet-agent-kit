@@ -38,12 +38,15 @@ public sealed class AuthorizationTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact]
-    public async Task AValidTokenThatNamesNoUserIsForbidden()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task AValidTokenThatNamesNoUserIsForbidden(string? user)
     {
         // SEC-009: the API keeps each user's data apart by the token's sub claim, so a token without one (such as an
-        // app's own token, with no user behind it) may not use it.
-        using HttpClient noUser = _host.CreateClient(TestTokens.For(user: null));
+        // app's own token, with no user behind it) may not use it. Review 1: a blank sub would be one shared owner.
+        using HttpClient noUser = _host.CreateClient(TestTokens.For(user: user));
 
         using HttpResponseMessage response = await noUser.GetAsync(new Uri("/bookmarks", UriKind.Relative), TestContext.Current.CancellationToken);
 
