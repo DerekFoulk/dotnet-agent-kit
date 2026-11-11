@@ -272,6 +272,18 @@ Describe 'Sync-KitApp' {
         }
 
         # Review: an app's file may still declare MSBuild's old XML namespace.
+        # Review: the app has the package already, at its own version, so there's nothing to add or report.
+        It 'adds and reports nothing for a package the app already has in the same form' {
+            $appRoot = New-PackagesRoot @('<GlobalPackageReference Include="Kit.Analyzer" Version="0.5.0" />')
+            $before = [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props'))
+
+            $packages = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @()) -NewRoot (New-PackagesRoot @($analyzer))
+
+            @($packages.Added).Count | Should -Be 0
+            @($packages.Skipped).Count | Should -Be 0
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -Be $before
+        }
+
         It 'finds the app''s packages in a file with MSBuild''s old XML namespace' {
             $appRoot = New-PackagesRoot @($analyzer) 'http://schemas.microsoft.com/developer/msbuild/2003'
             $before = [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props'))
