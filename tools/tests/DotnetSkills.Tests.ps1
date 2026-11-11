@@ -252,6 +252,22 @@ Describe 'Update-DotnetSkill' {
         Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json') | Should -Be $before
         Join-Path $kit '.claude/skills/tidy' | Should -Not -Exist
     }
+
+    It 'changes nothing when a listed skill has a submodule, which could hold anything' {
+        git -C $upstream switch -q -c with-submodule $second
+        git -C $upstream update-index --add --cacheinfo "160000,$first,plugins/p/skills/tidy/vendored"
+        git -C $upstream commit -q -m 'submodule'
+        $withSubmodule = (git -C $upstream rev-parse HEAD).Trim()
+        git -C $upstream switch -q main
+        $kit = New-Kit
+        $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
+
+        { Update-DotnetSkill -RepoRoot $kit -Commit $withSubmodule -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
+            Should -Throw '*tidy/vendored*'
+
+        Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json') | Should -Be $before
+        Join-Path $kit '.claude/skills/tidy' | Should -Not -Exist
+    }
 }
 
 Describe 'Update-DotnetSkills.ps1 from the command line' {
