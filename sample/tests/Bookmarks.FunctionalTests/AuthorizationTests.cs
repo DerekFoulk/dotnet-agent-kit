@@ -36,5 +36,18 @@ public sealed class AuthorizationTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task AValidTokenThatNamesNoUserIsForbidden()
+    {
+        // SEC-009: the API keeps each user's data apart by the token's sub claim, so a token without one (such as an
+        // app's own token, with no user behind it) may not use it.
+        using HttpClient noUser = _host.CreateClient(TestTokens.For(user: null));
+
+        using HttpResponseMessage response = await noUser.GetAsync(new Uri("/bookmarks", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json", "a 403 is Problem Details too (API-002)");
+    }
+
     public void Dispose() => _host.Dispose();
 }
