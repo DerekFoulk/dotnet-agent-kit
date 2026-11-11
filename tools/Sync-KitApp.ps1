@@ -232,8 +232,12 @@ function Sync-KitApp {
                 [pscustomobject]@{ Path = $path; Action = 'Updated' }
             }
             elseif ($old -and $theirs -and $null -ne $ours -and -not $unedited -and (& $script:TextHash -Text $ours) -ne $theirs['sha256']) {
+                # The base must be exactly the text the manifest recorded; anything else could merge in changes
+                # nobody made.
                 $base = Get-KitEntryText -Root $baseRoot -Entry $old
-                $merged = Merge-KitText -Work $work -Ours $ours -Base $base -Theirs (Get-KitEntryText -Root $newRoot -Entry $theirs)
+                $merged = if ($null -ne $base -and (& $script:TextHash -Text $base) -eq $old['sha256']) {
+                    Merge-KitText -Work $work -Ours $ours -Base $base -Theirs (Get-KitEntryText -Root $newRoot -Entry $theirs)
+                }
                 if ($null -eq $merged) {
                     # Overlapping changes: the app's text stays, and the PR says so. Conflict markers in a file
                     # would only break the build or hide in a doc.
