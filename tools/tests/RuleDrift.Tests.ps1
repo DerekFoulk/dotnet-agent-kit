@@ -70,4 +70,13 @@ Describe 'Rules stated in several places agree' {
         # finish-work calls itself "this skill".
         $guardrailCopies['AGENTS.md "Working modes"'] | Should -Match '`finish-work` skill'
     }
+
+    It 'the plan checklist''s Accessibility heading points at UI-001 in its standard' {
+        # The checklist points at the rule instead of restating WCAG's criteria, so the two can't disagree (CRF-003).
+        $checklist = Get-Between (Read-Text '.claude/skills/plan-checklist/SKILL.md') '## Accessibility' '\r?\n## '
+        $checklist | Should -Match 'UI-001' -Because 'the Accessibility heading should name the rule'
+        $checklist | Should -Match '`docs/standards/ui\.md`' -Because 'the Accessibility heading should name where the rule lives'
+        Test-Path -LiteralPath (Join-Path $root 'docs/standards/ui.md') | Should -BeTrue
+        Read-Text 'docs/standards/ui.md' | Should -Match '(?m)^\s+- id: UI-001$'
+    }
 }
