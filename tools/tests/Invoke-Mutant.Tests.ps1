@@ -78,14 +78,13 @@ Describe 'Add' {
     }
 
     It 'reports every mutant as an error with what Pester wrote to stderr, when <Case>' -ForEach @(
-        @{ Case = 'the test path isn''t a test file'; Tests = "Describe 'Add' { }`n"; UseSource = $true; Message = 'ran no tests.*No test files' }
-        @{ Case = 'the tests end the process'; Tests = "[Environment]::Exit(3)`n"; UseSource = $false; Message = 'returned no result' }
+        @{ Case = 'they run no tests'; Tests = "[Console]::Error.WriteLine('setup broke')`nDescribe 'Add' { }`n"; Message = 'ran no tests.*setup broke' }
+        @{ Case = 'they end the process'; Tests = "[Console]::Error.WriteLine('setup broke')`n[Environment]::Exit(3)`n"; Message = 'returned no result.*setup broke' }
     ) {
         # Without the reason, an error is a dead end: the reviewer can't tell a typo in the path from a crash.
         $fixture = New-Fixture -Tests $Tests
-        $testPath = if ($UseSource) { $fixture.Source } else { $fixture.Tests }
 
-        $result = & $script -Path $fixture.Source -TestPath $testPath -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
 
         $result.Result | Should -Be 'Error'
         $result.Message | Should -Match $Message
