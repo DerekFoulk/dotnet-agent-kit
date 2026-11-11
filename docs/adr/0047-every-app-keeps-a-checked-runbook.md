@@ -1,4 +1,4 @@
-# ADR-0046: Every app keeps a runbook, from a template, checked in CI
+# ADR-0047: Every app keeps a runbook, from a template, checked in CI
 
 - **Status:** Proposed
 - **Date:** 2026-11-11

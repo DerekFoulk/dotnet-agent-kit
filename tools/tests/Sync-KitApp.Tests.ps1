@@ -92,7 +92,7 @@ Describe 'Sync-KitApp' {
         Edit-FileText (Join-Path $kit '.gitignore') '# dotenv files' '# dotenv files (kit v2)'
         Add-Content -LiteralPath (Join-Path $kit '.claude/skills/plan-checklist/SKILL.md') -Value 'kit-v2-plan-marker'
         Edit-FileText (Join-Path $kit 'templates/app/docs/runbook.md') '1. Check that CI passed' '1. Check (kit v2) that CI passed'
-        # Two files v0.2.0 starts every app with, for the app to own, as v0.1.0 did with docs/runbook.md (ADR-0046).
+        # Two files v0.2.0 starts every app with, for the app to own, as v0.1.0 did with docs/runbook.md (ADR-0047).
         Set-FileText (Join-Path $kit 'templates/app/docs/handbook.md') "# {{Name}} handbook`n"
         Set-FileText (Join-Path $kit 'templates/app/docs/glossary.md') "# {{Name}} glossary`n"
         Edit-FileText (Join-Path $kit 'tools/Export-KitApp.ps1') "'docs/runbook.md'," "'docs/runbook.md', 'docs/handbook.md', 'docs/glossary.md',"

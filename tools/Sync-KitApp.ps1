@@ -334,7 +334,7 @@ function Add-KitPackage {
 
 # The commit a release tag (vX.Y.Z) in the kit repo points to. Only a tag counts: ADR-0031 trusts a kit pin only
 # when a release tag in the kit's own repo points to it.
-# Gives the app each file the release starts every app with for the app to own, such as its runbook (ADR-0046),
+# Gives the app each file the release starts every app with for the app to own, such as its runbook (ADR-0047),
 # when the app's kit version didn't have it yet and the app lacks it: AppFileAdded. An app's own file at that path
 # stays: AppFileKept. Only ever adds; a file the app owns already is never changed, and one it deleted after its kit
 # version added it isn't brought back. A workflow is listed for a person instead, since the sync can't write one.

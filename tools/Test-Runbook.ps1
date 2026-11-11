@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     Fails when an app's runbook is missing a required part, or is In use with a step left to fill in (OPS-004,
-    ADR-0046).
+    ADR-0047).
 
 .DESCRIPTION
     Checks one runbook, docs/runbook.md by default: a "- **Status:** " line that reads Draft or In use; a
