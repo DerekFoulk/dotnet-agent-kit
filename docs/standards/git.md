@@ -20,11 +20,11 @@ rules:
     scope: core
     paths: ["**"]
   - id: GIT-003
-    statement: "Nobody pushes directly to main or force-pushes it; agents merge a PR only as the working mode allows (in review mode, when the owner says so for that PR), and never a release PR or a change to the guardrails."
+    statement: "Nobody pushes directly to main or force-pushes it; agents merge a PR only as the working mode allows (in review mode, when the owner says so for that PR), never a release PR, and a change to the guardrails only on the owner's yes for that PR at its head commit."
     why: "Branch protection was approved in one project; the owner then chose auto mode by default, where the agent merges its own PRs once they're green and reviewed, and kept releases his (ADR-0035)."
     layer: owner
     status: accepted
-    sources: ["ADR-0007", "ADR-0010", "ADR-0035", "owner, 2026-11-09"]
+    sources: ["ADR-0007", "ADR-0010", "ADR-0035", "owner, 2026-11-09", "owner, 2026-11-10"]
     enforcement: "ruleset: main protection blocks force-pushes and deletion and requires a pull request; merging by mode is advisory, backed in review mode by the gh pr merge ask rule Set-AgentMode.ps1 adds to .claude/settings.local.json"
     scope: core
     paths: ["**"]
