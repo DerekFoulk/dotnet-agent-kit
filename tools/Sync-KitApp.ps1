@@ -5,10 +5,24 @@
 
 .DESCRIPTION
     Reads the app's .kit/manifest.json and updates every kit-managed file, and the kit blocks of AGENTS.md and
-    THIRD-PARTY-NOTICES.md, to the kit at -KitRef, a release tag. Files the app owns are never read or written.
+    THIRD-PARTY-NOTICES.md, to a kit release. Files the app owns are never read or written.
+
+    The release is -KitRef, a release tag, or, without it, the release the app's workflows pin the kit to:
+    Dependabot moves that pin, and a release tag must point to it (ADR-0031). The app is exported at its kit
+    version and at the release, each with that version's own Export-KitApp, so every file comes out as that
+    version makes it (.claude/settings.json included, ADR-0032). A file the app edited is merged three ways with
+    the kit's change; overlapping changes keep the app's text. Workflow files are never written: a workflow's
+    own token can't push them. ADR-0042 has the full rule; -ReportPath gets the pull request's report of every
+    file that needs a look. When the app is already at the release, nothing changes and no report is written.
+
+    kit-sync.reusable.yml runs it on Dependabot's kit-pin PR in an app. -KitRoot is a clone of the kit with its
+    release tags; the script itself must come from the release, as the workflow's does.
 
 .EXAMPLE
-    ./tools/Sync-KitApp.ps1 -AppRoot ../Contoso.Orders -KitRoot . -KitRef v0.2.0 -ReportPath ../sync-report.md
+    ./tools/Sync-KitApp.ps1 -AppRoot ../Contoso.Orders -KitRoot . -ReportPath ../sync-report.md
+
+.EXAMPLE
+    ./tools/Sync-KitApp.ps1 -AppRoot ../Contoso.Orders -KitRoot . -KitRef v0.2.0
 #>
 [CmdletBinding()]
 param(
