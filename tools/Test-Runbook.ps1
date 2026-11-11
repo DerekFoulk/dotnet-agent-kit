@@ -55,7 +55,7 @@ function Get-RunbookField {
 # Splits a runbook into its "## " sections, in order: one Name and Body (trimmed text) each, a repeated heading
 # included. It reads them as Markdown (CommonMark) does: a "## " line inside a fenced code block is code, such as
 # a shell comment, not a heading; a fence closes only on a line of the same character, at least as long, with
-# nothing after it; and a heading's closing hashes aren't part of its name.
+# nothing after it; and a heading may be indented up to three spaces, and its closing hashes aren't part of its name.
 function Get-RunbookSection {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Lines)
 
@@ -70,7 +70,7 @@ function Get-RunbookSection {
             $Matches['marker'][0] -eq $fence[0] -and $Matches['marker'].Length -ge $fence.Length) {
             $fence = $null
         }
-        elseif ($null -eq $fence -and $line -match '^## (?<name>.+?)(?:\s+#+)?\s*$') {
+        elseif ($null -eq $fence -and $line -match '^ {0,3}##[ \t]+(?<name>.+?)(?:[ \t]+#+)?[ \t]*$') {
             $body = [System.Collections.Generic.List[string]]::new()
             $sections.Add([pscustomobject]@{ Name = $Matches['name']; Lines = $body })
             continue
@@ -119,7 +119,7 @@ function Get-RunbookProblem {
     }
 
     foreach ($name in $script:RequiredSections) {
-        $found = @($sections | Where-Object Name -EQ $name)
+        $found = @($sections | Where-Object Name -CEQ $name)
         if (-not $found) {
             New-Problem -Message "section '$name' is missing"
         }
