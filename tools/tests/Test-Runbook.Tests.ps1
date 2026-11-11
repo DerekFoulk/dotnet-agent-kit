@@ -121,6 +121,16 @@ Describe 'Test-Runbook.ps1' {
         }
     }
 
+    Context 'the app template''s runbook' {
+        It 'passes, as a Draft whose steps the app fills in' {
+            $template = Join-Path $PSScriptRoot '..' '..' 'templates' 'app' 'docs' 'runbook.md'
+
+            @(Get-RunbookProblem -Path $template) | ForEach-Object Message | Should -BeNullOrEmpty
+            Get-RunbookField -Lines (Get-Content -LiteralPath $template) -Name 'Status' | Should -Be 'Draft'
+            Get-Content -Raw -LiteralPath $template | Should -Match $script:PlaceholderPattern
+        }
+    }
+
     Context 'runner' {
         BeforeEach {
             Mock Write-Host {}
