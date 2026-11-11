@@ -144,6 +144,45 @@ Describe 'Test-Runbook.ps1' {
             Get-Message | Should -Be "section 'Where it runs' is missing"
         }
 
+        # Review 3 (mutants that survived): the limits of each form. Four spaces of indent make a code line, two
+        # backticks aren't a fence, and a heading's closing hashes need a space before them.
+        It 'reads ''<Line>'' inside a section as text, not as <What>' -ForEach @(
+            @{ Line = '    ## Where it runs'; What = 'a heading' }
+            @{ Line = '    ```'; What = 'a fence' }
+            @{ Line = '``'; What = 'a fence' }
+        ) {
+            $text = New-RunbookText -Body @{ 'How to deploy a release' = "1. Run it.`n$Line`n## How to roll back a release`n`n1. Undo it." } -Omit 'How to roll back a release'
+
+            @((Get-RunbookSection -Lines ($text -split "`n")).Name) | Should -Be $script:RequiredSections
+        }
+
+        It 'keeps a hash at the end of a heading''s name that has no space before it' {
+            $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs#'
+
+            @((Get-RunbookSection -Lines ($text -split "`n")).Name) | Should -Contain 'Where it runs#'
+        }
+
+        It 'reads the first status line, as a reader does' {
+            $text = (New-RunbookText -Status 'In use') -replace '(?m)^(- \*\*Last reviewed:\*\* .*)$', "`$1`n- **Status:** Draft"
+            Set-Content -Path $script:runbook -Value ($text + "`n[fill in: a step]`n")
+
+            Get-Message | Should -Match '^line \d+: '
+        }
+
+        It 'reads a code span made of a run of backticks with text after it as text, not a fence' {
+            $body = "1. Run this, then wait:`n`n``````echo hi`````` then wait.`n`n## How to roll back a release`n`n1. Undo it."
+            $text = New-RunbookText -Body @{ 'How to deploy a release' = $body } -Omit 'How to roll back a release'
+
+            @((Get-RunbookSection -Lines ($text -split "`n")).Name) | Should -Be $script:RequiredSections
+        }
+
+        It 'reads a "## " line inside an HTML comment as part of the comment, not a heading' {
+            $body = "1. Deploy it.`n<!--`n## How to roll back a release`n-->"
+            New-Runbook -Body @{ 'How to deploy a release' = $body }
+
+            Get-Message | Should -BeNullOrEmpty
+        }
+
         It 'reads a heading with trailing spaces' {
             $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs   '
 
@@ -170,10 +209,16 @@ Describe 'Test-Runbook.ps1' {
             Get-Message | Should -Be "status 'Live' must be 'Draft' or 'In use'"
         }
 
-        It 'reports a status in the wrong case' {
-            New-Runbook -Status 'in use'
+        It 'reports a status in the wrong case, and nothing an In use runbook would add' {
+            New-Runbook -Status 'in use' -Reviewed 'soon' -Body @{ 'Where it runs' = '[fill in: the URL]' }
 
             Get-Message | Should -Be "status 'in use' must be 'Draft' or 'In use'"
+        }
+
+        It 'reports only the missing review date line in a runbook that''s In use' {
+            New-Runbook -Status 'In use' -Omit 'Last reviewed'
+
+            Get-Message | Should -Be "the '- **Last reviewed:** ' line is missing"
         }
 
         It 'reads a status with trailing spaces' {
@@ -201,6 +246,12 @@ Describe 'Test-Runbook.ps1' {
             $line = (Select-String -LiteralPath $script:runbook -SimpleMatch '[fill in:').LineNumber
 
             Get-Message | Should -Be "line ${line}: '[fill in: the production URL]' must be filled in before the runbook is In use"
+        }
+
+        It 'reports a placeholder whatever its case, as ''<Placeholder>''' -ForEach @(@{ Placeholder = '[Fill in: the URL]' }, @{ Placeholder = '[FILL IN: the URL]' }) {
+            New-Runbook -Status 'In use' -Body @{ 'Where it runs' = "- Production: $Placeholder" }
+
+            Get-Message | Should -Match ([regex]::Escape("'$Placeholder' must be filled in"))
         }
 
         It 'reports a review date ''<Date>'', which isn''t YYYY-MM-DD, in a runbook that''s In use' -ForEach @(
