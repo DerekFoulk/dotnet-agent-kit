@@ -237,6 +237,15 @@ Describe 'Sync-KitApp' {
         ) {
             Get-KitSyncAction -Old $Old -Theirs $Theirs -OursHash $Ours -Generated $Generated | Should -Be $Expected
         }
+
+        # Review: an app made from an untagged kit commit has '# unreleased' after its pins.
+        It 'sees two workflows that differ only in their kit pin and its comment as the same' {
+            $uses = '    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/ci.reusable.yml@'
+            $before = Remove-KitPin -Text "jobs:`n$uses$('a' * 40) # unreleased`n" -Repository 'DerekFoulk/dotnet-agent-kit'
+            $after = Remove-KitPin -Text "jobs:`n$uses$('b' * 40) # v0.2.0`n" -Repository 'DerekFoulk/dotnet-agent-kit'
+
+            $after | Should -BeExactly $before
+        }
     }
 
     Context 'adding the kit''s packages to the app''s Directory.Packages.props' {
