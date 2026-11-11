@@ -74,6 +74,8 @@ Describe 'Sync-KitApp' {
         Add-Content -LiteralPath (Join-Path $app 'README.md') -Value "`napp-readme-marker"
         $instructions = @($manifestBefore['files'] | Where-Object { $_['path'] -like '.github/instructions/*' })[0]['path']
         Add-Content -LiteralPath (Join-Path $app $instructions) -Value 'app-generated-edit'
+        $packagesPath = Join-Path $app 'Directory.Packages.props'
+        Set-FileText $packagesPath ([IO.File]::ReadAllText($packagesPath) -replace '(?m)^[ \t]*<PackageVersion Include="Moq"[^\r\n]*\r?\n', '') # the app drops a kit package
         $appOwned = 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'Directory.Packages.props', '.github/dependabot.yml'
         $appOwnedBefore = @{}
         foreach ($path in $appOwned) { $appOwnedBefore[$path] = [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) }
@@ -90,6 +92,8 @@ Describe 'Sync-KitApp' {
         Remove-Item -LiteralPath (Join-Path $kit '.claude/skills/tdd-cycle/SKILL.md'), (Join-Path $kit '.claude/skills/write-adr/SKILL.md')
         Set-FileText (Join-Path $kit '.claude/skills/fresh-skill/SKILL.md') "# A new kit skill`n"
         Set-FileText (Join-Path $kit '.claude/skills/app-skill/SKILL.md') "# The kit's skill of the same name`n"
+        Edit-FileText (Join-Path $kit 'Directory.Packages.props') '<GlobalPackageReference Include="MinVer"' "<GlobalPackageReference Include=""Kit.Fixture.Analyzer"" Version=""1.2.3"" />`n    <GlobalPackageReference Include=""MinVer"""
+        Edit-FileText (Join-Path $kit 'Directory.Packages.props') '<PackageVersion Include="FluentAssertions"' "<PackageVersion Include=""Kit.Fixture.Test"" Version=""4.5.6"" />`n    <PackageVersion Include=""FluentAssertions"""
         Edit-FileText (Join-Path $kit 'global.json') '"version": "10.0.403"' '"version": "10.0.404"'
         Edit-FileText (Join-Path $kit 'docs/standards/git.md') 'squash and rebase merges are disabled.' 'squash and rebase merges are disabled (kit-v2-rule-marker).'
         Edit-FileText (Join-Path $kit 'AGENTS.md') '## Talking to the owner' "## Talking to the owner`n`nkit-v2-agents-marker"
@@ -403,9 +407,20 @@ Describe 'Sync-KitApp' {
         }
 
         It 'leaves the app''s own files byte for byte as they were' {
-            foreach ($path in $appOwned) {
+            foreach ($path in $appOwned | Where-Object { $_ -ne 'Directory.Packages.props' }) {
                 [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"
             }
+        }
+
+        # PR 36: a package the kit's files need (an analyzer for BannedSymbols.txt, say) would otherwise be missing.
+        It 'adds the packages the release adds to the app''s Directory.Packages.props, and changes nothing else there' {
+            $packages = [IO.File]::ReadAllText((Join-Path $app 'Directory.Packages.props'))
+
+            $packages | Should -Match '<GlobalPackageReference Include="Kit\.Fixture\.Analyzer" Version="1\.2\.3" />'
+            $packages | Should -Match '<PackageVersion Include="Kit\.Fixture\.Test" Version="4\.5\.6" />'
+            $packages | Should -Not -Match 'Include="Moq"' -Because 'the app removed it, and the release doesn''t add it'
+            $without = $packages -replace '(?s)[ \t]*<!-- Added by the kit sync.*?</ItemGroup>\r?\n\r?\n', ''
+            [Convert]::ToHexString([Text.UTF8Encoding]::new($false).GetBytes($without)) | Should -Be $appOwnedBefore['Directory.Packages.props'] -Because 'the app''s own lines stay as they were'
         }
 
         It 'writes the release''s manifest, so a kept edit still shows as an edit next time' {
