@@ -45,7 +45,25 @@ function Sync-KitApp {
 
     $AppRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($AppRoot)
     $KitRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($KitRoot)
-    $null = Get-KitReleaseCommit -KitRoot $KitRoot -KitRef $KitRef
+    $toCommit = Get-KitReleaseCommit -KitRoot $KitRoot -KitRef $KitRef
+    $manifest = Read-KitManifest -AppRoot $AppRoot
+    $fromCommit = $manifest['kitCommit']
+
+    # Only forward: the release must contain the app's kit commit. An app's files at a later kit version than the
+    # release would otherwise be taken back.
+    git -C $KitRoot cat-file -e "$fromCommit^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "The app's kit commit $fromCommit isn't in the kit at $KitRoot." }
+    git -C $KitRoot merge-base --is-ancestor $fromCommit $toCommit
+    if ($LASTEXITCODE -ne 0) {
+        throw "$KitRef doesn't come after the app's kit commit $fromCommit ($($manifest['kitVersion'])), so syncing to it would take the app back."
+    }
+}
+
+# The app's .kit/manifest.json, checked for what the sync needs.
+function Read-KitManifest {
+    param([Parameter(Mandatory)] [string] $AppRoot)
+
+    Get-Content -Raw -LiteralPath (Join-Path $AppRoot '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
