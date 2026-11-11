@@ -116,6 +116,16 @@ Describe 'Add' {
         $result.Message | Should -Match 'already fail'
     }
 
+    It 'reports a test file that breaks during discovery on the unchanged file as already failing' {
+        # Pester counts no test then, but the reason is a broken file, not an empty one.
+        $fixture = New-Fixture -Tests "Describe 'Add' {`n"
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match 'already fail'
+    }
+
     It 'reports a mutant that breaks the test file''s discovery as killed' {
         # Loading the source outside BeforeAll runs it during discovery, so a syntax error fails the whole file
         # before any test runs: Pester counts no failed test, only a failed container. (Discovery's copy is gone
