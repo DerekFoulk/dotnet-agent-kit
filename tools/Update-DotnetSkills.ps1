@@ -55,15 +55,17 @@ function Get-DotnetSkillBlobId {
 }
 
 # Runs git and returns its output as one string, decoded as UTF-8: PowerShell would decode it with the console's
-# encoding, which may be a legacy code page, and git writes paths as UTF-8. git's errors are dropped; a caller that
-# cares checks $LASTEXITCODE. The arguments come as an array because PowerShell drops a bare -- passed to a function.
+# encoding, which may be a legacy code page, and git writes paths as UTF-8. -Quiet drops git's errors, for a command
+# whose failure is an expected answer. The arguments come as an array because PowerShell drops a bare -- passed to a
+# function.
 function Invoke-GitText {
-    param([Parameter(Mandatory)] [string[]] $Arguments)
+    param([Parameter(Mandatory)] [string[]] $Arguments, [switch] $Quiet)
 
     $saved = [Console]::OutputEncoding
     try {
         [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-        (git @Arguments 2>$null) -join "`n"
+        $output = if ($Quiet) { git @Arguments 2>$null } else { git @Arguments }
+        $output -join "`n"
     }
     finally { [Console]::OutputEncoding = $saved }
 }
@@ -95,7 +97,7 @@ function Get-DotnetSkillDrift {
             # core.quotePath off, git prints a non-ASCII path as it is; a name with a quote, backslash or control
             # character still comes back quoted, so it counts as extra, on the safe side.
             $ignored = if ($extra) {
-                @((Invoke-GitText -Arguments (@('-C', $folder, '-c', 'core.quotePath=false', 'check-ignore', '--') + $extra)) -split "`n" | Where-Object { $_ })
+                @((Invoke-GitText -Quiet -Arguments (@('-C', $folder, '-c', 'core.quotePath=false', 'check-ignore', '--') + $extra)) -split "`n" | Where-Object { $_ })
             }
             else { @() }
             foreach ($file in $extra) {
