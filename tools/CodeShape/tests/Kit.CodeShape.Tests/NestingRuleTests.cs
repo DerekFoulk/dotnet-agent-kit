@@ -114,6 +114,36 @@ public sealed class NestingRuleTests
         NestingRule.Check(file).Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData("Kinds(int a) { FIVE }", "Kinds")]
+    [InlineData("~Kinds() { int a = 0; FIVE }", "~Kinds")]
+    [InlineData("public static Kinds operator +(Kinds k, int a) { FIVE return k; }", "operator +")]
+    [InlineData("public static explicit operator int(Kinds k) { int a = 0; FIVE return a; }", "explicit operator int")]
+    [InlineData("int P { get { int a = 0; FIVE return a; } }", "P.get")]
+    [InlineData("int this[int a] { set { FIVE } }", "this[].set")]
+    [InlineData("event System.Action E { add { int a = 0; FIVE } remove { } }", "E.add")]
+    public void EveryMemberWithABodyIsMeasuredAndNamed(string member, string name)
+    {
+        SourceFile file = new("Kinds.cs", $$"""
+            class Kinds
+            {
+                {{member}}
+            }
+            """.Replace("FIVE", $"if (a > 0) {{ {FourIfs} }}", StringComparison.Ordinal));
+
+        NestingRule.Check(file).Should().ContainSingle()
+            .Which.Message.Should().Be($"{name} nests 5 levels deep; the limit is 4 (CRF-008).");
+    }
+
+    [Fact]
+    public void TopLevelStatementsAreMeasuredAsOneMember()
+    {
+        SourceFile file = new("Program.cs", $"int a = 0; if (a > 0) {{ {FourIfs} }}");
+
+        NestingRule.Check(file).Should().ContainSingle()
+            .Which.Message.Should().Be("top-level statements nests 5 levels deep; the limit is 4 (CRF-008).");
+    }
+
     // A method whose body is four nested ifs, with the given text before and after them.
     private static SourceFile FourIfsIn(string before, string after) => new("Wrapped.cs", $$"""
         class Wrapped
