@@ -68,6 +68,16 @@ Describe 'Get-DotnetSkillDrift' {
         @(Get-DotnetSkillDrift -SkillsRoot $copy.Skills -Lock $copy.Lock) | Should -Be @('tidy/extra.md isn''t in the upstream commit')
     }
 
+    It 'skips files git ignores, such as an editor''s or the operating system''s' {
+        $copy = New-Copy
+        git -C $copy.Skills init -q
+        [IO.File]::WriteAllText((Join-Path $copy.Skills '.gitignore'), ".DS_Store`n*.swp`n")
+        [IO.File]::WriteAllText((Join-Path $copy.Skills 'tidy' '.DS_Store'), "Finder.`n")
+        [IO.File]::WriteAllText((Join-Path $copy.Skills 'tidy' 'references' '.more.md.swp'), "Editor.`n")
+
+        @(Get-DotnetSkillDrift -SkillsRoot $copy.Skills -Lock $copy.Lock) | Should -BeNullOrEmpty
+    }
+
     It 'leaves alone folders of skills the lock doesn''t name, such as the kit''s own' {
         $copy = New-Copy
         New-Item -ItemType Directory -Path (Join-Path $copy.Skills 'start-work') | Out-Null
