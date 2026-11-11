@@ -164,6 +164,11 @@ Describe 'Sync-KitApp' {
             $settings.permissions.ask | Should -Not -Contain 'PowerShell(./tools/Kit-OnlyFixture.ps1*)'
         }
 
+        It 'removes a file the kit no longer has, when the app didn''t edit it' {
+            Test-Path -LiteralPath (Join-Path $app '.claude/skills/write-adr/SKILL.md') | Should -BeFalse
+            @($result.Files | Where-Object Path -EQ '.claude/skills/write-adr/SKILL.md').Action | Should -Be 'Removed'
+        }
+
         It 'leaves the app''s own files byte for byte as they were' {
             foreach ($path in $appOwned) {
                 [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"
