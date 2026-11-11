@@ -63,11 +63,16 @@ Describe 'Repo build configuration' -Tag 'Build' {
             }
             Copy-Item -Path (Join-Path $PSScriptRoot 'fixtures' $Fixture '*') -Destination $workspace -Recurse
 
-            # git's output goes nowhere, so the function returns only the path.
-            git -C $workspace init --quiet --initial-branch main | Out-Null
-            git -C $workspace -c core.autocrlf=false add --all | Out-Null
-            git -C $workspace commit --quiet --message fixture | Out-Null
-            git -C $workspace tag v1.2.3 | Out-Null
+            # Each git step must succeed, or the workspace has no commit or tag to version from; git's output goes into
+            # the error, never into the path this returns (as New-TestGitRemote does, TestGit.psm1).
+            foreach ($step in @(
+                    @('init', '--quiet', '--initial-branch', 'main'),
+                    @('-c', 'core.autocrlf=false', 'add', '--all'),
+                    @('commit', '--quiet', '--message', 'fixture'),
+                    @('tag', 'v1.2.3'))) {
+                $output = git -C $workspace @step 2>&1 | Out-String
+                if ($LASTEXITCODE -ne 0) { throw "git $($step -join ' ') failed in ${workspace}: $($output.Trim())" }
+            }
             $workspace
         }
 
@@ -110,7 +115,8 @@ Describe 'Repo build configuration' -Tag 'Build' {
 
             { $script:second = New-FixtureWorkspace -Fixture 'Clean' } | Should -Not -Throw
             @($script:second) | Should -HaveCount 1 -Because 'the function returns only the workspace path'
-            Split-Path $script:second -Parent | Should -Not -Be (Split-Path $first -Parent) -Because 'a reused folder would share one build between rows'
+            $script:second | Should -Not -Be $first -Because 'a reused folder would share one build between rows'
+            $first | Should -Exist
         }
 
         # A workspace with no commit or no tag would still build, and only MinVer's version would show it.
