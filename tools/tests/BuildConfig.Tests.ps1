@@ -76,6 +76,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
             @{ Fixture = 'TooComplex'; Diagnostic = 'CA1502'; Description = 'a method with a cyclomatic complexity of 16, over the limit of 15 (CRF-008)' }
             @{ Fixture = 'TooCoupledMember'; Diagnostic = 'CA1506'; Description = 'a method coupled to 41 types, over the limit of 40 per member (CRF-008)' }
             @{ Fixture = 'TooCoupledType'; Diagnostic = 'CA1506'; Description = 'a class coupled to 96 types, over the limit of 95 per type (CRF-008)' }
+            @{ Fixture = 'TooDeep'; Diagnostic = 'CA1501'; Description = 'a class 6 levels deep, over the limit of 5 (CRF-008)' }
         ) {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
 
@@ -90,6 +91,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
             @{ Fixture = 'AtComplexityLimit'; Description = 'a method with a cyclomatic complexity of 15' }
             @{ Fixture = 'AtMemberCouplingLimit'; Description = 'a method coupled to 40 types' }
             @{ Fixture = 'AtTypeCouplingLimit'; Description = 'a class coupled to 95 types' }
+            @{ Fixture = 'AtInheritanceLimit'; Description = 'a class 5 levels deep' }
         ) {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
 
