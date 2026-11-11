@@ -10,7 +10,7 @@ F:System.Reflection.BindingFlags.NonPublic;Don't reflect into non-public members
 T:System.Runtime.CompilerServices.UnsafeAccessorAttribute;Don't reach into non-public members; use the library's public API or a documented extension point (CRF-010)
 T:System.Runtime.CompilerServices.UnsafeAccessorTypeAttribute;Don't reach into non-public types; use the library's public API or a documented extension point (CRF-010)
 
-// These return non-public members with no BindingFlags at all. For public members, use Type.GetFields(),
+// These return non-public members or types with no BindingFlags at all. For public members, use Type.GetFields(),
 // GetMethods(), GetProperties() and the rest, which return only public ones.
 P:System.Reflection.TypeInfo.DeclaredConstructors;Returns non-public constructors too; use Type.GetConstructors() for public ones (CRF-010)
 P:System.Reflection.TypeInfo.DeclaredEvents;Returns non-public events too; use Type.GetEvents() for public ones (CRF-010)
@@ -29,14 +29,26 @@ M:System.Reflection.RuntimeReflectionExtensions.GetRuntimeEvents(System.Type);Re
 M:System.Reflection.RuntimeReflectionExtensions.GetRuntimeFields(System.Type);Returns non-public fields too; use Type.GetFields() for public ones (CRF-010)
 M:System.Reflection.RuntimeReflectionExtensions.GetRuntimeMethods(System.Type);Returns non-public methods too; use Type.GetMethods() for public ones (CRF-010)
 M:System.Reflection.RuntimeReflectionExtensions.GetRuntimeProperties(System.Type);Returns non-public properties too; use Type.GetProperties() for public ones (CRF-010)
-M:System.Activator.CreateInstance(System.Type,System.Boolean);Its nonPublic argument calls non-public constructors; use Activator.CreateInstance(Type) (CRF-010)
+M:System.Reflection.Assembly.GetTypes;Returns non-public types too; use Assembly.GetExportedTypes() (CRF-010)
+P:System.Reflection.Assembly.DefinedTypes;Returns non-public types too; use Assembly.ExportedTypes (CRF-010)
 
-// Expression trees built from a member's name find non-public members too. Pass the public FieldInfo, PropertyInfo
-// or MethodInfo instead.
+// These call or bind non-public members by name or by flag.
+M:System.Activator.CreateInstance(System.Type,System.Boolean);Its nonPublic argument calls non-public constructors; use Activator.CreateInstance(Type) (CRF-010)
+M:System.Delegate.CreateDelegate(System.Type,System.Object,System.String);Binds non-public methods by name; pass a public MethodInfo (CRF-010)
+M:System.Delegate.CreateDelegate(System.Type,System.Object,System.String,System.Boolean);Binds non-public methods by name; pass a public MethodInfo (CRF-010)
+M:System.Delegate.CreateDelegate(System.Type,System.Object,System.String,System.Boolean,System.Boolean);Binds non-public methods by name; pass a public MethodInfo (CRF-010)
+M:System.Delegate.CreateDelegate(System.Type,System.Type,System.String);Binds non-public methods by name; pass a public MethodInfo (CRF-010)
+M:System.Delegate.CreateDelegate(System.Type,System.Type,System.String,System.Boolean);Binds non-public methods by name; pass a public MethodInfo (CRF-010)
+M:System.Delegate.CreateDelegate(System.Type,System.Type,System.String,System.Boolean,System.Boolean);Binds non-public methods by name; pass a public MethodInfo (CRF-010)
+
+// Expression trees built from a member's name, or from a type alone, find non-public members too. Pass the public
+// FieldInfo, PropertyInfo, MethodInfo or ConstructorInfo instead.
 M:System.Linq.Expressions.Expression.Call(System.Linq.Expressions.Expression,System.String,System.Type[],System.Linq.Expressions.Expression[]);Finds non-public methods by name; pass a public MethodInfo (CRF-010)
 M:System.Linq.Expressions.Expression.Call(System.Type,System.String,System.Type[],System.Linq.Expressions.Expression[]);Finds non-public methods by name; pass a public MethodInfo (CRF-010)
 M:System.Linq.Expressions.Expression.Field(System.Linq.Expressions.Expression,System.String);Finds non-public fields by name; pass a public FieldInfo (CRF-010)
 M:System.Linq.Expressions.Expression.Field(System.Linq.Expressions.Expression,System.Type,System.String);Finds non-public fields by name; pass a public FieldInfo (CRF-010)
 M:System.Linq.Expressions.Expression.Property(System.Linq.Expressions.Expression,System.String);Finds non-public properties by name; pass a public PropertyInfo (CRF-010)
 M:System.Linq.Expressions.Expression.Property(System.Linq.Expressions.Expression,System.Type,System.String);Finds non-public properties by name; pass a public PropertyInfo (CRF-010)
+M:System.Linq.Expressions.Expression.Property(System.Linq.Expressions.Expression,System.String,System.Linq.Expressions.Expression[]);Finds non-public indexers by name; pass a public PropertyInfo (CRF-010)
+M:System.Linq.Expressions.Expression.New(System.Type);Binds a non-public parameterless constructor; pass type.GetConstructor(Type.EmptyTypes) (CRF-010)
 M:System.Linq.Expressions.Expression.PropertyOrField(System.Linq.Expressions.Expression,System.String);Finds non-public members by name; pass a public FieldInfo or PropertyInfo (CRF-010)
