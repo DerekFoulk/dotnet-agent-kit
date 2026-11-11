@@ -285,9 +285,10 @@ function Sync-KitApp {
             }
             if ($action -ne 'None') { [pscustomobject]@{ Path = $path; Action = $action } }
         }
-        # The app's own Build-AgentRules, now at the release, rebuilds every generated file: the rule files, and
-        # copilot-instructions.md, which copies the app's AGENTS.md with its new kit block.
-        $builder = Join-Path $AppRoot '.kit/tools/Build-AgentRules.ps1'
+        # Build-AgentRules rebuilds every generated file: the rule files, and copilot-instructions.md, which copies
+        # the app's AGENTS.md with its new kit block. It's this script's own copy, from the same kit version as the
+        # app's .kit/tools now has, so the sync runs no code from the app's repo.
+        $builder = Join-Path $PSScriptRoot 'Build-AgentRules.ps1'
         $output = & pwsh -NoProfile -File $builder -RepoRoot $AppRoot 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { throw "Rebuilding the app's agent rule files failed:`n$output" }
 
