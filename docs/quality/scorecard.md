@@ -9,18 +9,35 @@ areas:
     sources:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-07"
       - "ADR-0008"
-    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008]
+    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, CRF-006, CRF-007]
     gaps:
       - id: GAP-001
         gap: "No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only."
         status: proposed
+  - id: craft
+    name: Craft
+    perfect: "Code built on the fundamentals (SOLID, DRY, KISS, YAGNI, separation of concerns, acyclic dependencies), within metric limits a tool enforces, using every library only through its documented API; every defect fixed at its root, and no known-worse design left unnamed."
+    sources:
+      - "owner, 2026-11-08"
+      - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"
+      - "ADR-0043"
+    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010]
+    gaps:
+      - id: GAP-019
+        gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent."
+        status: proposed
+        needs: "an analyzer package or a kit check, and a CI change"
+      - id: GAP-020
+        gap: "No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent."
+        status: proposed
+        needs: "a tool and a CI change"
   - id: proportion
     name: Proportion
     perfect: "The smallest design that meets today's requirements: no layer, pattern, package or project the app doesn't need yet. Over-engineering is a defect too."
     sources:
       - "owner, 2026-11-06"
       - "https://martinfowler.com/bliki/Yagni.html, retrieved 2026-11-07"
-    rules: []
+    rules: [CRF-004]
     gaps:
       - id: GAP-002
         gap: "No rule says how much structure a small app should get, so an agent can build every layer for a tiny app."
@@ -33,7 +50,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
-    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006]
+    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, CRF-008, CRF-010]
     gaps: []
   - id: tests
     name: Tests
@@ -209,9 +226,10 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 6 | 2 | 4 | 0 | 1 |
-| Proportion | 0 | 0 | 0 | 0 | 1 |
-| Code | 6 | 5 | 1 | 0 | 0 |
+| Architecture | 8 | 4 | 4 | 0 | 1 |
+| Craft | 10 | 4 | 6 | 0 | 2 |
+| Proportion | 1 | 0 | 1 | 0 | 1 |
+| Code | 8 | 7 | 1 | 0 | 0 |
 | Tests | 7 | 4 | 3 | 0 | 1 |
 | Security | 7 | 5 | 2 | 0 | 1 |
 | Reliability | 3 | 2 | 1 | 0 | 1 |
@@ -224,11 +242,13 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 58 rules in force, 37 checked by a tool and 21 advisory; 3 proposed; 12 open gaps.
+**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 3 proposed; 14 open gaps.
 
 Open gaps:
 
 - **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
+- **GAP-019** (Craft, proposed; needs an analyzer package or a kit check, and a CI change): No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent.
+- **GAP-020** (Craft, proposed; needs a tool and a CI change): No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-006** (Security, proposed): No rules for authentication, authorization or input validation defaults beyond the threat model in plans.
