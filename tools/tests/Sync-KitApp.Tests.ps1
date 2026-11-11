@@ -163,6 +163,49 @@ Describe 'Sync-KitApp' {
         Get-Content -Raw (Join-Path $copy '.editorconfig') | Should -Not -Match 'kit-v2-marker'
     }
 
+    Context 'run as a script' {
+        BeforeAll {
+            $cli = Join-Path $TestDrive 'cli'
+            Copy-Item -LiteralPath $untouched -Destination $cli -Recurse
+            $report = Join-Path $TestDrive 'report.md'
+            & pwsh -NoProfile -File $script -AppRoot $cli -KitRoot $kit -KitRef v0.2.0 -ReportPath $report *> $null
+            $cliExit = $LASTEXITCODE
+            $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '' }
+        }
+
+        It 'exits 0 and writes the pull request''s description' {
+            $cliExit | Should -Be 0
+            $text | Should -Match ([regex]::Escape("dotnet-agent-kit v0.2.0 (commit ``$v2``)"))
+            $text | Should -Match ([regex]::Escape("from v0.1.0 (commit ``$v1``)"))
+        }
+
+        It 'lists every file that needs a look, with what happened and what to do' {
+            foreach ($path in '.editorconfig', '.gitignore', '.claude/skills/plan-checklist/SKILL.md', '.claude/skills/tdd-cycle/SKILL.md',
+                '.claude/skills/app-skill/SKILL.md', $instructions) {
+                $text | Should -Match "(?m)^\| ``$([regex]::Escape($path))`` \| [^|]+ \| [^|]+ \|$" -Because "$path needs a look"
+            }
+            $text | Should -Not -Match '(?m)^\| `global\.json` \|' -Because 'an unedited file needs no look'
+        }
+
+        It 'lists the files it updated, added and removed' {
+            $text | Should -Match '`global\.json`'
+            $text | Should -Match '`\.claude/skills/fresh-skill/SKILL\.md`'
+            $text | Should -Match '`\.claude/skills/write-adr/SKILL\.md`'
+        }
+
+        It 'tells the reviewer how to check the new kit pin against the release tag (ADR-0031)' {
+            $text | Should -Match ([regex]::Escape('gh api repos/DerekFoulk/dotnet-agent-kit/commits/v0.2.0 --jq .sha'))
+        }
+
+        It 'writes no description, and exits 0, when the app is already at the release' {
+            $again = Join-Path $TestDrive 'report-again.md'
+            & pwsh -NoProfile -File $script -AppRoot $cli -KitRoot $kit -KitRef v0.2.0 -ReportPath $again *> $null
+
+            $LASTEXITCODE | Should -Be 0
+            Test-Path -LiteralPath $again | Should -BeFalse
+        }
+    }
+
     Context 'from v0.1.0 to v0.2.0' {
         BeforeAll {
             # What a new app made at v0.2.0 gets: the text every unedited kit-managed file should have after the sync.
