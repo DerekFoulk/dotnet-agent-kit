@@ -76,6 +76,8 @@ function Get-KitSyncAction {
     if (-not $edited) { return 'Updated' }
     # Generated from the standards: an edit there is lost at the next build anyway, so it's replaced.
     if ($Generated) { return 'Regenerated' }
+    # The kit didn't change it: the app's edit stays, with nothing to merge or report.
+    if ($Old['sha256'] -eq $Theirs['sha256']) { return 'None' }
     'Merge'
 }
 
