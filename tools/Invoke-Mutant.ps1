@@ -98,8 +98,8 @@ foreach ($m in $Mutant) {
         $baseline = Invoke-TestRun -TestPath $tests
         $baselineProblem =
             if (-not $baseline.Returned) { Format-Problem 'Pester returned no result on the unchanged file.' $baseline }
-            elseif ($baseline.Total -eq 0) { Format-Problem 'The tests ran no tests on the unchanged file.' $baseline }
             elseif ($baseline.Failed -gt 0 -or $baseline.Broken -gt 0) { 'The tests already fail on the unchanged file.' }
+            elseif ($baseline.Total -eq 0) { Format-Problem 'The tests ran no tests on the unchanged file.' $baseline }
         $baselineDone = $true
     }
     if ($baselineProblem) {
