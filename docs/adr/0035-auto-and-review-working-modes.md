@@ -83,7 +83,7 @@ Accepted (owner, 2026-11-07: "Yes, set it up… default to the auto mode", and k
 
   These are prompts for the common forms, not a security boundary. Claude Code's docs say such rules aren't one: a shell `Set-Content` on `.agent-mode`, an unusual path, or another agent can still get past them, and the instructions cover the rest. Showing the mode (`Set-AgentMode.ps1` with no `-Mode`) doesn't prompt, so checking it at the start of a task costs nothing.
 - **Amends ADR-0026:** pushes still have no deny rule, and an ordinary push still runs unasked. Deleting or force-pushing a branch now asks, because the "main protection" ruleset guards only `main`.
-- **Guardrail changes are the owner's to merge.** In auto mode an agent may change CI and repo settings, so it could otherwise loosen the checks this ADR relies on and merge that itself. The owner merges any PR that changes:
+- **Guardrail changes are the owner's to merge** (since 2026-11-10, on his yes for the head commit, the agent merges them; see the dated updates below). In auto mode an agent may change CI and repo settings, so it could otherwise loosen the checks this ADR relies on and merge that itself. The owner merges any PR that changes:
   - `AGENTS.md`'s "Working modes" or "Always ask";
   - SEC-003;
   - `.claude/settings.json` or `tools/Set-AgentMode.ps1`;

@@ -76,7 +76,7 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
 - **No question the PR depends on is waiting for the owner** (COM-007). A question that a later PR can settle doesn't hold this one; say so in the chat.
 - **The description is complete:** the template's sections are filled in, with the red→green table and counts from the head commit. For a PR whose description a bot writes, DOD-006's comment holds them, and it names this head commit.
 
-Then run `gh pr merge <n> --merge` on its own, never inside a script. Run `git switch main` and `git pull --ff-only`. If the merge updated the release PR, check its CI.
+Then run `gh pr merge <n> --merge --match-head-commit <sha>` on its own, never inside a script, with the head commit the conditions were checked at (for a guardrail PR, the one the owner said yes to): GitHub refuses the merge if the head has moved since. Run `git switch main` and `git pull --ff-only`. If the merge updated the release PR, check its CI.
 
 ## 6. Report
 

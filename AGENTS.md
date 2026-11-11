@@ -77,7 +77,7 @@ In both modes, ask the owner first before you:
 - change a ruleset, branch protection or the repo's merge settings, turn off Dependabot alerts or security updates, or remove or weaken a CI check;
 - add a connector (MCP server);
 - install software on the owner's machine;
-- switch the working mode, or merge a change to the guardrails (see "Working modes": on his yes, you merge it);
+- switch the working mode, or merge a change to the guardrails (see "Working modes": on his yes for its head commit, you merge it);
 - do anything else that can't be undone.
 
 Claude Code prompts for the common forms of these (`.claude/settings.json`). The rest rests on this list.
