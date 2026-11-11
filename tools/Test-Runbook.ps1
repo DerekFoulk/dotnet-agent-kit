@@ -16,6 +16,9 @@ $script:RequiredSections = @(
     'How to read its telemetry', 'How to restore its data', 'How to respond to an incident'
 )
 
+# Draft until the app's first production deployment; In use from then on.
+$script:Statuses = 'Draft', 'In use'
+
 function New-Problem {
     param([string] $Message)
     [pscustomobject]@{ Message = $Message }
@@ -54,6 +57,21 @@ function Get-RunbookProblem {
 
     $lines = @(Get-Content -LiteralPath $Path)
     $sections = Get-RunbookSection -Lines $lines
+
+    $status = $lines | Where-Object { $_ -match '^- \*\*Status:\*\* ' } | Select-Object -First 1
+    if (-not $status) {
+        New-Problem -Message "the '- **Status:** ' line is missing"
+    }
+    else {
+        $value = ($status -replace '^- \*\*Status:\*\* ', '').Trim()
+        if ($value -cnotin $script:Statuses) {
+            New-Problem -Message "status '$value' must be 'Draft' or 'In use'"
+        }
+    }
+
+    if (-not ($lines | Where-Object { $_ -match '^- \*\*Last reviewed:\*\* ' })) {
+        New-Problem -Message "the '- **Last reviewed:** ' line is missing"
+    }
 
     foreach ($name in $script:RequiredSections) {
         if (-not $sections.Contains($name)) {
