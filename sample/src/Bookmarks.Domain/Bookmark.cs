@@ -11,6 +11,12 @@ public sealed class Bookmark
         CreatedAt = createdAt;
     }
 
+    /// <summary>The longest title a bookmark keeps, after trimming (SEC-010).</summary>
+    public const int MaxTitleLength = 500;
+
+    /// <summary>The longest URL a bookmark keeps, as written: the length browsers and servers commonly support (SEC-010).</summary>
+    public const int MaxUrlLength = 2048;
+
     public Guid Id { get; }
 
     /// <summary>The user who saved it: their id from the identity provider (the token's sub claim, SEC-009).</summary>

@@ -58,6 +58,32 @@ public sealed class BookmarkTests
     }
 
     [Fact]
+    public void CreateKeepsATitleAndAUrlAtTheirLongest()
+    {
+        // SEC-010: the limits are inclusive. The title is measured after trimming.
+        string title = new('t', Bookmark.MaxTitleLength);
+        Uri url = new($"https://example.com/{new string('a', Bookmark.MaxUrlLength - "https://example.com/".Length)}");
+
+        Bookmark bookmark = Bookmark.Create(Owner, url, $" {title} ", s_now);
+
+        bookmark.Title.Should().Be(title);
+        bookmark.Url.OriginalString.Should().HaveLength(Bookmark.MaxUrlLength);
+    }
+
+    [Fact]
+    public void CreateRejectsATitleOrAUrlPastItsLimit()
+    {
+        // SEC-010: a bookmark never holds more than the database column and the API promise.
+        Uri tooLong = new($"https://example.com/{new string('a', Bookmark.MaxUrlLength + 1 - "https://example.com/".Length)}");
+
+        Action longTitle = () => Bookmark.Create(Owner, new Uri("https://example.com/"), new string('t', Bookmark.MaxTitleLength + 1), s_now);
+        Action longUrl = () => Bookmark.Create(Owner, tooLong, "Title", s_now);
+
+        longTitle.Should().Throw<ArgumentException>().WithParameterName("title");
+        longUrl.Should().Throw<ArgumentException>().WithParameterName("url");
+    }
+
+    [Fact]
     public void CreateRejectsARelativeUrl()
     {
         Action create = () => Bookmark.Create(Owner, new Uri("/articles/1", UriKind.Relative), "Title", s_now);
