@@ -284,6 +284,16 @@ Describe 'Sync-KitApp' {
             [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -Be $before
         }
 
+        # Review: the kit changing a package's form doesn't undo the app's removal of it.
+        It 'adds nothing for a package the app removed, when the release changes its form' {
+            $appRoot = New-PackagesRoot @()
+            $before = [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props'))
+
+            $null = Add-KitPackage -AppRoot $appRoot -BaseRoot (New-PackagesRoot @('<PackageVersion Include="Kit.Analyzer" Version="1.0.0" />')) -NewRoot (New-PackagesRoot @($analyzer))
+
+            [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props')) | Should -Be $before
+        }
+
         It 'finds the app''s packages in a file with MSBuild''s old XML namespace' {
             $appRoot = New-PackagesRoot @($analyzer) 'http://schemas.microsoft.com/developer/msbuild/2003'
             $before = [IO.File]::ReadAllText((Join-Path $appRoot 'Directory.Packages.props'))
