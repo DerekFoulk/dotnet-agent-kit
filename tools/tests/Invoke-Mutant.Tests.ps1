@@ -143,6 +143,79 @@ Describe 'Add' {
         $result.Result | Should -Be 'Killed'
     }
 
+    It 'reports a mutant that fails only an AfterAll as killed' {
+        $fixture = New-Fixture -Tests @'
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'runs' { $true | Should -BeTrue }
+    AfterAll { Add 1 2 | Should -Be 3 }
+}
+'@
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Killed'
+    }
+
+    It 'reports every mutant as an error when an AfterAll already fails on the unchanged file' {
+        $fixture = New-Fixture -Tests @'
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'adds' { Add 1 2 | Should -Be 3 }
+    AfterAll { throw 'teardown broke' }
+}
+'@
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match 'already fail'
+    }
+
+    It 'reports a mutant as an error when, with it in place, <Case>' -ForEach @(
+        @{ Case = 'no tests run'; Message = 'No tests ran with the mutant in place'; Tests = @'
+if ((Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Add.ps1') -Raw).Contains('+')) {
+    Describe 'Add' {
+        BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+        It 'adds' { Add 1 2 | Should -Be 3 }
+    }
+}
+'@ }
+        @{ Case = 'Pester returns no result'; Message = 'returned no result with the mutant in place'; Tests = @'
+if (-not (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Add.ps1') -Raw).Contains('+')) { [Environment]::Exit(3) }
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'adds' { Add 1 2 | Should -Be 3 }
+}
+'@ }
+    ) {
+        # The baseline passes, so only the mutant's own run can say nothing was tested.
+        $fixture = New-Fixture -Tests $Tests
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match $Message
+    }
+
+    It 'runs the tests on the unchanged file once, however many mutants there are' {
+        $fixture = New-Fixture -Tests @'
+Add-Content -LiteralPath (Join-Path $PSScriptRoot 'runs.log') -Value 'run'
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'adds' { Add 1 2 | Should -Be 3 }
+}
+'@
+
+        $null = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @(
+            @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+            @{ Name = 'rename'; Find = '[int] $a,'; Replace = '[int] $x,' }
+        )
+
+        # One baseline run, then one run per mutant.
+        @(Get-Content -LiteralPath (Join-Path (Split-Path $fixture.Tests) 'runs.log')).Count | Should -Be 3
+    }
+
     It 'runs tests in a folder whose name has a quote and wildcard brackets' {
         $fixture = New-Fixture -Folder "it's here [x]"
 
