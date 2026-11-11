@@ -190,6 +190,14 @@ Describe 'Sync-KitApp' {
             $agents | Should -Match 'kit-v2-agents-marker'
         }
 
+        It 'merges the kit''s change into a file the app edited, when the two don''t overlap, and reports it' {
+            $text = Get-Content -Raw (Join-Path $app '.editorconfig')
+
+            $text | Should -Match 'kit-v2-marker'
+            $text | Should -Match 'app-edit-marker'
+            @($result.Files | Where-Object Path -EQ '.editorconfig').Action | Should -Be 'Merged'
+        }
+
         It 'leaves the app''s own files byte for byte as they were' {
             foreach ($path in $appOwned) {
                 [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"
