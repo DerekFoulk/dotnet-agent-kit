@@ -45,14 +45,19 @@ function Get-KitSyncAction {
     )
 
     if (-not $Old) {
-        # The kit now has a file where the app made its own: the app's stays.
-        return ($OursHash ? 'AppFileKept' : 'Added')
+        if (-not $OursHash) { return 'Added' }
+        # The kit now has a file where the app made its own: the app's stays, unless it's the kit's already.
+        return ($OursHash -eq $Theirs['sha256'] ? 'None' : 'AppFileKept')
     }
     # The app deleted a kit file (or its kit block): it isn't brought back.
     if (-not $OursHash) { return ($Theirs ? 'KeptDeleted' : 'None') }
     $edited = $OursHash -ne $Old['sha256']
-    # The kit dropped it: the app's edited copy stays, and is the app's from now on.
-    if (-not $Theirs) { return ($edited ? 'NowAppOwned' : 'Removed') }
+    if (-not $Theirs) {
+        # A generated file the kit no longer makes goes, edited or not: the app's Build-AgentRules removes it anyway.
+        if ($Generated) { return 'Removed' }
+        # A kit block is part of an app's file, so the file stays. Otherwise an edited copy stays, as the app's.
+        return ($edited -or $Old.Contains('block') ? 'NowAppOwned' : 'Removed')
+    }
     if ($OursHash -eq $Theirs['sha256']) { return 'None' }
     if (-not $edited) { return 'Updated' }
     # Generated from the standards: an edit there is lost at the next build anyway, so it's replaced.
@@ -275,7 +280,7 @@ $script:Explanations = [ordered]@{
     Merged      = "This app had edited it; the kit's change merged into the edit without overlapping it.", 'Check the merged text.'
     Conflict    = "This app had edited it, and the kit's change overlaps the edit (or the kit's earlier text couldn't be rebuilt to merge with), so the app's text is kept and the kit's change isn't in this PR.", "Bring the kit's change in by hand on this branch, keeping the app's edit, or move the edit out of the kit's file."
     KeptDeleted = 'This app had deleted it, so it stays deleted, though the kit changed it.', 'Restore it if the change matters here.'
-    NowAppOwned = "The kit no longer has it, but this app had edited it, so the app's copy stays, as this app's own file.", 'Keep it or delete it.'
+    NowAppOwned = "The kit no longer manages it, but this app had edited it (or it's a kit block in this app's file), so it stays, as this app's own.", 'Keep it or delete it.'
     AppFileKept = 'The kit now has a file at this path, but this app already had its own, which stays.', "Rename the app's file and take the kit's, or keep the app's."
     Regenerated = "This app had edited a generated rule file, which is rebuilt from docs/standards, so the edit is gone.", "Put the change in an app-owned file, or propose it to the kit."
 }
