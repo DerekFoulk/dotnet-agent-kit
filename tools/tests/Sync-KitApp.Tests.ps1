@@ -250,6 +250,13 @@ Describe 'Sync-KitApp' {
             $text | Should -Not -Match '(?m)^\| `global\.json` \|' -Because 'an unedited file needs no look'
         }
 
+        It 'lists the packages it added to Directory.Packages.props, and says to refresh the lock files' {
+            $row = [regex]::Match($text, '(?m)^\| `Directory\.Packages\.props` \|.*$').Value
+            $row | Should -Match 'Kit\.Fixture\.Analyzer'
+            $row | Should -Match 'Kit\.Fixture\.Test'
+            $row | Should -Match 'dotnet restore --force-evaluate'
+        }
+
         It 'lists the files it updated, added and removed' {
             $text | Should -Match '`global\.json`'
             $text | Should -Match '`\.claude/skills/fresh-skill/SKILL\.md`'
