@@ -116,5 +116,10 @@ Describe 'Sync-KitApp' {
             { Sync-KitApp -AppRoot $untouched -KitRoot $kit -KitRef $Ref } | Should -Throw "*isn't a release tag*"
             Get-Tree $untouched | ConvertTo-Json | Should -Be ($untouchedTree | ConvertTo-Json)
         }
+
+        It 'refuses a release that doesn''t come after the app''s kit commit, so it never goes back' {
+            { Sync-KitApp -AppRoot $untouched -KitRoot $kit -KitRef v0.0.9 } | Should -Throw "*doesn't come after*"
+            Get-Tree $untouched | ConvertTo-Json | Should -Be ($untouchedTree | ConvertTo-Json)
+        }
     }
 }
