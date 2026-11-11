@@ -105,6 +105,18 @@ Describe 'Sync-KitApp' {
         git -C $kit tag not-a-release
         $v2 = (git -C $kit rev-parse HEAD).Trim()
 
+        # A kit commit no release tag points to.
+        git -C $kit commit -q --allow-empty -m 'chore: after v0.2.0'
+        $untagged = (git -C $kit rev-parse HEAD).Trim()
+
+        # Sets the kit pin in a copy of the app's workflows; -Only limits it to one file.
+        function Set-KitPin([string] $AppPath, [string] $Commit, [string] $Only = '*.yml') {
+            foreach ($workflow in Get-ChildItem -LiteralPath (Join-Path $AppPath '.github/workflows') -Filter $Only -File) {
+                $text = [IO.File]::ReadAllText($workflow.FullName) -replace '(dotnet-agent-kit/\S+@)[0-9a-f]{40}', "`${1}$Commit"
+                Set-FileText $workflow.FullName $text
+            }
+        }
+
         # Dependabot's PR: the kit pin, with its version comment, moved in every workflow (ADR-0042).
         foreach ($workflow in Get-ChildItem -LiteralPath (Join-Path $app '.github/workflows') -File) {
             Edit-FileText $workflow.FullName "@$v1 # v0.1.0" "@$v2 # v0.2.0"
@@ -136,6 +148,19 @@ Describe 'Sync-KitApp' {
             $before = Get-Tree $copy
 
             { Sync-KitApp -AppRoot $copy -KitRoot $kit -KitRef v0.2.0 } | Should -Throw $Message
+            Get-Tree $copy | ConvertTo-Json | Should -Be ($before | ConvertTo-Json)
+        }
+
+        It 'refuses, with no -KitRef, when <Case>' -ForEach @(
+            @{ Case = 'the app''s kit pins disagree'; Pin = 'v2'; Only = 'ci.yml'; Message = '*disagree*' }
+            @{ Case = 'no release tag points to the kit pin (ADR-0031)'; Pin = 'untagged'; Only = '*.yml'; Message = '*no release tag*' }
+        ) {
+            $copy = Join-Path $TestDrive "pins-$(New-Guid)"
+            Copy-Item -LiteralPath $untouched -Destination $copy -Recurse
+            Set-KitPin $copy (Get-Variable -Name $Pin -ValueOnly) $Only
+            $before = Get-Tree $copy
+
+            { Sync-KitApp -AppRoot $copy -KitRoot $kit } | Should -Throw $Message
             Get-Tree $copy | ConvertTo-Json | Should -Be ($before | ConvertTo-Json)
         }
 
@@ -239,7 +264,16 @@ Describe 'Sync-KitApp' {
             $edited = '.editorconfig', '.gitignore', '.claude/skills/plan-checklist/SKILL.md', '.claude/skills/app-skill/SKILL.md', $instructions,
             '.github/workflows/mutation.yml'
 
-            $result = Sync-KitApp -AppRoot $app -KitRoot $kit -KitRef v0.2.0
+            # No -KitRef: the release is the one Dependabot pinned. An error is kept for the first test to show.
+            $syncError = $null
+            $result = try { Sync-KitApp -AppRoot $app -KitRoot $kit } catch { $syncError = $_.Exception.Message }
+        }
+
+        It 'syncs to the release a tag says Dependabot''s pin is' {
+            $syncError | Should -BeNullOrEmpty
+            $result | Should -Not -BeNullOrEmpty -Because 'the sync reports what it did'
+            $result.ToVersion | Should -Be 'v0.2.0'
+            $result.ToCommit | Should -Be $v2
         }
 
         It 'gives each kit-managed file the app didn''t edit the text a new app gets at the release' {
