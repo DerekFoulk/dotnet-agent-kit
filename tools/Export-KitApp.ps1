@@ -52,6 +52,14 @@ $script:KitTools = @(
 # Templates the app owns from the start: the sync job never changes them.
 $script:AppOwnedTemplates = @('README.md', 'App.slnx', 'docs/corrections-log.md', '.github/dependabot.yml')
 
+# Where the app's own Build-AgentRules writes the rule files it generates from the kit's standards. The kit
+# manages them, but they're rebuilt, never edited, so the sync job never merges them.
+$script:GeneratedFolders = @('.claude/rules', '.github/instructions')
+
+# The kit's block in such a file, from kit:begin to kit:end inclusive: the manifest hashes this text alone, and
+# the sync job replaces only it.
+$script:KitBlockPattern = '(?s)<!-- kit:begin.*?<!-- kit:end -->'
+
 # Templates the app owns except for the block between kit:begin and kit:end, which is the kit's.
 $script:KitBlockTemplates = @('AGENTS.md', 'THIRD-PARTY-NOTICES.md')
 
@@ -130,13 +138,14 @@ function Write-KitManifest {
         [Parameter(Mandatory)] [string] $Destination,
         [Parameter(Mandatory)] [object[]] $Map,
         [Parameter(Mandatory)] [string] $Commit,
-        [Parameter(Mandatory)] [string] $KitVersion
+        [Parameter(Mandatory)] [string] $KitVersion,
+        [Parameter(Mandatory)] [string] $Name
     )
 
     $files = foreach ($entry in $Map | Where-Object { $_.Owner -ne 'App' } | Sort-Object Target) {
         $path = Join-Path $Destination $entry.Target
         if ($entry.Owner -eq 'KitBlock') {
-            $block = [regex]::Match([IO.File]::ReadAllText($path), '(?s)<!-- kit:begin.*?<!-- kit:end -->')
+            $block = [regex]::Match([IO.File]::ReadAllText($path), $script:KitBlockPattern)
             if (-not $block.Success) { throw "$($entry.Target) has no kit:begin..kit:end block." }
             [ordered]@{ path = $entry.Target; block = 'kit'; sha256 = (Get-KitTextHash -Text $block.Value) }
         }
@@ -148,6 +157,8 @@ function Write-KitManifest {
         kitRepository = 'DerekFoulk/dotnet-agent-kit'
         kitVersion    = $KitVersion
         kitCommit     = $Commit
+        # The sync job exports the app again at each kit version, under the same name (ADR-0044).
+        appName       = $Name
         files         = @($files)
     }
     $json = ($manifest | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
@@ -225,7 +236,7 @@ function New-KitAgentRuleFile {
     $output = & pwsh -NoProfile -File $builder -RepoRoot $Destination 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) { throw "Generating the app's agent rule files failed:`n$output" }
 
-    foreach ($folder in '.claude/rules', '.github/instructions') {
+    foreach ($folder in $script:GeneratedFolders) {
         $directory = Join-Path $Destination $folder
         if (-not (Test-Path -LiteralPath $directory)) { continue }
         foreach ($file in Get-ChildItem -LiteralPath $directory -File | Sort-Object Name) {
@@ -330,7 +341,7 @@ function Export-KitApp {
             }
         }
         $map += @(New-KitAgentRuleFile -Destination $Destination)
-        Write-KitManifest -Destination $Destination -Map $map -Commit $commit -KitVersion $KitVersion
+        Write-KitManifest -Destination $Destination -Map $map -Commit $commit -KitVersion $KitVersion -Name $Name
     }
     catch {
         # A half-written app would block the rerun ("isn't empty"); remove only what this run made.

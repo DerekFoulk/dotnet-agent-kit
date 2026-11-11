@@ -203,8 +203,9 @@ jobs:
 | `dotnet-ci.reusable.yml` | Restore, build, format, tests with coverage, the coverage gate, deprecated packages, and the secret scan. `solution` is required |
 | `codeql.reusable.yml` | CodeQL code scanning of the workflows, and the C# once there is some. Skipped on a private app |
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`. Called from any other event, it fails rather than pass having checked nothing |
+| `kit-sync.reusable.yml` | Not a check: on Dependabot's kit-pin PR, brings the release's other kit-managed files into it (see "Keep an app current"). Called from anything but Dependabot's own GitHub Actions PR, it fails |
 
-The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), `.globalconfig`, `CodeMetricsConfig.txt` and `BannedSymbols.txt` (the craft checks, ADR-0043; without them the metric limits and bans do nothing), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the sync job (PR D3) keeps them current.
+The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), `.globalconfig`, `CodeMetricsConfig.txt` and `BannedSymbols.txt` (the craft checks, ADR-0043; without them the metric limits and bans do nothing), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the kit sync keeps them current (see "Keep an app current" below).
 
 ### Create an app repo's files
 
@@ -215,9 +216,9 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 ```
 
 - The files come from a clean checkout of `-KitRef` (a temporary git worktree), never from your working tree, so an uncommitted edit can't reach an app.
-- The app gets the kit's build files, agent files, skills, reviewer, standards and commit hook unchanged, except that its `.claude/settings.json` leaves out the rules for kit scripts it doesn't get (such as `New-KitApp`); the checking scripts in `.kit/tools/`; and its own `AGENTS.md`, `THIRD-PARTY-NOTICES.md`, `README.md`, `<Name>.slnx` (no projects yet), CI callers pinned to the kit commit, and a NuGet-only `.github/dependabot.yml`, rendered from `templates/app/`. Its agent rule files are generated during the export.
+- The app gets the kit's build files, agent files, skills, reviewer, standards and commit hook unchanged, except that its `.claude/settings.json` leaves out the rules for kit scripts it doesn't get (such as `New-KitApp`); the checking scripts in `.kit/tools/`; and its own `AGENTS.md`, `THIRD-PARTY-NOTICES.md`, `README.md`, `<Name>.slnx` (no projects yet), CI callers pinned to the kit commit, and a `.github/dependabot.yml` for its NuGet packages and the kit pin, rendered from `templates/app/`. Its agent rule files are generated during the export.
 - `Directory.Packages.props` keeps the kit's build and test packages and drops the ones in the `ItemGroup` labelled `Sample app`.
-- `.kit/manifest.json` records the kit version (the release tag on the commit, or `unreleased`) and commit, and the SHA-256 of every file the kit manages, taken over the text with LF line endings so it's the same on every checkout. The sync job (PR D3) uses it to know what it may replace. In `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, only the block between `kit:begin` and `kit:end` is the kit's.
+- `.kit/manifest.json` records the kit version (the release tag on the commit, or `unreleased`) and commit, and the SHA-256 of every file the kit manages, taken over the text with LF line endings so it's the same on every checkout. The kit sync uses it to know what it may replace, and `appName` to export the app again. In `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, only the block between `kit:begin` and `kit:end` is the kit's.
 - It refuses a folder that isn't empty, a name that isn't a dotted .NET name (or contains a Windows device name such as `Con`), and a ref that isn't a commit or tag, before writing anything. If it fails partway, it removes what it wrote.
 
 ### Start a new app
@@ -251,6 +252,38 @@ It checks first, before changing anything: the app and repo names, an empty fold
 9. Turns the commit hook on in the local copy.
 
 If a step fails, it stops and says what's done and what's left, and whether the repo or the folder is kept. It never deletes a repo. Claude Code asks before running it.
+
+### Keep an app current
+
+Each new kit release reaches an app as one pull request, with no stored token (ADR-0044, ADR-0045):
+
+1. The app's Dependabot (`.github/dependabot.yml`, its `github-actions` entry) opens a PR that moves the kit pin in the app's workflows to the new release, 7 days after it's out. Every kit reference is in one group, so it's one PR. Dependabot may change workflow files; a workflow's own token can't.
+2. On that PR, the app's `.github/workflows/kit-sync.yml` calls `kit-sync.reusable.yml` at the new pin, so the sync that runs is the release's own. It runs only on Dependabot's own GitHub Actions PRs from the app's repo.
+3. `tools/Sync-KitApp.ps1` takes the release from the moved pins and refuses one no release tag points to (ADR-0031). It exports the app at its old kit version and at the release, and updates every kit-managed file, the kit blocks of `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, `.claude/settings.json` (made again with the release's tools), the `global.json` SDK pin and `.kit/manifest.json`. The app's own files are never touched, with one exception: a package the release adds that the kit's files need (an analyzer, say) is added to the app's `Directory.Packages.props`, in an `ItemGroup` labelled `dotnet-agent-kit`. A package the app removed or re-versioned stays as the app has it.
+4. The workflow pushes that as one commit to Dependabot's branch, comments the report on the PR, and approves the CI runs its commit leaves waiting.
+
+A kit-managed file the app edited is merged three ways with the kit's change. If the two overlap, the app's text stays. Either way, the PR comment lists it under "Needs a look", with what to do, along with:
+
+- a kit file the app deleted (it stays deleted);
+- a file the kit dropped that the app had edited (it becomes the app's);
+- an app file where the kit now adds one (the app's stays);
+- an edited generated rule file (rebuilt);
+- packages added to `Directory.Packages.props` (refresh the lock files with `dotnet restore --force-evaluate`, since the sync doesn't restore), and any left out because the app lists them in the other form (`PackageVersion` or `GlobalPackageReference`), which NuGet rejects;
+- a kit change to a workflow beyond its pin ("WorkflowByHand": apply it on the PR's branch, since the sync never writes `.github/workflows/`). A workflow whose only kit change is the pin, which Dependabot moved, needs nothing.
+
+So an app may add its own lines to `.gitignore`, `global.json` or `.claude/settings.json`, and keep them across releases.
+
+Before merging, check the pin against the release tag: the comment gives the `gh api` command. The sync's own tag check runs code from the pinned commit, so it catches a mistaken pin, not a malicious one; the `gh api` check is the one that counts. Don't merge a kit-pin PR without the sync's comment: kit-sync isn't a required check, so a failed sync doesn't block the merge, and the next GitHub Actions PR from Dependabot would then carry the whole sync. A sync PR is a GitHub Actions bump that usually changes the app's guardrails, so the owner merges it (ADR-0041). Run it by hand from a kit clone with its tags:
+
+```powershell
+./tools/Sync-KitApp.ps1 -AppRoot ../Contoso.Orders -KitRoot . -KitRef v0.2.0 -ReportPath ../sync-report.md
+```
+
+Not yet:
+- applying `templates/github/` settings and rulesets to existing apps, which needs an admin token;
+- refreshing lock files after the sync adds a package.
+
+Not verified until the kit has a second release (v0.1.0 isn't tagged yet): that Dependabot proposes it for a SHA pin with its version comment, and that the CI approval works in an app.
 
 ### GitHub settings on this repo
 
