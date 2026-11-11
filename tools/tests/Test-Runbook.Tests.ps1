@@ -72,6 +72,27 @@ Describe 'Test-Runbook.ps1' {
             @($sections.Keys) | Should -Be $script:RequiredSections
             $sections['How to deploy a release'] | Should -Match '## not a heading'
         }
+
+        # Review 1 (mutants that survived): a fence closes only on the same character, at least as long, and may be
+        # indented up to three spaces (CommonMark).
+        It 'keeps a fence open across <Case>' -ForEach @(
+            @{ Case = 'a shorter fence of the same character'; Open = '````'; Inner = '```'; Close = '````' }
+            @{ Case = 'a fence of the other character'; Open = '```'; Inner = '~~~'; Close = '```' }
+            @{ Case = 'an indented fence'; Open = '   ```'; Inner = 'echo indented'; Close = '   ```' }
+        ) {
+            $body = "1. Run:`n`n$Open`n$Inner`n## not a heading`n$Close"
+            $text = New-RunbookText -Body @{ 'How to deploy a release' = $body }
+
+            $sections = Get-RunbookSection -Lines ($text -split "`n")
+
+            @($sections.Keys) | Should -Be $script:RequiredSections
+        }
+
+        It 'reads a heading with trailing spaces' {
+            $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs   '
+
+            @((Get-RunbookSection -Lines ($text -split "`n")).Keys) | Should -Contain 'Where it runs'
+        }
     }
 
     Context 'status and review date' {
@@ -91,6 +112,18 @@ Describe 'Test-Runbook.ps1' {
             New-Runbook -Status 'Live'
 
             Get-Message | Should -Be "status 'Live' must be 'Draft' or 'In use'"
+        }
+
+        It 'reports a status in the wrong case' {
+            New-Runbook -Status 'in use'
+
+            Get-Message | Should -Be "status 'in use' must be 'Draft' or 'In use'"
+        }
+
+        It 'reads a status with trailing spaces' {
+            New-Runbook -Status 'In use   '
+
+            Get-Message | Should -BeNullOrEmpty
         }
 
         It 'reports a missing review date line' {
@@ -114,10 +147,12 @@ Describe 'Test-Runbook.ps1' {
             Get-Message | Should -Be "line ${line}: '[fill in: the production URL]' must be filled in before the runbook is In use"
         }
 
-        It 'reports a review date that isn''t YYYY-MM-DD in a runbook that''s In use' {
-            New-Runbook -Status 'In use' -Reviewed '11/11/2026'
+        It 'reports a review date ''<Date>'', which isn''t YYYY-MM-DD, in a runbook that''s In use' -ForEach @(
+            @{ Date = '11/11/2026' }, @{ Date = '2026-11-1' }, @{ Date = '2026-13-01' }
+        ) {
+            New-Runbook -Status 'In use' -Reviewed $Date
 
-            Get-Message | Should -Be "review date '11/11/2026' must be YYYY-MM-DD"
+            Get-Message | Should -Be "review date '$Date' must be YYYY-MM-DD"
         }
     }
 
