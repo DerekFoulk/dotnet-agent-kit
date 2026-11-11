@@ -20,12 +20,13 @@ internal static class ApiSecurityExtensions
         services.AddAuthorizationBuilder()
             .SetFallbackPolicy(new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
-                .RequireClaim(JwtRegisteredClaimNames.Sub)
+                // A sub that's there but blank would make every such caller one shared owner.
+                .RequireAssertion(context => !string.IsNullOrWhiteSpace(context.User.FindFirstValue(JwtRegisteredClaimNames.Sub)))
                 .Build());
         return services;
     }
 
-    /// <summary>The signed-in user's id: the token's sub claim, which the fallback policy requires.</summary>
+    /// <summary>The signed-in user's id: the token's sub claim, which the fallback policy requires not to be blank.</summary>
     public static string UserId(this ClaimsPrincipal user) =>
         user.FindFirstValue(JwtRegisteredClaimNames.Sub)
         ?? throw new InvalidOperationException("The fallback policy lets no request without a sub claim through.");
