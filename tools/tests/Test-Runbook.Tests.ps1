@@ -283,6 +283,14 @@ Describe 'Test-Runbook.ps1' {
             Get-Message | Should -Be "line ${line}: '[fill in: the OpenTelemetry backend, and how to open it]' must be filled in before the runbook is In use"
         }
 
+        # Review 5: the wrap can fall anywhere inside the marker too.
+        It 'reports a placeholder split inside its "[fill in:" marker' {
+            New-Runbook -Status 'In use' -Body @{ 'Where it runs' = "- Probes: [fill`n  in: where they're set up]" }
+            $line = (Select-String -LiteralPath $script:runbook -SimpleMatch '[fill').LineNumber
+
+            Get-Message | Should -Be "line ${line}: '[fill in: where they're set up]' must be filled in before the runbook is In use"
+        }
+
         It 'reports a placeholder whatever its case, as ''<Placeholder>''' -ForEach @(@{ Placeholder = '[Fill in: the URL]' }, @{ Placeholder = '[FILL IN: the URL]' }) {
             New-Runbook -Status 'In use' -Body @{ 'Where it runs' = "- Production: $Placeholder" }
 
