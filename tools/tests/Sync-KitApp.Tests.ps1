@@ -169,6 +169,27 @@ Describe 'Sync-KitApp' {
             @($result.Files | Where-Object Path -EQ '.claude/skills/write-adr/SKILL.md').Action | Should -Be 'Removed'
         }
 
+        It 'replaces the kit block of <Path> with the release''s, and keeps the rest of the file' -ForEach @(
+            @{ Path = 'AGENTS.md'; AppText = 'app-notes-marker' }
+            @{ Path = 'THIRD-PARTY-NOTICES.md'; AppText = "## This app's notices" }
+        ) {
+            $pattern = '(?s)<!-- kit:begin.*?<!-- kit:end -->'
+            $text = [IO.File]::ReadAllText((Join-Path $app $Path))
+            $block = [regex]::Match($text, $pattern).Value
+            $expectedBlock = [regex]::Match([IO.File]::ReadAllText((Join-Path $expected $Path)), $pattern).Value
+
+            ($block -replace "`r`n", "`n") | Should -Be ($expectedBlock -replace "`r`n", "`n")
+            $text | Should -Match ([regex]::Escape($AppText))
+            $text | Should -Match '(?m)^# '
+        }
+
+        It 'moves the app''s note of its kit version with the block' {
+            $agents = Get-Content -Raw (Join-Path $app 'AGENTS.md')
+
+            $agents | Should -Match ([regex]::Escape("dotnet-agent-kit v0.2.0 (commit ``$v2``)"))
+            $agents | Should -Match 'kit-v2-agents-marker'
+        }
+
         It 'leaves the app''s own files byte for byte as they were' {
             foreach ($path in $appOwned) {
                 [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $app $path))) | Should -Be $appOwnedBefore[$path] -Because "$path is the app's"
