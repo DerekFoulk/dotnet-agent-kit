@@ -88,6 +88,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
             @{ Fixture = 'NonPublicReflection'; Diagnostic = 'RS0030'; Description = 'reading a non-public member by reflection (CRF-010)' }
             @{ Fixture = 'UnsafeAccessorUse'; Diagnostic = 'RS0030'; Description = 'reaching a non-public member through UnsafeAccessor (CRF-010)' }
             @{ Fixture = 'PrivateAccessor'; Diagnostic = 'RS0030'; Description = 'getting a property''s private setter with GetSetMethod(true) (CRF-010)' }
+            @{ Fixture = 'AccessorProperty'; Diagnostic = 'RS0030'; Description = 'getting a property''s private setter through its SetMethod property (CRF-010)' }
             @{ Fixture = 'ModuleTypes'; Diagnostic = 'RS0030'; Description = 'listing a module''s types, internal ones included (CRF-010)' }
             @{ Fixture = 'ByNameDelegate'; Diagnostic = 'RS0030'; Description = 'binding a delegate to a method by name, which finds private methods too (CRF-010)' }
             @{ Fixture = 'DeclaredMembersReflection'; Diagnostic = 'RS0030'; Description = 'listing non-public members through TypeInfo.DeclaredFields, with no BindingFlags (CRF-010)' }
