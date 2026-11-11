@@ -317,10 +317,13 @@ Describe '.globalconfig' {
         @{ Line = 'dotnet_diagnostic.CA1014.severity = None'; Expected = $null }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = none # off for now'; Expected = $null }
         @{ Line = '# dotnet_diagnostic.CA1014.severity = warning'; Expected = $null }
+        # Roslyn's key takes '.' and '-' too, and everything between dotnet_diagnostic. and .severity is the ID.
+        @{ Line = 'dotnet_diagnostic.My-Rule.v2.severity = warning'; Expected = 'My-Rule.v2' }
         @{ Line = 'is_global = true'; Expected = $null }
         @{ Line = 'global_level = 100'; Expected = $null }
     ) {
-        Get-EnabledRule -Line $Line | Should -Be $Expected
+        { $script:enabled = Get-EnabledRule -Line $Line } | Should -Not -Throw
+        $script:enabled | Should -Be $Expected
     }
 
     # Review 10 of PR 36: a line the function can't read would turn nothing on in its eyes, so the real-file test
