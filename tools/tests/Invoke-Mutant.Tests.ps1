@@ -64,4 +64,16 @@ Describe 'Add' {
         $result.Result | Should -Be $Expected
         $result.Total | Should -Be 0
     }
+
+    It 'reports every mutant as an error, and changes nothing, when the tests run none on the unchanged file' {
+        # "Survived" claims a test is missing. A test path that runs nothing proves nothing either way.
+        $fixture = New-Fixture
+        $before = [IO.File]::ReadAllBytes($fixture.Source)
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Source -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match 'no tests'
+        [Convert]::ToHexString([IO.File]::ReadAllBytes($fixture.Source)) | Should -Be ([Convert]::ToHexString($before))
+    }
 }
