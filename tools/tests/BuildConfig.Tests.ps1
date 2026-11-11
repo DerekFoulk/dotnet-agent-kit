@@ -147,18 +147,21 @@ Describe 'BannedSymbols.txt' {
             param([Parameter(Mandatory)] [string] $Id)
 
             if ($Id -notmatch '^(?<kind>[TFPM]):(?<name>[^(]+)(\((?<params>.*)\))?$') { return $false }
+            if ($Matches['kind'] -in 'T', 'F', 'P' -and $Matches['params']) { return $false }
             $name = $Matches['name']
             if ($Matches['kind'] -eq 'T') { return $null -ne (Find-KitType $name) }
 
+            # Roslyn finds only members declared on the named type, so an inherited member mustn't count.
+            $declared = [Reflection.BindingFlags]'Public, NonPublic, Static, Instance, DeclaredOnly'
             $owner = Find-KitType ($name.Substring(0, $name.LastIndexOf('.')))
             $member = $name.Substring($name.LastIndexOf('.') + 1)
             if ($null -eq $owner) { return $false }
             switch ($Matches['kind']) {
-                'F' { return $null -ne $owner.GetField($member) }
-                'P' { return $null -ne $owner.GetProperty($member) }
+                'F' { return $null -ne $owner.GetField($member, $declared) }
+                'P' { return $null -ne $owner.GetProperty($member, $declared) }
                 'M' {
                     $wanted = if ($Matches['params']) { $Matches['params'].Split(',') } else { @() }
-                    return [bool]($owner.GetMethods() | Where-Object {
+                    return [bool]($owner.GetMethods($declared) | Where-Object {
                         $_.Name -eq $member -and ((@($_.GetParameters() | ForEach-Object { $_.ParameterType.FullName }) -join ',') -eq ($wanted -join ','))
                     })
                 }
