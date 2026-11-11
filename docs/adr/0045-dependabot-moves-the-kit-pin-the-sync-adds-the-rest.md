@@ -49,7 +49,7 @@ It runs only on Dependabot's own GitHub Actions PRs from the app's repo, the sam
 
 - **Trade-offs:** Automatic, with no stored token or secret. Dependabot moves the pin in the caller too, so the sync that runs is always the new release's own. Two costs. A kit change to a workflow beyond the pin can't be pushed, so the PR lists it for a person to apply. And a kit release reaches apps no sooner than Dependabot's 7-day wait.
 - **Reversibility:** Easy: remove the `github-actions` entry and `kit-sync.yml`.
-- **Risk:** Low to medium. It relies on Dependabot proposing a SHA pin's next release and updating its version comment, which GitHub documents but which hasn't run for this kit yet: no kit release after v0.1.0 exists. It also relies on approving the CI runs its push leaves waiting, proven in the kit (`spikes/release-please`, `dependabot-lockfiles.yml`) but not yet in an app.
+- **Risk:** Low to medium. It relies on Dependabot proposing a SHA pin's next release and updating its version comment, which GitHub documents but which hasn't run for this kit yet: the kit has no release yet (v0.1.0 isn't tagged). It also relies on approving the CI runs its push leaves waiting, proven in the kit (`spikes/release-please`, `dependabot-lockfiles.yml`) but not yet in an app.
 
 ## Recommendation
 
@@ -65,7 +65,8 @@ Option 4 (owner, 2026-11-10: "Option 4, please- Dependabot"): no stored token, n
 - `templates/app/.github/workflows/kit-sync.yml` (kit-managed) and `.github/workflows/kit-sync.reusable.yml`. The caller grants `contents`, `pull-requests` and `actions` write, on Dependabot's PRs only. It isn't a required check, because it runs only on those PRs.
 - A Dependabot github-actions PR that moves the kit pin is the owner's to merge, as every GitHub Actions bump is (ADR-0041), and as a guardrail change is.
 - Dependabot stops rebasing a PR once another commit is on it. Comment `@dependabot rebase` and the sync runs again on the rebased branch, as the lock-file workflow does.
-- Not verified until the first kit release after v0.1.0:
+- If the sync fails, nothing stops the pin-only PR from merging: `kit-sync` isn't a required check, since it runs only on these PRs. Then the next GitHub Actions PR from Dependabot carries the whole sync, because the pins are ahead of the manifest. So a kit-pin PR is merged only with the sync's comment on it.
+- Not verified until the kit's second release:
   - that Dependabot proposes it for an app's SHA pin with the right version comment, and groups every kit reference into one PR;
   - that the CI approval works in an app repo.
 
@@ -73,7 +74,7 @@ Option 4 (owner, 2026-11-10: "Option 4, please- Dependabot"): no stored token, n
 
 ## Pillars affected
 
-- **Security:** no stored token or secret. The write token runs only the kit's own scripts on Dependabot's PRs from the app's repo. Only a pin a release tag points to is trusted.
+- **Security:** no stored token or secret. The write token runs only the kit's own scripts on Dependabot's PRs from the app's repo. The sync refuses a pin no release tag points to, which catches a mistaken pin. That check runs code from the pinned commit itself, so against a malicious pin the guard is Dependabot proposing only a release's commit, and the owner's `gh api` check before merging, which the PR comment gives.
 - **Operational Excellence:** kit releases reach apps on their own, as PRs.
 - **Reliability:** the sync that runs is the release's own.
 - **Cost Optimization:** one short job per kit release, free on public apps.

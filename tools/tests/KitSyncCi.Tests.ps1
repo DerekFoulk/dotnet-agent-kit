@@ -98,7 +98,7 @@ Describe 'The kit sync workflows' {
             $run | Should -Match 'HEAD:refs/heads/\$\{HEAD_REF\}'
         }
 
-        It 'comments the sync''s report on the PR, since Dependabot writes its description (DOD-006)' {
+        It 'comments the sync''s report on the PR, since Dependabot writes its description' {
             $run | Should -Match 'gh pr comment'
             $run | Should -Match '--body-file'
         }

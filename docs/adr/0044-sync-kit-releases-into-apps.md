@@ -20,9 +20,9 @@ Three questions are left:
 `tools/Sync-KitApp.ps1` exports the app twice, each time with that version's own `Export-KitApp`: once at the app's kit commit (the base) and once at the release. So every file, rendered, filtered or generated, comes out exactly as that version makes it. For each path in either manifest:
 
 - **Not edited** (its hash is the manifest's): the app gets the release's text, a new path is added, and a dropped path is removed.
-- **Edited:** `git merge-file` merges the app's text with the kit's change from base to release. A clean merge is applied and listed for a look. If the changes overlap, or if the rebuilt base doesn't hash to the manifest's value, the app's text stays and is listed as a conflict. No conflict markers are written.
+- **Edited:** if the kit didn't change it, the app's text stays and needs no look. Otherwise `git merge-file` merges the app's text with the kit's change from base to release. A clean merge is applied and listed for a look. If the changes overlap, or if the rebuilt base doesn't hash to the manifest's value, the app's text stays and is listed as a conflict. No conflict markers are written.
 - **The app's choice stands, and is listed:** a kit file the app deleted stays deleted; a dropped file the app edited stays as the app's own; and where the kit adds a path the app already has its own file, the app's file stays.
-- **Generated rule files** are rebuilt, never merged. An edit to one is listed as lost, because the next `Build-AgentRules` would lose it anyway.
+- **Generated rule files** are rebuilt, never merged. An edit to one is listed as lost, because the next `Build-AgentRules` would lose it anyway, and a deleted one comes back.
 
 The new manifest is the release's, with the kit's hashes. So a file whose edit was kept still shows as edited at the next sync, and is merged again against that release's text. The pull request's description lists every file that needs a look, with what happened and what to do.
 
@@ -56,16 +56,16 @@ Accepted, in auto mode (ADR-0035): the plan with this rule was posted in the D3 
   - a ref that isn't a release tag (`vX.Y.Z`) in the kit clone;
   - pins that disagree, or that no release tag points to (ADR-0031);
   - a release that doesn't come after the app's kit commit, so a sync never goes back;
-  - a manifest that's missing, has no `appName`, or names no full commit SHA.
+  - a manifest that's missing, has no `appName`, names no full commit SHA, or lists a path outside the app (its paths decide what the sync deletes).
 
   When the app is already at the release, it changes nothing and writes no report.
-- The sync never writes `.github/workflows/`: Dependabot moves the kit pin there, and a workflow's own token can't push a workflow change (ADR-0045). A release that changes a workflow beyond its pin lists it as "WorkflowByHand", for a person to apply on the PR's branch.
+- The sync never writes `.github/workflows/`: Dependabot moves the kit pin there, and a workflow's own token can't push a workflow change (ADR-0045). A release that adds, changes or removes a workflow beyond its pin lists it as "WorkflowByHand", for a person to apply on the PR's branch. A workflow whose only kit change is the pin needs nothing, even if the app edited it.
 - It runs only the kit's own scripts (its exports, and its own `Build-AgentRules` for the generated files), never the app's `.kit/tools`, so the job that holds a write token runs no code from the app's repo.
 - `.kit/manifest.json` gains `appName`, the name the app was made with: the sync renders the app's files again under it. An app made before this ADR needs it added by hand.
 - The app's `AGENTS.md` names its kit version inside the kit block, so each sync updates that line.
 - `Export-KitApp.ps1` keeps the kit block pattern and the folders of generated rule files in one place each, `$KitBlockPattern` and `$GeneratedFolders`, which the sync reads.
 - A sync that changes the app's guardrails (its `AGENTS.md` "Working modes" or "Always ask", `.claude/settings.json`, the `finish-work` skill or the `reviewer` agent) is the owner's to merge, as any guardrail change is. Most will.
-- `Directory.Packages.props` stays the app's: a kit release that adds a package its build files need doesn't add it to the app. That shows as a failed restore in the sync PR's CI. Reporting it in the PR is a follow-up.
+- `Directory.Packages.props` stays the app's, with one exception: a kit file can need a package, such as an analyzer for `BannedSymbols.txt`. So the sync adds each `PackageVersion` and `GlobalPackageReference` that the release's export adds, compared with the base export, and that the app's file lacks. They go in an `ItemGroup` labelled `dotnet-agent-kit`, and the PR lists them. It never changes or removes the app's entries, so a package the app removed or re-versioned stays as the app has it. The sync runs no restore, so the PR says to refresh the lock files (`dotnet restore --force-evaluate`); automating that is a follow-up.
 - How the sync reaches an app as a pull request is ADR-0045.
 - Not in scope: applying `templates/github/` settings and rulesets to an existing app, which needs an admin token (ADR-0033).
 
