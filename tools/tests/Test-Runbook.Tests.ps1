@@ -88,6 +88,34 @@ Describe 'Test-Runbook.ps1' {
             @($sections.Keys) | Should -Be $script:RequiredSections
         }
 
+        It 'keeps a fence open across a fence line with an info string, which can''t close one' {
+            $fence = '```'
+            $text = New-RunbookText -Body @{ 'How to deploy a release' = "1. Run:`n`n$fence`n${fence}text`n## not a heading`n$fence" }
+
+            $sections = Get-RunbookSection -Lines ($text -split "`n")
+
+            @($sections.Keys) | Should -Be $script:RequiredSections
+        }
+
+        It 'reads a heading with closing hashes' {
+            $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs ##'
+
+            @((Get-RunbookSection -Lines ($text -split "`n")).Keys) | Should -Contain 'Where it runs'
+        }
+
+        It 'reports a section that appears twice' {
+            $text = (New-RunbookText) + "`n## How to restore its data`n`n1. Again.`n"
+            Set-Content -Path $script:runbook -Value $text
+
+            Get-Message | Should -Be "section 'How to restore its data' appears more than once"
+        }
+
+        It 'counts a section that holds only an HTML comment as empty' {
+            New-Runbook -Body @{ 'How to restore its data' = '<!-- TODO -->' }
+
+            Get-Message | Should -Be "section 'How to restore its data' is empty"
+        }
+
         It 'reads a heading with trailing spaces' {
             $text = (New-RunbookText) -replace '(?m)^## Where it runs$', '## Where it runs   '
 
