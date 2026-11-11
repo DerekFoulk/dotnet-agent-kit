@@ -70,6 +70,17 @@ public sealed class AuthorizationTests : IDisposable
     }
 
     [Fact]
+    public async Task ATokenWhoseSubIsAtTheLimitGetsThrough()
+    {
+        // The other edge of the test above: 255 characters is a valid owner id.
+        using HttpClient longest = _host.CreateClient(TestTokens.For(new string('u', Bookmark.MaxOwnerIdLength)));
+
+        using HttpResponseMessage save = await longest.PostAsJsonAsync("/bookmarks", new CreateBookmarkRequest(new Uri("https://example.com/a"), "A"), TestContext.Current.CancellationToken);
+
+        save.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
     public async Task AUserSeesOnlyTheirOwnBookmarks()
     {
         // SEC-009 (OWASP API1, broken object-level authorization): another user's bookmark is answered as if it
