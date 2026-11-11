@@ -79,6 +79,23 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task TheUrlIsStoredInTheFormItsLimitMeasures()
+    {
+        // Review 1: the column holds the URL's escaped absolute form, the one Bookmark.MaxUrlLength measures. EF's
+        // default stores Uri.ToString(), which unescapes (a%20b becomes "a b") and so differs from what was measured.
+        Bookmark bookmark = Bookmark.Create(Owner, new Uri("https://example.com?q=a%20b"), "A", s_now);
+        await SaveAsync(bookmark);
+
+        await using BookmarksDbContext db = new(_options);
+        string stored = await db.Database.SqlQueryRaw<string>("SELECT \"Url\" AS \"Value\" FROM \"Bookmarks\"")
+            .SingleAsync(TestContext.Current.CancellationToken);
+        Bookmark? found = await new EfBookmarkRepository(db).FindByUrlAsync(Owner, new Uri("https://example.com/?q=a%20b"), TestContext.Current.CancellationToken);
+
+        stored.Should().Be("https://example.com/?q=a%20b");
+        found.Should().NotBeNull("the same URL, written either way, is found");
+    }
+
+    [Fact]
     public async Task EveryReadSeesOnlyTheOwnersBookmarks()
     {
         // SEC-009: the filter is in the query, so no caller reaches another user's bookmark by its id or its URL, and

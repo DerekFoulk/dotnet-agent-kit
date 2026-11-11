@@ -87,6 +87,19 @@ public sealed class BookmarkTests
     }
 
     [Fact]
+    public void CreateMeasuresTheUrlInItsStoredForm()
+    {
+        // Review 1: the limit is on the URL as stored, its escaped absolute form. Without a path, that form gains the
+        // "/" Uri adds, so a URL written in exactly the limit is one past it.
+        Uri noPath = new($"https://example.com?q={new string('a', Bookmark.MaxUrlLength - "https://example.com?q=".Length)}");
+        noPath.OriginalString.Should().HaveLength(Bookmark.MaxUrlLength);
+
+        Action create = () => Bookmark.Create(Owner, noPath, "Title", s_now);
+
+        create.Should().Throw<ArgumentException>().WithParameterName("url");
+    }
+
+    [Fact]
     public void CreateRejectsARelativeUrl()
     {
         Action create = () => Bookmark.Create(Owner, new Uri("/articles/1", UriKind.Relative), "Title", s_now);

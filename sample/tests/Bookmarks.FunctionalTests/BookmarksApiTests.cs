@@ -109,6 +109,8 @@ public sealed class BookmarksApiTests : IDisposable
         { "a title past the limit", "title", $$"""{"url":"https://example.com/a","title":"{{new string('t', Bookmark.MaxTitleLength + 1)}}"}""" },
         { "no URL", "url", """{"title":"A"}""" },
         { "a URL past the limit", "url", $$"""{"url":"{{LongUrl(Bookmark.MaxUrlLength + 1)}}","title":"A"}""" },
+        // Review 1: without a path, the stored form gains a "/", so a URL written in exactly the limit is past it.
+        { "a URL with no path, past the limit as stored", "url", $$"""{"url":"https://example.com?q={{new string('a', Bookmark.MaxUrlLength - "https://example.com?q=".Length)}}","title":"A"}""" },
     };
 
     [Theory]
