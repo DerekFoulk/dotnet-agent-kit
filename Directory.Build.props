@@ -15,9 +15,11 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
-  <!-- Code metric limits (CRF-008, ADR-0043): .editorconfig turns the metric rules on, and this file sets their limits. -->
+  <!-- Craft checks (ADR-0043): .globalconfig turns the metric rules on and CodeMetricsConfig.txt sets their limits
+       (CRF-008); BannedSymbols.txt lists the APIs the banned-API analyzer rejects (CRF-010). -->
   <ItemGroup>
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)CodeMetricsConfig.txt" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
   </ItemGroup>
 
   <!-- Packages: lock files everywhere, locked restore in CI, and vulnerability audit of direct and transitive packages. -->
