@@ -174,6 +174,18 @@ Describe 'Update-DotnetSkill' {
         Join-Path $kit '.claude/skills/tidy' | Should -Not -Exist
     }
 
+    It 'changes nothing, and says so, when the ref isn''t a commit' {
+        git -C $upstream tag tree-only "${second}^{tree}"
+        $kit = New-Kit
+        $before = Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json')
+
+        { Update-DotnetSkill -RepoRoot $kit -Commit 'refs/tags/tree-only' -RepositoryUrl $upstream -Retrieved '2026-11-10' } |
+            Should -Throw "*'refs/tags/tree-only' isn't a commit*"
+
+        Get-Content -Raw -LiteralPath (Join-Path $kit 'tools/dotnet-skills.json') | Should -Be $before
+        Join-Path $kit '.claude/skills/tidy' | Should -Not -Exist
+    }
+
     It 'changes nothing when a curated copy has an edit, which the update would lose' {
         $kit = New-Kit
         Update-DotnetSkill -RepoRoot $kit -Commit $first -RepositoryUrl $upstream -Retrieved '2026-11-10'
