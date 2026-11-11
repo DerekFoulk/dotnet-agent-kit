@@ -1,7 +1,8 @@
 is_global = true
 
 # The analyzer rules that AnalysisLevel latest-all leaves off, turned on here so that every rule is on (STY-003);
-# warnings fail the build (STY-004). Microsoft lists most of them, the code metric rules and six legacy rules:
+# warnings fail the build (STY-004). Microsoft lists eleven of them, the code metric rules and six design rules, and
+# calls them all legacy rules that might be deprecated:
 #   https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview#code-quality-analysis  retrieved 2026-11-10
 # The SDK's own all-mode file also sets CA1516 to none (sdk/10.0.404/Sdks/Microsoft.NET.Sdk/analyzers/build/config/
 # analysislevel_10_all.globalconfig). Each rule below has a fixture in tools/tests/BuildConfig.Tests.ps1. The one left
