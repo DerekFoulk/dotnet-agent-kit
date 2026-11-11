@@ -54,6 +54,20 @@ function Get-DotnetSkillBlobId {
     [Convert]::ToHexString([Security.Cryptography.SHA1]::HashData([byte[]] ($header + $lf.ToArray()))).ToLowerInvariant()
 }
 
+# Runs git and returns its output as one string, decoded as UTF-8: PowerShell would decode it with the console's
+# encoding, which may be a legacy code page, and git writes paths as UTF-8. git's errors are dropped; a caller that
+# cares checks $LASTEXITCODE. The arguments come as an array because PowerShell drops a bare -- passed to a function.
+function Invoke-GitText {
+    param([Parameter(Mandatory)] [string[]] $Arguments)
+
+    $saved = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+        (git @Arguments 2>$null) -join "`n"
+    }
+    finally { [Console]::OutputEncoding = $saved }
+}
+
 # How each curated skill's folder differs from the lock: a file changed, missing, or not upstream. Folders of skills
 # the lock doesn't name, such as the kit's own, aren't looked at, and neither are files git ignores.
 function Get-DotnetSkillDrift {
@@ -77,8 +91,13 @@ function Get-DotnetSkillDrift {
             $extra = @($present | Where-Object { -not $listed.Contains($_) })
             # Files git ignores, such as .DS_Store or an editor's swap file, never reach a commit. Outside a git repo
             # check-ignore fails and reports nothing, so every extra file counts. The paths go as arguments: piped,
-            # PowerShell on Windows would end each with CRLF, and git would read the CR as part of the name.
-            $ignored = if ($extra) { @(git -C $folder check-ignore -- @extra 2>$null) } else { @() }
+            # PowerShell on Windows would end each with CRLF, and git would read the CR as part of the name. With
+            # core.quotePath off, git prints a non-ASCII path as it is; a name with a quote, backslash or control
+            # character still comes back quoted, so it counts as extra, on the safe side.
+            $ignored = if ($extra) {
+                @((Invoke-GitText -Arguments (@('-C', $folder, '-c', 'core.quotePath=false', 'check-ignore', '--') + $extra)) -split "`n" | Where-Object { $_ })
+            }
+            else { @() }
             foreach ($file in $extra) {
                 if ($file -notin $ignored) { "$($skill['name'])/$file isn't in the upstream commit" }
             }
@@ -119,14 +138,8 @@ function Update-DotnetSkill {
         # Every file of every listed skill at the commit, before anything changes.
         $plan = foreach ($skill in $lock['skills']) {
             $source = $skill['source'].TrimEnd('/')
-            # -z: paths unquoted, as UTF-8, each entry ending in NUL. By default git would quote a non-ASCII path.
-            # PowerShell decodes git's output with the console's encoding, which may be a legacy code page.
-            $saved = [Console]::OutputEncoding
-            try {
-                [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-                $listing = (git -C $work ls-tree -r -z --full-tree $sha -- "$source/") -join "`n"
-            }
-            finally { [Console]::OutputEncoding = $saved }
+            # -z: paths unquoted, each entry ending in NUL. By default git would quote a non-ASCII path.
+            $listing = Invoke-GitText -Arguments @('-C', $work, 'ls-tree', '-r', '-z', '--full-tree', $sha, '--', "$source/")
             $entries = @($listing -split "`0" | Where-Object { $_ } | ForEach-Object {
                     $info, $path = $_ -split "`t", 2
                     $mode, $null, $id = $info -split ' '
