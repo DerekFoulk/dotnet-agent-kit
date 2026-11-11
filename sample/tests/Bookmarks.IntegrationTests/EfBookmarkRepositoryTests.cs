@@ -181,11 +181,11 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
 
         bookmark.FindPrimaryKey()!.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.Id));
         bookmark.FindProperty(nameof(Bookmark.OwnerId))!.IsNullable.Should().BeFalse();
-        bookmark.FindProperty(nameof(Bookmark.OwnerId))!.GetMaxLength().Should().Be(255, "OpenID Connect caps sub at 255 ASCII characters");
+        bookmark.FindProperty(nameof(Bookmark.OwnerId))!.GetMaxLength().Should().Be(Bookmark.MaxOwnerIdLength);
         bookmark.FindProperty(nameof(Bookmark.Url))!.IsNullable.Should().BeFalse();
         bookmark.FindProperty(nameof(Bookmark.Url))!.GetMaxLength().Should().Be(Bookmark.MaxUrlLength);
         bookmark.FindProperty(nameof(Bookmark.Title))!.IsNullable.Should().BeFalse();
-        bookmark.FindProperty(nameof(Bookmark.Title))!.GetMaxLength().Should().Be(500);
+        bookmark.FindProperty(nameof(Bookmark.Title))!.GetMaxLength().Should().Be(Bookmark.MaxTitleLength);
         bookmark.FindProperty(nameof(Bookmark.CreatedAt))!.IsNullable.Should().BeFalse();
         // Every read filters by owner first (SEC-009), so the index leads with it.
         bookmark.GetIndexes().Should().ContainSingle().Which.Properties.Select(p => p.Name)

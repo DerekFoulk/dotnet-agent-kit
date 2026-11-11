@@ -11,6 +11,12 @@ public sealed class Bookmark
         CreatedAt = createdAt;
     }
 
+    /// <summary>
+    /// The longest owner id: the token's sub claim, which OpenID Connect caps at 255 ASCII characters (Core 1.0,
+    /// section 2).
+    /// </summary>
+    public const int MaxOwnerIdLength = 255;
+
     /// <summary>The longest title a bookmark keeps, after trimming (SEC-010).</summary>
     public const int MaxTitleLength = 500;
 

@@ -100,6 +100,20 @@ public sealed class BookmarkTests
     }
 
     [Fact]
+    public void CreateKeepsAnOwnerIdAtItsLongestAndRejectsOnePast()
+    {
+        // Review 1: the owner limit lives with the others, so the column and the rule share it (CRF-003).
+        string longest = new('o', Bookmark.MaxOwnerIdLength);
+
+        Bookmark bookmark = Bookmark.Create(longest, new Uri("https://example.com/"), "Title", s_now);
+        Action tooLong = () => Bookmark.Create(longest + "o", new Uri("https://example.com/"), "Title", s_now);
+
+        bookmark.OwnerId.Should().Be(longest);
+        tooLong.Should().Throw<ArgumentException>().WithParameterName("ownerId")
+            .WithMessage("A bookmark's owner id has at most 255 characters.*");
+    }
+
+    [Fact]
     public void CreateRejectsARelativeUrl()
     {
         Action create = () => Bookmark.Create(Owner, new Uri("/articles/1", UriKind.Relative), "Title", s_now);
