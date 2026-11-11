@@ -5,7 +5,8 @@ namespace Bookmarks.Contracts;
 /// <summary>
 /// A request to save a bookmark. The API checks it against these attributes before the handler runs (SEC-010,
 /// API-006). The limits are the domain's (Bookmark.MaxTitleLength and MaxUrlLength); this project can't reference
-/// the domain, so the functional tests check both edges of each limit against it.
+/// the domain, so the functional tests check both edges of each limit against it. The title is counted here before
+/// the domain trims it, so the API is never looser than the domain.
 /// </summary>
 public sealed record CreateBookmarkRequest(
     [property: Required, UriLength(CreateBookmarkRequest.MaxUrlLength)] Uri Url,

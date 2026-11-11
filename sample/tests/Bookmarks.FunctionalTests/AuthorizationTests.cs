@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.FunctionalTests;
 
-/// <summary>What a signed-in caller may do, and what stays public (SEC-007, ADR-0046).</summary>
+/// <summary>What a signed-in caller may do, and what stays public (SEC-007, ADR-0048).</summary>
 public sealed class AuthorizationTests : IDisposable
 {
     private readonly ApiHost _host = new();

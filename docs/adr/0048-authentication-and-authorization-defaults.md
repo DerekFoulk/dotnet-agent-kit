@@ -21,7 +21,7 @@ Microsoft Learn and OWASP agree on the shape:
 The app never stores passwords or issues tokens. Users sign in with an OpenID Connect provider: Microsoft Entra ID, or Entra External ID for customer-facing apps. The API validates the provider's access tokens with `AddJwtBearer`, configured under `Authentication:Schemes:Bearer`. A fallback policy requires a signed-in user with a `sub` claim on every endpoint. Each user's data is filtered by that `sub` in the query. Development uses `dotnet user-jwts`, which keeps its key in user secrets. Tests issue RS256 tokens with a key made in memory, and the app's real handler validates them.
 
 - **Trade-offs:** Account security (passwords, MFA, lockout, recovery) is the provider's job, and every check is the framework's own code, configured rather than written. The package is Microsoft's `Microsoft.AspNetCore.Authentication.JwtBearer`, which Learn names for this. The cost is that a real deployment needs a provider tenant and an app registration. That's the owner's step, and Entra ID has a free tier.
-- **Reversibility:** Medium. Moving to another OpenID Connect provider changes configuration only. Moving to stored passwords would mean a user store and new endpoints.
+- **Reversibility:** Medium. Each user's data is keyed on their `sub`, which is unique only within one issuer, and Entra ID's is pair-wise: it differs per tenant and per app registration. So moving to another provider, tenant or registration needs a data migration that maps every old `sub` to the new one. An app that trusts more than one issuer keys its data on the issuer and `sub` together. Moving to stored passwords would mean a user store and new endpoints.
 - **Risk:** Low. A misconfigured authority or audience fails closed: every request gets 401, never a wrong yes.
 
 ### Option 2: ASP.NET Core Identity, with its own user store
@@ -80,7 +80,7 @@ Pending: added in auto mode (ADR-0035). SEC-007 to SEC-010 stay `proposed` until
 - **Reliability:** a broken identity configuration fails closed with 401s. The health probes stay anonymous, so the platform still sees a running app.
 - **Cost optimization:** nothing paid. A real tenant is the owner's later call, and Entra ID has a free tier.
 - **Operational excellence:** the handler logs authentication failures without the token. The README says how to get a local token.
-- **Performance efficiency:** one signature check per request. The provider's keys are fetched once and cached.
+- **Performance efficiency:** one signature check per request. The provider's keys come from its metadata, cached and refreshed now and then, not fetched per request.
 
 ## Sources
 
@@ -95,4 +95,4 @@ Pending: added in auto mode (ADR-0035). SEC-007 to SEC-010 stay `proposed` until
 - https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference#use-claims-to-reliably-identify-a-user, retrieved 2026-11-11
 - https://github.com/OWASP/ASVS/tree/v5.0.0/5.0/en (V2, V8, V9), retrieved 2026-11-11
 - https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization, retrieved 2026-11-11
-- https://openid.net/specs/openid-connect-core-1_0.html#IDToken (sub: at most 255 ASCII characters), retrieved 2026-11-11
+- https://openid.net/specs/openid-connect-core-1_0.html (section 2: sub is at most 255 ASCII characters; section 5.7: only iss and sub together identify a user), retrieved 2026-11-11

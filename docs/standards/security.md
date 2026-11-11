@@ -74,7 +74,7 @@ rules:
     scope: core
     paths: ["**/Program.cs", "**/appsettings*.json", "**/*.csproj"]
   - id: SEC-009
-    statement: "Every read or change of a user's data is limited to that user's data in the query itself, in the application and data layers, not only in the endpoint; the user's id is the token's sub claim, which the fallback policy requires, and another user's item answers 404, as one that doesn't exist does."
+    statement: "Every read or change of a user's data is limited to that user's data in the query itself, in the application and data layers, not only in the endpoint; the user's id is the token's sub claim, which the fallback policy requires (unique within one issuer, so an app that trusts more than one keys on the issuer and sub together), and another user's item answers 404, as one that doesn't exist does."
     why: "Broken object-level authorization is OWASP's top API risk: an id in a URL is easy to change, and a filter in the query is a check no endpoint can skip; a 404 doesn't even confirm that someone else's id exists; ASVS 8.2.2 and 8.3.1 ask for it at a trusted layer (GAP-006)."
     layer: outside
     status: proposed
@@ -83,7 +83,7 @@ rules:
     scope: core
     paths: ["**/*Endpoints*.cs", "**/*Repository*.cs", "**/Features/**", "**/*Domain*/**"]
   - id: SEC-010
-    statement: "Every value a client sends is checked where it enters the app against what's allowed: required fields, a maximum length for every string, URI and collection, and a range for every number; a rejected value gets a 400 validation problem that names the field and never repeats the value. API-006 says how a Minimal API does it."
+    statement: "Every value a client sends is checked where it enters the app against what's allowed: required fields, a maximum length for every string, URI and collection, and a range for every number. A value outside those bounds gets a 400 validation problem that names the field; a domain rule's refusal is a 400 Problem (API-006); neither repeats the value. API-006 says how a Minimal API does it."
     why: "Unbounded input fills the database and memory, an easy denial of service, and an error that repeats input invites reflected injection; ASVS 2.2.1 and 2.2.2 ask for positive validation of input at a trusted layer (GAP-006)."
     layer: outside
     status: proposed

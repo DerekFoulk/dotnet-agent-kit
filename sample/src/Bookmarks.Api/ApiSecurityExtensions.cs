@@ -4,7 +4,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace Bookmarks.Api;
 
-/// <summary>Who may call the API (SEC-007 to SEC-009, ADR-0046).</summary>
+/// <summary>Who may call the API (SEC-007 to SEC-009, ADR-0048).</summary>
 internal static class ApiSecurityExtensions
 {
     /// <summary>

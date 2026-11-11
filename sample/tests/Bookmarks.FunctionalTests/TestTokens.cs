@@ -7,7 +7,7 @@ namespace Bookmarks.FunctionalTests;
 
 /// <summary>
 /// Issues access tokens for the tests, the way an OpenID Connect provider would: RS256-signed, with an issuer, an
-/// audience and a lifetime (SEC-008, ADR-0046). The signing key is made in memory for each test run, so no key is
+/// audience and a lifetime (SEC-008, ADR-0048). The signing key is made in memory for each test run, so no key is
 /// ever stored; <see cref="ApiHost"/> tells the API's real JWT bearer handler to trust it, as a real app trusts its
 /// provider's published keys.
 /// </summary>
