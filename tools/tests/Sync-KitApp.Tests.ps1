@@ -93,6 +93,7 @@ Describe 'Sync-KitApp' {
         Edit-FileText (Join-Path $kit 'global.json') '"version": "10.0.403"' '"version": "10.0.404"'
         Edit-FileText (Join-Path $kit 'docs/standards/git.md') 'squash and rebase merges are disabled.' 'squash and rebase merges are disabled (kit-v2-rule-marker).'
         Edit-FileText (Join-Path $kit 'AGENTS.md') '## Talking to the owner' "## Talking to the owner`n`nkit-v2-agents-marker"
+        Edit-FileText (Join-Path $kit 'templates/app/.github/workflows/mutation.yml') 'name: Mutation testing' "# kit-v2-workflow-marker`nname: Mutation testing"
         $settingsPath = Join-Path $kit '.claude/settings.json'
         $settings = Get-Content -Raw -LiteralPath $settingsPath | ConvertFrom-Json -AsHashtable
         $settings['permissions']['allow'] += 'PowerShell(dotnet --info)'
@@ -103,6 +104,11 @@ Describe 'Sync-KitApp' {
         git -C $kit tag v0.2.0
         git -C $kit tag not-a-release
         $v2 = (git -C $kit rev-parse HEAD).Trim()
+
+        # Dependabot's PR: the kit pin, with its version comment, moved in every workflow (ADR-0042).
+        foreach ($workflow in Get-ChildItem -LiteralPath (Join-Path $app '.github/workflows') -File) {
+            Edit-FileText $workflow.FullName "@$v1 # v0.1.0" "@$v2 # v0.2.0"
+        }
 
         if (Test-Path -LiteralPath $script) { . $script }
     }
@@ -230,7 +236,8 @@ Describe 'Sync-KitApp' {
                 $file = @($result.Files | Where-Object Path -EQ $Path)
                 if ($file) { $file[0].Action } else { '(none)' }
             }
-            $edited = '.editorconfig', '.gitignore', '.claude/skills/plan-checklist/SKILL.md', '.claude/skills/app-skill/SKILL.md', $instructions
+            $edited = '.editorconfig', '.gitignore', '.claude/skills/plan-checklist/SKILL.md', '.claude/skills/app-skill/SKILL.md', $instructions,
+            '.github/workflows/mutation.yml'
 
             $result = Sync-KitApp -AppRoot $app -KitRoot $kit -KitRef v0.2.0
         }
@@ -246,13 +253,22 @@ Describe 'Sync-KitApp' {
                 Get-LfHash ([IO.File]::ReadAllText($path)) | Should -Be $file['sha256'] -Because "$($file['path']) should be the kit's at v0.2.0"
             }
 
-            # Among them: the SDK pin, the CI pin, and the permission rules made again with v0.2.0's tools (ADR-0032),
-            # so a rule for a script apps don't get stays out.
+            # Among them: the SDK pin, and the permission rules made again with v0.2.0's tools (ADR-0032), so a rule
+            # for a script apps don't get stays out.
             Get-Content -Raw (Join-Path $app 'global.json') | Should -Match '"version": "10\.0\.404"'
-            Get-Content -Raw (Join-Path $app '.github/workflows/ci.yml') | Should -Match ([regex]::Escape("dotnet-ci.reusable.yml@$v2 # v0.2.0"))
             $settings = Get-Content -Raw (Join-Path $app '.claude/settings.json') | ConvertFrom-Json
             $settings.permissions.allow | Should -Contain 'PowerShell(dotnet --info)'
             $settings.permissions.ask | Should -Not -Contain 'PowerShell(./tools/Kit-OnlyFixture.ps1*)'
+        }
+
+        # A workflow's own token can't push a change to .github/workflows. Dependabot moves the pin there; anything
+        # else the kit changed in a workflow is listed for a person to apply.
+        It 'never writes a workflow file, and lists a kit change to one that Dependabot didn''t make' {
+            $mutation = Get-Content -Raw (Join-Path $app '.github/workflows/mutation.yml')
+            $mutation | Should -Not -Match 'kit-v2-workflow-marker'
+            $mutation | Should -Match ([regex]::Escape("@$v2 # v0.2.0"))
+            Get-SyncAction '.github/workflows/mutation.yml' | Should -Be 'WorkflowByHand'
+            Get-SyncAction '.github/workflows/ci.yml' | Should -Be '(none)' -Because "Dependabot's pin is all the kit changed there"
         }
 
         It 'removes a file the kit no longer has, when the app didn''t edit it' {
