@@ -13,7 +13,8 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 
 ## Security
 - Does it touch data, sign-in, secrets or a trust boundary? If so, write a short threat model: what could an attacker do, and what stops them?
-- Are inputs validated? Do any secrets stay out of the repo and the logs?
+- Are inputs validated and bounded (SEC-010)? Do any secrets stay out of the repo and the logs?
+- Does a new endpoint need a signed-in user (the fallback policy, SEC-007), and does it reach only the caller's own data (SEC-009)? If it must be public, say why.
 
 ## Cost optimization
 - Does it add a paid service or cloud resources? Each needs the owner's OK, in both modes. A new dependency needs it in review mode; in auto mode, name the source that recommends it (`AGENTS.md`, "Working modes").

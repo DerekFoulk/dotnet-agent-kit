@@ -79,15 +79,15 @@ areas:
     sources:
       - "https://asvs.owasp.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/azure/well-architected/security/, retrieved 2026-11-07"
-    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, ARC-006]
+    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, ARC-006]
     gaps:
       - id: GAP-005
         gap: "No code scanning: CodeQL is free on public repos but isn't set up. Closed by ADR-0036: codeql.reusable.yml runs in the kit's and every public app's CI (SEC-006, accepted 2026-11-09), and the kit's ruleset requires its results before merging."
         status: closed
         needs: "a GitHub Action (CodeQL) and a CI change"
       - id: GAP-006
-        gap: "No rules for authentication, authorization or input validation defaults beyond the threat model in plans."
-        status: proposed
+        gap: "No rules for authentication, authorization or input validation defaults beyond the threat model in plans. Closed by ADR-0048: SEC-007 to SEC-010 (proposed) and the sample's API, which requires a signed-in user everywhere, validates tokens with JWT bearer, keeps each user's bookmarks apart and bounds every input."
+        status: closed
   - id: reliability
     name: Reliability
     perfect: "Timeouts everywhere, retries only where they're safe, health checks, graceful shutdown and safe database migrations."
@@ -235,7 +235,7 @@ Each area in the front matter above has:
 | Proportion | 1 | 0 | 1 | 0 | 1 |
 | Code | 8 | 7 | 1 | 0 | 1 |
 | Tests | 7 | 4 | 3 | 0 | 1 |
-| Security | 7 | 5 | 2 | 0 | 1 |
+| Security | 7 | 5 | 2 | 4 | 0 |
 | Reliability | 3 | 2 | 1 | 0 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 3 | 3 | 0 | 3 | 0 |
@@ -246,7 +246,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 0 | 1 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 3 proposed; 15 open gaps.
+**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 7 proposed; 14 open gaps.
 
 Open gaps:
 
@@ -256,7 +256,6 @@ Open gaps:
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
 - **GAP-021** (Code, proposed; needs an ADR, and a change to every project or a recorded opt-out): CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
-- **GAP-006** (Security, proposed): No rules for authentication, authorization or input validation defaults beyond the threat model in plans.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
 - **GAP-013** (Supply chain and build, proposed; needs a tool or GitHub Action, and a CI change): No SBOM is produced for an app's build.
