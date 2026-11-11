@@ -34,10 +34,12 @@ P:System.Reflection.Assembly.DefinedTypes;Returns non-public types too; register
 M:System.Reflection.Module.GetTypes;Returns non-public types too; register your own types explicitly, or use Assembly.GetExportedTypes() for a library's public ones (CRF-010)
 M:System.Reflection.Module.FindTypes(System.Reflection.TypeFilter,System.Object);Searches non-public types too; register your own types explicitly, or filter Assembly.GetExportedTypes() for a library's public ones (CRF-010)
 
-// A type's static constructor is private: C# allows no access modifier on one (CS0515), and all 479 among the public
-// types a pwsh 7.6 session loads are (measured 2026-11-11). So TypeInitializer returns a non-public member, and its uses past running it
-// (does one exist, what's in it, run it again with Invoke) all read a type's internals. Running it is
-// RuntimeHelpers.RunClassConstructor's job, which runs it only if it hasn't run.
+// A type's static constructor is private: C# allows no access modifier on one (CS0515), and every one measured is
+// (2026-11-11: all of them in the public types of a fresh pwsh 7.6 session, 479 to 498 depending on what it has
+// loaded, and 1636 of 1636 with every assembly in pwsh's folder loaded). So TypeInitializer returns a non-public
+// member, and its uses past running it (does one exist, what's in it, run it again with Invoke) all read a type's
+// internals. Running it is RuntimeHelpers.RunClassConstructor's job, which runs it only if it hasn't run; that method
+// is marked RequiresUnreferencedCode, so in a trimmed app touch one of the type's static members instead.
 P:System.Type.TypeInitializer;Returns the type's static constructor, which is private; to run it, use RuntimeHelpers.RunClassConstructor(type.TypeHandle) (CRF-010)
 
 // Accessor getters whose nonPublic argument returns private accessors.
