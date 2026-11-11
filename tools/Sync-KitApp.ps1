@@ -5,7 +5,8 @@
 
 .DESCRIPTION
     Reads the app's .kit/manifest.json and updates every kit-managed file, and the kit blocks of AGENTS.md and
-    THIRD-PARTY-NOTICES.md, to a kit release. Files the app owns are never read or written.
+    THIRD-PARTY-NOTICES.md, to a kit release. Files the app owns are left alone, with one exception: a package
+    the release adds is added to the app's Directory.Packages.props, if the app lacks it (Add-KitPackage).
 
     The release is -KitRef, a release tag, or, without it, the release the app's workflows pin the kit to:
     Dependabot moves that pin, and a release tag must point to it (ADR-0031). The app is exported at its kit
@@ -425,7 +426,7 @@ function Format-KitSyncReport {
 
     $kit = "https://github.com/$($Result.Repository)"
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add("Brings dotnet-agent-kit $($Result.ToVersion) (commit ``$($Result.ToCommit)``) into this app, from $($Result.FromVersion) (commit ``$($Result.FromCommit)``). The kit's sync job made it from ``.kit/manifest.json`` (kit ADR-0044): it updates the files the kit manages and the kit blocks of ``AGENTS.md`` and ``THIRD-PARTY-NOTICES.md``, and never touches this app's own files.")
+    $lines.Add("Brings dotnet-agent-kit $($Result.ToVersion) (commit ``$($Result.ToCommit)``) into this app, from $($Result.FromVersion) (commit ``$($Result.FromCommit)``). The kit's sync job made it from ``.kit/manifest.json`` (kit ADR-0044): it updates the files the kit manages and the kit blocks of ``AGENTS.md`` and ``THIRD-PARTY-NOTICES.md``. Of this app's own files, it changes only ``Directory.Packages.props``, and only to add a package the kit's files need.")
     $lines.Add('')
     $lines.Add("Release notes: $kit/releases/tag/$($Result.ToVersion). The kit's files at this release: $kit/tree/$($Result.ToCommit).")
 

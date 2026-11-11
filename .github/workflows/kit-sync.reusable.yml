@@ -5,8 +5,9 @@
 #
 # Sync-KitApp takes the release from the moved pins, and refuses one no release tag in the kit points to
 # (ADR-0031). That check runs code from the pinned commit itself, so it catches a mistaken pin, not a malicious
-# one: Dependabot proposing only a release's commit, and the owner's check before merging, guard against that. It updates every other kit-managed file, and this workflow pushes them to Dependabot's branch with
-# the workflow's own token. That token can't change workflow files, so the sync never does: anything else the kit
+# one: Dependabot proposing only a release's commit, and the owner's check before merging, guard against that.
+# It updates every other kit-managed file, and this workflow pushes them to Dependabot's branch with the
+# workflow's own token. That token can't change workflow files, so the sync never does: anything else the kit
 # changed in a workflow is listed in the report for a person. Only the kit's own scripts run here, never the
 # app's, so the write token never meets code from the app's repo. No stored secret is needed.
 #
