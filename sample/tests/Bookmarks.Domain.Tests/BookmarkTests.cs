@@ -67,7 +67,7 @@ public sealed class BookmarkTests
         Bookmark bookmark = Bookmark.Create(Owner, url, $" {title} ", s_now);
 
         bookmark.Title.Should().Be(title);
-        bookmark.Url.OriginalString.Should().HaveLength(Bookmark.MaxUrlLength);
+        bookmark.Url.AbsoluteUri.Should().HaveLength(Bookmark.MaxUrlLength);
     }
 
     [Fact]
@@ -84,6 +84,16 @@ public sealed class BookmarkTests
             .WithMessage("A bookmark's title has at most 500 characters.*");
         longUrl.Should().Throw<ArgumentException>().WithParameterName("url")
             .WithMessage("A bookmark's URL has at most 2048 characters.*");
+    }
+
+    [Fact]
+    public void CreateKeepsTheUrlInItsStoredForm()
+    {
+        // Review 2: the bookmark holds the form it's measured and stored in, so what the API answers on saving is what
+        // it answers later, and never longer than the limit.
+        Bookmark bookmark = Bookmark.Create(Owner, new Uri("HTTPS://Example.COM:443/a/../b"), "Title", s_now);
+
+        bookmark.Url.OriginalString.Should().Be("https://example.com/b");
     }
 
     [Fact]

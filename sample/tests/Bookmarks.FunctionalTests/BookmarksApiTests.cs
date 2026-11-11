@@ -34,6 +34,20 @@ public sealed class BookmarksApiTests : IDisposable
     }
 
     [Fact]
+    public async Task SavingAndReadingABookmarkAnswerTheSameUrl()
+    {
+        // Review 2: the 201 echoed the URL as written while GET answered its stored form; both now answer the stored one.
+        using StringContent body = new("""{"url":"HTTPS://Example.COM:443/a/../b","title":"A"}""", System.Text.Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage created = await Client.PostAsync(new Uri("/bookmarks", UriKind.Relative), body, TestContext.Current.CancellationToken);
+        JsonElement saved = await created.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        JsonElement fetched = await Client.GetFromJsonAsync<JsonElement>(created.Headers.Location, TestContext.Current.CancellationToken);
+
+        saved.GetProperty("url").GetString().Should().Be("https://example.com/b");
+        fetched.GetProperty("url").GetString().Should().Be("https://example.com/b");
+    }
+
+    [Fact]
     public async Task PostingASavedUrlAgainIsAConflict()
     {
         CreateBookmarkRequest request = new(new Uri("https://example.com/a"), "A");
