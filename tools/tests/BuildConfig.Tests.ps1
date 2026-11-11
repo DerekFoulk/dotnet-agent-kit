@@ -318,6 +318,10 @@ Describe '.globalconfig' {
     It 'reads <Line> as turning on <Expected>' -ForEach @(
         @{ Line = 'dotnet_diagnostic.CA1014.severity = warning'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = error'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = suggestion'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = silent'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = refactoring'; Expected = 'CA1014' }
+        @{ Line = 'dotnet_diagnostic.CA1014.severity = default'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity: warning'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = warning # a trailing comment'; Expected = 'CA1014' }
         @{ Line = 'dotnet_diagnostic.CA1014.severity = warning ; a trailing comment'; Expected = 'CA1014' }
