@@ -121,10 +121,11 @@ function Get-RunbookProblem {
 
     # A Draft may keep its placeholders; once the app is deployed, the runbook is In use and complete.
     if ($status -ceq 'In use') {
-        for ($i = 0; $i -lt $lines.Count; $i++) {
-            foreach ($match in [regex]::Matches($lines[$i], $script:PlaceholderPattern)) {
-                New-Problem -Message "line $($i + 1): '$($match.Value)' must be filled in before the runbook is In use"
-            }
+        # Across lines, since an editor may wrap a long placeholder: reported at the line it starts on, on one line.
+        $text = $lines -join "`n"
+        foreach ($match in [regex]::Matches($text, $script:PlaceholderPattern)) {
+            $line = $text.Substring(0, $match.Index).Split("`n").Count
+            New-Problem -Message "line ${line}: '$($match.Value -replace '\s+', ' ')' must be filled in before the runbook is In use"
         }
         $parsed = [datetime]::MinValue
         if ($null -ne $reviewed -and -not [datetime]::TryParseExact($reviewed, 'yyyy-MM-dd', [cultureinfo]::InvariantCulture, 'None', [ref] $parsed)) {
