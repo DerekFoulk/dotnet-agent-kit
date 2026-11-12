@@ -73,4 +73,22 @@ Describe 'Test-LoadBudget.ps1' {
             'Aggregated: 99% of requests took up to 610 ms, over its budget of 600 ms.'
             'POST /bookmarks: 95% of requests took up to 210 ms, over its budget of 200 ms.')
     }
+
+    It 'names the whole run, or a request, whose share of failed requests is over budget' {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats @(
+            (New-Row 'POST' '/bookmarks' -Requests 400 -Failures 6 -P95 150)
+            (New-Row 'GET' '/bookmarks' -Requests 400 -Failures 0 -P95 150)
+            (New-Row '' 'Aggregated' -Requests 800 -Failures 6 -P95 150))
+        $budget = [ordered]@{
+            'Aggregated'      = [ordered]@{ maxFailureRatio = 0.01; maxMilliseconds = [ordered]@{ '95%' = 300 } }
+            'POST /bookmarks' = [ordered]@{ maxFailureRatio = 0.01 }
+            'GET /bookmarks'  = [ordered]@{ maxFailureRatio = 0 }
+        }
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget $budget)) } | Should -Not -Throw
+
+        # 6 of 800 is 0.75%, within 1%; 6 of 400 is 1.5%, over it.
+        $script:problems | Should -Be @('POST /bookmarks: 6 of 400 requests failed (1.5%), over its budget of 1%.')
+    }
 }
