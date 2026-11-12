@@ -102,6 +102,15 @@ function Invoke-CoverageGate {
     $exempt = if ($Solution) { @(& (Join-Path $PSScriptRoot 'Get-UiProject.ps1') -Solution $Solution | ForEach-Object Name) } else { @() }
     foreach ($name in $exempt) { Write-Host ('{0,-32} exempt (UI project, ARC-010)' -f $name) }
 
+    # An empty report is legitimate for a test project that loads nothing the gate counts, but on Windows Microsoft's
+    # collector also writes one when the clone's path is too long, and the project it should have counted then fails
+    # below as one no test loads. Name each, so that cause is in sight.
+    foreach ($report in Get-ChildItem -Path $Path -Recurse -Filter '*.cobertura.xml' -File) {
+        if (([xml] (Get-Content -LiteralPath $report.FullName -Raw)).SelectNodes('/coverage/packages/package').Count -eq 0) {
+            Write-Host "$($report.Name) lists no assemblies. On Windows that can mean the clone's path is too long for the coverage collector; see docs/standards/testing.md, ""Browser and accessibility tests""."
+        }
+    }
+
     $summary = @(Get-CoverageSummary -Path $Path | Where-Object { $exempt -notcontains $_.Package })
     if ($summary.Count -eq 0) {
         Write-Host "No Cobertura coverage report with counted lines under $Path; run dotnet test with --coverage first."
