@@ -47,7 +47,6 @@ function Test-GeneratedFile {
     $FileName -match '\.(g|generated)\.cs$' -or $FileName -match '(^|[\\/])obj[\\/]'
 }
 
-# One row per assembly: lines covered, lines counted, and the percentage, merged across reports.
 # Every Cobertura report under the path, parsed: the one place that says which files are reports.
 function Get-CoberturaReport {
     param([Parameter(Mandatory)] [string] $Path)
@@ -57,6 +56,7 @@ function Get-CoberturaReport {
     }
 }
 
+# One row per assembly: lines covered, lines counted, and the percentage, merged across reports.
 function Get-CoverageSummary {
     param([Parameter(Mandatory)] [string] $Path)
 
