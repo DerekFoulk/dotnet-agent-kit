@@ -43,6 +43,14 @@ Describe 'New-KitApp settings' {
                 # waits for did (ADR-0057, SharedCi.Tests.ps1). Only the jobs nothing needs are required by name.
                 $needed = @($shared['jobs'].Values | ForEach-Object { @($_['needs']) } | Where-Object { $_ })
                 foreach ($id in $shared['jobs'].Keys | Where-Object { $needed -notcontains $_ }) { "$jobId / $($shared['jobs'][$id]['name'])" }
+                # Review 1: that holds only if each required job that needs another runs after it fails (a skipped
+                # required check counts as passed) and reads its result; otherwise a failed needed job slips through.
+                $requiredWithNeeds = $shared['jobs'].Keys | Where-Object { $needed -notcontains $_ -and $shared['jobs'][$_]['needs'] }
+                foreach ($job in $requiredWithNeeds | ForEach-Object { $shared['jobs'][$_] }) {
+                    $job['if'] | Should -Be '${{ !cancelled() }}' -Because "$($job['name']) gates the jobs it needs"
+                    $text = ConvertTo-Yaml $job['steps']
+                    foreach ($need in @($job['needs'])) { $text | Should -Match "needs\.$need\.result" }
+                }
             }
         }
         @($expected).Count | Should -Be 3
