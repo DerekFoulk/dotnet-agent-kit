@@ -118,6 +118,23 @@ Describe 'Test-EmptyProjects.ps1' {
         @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
     }
 
+    # A console tool and its tests (ARC-009) may sit with the tool's project at the root and the tests beneath it.
+    It 'doesn''t count files that belong to another project in a subfolder' {
+        $folder = Join-Path $TestDrive "sln-$(New-Guid)"
+        New-Item -ItemType Directory -Force -Path (Join-Path $folder 'tests' 'App.Tests' 'obj') | Out-Null
+        Set-Content -LiteralPath (Join-Path $folder 'App.csproj') -Value '<Project Sdk="Microsoft.NET.Sdk" />'
+        Set-Content -LiteralPath (Join-Path $folder 'tests' 'App.Tests' 'App.Tests.csproj') -Value '<Project Sdk="Microsoft.NET.Sdk" />'
+        Set-Content -LiteralPath (Join-Path $folder 'tests' 'App.Tests' 'AppTests.cs') -Value 'public class AppTests { }'
+        Set-Content -LiteralPath (Join-Path $folder 'tests' 'App.Tests' 'obj' 'Generated.cs') -Value 'class Generated { }'
+        $solution = Join-Path $folder 'App.slnx'
+        '<Solution><Project Path="App.csproj" /><Project Path="tests/App.Tests/App.Tests.csproj" /></Solution>' | Set-Content -LiteralPath $solution
+
+        $problems = @(Get-EmptyProjectProblem -Solution $solution)
+
+        $problems | Should -HaveCount 1
+        $problems[0].Message | Should -BeLike 'App.csproj has no source*'
+    }
+
     # Grpc.Tools generates the C# from .proto files at build time, so a contracts project may hold only those.
     It 'counts .proto files as source' {
         $solution = New-Solution @{ 'App.Contracts' = @{ 'Protos/orders.proto' = 'syntax = "proto3";' } }
