@@ -153,4 +153,16 @@ Describe 'Resolve-KitIntakeAnswer' {
         & $Change $answers
         { Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Throw $Message
     }
+
+    # AskUserQuestion always offers "Other". An answer that isn't a kit option is kept in the owner's words, and the
+    # profile says it needs an ADR before anything is built on it.
+    It 'keeps an Other answer in the owner''s words' {
+        $answers = New-Answer
+        $answers['database'] = 'Other:  MongoDB Atlas '
+        { $script:resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Not -Throw
+        $card = $script:resolved.Cards | Where-Object Id -EQ 'database'
+
+        $card.Option | Should -BeNullOrEmpty
+        $card.Other | Should -Be 'MongoDB Atlas'
+    }
 }
