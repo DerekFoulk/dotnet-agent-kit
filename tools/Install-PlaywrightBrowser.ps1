@@ -21,7 +21,8 @@ $ErrorActionPreference = 'Stop'
 function Install-PlaywrightBrowser {
     param(
         [Parameter(Mandatory)] [string] $Solution,
-        [string] $Configuration = 'Release'
+        [string] $Configuration = 'Release',
+        [switch] $WithDependencies
     )
 
     $solutionPath = (Resolve-Path -LiteralPath $Solution).Path

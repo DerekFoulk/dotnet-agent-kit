@@ -65,4 +65,16 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
     }
+
+    # Linux needs the browser's system libraries too; Playwright's --with-deps installs them (as root, through apt).
+    It 'adds --with-deps with -WithDependencies, as CI asks on Linux' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'deps'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
+        $solution = New-Solution $repo 'App.E2E.Tests'
+
+        Install-PlaywrightBrowser -Solution $solution -Configuration Release -WithDependencies *> $null
+
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install --with-deps chromium')
+    }
 }
