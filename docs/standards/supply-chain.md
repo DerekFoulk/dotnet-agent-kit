@@ -7,7 +7,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0020"]
-    enforcement: "build: RestorePackagesWithLockFile, RestoreLockedMode when CI=true; tools/tests/BuildConfig.Tests.ps1; ci: dependabot-lockfiles.yml refreshes the lock files Dependabot misses on its NuGet PRs (tools/tests/DependabotLockfiles.Tests.ps1)"
+    enforcement: "build: RestorePackagesWithLockFile, RestoreLockedMode when CI=true; tools/tests/BuildConfig.Tests.ps1; ci: dependabot-lockfiles.yml refreshes the lock files Dependabot misses on its NuGet PRs (tools/tests/DependabotLockfiles.Tests.ps1); on macOS, where a MAUI project builds a subset of its frameworks, CI restores unlocked and tools/Test-LockFileSubset.ps1 holds each lock file to the committed one (ADR-0057)"
     scope: core
     paths: ["**/*.csproj", "**/packages.lock.json", "Directory.Build.props"]
   - id: SUP-002
@@ -73,6 +73,15 @@ rules:
     enforcement: "settings: the kit repo requires actions pinned to a full-length commit SHA (GitHub's Actions setting, on since 2026-11-09), and .github/dependabot.yml updates the pins; Pester tests also check the pins in the release, Dependabot lock-file and shared app workflows, and Dependabot.Tests.ps1 checks the waits in the kit's and the app template's dependabot.yml; New-KitApp turns the same setting on for every app (templates/github/actions.json)"
     scope: core
     paths: [".github/**"]
+  - id: SUP-011
+    statement: "Workloads such as MAUI install at the workload set whose version is the SDK's own (dotnet workload restore --version with the version dotnet --version prints), never the latest."
+    why: "Unpinned workloads change under a build without any commit; a workload set ships with each SDK release and moves with the SDK pin. sdk.workloadVersion in global.json would pin it too, but every build then fails on a machine without that set (ADR-0057)."
+    layer: outside
+    status: proposed
+    sources: ["ADR-0057", "https://learn.microsoft.com/dotnet/core/tools/dotnet-workload-sets, retrieved 2026-11-11"]
+    enforcement: "ci: dotnet-ci.reusable.yml's ui job restores workloads with --version (dotnet --version), and tools/tests/SharedCi.Tests.ps1 fails on an unpinned workload install or update"
+    scope: core
+    paths: [".github/workflows/**", "global.json"]
 ---
 
 # Supply chain

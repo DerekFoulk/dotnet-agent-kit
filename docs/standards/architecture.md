@@ -73,8 +73,39 @@ rules:
     enforcement: "advisory: the banned-API analyzer now runs in every project (ADR-0043), but the ban list for pure assemblies (clock, randomness, file and network access) isn't written yet (web profile, after v0.1)"
     scope: core
     paths: ["src/**"]
+  - id: ARC-010
+    statement: "In MAUI and desktop apps, view models and all other logic live in UI-independent libraries (ARC-003); a UI project, one that sets UseMaui, UseWPF, UseWindowsForms or UseWinUI, holds only views, platform code and startup wiring, no other project references it, and the coverage gate exempts it."
+    why: "No plain test project can load a UI project, and Linux CI can't build one; with the logic in libraries it's tested and covered like any other code, and the UI project has nothing left to cover."
+    layer: owner
+    status: proposed
+    sources: ["ADR-0008", "ADR-0057", "https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-01"]
+    enforcement: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects; that a UI project holds no logic is advisory, checked by the reviewer agent"
+    scope: core
+    paths: ["src/**", "**/*.csproj"]
+  - id: ARC-011
+    statement: "Desktop apps use .NET MAUI (Windows and Mac Catalyst), the same stack as mobile; WPF, Windows Forms or WinUI 3 need an ADR."
+    why: "One UI stack across phone and desktop shares the most code and the kit's CI and rules; the others serve Windows alone."
+    layer: owner
+    status: proposed
+    sources: ["ADR-0008", "ADR-0057"]
+    enforcement: "advisory: an architecture choice; the reviewer agent checks for the ADR"
+    scope: core
+    paths: ["**/*.csproj"]
 ---
 
 # Architecture
 
 The defaults are Clean Architecture for web apps, and native MAUI with the MVVM Toolkit and Shell for mobile (ADR-0008). Architecture practice follows the Azure Well-Architected Framework (ADR-0016). Diagrams live as Mermaid in `docs/architecture/` and are updated in the same PR as the change they describe.
+
+## MAUI and desktop apps
+
+ADR-0057 sets how these are shaped and built.
+
+- **Thin UI projects (ARC-010).** The UI project holds views (XAML and their code-behind), platform code and `MauiProgram`'s wiring. View models, commands, validation and everything else go in plain `net10.0` libraries, tested like any other. CommunityToolkit.Mvvm doesn't depend on a UI, so view models built with it live there too.
+- **CI.** The shared .NET CI finds UI projects with `tools/Get-UiProject.ps1`. Linux builds and tests every other project through a solution filter. A `ui` job builds the whole solution with zero warnings on Windows (every UI kind) and on macOS (MAUI), with the workloads restored at the workload set of the SDK in use (SUP-011). The required check waits for it. Tests stay on Linux, where Testcontainers' Linux containers work.
+- **Lock files.** They're made on Windows, where a MAUI project targets every platform. macOS builds a subset, so it restores without locked mode, and `tools/Test-LockFileSubset.ps1` then fails unless each lock file matches the committed one for every framework it lists.
+- **On your machine.** Install the MAUI workload at the same workload set CI uses: `dotnet workload install maui --version <the version dotnet --version prints>`. Visual Studio's installer manages its own workloads instead; either works for building.
+
+## Pending ratification
+
+ARC-010 and ARC-011 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them. The coverage gate's exemption is in force once this change merges, which needs your yes, since it changes a CI check (AGENTS.md, "Working modes").

@@ -9,11 +9,19 @@ areas:
     sources:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-07"
       - "ADR-0008"
-    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, CRF-006, CRF-007]
+    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, ARC-010, ARC-011, CRF-006, CRF-007]
     gaps:
       - id: GAP-001
-        gap: "No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only."
+        gap: "No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only. Closed by ADR-0057: ARC-010 and ARC-011 (proposed), a UI build job on Windows and macOS in the shared .NET CI, and the coverage gate's exemption for UI projects."
+        status: closed
+      - id: GAP-024
+        gap: "Nightly mutation testing (mutation.reusable.yml) and the Dependabot lock-file refresh (dependabot-lockfiles.yml) run on Linux against the whole solution, so they can't build one with MAUI or desktop projects; they need the solution filter the .NET CI uses, or a Windows runner for the lock files (ADR-0057)."
         status: proposed
+        needs: "a CI change"
+      - id: GAP-025
+        gap: "No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, and the runners' Android SDK are untested (ADR-0057)."
+        status: proposed
+        needs: "a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change"
   - id: craft
     name: Craft
     perfect: "Code built on the fundamentals (SOLID, DRY, KISS, YAGNI, separation of concerns, acyclic dependencies), within metric limits a tool enforces, using every library only through its documented API; every defect fixed at its root, and no known-worse design left unnamed."
@@ -151,7 +159,7 @@ areas:
       - "https://learn.microsoft.com/en-us/nuget/concepts/security-best-practices, retrieved 2026-11-07"
       - "https://slsa.dev/, retrieved 2026-11-07"
       - "ADR-0020"
-    rules: [SUP-001, SUP-002, SUP-003, SUP-004, SUP-005, SUP-006, SUP-007, SUP-008]
+    rules: [SUP-001, SUP-002, SUP-003, SUP-004, SUP-005, SUP-006, SUP-007, SUP-008, SUP-011]
     gaps:
       - id: GAP-013
         gap: "No SBOM is produced for an app's build."
@@ -230,7 +238,7 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 8 | 4 | 4 | 0 | 1 |
+| Architecture | 8 | 4 | 4 | 2 | 2 |
 | Craft | 10 | 4 | 6 | 0 | 2 |
 | Proportion | 1 | 0 | 1 | 0 | 1 |
 | Code | 8 | 7 | 1 | 0 | 0 |
@@ -240,17 +248,18 @@ Each area in the front matter above has:
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 3 | 3 | 0 | 3 | 0 |
 | Performance | 1 | 0 | 1 | 0 | 1 |
-| Supply chain and build | 8 | 8 | 0 | 0 | 2 |
+| Supply chain and build | 8 | 8 | 0 | 1 | 2 |
 | Delivery | 1 | 1 | 0 | 0 | 2 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 9 proposed; 11 open gaps.
+**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 12 proposed; 12 open gaps.
 
 Open gaps:
 
-- **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
+- **GAP-024** (Architecture, proposed; needs a CI change): Nightly mutation testing (mutation.reusable.yml) and the Dependabot lock-file refresh (dependabot-lockfiles.yml) run on Linux against the whole solution, so they can't build one with MAUI or desktop projects; they need the solution filter the .NET CI uses, or a Windows runner for the lock files (ADR-0057).
+- **GAP-025** (Architecture, proposed; needs a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change): No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, and the runners' Android SDK are untested (ADR-0057).
 - **GAP-019** (Craft, proposed; needs an analyzer package or a kit check, and a CI change): No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent.
 - **GAP-020** (Craft, proposed; needs a tool and a CI change): No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
