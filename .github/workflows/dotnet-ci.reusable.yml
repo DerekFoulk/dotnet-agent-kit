@@ -140,7 +140,6 @@ jobs:
         run: |
           $filter = & "$env:KIT/tools/New-ShippedSolutionFilter.ps1" -Solution $env:SOLUTION -Destination "$env:RUNNER_TEMP/sbom-input"
           & "$env:RUNNER_TEMP/cyclonedx/dotnet-CycloneDX" $filter --disable-package-restore --output-format Json --output "$env:RUNNER_TEMP/sbom" --filename sbom.cdx.json
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload the SBOM
         if: steps.projects.outputs.count != '0'
