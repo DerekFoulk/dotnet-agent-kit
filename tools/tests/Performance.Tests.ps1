@@ -43,6 +43,31 @@ Describe 'Performance tests (GAP-012)' {
         }
     }
 
+    Context 'the sample''s load test (sample/tests/load)' {
+        It 'has a locustfile, its load shape and its budget' {
+            foreach ($file in 'locustfile.py', 'locust.conf', 'load-budget.json') {
+                Join-Path $root 'sample' 'tests' 'load' $file | Should -Exist
+            }
+        }
+
+        It 'has a budget Test-LoadBudget accepts' {
+            . (Join-Path $root 'tools' 'Test-LoadBudget.ps1')
+            $path = Join-Path $root 'sample' 'tests' 'load' 'load-budget.json'
+            $path | Should -Exist
+
+            @(Get-BudgetFileProblem (Get-Content -Raw -LiteralPath $path | ConvertFrom-Json -AsHashtable)) | Should -BeNullOrEmpty
+        }
+
+        # Locust reads locust.conf from the folder it runs in; the workflow passes only what it owns (host, headless, CSV).
+        It 'sets the load in locust.conf, not in the workflow' {
+            $conf = Get-Content -LiteralPath (Join-Path $root 'sample' 'tests' 'load' 'locust.conf') -ErrorAction SilentlyContinue
+
+            foreach ($key in 'users', 'spawn-rate', 'run-time') {
+                @($conf | Where-Object { $_ -match "^$key\s*=\s*\S" }) | Should -HaveCount 1 -Because "locust.conf sets $key"
+            }
+        }
+    }
+
     # Locust and every package it pulls in are pinned by version and hash, and installed with --require-hashes. Dependabot
     # replays the pip-compile command in requirements.txt's header when it moves Locust, so the header must keep both flags:
     # --generate-hashes, and --allow-unsafe, without which pip-compile leaves setuptools and pip unpinned.
