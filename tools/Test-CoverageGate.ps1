@@ -7,8 +7,8 @@
 .DESCRIPTION
     Reads every Cobertura report under -Path (one per test project, from
     `dotnet test --coverage --coverage-output-format cobertura --results-directory <Path>`) and merges them:
-    a line counts as covered if any report covers it. Test assemblies (names ending in "Tests") and
-    generated files (*.g.cs, *.generated.cs, anything under obj/) are left out. No report at all is a
+    a line counts as covered if any report covers it. Test assemblies (names ending in "Tests"), benchmarks
+    assemblies (names ending in ".Benchmarks", ADR-0062) and generated files (*.g.cs, *.generated.cs, anything under obj/) are left out. No report at all is a
     failure, so a run that collected nothing can't pass.
 
 .EXAMPLE
@@ -31,6 +31,12 @@ $script:CoverageRules = @(
 )
 $script:OverallMinimum = 90
 
+# Test-side code, never counted: test projects (names ending in "Tests") and benchmarks projects (names ending in
+# ".Benchmarks", ADR-0062), which measure production code and ship nothing.
+function Test-TestSideAssembly([string] $Name) {
+    $Name -like '*Tests' -or $Name -like '*.Benchmarks'
+}
+
 function Test-GeneratedFile {
     param([Parameter(Mandatory)] [string] $FileName)
     $FileName -match '\.(g|generated)\.cs$' -or $FileName -match '(^|[\\/])obj[\\/]'
@@ -45,7 +51,7 @@ function Get-CoverageSummary {
         [xml] $xml = Get-Content -LiteralPath $report.FullName -Raw
         foreach ($package in @($xml.coverage.packages.package)) {
             $name = [string] $package.name
-            if ($name -like '*Tests') { continue }
+            if (Test-TestSideAssembly $name) { continue }
             foreach ($class in @($package.classes.class)) {
                 $file = [string] $class.filename
                 if (Test-GeneratedFile -FileName $file) { continue }
@@ -102,8 +108,10 @@ function Invoke-CoverageGate {
     if ($Solution) {
         $expected = ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project') |
             ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.GetAttribute('Path')) } |
-            Where-Object { $_ -notlike '*Tests' -and $exempt -notcontains $_ }
+            Where-Object { $exempt -notcontains $_ }
         foreach ($name in $expected) {
+            if ($name -like '*.Benchmarks') { Write-Host ('{0,-32} left out (benchmarks project, ADR-0062)' -f $name) }
+            if (Test-TestSideAssembly $name) { continue }
             if ($summary.Package -notcontains $name) {
                 $failed = $true
                 Write-Host ('{0,-32} FAIL: no coverage at all; no test loads it' -f $name)
