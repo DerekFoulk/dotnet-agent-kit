@@ -126,4 +126,29 @@ Describe 'Test-BenchmarkBudget.ps1' {
         $script:problems.Count | Should -Be 1
         $script:problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: no allocations in its report*MemoryDiagnoser*'
     }
+
+    # Without --exporters json BenchmarkDotNet writes no JSON report: say that, rather than list every budget as missing.
+    It 'says there is no report, and nothing else, when the folder has no JSON report' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Join-Path $TestDrive 'empty-results'
+        New-Item -ItemType Directory -Path $results | Out-Null
+        Set-Content -LiteralPath (Join-Path $results 'App.Benchmarks.ParseBenchmarks-report.csv') -Value 'Method,Mean'
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 192 } })
+
+        $problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget)
+
+        $problems.Count | Should -Be 1
+        $problems[0] | Should -BeLike 'No BenchmarkDotNet JSON report under *empty-results*--exporters json*'
+    }
+
+    It 'returns exit code <Code> when the benchmarks are <State>' -ForEach @(
+        @{ State = 'within budget'; Mean = 900; Code = 0 }
+        @{ State = 'over budget'; Mean = 1100; Code = 1 }
+    ) {
+        Get-Command Invoke-BenchmarkBudgetCheck -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @((New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse' -Mean $Mean))
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 192 } })
+
+        Invoke-BenchmarkBudgetCheck -Path $results -Budget $budget 6>$null | Should -Be $Code
+    }
 }
