@@ -1,0 +1,61 @@
+#Requires -Version 7.6
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
+
+Describe 'Test-CodeShape.ps1' {
+    BeforeAll {
+        . (Join-Path $PSScriptRoot '..' 'Test-CodeShape.ps1')
+        $script:fixtures = Join-Path $PSScriptRoot 'fixtures' 'CodeShape'
+        $script:kitRoot = Join-Path $PSScriptRoot '..' '..'
+    }
+
+    Context 'reading the projects' {
+        BeforeAll {
+            $script:projects = @(Get-CodeShapeProject -Solution (Join-Path $script:fixtures 'Deep.slnx'))
+        }
+
+        It 'lists each C# project, and skips one in another language' {
+            $script:projects | ForEach-Object { Split-Path $_.name -Leaf } | Should -Be 'Deep.csproj'
+        }
+
+        It "takes the project's source files from MSBuild's Compile items" {
+            $script:projects[0].files | ForEach-Object { Split-Path $_ -Leaf } | Should -Be 'Deep.cs'
+        }
+
+        It "takes the project's preprocessor symbols from its DefineConstants" {
+            $script:projects[0].defines | Should -Contain 'KIT_FIXTURE'
+        }
+    }
+
+    Context 'running the check' {
+        It 'fails a solution that breaks a limit, naming the place in MSBuild error format' {
+            $result = Invoke-CodeShapeCheck -Solution (Join-Path $script:fixtures 'Deep.slnx') -KitRoot $script:kitRoot
+
+            $result.ExitCode | Should -Be 1
+            $result.Output | Should -Match '[\\/]Deep\.cs\(7,74\): error CRF008: Run nests 5 levels deep; the limit is 4 \(CRF-008\)\. \[.*Deep\.csproj\]$'
+        }
+
+        It 'passes a solution within every limit' {
+            $result = Invoke-CodeShapeCheck -Solution (Join-Path $script:fixtures 'Tidy.slnx') -KitRoot $script:kitRoot
+
+            $result.ExitCode | Should -Be 0
+            $result.Output | Should -Be 'Code shape (CRF-008): 1 project, 1 file, no findings.'
+        }
+    }
+
+    Context "CRF-008's numbers" {
+        It 'match the limits the check enforces' {
+            $limits = Get-Content -Raw (Join-Path $script:kitRoot 'tools/CodeShape/src/Kit.CodeShape/Limits.cs')
+            $craft = Get-Content -Raw (Join-Path $script:kitRoot 'docs/standards/craft.md')
+            $statement = [regex]::Match($craft, '(?m)^  - id: CRF-008\r?\n    statement: "(?<s>[^"]+)"').Groups['s'].Value
+
+            $enforced = 'NestingDepth', 'StatementsPerMember', 'LinesPerFile', 'Lcom4' | ForEach-Object {
+                [regex]::Match($limits, "const int $_ = (\d+);").Groups[1].Value
+            }
+            $stated = 'nesting to (\d+) levels', '(\d+) statements per member', '(\d+) lines per file', 'LCOM4 of (\d+)' |
+                ForEach-Object { [regex]::Match($statement, $_).Groups[1].Value }
+
+            $stated | Should -Be $enforced
+            $enforced | Should -Not -Contain ''
+        }
+    }
+}
