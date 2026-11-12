@@ -40,6 +40,10 @@ function Get-BenchmarkBudgetProblem {
                 "${name}: no budget in $(Split-Path -Leaf $Budget). Add one, with maxMeanNanoseconds and maxAllocatedBytes."
                 continue
             }
+            if ($null -eq $benchmark['Statistics']) {
+                "${name}: no result; the benchmark failed to run. BenchmarkDotNet's log says why."
+                continue
+            }
             $mean = [double] $benchmark['Statistics']['Mean']
             if ($mean -gt [double] $limit['maxMeanNanoseconds']) {
                 "${name}: mean $(Format-Number $mean) ns is over its budget of $(Format-Number $limit['maxMeanNanoseconds']) ns."
