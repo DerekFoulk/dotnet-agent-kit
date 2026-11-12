@@ -112,4 +112,28 @@ Describe 'Test-EmptyProjects.ps1' {
         $script:problems | Should -HaveCount 1
         $script:problems[0].Message | Should -BeLike '*src/App.Api/App.Api.csproj*isn''t there*'
     }
+
+    Context 'run as a script' {
+        BeforeAll {
+            $script:check = Join-Path $PSScriptRoot '..' 'Test-EmptyProjects.ps1'
+        }
+
+        It 'prints each problem and exits 1' {
+            $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Domain' = @{} }
+
+            $output = pwsh -NoProfile -File $script:check -Solution $solution 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1 -Because $output
+            $output | Should -Match 'App\.Domain.*has no source'
+        }
+
+        It 'says so and exits 0 when every project holds code' {
+            $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' } }
+
+            $output = pwsh -NoProfile -File $script:check -Solution $solution 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 0 -Because $output
+            $output | Should -Match 'Every project in .*App\.slnx holds code of its own'
+        }
+    }
 }
