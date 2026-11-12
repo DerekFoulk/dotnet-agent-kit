@@ -37,8 +37,12 @@ function Get-LoadBudgetProblem {
     foreach ($key in $keys) {
         $limit = $budgets[$key]
         $row = $rows[$key]
+        $requests = [long] $row.'Request Count'
+        if ($requests -eq 0) {
+            "${key}: no requests were made, so there is nothing to check. Is the app up, and does the locustfile run?"
+            continue
+        }
         if ($limit.Contains('maxFailureRatio')) {
-            $requests = [long] $row.'Request Count'
             $failures = [long] $row.'Failure Count'
             $max = [double] $limit['maxFailureRatio']
             if ($failures -gt $requests * $max) {
