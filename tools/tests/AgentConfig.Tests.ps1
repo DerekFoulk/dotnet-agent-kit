@@ -188,6 +188,29 @@ Describe 'Agent configuration' {
             Test-AskRuleMatch -Tool $Tool -Command 'git push origin feat/x -f' | Should -BeTrue
         }
 
+        # Installing software on the owner's machine is "Always ask" (ADR-0061): a local Playwright browser install,
+        # by Playwright's own script or the kit's, prompts in both modes, in any case.
+        It 'asks before installing a browser locally: <Tool>(<Command>)' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'pwsh fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install chromium' }
+                @{ Tool = $tool; Command = 'pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps' }
+                @{ Tool = $tool; Command = './tools/Install-PlaywrightBrowser.ps1 -Solution dotnet-agent-kit.slnx' }
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./.kit/tools/Install-PlaywrightBrowser.ps1 -Solution App.slnx' }
+                @{ Tool = $tool; Command = 'npx playwright install chromium' }
+            }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command -IgnoreCase | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
+        }
+
+        It 'doesn''t ask to run the browser tests: <Tool>(<Command>)' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'dotnet test --project fixtures/WebUi/tests/Kit.WebUi.E2E.Tests' }
+                @{ Tool = $tool; Command = 'Invoke-Pester -Path ./tools/tests/Install-PlaywrightBrowser.Tests.ps1' }
+            }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
+        }
+
         It 'gives review mode exactly the rules auto mode drops from the shared settings' {
             . (Join-Path $repoRoot 'tools' 'Set-AgentMode.ps1')
             @($script:ReviewAskRules | Sort-Object) | Should -Be @(
