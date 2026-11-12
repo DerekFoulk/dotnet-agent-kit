@@ -208,6 +208,7 @@ Describe 'Get-KitIntake' {
 
     It 'reads the kit''s own intake file' {
         { $script:read = Get-KitIntake -Text (Get-Content -Raw -LiteralPath $intakePath) } | Should -Not -Throw
+        $script:read | Should -Not -BeNullOrEmpty
         @($script:read['cards'] | ForEach-Object { $_['id'] }) | Should -Contain 'appType'
     }
 

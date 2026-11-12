@@ -4,11 +4,21 @@
 
 Set-StrictMode -Version Latest
 
+# The layout of templates/app-intake.json this module reads. Raise it when a change to the file's layout would make
+# an older module misread it.
+$script:SchemaVersion = 1
+
 # Reads templates/app-intake.json.
 function Get-KitIntake {
     param([Parameter(Mandatory)] [string] $Text)
 
-    $null
+    $intake = $Text | ConvertFrom-Json -AsHashtable
+    if ($intake -isnot [Collections.IDictionary]) { throw "templates/app-intake.json isn't a JSON object." }
+    $version = if ($intake.Contains('schemaVersion')) { $intake['schemaVersion'] } else { 'none' }
+    if ($version -ne $script:SchemaVersion) {
+        throw "templates/app-intake.json has schemaVersion $version, and this New-KitApp reads version $($script:SchemaVersion). Run the New-KitApp from the same kit version as -KitRef."
+    }
+    $intake
 }
 
 # Checks the answers against the intake and returns each card's answer and each kind of test's tools.

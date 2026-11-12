@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "about": "The new-app intake (ADR-0058): the question cards the new-app skill shows the owner, and the test tools for each kind of test. New-KitApp checks the answers against this file and writes them to the app's docs/app-profile.md. Each card's first option is its recommendation. A card with dependsOn shows only the options whose fits lists the other card's answer. Every option and tool has a cost label: Free, Free tier (free up to a limit) or Paid, with the price, its source and the date checked.",
   "cards": [
     {
