@@ -34,7 +34,7 @@ What measurement showed, with the check below on the kit's own solution (13 C# p
 
 Roslyn is the C# compiler's own code-analysis library: it parses C# into a syntax tree and works out what each name refers to ("binding").
 
-`tools/Test-CodeShape.ps1` lists the solution's C# projects with `dotnet sln list`. It asks MSBuild for each project's Compile items and DefineConstants (`dotnet msbuild -getItem:Compile -getProperty:DefineConstants`, an evaluation, not a build). A multi-target project is read through its first framework. It then builds and runs `tools/CodeShape`'s Kit.CodeShape console tool, which reads the files with Microsoft.CodeAnalysis.CSharp 5.9.0.
+`tools/Test-CodeShape.ps1` lists the solution's C# projects with `dotnet sln list` (**Update, 2026-11-12:** now through `tools/KitSolution.psm1`, `.slnx` only; see Consequences). It asks MSBuild for each project's Compile items and DefineConstants (`dotnet msbuild -getItem:Compile -getProperty:DefineConstants`, an evaluation, not a build). A multi-target project is read through its first framework. It then builds and runs `tools/CodeShape`'s Kit.CodeShape console tool, which reads the files with Microsoft.CodeAnalysis.CSharp 5.9.0.
 
 - **Trade-offs:** it checks all four, with definitions the kit states and tests.
   - Findings print in MSBuild's error format (`path(line,col): error CRF011: … [project]`), so setup-dotnet's problem matcher annotates the PR.

@@ -120,7 +120,7 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 **Follow-ups:**
 - **For the owner (a guardrail):** `.claude/settings.json` has no ask rule for installing a browser locally (`playwright.ps1 install`, the kit script). Until he adds one, AGENTS.md and testing.md say it's the owner's step.
 - **Solution reading:** the kit's scripts read a solution in two ways. Six read the `.slnx` XML, and Test-CodeShape uses `dotnet sln list`. The new script adds one more XML reader, and repeats Test-CodeShape's first-framework fallback. Putting both in one module is a follow-up (CRF-003).
-  - **Update (2026-11-12):** done. `tools/KitSolution.psm1` reads a `.slnx` and picks the first framework for every script, and for the performance workflow's benchmarks step, an eighth reader.
+  - **Update (2026-11-12):** done. `tools/KitSolution.psm1` lists a `.slnx`'s projects for seven scripts (the count above was one too many) and the performance workflow's benchmarks step, and picks the first framework for the two scripts that need it.
 - **Updates:** agents may merge Playwright's minor updates (ADR-0041), and each one moves the browser build. That's intended.
 
 ## Pillars affected
