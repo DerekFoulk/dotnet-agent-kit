@@ -38,8 +38,35 @@ public sealed class ExceptionTests
     [Fact]
     public void AnExceptionAtTheTopOfAFileExemptsItsLength() => FileLengthRule.Check(new SourceFile(
         "Long.cs",
-        "// CRF-008 exception: one table of every country code.\n" + string.Join('\n', Enumerable.Repeat("// a line", 800))))
+        "// CRF-008 exception: one table of every country code.\n\n" + string.Join('\n', Enumerable.Repeat("// a line", 800))))
         .Should().BeEmpty();
+
+    // Review 1 of GAP-019: what each placement covers. A file's marker stands apart, a blank line below it; a
+    // member's or type's sits right before it; a property's covers its accessors.
+    [Fact]
+    public void ATypesExceptionAtTheTopOfAFileDoesNotExemptTheFile() => FileLengthRule.Check(new SourceFile(
+        "Long.cs",
+        "// CRF-008 exception: a facade over two stores.\nclass Ledger { }\n" + string.Join('\n', Enumerable.Repeat("// a line", 800))))
+        .Should().ContainSingle();
+
+    [Fact]
+    public void AnExceptionSetApartByABlankLineExemptsNothing() => NestingRule.Check(new SourceFile("Deep.cs", $$"""
+        class Deep
+        {
+            // CRF-008 exception: left behind when the member it was for moved.
+
+            void Run(int a) { {{FiveIfs}} }
+        }
+        """)).Should().ContainSingle();
+
+    [Fact]
+    public void AnExceptionBeforeAPropertyCoversItsAccessors() => NestingRule.Check(new SourceFile("Deep.cs", $$"""
+        class Deep
+        {
+            // CRF-008 exception: a parser's state machine reads better in one place.
+            int P { get { int a = 0; {{FiveIfs}} return a; } }
+        }
+        """)).Should().BeEmpty();
 
     [Fact]
     public void AnExceptionBeforeATypeExemptsItsCohesion() => CohesionRule.Check([new SourceFile("Ledger.cs", """
