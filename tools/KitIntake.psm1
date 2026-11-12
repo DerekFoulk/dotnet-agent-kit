@@ -41,8 +41,30 @@ function Resolve-KitIntakeAnswer {
             throw "'$($answer.Option['id'])' doesn't fit $($parent.Id) '$parentId'. For that answer, '$($answer.Id)' takes one of: $($fitting -join ', '), or 'Other: <text>'."
         }
     }
+    # Each kind of test uses its default tools, unless testTools names that kind's tools instead. A tool that isn't
+    # on the list needs an ADR (TST-005), so the intake takes only listed ones.
+    $chosen = if ($Answers.Contains('testTools')) { $Answers['testTools'] } else { @{} }
+    if ($chosen -isnot [Collections.IDictionary]) { throw "The answers' testTools isn't a map from a kind of test to its tool ids." }
+    $kindIds = @($Intake['testKinds'] | ForEach-Object { $_['id'] })
+    foreach ($key in $chosen.Keys) {
+        if ($key -cnotin $kindIds) { throw "testTools has '$key', which isn't a kind of test. The kinds are: $($kindIds -join ', ')." }
+    }
     $kinds = foreach ($kind in $Intake['testKinds']) {
-        [pscustomobject]@{ Kind = $kind; Tools = @($kind['tools'] | Where-Object { $_['default'] }) }
+        $id = $kind['id']
+        if (-not $chosen.Contains($id)) {
+            [pscustomobject]@{ Kind = $kind; Tools = @($kind['tools'] | Where-Object { $_['default'] }) }
+            continue
+        }
+        $names = @($chosen[$id] | Where-Object { $_ })
+        if (-not $names) { throw "testTools names no tools for $id tests. Leave $id out to use its defaults." }
+        $tools = foreach ($name in $names) {
+            $tool = @($kind['tools'] | Where-Object { $_['id'] -ceq $name })
+            if (-not $tool) {
+                throw "'$name' isn't on the kit's list for $id tests: $(($kind['tools'] | ForEach-Object { $_['id'] }) -join ', '). A tool that isn't listed needs an ADR (TST-005) before it's added to templates/app-intake.json."
+            }
+            $tool[0]
+        }
+        [pscustomobject]@{ Kind = $kind; Tools = @($tools) }
     }
     [pscustomobject]@{ Cards = @($cards); TestKinds = @($kinds) }
 }

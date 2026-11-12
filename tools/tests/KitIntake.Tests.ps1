@@ -190,7 +190,7 @@ Describe 'Resolve-KitIntakeAnswer' {
 
     # A tool that isn't on the list needs an ADR (TST-005), so it can't come in through the intake.
     It 'refuses test tools for <Case>' -ForEach @(
-        @{ Case = 'an unknown kind of test'; Tools = @{ soak = @('locust') }; Message = "*'soak' isn't a kind of test*unit, integration*" }
+        @{ Case = 'an unknown kind of test'; Tools = @{ soak = @('locust') }; Message = "*'soak', which isn't a kind of test*unit, integration*" }
         @{ Case = 'an unknown tool'; Tools = @{ load = @('k6') }; Message = "*'k6' isn't on the kit's list for load tests*locust, jmeter, azure-load-testing, nbomber*ADR*" }
         @{ Case = 'an empty list'; Tools = @{ load = @() }; Message = "*no tools for load tests*" }
         @{ Case = 'testTools that isn''t a map'; Tools = 'locust'; Message = "*testTools*map*" }
