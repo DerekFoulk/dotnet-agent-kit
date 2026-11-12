@@ -53,4 +53,16 @@ Describe 'Install-PlaywrightBrowser.ps1' {
         Get-Call $repo | Should -BeNullOrEmpty
         $output | Should -Match 'No project uses Playwright'
     }
+
+    It 'runs "install chromium" with the playwright.ps1 the build put beside a Playwright project''s assembly' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'one'
+        New-Project $repo 'Api' -Libraries 'xunit.v3/4.0.3' -Built
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Deque.AxeCore.Playwright/4.14.0', 'Microsoft.Playwright/1.64.1' -Built
+        $solution = New-Solution $repo 'Api', 'App.E2E.Tests'
+
+        Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null
+
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
+    }
 }
