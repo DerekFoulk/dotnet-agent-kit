@@ -86,8 +86,8 @@ areas:
         status: closed
         needs: "a dotnet tool (Stryker) and a CI change"
       - id: GAP-004
-        gap: "Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI."
-        status: proposed
+        gap: "Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI. Closed by ADR-0061: an app's E2E.Tests project hosts its web UI with WebApplicationFactory on Kestrel and runs axe's WCAG 2.2 A and AA rules on every page with Playwright (UI-002, proposed); the shared .NET CI installs Playwright's Chromium with tools/Install-PlaywrightBrowser.ps1 before the tests, only where a project uses Playwright; the kit's fixtures/WebUi proves it in the kit's own CI."
+        status: closed
         needs: "packages and a CI change"
       - id: GAP-025
         gap: "The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need."
@@ -194,6 +194,10 @@ areas:
         gap: "PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too."
         status: proposed
         needs: "a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change"
+      - id: GAP-033
+        gap: "Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3)."
+        status: proposed
+        needs: "a CI change to run the browser tests in a pinned container, and an ADR"
   - id: delivery
     name: Delivery
     perfect: "Every merge builds a release candidate; deploys go to staging, then production, with a tested rollback and no downtime; infrastructure is code."
@@ -233,11 +237,19 @@ areas:
       - "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/architecture/maui/mvvm, retrieved 2026-11-07"
       - "ADR-0008"
-    rules: [ARC-003, ARC-004, ARC-006, UI-001]
+    rules: [ARC-003, ARC-004, ARC-006, UI-001, UI-002]
     gaps:
       - id: GAP-018
         gap: "No rule requires WCAG 2.2 AA or checks it: only the plan checklist asks about accessibility (ARC-006, the plan-checklist skill). GAP-004 adds the tests. Closed by ADR-0046: UI-001 (proposed) in docs/standards/ui.md, which the plan-checklist skill points at; its automated check waits for GAP-004."
         status: closed
+      - id: GAP-032
+        gap: "No automated UI tests for MAUI or desktop apps: UI-001 and its accessibility checks stay manual there, with each platform's tools, and nothing drives a native UI the way Playwright drives a browser (Appium for MAUI, or a Windows UI Automation driver for desktop). See also GAP-031: the intake offers a MAUI app browser test tools (ADR-0061)."
+        status: proposed
+        needs: "a native UI test tool (an ADR and packages), and CI runners with emulators or devices"
+      - id: GAP-036
+        gap: "The kit's web UI fixture uses static server rendering with enhanced navigation only, so nothing shows how to test a page with an interactive render mode (Server, WebAssembly or Auto), where a click made before the component is interactive is lost, nor proves it in CI (ADR-0061)."
+        status: proposed
+        needs: "an interactive page in the fixture and a documented way to wait for interactivity"
   - id: process
     name: Process
     perfect: "Short-lived branches merged by pull request with a merge commit, readable commit history, an independent review before the owner's, and an agent that reports with evidence and asks before risky steps."
@@ -271,19 +283,19 @@ Each area in the front matter above has:
 | Craft | 10 | 5 | 5 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 8 | 7 | 1 | 0 | 0 |
-| Tests | 7 | 4 | 3 | 3 | 3 |
+| Tests | 7 | 4 | 3 | 3 | 2 |
 | Security | 7 | 5 | 2 | 4 | 0 |
 | Reliability | 3 | 2 | 1 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 3 | 3 | 0 | 3 | 0 |
 | Performance | 1 | 0 | 1 | 1 | 0 |
-| Supply chain and build | 8 | 8 | 0 | 3 | 1 |
+| Supply chain and build | 8 | 8 | 0 | 3 | 2 |
 | Delivery | 1 | 1 | 0 | 2 | 3 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
-| UI and accessibility | 3 | 1 | 2 | 1 | 0 |
+| UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 25 proposed; 12 open gaps.
+**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 26 proposed; 14 open gaps.
 
 Open gaps:
 
@@ -291,14 +303,16 @@ Open gaps:
 - **GAP-028** (Architecture, proposed; needs a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change): No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, the runners' Android SDK, and the checks that move to Windows (code shape, duplicate code with PMD's batch launcher, the SBOM) are untested (ADR-0059).
 - **GAP-031** (Architecture, proposed): The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059).
 - **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
-- **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-008 proposes the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
 - **GAP-029** (Supply chain and build, proposed; needs a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change): PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too.
+- **GAP-033** (Supply chain and build, proposed; needs a CI change to run the browser tests in a pinned container, and an ADR): Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3).
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0054, Option 4).
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 - **GAP-024** (Delivery, proposed; needs infrastructure as code first (GAP-016)): No check that an app's cloud database keeps its free-tier guard on (DAT-006): the guard is a setting in infrastructure code, which apps don't have yet (GAP-016).
+- **GAP-032** (UI and accessibility, proposed; needs a native UI test tool (an ADR and packages), and CI runners with emulators or devices): No automated UI tests for MAUI or desktop apps: UI-001 and its accessibility checks stay manual there, with each platform's tools, and nothing drives a native UI the way Playwright drives a browser (Appium for MAUI, or a Windows UI Automation driver for desktop). See also GAP-031: the intake offers a MAUI app browser test tools (ADR-0061).
+- **GAP-036** (UI and accessibility, proposed; needs an interactive page in the fixture and a documented way to wait for interactivity): The kit's web UI fixture uses static server rendering with enhanced navigation only, so nothing shows how to test a page with an interactive render mode (Server, WebAssembly or Auto), where a click made before the component is interactive is lost, nor proves it in CI (ADR-0061).
 <!-- scorecard-table:end -->
 
 ## Keeping it current

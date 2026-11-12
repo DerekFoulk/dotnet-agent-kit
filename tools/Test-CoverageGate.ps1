@@ -54,14 +54,15 @@ function Get-CoverageSummary {
     $lines = @{}
     foreach ($report in Get-ChildItem -Path $Path -Recurse -Filter '*.cobertura.xml' -File) {
         [xml] $xml = Get-Content -LiteralPath $report.FullName -Raw
-        foreach ($package in @($xml.coverage.packages.package)) {
+        # XPath at every level, not property access: PowerShell reads an empty element (<packages />, <classes />,
+        # <lines />) as a string, which has none of the children's properties.
+        foreach ($package in @($xml.SelectNodes('/coverage/packages/package'))) {
             $name = [string] $package.name
             if (Test-TestSideAssembly $name) { continue }
-            foreach ($class in @($package.classes.class)) {
+            foreach ($class in @($package.SelectNodes('classes/class'))) {
                 $file = [string] $class.filename
                 if (Test-GeneratedFile -FileName $file) { continue }
-                foreach ($line in @($class.lines.line)) {
-                    if ($null -eq $line) { continue }
+                foreach ($line in @($class.SelectNodes('lines/line'))) {
                     $key = "$name|$file|$($line.number)"
                     $lines[$key] = ($lines.ContainsKey($key) -and $lines[$key]) -or ([int] $line.hits -gt 0)
                 }

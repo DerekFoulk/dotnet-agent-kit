@@ -61,6 +61,20 @@ jobs:
           $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.'dotnet-stryker'.version
           dotnet tool install dotnet-stryker --version $version --tool-path "$env:RUNNER_TEMP/stryker"
 
+      # Stryker runs every test project, the Playwright ones too (GAP-004, ADR-0061), so their browser comes first, as
+      # in dotnet-ci.reusable.yml. The install reads each Playwright project's Release build, hence the build.
+      # Like Stryker, it can't build MAUI or desktop projects here (GAP-026).
+      - name: Build
+        if: steps.projects.outputs.count != '0'
+        run: dotnet build "$SOLUTION" --configuration Release
+
+      - name: Playwright browser
+        if: steps.projects.outputs.count != '0'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Install-PlaywrightBrowser.ps1" -Solution $env:SOLUTION -Configuration Release -WithDependencies'
+
       # Every setting (the MTP runner, the 85% threshold, the reporters, the ConfigureAwait skip) is in the kit's
       # .config/stryker-config.json, which a person running Stryker locally uses too (ADR-0039).
       - name: Mutation test

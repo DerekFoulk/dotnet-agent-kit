@@ -151,6 +151,21 @@ Describe 'the intake data' {
         $byId['nbomber']['cost']['label'] | Should -Be 'Paid'
         $byId['nbomber']['cost']['price'] | Should -Match 'organization'
     }
+
+    # ADR-0061 (GAP-004): the shared CI runs every browser test on every PR, hosting the app with WebApplicationFactory
+    # on Kestrel; Aspire testing is for an app that has an Aspire AppHost, so it isn't a default for every app. The axe
+    # package itself is MIT; its axe-core engine (Deque.AxeCore.Commons) is MPL-2.0.
+    It 'runs UI tests on every PR, with Playwright, axe and WebApplicationFactory by default, and names axe''s licenses' {
+        $ui = @($intake['testKinds'] | Where-Object id -EQ 'ui')[0]
+        $ui['runs'] | Should -Be 'Every PR, in the shared .NET CI'
+        @($ui['tools'] | Where-Object { $_['default'] }).id | Should -Be @('playwright', 'axe', 'webapplicationfactory')
+        $byId = @{}; $ui['tools'] | ForEach-Object { $byId[$_['id']] = $_ }
+        $byId['webapplicationfactory']['package'] | Should -Be 'Microsoft.AspNetCore.Mvc.Testing'
+        $byId['webapplicationfactory']['note'] | Should -Match 'Kestrel'
+        $byId['aspire-testing']['note'] | Should -Match 'AppHost'
+        $byId['axe']['license'] | Should -Be 'MIT'
+        $byId['axe']['note'] | Should -Match 'Deque\.AxeCore\.Commons.*MPL-2\.0'
+    }
 }
 
 Describe 'Resolve-KitIntakeAnswer' {

@@ -1,0 +1,8 @@
+<Project>
+
+  <!-- The kit's test-project settings (xUnit v3 on Microsoft Testing Platform, coverage) live in the sample's
+       Directory.Build.props, which imports the repo's root settings too; the web UI fixture uses the same, as
+       tools/CodeShape does. -->
+  <Import Project="$(MSBuildThisFileDirectory)../../sample/Directory.Build.props" />
+
+</Project>

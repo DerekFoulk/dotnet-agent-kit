@@ -7,9 +7,18 @@ rules:
     layer: outside
     status: proposed
     sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-11", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/routing#focus-an-element-on-navigation, retrieved 2026-11-11"]
-    enforcement: "advisory: until GAP-004 adds Playwright with axe to web UI tests, no tool checks it; the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing), and once it's accepted the reviewer agent reviews UI changes against it. Native UI stays a manual check with each platform's tools"
+    enforcement: "advisory: only partly checked by a tool: for web UI, the axe tests UI-002 asks for run in the shared .NET CI (ADR-0061) and catch the part of WCAG axe can test; the rest stays with the person building and the reviewer agent, which reviews UI changes against this rule once it's accepted, and the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing). Native UI stays a manual check with each platform's tools (GAP-032)"
     scope: core
     paths: ["**/*.razor", "**/*.razor.cs", "**/*.cshtml", "**/*.css", "**/*.html", "**/*.xaml", "**/*.xaml.cs"]
+  - id: UI-002
+    statement: "Every page of a web UI (Blazor, Razor) has a Playwright test in the app's E2E.Tests project that opens it, checks it loaded, and runs axe's WCAG 2.2 level A and AA rules (the tags wcag2a, wcag2aa, wcag21a, wcag21aa and wcag22aa), failing on any violation; what a person does that axe can't see, such as where focus goes after a link or the first Tab, gets its own Playwright test."
+    why: "axe finds, in a real browser, on every pull request and for free, the WCAG failures a tool can find in a rendered page: missing names and labels, text contrast, the page's language and title, autocomplete values, target size. A test must check the page loaded first, because axe passes an error page. Keyboard order, focus movement and whether names make sense need a test written for them or a person (ADR-0061, GAP-004)."
+    layer: outside
+    status: proposed
+    sources: ["ADR-0061", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-12", "https://github.com/dequelabs/axe-core/blob/develop/doc/API.md, retrieved 2026-11-12", "https://github.com/dequelabs/axe-core-nuget/blob/develop/packages/playwright/README.md, retrieved 2026-11-12", "https://learn.microsoft.com/aspnet/core/blazor/test?view=aspnetcore-10.0, retrieved 2026-11-12"]
+    enforcement: "advisory: the shared .NET CI installs Playwright's browser and runs every E2E test an app writes (dotnet-ci.reusable.yml, tools/Install-PlaywrightBrowser.ps1, ADR-0061), and the kit's web UI fixture proves the pattern in the kit's own CI, where tools/tests/WebUiFixture.Tests.ps1 holds its axe call to the tags named here; no check finds a page without its test, so the reviewer agent checks that, once the rule is accepted"
+    scope: core
+    paths: ["**/*.razor", "**/*.cshtml", "**/*E2E.Tests/**"]
 ---
 
 # UI and accessibility
@@ -49,10 +58,21 @@ Don't rely on color alone to carry meaning (1.4.1): an error is red *and* says s
 
 ## How it's checked
 
-- **Web UI:** automated checks come with GAP-004, which adds Playwright browser tests with axe, a library that finds WCAG failures in a rendered page. Until then the rule is advisory. Axe finds only part of WCAG's failures, so keyboard and screen-reader checks stay manual even then.
-- **Native UI:** there's no CI check. Test with each platform's tools (Accessibility Insights for Windows and Android, Accessibility Inspector for iOS and macOS) and its screen reader (Narrator, TalkBack, VoiceOver). Microsoft's MAUI guide says manual testing on devices is the most reliable check.
+- **Web UI:** every page gets a browser test that runs axe (UI-002, ADR-0061). axe is Deque's library that finds WCAG failures in a page a real browser has rendered; Playwright drives the browser. The test opens the page, checks it loaded (axe finds nothing wrong with an error page), then runs axe's rules for WCAG 2.2 level A and AA, the tags UI-002 names. The kit's web UI fixture, [`fixtures/WebUi`](https://github.com/DerekFoulk/dotnet-agent-kit/tree/main/fixtures/WebUi), shows the pattern: [`Wcag.cs`](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/Wcag.cs) runs axe and lists each broken rule with its impact, help link and elements; [`PageTests.cs`](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/PageTests.cs) runs it on every page; [`WcagTests.cs`](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/WcagTests.cs) checks that axe really finds a failure for each version and level it runs, so a passing page means something. `docs/standards/testing.md` says how the tests are set up and run.
+- **What axe checks, and what it doesn't.** With those tags, axe checks what it can read from the rendered page: names and labels on controls and images, text contrast, the page's language and title, valid `autocomplete` values, ARIA used correctly, and target size. Its rules for landmarks and heading order are tagged `best-practice`, not WCAG, so they don't run, and it has no rule for the contrast of controls and focus indicators. It can't tell whether a name makes sense, follow a keyboard path, or judge focus order. So a person and the reviewer agent still check:
+  - keyboard: every action works by keyboard, in a logical order, with no trap (write a Playwright test for each key path, as the fixture does for the first Tab);
+  - focus: it's visible, never fully hidden, and moves to the new page's `h1` after navigation (the fixture's link test checks that);
+  - headings and landmarks: one `h1`, headings in order, and a `main` landmark (1.3.1);
+  - the contrast of control borders, icons and focus indicators, at least 3:1 (1.4.11);
+  - reflow at 320 CSS pixels and text at 200%;
+  - target size where axe can't measure, such as targets that move;
+  - consistent help and redundant entry (WCAG 2.2's new level A criteria), and accessible authentication;
+  - what a screen reader says;
+  - anything behind an interaction a test didn't make, such as a menu that's never opened.
+- **Interactive Blazor:** the fixture uses static server rendering with enhanced navigation. Pages with interactive render modes, where a click before the circuit connects is lost, have no kit pattern yet (GAP-036).
+- **Native UI:** there's no CI check, and no automated UI test yet (GAP-032). Test with each platform's tools (Accessibility Insights for Windows and Android, Accessibility Inspector for iOS and macOS) and its screen reader (Narrator, TalkBack, VoiceOver). Microsoft's MAUI guide says manual testing on devices is the most reliable check.
 - **Plans:** the plan-checklist skill's Accessibility heading points here.
 
 ## Pending ratification
 
-UI-001 was added in auto mode (ADR-0035), so it stays `proposed` until you accept it. A proposed rule isn't in force, and `Build-AgentRules.ps1` writes no rule file for it; once accepted, the file it generates loads only for UI files.
+UI-001 and UI-002 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them. A proposed rule isn't in force, and `Build-AgentRules.ps1` writes no rule file for it; once accepted, the file it generates loads only for UI files.
