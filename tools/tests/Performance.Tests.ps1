@@ -117,7 +117,7 @@ Describe 'Performance tests (GAP-012)' {
             $run = Find-Step $benchmarks 'Run each benchmarks project and check its budget'
 
             $run | Should -HaveCount 1
-            $run[0]['run'] | Should -Match "-like '\*\.Benchmarks'"
+            $run[0]['run'] | Should -Match "-clike '\*\.Benchmarks'"
             $run[0]['run'] | Should -Match 'No benchmarks project'
             $run[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
         }

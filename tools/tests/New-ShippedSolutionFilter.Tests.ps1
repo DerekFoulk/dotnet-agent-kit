@@ -56,14 +56,16 @@ Describe 'New-ShippedSolutionFilter.ps1' {
         $benchRepo = Join-Path $TestDrive 'bench-repo'
         New-Project $benchRepo 'src/App/App.csproj'
         New-Project $benchRepo 'tests/App.Benchmarks/App.Benchmarks.csproj' '<PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>'
+        # In another case it's no benchmarks project: tests/Directory.Build.props matches .Benchmarks case-sensitively.
+        New-Project $benchRepo 'src/App.benchmarks/App.benchmarks.csproj'
         $benchSolution = Join-Path $benchRepo 'App.slnx'
-        '<Solution><Project Path="src/App/App.csproj" /><Project Path="tests/App.Benchmarks/App.Benchmarks.csproj" /></Solution>' |
+        '<Solution><Project Path="src/App/App.csproj" /><Project Path="src/App.benchmarks/App.benchmarks.csproj" /><Project Path="tests/App.Benchmarks/App.Benchmarks.csproj" /></Solution>' |
             Set-Content -LiteralPath $benchSolution
 
         $filter = New-ShippedSolutionFilter -Solution $benchSolution -Destination (Join-Path $TestDrive 'bench-out')
         $json = Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json
 
-        @($json.solution.projects) | Should -Be @('src/App/App.csproj')
+        @($json.solution.projects) | Should -Be @('src/App/App.csproj', 'src/App.benchmarks/App.benchmarks.csproj')
     }
 
     It 'names the filter after the solution, and points it at the solution from wherever it''s written' {
