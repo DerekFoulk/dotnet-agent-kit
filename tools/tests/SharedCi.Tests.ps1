@@ -165,6 +165,159 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # GAP-014 (SUP-010, ADR-0056): OpenSSF Scorecard, through one shared workflow. Publishing the results needs a
+    # workflow that keeps the action's restrictions (github.com/ossf/scorecard-action, "Workflow Restrictions").
+    Context 'scorecard.reusable.yml' {
+        BeforeAll {
+            $scorecard = Read-Yaml '.github/workflows/scorecard.reusable.yml'
+            $scJobs = if ($scorecard.Yaml.ContainsKey('jobs')) { $scorecard.Yaml['jobs'] } else { @{} }
+            # The restrictions apply to the job that runs the action; the visibility job only reads the API.
+            $scName = @($scJobs.Keys | Where-Object { @($scJobs[$_]['steps'] | Where-Object { "$($_['uses'])" -like 'ossf/scorecard-action@*' }).Count -gt 0 })[0]
+            $scJob = if ($scName) { $scJobs[$scName] } else { $null }
+
+            # Review of PR 48: `write-all` is a string, with no .Values to search, so check the shape itself.
+            function Assert-ReadOnly($Permissions, [string] $Where) {
+                $Permissions | Should -BeOfType ([System.Collections.IDictionary]) -Because "$Where's permissions name each scope, with no write-all"
+                foreach ($value in $Permissions.Values) { $value | Should -BeIn @('read', 'none') -Because "$Where writes nothing at workflow level" }
+            }
+        }
+
+        It 'is a shared workflow whose Scorecard job runs on Ubuntu, with no env, defaults, container or services' {
+            $scorecard.Text | Should -Match '(?m)^\s*workflow_call:' -Because 'scorecard.reusable.yml runs Scorecard for the kit and its apps'
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $scJob['runs-on'] | Should -Be 'ubuntu-latest'
+            foreach ($key in 'env', 'defaults') { $scorecard.Yaml.ContainsKey($key) | Should -BeFalse; $scJob.ContainsKey($key) | Should -BeFalse }
+            foreach ($key in 'container', 'services') { $scJob.ContainsKey($key) | Should -BeFalse }
+        }
+
+        It 'runs only actions the restrictions allow, each pinned to a full commit SHA' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $steps = @($scJob['steps'])
+            $steps.Count | Should -BeGreaterThan 0
+            foreach ($step in $steps) {
+                $step.ContainsKey('run') | Should -BeFalse
+                "$($step['uses'])" | Should -Match '^(actions/checkout|actions/upload-artifact|github/codeql-action/upload-sarif|ossf/scorecard-action|step-security/harden-runner)@[0-9a-f]{40}$'
+            }
+        }
+
+        It 'publishes the results and uploads them to code scanning as SARIF' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $steps = @($scJob['steps'])
+            $action = @($steps | Where-Object { "$($_['uses'])" -like 'ossf/scorecard-action@*' })
+            $upload = @($steps | Where-Object { "$($_['uses'])" -like 'github/codeql-action/upload-sarif@*' })
+
+            $action | Should -HaveCount 1
+            $action[0]['with']['publish_results'] | Should -BeTrue
+            $action[0]['with']['results_format'] | Should -Be 'sarif'
+            $upload | Should -HaveCount 1
+            $upload[0]['with']['sarif_file'] | Should -Be $action[0]['with']['results_file']
+        }
+
+        It 'has only the permissions the action documents: security-events and id-token, nothing written at workflow level' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $permissions = $scJob['permissions']
+            @($permissions.Keys | Sort-Object) | Should -Be @('id-token', 'security-events')
+            $permissions['id-token'] | Should -Be 'write'
+            $permissions['security-events'] | Should -Be 'write'
+            Assert-ReadOnly $scorecard.Yaml['permissions'] 'scorecard.reusable.yml'
+            # Review 2 of PR 48: a job's `write-all` would include id-token, so the other jobs get no permission at all.
+            foreach ($name in @($scJobs.Keys | Where-Object { $_ -ne $scName })) {
+                $other = $scJobs[$name]['permissions']
+                $other | Should -BeOfType ([System.Collections.IDictionary]) -Because "$name names its permissions, with no write-all"
+                $other.Count | Should -Be 0 -Because "$name only reads the repo's metadata, which every token can"
+            }
+        }
+
+        # Review 2 of PR 48: a wrong step id empties the output, and Scorecard would skip every repo with a green run.
+        It 'passes the visibility on from the step that reads it, and fails the run when the API call fails' -ForEach @(
+            @{ Case = 'a public repo'; Gh = 'echo false'; Exit = 0; Expected = 'private=false' }
+            @{ Case = 'a private repo'; Gh = 'echo true'; Exit = 0; Expected = 'private=true' }
+            @{ Case = 'a failed API call'; Gh = 'exit 1'; Exit = 1; Expected = '' }
+        ) {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $visibility = $scJobs[@($scJob['needs'])[0]]
+            $step = @($visibility['steps'] | Where-Object { "$($_['run'])" -match 'gh api' })[0]
+            $visibility['outputs']['private'] | Should -Be "`${{ steps.$($step['id']).outputs.private }}"
+            $step['env']['GH_TOKEN'] | Should -Be '${{ github.token }}'
+
+            $dir = Join-Path $TestDrive "visibility-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $dir 'bin') | Out-Null
+            Set-Content -LiteralPath (Join-Path $dir 'bin' 'gh') -Value "#!/usr/bin/env bash`n$Gh" -NoNewline
+            Set-Content -LiteralPath (Join-Path $dir 'step.sh') -Value ($step['run'] -replace "`r`n", "`n") -NoNewline
+            $output = Join-Path $dir 'github-output'
+            New-Item -ItemType File -Path $output | Out-Null
+            # On Windows, Git's own bash: the one on PATH may be WSL's, with no Linux installed.
+            $bash = if ($IsWindows) { Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin' 'bash.exe' } else { 'bash' }
+            Push-Location $dir
+            try {
+                $env:GITHUB_OUTPUT = $output; $env:REPO = 'owner/app'
+                & $bash --noprofile --norc -e -c 'chmod +x bin/gh; PATH="$PWD/bin:$PATH" bash -e ./step.sh'
+            }
+            finally { Pop-Location; Remove-Item Env:GITHUB_OUTPUT, Env:REPO -ErrorAction SilentlyContinue }
+
+            ($LASTEXITCODE -ne 0) | Should -Be ($Exit -ne 0) -Because "the step should $(if ($Exit) { 'fail' } else { 'pass' }) for $Case"
+            "$(Get-Content -Raw -LiteralPath $output)".Trim() | Should -Be $Expected
+        }
+
+        # Review of PR 48: a scheduled run's event carries no repository, so github.event.repository.private is empty
+        # there and an `if` on it lets a private repo's weekly run through. The API answers on every trigger.
+        It 'skips a private repo on every trigger, asking the API for its visibility' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $needs = @($scJob['needs'] | Where-Object { $_ })
+            $needs | Should -HaveCount 1
+            $visibility = $scJobs[$needs[0]]
+            $step = @($visibility['steps'] | Where-Object { "$($_['run'])" -match 'gh api' })
+
+            $step | Should -HaveCount 1
+            $step[0]['run'] | Should -Match 'gh api "repos/\$REPO" --jq \.private'
+            $step[0]['env']['REPO'] | Should -Be '${{ github.repository }}'
+            $step[0]['run'] | Should -Not -Match '\$\{\{'
+            $scJob['if'] | Should -Be "needs.$($needs[0]).outputs.private == 'false'"
+            $scorecard.Text | Should -Not -Match 'github\.event\.repository\.private'
+        }
+
+        It 'checks out without keeping the token' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $checkout = @($scJob['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })
+
+            $checkout | Should -HaveCount 1
+            $checkout[0]['with']['persist-credentials'] | Should -BeFalse
+        }
+
+        It 'runs in <Caller> on main and weekly, never on a pull request, granting only what the job needs' -ForEach @(
+            @{ Caller = 'the kit'; File = '.github/workflows/scorecard.yml'; Uses = './.github/workflows/scorecard.reusable.yml' }
+            @{ Caller = 'every app'; File = 'templates/app/.github/workflows/scorecard.yml'; Uses = 'DerekFoulk/dotnet-agent-kit/.github/workflows/scorecard.reusable.yml@X' }
+        ) {
+            $path = Join-Path $root $File
+            Test-Path -LiteralPath $path | Should -BeTrue -Because "$File calls the shared Scorecard workflow"
+            # {{Name}} placeholders aren't YAML.
+            $yaml = ConvertFrom-Yaml ((Get-Content -Raw -LiteralPath $path) -replace '\{\{[A-Za-z]+\}\}', 'X')
+            $on = if ($yaml.ContainsKey('on')) { $yaml['on'] } else { $yaml[$true] }
+            $job = @($yaml['jobs'].Values)[0]
+
+            @($on['push']['branches']) | Should -Be @('main')
+            @($on['schedule']).Count | Should -Be 1
+            $on.ContainsKey('pull_request') | Should -BeFalse
+            foreach ($key in 'env', 'defaults') { $yaml.ContainsKey($key) | Should -BeFalse }
+            Assert-ReadOnly $yaml['permissions'] $File
+            $job['uses'] | Should -Be $Uses
+            @($job['permissions'].Keys | Sort-Object) | Should -Be @('id-token', 'security-events')
+            # The first run on main failed to start (PR 48): GitHub refuses a called workflow that asks, at its top or
+            # in a job, for a permission its caller's job doesn't grant ("requesting 'contents: read', but is only
+            # allowed 'contents: none'").
+            $rank = @{ none = 0; read = 1; write = 2 }
+            foreach ($asked in @(@($scorecard.Yaml['permissions']) + @($scJobs.Values | ForEach-Object { $_['permissions'] }))) {
+                foreach ($scope in @($asked.Keys)) {
+                    $granted = if ($job['permissions'].Contains($scope)) { $job['permissions'][$scope] } else { 'none' }
+                    $rank.ContainsKey($asked[$scope]) -and $rank.ContainsKey($granted) | Should -BeTrue -Because "'$($asked[$scope])' and '$granted' are permission levels"
+                    $rank[$granted] | Should -BeGreaterOrEqual $rank[$asked[$scope]] -Because "scorecard.reusable.yml asks for '${scope}: $($asked[$scope])', and $File grants '${scope}: $granted'"
+                }
+            }
+            # The shared workflow skips a private repo itself, on every trigger.
+            $job.ContainsKey('if') | Should -BeFalse
+        }
+    }
+
     Context 'dotnet-ci.reusable.yml input' {
         # An app that left out the solution would get the kit's own default and fail obscurely.
         It 'requires the caller to name its solution, and the kit''s own CI does' {
@@ -186,6 +339,61 @@ Describe 'Shared CI for app repos' {
             $step[0]['shell'] | Should -Be 'pwsh'
             $step[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
             $step[0].ContainsKey('if') | Should -BeFalse
+        }
+    }
+
+    # GAP-013 (SUP-009, ADR-0055): every build lists what it's made of, as a CycloneDX SBOM.
+    Context 'dotnet-ci.reusable.yml SBOM' {
+        BeforeAll {
+            $steps = @(Get-Steps $dotnet.Yaml)
+            $sbomRun = ($steps | Where-Object { "$($_['run'])" -match 'dotnet-CycloneDX' } | ForEach-Object { $_['run'] }) -join "`n"
+        }
+
+        It 'pins the CycloneDX .NET tool in the kit''s tool manifest, where Dependabot keeps it current' {
+            $manifest = Get-Content -Raw (Join-Path $root '.config/dotnet-tools.json') | ConvertFrom-Json -AsHashtable
+
+            $manifest['tools'].ContainsKey('cyclonedx') | Should -BeTrue -Because 'the manifest pins the CycloneDX tool'
+            $manifest['tools']['cyclonedx']['version'] | Should -Match '^\d+\.\d+\.\d+$'
+            @($manifest['tools']['cyclonedx']['commands']) | Should -Contain 'dotnet-CycloneDX'
+        }
+
+        It 'installs the version the kit''s manifest pins, for this run only' {
+            $install = @($steps | Where-Object { "$($_['run'])" -match 'dotnet tool install CycloneDX' })
+
+            $install | Should -HaveCount 1
+            $install[0]['run'] | Should -Match '\$env:KIT/\.config/dotnet-tools\.json'
+            $install[0]['run'] | Should -Match '\.tools\.cyclonedx\.version'
+            $install[0]['run'] | Should -Match '--version \$version --tool-path "\$env:RUNNER_TEMP/'
+        }
+
+        # Review of PR 48: CycloneDX's --exclude-test-projects reads only each .csproj, so it misses a test project that
+        # Directory.Build.props marks, as the kit's and every app's are. MSBuild decides instead, in the kit's script.
+        It 'lists the shipped projects MSBuild names, as JSON, from the restore already done' {
+            $sbomRun | Should -Match '\$filter = & "\$env:KIT/tools/New-ShippedSolutionFilter\.ps1" -Solution \$env:SOLUTION'
+            # Review 2 of PR 48: CycloneDX reads that filter, not the solution.
+            $sbomRun | Should -Match '/dotnet-CycloneDX" \$filter '
+            $sbomRun | Should -Not -Match '--exclude-test-projects' -Because 'the filter already leaves the test projects out'
+            $sbomRun | Should -Match '--disable-package-restore'
+            $sbomRun | Should -Match '--output-format Json'
+            $sbomRun | Should -Match '--filename sbom\.cdx\.json'
+        }
+
+        It 'runs every SBOM step only once the solution has projects' {
+            $sbomSteps = @($steps | Where-Object { "$($_['run'])" -match 'CycloneDX' -or "$($_['uses'])" -like 'actions/upload-artifact@*' })
+
+            $sbomSteps | Should -HaveCount 3
+            foreach ($step in $sbomSteps) { $step['if'] | Should -Be "steps.projects.outputs.count != '0'" }
+        }
+
+        It 'uploads the SBOM it wrote as the "sbom" artifact, failing when it''s missing' {
+            $upload = @($steps | Where-Object { "$($_['uses'])" -like 'actions/upload-artifact@*' })
+            $output = [regex]::Match($sbomRun, '--output "([^"]+)"').Groups[1].Value -replace '\$env:RUNNER_TEMP', '${{ runner.temp }}'
+
+            $upload | Should -HaveCount 1
+            $upload[0]['with']['name'] | Should -Be 'sbom'
+            $upload[0]['with']['if-no-files-found'] | Should -Be 'error'
+            $output | Should -Not -BeNullOrEmpty
+            $upload[0]['with']['path'] | Should -Be "$output/sbom.cdx.json"
         }
     }
 
@@ -241,6 +449,15 @@ Describe 'Shared CI for app repos' {
             $step[0]['run'] | Should -Match 'Test-Runbook\.ps1"? -Path'
             $step[0]['run'] | Should -Match 'docs/runbook\.md'
             $step[0]['run'] | Should -Not -Match 'Test-Path'
+            $step[0].ContainsKey('if') | Should -BeFalse
+        }
+
+        # An app with no migrations passes the check, so it runs on every app rather than skipping (DAT-003).
+        It 'checks every migration in the app on every run' {
+            $step = @(Get-Steps $app.Yaml | Where-Object { "$($_['run'])" -match 'Test-SafeMigrations\.ps1' })
+
+            $step.Count | Should -Be 1
+            $step[0]['run'] | Should -Match 'Test-SafeMigrations\.ps1"? -Path \$env:GITHUB_WORKSPACE'
             $step[0].ContainsKey('if') | Should -BeFalse
         }
     }

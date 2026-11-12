@@ -270,6 +270,17 @@ Describe 'Export-KitApp' {
         $LASTEXITCODE | Should -Be 0 -Because $output
     }
 
+    It 'gets the database guide that DAT-001 and the plan checklist point to' {
+        Test-Path -LiteralPath (Join-Path $app 'docs/database-guide.md') | Should -BeTrue
+        Get-Content -Raw -LiteralPath (Join-Path $app 'docs/standards/data.md') | Should -Match 'docs/database-guide\.md'
+    }
+
+    It 'gets the safe-migrations check, which passes an app with no migrations yet' {
+        $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-SafeMigrations.ps1') -Path $app 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $output
+    }
+
     It 'passes its own ADR check, which skips the ADR template' {
         $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-AdrSections.ps1') -AdrPath (Join-Path $app 'docs/adr') 2>&1 | Out-String
 

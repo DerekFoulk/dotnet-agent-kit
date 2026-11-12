@@ -33,7 +33,7 @@ $script:KitCopies = @(
     '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt',
     'CLAUDE.md', '.mcp.json', '.vscode/mcp.json', '.vscode/settings.json',
     '.claude/agents/reviewer.md', '.claude/skills/', 'docs/standards/', '.githooks/',
-    '.github/pull_request_template.md', 'docs/adr/0000-template.md'
+    '.github/pull_request_template.md', 'docs/adr/0000-template.md', 'docs/database-guide.md'
 )
 
 # Kit skills an app doesn't get, though it gets the rest of .claude/skills/: new-app runs New-KitApp, which only the
@@ -51,7 +51,7 @@ $script:KitTools = @(
     'Test-ConventionalTitle.ps1', 'Test-RedGreenOrder.ps1', 'Test-AdrSections.ps1', 'Test-CoverageGate.ps1',
     'Test-DeprecatedPackages.ps1', 'KitReview.psm1', 'Initialize-DevMachine.ps1', 'Build-AgentRules.ps1',
     'KitFrontMatter.psm1', 'Set-AgentMode.ps1', 'Test-Runbook.ps1',
-    'Test-EmptyProjects.ps1'
+    'Test-EmptyProjects.ps1', 'Test-SafeMigrations.ps1'
 )
 
 # Templates the app owns from the start: the sync job never changes them. The app fills in its runbook (OPS-004).

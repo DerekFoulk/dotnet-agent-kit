@@ -30,7 +30,9 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 - For UI: does it meet WCAG 2.2 level AA, and which of UI-001's checks does it touch (`docs/standards/ui.md`)? Name how each is tested: an axe check in the browser tests, where the app has them, or a manual keyboard and screen-reader pass.
 
 ## Data
-- Schema changes, migrations, retention, personal data?
+- Does the app store data for the first time? Pick the database with `docs/database-guide.md` (where the data lives, its shape, then any preference), and name it, its label (Free, Free tier or Paid), its price and why (DAT-001). For a cloud database, name the guard that keeps it free (DAT-006).
+- Does the schema change? Is each migration safe for the version still running, with any drop or rename left to a later release (expand, migrate, contract: DAT-003, `docs/standards/data.md`)? Do the tests run on the real engine (DAT-005)?
+- Retention, personal data?
 
 ## API style
 - Does it add or change an API? Name its style (an HTTP API with Minimal APIs, gRPC or SignalR) and why; controllers or GraphQL need an ADR (API-001, `docs/standards/api-design.md`).
