@@ -449,7 +449,8 @@ Describe 'Shared CI for app repos' {
             $scan[0]['run'] | Should -Match '"\$KIT/\.config/gitleaks/Dockerfile"'
             $scan[0]['run'] | Should -Match ([regex]::Escape('@sha256:[0-9a-f]{64}'))
             $scan[0]['run'] | Should -Match '"\$image" git /repo --redact --verbose'
-            $dotnet.Text | Should -Not -Match 'gitleaks/gitleaks:' -Because 'the Dockerfile is the one pin'
+            # The step's pattern names the image too, but no tag: v[0-9]+, never v8.
+            $dotnet.Text | Should -Not -Match 'gitleaks/gitleaks:v\d' -Because 'the Dockerfile is the one pin'
         }
     }
 
