@@ -47,6 +47,7 @@ function Install-PlaywrightBrowser {
     $installed = [Collections.Generic.HashSet[string]]::new()
     foreach ($user in $users | Where-Object { $installed.Add($_.Version) }) {
         & pwsh -NoProfile -File $user.Script @arguments
+        if ($LASTEXITCODE -ne 0) { throw "Installing Playwright $($user.Version)'s browser failed with exit code $LASTEXITCODE ($($user.Script))." }
     }
 }
 
