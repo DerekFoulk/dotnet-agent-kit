@@ -48,6 +48,8 @@ Describe 'Get-UiProject.ps1' {
         $found | Should -HaveCount 1
         $found[0].Name | Should -Be 'App.Maui'
         $found[0].Path | Should -Be 'src/App.Maui/App.Maui.csproj'
+        # Review 3: CI runs from the repo root, which needn't be the solution's folder.
+        $found[0].FullPath | Should -Be ([IO.Path]::GetFullPath((Join-Path (Split-Path $solution) 'src/App.Maui/App.Maui.csproj')))
         $found[0].Kind | Should -Be 'Maui'
         $found[0].Os | Should -Be @('windows-latest', 'macos-latest')
     }

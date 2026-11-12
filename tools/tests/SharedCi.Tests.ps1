@@ -188,6 +188,39 @@ Describe 'Shared CI for app repos' {
                 $step | Should -Not -BeNullOrEmpty -Because "the job should have a step named '$Name'"
                 $step
             }
+
+            # A solution in its own folder: a plain project, then one project per UI property given (src/Ui<n>).
+            function New-StepSolution([string[]] $Properties) {
+                $dir = Join-Path $TestDrive "step-$(New-Guid)"
+                $entries = @('<Project Path="src/Core/Core.csproj" />')
+                New-Item -ItemType Directory -Force -Path (Join-Path $dir 'src/Core') | Out-Null
+                '<Project Sdk="Microsoft.NET.Sdk" />' | Set-Content -LiteralPath (Join-Path $dir 'src/Core/Core.csproj')
+                for ($i = 0; $i -lt $Properties.Count; $i++) {
+                    New-Item -ItemType Directory -Force -Path (Join-Path $dir "src/Ui$i") | Out-Null
+                    "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup>$($Properties[$i])</PropertyGroup></Project>" | Set-Content -LiteralPath (Join-Path $dir "src/Ui$i/Ui$i.csproj")
+                    $entries += "<Project Path=`"src/Ui$i/Ui$i.csproj`" />"
+                }
+                "<Solution>$($entries -join '')</Solution>" | Set-Content -LiteralPath (Join-Path $dir 'App.slnx')
+                Join-Path $dir 'App.slnx'
+            }
+
+            # Runs a pwsh step's script as CI does, with the given environment, and puts back what was there before.
+            function Invoke-Step([string] $Run, [hashtable] $Environment) {
+                $script = Join-Path $TestDrive "step-$(New-Guid).ps1"
+                Set-Content -LiteralPath $script -Value $Run
+                $saved = @{}
+                foreach ($name in $Environment.Keys) {
+                    $saved[$name] = [Environment]::GetEnvironmentVariable($name)
+                    [Environment]::SetEnvironmentVariable($name, $Environment[$name])
+                }
+                try {
+                    $output = & pwsh -NoProfile -File $script 2>&1 | Out-String
+                    [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
+                }
+                finally {
+                    foreach ($name in $saved.Keys) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
+                }
+            }
         }
 
         It 'finds the UI projects with the kit''s script and outputs their runners as a JSON list' {
@@ -206,25 +239,31 @@ Describe 'Shared CI for app repos' {
             @{ Case = 'a MAUI and a WPF project'; Properties = @('<UseMaui>true</UseMaui>', '<UseWPF>true</UseWPF>'); Expected = '["windows-latest","macos-latest"]' }
         ) {
             $find = Get-JobStep $jobs['ui-projects'] 'Find UI projects'
-            $dir = Join-Path $TestDrive "find-$(New-Guid)"
-            $entries = @('<Project Path="src/Core/Core.csproj" />')
-            New-Item -ItemType Directory -Force -Path (Join-Path $dir 'src/Core') | Out-Null
-            '<Project Sdk="Microsoft.NET.Sdk" />' | Set-Content -LiteralPath (Join-Path $dir 'src/Core/Core.csproj')
-            for ($i = 0; $i -lt $Properties.Count; $i++) {
-                New-Item -ItemType Directory -Force -Path (Join-Path $dir "src/Ui$i") | Out-Null
-                "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup>$($Properties[$i])</PropertyGroup></Project>" | Set-Content -LiteralPath (Join-Path $dir "src/Ui$i/Ui$i.csproj")
-                $entries += "<Project Path=`"src/Ui$i/Ui$i.csproj`" />"
-            }
-            "<Solution>$($entries -join '')</Solution>" | Set-Content -LiteralPath (Join-Path $dir 'App.slnx')
-            $script = Join-Path $dir 'find.ps1'
-            Set-Content -LiteralPath $script -Value $find['run']
-            $output = Join-Path $dir 'github-output'
-            $env:KIT = $root; $env:SOLUTION = Join-Path $dir 'App.slnx'; $env:GITHUB_OUTPUT = $output
-            try { & pwsh -NoProfile -File $script *> $null }
-            finally { Remove-Item Env:KIT, Env:SOLUTION, Env:GITHUB_OUTPUT -ErrorAction SilentlyContinue }
+            $solution = New-StepSolution $Properties
+            $output = Join-Path (Split-Path $solution) 'github-output'
 
-            $LASTEXITCODE | Should -Be 0
+            $result = Invoke-Step $find['run'] @{ KIT = $root; SOLUTION = $solution; GITHUB_OUTPUT = $output }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Output
             (Get-Content -Raw -LiteralPath $output).Trim() | Should -Be "os=$Expected"
+        }
+
+        # Review 3: a mutant that dropped -Runner from the script's own entry point survived every test, and both
+        # runners would then have built no UI project at all. The step is run here, as CI runs it.
+        It 'writes a filter with the UI projects <Runner> builds, run as CI runs it' -ForEach @(
+            @{ Runner = 'macos-latest'; Expected = @('src/Core/Core.csproj', 'src/Ui0/Ui0.csproj') }
+            @{ Runner = 'windows-latest'; Expected = @('src/Core/Core.csproj', 'src/Ui0/Ui0.csproj', 'src/Ui1/Ui1.csproj') }
+        ) {
+            $step = Get-JobStep $jobs['ui'] 'Solution filter'
+            $solution = New-StepSolution @('<UseMaui>true</UseMaui>', '<UseWPF>true</UseWPF>')
+            $dir = Split-Path $solution
+            $githubEnv = Join-Path $dir 'github-env'
+
+            $result = Invoke-Step $step['run'] @{ KIT = $root; SOLUTION = $solution; RUNNER_LABEL = $Runner; RUNNER_TEMP = $dir; GITHUB_ENV = $githubEnv }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Output
+            $filter = (@(Get-Content -LiteralPath $githubEnv) -match '^FILTER=') -replace '^FILTER=', ''
+            (Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json).solution.projects | Should -Be $Expected
         }
 
         It 'builds on each of those runners, and is skipped when there are none (an empty matrix would fail the run)' {
@@ -254,7 +293,8 @@ Describe 'Shared CI for app repos' {
         It 'restores the workloads of the UI projects it builds, at the workload set of the SDK in use, never unpinned' {
             $restore = Get-JobStep $jobs['ui'] 'Restore workloads (pinned)'
             $restore['run'] | Should -Match 'Where-Object \{ \$_\.Os -contains \$env:RUNNER_LABEL \}'
-            $restore['run'] | Should -Match 'dotnet workload restore \$project\.Path --version \$version'
+            # Review 3: the full path, since CI runs from the repo root and the solution may sit in a subfolder.
+            $restore['run'] | Should -Match 'dotnet workload restore \$project\.FullPath --version \$version'
             $restore['run'] | Should -Match '\$version = dotnet --version'
             $dotnet.Text | Should -Not -Match 'dotnet workload (install|update)'
         }
