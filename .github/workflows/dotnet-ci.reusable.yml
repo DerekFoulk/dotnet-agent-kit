@@ -18,6 +18,102 @@ permissions:
   contents: read
 
 jobs:
+  # ADR-0057: Linux can't build MAUI or desktop (UI) projects. This job finds them, and the runners that build them.
+  ui-projects:
+    name: Find UI projects
+    runs-on: ubuntu-latest
+    outputs:
+      os: ${{ steps.find.outputs.os }}
+    env:
+      SOLUTION: ${{ inputs.solution }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      # Get-UiProject also fails when another project references a UI project (ARC-010).
+      - name: Find UI projects
+        id: find
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $ui = @(& "$env:KIT/tools/Get-UiProject.ps1" -Solution $env:SOLUTION)
+          $ui | ForEach-Object { "UI project: $($_.Path) ($($_.Kind)), built on $($_.Os -join ' and ')" }
+          if (-not $ui) { 'No UI projects; nothing to build on Windows or macOS.' }
+          $os = @($ui | ForEach-Object Os | Select-Object -Unique)
+          "os=$(ConvertTo-Json -Compress -AsArray -InputObject $os)" >> $env:GITHUB_OUTPUT
+
+  # Builds the whole solution on Windows (every UI kind) and macOS (MAUI's Apple targets). Tests run on Linux, in the
+  # dotnet job, where Testcontainers' Linux containers work. A matrix with no values fails the run, hence the if.
+  ui:
+    name: Build UI projects (${{ matrix.os }})
+    needs: ui-projects
+    if: needs.ui-projects.outputs.os != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(needs.ui-projects.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      SOLUTION: ${{ inputs.solution }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # MinVer reads version tags from history
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      # SUP-011: the workload set whose version is the SDK's own (one ships with each SDK release), never the latest.
+      # Not sdk.workloadVersion in global.json: every build then fails on a machine without that set (ADR-0057).
+      - name: Restore workloads (pinned)
+        run: dotnet workload restore $env:SOLUTION --version (dotnet --version)
+
+      - name: Restore (locked)
+        if: runner.os == 'Windows'
+        run: dotnet restore $env:SOLUTION --locked-mode
+
+      # The lock files are made on Windows, where a MAUI project also targets Windows. macOS builds a subset of those
+      # frameworks, and NuGet refuses a locked restore whose frameworks differ (NU1004). So macOS restores unlocked
+      # and the next step holds it to the committed lock files instead (SUP-001, ADR-0057).
+      - name: Restore (macOS)
+        if: runner.os == 'macOS'
+        run: dotnet restore $env:SOLUTION -p:RestoreLockedMode=false
+
+      - name: Lock files match the committed ones
+        if: runner.os == 'macOS'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-LockFileSubset.ps1" -RepoRoot $env:GITHUB_WORKSPACE'
+
+      - name: Build (zero warnings)
+        run: dotnet build $env:SOLUTION --no-restore --configuration Release -warnaserror
+
+      # The Linux job checks every other project; these cover the UI projects too.
+      - name: Format check
+        if: runner.os == 'Windows'
+        run: dotnet format $env:SOLUTION --verify-no-changes --no-restore
+
+      - name: Deprecated packages
+        if: runner.os == 'Windows'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:SOLUTION'
+
   dotnet:
     name: Build, test and package checks
     runs-on: ubuntu-latest
