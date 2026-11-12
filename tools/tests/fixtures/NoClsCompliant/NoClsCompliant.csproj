@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <!-- This library removes the kit's CLSCompliant(false), so it says nothing about CLS compliance and CA1014 must
+       fire (STY-003, ADR-0049). -->
+  <ItemGroup>
+    <AssemblyAttribute Remove="System.CLSCompliantAttribute" />
+  </ItemGroup>
+
+</Project>

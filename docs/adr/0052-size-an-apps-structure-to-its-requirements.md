@@ -1,4 +1,4 @@
-# ADR-0049: Size an app's structure to its requirements
+# ADR-0052: Size an app's structure to its requirements
 
 - **Status:** Proposed
 - **Date:** 2026-11-11

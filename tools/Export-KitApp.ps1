@@ -215,13 +215,17 @@ function Get-KitAppSettingsText {
     "$($json -replace "`r`n", "`n")`n"
 }
 
-# Drops the ItemGroup labelled "Sample app", with the comment line above it, from Directory.Packages.props.
+# Drops the package groups that are only the kit's, each with the comment line above it, from Directory.Packages.props:
+# "Sample app" (the kit's sample's packages) and "Kit tools" (its own checking tools', which CI builds from the kit's
+# download with the kit's own props, so an app never needs them; transitive pinning would force them on its packages).
+# Every kit commit has a "Sample app" group; one from before the kit tools had none of the other.
 function Remove-KitSamplePackage {
     param([Parameter(Mandatory)] [string] $PropsText)
 
-    $pattern = '(?ms)(^[ \t]*<!--[^\r\n]*-->\r?\n)?^[ \t]*<ItemGroup Label="Sample app">.*?</ItemGroup>\r?\n(\r?\n)?'
-    if (-not [regex]::IsMatch($PropsText, $pattern)) { throw "The kit's Directory.Packages.props has no ItemGroup labelled 'Sample app'." }
-    $text = [regex]::Replace($PropsText, $pattern, '')
+    $group = '(?ms)(^[ \t]*<!--[^\r\n]*-->\r?\n)?^[ \t]*<ItemGroup Label="{0}">.*?</ItemGroup>\r?\n(\r?\n)?'
+    $sample = $group -f 'Sample app'
+    if (-not [regex]::IsMatch($PropsText, $sample)) { throw "The kit's Directory.Packages.props has no ItemGroup labelled 'Sample app'." }
+    $text = [regex]::Replace([regex]::Replace($PropsText, $sample, ''), ($group -f 'Kit tools'), '')
     [xml] $text | Out-Null # still well-formed
     $text
 }

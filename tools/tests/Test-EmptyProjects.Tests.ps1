@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
-# Test-EmptyProjects.ps1 fails on a project in the solution that holds no code of its own (ARC-009, ADR-0049):
+# Test-EmptyProjects.ps1 fails on a project in the solution that holds no code of its own (ARC-009, ADR-0052):
 # a layer made before anything needed it.
 
 Describe 'Test-EmptyProjects.ps1' {

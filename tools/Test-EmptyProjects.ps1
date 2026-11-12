@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     Fails when a C# project in the solution holds no code of its own, or keeps the class library template's empty
-    Class1 (ARC-009, ADR-0049).
+    Class1 (ARC-009, ADR-0052).
 
 .EXAMPLE
     ./tools/Test-EmptyProjects.ps1 -Solution dotnet-agent-kit.slnx
