@@ -10,6 +10,8 @@ Set-StrictMode -Version Latest
 function Get-SolutionProject {
     param([Parameter(Mandatory)] [string] $Solution)
 
+    if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) { throw "No solution file at '$Solution'." }
+    # The file system's own path, not a PowerShell drive's (TestDrive:\, a mapped drive), which .NET can't read.
     $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).ProviderPath
     foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $path = $node.GetAttribute('Path')
