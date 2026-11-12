@@ -55,6 +55,8 @@ function Get-MigrationProblem {
 
     foreach ($file in Get-CSharpFile -Folder $Path) {
         $text = Get-Content -LiteralPath $file.FullName -Raw
+        # Get-Content returns nothing for an empty file, which has no migration in it.
+        if (-not $text) { continue }
         $up = [regex]::Match($text, 'override\s+void\s+Up\s*\(\s*MigrationBuilder\s+(?<builder>\w+)\s*\)')
         if (-not $up.Success) { continue }
 
