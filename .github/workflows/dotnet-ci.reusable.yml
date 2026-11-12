@@ -65,6 +65,9 @@ jobs:
       DOTNET_NOLOGO: 'true'
       DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
       SOLUTION: ${{ inputs.solution }}
+      # A solution with a MAUI project and a WPF, Windows Forms or WinUI one builds all of them on macOS too, and a
+      # Windows-targeting project fails off Windows unless this is true (NETSDK1100). Windows ignores it.
+      EnableWindowsTargeting: 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
