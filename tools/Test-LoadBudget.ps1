@@ -33,8 +33,12 @@ function Get-LoadBudgetProblem {
     $budgetProblems = @(Get-BudgetFileProblem $budgets)
     if ($budgetProblems) { return $budgetProblems }
 
+    $statsFile = "${Path}_stats.csv"
+    if (-not (Test-Path -LiteralPath $statsFile -PathType Leaf)) {
+        return "No Locust stats at ${statsFile}: Locust stopped before the run. Its output above says why."
+    }
     $rows = @{}
-    foreach ($row in (Import-Csv -LiteralPath "${Path}_stats.csv")) { $rows[(Get-RequestKey $row)] = $row }
+    foreach ($row in (Import-Csv -LiteralPath $statsFile)) { $rows[(Get-RequestKey $row)] = $row }
 
     # The whole run first, then each request, so the output reads the same every time.
     $keys = @('Aggregated') + @($budgets.Keys | Where-Object { $_ -cne 'Aggregated' } | Sort-Object -CaseSensitive)
