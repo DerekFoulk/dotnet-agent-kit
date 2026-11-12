@@ -114,4 +114,16 @@ Describe 'Test-BenchmarkBudget.ps1' {
         $script:problems.Count | Should -Be 1
         $script:problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: no result*'
     }
+
+    # Without [MemoryDiagnoser] the report has no allocations, so the allocation budget would check nothing.
+    It 'names a benchmark whose report has no allocations to check' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @((New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse' -Allocated $null))
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 192 } })
+
+        { $script:problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget) } | Should -Not -Throw
+
+        $script:problems.Count | Should -Be 1
+        $script:problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: no allocations in its report*MemoryDiagnoser*'
+    }
 }
