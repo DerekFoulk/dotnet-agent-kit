@@ -51,4 +51,15 @@ Describe 'Test-BenchmarkBudget.ps1' {
 
         @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget) | Should -BeNullOrEmpty
     }
+
+    It 'names the benchmark, its mean and its budget when the mean time is over budget' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @((New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse' -Mean 1000.4 -Allocated 192))
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 192 } })
+
+        $problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget)
+
+        $problems.Count | Should -Be 1
+        $problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: mean 1,000.4 ns is over its budget of 1,000 ns*'
+    }
 }
