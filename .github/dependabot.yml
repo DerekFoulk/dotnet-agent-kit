@@ -9,8 +9,8 @@
 # Each version update waits before Dependabot proposes it, so a release that's pulled or found compromised
 # in its first days never reaches a PR (ADR-0041): 7 days, and 14 for a NuGet or SDK major. Dependabot's own
 # default is 3 days. Security updates, on since 2026-11-09, don't wait. Shortening any wait here (a semver-minor-days or
-# semver-patch-days below 7 too), or narrowing it with an exclude or include list, is a guardrail change, for
-# the owner to merge. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors,
+# semver-patch-days below 7 too), or narrowing it with an exclude or include list, is a guardrail change: an agent
+# merges it only on the owner's yes. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors,
 # 0.x packages and GitHub Actions bumps are the owner's.
 version: 2
 updates:

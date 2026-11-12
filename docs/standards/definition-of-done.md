@@ -20,11 +20,11 @@ rules:
     scope: core
     paths: ["**"]
   - id: DOD-003
-    statement: "Before the owner reviews, an independent read-only reviewer that hasn't seen the work runs the gates and reports ranked findings."
-    why: "A reviewer with fresh eyes caught four blocking issues in one project."
+    statement: "Before the owner reviews, an independent read-only reviewer that hasn't seen the work runs the gates and reports ranked findings; reviews repeat after each round of fixes and end at the first round with nothing blocking or should-fix."
+    why: "A reviewer with fresh eyes caught four blocking issues in one project; reviewing every nit fix again turned PRs 32 and 33 into hours-long loops (owner, 2026-11-09)."
     layer: owner
     status: accepted
-    sources: ["ADR-0010"]
+    sources: ["ADR-0010", "owner, 2026-11-09"]
     enforcement: "advisory: the reviewer agent exists (.claude/agents/reviewer.md); running it is a finish-work step no tool enforces"
     scope: core
     paths: ["**"]

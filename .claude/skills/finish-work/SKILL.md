@@ -24,9 +24,15 @@ Then confirm:
 
 Run the `reviewer` subagent on the branch. Fix each finding test-first, or answer it with a reason. Then run step 1 again.
 
-**Every fix gets its own review.** After fixing findings, run the `reviewer` again on the new commits (`git log <reviewed head>..HEAD`), and repeat until a run finds nothing blocking or should-fix. A fix that nobody reviewed can break something the first review passed.
+**Give it what you've already run.** Pass the gate results from step 1 (each command and its count) in the reviewer's prompt, so it checks the code and the claims instead of repeating every gate. It reruns a gate only when what it reviews could change the result.
 
-**A run with nothing blocking or should-fix ends the reviews** (owner, 2026-11-09). Fix its nits only when they're cheap and change no behavior, with no further run, and list those commits in that run's PR comment; answer the rest with a reason, or note them for a later PR. A nit whose fix would change behavior goes to a later PR: fixing it here would need another run, and each run finds new nits.
+**Run focused reviewers side by side** (owner, 2026-11-10). For a change that touches code and docs, run two or three reviewers at once, each with one focus named in its prompt: the code and its tests; the documents, against each other and the rules; the guardrails and "Always ask". Together they make one round. A docs-only change needs one.
+
+**Don't wait idle.** While a review runs, start the next task on its own branch.
+
+**Every fix gets its own review.** After fixing findings, run the `reviewer` again on the new commits (`git log <reviewed head>..HEAD`), and repeat until a round finds nothing blocking or should-fix. A round is every reviewer you ran on that head, side by side or alone. A fix that nobody reviewed can break something the first review passed.
+
+**A round with nothing blocking or should-fix, from any of its reviewers, ends the reviews** (owner, 2026-11-09). Fix its nits only when they're cheap and change no behavior, with no further round, and list those commits in that round's PR comment; answer the rest with a reason, or note them for a later PR. A nit whose fix would change behavior goes to a later PR: fixing it here would need another round, and each round finds new nits. The same rule ends a plan review.
 
 Keep each review's report: it goes on the PR (step 4).
 
@@ -48,7 +54,7 @@ If a PR already exists for this branch, run `gh pr view <n> --json state,mergedA
 Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your own PR, or a Dependabot PR this step allows, when all of these hold; otherwise fix what's missing, or report and stop:
 
 - **It isn't a release PR.** `gh pr view <n> --json headRefName` doesn't start with `release-please--`. Never merge one, in either mode: releases are the owner's (ADR-0035).
-- **It doesn't change the guardrails.** Run `gh pr diff <n> --name-only`, then read those files' changes. The guardrails are:
+- **If it changes the guardrails, the owner has said yes for this head commit.** Run `gh pr diff <n> --name-only`, then read those files' changes. The guardrails are:
   - `AGENTS.md`'s "Working modes" or "Always ask" sections, or SEC-003 in `docs/standards/security.md`;
   - `.claude/settings.json` or the `Set-AgentMode.ps1` script;
   - this skill or `.claude/agents/reviewer.md`;
@@ -57,7 +63,7 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
   - the Dependabot cooldown in `.github/dependabot.yml` (in the kit, `templates/app/.github/dependabot.yml` too), if shortened (any `*-days` value lowered, or any wait below 7 days, 14 for a NuGet or SDK major) or narrowed (an `exclude` or `include` list);
   - `New-KitApp`'s step that turns on Dependabot alerts and security updates, if removed or weakened.
 
-  A PR that changes any of them is the owner's to merge.
+  A PR that changes any of them needs the owner's yes for that PR, at its head commit. Once every other condition below holds, ask him in the chat (COM-007), naming the head commit; on his yes, merge it as below. A commit pushed after his yes needs a new yes. Start your next task while you wait.
 - **If it's Dependabot's, it's only a patch or minor update of NuGet packages, .NET tools or the .NET SDK** (ADR-0041). All of these must hold, or the PR is the owner's to merge:
   - **GitHub says it's Dependabot's.** `gh pr view <n> --json author,isCrossRepository,headRefName` shows the author `app/dependabot`, `isCrossRepository` false, and a head branch starting `dependabot/`. A title or a commit author alone proves nothing: anyone can set them.
   - **The version change is a patch or minor.** Read it in the title and in the diff of `Directory.Packages.props`, `.config/dotnet-tools.json` or `global.json`. A major update, a GitHub Actions bump, a grouped PR with any major in it, or one you can't classify is the owner's. Any update of a 0.x package (0.13.5 → 0.13.6 as much as 0.13 → 0.14) is the owner's, since SemVer lets a 0.x version break anything. For the SDK, the third number holds the feature band: 10.0.403 → 10.0.500 is a minor, and 10.x → 11.x a major.
@@ -66,11 +72,11 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
 
   Any other bot's PR is the owner's too.
 - **It's open, and CI has passed at its head commit:** `gh pr view <n> --json state,headRefOid,mergeStateStatus` shows `OPEN` and `CLEAN`, and `gh pr checks <n>` passes.
-- **The latest `reviewer` run is on that head commit,** with no unanswered blocking or should-fix finding, and it's posted on the PR. The one exception is step 2's final round: the head may be a few commits past it when those commits only fix that round's nits, change no behavior, and are listed in its PR comment. `Get-OpenFinding` lists nothing open from Copilot or a person.
+- **The latest `reviewer` round is on that head commit,** with no unanswered blocking or should-fix finding, and it's posted on the PR. The one exception is step 2's final round: the head may be a few commits past it when those commits only fix that round's nits, change no behavior, and are listed in its PR comment. `Get-OpenFinding` lists nothing open from Copilot or a person.
 - **No question the PR depends on is waiting for the owner** (COM-007). A question that a later PR can settle doesn't hold this one; say so in the chat.
 - **The description is complete:** the template's sections are filled in, with the red→green table and counts from the head commit. For a PR whose description a bot writes, DOD-006's comment holds them, and it names this head commit.
 
-Then run `gh pr merge <n> --merge` on its own, never inside a script. Run `git switch main` and `git pull --ff-only`. If the merge updated the release PR, check its CI.
+Then run `gh pr merge <n> --merge --match-head-commit <sha>` on its own, never inside a script, with the head commit the conditions were checked at (for a guardrail PR, the one the owner said yes to): GitHub refuses the merge if the head has moved since. Run `git switch main` and `git pull --ff-only`. If the merge updated the release PR, check its CI.
 
 ## 6. Report
 
