@@ -50,6 +50,18 @@ function Get-CodeShapeProject {
     }
 }
 
+# Runs the kit's Kit.CodeShape tool, built from the kit's source with analyzers off, and leaves its exit code in
+# $LASTEXITCODE. Test-Duplication.ps1 runs it too, for the list of hand-written files.
+function Invoke-KitCodeShape {
+    param(
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [Parameter(Mandatory)] [string[]] $Argument
+    )
+
+    $tool = Join-Path $KitRoot 'tools/CodeShape/src/Kit.CodeShape/Kit.CodeShape.csproj'
+    dotnet run --project $tool --configuration Release -p:RunAnalyzers=false -- @Argument
+}
+
 # Runs Kit.CodeShape over the solution's C# projects and returns its exit code and output.
 function Invoke-CodeShapeCheck {
     param(
@@ -60,8 +72,7 @@ function Invoke-CodeShapeCheck {
     $manifest = Join-Path ([IO.Path]::GetTempPath()) "codeshape-$(New-Guid).json"
     try {
         ConvertTo-Json -InputObject @(Get-CodeShapeProject -Solution $Solution) -Depth 4 | Set-Content -LiteralPath $manifest
-        $tool = Join-Path $KitRoot 'tools/CodeShape/src/Kit.CodeShape/Kit.CodeShape.csproj'
-        $output = @(dotnet run --project $tool --configuration Release -p:RunAnalyzers=false -- $manifest)
+        $output = @(Invoke-KitCodeShape -KitRoot $KitRoot -Argument $manifest)
         [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output -join "`n" }
     }
     finally {
