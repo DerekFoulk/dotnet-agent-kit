@@ -137,6 +137,14 @@ jobs:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:FILTER'
 
+      # CRF-011 (ADR-0050), over the whole solution: Linux can't evaluate a MAUI project, so the dotnet job skips it
+      # when there are UI projects. From the repo root, so its global.json picks the SDK.
+      - name: Code shape
+        if: runner.os == 'Windows'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
+
   # The required check (templates/github/main-protection.json names it). It waits for the UI builds and fails when
   # they did, so they gate a merge too; !cancelled() lets it run after a skipped or failed UI build to say so.
   dotnet:
@@ -177,6 +185,7 @@ jobs:
           "FILTER=$filter" >> $env:GITHUB_ENV
           $count = (& "$env:KIT/tools/Get-SolutionProjectCount.ps1" -Solution $env:SOLUTION) - $ui.Count
           "count=$count" >> $env:GITHUB_OUTPUT
+          "ui=$($ui.Count)" >> $env:GITHUB_OUTPUT
           "Projects in ${env:SOLUTION} built here: $count; UI projects, built by the ui job: $($ui.Count)"
 
       # NuGetAudit and TreatWarningsAsErrors (Directory.Build.props) make a known vulnerability fail here.
@@ -237,8 +246,10 @@ jobs:
 
       # CRF-011's limits, which no analyzer checks: nesting, statements per member, file length and LCOM4 (ADR-0050).
       # It runs from the repo root, so the repo's global.json picks the SDK that builds the kit's checking tool.
+      # It evaluates every project with MSBuild, and a MAUI project doesn't evaluate here, without workloads; with UI
+      # projects, the ui job runs it on Windows instead (ADR-0057).
       - name: Code shape
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
