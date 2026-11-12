@@ -178,4 +178,25 @@ Describe 'Resolve-KitIntakeAnswer' {
         $answers['data'] = 'Other: a graph of friends'
         { Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Not -Throw
     }
+
+    It 'uses exactly the tools named for a kind of test, in place of its defaults' {
+        $answers = New-Answer
+        $answers['testTools'] = @{ load = @('jmeter', 'azure-load-testing') }
+        { $script:resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Not -Throw
+
+        @(($script:resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'load' }).Tools | ForEach-Object { $_['id'] }) | Should -Be @('jmeter', 'azure-load-testing')
+        @(($script:resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) | Should -Contain 'xunit'
+    }
+
+    # A tool that isn't on the list needs an ADR (TST-005), so it can't come in through the intake.
+    It 'refuses test tools for <Case>' -ForEach @(
+        @{ Case = 'an unknown kind of test'; Tools = @{ soak = @('locust') }; Message = "*'soak' isn't a kind of test*unit, integration*" }
+        @{ Case = 'an unknown tool'; Tools = @{ load = @('k6') }; Message = "*'k6' isn't on the kit's list for load tests*locust, jmeter, azure-load-testing, nbomber*ADR*" }
+        @{ Case = 'an empty list'; Tools = @{ load = @() }; Message = "*no tools for load tests*" }
+        @{ Case = 'testTools that isn''t a map'; Tools = 'locust'; Message = "*testTools*map*" }
+    ) {
+        $answers = New-Answer
+        $answers['testTools'] = $Tools
+        { Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Throw $Message
+    }
 }
