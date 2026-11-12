@@ -42,6 +42,44 @@ public sealed class CliTests : IDisposable
         output.Should().Be($"Code shape (CRF-011): 1 project, 1 file, no findings.{Environment.NewLine}");
     }
 
+    [Fact]
+    public void WithoutAManifestItSaysHowToRunIt()
+    {
+        using StringWriter output = new();
+
+        int exitCode = Cli.Run([], output);
+
+        exitCode.Should().Be(2);
+        output.ToString().Should().Be($"Usage: Kit.CodeShape <manifest.json>{Environment.NewLine}");
+    }
+
+    [Fact]
+    public void ItCountsEveryProjectAndFile()
+    {
+        string one = Write("One.cs", "class One { }");
+        string two = Write("Two.cs", "class Two { }");
+
+        (int exitCode, string output) = Run(
+            new { name = "A.csproj", defines = Array.Empty<string>(), files = new[] { one } },
+            new { name = "B.csproj", defines = Array.Empty<string>(), files = new[] { two } });
+
+        exitCode.Should().Be(0);
+        output.Should().Be($"Code shape (CRF-011): 2 projects, 2 files, no findings.{Environment.NewLine}");
+    }
+
+    [Fact]
+    public void AnEmptyManifestChecksNothing()
+    {
+        string manifest = Path.Join(_folder.FullName, "manifest.json");
+        File.WriteAllText(manifest, "null");
+        using StringWriter output = new();
+
+        int exitCode = Cli.Run([manifest], output);
+
+        exitCode.Should().Be(0);
+        output.ToString().Should().Be($"Code shape (CRF-011): 0 projects, 0 files, no findings.{Environment.NewLine}");
+    }
+
     private string Write(string name, string text)
     {
         string path = Path.Join(_folder.FullName, name);
