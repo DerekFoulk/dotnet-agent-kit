@@ -113,6 +113,13 @@ Describe 'Test-BenchmarksProject' {
         Test-BenchmarksProject -Name $Name | Should -Be $Expected
     }
 
+    # As each caller's own check did before the rule moved here: a Cobertura package or a solution entry (".csproj")
+    # with an empty name is no benchmarks project.
+    It 'says an empty name is no benchmarks project' {
+        { $script:empty = Test-BenchmarksProject -Name '' } | Should -Not -Throw
+        $script:empty | Should -BeFalse
+    }
+
     # MSBuild can't call the module, so its copy is checked against it: each condition that picks out a benchmarks
     # project is MSBuildProjectName.EndsWith, which MSBuild runs as .NET's String.EndsWith(string).
     It 'agrees with sample/Directory.Build.props, an app''s tests/Directory.Build.props' -ForEach @(@{ Cases = $BenchmarksNames }) {
@@ -129,7 +136,8 @@ Describe 'Test-BenchmarksProject' {
         }
     }
 
-    # .editorconfig's section turns CA1515 off in benchmarks projects' folders, named by a glob, which matches case-sensitively.
+    # .editorconfig's section turns CA1515 off in benchmarks projects' folders, named by a glob. The glob is compared
+    # case-sensitively here, as the rule is; that a folder is named after its project is the kit's convention.
     It 'agrees with .editorconfig''s section for benchmarks projects' -ForEach @(@{ Cases = $BenchmarksNames }) {
         $sections = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' '.editorconfig') | Where-Object { $_ -match '^\[.*benchmarks.*\]$' })
 
