@@ -166,8 +166,9 @@ Describe 'Export-KitApp' {
             $listed[$path]['sha256'] | Should -Be $actual -Because "$path's hash should match the exported file"
         }
 
-        # The app owns these from the start; the sync job never touches them. The runbook is the app's to fill in.
-        foreach ($path in 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md') {
+        # The app owns these from the start; the sync job never touches them. The runbook is the app's to fill in, and
+        # performance.yml is where it names its load test (review 1 of PR 57; ADR-0062).
+        foreach ($path in 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md', '.github/workflows/performance.yml') {
             $listed.ContainsKey($path) | Should -BeFalse -Because "$path belongs to the app"
         }
 
