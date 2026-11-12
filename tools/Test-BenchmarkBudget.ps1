@@ -44,6 +44,10 @@ function Get-BenchmarkBudgetProblem {
                 "${name}: no budget in $(Split-Path -Leaf $Budget). Add one, with maxMeanNanoseconds and maxAllocatedBytes."
                 continue
             }
+            if (-not (Test-BudgetEntry $limit)) {
+                "${name}: its budget must have exactly maxMeanNanoseconds and maxAllocatedBytes, as numbers of 0 or more."
+                continue
+            }
             if ($null -eq $benchmark['Statistics']) {
                 "${name}: no result; the benchmark failed to run. BenchmarkDotNet's log says why."
                 continue
@@ -68,6 +72,21 @@ function Get-BenchmarkBudgetProblem {
             "${name}: has a budget, but no report has it. Was it renamed or removed? Keep $(Split-Path -Leaf $Budget) in step."
         }
     }
+}
+
+$script:BudgetKeys = @('maxAllocatedBytes', 'maxMeanNanoseconds')
+
+# True when a budget entry has both limits, as numbers of 0 or more, and nothing else (a misspelled key included).
+function Test-BudgetEntry([object] $Entry) {
+    if ($Entry -isnot [System.Collections.IDictionary]) { return $false }
+    $keys = @($Entry.Keys | Sort-Object -CaseSensitive)
+    if (($keys -join ',') -cne ($script:BudgetKeys -join ',')) { return $false }
+    foreach ($key in $keys) {
+        $value = $Entry[$key]
+        if ($value -isnot [int] -and $value -isnot [long] -and $value -isnot [double] -and $value -isnot [decimal]) { return $false }
+        if ($value -lt 0) { return $false }
+    }
+    $true
 }
 
 # The same text on every machine, whatever its culture: 1,000.4.
