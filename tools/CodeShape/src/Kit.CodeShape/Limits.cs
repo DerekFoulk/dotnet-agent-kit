@@ -12,4 +12,7 @@ internal static class Limits
 
     /// <summary>The most lines one source file may have.</summary>
     public const int LinesPerFile = 800;
+
+    /// <summary>The most groups a type's methods may form that share no state (LCOM4).</summary>
+    public const int Lcom4 = 1;
 }
