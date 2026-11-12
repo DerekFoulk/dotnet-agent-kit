@@ -24,6 +24,13 @@ Describe 'Test-CodeShape.ps1' {
         It "takes the project's preprocessor symbols from its DefineConstants" {
             $script:projects[0].defines | Should -Contain 'KIT_FIXTURE'
         }
+
+        # Review 1 of GAP-019: with TargetFrameworks, the outer evaluation has no Compile items.
+        It 'reads a project with several target frameworks through its first one' {
+            $multi = @(Get-CodeShapeProject -Solution (Join-Path $script:fixtures 'Multi.slnx'))
+
+            $multi[0].files | ForEach-Object { Split-Path $_ -Leaf } | Should -Be 'Multi.cs'
+        }
     }
 
     Context 'running the check' {
@@ -39,6 +46,12 @@ Describe 'Test-CodeShape.ps1' {
 
             $result.ExitCode | Should -Be 0
             $result.Output | Should -Be 'Code shape (CRF-008): 1 project, 1 file, no findings.'
+        }
+
+        # Review 1 of GAP-019: a tool that doesn't build is a broken check, not a finding in the code.
+        It "stops with the build's errors when the kit's tool doesn't build" {
+            { Invoke-CodeShapeCheck -Solution (Join-Path $script:fixtures 'Tidy.slnx') -KitRoot (Join-Path $script:fixtures 'BrokenKit') } |
+                Should -Throw "*The kit's code shape tool didn't build*The fixture's tool doesn't build*"
         }
     }
 
