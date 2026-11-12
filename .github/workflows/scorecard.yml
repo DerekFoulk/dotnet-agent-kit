@@ -1,0 +1,19 @@
+# This repo's OpenSSF Scorecard (GAP-014, SUP-010, ADR-0056): on every push to main and weekly. It isn't a pull
+# request check: Scorecard scores the default branch, and publishes only from there.
+name: OpenSSF Scorecard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '29 5 * * 1' # 05:29 UTC every Monday, off the busy top of the hour
+
+permissions:
+  contents: read
+
+jobs:
+  scorecard:
+    permissions:
+      security-events: write
+      id-token: write
+    uses: ./.github/workflows/scorecard.reusable.yml
