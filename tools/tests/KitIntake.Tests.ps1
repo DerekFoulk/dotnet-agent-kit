@@ -220,3 +220,44 @@ Describe 'Get-KitIntake' {
         { Get-KitIntake -Text $Text } | Should -Throw $Message
     }
 }
+
+Describe 'ConvertTo-KitAppProfile' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        $answers = [ordered]@{ appType = 'web-api-blazor'; data = 'relational'; database = 'azure-sql-free'; signIn = 'entra-external-id'; hosting = 'none'
+            testTools = @{ load = @('azure-load-testing') } }
+        $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers $answers
+        $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name 'Contoso.Orders' -KitCommit 'abc1234'
+    }
+
+    It 'names the app and the kit commit it was chosen from' {
+        $profileText | Should -Match '^# App profile: Contoso\.Orders\r?\n'
+        $profileText | Should -Match 'abc1234'
+    }
+
+    It 'has a row for every card: its question, the answer, and what it costs' {
+        foreach ($card in $resolved.Cards) {
+            $profileText | Should -Match "(?m)^\| $([regex]::Escape($card.Card['question'])) \| $([regex]::Escape($card.Option['label'])) \|"
+        }
+        $profileText | Should -Match '(?m)^\| Who signs in to the app\? \| Customers or the public \| Free tier: The first 50,000 monthly active users'
+        $profileText | Should -Match 'https://github\.com/DerekFoulk/dotnet-agent-kit/blob/abc1234/docs/database-guide\.md' -Because 'the database prices are in the guide'
+    }
+
+    It 'lists each kind of test with its tools, licenses and labels, and the price of a paid one' {
+        foreach ($kind in $resolved.TestKinds) {
+            $profileText | Should -Match "(?m)^\| $([regex]::Escape($kind.Kind['name'])) \|"
+        }
+        $profileText | Should -Match 'xUnit v3 \(Apache-2\.0, Free\)'
+        $profileText | Should -Match 'Azure Load Testing \(Microsoft Azure service, Paid: East US: \$10 per resource per month'
+        $profileText | Should -Match 'checked 2026-11-11'
+    }
+
+    # The Other text is the owner's own words, written into a Markdown table: a | or a line break would break the row.
+    It 'keeps an Other answer on its own row, escaped, and says it needs an ADR' {
+        $other = [ordered]@{} + $answers
+        $other['hosting'] = "Other: my own server | a VPS`nin Ohio"
+        $text = ConvertTo-KitAppProfile -Resolved (Resolve-KitIntakeAnswer -Intake $intake -Answers $other) -Name 'Contoso.Orders' -KitCommit 'abc1234'
+
+        $text | Should -Match '(?m)^\| Where should it run\? \| Other: my own server \\\| a VPS in Ohio \| Needs an ADR'
+    }
+}

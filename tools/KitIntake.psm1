@@ -86,4 +86,15 @@ function Resolve-KitIntakeAnswer {
     [pscustomobject]@{ Cards = @($cards); TestKinds = @($kinds) }
 }
 
-Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer
+# Writes the app's docs/app-profile.md from the resolved answers.
+function ConvertTo-KitAppProfile {
+    param(
+        [Parameter(Mandatory)] [object] $Resolved,
+        [Parameter(Mandatory)] [string] $Name,
+        [Parameter(Mandatory)] [string] $KitCommit
+    )
+
+    ''
+}
+
+Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile
