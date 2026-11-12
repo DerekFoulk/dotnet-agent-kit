@@ -26,7 +26,24 @@ $ErrorActionPreference = 'Stop'
 function Get-LockFileSubsetProblem {
     param([Parameter(Mandatory)] [string] $RepoRoot)
 
-    @()
+    $untracked = @(git -C $RepoRoot ls-files --others --exclude-standard -- ':(glob)**/packages.lock.json')
+    if ($LASTEXITCODE -ne 0) { throw "git couldn't list the files in $RepoRoot." }
+    foreach ($path in $untracked) { "$path isn't committed: run a restore on Windows and commit it." }
+
+    foreach ($path in @(git -C $RepoRoot ls-files -- ':(glob)**/packages.lock.json')) {
+        $file = Join-Path $RepoRoot $path
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
+        $committed = (git -C $RepoRoot show "HEAD:$path") -join "`n" | ConvertFrom-Json -AsHashtable
+        $restored = Get-Content -Raw -LiteralPath $file | ConvertFrom-Json -AsHashtable
+        foreach ($framework in $restored['dependencies'].Keys) {
+            if (-not $committed['dependencies'].ContainsKey($framework)) {
+                "${path}: the restore added $framework, which the committed lock file doesn't have."
+            }
+            elseif ((ConvertTo-Json -Depth 20 -Compress $restored['dependencies'][$framework]) -cne (ConvertTo-Json -Depth 20 -Compress $committed['dependencies'][$framework])) {
+                "${path}: $framework resolved different packages than the committed lock file."
+            }
+        }
+    }
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
