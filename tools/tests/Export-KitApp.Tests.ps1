@@ -260,6 +260,16 @@ Describe 'Export-KitApp' {
         $LASTEXITCODE | Should -Be 0 -Because $output
     }
 
+    # The shared .NET CI runs it on the app's solution from the start, before any project exists (ARC-009).
+    It 'gets the empty-projects check, which its new solution passes' {
+        $check = Join-Path $app '.kit/tools/Test-EmptyProjects.ps1'
+        Test-Path -LiteralPath $check | Should -BeTrue -Because 'the app''s AGENTS.md lists it'
+
+        $output = & pwsh -NoProfile -File $check -Solution (Join-Path $app 'Contoso.Orders.slnx') 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $output
+    }
+
     It 'passes its own ADR check, which skips the ADR template' {
         $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-AdrSections.ps1') -AdrPath (Join-Path $app 'docs/adr') 2>&1 | Out-String
 

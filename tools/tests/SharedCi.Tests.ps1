@@ -318,6 +318,17 @@ Describe 'Shared CI for app repos' {
             $ci = Read-Yaml '.github/workflows/ci.yml'
             $ci.Yaml['jobs']['dotnet']['with']['solution'] | Should -Be 'dotnet-agent-kit.slnx'
         }
+
+        # A project scaffolded before anything needed it fails the kit's CI and every app's (ARC-009).
+        It 'checks the solution for empty projects, with the solution passed through the environment' {
+            $step = @(Get-Steps $dotnet.Yaml | Where-Object { "$($_['run'])" -match 'Test-EmptyProjects\.ps1' })
+
+            $step.Count | Should -Be 1
+            $step[0]['run'] | Should -Match '\$env:KIT/tools/Test-EmptyProjects\.ps1"? -Solution \$env:SOLUTION'
+            $step[0]['shell'] | Should -Be 'pwsh'
+            $step[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+            $step[0].ContainsKey('if') | Should -BeFalse
+        }
     }
 
     # GAP-013 (SUP-009, ADR-0055): every build lists what it's made of, as a CycloneDX SBOM.
