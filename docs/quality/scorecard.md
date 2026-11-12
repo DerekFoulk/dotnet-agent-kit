@@ -27,13 +27,12 @@ areas:
         gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-008 states the four as limits."
         status: closed
       - id: GAP-022
-        gap: "An app can't run the code shape check (CRF-008, ADR-0050) on its own machine: the check needs the kit's Kit.CodeShape source, which isn't in .kit/tools, so it runs only in the app's CI and a breach shows up on the pull request."
+        gap: "An app can't run the code shape check (CRF-008, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request."
         status: proposed
         needs: "the check shipped as a .NET tool the app restores, or its source exported with the kit's files"
       - id: GAP-020
-        gap: "No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent."
-        status: proposed
-        needs: "a tool and a CI change"
+        gap: "No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent. Closed by ADR-0051: tools/Test-Duplication.ps1 runs PMD's CPD over hand-written C# in dotnet-ci.reusable.yml; whether a repeat is knowledge stays the reviewer's call."
+        status: closed
   - id: proportion
     name: Proportion
     perfect: "The smallest design that meets today's requirements: no layer, pattern, package or project the app doesn't need yet. Over-engineering is a defect too."
@@ -234,7 +233,7 @@ Each area in the front matter above has:
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
 | Architecture | 8 | 4 | 4 | 0 | 1 |
-| Craft | 10 | 4 | 6 | 0 | 2 |
+| Craft | 10 | 5 | 5 | 0 | 1 |
 | Proportion | 1 | 0 | 1 | 0 | 1 |
 | Code | 8 | 7 | 1 | 0 | 0 |
 | Tests | 7 | 4 | 3 | 0 | 1 |
@@ -249,13 +248,12 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 9 proposed; 11 open gaps.
+**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 9 proposed; 10 open gaps.
 
 Open gaps:
 
 - **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
-- **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-008, ADR-0050) on its own machine: the check needs the kit's Kit.CodeShape source, which isn't in .kit/tools, so it runs only in the app's CI and a breach shows up on the pull request.
-- **GAP-020** (Craft, proposed; needs a tool and a CI change): No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent.
+- **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-008, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
