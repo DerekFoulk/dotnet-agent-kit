@@ -127,6 +127,20 @@ Describe 'Test-BenchmarkBudget.ps1' {
         $script:problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: no allocations in its report*MemoryDiagnoser*'
     }
 
+    # Review 1 of PR 57: a missing figure would otherwise read as 0 bytes and pass any allocation budget.
+    It 'names a benchmark whose report has memory data but no allocation figure' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $benchmark = New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse'
+        $benchmark['Memory']['BytesAllocatedPerOperation'] = $null
+        $results = Write-Result @($benchmark)
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 0 } })
+
+        $problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget)
+
+        $problems | Should -HaveCount 1
+        $problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: no allocations in its report*'
+    }
+
     # Without --exporters json BenchmarkDotNet writes no JSON report: say that, rather than list every budget as missing.
     It 'says there is no report, and nothing else, when the folder has no JSON report' {
         Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
