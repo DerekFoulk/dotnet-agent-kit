@@ -157,6 +157,15 @@ Describe 'Test-SafeMigrations.ps1' {
             Get-Message | Should -BeNullOrEmpty
         }
 
+        It 'passes an empty C# file' {
+            $folder = Join-Path $script:repo 'src'
+            New-Item -ItemType Directory -Path $folder | Out-Null
+            New-Item -ItemType File -Path (Join-Path $folder 'Placeholder.cs') | Out-Null
+
+            { Get-Message } | Should -Not -Throw
+            Get-Message | Should -BeNullOrEmpty
+        }
+
         It 'skips build output in <Folder>' -ForEach @(@{ Folder = 'bin' }, @{ Folder = 'obj' }) {
             $folder = Join-Path $script:repo "src/$Folder"
             New-Item -ItemType Directory -Force -Path $folder | Out-Null
