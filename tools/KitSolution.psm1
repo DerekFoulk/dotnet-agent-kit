@@ -9,6 +9,12 @@ Set-StrictMode -Version Latest
 # what a missing one means.
 function Get-SolutionProject {
     param([Parameter(Mandatory)] [string] $Solution)
+
+    $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).ProviderPath
+    foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
+        $path = $node.GetAttribute('Path')
+        [pscustomobject]@{ Path = $path; FullPath = [IO.Path]::GetFullPath((Join-Path $folder $path)) }
+    }
 }
 
 Export-ModuleMember -Function Get-SolutionProject
