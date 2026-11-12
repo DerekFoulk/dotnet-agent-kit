@@ -1,7 +1,7 @@
 # Checks for an app repo that uses the kit, pinned to the commit a kit release tag points to:
 #   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/app-checks.reusable.yml@<commit SHA> # v0.1.0
 # On pull requests: the PR title, the commit subjects and red-to-green order (the PR's own commits).
-# Always: ADR sections, when the app has docs/adr, and the runbook (docs/runbook.md). The kit's
+# Always: ADR sections, when the app has docs/adr, the runbook (docs/runbook.md), and safe migrations. The kit's
 # scripts come from the kit at the same version (kit-tools), so the app needs no copy of them. Call it
 # on pull_request with the "edited" type too, so a renamed PR is re-checked.
 name: App checks (reusable)
@@ -77,3 +77,9 @@ jobs:
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-Runbook.ps1" -Path (Join-Path $env:GITHUB_WORKSPACE ''docs/runbook.md'')'
+
+      # Every EF Core migration's Up keeps the running version working; an app with no migrations passes (DAT-003).
+      - name: Safe migrations
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-SafeMigrations.ps1" -Path $env:GITHUB_WORKSPACE'

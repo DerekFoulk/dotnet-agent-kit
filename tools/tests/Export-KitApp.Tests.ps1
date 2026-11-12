@@ -270,6 +270,17 @@ Describe 'Export-KitApp' {
         $LASTEXITCODE | Should -Be 0 -Because $output
     }
 
+    It 'gets the database guide that DAT-001 and the plan checklist point to' {
+        Test-Path -LiteralPath (Join-Path $app 'docs/database-guide.md') | Should -BeTrue
+        Get-Content -Raw -LiteralPath (Join-Path $app 'docs/standards/data.md') | Should -Match 'docs/database-guide\.md'
+    }
+
+    It 'gets the safe-migrations check, which passes an app with no migrations yet' {
+        $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-SafeMigrations.ps1') -Path $app 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $output
+    }
+
     It 'passes its own ADR check, which skips the ADR template' {
         $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-AdrSections.ps1') -AdrPath (Join-Path $app 'docs/adr') 2>&1 | Out-String
 
@@ -528,6 +539,13 @@ Describe 'Export-KitApp' {
     It 'leaves out New-KitApp and the GitHub settings, which only the kit runs' {
         @($map | Where-Object { $_.Source -match 'New-KitApp|^templates/github/' }) | Should -BeNullOrEmpty
         Get-ChildItem -LiteralPath $app -Recurse -File -Filter 'New-KitApp*' | Should -BeNullOrEmpty
+    }
+
+    # The new-app skill runs New-KitApp, which an app doesn't have (ADR-0058).
+    It 'leaves out the new-app intake: its skill, cards and module' {
+        Test-Path -LiteralPath (Join-Path $checkout '.claude' 'skills' 'new-app' 'SKILL.md') | Should -BeTrue -Because 'the kit has the skill'
+        @($map | Where-Object { $_.Source -match '^\.claude/skills/new-app/|^templates/app-intake\.json$|KitIntake\.psm1$' }) | Should -BeNullOrEmpty
+        Test-Path -LiteralPath (Join-Path $app '.claude' 'skills' 'new-app') | Should -BeFalse
     }
 
     # The owner, 2026-11-09: an app's settings shouldn't carry rules for kit scripts it doesn't have, such as

@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "about": "The new-app intake (ADR-0058): the question cards the new-app skill shows the owner, and the test tools for each kind of test. New-KitApp checks the answers against this file and writes them to the app's docs/app-profile.md. Each card's first option is its recommendation. A card with dependsOn shows only the options whose fits lists the other card's answer. Every option and tool has a cost label: Free, Free tier (free up to a limit) or Paid, with the price, its source and the date checked.",
+  "cards": [
+    {
+      "id": "appType",
+      "header": "App type",
+      "question": "What kind of app is it?",
+      "options": [
+        {
+          "id": "web-api-blazor",
+          "label": "Web API and a Blazor web app",
+          "description": "An ASP.NET Core API with a Blazor web front end. The API can serve a phone app later. Fits most apps people use in a browser."
+        },
+        {
+          "id": "web-api",
+          "label": "Web API only",
+          "description": "An ASP.NET Core HTTP API with no user interface of its own, for other apps or services to call."
+        },
+        {
+          "id": "blazor",
+          "label": "Blazor web app only",
+          "description": "A Blazor web app with no separate API: the pages read and write the data themselves."
+        },
+        {
+          "id": "maui",
+          "label": ".NET MAUI app (phone or desktop)",
+          "description": "A native app for Android, iOS, Windows or macOS, built with .NET MAUI."
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "header": "Data",
+      "question": "Where does the app keep its data, and what shape is it?",
+      "options": [
+        {
+          "id": "relational",
+          "label": "On a server, as related tables",
+          "description": "Records that refer to each other, such as customers and their orders, shared by every user. Most business apps."
+        },
+        {
+          "id": "documents",
+          "label": "On a server, as documents",
+          "description": "Items read by one key, with a shape that changes often, or data spread across regions."
+        },
+        {
+          "id": "device",
+          "label": "Only on the user's device",
+          "description": "Each user's data stays in the app on their phone or computer; nothing is shared."
+        },
+        {
+          "id": "none",
+          "label": "It keeps no data",
+          "description": "The app stores nothing of its own, for example a calculator or a front end to another service."
+        }
+      ]
+    },
+    {
+      "id": "database",
+      "header": "Database",
+      "question": "Which database should it use?",
+      "dependsOn": "data",
+      "prices": "docs/database-guide.md",
+      "options": [
+        {
+          "id": "azure-sql-free",
+          "label": "Azure SQL Database, free offer",
+          "description": "SQL Server in Azure, free up to a monthly limit, and paused rather than billed past it. Tests run on SQL Server in a container.",
+          "fits": [ "relational" ]
+        },
+        {
+          "id": "postgresql",
+          "label": "Azure Database for PostgreSQL",
+          "description": "PostgreSQL in Azure: free for 12 months with an Azure free account, then billed.",
+          "fits": [ "relational" ]
+        },
+        {
+          "id": "cosmos-free",
+          "label": "Azure Cosmos DB, free tier",
+          "description": "A document database in Azure, free up to 1000 RU/s and 25 GB for the account's life.",
+          "fits": [ "documents" ]
+        },
+        {
+          "id": "sqlite",
+          "label": "SQLite",
+          "description": "A database in a file inside the app. Free.",
+          "fits": [ "device" ]
+        },
+        {
+          "id": "none",
+          "label": "No database",
+          "description": "The app keeps no data.",
+          "fits": [ "none" ]
+        }
+      ]
+    },
+    {
+      "id": "signIn",
+      "header": "Sign-in",
+      "question": "Who signs in to the app?",
+      "priced": true,
+      "options": [
+        {
+          "id": "entra-external-id",
+          "label": "Customers or the public",
+          "description": "People sign in with Microsoft Entra External ID: email, or a Google or Microsoft account. The app never stores passwords (SEC-008).",
+          "cost": {
+            "label": "Free tier",
+            "free": "The first 50,000 monthly active users; add-ons such as SMS codes have no free amount",
+            "price": "not verified",
+            "source": "https://learn.microsoft.com/en-us/entra/external-id/customers/faq-customers#external-id-pricing",
+            "checked": "2026-11-11"
+          }
+        },
+        {
+          "id": "entra-id",
+          "label": "People in one organization",
+          "description": "Staff sign in with their work account in Microsoft Entra ID. The app never stores passwords (SEC-008).",
+          "cost": {
+            "label": "Free tier",
+            "free": "Microsoft Entra ID Free: users, groups and single sign-on",
+            "price": "Microsoft Entra ID P1 and P2, for Conditional Access and ID Protection, not verified",
+            "source": "https://learn.microsoft.com/en-us/entra/fundamentals/licensing",
+            "checked": "2026-11-11"
+          }
+        },
+        {
+          "id": "none",
+          "label": "No sign-in",
+          "description": "Everyone sees the same thing and nobody signs in. Every endpoint then has to be public on purpose (SEC-007).",
+          "cost": { "label": "Free" }
+        }
+      ]
+    },
+    {
+      "id": "hosting",
+      "header": "Hosting",
+      "question": "Where should it run?",
+      "priced": true,
+      "options": [
+        {
+          "id": "none",
+          "label": "Not yet: on this machine and in CI",
+          "description": "Build and test it first; choose hosting when the first deployment is due. Nothing to pay or set up now.",
+          "cost": { "label": "Free" }
+        },
+        {
+          "id": "container-apps",
+          "label": "Azure Container Apps",
+          "description": "Runs the app in a container that scales to zero when nobody uses it.",
+          "cost": {
+            "label": "Free tier",
+            "free": "Each month, per subscription: 180,000 vCPU-seconds, 360,000 GiB-seconds and 2 million requests",
+            "price": "Consumption plan, East US: $0.000024 per vCPU-second and $0.000003 per GiB-second while active, $0.40 per million requests",
+            "source": "https://learn.microsoft.com/en-us/azure/container-apps/billing#consumption-plan and https://prices.azure.com/api/retail/prices",
+            "checked": "2026-11-11"
+          }
+        },
+        {
+          "id": "app-service",
+          "label": "Azure App Service",
+          "description": "Runs the app on a managed web server, without containers.",
+          "cost": {
+            "label": "Free tier",
+            "free": "The F1 plan: shared compute with daily limits, no custom domain certificate and no scale-out (limits not verified)",
+            "price": "B1, the first paid plan, East US: $0.017 an hour on Linux, $0.075 an hour on Windows",
+            "source": "https://prices.azure.com/api/retail/prices",
+            "checked": "2026-11-11"
+          }
+        }
+      ]
+    }
+  ],
+  "testKinds": [
+    {
+      "id": "unit",
+      "name": "Unit",
+      "checks": "One class or function: domain rules, application handlers, view models",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "xunit", "name": "xUnit v3", "package": "xunit.v3", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } },
+        { "id": "moq", "name": "Moq", "package": "Moq", "license": "BSD-3-Clause", "default": true, "cost": { "label": "Free" } },
+        { "id": "fluentassertions", "name": "FluentAssertions 8", "package": "FluentAssertions", "license": "Xceed Community License", "default": true, "cost": { "label": "Free tier", "free": "Non-commercial use: free while the app isn't sold or paid for", "price": "A commercial app needs an Xceed license, reported at $129.95 per developer a year at launch (not verified on xceed.com), or swaps to AwesomeAssertions, which is free (ADR-0004)", "source": "https://www.infoq.com/news/2025/01/fluent-assertions-v8-license", "checked": "2026-11-11" }, "note": "The default for a non-commercial app; a commercial one uses AwesomeAssertions instead (ADR-0004)" },
+        { "id": "awesomeassertions", "name": "AwesomeAssertions", "package": "AwesomeAssertions", "license": "Apache-2.0", "default": false, "cost": { "label": "Free" }, "note": "FluentAssertions' API and namespace under Apache-2.0, for commercial apps (ADR-0004)" },
+        { "id": "bogus", "name": "Bogus", "package": "Bogus", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "fscheck", "name": "FsCheck", "package": "FsCheck", "license": "BSD-3-Clause", "default": true, "cost": { "label": "Free" } },
+        { "id": "faketimeprovider", "name": "FakeTimeProvider", "package": "Microsoft.Extensions.TimeProvider.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "fakelogger", "name": "FakeLogger", "package": "Microsoft.Extensions.Diagnostics.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "integration",
+      "name": "Integration",
+      "checks": "Our code plus one real outside thing: database, HTTP service, file system",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "testcontainers", "name": "Testcontainers", "package": "Testcontainers", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "respawn", "name": "Respawn", "package": "Respawn", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } },
+        { "id": "wiremock", "name": "WireMock.Net", "package": "WireMock.Net", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "functional",
+      "name": "Functional",
+      "checks": "The whole app in a test host, through its real HTTP pipeline; Blazor components",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "webapplicationfactory", "name": "WebApplicationFactory", "package": "Microsoft.AspNetCore.Mvc.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "bunit", "name": "bUnit", "package": "bunit", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "ui",
+      "name": "UI (end to end)",
+      "checks": "The running system in a real browser, accessibility included",
+      "runs": "Key paths on every PR; the full set nightly",
+      "tools": [
+        { "id": "playwright", "name": "Playwright", "package": "Microsoft.Playwright", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "axe", "name": "Deque axe for Playwright", "package": "Deque.AxeCore.Playwright", "license": "MPL-2.0", "default": true, "cost": { "label": "Free" } },
+        { "id": "aspire-testing", "name": "Aspire testing", "package": "Aspire.Hosting.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "system",
+      "name": "System (smoke)",
+      "checks": "The deployed app in staging actually works",
+      "runs": "After each deployment",
+      "tools": [
+        { "id": "playwright", "name": "Playwright", "package": "Microsoft.Playwright", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "architecture",
+      "name": "Architecture",
+      "checks": "Layers and modules depend only in allowed directions",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "archunitnet", "name": "ArchUnitNET", "package": "TngTech.ArchUnitNET.xUnitV3", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "contract",
+      "name": "Contract",
+      "checks": "The public API didn't break",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "openapi-snapshot", "name": "OpenAPI snapshot test", "package": "Microsoft.AspNetCore.OpenApi", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "The API's OpenAPI document must match a committed snapshot, as in the kit's sample (ContractTests.cs)" },
+        { "id": "package-validation", "name": ".NET package validation", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Part of the .NET SDK; for apps that publish NuGet packages" }
+      ]
+    },
+    {
+      "id": "performance",
+      "name": "Performance",
+      "checks": "Hot paths stay within their time and memory budget",
+      "runs": "Nightly or on demand",
+      "tools": [
+        { "id": "benchmarkdotnet", "name": "BenchmarkDotNet", "package": "BenchmarkDotNet", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "load",
+      "name": "Load",
+      "checks": "The deployed app keeps its response times under many users at once",
+      "runs": "On demand, before a release that changes load",
+      "tools": [
+        { "id": "locust", "name": "Locust", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Runs in GitHub Actions: free on a public repo; a private one uses its account's Actions minutes (ADR-0057)" },
+        { "id": "jmeter", "name": "Apache JMeter", "license": "Apache-2.0", "default": false, "cost": { "label": "Free" }, "note": "For apps that need heavy database or queue load (ADR-0057)" },
+        {
+          "id": "azure-load-testing",
+          "name": "Azure Load Testing",
+          "license": "Microsoft Azure service",
+          "default": false,
+          "cost": {
+            "label": "Paid",
+            "price": "East US: $10 per resource per month, plus $0.15 per virtual user hour up to 10,000 and $0.06 after; each run bills at least 10 virtual users per engine for at least 10 minutes. A monthly virtual-user-hour limit on the resource stops tests at the cap",
+            "source": "https://prices.azure.com/api/retail/prices (Azure App Testing), https://azure.microsoft.com/en-us/pricing/details/load-testing/ and https://learn.microsoft.com/en-us/azure/app-testing/load-testing/how-to-manage-usage-limits",
+            "checked": "2026-11-11"
+          },
+          "note": "Runs JMeter or Locust scripts at scale from Azure. The resource fee includes some virtual user hours; how many is not verified (ADR-0057)"
+        },
+        {
+          "id": "nbomber",
+          "name": "NBomber",
+          "license": "NBomber license",
+          "default": false,
+          "cost": {
+            "label": "Paid",
+            "price": "Free for personal use only; any organization needs Business, $1,500 a year per company, or Enterprise, $2,500 a year",
+            "source": "https://nbomber.com/pricing",
+            "checked": "2026-11-11"
+          },
+          "note": "Load tests written in C# (ADR-0057)"
+        }
+      ]
+    },
+    {
+      "id": "mutation",
+      "name": "Mutation",
+      "checks": "The tests themselves catch real bugs",
+      "runs": "Nightly (TST-004, ADR-0039)",
+      "tools": [
+        { "id": "stryker", "name": "Stryker.NET", "package": "dotnet-stryker", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } }
+      ]
+    }
+  ]
+}

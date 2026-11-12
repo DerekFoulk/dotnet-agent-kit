@@ -12,8 +12,9 @@ name: OpenSSF Scorecard (reusable)
 on:
   workflow_call:
 
-permissions:
-  contents: read
+# Nothing at workflow level: each job names its own. GitHub refuses a called workflow that asks for more than the
+# caller's job grants, and the callers grant only what the Scorecard job needs.
+permissions: {}
 
 jobs:
   # On a private repo the action publishes nothing, and its code scanning upload needs GitHub Code Security, a paid

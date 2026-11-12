@@ -38,12 +38,12 @@ rules:
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
-    statement: "Use the kit test toolset (xUnit v3, Moq, FluentAssertions 8, Bogus, bUnit, Playwright, Testcontainers, ArchUnitNET, FsCheck, Stryker and the ADR-0003 additions); a different tool needs an ADR."
-    why: "One toolset the owner chose; FluentAssertions is swapped for AwesomeAssertions in commercial repos (ADR-0004)."
+    statement: "Use the kit test toolset (xUnit v3, Moq, FluentAssertions 8, Bogus, bUnit, Playwright, Testcontainers, ArchUnitNET, FsCheck, Stryker, Locust and the ADR-0003 additions); a different tool needs an ADR."
+    why: "One toolset the owner chose; FluentAssertions is swapped for AwesomeAssertions in commercial repos (ADR-0004), and Locust is the free default for load tests (ADR-0057)."
     layer: owner
     status: accepted
-    sources: ["ADR-0003"]
-    enforcement: "advisory: central package management keeps versions in one reviewed file; a package allowlist check comes later"
+    sources: ["ADR-0003", "ADR-0057"]
+    enforcement: "advisory: central package management keeps versions in one reviewed file, and tools/tests/KitIntake.Tests.ps1 fails when a tool this rule or ADR-0003 names is missing from templates/app-intake.json; no check stops a project from adding another test package"
     scope: core
     paths: ["Directory.Packages.props", "**/*.csproj"]
   - id: TST-006
@@ -55,11 +55,33 @@ rules:
     enforcement: "advisory: CI runs every Pester test (kit-checks.reusable.yml), but no check shows that each script has tests or that they were written first"
     scope: core
     paths: ["tools/**"]
+  - id: TST-007
+    statement: "The kit's list of test tools lives only in templates/app-intake.json: each kind of test, its tools, each tool's license and its cost label (Free, Free tier or Paid, with the price, its source and the date checked unless Free); every default is Free, or free for a non-commercial app (FluentAssertions 8, ADR-0004), and anything else that names test tools is checked against it or points to it."
+    why: "One source for the tools the new-app intake offers and the standard names (CRF-003); the owner wants paid options listed with their price beside a free default."
+    layer: owner
+    status: proposed
+    sources: ["owner, 2026-11-11", "ADR-0058"]
+    enforcement: "ci: tools/tests/KitIntake.Tests.ps1 fails when a tool TST-005 or ADR-0003 names is missing from the list, when a tool has no license or cost label, when a non-Free one has no price, source or date, or when a default is neither Free nor free for a non-commercial app"
+    scope: core
+    paths: ["templates/app-intake.json", "docs/standards/testing.md"]
+  - id: TST-008
+    statement: "A check fails an app's build when a production project lacks the test projects TST-003's matrix requires for it."
+    why: "TST-003 is advisory for apps: nothing notices a project without its tests until a reviewer does."
+    layer: owner
+    status: proposed
+    sources: ["owner, 2026-11-11", "ADR-0058"]
+    enforcement: "advisory: not built yet; it waits for ARC-009, which settles which projects an app has, to be accepted (scorecard GAP-027)"
+    scope: core
+    paths: ["**/*.csproj", "**/*Tests*/**"]
 ---
 
 # Testing
 
 Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which kinds of test each part of an app gets. "Acceptance test" names a purpose, not a kind of test: a test written from a requirement, usually at the functional or UI level. It's tagged with its requirement rather than given its own folder.
+
+## Test tools
+
+`templates/app-intake.json` lists each kind of test (the brief's matrix, plus load tests) with what it checks, when it runs, and its tools, each with its license and its cost label: Free, Free tier or Paid, with the price, its source and the date it was checked (TST-007, ADR-0058). The defaults are free: FluentAssertions 8 is free only for a non-commercial app, and a commercial one swaps it for AwesomeAssertions (ADR-0004). Paid tools stay on the list, labelled. The new-app skill shows this list on its test tools card, and each app records its choice in `docs/app-profile.md`. Load tests run Locust by default, in GitHub Actions; JMeter suits heavy database or queue load, and Azure Load Testing and NBomber are paid (ADR-0057).
 
 ## Coverage
 

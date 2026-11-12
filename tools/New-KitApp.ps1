@@ -24,11 +24,13 @@ param(
     [string] $KitRef,
     [string] $Destination,
     [switch] $Private,
-    [string] $KitRoot
+    [string] $KitRoot,
+    [string] $Intake
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'KitIntake.psm1') -Force
 
 # Every GitHub call goes through here, using the owner's existing gh sign-in; the tests replace it.
 function Invoke-KitGh {
@@ -109,7 +111,10 @@ function New-KitApp {
         [string] $KitRef,
         [string] $Destination,
         [Parameter(Mandatory)] [string] $KitRoot,
-        [switch] $Private
+        [switch] $Private,
+        # The new-app intake's answers (ADR-0058): a JSON file the new-app skill writes. Required, but checked after
+        # the name, so a bad name is reported first.
+        [string] $Intake
     )
 
     # The repo is named after the app unless -RepoName says otherwise: a repo name may have hyphens, which a
@@ -131,9 +136,21 @@ function New-KitApp {
     if ((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count -gt 0) {
         throw "$Destination isn't empty. Choose a new or empty folder, so no existing file is overwritten."
     }
+    if (-not $Intake) { throw 'Pass -Intake with the new-app intake''s answers file; the new-app skill writes it (ADR-0058).' }
     if (-not $KitRef) { $KitRef = Get-KitLatestRelease -KitRoot $KitRoot }
     $commit = (git -C $KitRoot rev-parse --verify --quiet "$KitRef^{commit}" | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
+    # The answers, checked against the cards at the same kit commit as the files.
+    $intakeText = git -C $KitRoot show "${commit}:templates/app-intake.json" 2>$null | Out-String
+    if ($LASTEXITCODE -ne 0 -or -not $intakeText.Trim()) {
+        throw "The kit at $KitRef has no templates/app-intake.json, so it's older than this New-KitApp. Pass a newer -KitRef."
+    }
+    $intakePath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Intake)
+    if (-not (Test-Path -LiteralPath $intakePath -PathType Leaf)) { throw "The intake answers file $intakePath doesn't exist." }
+    try { $answers = Get-Content -Raw -LiteralPath $intakePath | ConvertFrom-Json -AsHashtable }
+    catch { throw "The intake answers in $intakePath aren't valid JSON: $($_.Exception.Message)" }
+    if ($answers -isnot [Collections.IDictionary]) { throw "The intake answers in $intakePath aren't a JSON object." }
+    $resolved = Resolve-KitIntakeAnswer -Intake (Get-KitIntake -Text $intakeText) -Answers $answers
     $signIn = Invoke-KitGh -Arguments 'auth', 'status'
     if ($signIn.ExitCode -ne 0) {
         throw "gh isn't signed in to GitHub: $($signIn.Error)`nSigning in is your step: run 'gh auth login', then run this again."
@@ -164,6 +181,12 @@ function New-KitApp {
         [pscustomobject]@{ Description = "Export the kit's files at $commit"; Action = {
                 & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
                 if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
+            }
+        }
+        # App-owned: not in the manifest, so the kit sync never changes it.
+        [pscustomobject]@{ Description = 'Write the intake answers to docs/app-profile.md'; Action = {
+                $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name $Name -KitCommit $commit
+                [IO.File]::WriteAllText((Join-Path $Destination 'docs' 'app-profile.md'), $profileText, [Text.UTF8Encoding]::new($false))
             }
         }
         [pscustomobject]@{ Description = 'Make the first commit'; Action = {
@@ -271,6 +294,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     if ($RepoName) { $arguments.RepoName = $RepoName }
     if ($KitRef) { $arguments.KitRef = $KitRef }
     if ($Destination) { $arguments.Destination = $Destination }
+    if ($Intake) { $arguments.Intake = $Intake }
     try {
         New-KitApp @arguments
     }
