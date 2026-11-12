@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -22,12 +23,13 @@ internal static class CohesionRule
 
         SyntaxTree[] trees = [.. files.Select(file => file.Parse())];
         CSharpCompilation compilation = CSharpCompilation.Create("CodeShape", trees, s_runtime.Value);
+        HashSet<INamedTypeSymbol> measured = new(SymbolEqualityComparer.Default);
         foreach (SyntaxTree tree in trees)
         {
             SemanticModel model = compilation.GetSemanticModel(tree);
             foreach (TypeDeclarationSyntax declaration in tree.GetRoot().DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
-                if (model.GetDeclaredSymbol(declaration) is not { } type || IsExempt(type))
+                if (model.GetDeclaredSymbol(declaration) is not { } type || !measured.Add(type) || IsExempt(type))
                 {
                     continue;
                 }
@@ -84,8 +86,11 @@ internal static class CohesionRule
     // The type's own instance members that a body names.
     private static IEnumerable<ISymbol> InstanceMembersUsed(SyntaxNode body, INamedTypeSymbol type, SemanticModel model) =>
         body.DescendantNodes().OfType<SimpleNameSyntax>()
-            .Select(name => model.GetSymbolInfo(name).Symbol)
-            .OfType<ISymbol>()
+            .SelectMany(name => Meanings(model.GetSymbolInfo(name)))
             .Where(symbol => !symbol.IsStatic && SymbolEqualityComparer.Default.Equals(symbol.ContainingType, type))
             .Where(symbol => symbol is IFieldSymbol or IPropertySymbol or IEventSymbol or IMethodSymbol);
+
+    // What a name binds to; when the compiler can't choose (an argument whose type it can't resolve, say), every
+    // member the name could mean, so a call still joins its caller to the methods it may reach.
+    private static ImmutableArray<ISymbol> Meanings(SymbolInfo info) => info.Symbol is { } symbol ? [symbol] : info.CandidateSymbols;
 }
