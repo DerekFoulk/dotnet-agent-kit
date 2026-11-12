@@ -29,6 +29,10 @@ function Get-LoadBudgetProblem {
     )
 
     $budgets = Get-Content -Raw -LiteralPath $Budget | ConvertFrom-Json -AsHashtable
+    # A broken budget checks the wrong thing, so it's reported alone.
+    $budgetProblems = @(Get-BudgetFileProblem $budgets)
+    if ($budgetProblems) { return $budgetProblems }
+
     $rows = @{}
     foreach ($row in (Import-Csv -LiteralPath "${Path}_stats.csv")) { $rows[(Get-RequestKey $row)] = $row }
 
@@ -67,6 +71,52 @@ function Get-LoadBudgetProblem {
     if (Test-Path -LiteralPath $exceptions -PathType Leaf) {
         foreach ($exception in (Import-Csv -LiteralPath $exceptions)) {
             "The locustfile raised $($exception.Message) $($exception.Count) time(s); see the exceptions CSV for its traceback."
+        }
+    }
+}
+
+# Locust's percentile columns (locust/stats.py, PERCENTILES_TO_REPORT, as of 2.47.0).
+$script:Percentiles = @('50%', '66%', '75%', '80%', '90%', '95%', '98%', '99%', '99.9%', '99.99%', '100%')
+
+function Test-Number([object] $Value) {
+    $Value -is [int] -or $Value -is [long] -or $Value -is [double] -or $Value -is [decimal]
+}
+
+# What's wrong with the budget file itself: keys it doesn't know, limits out of range, no failure budget for the run.
+function Get-BudgetFileProblem([System.Collections.IDictionary] $Budgets) {
+    $aggregated = $Budgets['Aggregated']
+    if ($aggregated -isnot [System.Collections.IDictionary] -or -not $aggregated.Contains('maxFailureRatio')) {
+        'The budget has no "Aggregated" entry with a maxFailureRatio: the whole run''s failures are always budgeted.'
+    }
+    foreach ($key in ($Budgets.Keys | Sort-Object -CaseSensitive)) {
+        $limit = $Budgets[$key]
+        if ($limit -isnot [System.Collections.IDictionary] -or $limit.Count -eq 0) {
+            "${key}: give it a maxFailureRatio, a maxMilliseconds, or both."
+            continue
+        }
+        foreach ($name in ($limit.Keys | Where-Object { $_ -cnotin 'maxFailureRatio', 'maxMilliseconds' })) {
+            "${key}: unknown budget key ""$name""; use maxFailureRatio and maxMilliseconds."
+        }
+        if ($limit.Contains('maxFailureRatio')) {
+            $ratio = $limit['maxFailureRatio']
+            if (-not (Test-Number $ratio) -or $ratio -lt 0 -or $ratio -gt 1) {
+                "${key}: maxFailureRatio must be a number from 0 to 1, such as 0.01 for 1%."
+            }
+        }
+        if ($limit.Contains('maxMilliseconds')) {
+            $times = $limit['maxMilliseconds']
+            if ($times -isnot [System.Collections.IDictionary] -or $times.Count -eq 0) {
+                "${key}: maxMilliseconds maps percentiles to milliseconds, such as { ""95%"": 300 }."
+                continue
+            }
+            foreach ($percentile in $times.Keys) {
+                if ($percentile -cnotin $script:Percentiles) {
+                    "${key}: Locust reports no ""$percentile"" percentile; use one of $($script:Percentiles -join ', ')."
+                }
+                elseif (-not (Test-Number $times[$percentile]) -or $times[$percentile] -lt 0) {
+                    "${key}: the $percentile budget must be a number of milliseconds, 0 or more."
+                }
+            }
         }
     }
 }
