@@ -117,7 +117,7 @@ Describe 'Test-BenchmarksProject' {
     # with an empty name is no benchmarks project.
     It 'says an empty name is no benchmarks project' {
         { $script:empty = Test-BenchmarksProject -Name '' } | Should -Not -Throw
-        $script:empty | Should -BeFalse
+        $script:empty | Should -Be $false
     }
 
     # MSBuild can't call the module, so its copy is checked against it. The file picks out projects by name only with
@@ -129,7 +129,8 @@ Describe 'Test-BenchmarksProject' {
         $conditions = @($props.SelectNodes('//*[@Condition]') | ForEach-Object { $_.GetAttribute('Condition') } |
                 Where-Object { $_ -match 'MSBuildProjectName' -and $_ -ne "`$(MSBuildProjectName.EndsWith('Tests'))" })
 
-        $conditions.Count | Should -BeGreaterThan 0 -Because 'the file sets up benchmarks projects'
+        # Two: the PropertyGroup and the ItemGroup. A count also catches a condition that drifted out of this shape.
+        $conditions.Count | Should -Be 2 -Because 'the file sets up benchmarks projects in a PropertyGroup and an ItemGroup'
         foreach ($condition in $conditions) {
             $condition | Should -Match "^\`$\(MSBuildProjectName\.EndsWith\('[^']+'\)\)$"
             $suffix = [regex]::Match($condition, "EndsWith\('([^']+)'\)").Groups[1].Value
