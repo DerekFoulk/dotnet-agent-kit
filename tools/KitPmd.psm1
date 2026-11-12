@@ -50,4 +50,8 @@ function Get-PmdPin {
     }
 }
 
-Export-ModuleMember -Function Get-PmdPin
+function Set-PmdPin {
+    param([Parameter(Mandatory)] [string] $Path, [Parameter(Mandatory)] [object] $Release, [datetimeoffset] $Now = [datetimeoffset]::UtcNow)
+}
+
+Export-ModuleMember -Function Get-PmdPin, Set-PmdPin
