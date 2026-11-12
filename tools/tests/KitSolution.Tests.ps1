@@ -103,6 +103,12 @@ Describe 'Get-FirstTargetFramework' {
             Should -Be 'net9.0'
     }
 
+    It 'gives nothing for a TargetFrameworks of separators only' {
+        { $script:first = Get-FirstTargetFramework -Properties ([pscustomobject]@{ TargetFramework = ''; TargetFrameworks = ';' }) } |
+            Should -Not -Throw
+        $script:first | Should -BeNullOrEmpty
+    }
+
     It 'gives nothing for a single-target project' {
         Get-FirstTargetFramework -Properties ([pscustomobject]@{ TargetFramework = 'net10.0'; TargetFrameworks = '' }) |
             Should -BeNullOrEmpty
