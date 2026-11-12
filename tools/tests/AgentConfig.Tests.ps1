@@ -192,11 +192,13 @@ Describe 'Agent configuration' {
         # by Playwright's own script, npx or the kit's script, prompts in both modes, in any case. The rules are
         # anchored at the start of a command, as the New-KitApp rules are, so a command that only names the script
         # or quotes the install (git add, git diff, grep, a commit message, Invoke-Mutant) doesn't prompt: the
-        # owner asked (2026-11-11) to be asked only before destructive steps and releases. Known misses, left to
-        # "Always ask" and the reviewer (ADR-0026): an install run through a variable or a pipeline, such as
-        # '& $pw install' or 'Get-ChildItem -Filter playwright.ps1 | ForEach-Object { & $_ install }', or one
-        # that follows another command in the same PowerShell line. The kit script is kit-only (apps run it in CI
-        # from the kit's download), so its rules use the kit's paths and app copies drop them.
+        # owner asked (2026-11-11) to be asked only before destructive steps and releases. Playwright's script
+        # always sits under bin/<config>/<tfm>/, so a bare or absolute path to it asks too (review 2). Known misses,
+        # left to "Always ask" and the reviewer (ADR-0026, ADR-0061): an install run through a variable or a
+        # pipeline ('& $pw install', 'Get-ChildItem -Filter playwright.ps1 | ForEach-Object { & $_ install }'), a
+        # quoted path, a wrapper such as 'bash -c', and the kit script by an absolute path. Whether Claude Code
+        # checks each command of a compound line on its own isn't verified. The kit script is kit-only (apps run it
+        # in CI from the kit's download), so its rules use the kit's paths and app copies drop them.
         It 'asks before installing a browser locally: <Tool>(<Command>)' -ForEach @(
             foreach ($tool in 'Bash', 'PowerShell') {
                 @{ Tool = $tool; Command = 'pwsh fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install chromium' }
@@ -204,7 +206,15 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./tools/Install-PlaywrightBrowser.ps1 -Solution dotnet-agent-kit.slnx' }
                 @{ Tool = $tool; Command = 'npx playwright install chromium' }
                 @{ Tool = $tool; Command = 'npx playwright@1.49.0 install chromium' }
+                @{ Tool = $tool; Command = 'npx -y playwright install chromium' }
+                @{ Tool = $tool; Command = 'pwsh ./tools/Install-PlaywrightBrowser.ps1 -Solution dotnet-agent-kit.slnx' }
+                @{ Tool = $tool; Command = 'pwsh -File ./tools/Install-PlaywrightBrowser.ps1 dotnet-agent-kit.slnx' }
+                @{ Tool = $tool; Command = 'fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install chromium' }
             }
+            @{ Tool = 'PowerShell'; Command = 'C:\src\app\tests\App.E2E.Tests\bin\Debug\net10.0\playwright.ps1 install chromium' }
+            @{ Tool = 'PowerShell'; Command = '.\bin\Debug\net10.0\playwright.ps1 install chromium' }
+            @{ Tool = 'PowerShell'; Command = '& ./tools/Install-PlaywrightBrowser.ps1 -Solution dotnet-agent-kit.slnx' }
+            @{ Tool = 'PowerShell'; Command = 'tools/Install-PlaywrightBrowser.ps1 dotnet-agent-kit.slnx' }
             @{ Tool = 'PowerShell'; Command = '& ./bin/Debug/net10.0/playwright.ps1 install chromium' }
             @{ Tool = 'PowerShell'; Command = './bin/Debug/net10.0/playwright.ps1 install chromium' }
             @{ Tool = 'PowerShell'; Command = './tools/Install-PlaywrightBrowser.ps1 -Solution dotnet-agent-kit.slnx' }
@@ -225,6 +235,12 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'rg -n "playwright install" docs' }
                 @{ Tool = $tool; Command = "git commit -m 'docs: the owner runs playwright.ps1 install chromium'" }
                 @{ Tool = $tool; Command = 'gh pr create --title x --body "npx playwright install asks first"' }
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -Command "Invoke-Pester -Path ./tools/tests/Install-PlaywrightBrowser.Tests.ps1"' }
+                @{ Tool = $tool; Command = "git commit -m 'docs: run pwsh bin/Debug/net10.0/playwright.ps1 install'" }
+                @{ Tool = $tool; Command = "git commit -m 'docs: or & ./playwright.ps1 install'" }
+                @{ Tool = $tool; Command = "git commit -m 'docs: or .\playwright.ps1 install'" }
+                @{ Tool = $tool; Command = 'npx playwright test tests/install.spec.ts' }
+                @{ Tool = $tool; Command = 'npx vitest install-helpers' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
