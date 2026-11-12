@@ -18,7 +18,8 @@ The owner starts an app from the chat and never opens a terminal (ADR-0058). You
 With AskUserQuestion (Claude Code), at most four cards per call. Each card's first option is its recommendation: label it "(Recommended)", and put its cost label (Free, Free tier with the free amount, or Paid with the price) in each option's description.
 
 1. **First call:** `appType`, `data`, `signIn` and `hosting`.
-2. **Second call:** `database`, showing only the options whose `fits` lists the data answer, and the **test tools** card. If only one database option fits, don't ask: tell the owner the choice and why. The test tools card has two options: "Kit defaults, all free (Recommended)", whose `preview` is a table of every kind of test with its default tools and their labels, and "Choose per kind of test".
+2. **Second call:** `database`, showing only the options whose `fits` lists the data answer, and the **test tools** card. If only one database option fits, don't ask: tell the owner the choice and why. The test tools card has two options: "Kit defaults, free (Recommended)", whose `preview` is a table of every kind of test with its default tools and their labels, and "Choose per kind of test".
+   Ask in the same call whether the app will be sold or paid for, if he hasn't said: FluentAssertions 8 is free only for a non-commercial app. For a commercial one, recommend AwesomeAssertions in its place (ADR-0004).
 3. **Only if he chose per kind:** one card per kind that has a tool besides its defaults (`default: false`), up to four per call, with `multiSelect` on. List the defaults first, then each alternative with its license, label and price.
 
 "Other" is always on offer. Record an Other answer as `Other: <his words>`; the profile marks it as needing an ADR. For test tools there's no Other: a tool that isn't listed needs an ADR (TST-005), so say that and add it to the kit's list first if he wants it.

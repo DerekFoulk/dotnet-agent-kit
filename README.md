@@ -223,7 +223,7 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 
 ### Start a new app
 
-Ask an agent in the chat for a new app. Its `new-app` skill asks you the intake cards, each with a recommended answer and its cost (Free, Free tier or Paid, with the price): app type, data, database, sign-in, hosting, and the test tools for each kind of test, all free by default. It writes your answers to a file, runs `New-KitApp` with `-WhatIf`, and creates the repo once you say yes. The answers become the app's `docs/app-profile.md`, which its plans start from (ADR-0058). The cards and the test tools live in `templates/app-intake.json`.
+Ask an agent in the chat for a new app. Its `new-app` skill asks you the intake cards, each with a recommended answer and its cost (Free, Free tier or Paid, with the price): app type, data, database, sign-in, hosting, and the test tools for each kind of test, free by default (for a commercial app, FluentAssertions 8 is swapped for AwesomeAssertions, ADR-0004). It writes your answers to a file, runs `New-KitApp` with `-WhatIf`, and creates the repo once you say yes. The answers become the app's `docs/app-profile.md`, which its plans start from (ADR-0058). The cards and the test tools live in `templates/app-intake.json`.
 
 `tools/New-KitApp.ps1` creates an app repo on your own GitHub account, with the kit's files, settings and ruleset, using your existing `gh` sign-in (ADR-0033). Try it with `-WhatIf` first: it runs the checks and lists the steps, and changes nothing.
 

@@ -115,7 +115,11 @@ Describe 'the intake data' {
             $kind['tools'] | ForEach-Object { $_['license'] | Should -Not -BeNullOrEmpty -Because "$($_['id']) names its license" }
             $defaults = @($kind['tools'] | Where-Object { $_['default'] })
             $defaults | Should -Not -BeNullOrEmpty -Because "the $($kind['id']) kind has a default"
-            $defaults | ForEach-Object { $_['cost']['label'] | Should -Be 'Free' -Because "$($_['id']) is a default" }
+            # Free, or free for a non-commercial app, as FluentAssertions 8 is (ADR-0004).
+            $defaults | ForEach-Object {
+                ($_['cost']['label'] -eq 'Free' -or ($_['cost']['label'] -eq 'Free tier' -and $_['cost']['free'] -like 'Non-commercial use*')) |
+                    Should -BeTrue -Because "$($_['id']) is a default, so it's free, at least for a non-commercial app"
+            }
         }
     }
 

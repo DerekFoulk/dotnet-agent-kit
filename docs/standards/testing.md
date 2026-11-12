@@ -56,12 +56,12 @@ rules:
     scope: core
     paths: ["tools/**"]
   - id: TST-007
-    statement: "The kit's list of test tools lives only in templates/app-intake.json: each kind of test, its tools, each tool's license and its cost label (Free, Free tier or Paid, with the price, its source and the date checked unless Free); every default is Free, and anything else that names test tools is checked against it or points to it."
+    statement: "The kit's list of test tools lives only in templates/app-intake.json: each kind of test, its tools, each tool's license and its cost label (Free, Free tier or Paid, with the price, its source and the date checked unless Free); every default is Free, or free for a non-commercial app (FluentAssertions 8, ADR-0004), and anything else that names test tools is checked against it or points to it."
     why: "One source for the tools the new-app intake offers and the standard names (CRF-003); the owner wants paid options listed with their price beside a free default."
     layer: owner
     status: proposed
     sources: ["owner, 2026-11-11", "ADR-0058"]
-    enforcement: "ci: tools/tests/KitIntake.Tests.ps1 fails when a tool TST-005 or ADR-0003 names is missing from the list, when a tool has no license or cost label, when a non-Free one has no price, source or date, or when a default isn't Free"
+    enforcement: "ci: tools/tests/KitIntake.Tests.ps1 fails when a tool TST-005 or ADR-0003 names is missing from the list, when a tool has no license or cost label, when a non-Free one has no price, source or date, or when a default is neither Free nor free for a non-commercial app"
     scope: core
     paths: ["templates/app-intake.json", "docs/standards/testing.md"]
   - id: TST-008
@@ -81,7 +81,7 @@ Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which 
 
 ## Test tools
 
-`templates/app-intake.json` lists each kind of test (the brief's matrix, plus load tests) with what it checks, when it runs, and its tools, each with its license and its cost label: Free, Free tier or Paid, with the price, its source and the date it was checked (TST-007, ADR-0058). The defaults are always free; paid tools stay on the list, labelled. The new-app skill shows this list on its test tools card, and each app records its choice in `docs/app-profile.md`. Load tests run Locust by default, in GitHub Actions; JMeter suits heavy database or queue load, and Azure Load Testing and NBomber are paid (ADR-0057).
+`templates/app-intake.json` lists each kind of test (the brief's matrix, plus load tests) with what it checks, when it runs, and its tools, each with its license and its cost label: Free, Free tier or Paid, with the price, its source and the date it was checked (TST-007, ADR-0058). The defaults are free: FluentAssertions 8 is free only for a non-commercial app, and a commercial one swaps it for AwesomeAssertions (ADR-0004). Paid tools stay on the list, labelled. The new-app skill shows this list on its test tools card, and each app records its choice in `docs/app-profile.md`. Load tests run Locust by default, in GitHub Actions; JMeter suits heavy database or queue load, and Azure Load Testing and NBomber are paid (ADR-0057).
 
 ## Coverage
 

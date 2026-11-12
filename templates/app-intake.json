@@ -181,7 +181,7 @@
       "tools": [
         { "id": "xunit", "name": "xUnit v3", "package": "xunit.v3", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } },
         { "id": "moq", "name": "Moq", "package": "Moq", "license": "BSD-3-Clause", "default": true, "cost": { "label": "Free" } },
-        { "id": "fluentassertions", "name": "FluentAssertions 8", "package": "FluentAssertions", "license": "Xceed Community License", "default": true, "cost": { "label": "Free" }, "note": "Free only while the app isn't sold or paid for; a commercial app uses AwesomeAssertions instead (ADR-0004)" },
+        { "id": "fluentassertions", "name": "FluentAssertions 8", "package": "FluentAssertions", "license": "Xceed Community License", "default": true, "cost": { "label": "Free tier", "free": "Non-commercial use: free while the app isn't sold or paid for", "price": "A commercial app needs an Xceed license, reported at $129.95 per developer a year at launch (not verified on xceed.com), or swaps to AwesomeAssertions, which is free (ADR-0004)", "source": "https://www.infoq.com/news/2025/01/fluent-assertions-v8-license", "checked": "2026-11-11" }, "note": "The default for a non-commercial app; a commercial one uses AwesomeAssertions instead (ADR-0004)" },
         { "id": "awesomeassertions", "name": "AwesomeAssertions", "package": "AwesomeAssertions", "license": "Apache-2.0", "default": false, "cost": { "label": "Free" }, "note": "FluentAssertions' API and namespace under Apache-2.0, for commercial apps (ADR-0004)" },
         { "id": "bogus", "name": "Bogus", "package": "Bogus", "license": "MIT", "default": true, "cost": { "label": "Free" } },
         { "id": "fscheck", "name": "FsCheck", "package": "FsCheck", "license": "BSD-3-Clause", "default": true, "cost": { "label": "Free" } },
@@ -264,7 +264,7 @@
       "checks": "The deployed app keeps its response times under many users at once",
       "runs": "On demand, before a release that changes load",
       "tools": [
-        { "id": "locust", "name": "Locust", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Runs in GitHub Actions, which is free on a public repo (ADR-0057)" },
+        { "id": "locust", "name": "Locust", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Runs in GitHub Actions: free on a public repo; a private one uses its account's Actions minutes (ADR-0057)" },
         { "id": "jmeter", "name": "Apache JMeter", "license": "Apache-2.0", "default": false, "cost": { "label": "Free" }, "note": "For apps that need heavy database or queue load (ADR-0057)" },
         {
           "id": "azure-load-testing",
