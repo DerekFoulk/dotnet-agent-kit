@@ -77,4 +77,19 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         Get-Call $repo | Should -Be @('App.E2E.Tests: install --with-deps chromium')
     }
+
+    # Each Playwright version pins its own browser build, so one install per version is enough; central package
+    # management keeps every project on one version.
+    It 'installs once for two projects on the same Playwright version, and once more for another version' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'versions'
+        New-Project $repo 'A.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
+        New-Project $repo 'B.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
+        New-Project $repo 'C.E2E.Tests' -Libraries 'Microsoft.Playwright/1.63.0' -Built
+        $solution = New-Solution $repo 'A.E2E.Tests', 'B.E2E.Tests', 'C.E2E.Tests'
+
+        Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null
+
+        Get-Call $repo | Should -Be @('A.E2E.Tests: install chromium', 'C.E2E.Tests: install chromium')
+    }
 }
