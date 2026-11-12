@@ -209,6 +209,12 @@ Describe 'Shared CI for app repos' {
             @($ui['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })[0]['with']['persist-credentials'] | Should -BeFalse
         }
 
+        # Review 1: an app with a MAUI client and a WPF tool builds both on macOS too, and a Windows-targeting
+        # project fails there (NETSDK1100) unless EnableWindowsTargeting is true. It changes nothing on Windows.
+        It 'lets macOS build a solution that also has a Windows-only UI project' {
+            $jobs['ui']['env']['EnableWindowsTargeting'] | Should -Be 'true'
+        }
+
         # SUP-011: the workload set whose version is the SDK's own, so a build never picks up the latest workloads.
         It 'restores the workloads at the workload set of the SDK in use, never unpinned' {
             $restore = Get-JobStep $jobs['ui'] 'Restore workloads (pinned)'
