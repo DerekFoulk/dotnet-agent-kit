@@ -165,6 +165,86 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # GAP-014 (SUP-010, ADR-0056): OpenSSF Scorecard, through one shared workflow. Publishing the results needs a
+    # workflow that keeps the action's restrictions (github.com/ossf/scorecard-action, "Workflow Restrictions").
+    Context 'scorecard.reusable.yml' {
+        BeforeAll {
+            $scorecard = Read-Yaml '.github/workflows/scorecard.reusable.yml'
+            $scJobs = if ($scorecard.Yaml.ContainsKey('jobs')) { $scorecard.Yaml['jobs'] } else { @{} }
+            $scJob = @($scJobs.Values)[0]
+        }
+
+        It 'is a shared workflow with one job, on Ubuntu, with no env, defaults, container or services' {
+            $scorecard.Text | Should -Match '(?m)^\s*workflow_call:' -Because 'scorecard.reusable.yml runs Scorecard for the kit and its apps'
+            $scJobs.Count | Should -Be 1
+            $scJob['runs-on'] | Should -Be 'ubuntu-latest'
+            foreach ($key in 'env', 'defaults') { $scorecard.Yaml.ContainsKey($key) | Should -BeFalse; $scJob.ContainsKey($key) | Should -BeFalse }
+            foreach ($key in 'container', 'services') { $scJob.ContainsKey($key) | Should -BeFalse }
+        }
+
+        It 'runs only actions the restrictions allow, each pinned to a full commit SHA' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $steps = @($scJob['steps'])
+            $steps.Count | Should -BeGreaterThan 0
+            foreach ($step in $steps) {
+                $step.ContainsKey('run') | Should -BeFalse
+                "$($step['uses'])" | Should -Match '^(actions/checkout|actions/upload-artifact|github/codeql-action/upload-sarif|ossf/scorecard-action|step-security/harden-runner)@[0-9a-f]{40}$'
+            }
+        }
+
+        It 'publishes the results and uploads them to code scanning as SARIF' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $steps = @($scJob['steps'])
+            $action = @($steps | Where-Object { "$($_['uses'])" -like 'ossf/scorecard-action@*' })
+            $upload = @($steps | Where-Object { "$($_['uses'])" -like 'github/codeql-action/upload-sarif@*' })
+
+            $action | Should -HaveCount 1
+            $action[0]['with']['publish_results'] | Should -BeTrue
+            $action[0]['with']['results_format'] | Should -Be 'sarif'
+            $upload | Should -HaveCount 1
+            $upload[0]['with']['sarif_file'] | Should -Be $action[0]['with']['results_file']
+        }
+
+        It 'has only the permissions the action documents: security-events and id-token, nothing written at workflow level' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $permissions = $scJob['permissions']
+            @($permissions.Keys | Sort-Object) | Should -Be @('id-token', 'security-events')
+            $permissions['id-token'] | Should -Be 'write'
+            $permissions['security-events'] | Should -Be 'write'
+            @($scorecard.Yaml['permissions'].Values) | Should -Not -Contain 'write'
+        }
+
+        It 'checks out without keeping the token' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $checkout = @($scJob['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })
+
+            $checkout | Should -HaveCount 1
+            $checkout[0]['with']['persist-credentials'] | Should -BeFalse
+        }
+
+        It 'runs in <Caller> on main and weekly, never on a pull request, granting only what the job needs' -ForEach @(
+            @{ Caller = 'the kit'; File = '.github/workflows/scorecard.yml'; Uses = './.github/workflows/scorecard.reusable.yml'; SkipsPrivate = $false }
+            @{ Caller = 'every app'; File = 'templates/app/.github/workflows/scorecard.yml'; Uses = 'DerekFoulk/dotnet-agent-kit/.github/workflows/scorecard.reusable.yml@X'; SkipsPrivate = $true }
+        ) {
+            $path = Join-Path $root $File
+            Test-Path -LiteralPath $path | Should -BeTrue -Because "$File calls the shared Scorecard workflow"
+            # {{Name}} placeholders aren't YAML.
+            $yaml = ConvertFrom-Yaml ((Get-Content -Raw -LiteralPath $path) -replace '\{\{[A-Za-z]+\}\}', 'X')
+            $on = if ($yaml.ContainsKey('on')) { $yaml['on'] } else { $yaml[$true] }
+            $job = @($yaml['jobs'].Values)[0]
+
+            @($on['push']['branches']) | Should -Be @('main')
+            @($on['schedule']).Count | Should -Be 1
+            $on.ContainsKey('pull_request') | Should -BeFalse
+            foreach ($key in 'env', 'defaults') { $yaml.ContainsKey($key) | Should -BeFalse }
+            @($yaml['permissions'].Values) | Should -Not -Contain 'write'
+            $job['uses'] | Should -Be $Uses
+            @($job['permissions'].Keys | Sort-Object) | Should -Be @('id-token', 'security-events')
+            # Publishing a private repo's results would make them public; its code scanning needs a paid licence.
+            if ($SkipsPrivate) { $job['if'] | Should -Match '!\s*github\.event\.repository\.private' }
+        }
+    }
+
     Context 'dotnet-ci.reusable.yml input' {
         # An app that left out the solution would get the kit's own default and fail obscurely.
         It 'requires the caller to name its solution, and the kit''s own CI does' {
