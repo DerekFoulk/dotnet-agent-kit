@@ -179,6 +179,26 @@ Describe 'Mutation testing in CI' {
             $run | Should -Match '--solution "\$SOLUTION"'
             $run | Should -Not -Match '--version \d|--test-runner|--break-at|--threshold|--reporter|"stryker-config"' -Because 'the settings live in the kit''s files, not in the workflow'
         }
+
+        # GAP-004 (ADR-0061): Stryker runs every test project, the Playwright ones too, so their browser must be there
+        # first. The install reads each Playwright project's Release build, so the solution is built before it.
+        It 'builds in Release and installs Playwright''s browser with the kit''s script, before Stryker, once there are projects' {
+            $steps = @($reusable.Yaml['jobs']['stryker']['steps'])
+            $names = @($steps | ForEach-Object { $_['name'] })
+            $build = @($steps | Where-Object { $_['name'] -eq 'Build' })
+            $install = @($steps | Where-Object { $_['name'] -eq 'Playwright browser' })
+
+            $build | Should -HaveCount 1
+            $build[0]['run'] | Should -Be 'dotnet build "$SOLUTION" --configuration Release'
+            $install | Should -HaveCount 1
+            $install[0]['shell'] | Should -Be 'pwsh'
+            $install[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+            $install[0]['run'] | Should -Be '& "$env:KIT/tools/Install-PlaywrightBrowser.ps1" -Solution $env:SOLUTION -Configuration Release -WithDependencies'
+            foreach ($step in $build[0], $install[0]) { $step['if'] | Should -Be "steps.projects.outputs.count != '0'" }
+            $names.IndexOf('Build') | Should -BeGreaterThan $names.IndexOf('Count projects')
+            $names.IndexOf('Playwright browser') | Should -BeGreaterThan $names.IndexOf('Build')
+            $names.IndexOf('Playwright browser') | Should -BeLessThan $names.IndexOf('Mutation test')
+        }
     }
 
     Context 'the kit''s Stryker files' {
