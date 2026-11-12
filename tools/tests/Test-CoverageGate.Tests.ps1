@@ -155,6 +155,45 @@ Describe 'Test-CoverageGate.ps1' {
             $exitCode | Should -Be 0
         }
 
+        # ADR-0062: a benchmarks project (its name ends in .Benchmarks) is test-side code, like a test project: it
+        # measures production code and ships nothing, and no test loads it.
+        It 'leaves out a benchmarks project, says so, and leaves its lines out of the overall' {
+            $dir = Join-Path $TestDrive 'benchmarks'
+            New-CoberturaReport -Directory $dir -Packages @{
+                'App.Core'       = @(@{ File = 'c.cs'; Lines = Get-Lines 10 0 })
+                'App.Benchmarks' = @(@{ File = 'b.cs'; Lines = Get-Lines 0 40 })
+            } | Out-Null
+            $solution = New-TestSolution -Name 'Benchmarks' -Projects @{
+                'src/App.Core/App.Core.csproj'                   = ''
+                'tests/App.Benchmarks/App.Benchmarks.csproj' = '<OutputType>Exe</OutputType>'
+            }
+
+            $output = Invoke-CoverageGate -Path $dir -Solution $solution 6>&1
+            $exitCode = @($output | Where-Object { $_ -is [int] })[-1]
+            $text = ($output | Where-Object { $_ -isnot [int] }) -join "`n"
+
+            $text | Should -BeLike '*App.Benchmarks*left out (benchmarks project, ADR-0062)*'
+            $text | Should -Not -BeLike '*App.Benchmarks*FAIL*'
+            $exitCode | Should -Be 0
+        }
+
+        # Review 1 of PR 57: tests/Directory.Build.props matches .Benchmarks case-sensitively (MSBuild's EndsWith), so a
+        # project named otherwise gets no BenchmarkDotNet set-up, and the gate must not leave it out either.
+        It 'counts a project whose name ends in .benchmarks, in another case, as production code' {
+            $dir = Join-Path $TestDrive 'benchmarks-case'
+            New-CoberturaReport -Directory $dir -Packages @{ 'App.Core' = @(@{ File = 'c.cs'; Lines = Get-Lines 10 0 }) } | Out-Null
+            $solution = New-TestSolution -Name 'BenchmarksCase' -Projects @{
+                'src/App.Core/App.Core.csproj'             = ''
+                'src/App.benchmarks/App.benchmarks.csproj' = ''
+            }
+
+            $output = Invoke-CoverageGate -Path $dir -Solution $solution 6>&1
+            $exitCode = @($output | Where-Object { $_ -is [int] })[-1]
+
+            ($output | Where-Object { $_ -isnot [int] }) -join "`n" | Should -BeLike '*App.benchmarks*no coverage*'
+            $exitCode | Should -Be 1
+        }
+
         It 'leaves a UI project''s lines out of the overall when a report has them' {
             $dir = Join-Path $TestDrive 'ui-loaded'
             New-CoberturaReport -Directory $dir -Packages @{

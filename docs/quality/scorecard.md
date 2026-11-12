@@ -166,12 +166,12 @@ areas:
     sources:
       - "https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/, retrieved 2026-11-07"
       - "https://benchmarkdotnet.org/, retrieved 2026-11-07"
-    rules: [ARC-006]
+      - "https://learn.microsoft.com/aspnet/core/test/load-tests?view=aspnetcore-10.0, retrieved 2026-11-12"
+    rules: [ARC-006, TST-009]
     gaps:
       - id: GAP-012
-        gap: "No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions); nothing runs them yet."
-        status: proposed
-        needs: "packages"
+        gap: "No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions). Closed by ADR-0062: BenchmarkDotNet benchmarks and a Locust load test, each against a budget in the repo, run by the shared performance workflow off the required path (TST-009, proposed), proven on the sample. A load test of a deployed app waits for GAP-015."
+        status: closed
   - id: supply-chain
     name: Supply chain and build
     perfect: "A pinned SDK and pinned packages, lock files, a vulnerability audit, reproducible builds, versions from release tags, and a software bill of materials (SBOM: a list of every component the app ships)."
@@ -276,14 +276,14 @@ Each area in the front matter above has:
 | Reliability | 3 | 2 | 1 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 3 | 3 | 0 | 3 | 0 |
-| Performance | 1 | 0 | 1 | 0 | 1 |
+| Performance | 1 | 0 | 1 | 1 | 0 |
 | Supply chain and build | 8 | 8 | 0 | 3 | 1 |
 | Delivery | 1 | 1 | 0 | 2 | 3 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 24 proposed; 13 open gaps.
+**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 25 proposed; 12 open gaps.
 
 Open gaps:
 
@@ -295,7 +295,6 @@ Open gaps:
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-008 proposes the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
-- **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions); nothing runs them yet.
 - **GAP-029** (Supply chain and build, proposed; needs a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change): PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0054, Option 4).
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
