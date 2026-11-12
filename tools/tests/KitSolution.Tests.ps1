@@ -103,6 +103,15 @@ Describe 'Get-FirstTargetFramework' {
             Should -Be 'net9.0'
     }
 
+    # Without both, a single-target project and a multi-target one look alike, so the answer would be a guess.
+    It 'stops, naming the property, when the caller didn''t ask MSBuild for <Missing>' -ForEach @(
+        @{ Missing = 'TargetFramework'; Properties = [pscustomobject]@{ TargetFrameworks = 'net10.0;net9.0' } }
+        @{ Missing = 'TargetFrameworks'; Properties = [pscustomobject]@{ TargetFramework = '' } }
+    ) {
+        { Get-FirstTargetFramework -Properties $Properties } |
+            Should -Throw "*MSBuild's evaluated properties have no $Missing*-getProperty:$Missing*"
+    }
+
     It 'gives nothing for a TargetFrameworks of separators only' {
         { $script:first = Get-FirstTargetFramework -Properties ([pscustomobject]@{ TargetFramework = ''; TargetFrameworks = ';' }) } |
             Should -Not -Throw
