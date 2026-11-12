@@ -75,4 +75,15 @@ Describe 'Get-UiProject.ps1' {
 
         @(Get-UiProject -Solution $solution).Name | Should -Be @('A')
     }
+
+    It 'says plainly when the solution file is missing' {
+        { Get-UiProject -Solution (Join-Path $TestDrive 'missing.slnx') } | Should -Throw '*No solution file at*'
+    }
+
+    It 'says plainly when a project the solution lists is missing' {
+        $solution = New-Solution @(@{ Path = 'src/A/A.csproj'; Properties = '' })
+        Remove-Item -LiteralPath (Join-Path (Split-Path $solution) 'src/A/A.csproj')
+
+        { Get-UiProject -Solution $solution } | Should -Throw '*lists src/A/A.csproj, which doesn''t exist*'
+    }
 }
