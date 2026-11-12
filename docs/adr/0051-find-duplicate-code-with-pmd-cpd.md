@@ -24,9 +24,9 @@ Measured on the kit's own solution in CI on PR 49: see "Measurement" below.
 
 `dotnet-ci.reusable.yml` downloads PMD 7.29.0 from its GitHub release. It checks the zip's SHA-256 against GitHub's digest for the asset, as the gitleaks image is pinned by digest (ADR-0024), and runs the script with the runner's Java.
 
-- **Trade-offs:**
-  - The C#-aware tokenizer and ignore options fit what CRF-003 asks.
+- **Trade-offs:** the C#-aware tokenizer and ignore options fit what CRF-003 asks.
   - The pinned, hash-checked download adds no package to the solution. But Dependabot can't see the version, so a newer PMD is a manual bump of two lines.
+  - The tokenizer doesn't know some newer C#: a raw string literal (`"""..."""`, C# 11) stops it with a lexical error. CPD runs with `--no-fail-on-error`, so it skips such a file, and the script prints a warning for each one at the place CPD stopped. Those files aren't checked; the reviewer covers them.
   - Apps can't run it locally without Java and PMD (GAP-022).
 - **Reversibility:** easy. Two CI steps and one script.
 - **Risk:** low. A false finding goes between `CPD-OFF` and `CPD-ON` with its reason.
@@ -40,6 +40,7 @@ Measured on the kit's own solution in CI on PR 49: see "Measurement" below.
 ### Option 3: Keep it with the reviewer
 
 - **Trade-offs:** no new tool, but GAP-020 stays open and a long copy can pass a tired review.
+- **Reversibility:** n/a.
 - **Risk:** duplication grows unnoticed.
 
 ## Recommendation
