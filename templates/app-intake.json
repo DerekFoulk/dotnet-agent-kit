@@ -221,11 +221,12 @@
       "id": "ui",
       "name": "UI (end to end)",
       "checks": "The running system in a real browser, accessibility included",
-      "runs": "Key paths on every PR; the full set nightly",
+      "runs": "Every PR, in the shared .NET CI",
       "tools": [
         { "id": "playwright", "name": "Playwright", "package": "Microsoft.Playwright", "license": "MIT", "default": true, "cost": { "label": "Free" } },
-        { "id": "axe", "name": "Deque axe for Playwright", "package": "Deque.AxeCore.Playwright", "license": "MPL-2.0", "default": true, "cost": { "label": "Free" } },
-        { "id": "aspire-testing", "name": "Aspire testing", "package": "Aspire.Hosting.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+        { "id": "axe", "name": "Deque axe for Playwright", "package": "Deque.AxeCore.Playwright", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Its axe-core engine, Deque.AxeCore.Commons, is MPL-2.0" },
+        { "id": "webapplicationfactory", "name": "WebApplicationFactory on Kestrel", "package": "Microsoft.AspNetCore.Mvc.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Hosts the app on Kestrel for the browser (UseKestrel), for an app without an Aspire AppHost; as in the kit's web UI fixture (ADR-0061)" },
+        { "id": "aspire-testing", "name": "Aspire testing", "package": "Aspire.Hosting.Testing", "license": "MIT", "default": false, "cost": { "label": "Free" }, "note": "For an app with an Aspire AppHost: starts the whole app for the browser" }
       ]
     },
     {
