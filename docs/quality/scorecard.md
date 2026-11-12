@@ -9,7 +9,7 @@ areas:
     sources:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-07"
       - "ADR-0008"
-    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, CRF-006, CRF-007]
+    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, CRF-006, CRF-007, DAT-001, DAT-002]
     gaps:
       - id: GAP-001
         gap: "No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only."
@@ -68,7 +68,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-07"
       - "ADR-0003"
       - "ADR-0018"
-    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, GIT-005]
+    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, GIT-005, DAT-005]
     gaps:
       - id: GAP-003
         gap: "Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1. Closed by ADR-0039: a shared nightly Stryker.NET workflow for the kit and every app, failing below 85%."
@@ -78,6 +78,10 @@ areas:
         gap: "Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI."
         status: proposed
         needs: "packages and a CI change"
+      - id: GAP-025
+        gap: "The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need."
+        status: proposed
+        needs: "packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests"
   - id: security
     name: Security
     perfect: "A threat model for anything touching data or sign-in; authentication and authorization by default; validated input; no secrets in code; dependencies, code and history all scanned."
@@ -100,15 +104,15 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/reliability/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks, retrieved 2026-11-07"
-    rules: [ARC-006, OPS-002, OPS-003]
+    rules: [ARC-006, OPS-002, OPS-003, DAT-003, DAT-004]
     gaps:
       - id: GAP-007
         gap: "No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-002, OPS-003 (accepted 2026-11-09)."
         status: closed
         needs: "packages"
       - id: GAP-008
-        gap: "No rule for safe database migrations (backward-compatible steps, tested before deploy)."
-        status: proposed
+        gap: "No rule for safe database migrations (backward-compatible steps, tested before deploy). Closed by ADR-0054: DAT-003 to DAT-005 (proposed) in docs/standards/data.md, and the shared app checks run Test-SafeMigrations.ps1 on every migration; ADR-0053 adds the database guide."
+        status: closed
   - id: observability
     name: Observability
     perfect: "Structured logs, metrics and traces through OpenTelemetry, with one ID following a request from end to end."
@@ -175,16 +179,20 @@ areas:
       - "https://dora.dev/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/, retrieved 2026-11-07"
       - "ADR-0023"
-    rules: [SUP-006]
+    rules: [SUP-006, DAT-004, DAT-006]
     gaps:
       - id: GAP-015
-        gap: "No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet."
+        gap: "No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0054, Option 4)."
         status: proposed
         needs: "cloud resources and cost"
       - id: GAP-016
         gap: "No infrastructure as code for an app's cloud resources."
         status: proposed
         needs: "cloud resources and cost"
+      - id: GAP-024
+        gap: "No check that an app's cloud database keeps its free-tier guard on (DAT-006): the guard is a setting in infrastructure code, which apps don't have yet (GAP-016)."
+        status: proposed
+        needs: "infrastructure as code first (GAP-016)"
   - id: docs
     name: Docs and decisions
     perfect: "A README a stranger can follow, an ADR for every significant choice, runbooks for operating the app, and API docs; each kind written for its purpose (tutorial, how-to, reference or explanation)."
@@ -237,34 +245,35 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 8 | 4 | 4 | 0 | 1 |
+| Architecture | 8 | 4 | 4 | 2 | 1 |
 | Craft | 10 | 5 | 5 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 8 | 7 | 1 | 0 | 0 |
-| Tests | 7 | 4 | 3 | 0 | 1 |
+| Tests | 7 | 4 | 3 | 1 | 2 |
 | Security | 7 | 5 | 2 | 4 | 0 |
-| Reliability | 3 | 2 | 1 | 0 | 1 |
+| Reliability | 3 | 2 | 1 | 2 | 0 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 3 | 3 | 0 | 3 | 0 |
 | Performance | 1 | 0 | 1 | 0 | 1 |
 | Supply chain and build | 8 | 8 | 0 | 2 | 1 |
-| Delivery | 1 | 1 | 0 | 0 | 2 |
+| Delivery | 1 | 1 | 0 | 2 | 3 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 13 proposed; 8 open gaps.
+**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 19 proposed; 9 open gaps.
 
 Open gaps:
 
 - **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
 - **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
-- **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
+- **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
 - **GAP-023** (Supply chain and build, proposed; needs a scheduled check of PMD's releases and advisories, or a pin Dependabot can update): PMD, which the duplicate code check downloads in CI (ADR-0051), is pinned by version and SHA-256 in dotnet-ci.reusable.yml, where Dependabot can't see it: nothing tells the kit when PMD releases a new version or has a security advisory.
-- **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet.
+- **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0054, Option 4).
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
+- **GAP-024** (Delivery, proposed; needs infrastructure as code first (GAP-016)): No check that an app's cloud database keeps its free-tier guard on (DAT-006): the guard is a setting in infrastructure code, which apps don't have yet (GAP-016).
 <!-- scorecard-table:end -->
 
 ## Keeping it current
