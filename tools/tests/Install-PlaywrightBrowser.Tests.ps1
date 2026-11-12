@@ -56,6 +56,16 @@ Describe 'Install-PlaywrightBrowser.ps1' {
         $output | Should -Match 'No project uses Playwright'
     }
 
+    It 'installs nothing, and says so, for a new app''s empty solution' {
+        $repo = Join-Path $TestDrive 'empty'
+        New-Item -ItemType Directory -Force -Path $repo | Out-Null
+        $solution = New-Solution $repo @()
+
+        $output = Install-PlaywrightBrowser -Solution $solution -Configuration Release *>&1 | Out-String
+
+        $output | Should -Match 'No project uses Playwright'
+    }
+
     It 'runs "install chromium" with the playwright.ps1 the build put beside a Playwright project''s assembly' {
         Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $repo = Join-Path $TestDrive 'one'
