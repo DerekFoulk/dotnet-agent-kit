@@ -7,7 +7,24 @@
 
 Describe 'Performance tests (GAP-012)' {
     BeforeAll {
+        Import-Module powershell-yaml
         $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+
+        function Read-Yaml([string] $RelativePath) {
+            $path = Join-Path $root $RelativePath
+            $text = if (Test-Path $path) { Get-Content -Raw $path } else { '' }
+            [pscustomobject]@{ Text = $text; Yaml = if ($text) { ConvertFrom-Yaml $text } else { @{} } }
+        }
+
+        # The steps of one job, or none when the workflow or job is missing.
+        function Get-JobStep($Yaml, [string] $Job) {
+            if (-not $Yaml.ContainsKey('jobs') -or -not $Yaml['jobs'].ContainsKey($Job)) { return @() }
+            @($Yaml['jobs'][$Job]['steps'])
+        }
+
+        function Find-Step([object[]] $Steps, [string] $Name) {
+            @($Steps | Where-Object { $_ -and "$($_['name'])" -eq $Name })
+        }
 
         # The solution's benchmarks projects: by name, as the coverage gate, the SBOM filter and the workflow find them.
         $script:BenchmarkProjects = @(([xml] (Get-Content -Raw -LiteralPath (Join-Path $root 'dotnet-agent-kit.slnx'))).SelectNodes('//Project') |
@@ -65,6 +82,165 @@ Describe 'Performance tests (GAP-012)' {
             foreach ($key in 'users', 'spawn-rate', 'run-time') {
                 @($conf | Where-Object { $_ -match "^$key\s*=\s*\S" }) | Should -HaveCount 1 -Because "locust.conf sets $key"
             }
+        }
+    }
+
+    Context 'performance.reusable.yml' {
+        BeforeAll {
+            $workflow = Read-Yaml '.github/workflows/performance.reusable.yml'
+            $inputs = if ($workflow.Yaml.ContainsKey('on')) { $workflow.Yaml['on']['workflow_call']['inputs'] } else { @{} }
+            $benchmarks = Get-JobStep $workflow.Yaml 'benchmarks'
+            $load = Get-JobStep $workflow.Yaml 'load'
+            $loadJob = if ($workflow.Yaml.ContainsKey('jobs')) { $workflow.Yaml['jobs']['load'] } else { $null }
+        }
+
+        # An app with no HTTP endpoint calls it with the solution alone; the load test is opt-in.
+        It 'requires only the solution; the load test''s inputs default to off' {
+            $inputs.Keys | Should -Contain 'solution'
+            $inputs['solution']['required'] | Should -BeTrue
+            $inputs['load-test-project']['default'] | Should -Be ''
+            $inputs['load-test-path']['default'] | Should -Be 'tests/load'
+            $inputs['load-test-url']['default'] | Should -Match '^http://localhost:\d+$'
+            $inputs['load-test-user-jwt']['type'] | Should -Be 'boolean'
+            $inputs['load-test-user-jwt']['default'] | Should -BeFalse
+        }
+
+        It 'reads only the repo, and holds no secret' {
+            $workflow.Yaml['permissions'] | Should -Not -BeNullOrEmpty
+            $workflow.Yaml['permissions']['contents'] | Should -Be 'read'
+            $workflow.Text | Should -Not -Match 'secrets\.'
+        }
+
+        # The name is the one the coverage gate and the SBOM filter use (ADR-0062).
+        It 'runs every benchmarks project in the solution, and passes saying so when there is none' {
+            $run = Find-Step $benchmarks 'Run each benchmarks project and check its budget'
+
+            $run | Should -HaveCount 1
+            $run[0]['run'] | Should -Match "-like '\*\.Benchmarks'"
+            $run[0]['run'] | Should -Match 'No benchmarks project'
+            $run[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+        }
+
+        It 'runs each in Release with a JSON report, and checks it against the project''s benchmark-budget.json' {
+            Find-Step $benchmarks 'Run each benchmarks project and check its budget' | Should -HaveCount 1
+            $run = (Find-Step $benchmarks 'Run each benchmarks project and check its budget')[0]['run']
+
+            $run | Should -Match 'dotnet run --project \$project --configuration Release -- --filter ''\*'' --exporters json --artifacts \$artifacts'
+            $run | Should -Match 'Test-BenchmarkBudget\.ps1" -Path \(Join-Path \$artifacts ''results''\) -Budget \(Join-Path \(Split-Path -Parent \$project\) ''benchmark-budget\.json''\)'
+        }
+
+        It 'uploads the <Job> job''s results, even when it fails' -ForEach @(
+            @{ Job = 'benchmarks'; Artifact = 'benchmark-results' }
+            @{ Job = 'load'; Artifact = 'load-test-results' }
+        ) {
+            $upload = @(Get-JobStep $workflow.Yaml $Job | Where-Object { "$($_['uses'])" -like 'actions/upload-artifact@*' })
+
+            $upload | Should -HaveCount 1
+            $upload[0]['if'] | Should -Be 'always()'
+            $upload[0]['with']['name'] | Should -Be $Artifact
+        }
+
+        It 'runs the load test only when the caller names the app to load' {
+            $loadJob | Should -Not -BeNullOrEmpty
+            $loadJob['if'] | Should -Be "inputs.load-test-project != ''"
+        }
+
+        It 'installs Locust from the kit''s hash-pinned requirements, on the Python they were compiled for' {
+            $python = @($load | Where-Object { "$($_['uses'])" -like 'actions/setup-python@*' })
+            $install = Find-Step $load 'Install Locust (pinned by hash)'
+
+            $python | Should -HaveCount 1
+            $python[0]['with']['python-version-file'] | Should -Be '${{ steps.kit.outputs.path }}/.config/locust/.python-version'
+            $install | Should -HaveCount 1
+            $install[0]['run'] | Should -Match 'pip" install --require-hashes -r "\$KIT/\.config/locust/requirements\.txt"'
+        }
+
+        # Microsoft: load test a Release build in Production, not Debug or Development (ASP.NET Core load/stress testing).
+        It 'starts the app built in Release, in Production, on the URL Locust loads, and waits for /health' {
+            $start = Find-Step $load 'Start the app (Release, Production)'
+
+            $start | Should -HaveCount 1
+            $start[0]['run'] | Should -Match 'ASPNETCORE_ENVIRONMENT=Production'
+            $start[0]['run'] | Should -Match 'ASPNETCORE_URLS="\$URL"'
+            $start[0]['run'] | Should -Match 'dotnet run --project "\$PROJECT" --configuration Release --no-build --no-launch-profile'
+            $start[0]['run'] | Should -Match '"\$URL/health"'
+            $loadJob['env']['URL'] | Should -Be '${{ inputs.load-test-url }}'
+        }
+
+        # Locust reads locustfile.py and locust.conf from the folder it runs in; the budget, not Locust's exit code,
+        # decides, so a failure ratio the budget allows doesn't fail the run.
+        It 'runs Locust headless from the load test''s folder and checks its load-budget.json' {
+            $locust = Find-Step $load 'Load test (Locust, headless)'
+            $check = Find-Step $load 'Check the load budget'
+
+            $locust | Should -HaveCount 1
+            $locust[0]['working-directory'] | Should -Be '${{ inputs.load-test-path }}'
+            $locust[0]['run'] | Should -Match 'locust" --headless --host "\$URL" --csv "\$RESULTS/load" --exit-code-on-error 0'
+            $check | Should -HaveCount 1
+            $check[0]['run'] | Should -Match 'Test-LoadBudget\.ps1" -Path "\$env:RESULTS/load" -Budget \(Join-Path \$env:LOAD_TEST_PATH ''load-budget\.json''\)'
+        }
+
+        It 'stops the app even when a step before failed' {
+            $stop = Find-Step $load 'Stop the app'
+
+            $stop | Should -HaveCount 1
+            $stop[0]['if'] | Should -Be 'always()'
+        }
+
+        # SEC-002 and SEC-008: the token and user-jwts' signing key exist only on the runner, for this run, and are
+        # masked before anything could print them. The app runs in Production, which doesn't read user secrets, so
+        # it gets the signing settings through the environment.
+        It 'issues a token with dotnet user-jwts only when asked, masking it and the signing key before using them' {
+            $token = Find-Step $load 'Issue a token for this run (dotnet user-jwts)'
+
+            $token | Should -HaveCount 1
+            $token[0]['if'] | Should -Be 'inputs.load-test-user-jwt'
+            $run = $token[0]['run']
+            $run | Should -Match 'dotnet user-jwts create --project \$env:PROJECT --name load-test --audience \$env:URL --output token'
+            $run.IndexOf('::add-mask::$token') | Should -BeGreaterThan -1
+            $run.IndexOf('::add-mask::$token') | Should -BeLessThan $run.IndexOf('LOAD_TEST_TOKEN=')
+            $run | Should -Match 'dotnet user-secrets list --project \$env:PROJECT --json'
+            $run.IndexOf('::add-mask::$value') | Should -BeGreaterThan -1
+            $run.IndexOf('::add-mask::$value') | Should -BeLessThan $run.IndexOf('>> $env:GITHUB_ENV', $run.IndexOf('::add-mask::$value'))
+        }
+    }
+
+    Context 'callers of performance.reusable.yml' {
+        It 'runs in the kit nightly, on demand and on every pull request, load testing the sample API with a token' {
+            $kit = Read-Yaml '.github/workflows/performance.yml'
+            $kit.Yaml.Keys | Should -Contain 'jobs'
+            $job = $kit.Yaml['jobs']['performance']
+
+            $kit.Yaml['on'].Keys | Should -Contain 'schedule'
+            $kit.Yaml['on'].Keys | Should -Contain 'workflow_dispatch'
+            $kit.Yaml['on'].Keys | Should -Contain 'pull_request'
+            $job['uses'] | Should -Be './.github/workflows/performance.reusable.yml'
+            $job['with']['solution'] | Should -Be 'dotnet-agent-kit.slnx'
+            $job['with']['load-test-project'] | Should -Be 'sample/src/Bookmarks.Api/Bookmarks.Api.csproj'
+            $job['with']['load-test-path'] | Should -Be 'sample/tests/load'
+            $job['with']['load-test-user-jwt'] | Should -BeTrue
+        }
+
+        # The sample's token audience must be one the API trusts in Production: the URL Locust loads.
+        It 'load tests the sample on the URL its launch profile uses' {
+            $kit = Read-Yaml '.github/workflows/performance.yml'
+            $profile = Get-Content -Raw (Join-Path $root 'sample/src/Bookmarks.Api/Properties/launchSettings.json') | ConvertFrom-Json
+            $kit.Yaml.Keys | Should -Contain 'jobs'
+
+            $kit.Yaml['jobs']['performance']['with']['load-test-url'] | Should -Be $profile.profiles.http.applicationUrl
+        }
+
+        # Nightly and on demand, as the intake's performance card says; an app adds the load test's inputs when it has
+        # an HTTP endpoint (docs/standards/testing.md).
+        It 'runs in an app nightly and on demand, at the kit''s pinned commit' {
+            $text = Get-Content -Raw (Join-Path $root 'templates/app/.github/workflows/performance.yml') -ErrorAction SilentlyContinue
+            $text | Should -Not -BeNullOrEmpty
+            $app = ConvertFrom-Yaml $text
+
+            $app['on'].Keys | Should -Contain 'schedule'
+            $app['on'].Keys | Should -Contain 'workflow_dispatch'
+            $app['jobs']['performance']['uses'] | Should -Be 'DerekFoulk/dotnet-agent-kit/.github/workflows/performance.reusable.yml@{{KitCommit}}'
+            $app['jobs']['performance']['with']['solution'] | Should -Be '{{Name}}.slnx'
         }
     }
 
