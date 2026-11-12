@@ -140,39 +140,44 @@ jobs:
       - id: kit
         uses: $/.github/actions/kit-tools
 
-      # An empty solution only warns "no project to restore", which would fail the zero-warnings gate.
-      # The .NET steps start running when the first project is added (build step 6).
+      # The steps below work on a solution filter (FILTER) of every project but the UI ones, which Linux can't build;
+      # the ui job builds those (ADR-0057). An empty filter only warns "no project to restore", which would fail
+      # the zero-warnings gate, so the .NET steps start running when the first such project is added (build step 6).
       - name: Count projects
         id: projects
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: |
-          $count = & "$env:KIT/tools/Get-SolutionProjectCount.ps1" -Solution $env:SOLUTION
+          $filter = Join-Path $env:RUNNER_TEMP 'without-ui.slnf'
+          $ui = @(& "$env:KIT/tools/Get-UiProject.ps1" -Solution $env:SOLUTION -FilterPath $filter)
+          "FILTER=$filter" >> $env:GITHUB_ENV
+          $count = (& "$env:KIT/tools/Get-SolutionProjectCount.ps1" -Solution $env:SOLUTION) - $ui.Count
           "count=$count" >> $env:GITHUB_OUTPUT
-          "Projects in ${env:SOLUTION}: $count"
+          "Projects in ${env:SOLUTION} built here: $count; UI projects, built by the ui job: $($ui.Count)"
 
       # NuGetAudit and TreatWarningsAsErrors (Directory.Build.props) make a known vulnerability fail here.
       - name: Restore (locked)
         if: steps.projects.outputs.count != '0'
-        run: dotnet restore "$SOLUTION" --locked-mode
+        run: dotnet restore "$FILTER" --locked-mode
 
       # -warnaserror also fails warnings raised outside any project, such as NuGet's solution-level ones,
       # which Directory.Build.props can't reach (owner, 2026-11-04).
       - name: Build (zero warnings)
         if: steps.projects.outputs.count != '0'
-        run: dotnet build "$SOLUTION" --no-restore --configuration Release -warnaserror
+        run: dotnet build "$FILTER" --no-restore --configuration Release -warnaserror
 
       - name: Format check
         if: steps.projects.outputs.count != '0'
-        run: dotnet format "$SOLUTION" --verify-no-changes --no-restore
+        run: dotnet format "$FILTER" --verify-no-changes --no-restore
 
       # Microsoft Testing Platform (global.json) runs every test project; each writes a Cobertura report.
       - name: Test with coverage
         if: steps.projects.outputs.count != '0'
-        run: dotnet test --solution "$SOLUTION" --no-build --configuration Release --coverage --coverage-output-format cobertura --results-directory "$RUNNER_TEMP/test-results"
+        run: dotnet test --solution "$FILTER" --no-build --configuration Release --coverage --coverage-output-format cobertura --results-directory "$RUNNER_TEMP/test-results"
 
-      # TST-004: 100% line coverage for *.Domain, 95% for *.Application, 90% overall.
+      # TST-004: 100% line coverage for *.Domain, 95% for *.Application, 90% overall. It reads the whole solution,
+      # to tell a UI project (exempt, ARC-010) from a project no test loads (a failure).
       - name: Coverage gate
         if: steps.projects.outputs.count != '0'
         shell: pwsh
@@ -184,7 +189,7 @@ jobs:
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
-        run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:SOLUTION'
+        run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:FILTER'
 
       # Last, and even after a failed step, so this job reports its own checks and the UI builds' result together.
       - name: UI projects built
