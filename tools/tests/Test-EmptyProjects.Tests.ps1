@@ -124,6 +124,40 @@ Describe 'Test-EmptyProjects.ps1' {
         @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
     }
 
+    It 'reads a solution given by a PowerShell drive path' {
+        $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' } }
+        $onDrive = 'TestDrive:' + $solution.Substring($TestDrive.Length)
+
+        { $script:problems = @(Get-EmptyProjectProblem -Solution $onDrive) } | Should -Not -Throw
+        $script:problems | Should -BeNullOrEmpty
+    }
+
+    # bin/ and obj/ are dropped as whole folder names, so Objects/ and Binders/ still hold source.
+    It 'counts code under a folder whose name starts with bin or obj' {
+        $solution = New-Solution @{ 'App.Domain' = @{ 'Objects/Order.cs' = 'class Order { }'; 'Binders/OrderBinder.cs' = 'class OrderBinder { }' } }
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
+    }
+
+    It 'reads a project the solution reaches through ..' {
+        $root = Join-Path $TestDrive "sln-$(New-Guid)"
+        New-Item -ItemType Directory -Force -Path (Join-Path $root 'shared' 'Lib'), (Join-Path $root 'app') | Out-Null
+        Set-Content -LiteralPath (Join-Path $root 'shared' 'Lib' 'Lib.csproj') -Value '<Project Sdk="Microsoft.NET.Sdk" />'
+        Set-Content -LiteralPath (Join-Path $root 'shared' 'Lib' 'Money.cs') -Value 'record Money(decimal Amount);'
+        $solution = Join-Path $root 'app' 'App.slnx'
+        '<Solution><Project Path="../shared/Lib/Lib.csproj" /></Solution>' | Set-Content -LiteralPath $solution
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
+    }
+
+    # A hand-written solution may use Windows separators; on Linux, PowerShell reads only / as one.
+    It 'reads a project path written with backslashes' {
+        $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' } }
+        (Get-Content -LiteralPath $solution -Raw).Replace('src/App.Api/App.Api.csproj', 'src\App.Api\App.Api.csproj') | Set-Content -LiteralPath $solution
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
+    }
+
     # A link back up the tree would loop forever if followed; Get-ChildItem -Recurse doesn't follow links.
     It 'doesn''t follow a link inside a project''s folder' {
         $solution = New-Solution @{ 'App.Api' = @{ 'Features/Orders.cs' = 'class Orders { }' } }
