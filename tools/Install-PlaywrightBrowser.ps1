@@ -18,6 +18,18 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# MSBuild's evaluation of a project, without a build: where its restore graph and its build output are.
+function Read-ProjectOutput {
+    param([Parameter(Mandatory)] [string] $Project, [Parameter(Mandatory)] [string] $Configuration, [string] $TargetFramework)
+
+    # @() outside the if: an if hands back a one-item array as a string, which splatting would pass letter by letter.
+    $framework = @(if ($TargetFramework) { "-p:TargetFramework=$TargetFramework" })
+    $output = @(& dotnet msbuild $Project -nologo -getProperty:ProjectAssetsFile -getProperty:TargetDir `
+            -getProperty:TargetFramework -getProperty:TargetFrameworks "-p:Configuration=$Configuration" @framework 2>&1)
+    if ($LASTEXITCODE -ne 0) { throw "MSBuild couldn't read $Project, so it's unknown whether it uses Playwright:`n$($output -join "`n")" }
+    $output -join "`n" | ConvertFrom-Json
+}
+
 function Install-PlaywrightBrowser {
     param(
         [Parameter(Mandatory)] [string] $Solution,
@@ -29,7 +41,12 @@ function Install-PlaywrightBrowser {
     $folder = Split-Path -Parent $solutionPath
     $users = foreach ($node in ([xml] (Get-Content -LiteralPath $solutionPath -Raw)).SelectNodes('//Project')) {
         $project = Join-Path $folder $node.GetAttribute('Path')
-        $json = (& dotnet msbuild $project -nologo -getProperty:ProjectAssetsFile -getProperty:TargetDir "-p:Configuration=$Configuration") -join "`n" | ConvertFrom-Json
+        $json = Read-ProjectOutput -Project $project -Configuration $Configuration
+        # With TargetFrameworks, the outer evaluation has no TargetDir: read the project through its first framework.
+        if (-not $json.Properties.TargetFramework -and $json.Properties.TargetFrameworks) {
+            $first = ($json.Properties.TargetFrameworks -split ';' | Where-Object { $_ })[0]
+            $json = Read-ProjectOutput -Project $project -Configuration $Configuration -TargetFramework $first
+        }
         $assets = Get-Content -Raw -LiteralPath $json.Properties.ProjectAssetsFile | ConvertFrom-Json
         # A list on the left, so -like filters it even when the graph holds one library.
         $library = @(@($assets.libraries.PSObject.Properties.Name) -like 'Microsoft.Playwright/*')
