@@ -197,6 +197,24 @@ Describe 'Repo build configuration' -Tag 'Build' {
             $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
+
+    # ADR-0062: BenchmarkDotNet runs only public benchmark classes, so CA1515 (make an app's public types internal) is
+    # off in a benchmarks project, whose name ends in .Benchmarks, and nowhere else.
+    Context 'CA1515 is off in benchmarks projects only' {
+        It 'allows a public class in a benchmarks project' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'PublicTypeInBenchmarks') -Project 'tests/Widgets.Benchmarks'
+
+            $build.Output | Should -Not -Match 'CA1515'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+
+        It 'still rejects a public class in any other app' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'PublicTypeInApp') -Project 'src/Widgets.App'
+
+            $build.Output | Should -Match 'CA1515'
+            $build.ExitCode | Should -Not -Be 0
+        }
+    }
 }
 
 # The banned-API analyzer ignores an entry that names no symbol, so a typo in BannedSymbols.txt would lift a ban
