@@ -51,4 +51,11 @@ Describe 'Get-PmdPin' {
         $pin.Url | Should -Be 'https://github.com/pmd/pmd/releases/download/pmd_releases%2F7.29.0/pmd-dist-7.29.0-bin.zip'
         $pin.PinFile | Should -Be (Join-Path $folder 'pmd-dist-bin.zip.sha256')
     }
+
+    # Dependabot moves the pom alone; until the hash for the new zip is pinned, CI must stop, saying why.
+    It 'refuses a pin for another version than the pom names, naming both' {
+        $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
+
+        { Get-PmdPin -Path $folder } | Should -Throw '*7.30.0*7.29.0*'
+    }
 }
