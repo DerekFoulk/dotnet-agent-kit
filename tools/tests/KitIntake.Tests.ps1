@@ -95,7 +95,7 @@ Describe 'the intake data' {
             if ($cost['label'] -eq 'Free tier') { $cost['free'] | Should -Not -BeNullOrEmpty -Because "$($entry['id']) says what's free" }
         }
         foreach ($card in $pricedCards) {
-            $card['options'][0]['cost']['label'] | Should -Be 'Free' -Because "card $($card['id'])'s recommendation is free"
+            $card['options'][0]['cost']['label'] | Should -BeIn @('Free', 'Free tier') -Because "card $($card['id'])'s recommendation costs nothing up to its free amount"
         }
         foreach ($kind in $intake['testKinds']) {
             $kind['tools'] | ForEach-Object { $_['license'] | Should -Not -BeNullOrEmpty -Because "$($_['id']) names its license" }

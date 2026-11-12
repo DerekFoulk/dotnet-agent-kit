@@ -98,6 +98,7 @@
       "id": "signIn",
       "header": "Sign-in",
       "question": "Who signs in to the app?",
+      "priced": true,
       "options": [
         {
           "id": "entra-external-id",
@@ -135,6 +136,7 @@
       "id": "hosting",
       "header": "Hosting",
       "question": "Where should it run?",
+      "priced": true,
       "options": [
         {
           "id": "none",
