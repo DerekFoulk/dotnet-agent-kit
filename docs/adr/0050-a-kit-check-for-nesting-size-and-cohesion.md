@@ -89,7 +89,8 @@ How each limit is measured (the kit's own choices, each with tests in `tools/Cod
   - What counts as state: the type's fields, properties and events, and its primary constructor's parameters, which the compiler keeps for the type's members. A local function belongs to its method, not the type.
   - Properties: a property or indexer links the state it reads, so a method that uses it shares that state. It isn't a method of its own. Counting it as one, as some LCOM4 tools do, failed every options class and record with two computed properties over different state (review 2), which aren't two classes in one.
   - Grouping: methods are grouped by what they share, and the type is reported when it has more groups than the limit.
-  - Constructors: a constructor isn't a method, since it touches every field. But a field or property it assigns from other state, or one initialized from other state (a primary constructor's parameter, say), is joined to that state.
+  - Constructors: a constructor isn't a method, since it touches every field. But a field or property it assigns from other state, or one initialized from other state (a primary constructor's parameter, say), is joined to that state. Only the type's own instance state is joined this way: a static field or a local built from two fields doesn't join them.
+  - Other instances: a member reached through another instance of the type (`other._b`, or `other._b` on another construction of the same generic type) counts as the type's own.
   - Partial types: a partial type is measured whole and reported once. Its generated halves are read for what they declare, never reported on.
   - Static methods, and methods that use no instance state, aren't counted.
 - **Skipped:**
