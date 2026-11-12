@@ -117,4 +117,19 @@ Describe 'Test-LoadBudget.ps1' {
 
         $script:problems | Should -Be @("POST /bookmarks: has a budget, but the stats have no such request. Locust names a request '<Type> <Name>'; was it renamed?")
     }
+
+    # An error in the locustfile's own code isn't a failed request, so no failure budget sees it: the user just stops
+    # doing that task. The workflow runs Locust with --exit-code-on-error 0, so this check is what catches it.
+    It 'names each exception the locustfile raised' {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats -Rows @(
+            (New-Row 'POST' '/bookmarks' -Requests 400 -P95 150)
+            (New-Row '' 'Aggregated' -Requests 400 -P95 150)) -Exceptions @("KeyError('id')", 'ValueError: bad, "quoted" value')
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget (New-StandardBudget))) } | Should -Not -Throw
+
+        $script:problems | Should -Be @(
+            "The locustfile raised KeyError('id') 3 time(s); see the exceptions CSV for its traceback."
+            'The locustfile raised ValueError: bad, "quoted" value 3 time(s); see the exceptions CSV for its traceback.')
+    }
 }
