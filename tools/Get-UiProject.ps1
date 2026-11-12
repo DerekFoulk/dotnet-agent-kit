@@ -18,10 +18,31 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# The MSBuild property that makes a project a UI project, its kind, and the GitHub runners that build it.
+$script:UiKinds = @(
+    [pscustomobject]@{ Property = 'UseMaui'; Kind = 'Maui'; Os = @('windows-latest', 'macos-latest') }
+)
+
 function Get-UiProject {
     param([Parameter(Mandatory)] [string] $Solution)
 
-    @()
+    $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).Path
+    foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
+        $path = $node.GetAttribute('Path')
+        [xml] $project = Get-Content -LiteralPath (Join-Path $folder $path) -Raw
+        foreach ($kind in $script:UiKinds) {
+            $values = @($project.SelectNodes("//PropertyGroup/$($kind.Property)") | ForEach-Object { $_.InnerText.Trim() })
+            if ($values -contains 'true') {
+                [pscustomobject]@{
+                    Name = [IO.Path]::GetFileNameWithoutExtension($path)
+                    Path = $path
+                    Kind = $kind.Kind
+                    Os   = $kind.Os
+                }
+                break
+            }
+        }
+    }
 }
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
