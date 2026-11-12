@@ -28,7 +28,10 @@ function Read-ProjectOutput {
     $output = @(& dotnet msbuild $Project -nologo -getProperty:ProjectAssetsFile -getProperty:TargetDir `
             -getProperty:TargetFramework -getProperty:TargetFrameworks "-p:Configuration=$Configuration" @framework 2>&1)
     if ($LASTEXITCODE -ne 0) { throw "MSBuild couldn't read $Project, so it's unknown whether it uses Playwright:`n$($output -join "`n")" }
-    $output -join "`n" | ConvertFrom-Json
+    # MSBuild may print an evaluation warning before its answer; the answer is the JSON object that ends the output.
+    $start = [array]::LastIndexOf([string[]] $output, '{')
+    if ($start -lt 0) { throw "MSBuild gave no properties for $Project`:`n$($output -join "`n")" }
+    $output[$start..($output.Count - 1)] -join "`n" | ConvertFrom-Json
 }
 
 function Install-PlaywrightBrowser {
