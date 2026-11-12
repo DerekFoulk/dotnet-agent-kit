@@ -91,4 +91,18 @@ Describe 'Test-LoadBudget.ps1' {
         # 6 of 800 is 0.75%, within 1%; 6 of 400 is 1.5%, over it.
         $script:problems | Should -Be @('POST /bookmarks: 6 of 400 requests failed (1.5%), over its budget of 1%.')
     }
+
+    # A run that sent nothing has no times and no failures, so every budget would pass.
+    It 'says when the run, or a budgeted request, sent no requests' {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats @(
+            (New-Row 'POST' '/bookmarks' -Requests 0)
+            (New-Row '' 'Aggregated' -Requests 0))
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget (New-StandardBudget))) } | Should -Not -Throw
+
+        $script:problems | Should -Be @(
+            'Aggregated: no requests were made, so there is nothing to check. Is the app up, and does the locustfile run?'
+            'POST /bookmarks: no requests were made, so there is nothing to check. Is the app up, and does the locustfile run?')
+    }
 }
