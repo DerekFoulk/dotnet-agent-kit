@@ -62,7 +62,8 @@ function Get-BenchmarkBudgetProblem {
             if ($mean -gt [double] $limit['maxMeanNanoseconds']) {
                 "${name}: mean $(Format-Number $mean) ns is over its budget of $(Format-Number $limit['maxMeanNanoseconds']) ns."
             }
-            if (-not $benchmark.Contains('Memory') -or $null -eq $benchmark['Memory']) {
+            $memory = if ($benchmark.Contains('Memory')) { $benchmark['Memory'] } else { $null }
+            if ($null -eq $memory -or $null -eq $memory['BytesAllocatedPerOperation']) {
                 "${name}: no allocations in its report, so its allocation budget can't be checked. Give its class [MemoryDiagnoser]."
                 continue
             }
