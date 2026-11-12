@@ -124,12 +124,21 @@ Describe 'Set-PmdPin' {
         (Get-PmdPin -Path $folder).Sha256 | Should -Be $newHash
     }
 
+    It 'pins a zip exactly 7 days old: the wait matches Dependabot''s cooldown, no longer' {
+        $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
+
+        Set-PmdPin -Path $folder -Release (New-Release -UpdatedAt '2026-11-13T00:00:00Z') -Now $now
+
+        (Get-PmdPin -Path $folder).Sha256 | Should -Be $newHash
+    }
+
     It 'refuses <Case>, leaving the pin as it was' -ForEach @(
         @{ Case = 'the release of another version'; Release = @{ Tag = 'pmd_releases/7.29.0' }; Message = '*pmd_releases/7.30.0*' }
         @{ Case = 'a release without the zip'; Release = @{ Asset = 'pmd-dist-7.30.0-bin.tar.gz' }; Message = '*pmd-dist-7.30.0-bin.zip*' }
         @{ Case = 'a zip GitHub gives no digest for'; Release = @{ Digest = $null }; Message = '*digest*' }
         @{ Case = 'a digest that is not SHA-256'; Release = @{ Digest = "sha512:$('aa' * 64)" }; Message = '*digest*' }
-        @{ Case = 'a zip uploaded or changed under 7 days ago'; Release = @{ UpdatedAt = '2026-11-14T00:00:01Z' }; Message = '*7 days*' }
+        # Review 1 of GAP-023: one second short of 7 days, so a shorter wait fails this case.
+        @{ Case = 'a zip uploaded or changed under 7 days ago'; Release = @{ UpdatedAt = '2026-11-13T00:00:01Z' }; Message = '*7 days*' }
     ) {
         $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
         $pinFile = Join-Path $folder 'pmd-dist-bin.zip.sha256'
