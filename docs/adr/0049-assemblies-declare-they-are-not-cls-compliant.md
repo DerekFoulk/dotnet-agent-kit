@@ -11,12 +11,12 @@ The Common Language Specification (CLS) is the set of features every .NET langua
 
 What Microsoft says:
 
-- **CA1014's page:** "Good design dictates that all assemblies explicitly indicate CLS compliance." Under "When to suppress warnings": "Do not suppress a warning from this rule. If you do not want the assembly to be compliant, apply the attribute and set its value to `false`."
+- **CA1014's page:** "Good design dictates that all assemblies explicitly indicate CLS compliance with CLSCompliantAttribute." Under "When to suppress warnings": "Do not suppress a warning from this rule. If you do not want the assembly to be compliant, apply the attribute and set its value to `false`."
 - **Language independence:** "If you are developing an app rather than a library (that is, if you aren't exposing types or members that can be consumed by other app developers), the CLS compliance of the program elements that your app consumes are of interest only if your language does not support them."
 - **`CLSCompliantAttribute`'s remarks:** "CLS compliance is primarily of concern to library developers who want to ensure that their libraries are accessible in any language that targets .NET."
 - **The code analysis overview** lists CA1014 among the rules `latest-all` leaves off that "might be deprecated in a future version".
 
-What measurement showed (SDK 10.0.404, the sample with `[assembly: CLSCompliant(true)]` on every project, warnings not treated as errors): 32 distinct places, in three groups. (GAP-021's 48 counted the build's output lines, which repeat some.)
+What measurement showed (SDK 10.0.404, the sample with `[assembly: CLSCompliant(true)]` on every project): 32 distinct places, in three groups. (GAP-021's 48 counted each diagnostic twice, as the build prints it, in an earlier and smaller sample: 24 places then.)
 
 - **18 × CS3016, arrays as attribute arguments:** xUnit's `[InlineData(0, 101)]`, whose constructor takes `params object[]`.
 - **9 × CS3001, CS3002, CS3003 and CS3009, a public signature using a type that isn't CLS-compliant:** `DbContext`, `ModelBuilder` and `DbContextOptions<T>` in `BookmarksDbContext`; `WebApplication` in `MapDefaultEndpoints`; xUnit's and ArchUnitNET's types in three test classes. ASP.NET Core, EF Core and the test libraries don't declare CLS compliance, so any public type built on them breaks it.
@@ -42,7 +42,7 @@ The kit's apps are apps: a web API and the class libraries that serve it, with t
 
 ### Option 3: Leave CA1014 off, with this ADR as the recorded opt-out
 
-- **Trade-offs:** no change at all. But STY-003 keeps an exception, and CA1014's own page says not to suppress it: applying the attribute with `false` is how Microsoft says to say "not compliant".
+- **Trade-offs:** no change at all. But STY-003 keeps an exception, and CA1014's own page says not to suppress it: applying the attribute with `false` is Microsoft's way to declare an assembly not compliant.
 - **Reversibility:** easy.
 - **Risk:** low, but an assembly states nothing about CLS compliance, which is what the rule exists to stop.
 
