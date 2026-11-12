@@ -76,6 +76,7 @@ Describe 'Test-CodeShape.ps1' {
             $limits = Get-Content -Raw (Join-Path $script:kitRoot 'tools/CodeShape/src/Kit.CodeShape/Limits.cs')
             $craft = Get-Content -Raw (Join-Path $script:kitRoot 'docs/standards/craft.md')
             $statement = [regex]::Match($craft, '(?m)^  - id: CRF-008\r?\n    statement: "(?<s>[^"]+)"').Groups['s'].Value
+            $statement | Should -Not -BeNullOrEmpty -Because 'the test must find CRF-008 to check it'
             if ($statement -notmatch 'aim for') { Set-ItResult -Skipped -Because "CRF-008 no longer states CRF-011's numbers" }
 
             $enforced = 'NestingDepth', 'StatementsPerMember', 'LinesPerFile', 'Lcom4' | ForEach-Object {
@@ -85,6 +86,7 @@ Describe 'Test-CodeShape.ps1' {
                 ForEach-Object { [regex]::Match($statement, $_).Groups[1].Value }
 
             $stated | Should -Be $enforced
+            $enforced | Should -Not -Contain ''
         }
     }
 }

@@ -220,6 +220,32 @@ public sealed class CohesionRuleTests
         }
         """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [B]");
 
+    // Review 3 of GAP-019: only the type's own instance state is joined through what it's built from; a static field,
+    // a local or a static property built from two fields doesn't make them one group.
+    [Theory]
+    [InlineData("static int s_seen; Split() { s_seen = _a + _b; }")]
+    [InlineData("Split() { int sum; sum = _a + _b; }")]
+    [InlineData("static Split s_default = new(); static int Both => s_default._a + s_default._b;")]
+    public void SomethingOutsideTheTypesStateBuiltFromTwoFieldsDoesNotJoinThem(string member) =>
+        CohesionRule.Check([new SourceFile("Split.cs", $$"""
+            class Split
+            {
+                private int _a;
+                private int _b;
+                {{member}}
+
+                int A() => _a;
+                int B() => _b;
+            }
+            """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [B]");
+
+    // A source that's only a name is still the state it names.
+    [Theory]
+    [InlineData("class Bare { private int _a; private int _b; Bare() { _b = _a; } int A() => _a; int B() => _b; }")]
+    [InlineData("class Bare(int connection) { private readonly int _b = connection; int A() => connection; int B() => _b; }")]
+    public void AFieldBuiltFromJustAnotherNameSharesItsState(string source) =>
+        CohesionRule.Check([new SourceFile("Bare.cs", source)]).Should().BeEmpty();
+
     [Fact]
     public void APropertyInitializedFromAPrimaryConstructorParameterSharesItsState() => CohesionRule.Check([new SourceFile("Svc.cs", """
         class Svc(Connection connection)

@@ -103,18 +103,16 @@ internal static class CohesionRule
             .SelectMany(field => field.Declaration.Variables)
             .Where(variable => variable.Initializer is not null)
             .Select(variable => (model.GetDeclaredSymbol(variable), variable.Initializer!.Value));
-        IEnumerable<(ISymbol? Target, ExpressionSyntax Source)> propertyInitializers = declaration.Members.OfType<PropertyDeclarationSyntax>()
-            .Where(property => property.Initializer is not null)
-            .Select(property => ((ISymbol?)model.GetDeclaredSymbol(property), property.Initializer!.Value));
-
+        // A property's whole declaration: what its accessors read, and its initializer.
         IEnumerable<(ISymbol? Target, SyntaxNode Source)> properties = declaration.Members.OfType<BasePropertyDeclarationSyntax>()
             .Select(property => (model.GetDeclaredSymbol(property), (SyntaxNode)property));
 
-        // A target outside the type's state joins nothing any method uses, so it needs no filter.
-        foreach ((ISymbol? target, SyntaxNode source) in assignments.Concat(fieldInitializers).Concat(propertyInitializers)
+        foreach ((ISymbol? target, SyntaxNode source) in assignments.Concat(fieldInitializers)
             .Select(pair => (pair.Target, (SyntaxNode)pair.Source)).Concat(properties))
         {
-            if (target is not null)
+            // Only the type's own instance state is joined: a static field, a local or a static property built from
+            // two fields would otherwise join them through itself.
+            if (target is { IsStatic: false } && IsStateOf(target, type))
             {
                 foreach (ISymbol used in InstanceStateUsed(source, type, model))
                 {
@@ -128,7 +126,7 @@ internal static class CohesionRule
     // local function, which belongs to its method), and its primary constructor's parameters, which the compiler
     // keeps for the type's members as state.
     private static IEnumerable<ISymbol> InstanceStateUsed(SyntaxNode body, INamedTypeSymbol type, SemanticModel model) =>
-        body.DescendantNodes().OfType<SimpleNameSyntax>()
+        body.DescendantNodesAndSelf().OfType<SimpleNameSyntax>() // a source may be just a name: _b = _a
             .SelectMany(name => Meanings(model.GetSymbolInfo(name)))
             .Select(symbol => symbol.OriginalDefinition) // a call to Helper<int> means the method declared as Helper<T>
             .Where(symbol => !symbol.IsStatic && IsStateOf(symbol, type));
