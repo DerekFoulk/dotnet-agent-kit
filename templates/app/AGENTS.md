@@ -16,6 +16,7 @@ This repo follows dotnet-agent-kit {{KitVersion}} (commit `{{KitCommit}}`): the 
 | Show the working mode; switch it (the owner's call) | `./.kit/tools/Set-AgentMode.ps1 -RepoRoot .`, with `-Mode Review` or `-Mode Auto` |
 | Build | `dotnet build {{Name}}.slnx` |
 | .NET tests with coverage, then the coverage gate (TST-004) | Delete `TestResults` first (the gate merges every report it finds), then `dotnet test --solution {{Name}}.slnx --coverage --coverage-output-format cobertura --results-directory TestResults` and `./.kit/tools/Test-CoverageGate.ps1 -Path TestResults -Solution {{Name}}.slnx` |
+| If this app has an `E2E.Tests` project: its browser and accessibility tests (Playwright, axe) need the Chromium build the Microsoft.Playwright version pins. Installing it is the owner's step ("Always ask"); CI installs it itself (kit ADR-0061) | After a Debug build: `pwsh tests/{{Name}}.E2E.Tests/bin/Debug/<target framework>/playwright.ps1 install chromium` |
 | List the solution's MAUI and desktop (UI) projects, which CI builds on Windows and macOS and the coverage gate exempts (ARC-010) | `./.kit/tools/Get-UiProject.ps1 -Solution {{Name}}.slnx` |
 | No deprecated NuGet packages | `./.kit/tools/Test-DeprecatedPackages.ps1 -Path {{Name}}.slnx` |
 | Every C# project in the solution holds code of its own, and none keeps the class library template's empty `Class1` (ARC-009) | `./.kit/tools/Test-EmptyProjects.ps1 -Solution {{Name}}.slnx` |
