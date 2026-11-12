@@ -21,6 +21,10 @@ function Get-PmdPin {
     $version = Get-PmdVersion $Path
     $pinFile = Join-Path $Path $script:PinFileName
     $hash, $fileName = (Get-Content -Raw -LiteralPath $pinFile).Trim() -split '  ', 2
+    $expected = "pmd-dist-$version-bin.zip"
+    if ($fileName -ne $expected) {
+        throw "The pom names PMD $version, but $pinFile pins '$fileName', not $expected. Pin the new zip's SHA-256 with Set-PmdPin (ADR-0060)."
+    }
     [pscustomobject]@{
         Version  = $version
         Sha256   = $hash
