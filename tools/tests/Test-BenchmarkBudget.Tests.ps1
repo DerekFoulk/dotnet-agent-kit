@@ -87,4 +87,19 @@ Describe 'Test-BenchmarkBudget.ps1' {
         $problems.Count | Should -Be 1
         $problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.ParseLong: no budget in *-budget.json*'
     }
+
+    # A renamed or deleted benchmark would otherwise leave its budget checking nothing.
+    It 'names a budgeted benchmark that no report has' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @((New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse'))
+        $budget = Write-Budget ([ordered]@{
+                'App.Benchmarks.ParseBenchmarks.Parse'    = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 192 }
+                'App.Benchmarks.ParseBenchmarks.Gone'     = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 192 }
+            })
+
+        $problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget)
+
+        $problems.Count | Should -Be 1
+        $problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Gone: has a budget, but no report has it*'
+    }
 }
