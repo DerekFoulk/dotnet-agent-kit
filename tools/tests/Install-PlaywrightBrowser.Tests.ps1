@@ -92,4 +92,15 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         Get-Call $repo | Should -Be @('A.E2E.Tests: install chromium', 'C.E2E.Tests: install chromium')
     }
+
+    # Without the build there's no playwright.ps1, so the browser can't be installed: say what to do, don't skip it.
+    It 'fails, naming the project and the configuration, when a Playwright project isn''t built' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'unbuilt'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1'
+        $solution = New-Solution $repo 'App.E2E.Tests'
+
+        { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } |
+            Should -Throw '*App.E2E.Tests*Release*'
+    }
 }
