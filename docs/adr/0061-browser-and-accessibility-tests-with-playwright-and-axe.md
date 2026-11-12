@@ -28,6 +28,7 @@ Checked for this decision:
 - **Aspire testing:** suits an app that has an Aspire AppHost, where it starts the whole distributed app.
 
 The intake now offers WebApplicationFactory by default, and Aspire testing for an app with an AppHost.
+
 ### Option 1: Playwright's own Chromium, installed by the build's `playwright.ps1`
 
 The app is hosted in the test process by `WebApplicationFactory` on Kestrel (port 0). A kit script, `tools/Install-PlaywrightBrowser.ps1`, finds every project whose restore graph holds Microsoft.Playwright. For each, it runs that project's `playwright.ps1 install --with-deps chromium`, once per Playwright version, as a CI step just before the tests.
@@ -101,7 +102,8 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 
 **Fixture.** The kit's solution gains a web UI fixture, `fixtures/WebUi`, so the required job proves the pattern on every pull request.
 - **Kit.WebUi:** static server rendering with enhanced navigation; two pages, a stylesheet, `blazor.web.js` and FocusOnNavigate.
-- **Kit.WebUi.E2E.Tests:** axe on every page; a check that axe really finds a level A and a 2.2 AA failure; focus after a link; the first Tab and its outline; the port; and the content root under Stryker.
+- **Kit.WebUi.E2E.Tests:** axe on every page; a check that axe really finds a failure for each WCAG version and level it runs; focus after a link; the first Tab and its outline; the port; and the content root under Stryker.
+- **One list of tags:** UI-002 names the WCAG tags, and `tools/tests/WebUiFixture.Tests.ps1` fails when the fixture's `Wcag.cs` runs any others.
 - **No bUnit project:** the fixture has no component with logic of its own (ARC-009).
 - **In the kit's own outputs:** the fixture ships in the kit's SBOM, as the sample does, and Stryker mutates its `Program.cs`.
 
