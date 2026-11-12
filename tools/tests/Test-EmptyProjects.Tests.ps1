@@ -113,6 +113,11 @@ Describe 'Test-EmptyProjects.ps1' {
         $script:problems[0].Message | Should -BeLike '*src/App.Api/App.Api.csproj*isn''t there*'
     }
 
+    # The shared .NET CI runs the check on the kit's own solution too.
+    It 'passes the kit''s own solution' {
+        @(Get-EmptyProjectProblem -Solution (Join-Path $PSScriptRoot '..' '..' 'dotnet-agent-kit.slnx')) | Should -BeNullOrEmpty
+    }
+
     Context 'run as a script' {
         BeforeAll {
             $script:check = Join-Path $PSScriptRoot '..' 'Test-EmptyProjects.ps1'
