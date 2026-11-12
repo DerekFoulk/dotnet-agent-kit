@@ -41,9 +41,11 @@ Describe 'Dependabot configuration' {
 
     # GAP-023 (ADR-0060): the tools the shared .NET CI downloads itself are pinned in manifests under .config, so
     # Dependabot proposes their new versions: PMD in a Maven pom, the gitleaks image in a Dockerfile.
-    It 'watches the manifest that pins <Tool> for the shared .NET CI, in the kit' -ForEach @(
+    It 'watches the manifest that pins <Tool> for the shared workflows, in the kit' -ForEach @(
         @{ Tool = 'PMD'; Ecosystem = 'maven'; Directory = '/.config/pmd' }
         @{ Tool = 'the gitleaks image'; Ecosystem = 'docker'; Directory = '/.config/gitleaks' }
+        # GAP-012 (ADR-0062): Locust, for the shared performance workflow's load tests.
+        @{ Tool = 'Locust'; Ecosystem = 'pip'; Directory = '/.config/locust' }
     ) {
         $matching = @(Get-Update '.github/dependabot.yml' |
                 Where-Object { $_['package-ecosystem'] -eq $Ecosystem -and $_['directory'] -eq $Directory })
