@@ -59,4 +59,35 @@ Describe 'Test-LockFileSubset.ps1' {
 
         @(Get-LockFileSubsetProblem -RepoRoot $repo) | Should -BeNullOrEmpty
     }
+
+    It 'reports <Case>' -ForEach @(
+        @{ Case = 'a framework whose packages differ from the committed ones'; Expected = '*src/App.Maui/packages.lock.json*net10.0-ios*different packages*'
+            Frameworks = @{ 'net10.0-android' = @{ 'CommunityToolkit.Mvvm' = '8.4.0' }; 'net10.0-ios' = @{ 'CommunityToolkit.Mvvm' = '8.4.1' } } }
+        @{ Case = 'a framework the committed lock file doesn''t have'; Expected = '*src/App.Maui/packages.lock.json*net10.0-maccatalyst*doesn''t have*'
+            Frameworks = @{ 'net10.0-android' = @{ 'CommunityToolkit.Mvvm' = '8.4.0' }; 'net10.0-maccatalyst' = @{ 'CommunityToolkit.Mvvm' = '8.4.0' } } }
+    ) {
+        $repo = New-LockRepo
+        ConvertTo-LockJson $Frameworks | Set-Content -LiteralPath (Join-Path $repo 'src/App.Maui/packages.lock.json')
+
+        @(Get-LockFileSubsetProblem -RepoRoot $repo) -join "`n" | Should -BeLike $Expected
+    }
+
+    It 'reports a lock file nobody committed' {
+        $repo = New-LockRepo
+        New-Item -ItemType Directory -Path (Join-Path $repo 'src/App.Core') | Out-Null
+        ConvertTo-LockJson @{ 'net10.0' = @{} } | Set-Content -LiteralPath (Join-Path $repo 'src/App.Core/packages.lock.json')
+
+        @(Get-LockFileSubsetProblem -RepoRoot $repo) -join "`n" | Should -BeLike '*src/App.Core/packages.lock.json*isn''t committed*'
+    }
+
+    It 'exits 1 and prints the problem when run as a script, 0 when all match' {
+        $repo = New-LockRepo
+        & pwsh -NoProfile -File $scriptPath -RepoRoot $repo *> $null
+        $LASTEXITCODE | Should -Be 0
+
+        ConvertTo-LockJson @{ 'net10.0-ios' = @{ 'CommunityToolkit.Mvvm' = '9.0.0' } } | Set-Content -LiteralPath (Join-Path $repo 'src/App.Maui/packages.lock.json')
+        $output = & pwsh -NoProfile -File $scriptPath -RepoRoot $repo 2>&1 | Out-String
+        $LASTEXITCODE | Should -Be 1
+        $output | Should -BeLike '*net10.0-ios*'
+    }
 }
