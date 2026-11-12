@@ -49,8 +49,8 @@ Describe 'Test-CoverageGate.ps1' {
     }
 
     Context 'Get-CoverageSummary' {
-        # Microsoft's collector writes <packages /> for a test project that loads no assembly it counts (GAP-004 found one:
-        # an assembly whose name it leaves out). PowerShell reads an empty element as a string, which has no .package.
+        # Microsoft's collector writes <packages /> for a test project that loads no assembly it counts; GAP-004 met one,
+        # in one clone only, cause not found. PowerShell reads an empty element as a string, which has no .package.
         It 'reads a report with no packages as no lines, and still counts the other reports' {
             $dir = Join-Path $TestDrive 'empty-report'
             New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'src/Bookmark.cs'; Lines = (Get-Lines -Covered 2 -Missed 0) }) } | Out-Null
@@ -61,6 +61,18 @@ Describe 'Test-CoverageGate.ps1' {
             @($script:summary.Package) | Should -Be @('Bookmarks.Domain')
         }
 
+        # Review round 1: the same holds one and two levels down, for a package with no classes and a class with no lines.
+        It 'reads a package with no classes, and a class with no lines, as no lines' {
+            $dir = Join-Path $TestDrive 'empty-levels'
+            New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'src/Bookmark.cs'; Lines = (Get-Lines -Covered 2 -Missed 0) }) } | Out-Null
+            Set-Content -LiteralPath (Join-Path $dir 'no-classes.cobertura.xml') -Value '<?xml version="1.0"?><coverage line-rate="1"><packages><package name="Bookmarks.Domain"><classes /></package></packages></coverage>'
+            Set-Content -LiteralPath (Join-Path $dir 'no-lines.cobertura.xml') -Value '<?xml version="1.0"?><coverage line-rate="1"><packages><package name="Bookmarks.Domain"><classes><class name="C" filename="src/Other.cs"><lines /></class></classes></package></packages></coverage>'
+
+            { $script:summary = @(Get-CoverageSummary -Path $dir) } | Should -Not -Throw
+
+            $script:summary.Covered | Should -Be 2
+            $script:summary.Total | Should -Be 2
+        }
         It 'merges reports: a line covered in any report counts as covered' {
             $dir = Join-Path $TestDrive 'merge'
             New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'src/Bookmark.cs'; Lines = @(@(1, 1), @(2, 0)) }) } | Out-Null
