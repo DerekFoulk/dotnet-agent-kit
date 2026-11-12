@@ -644,6 +644,45 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # GAP-004 (ADR-0061): an app's Playwright tests run in "Test with coverage", in the required job, so the browser
+    # they drive is installed just before, with the kit's script, and only where a project uses Playwright.
+    Context 'dotnet-ci.reusable.yml browser tests' {
+        BeforeAll {
+            $steps = @($dotnet.Yaml['jobs']['dotnet']['steps'])
+            $names = @($steps | ForEach-Object { $_['name'] })
+            $install = @($steps | Where-Object { $_['name'] -eq 'Playwright browser' })
+        }
+
+        It 'installs the browser with the kit''s script after the build and before the tests, once there are projects' {
+            $install | Should -HaveCount 1
+            $install[0]['shell'] | Should -Be 'pwsh'
+            $install[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+            $install[0]['if'] | Should -Be "steps.projects.outputs.count != '0'"
+            $install[0]['run'] | Should -Be '& "$env:KIT/tools/Install-PlaywrightBrowser.ps1" -Solution $env:SOLUTION -Configuration Release -WithDependencies'
+            $names.IndexOf('Playwright browser') | Should -BeGreaterThan $names.IndexOf('Build (zero warnings)')
+            $names.IndexOf('Playwright browser') | Should -BeLessThan $names.IndexOf('Test with coverage')
+        }
+
+        # The step's own text, run as CI runs it, on a solution whose one project doesn't use Playwright.
+        It 'installs nothing, and passes, for a solution without Playwright tests' {
+            $install | Should -HaveCount 1
+            $dir = Join-Path $TestDrive "no-browser-$(New-Guid)"
+            New-Item -ItemType Directory -Force -Path (Join-Path $dir 'src/Api/obj') | Out-Null
+            '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>' |
+                Set-Content -LiteralPath (Join-Path $dir 'src/Api/Api.csproj')
+            '{ "version": 3, "libraries": { "xunit.v3/4.0.3": { "type": "package" } } }' | Set-Content -LiteralPath (Join-Path $dir 'src/Api/obj/project.assets.json')
+            '<Solution><Project Path="src/Api/Api.csproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $dir 'App.slnx')
+            $script = Join-Path $dir 'step.ps1'
+            Set-Content -LiteralPath $script -Value $install[0]['run']
+            $env:KIT = $root; $env:SOLUTION = Join-Path $dir 'App.slnx'
+            try { $output = & pwsh -NoProfile -File $script 2>&1 | Out-String }
+            finally { Remove-Item Env:KIT, Env:SOLUTION -ErrorAction SilentlyContinue }
+
+            $LASTEXITCODE | Should -Be 0 -Because $output
+            $output | Should -Match 'No project uses Playwright'
+        }
+    }
+
     # GAP-023 (ADR-0060): PMD's version is in the kit's .config/pmd/pom.xml, where Dependabot moves it, and the zip's
     # SHA-256 beside it. An app's CI runs this workflow at its kit pin, so it reads the kit's copy ($env:KIT), never
     # the app's workspace, which has none.
