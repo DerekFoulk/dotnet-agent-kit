@@ -30,6 +30,10 @@ function Get-BenchmarkBudgetProblem {
 
     $budgets = Get-Content -Raw -LiteralPath $Budget | ConvertFrom-Json -AsHashtable
     $reports = @(Get-ChildItem -LiteralPath $Path -Filter '*-report-full-compressed.json' -File -Recurse)
+    if (-not $reports) {
+        "No BenchmarkDotNet JSON report under $Path. Run the benchmarks with --exporters json."
+        return
+    }
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($report in $reports) {
         foreach ($benchmark in (Get-Content -Raw -LiteralPath $report.FullName | ConvertFrom-Json -AsHashtable)['Benchmarks']) {
