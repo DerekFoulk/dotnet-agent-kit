@@ -1,1 +1,1 @@
-return 0;
+return Kit.CodeShape.Cli.Run(args, Console.Out);
