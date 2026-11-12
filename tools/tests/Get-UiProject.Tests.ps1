@@ -65,4 +65,14 @@ Describe 'Get-UiProject.ps1' {
         $found[0].Kind | Should -Be $Kind
         $found[0].Os | Should -Be @('windows-latest')
     }
+
+    # MSBuild compares property values without regard to case.
+    It 'reads the property as MSBuild does: True counts, false doesn''t' {
+        $solution = New-Solution @(
+            @{ Path = 'src/A/A.csproj'; Properties = '<UseMaui> True </UseMaui>' }
+            @{ Path = 'src/B/B.csproj'; Properties = '<UseWPF>false</UseWPF>' }
+        )
+
+        @(Get-UiProject -Solution $solution).Name | Should -Be @('A')
+    }
 }

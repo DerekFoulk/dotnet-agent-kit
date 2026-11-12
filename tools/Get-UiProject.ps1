@@ -21,6 +21,9 @@ $ErrorActionPreference = 'Stop'
 # The MSBuild property that makes a project a UI project, its kind, and the GitHub runners that build it.
 $script:UiKinds = @(
     [pscustomobject]@{ Property = 'UseMaui'; Kind = 'Maui'; Os = @('windows-latest', 'macos-latest') }
+    [pscustomobject]@{ Property = 'UseWPF'; Kind = 'Wpf'; Os = @('windows-latest') }
+    [pscustomobject]@{ Property = 'UseWindowsForms'; Kind = 'WindowsForms'; Os = @('windows-latest') }
+    [pscustomobject]@{ Property = 'UseWinUI'; Kind = 'WinUI'; Os = @('windows-latest') }
 )
 
 function Get-UiProject {
