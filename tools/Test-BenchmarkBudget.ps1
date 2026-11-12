@@ -28,6 +28,9 @@ function Get-BenchmarkBudgetProblem {
         [Parameter(Mandatory)] [string] $Budget
     )
 
+    if (-not (Test-Path -LiteralPath $Budget -PathType Leaf)) {
+        return "No budget file at $Budget. Each benchmarks project keeps its budgets in benchmark-budget.json."
+    }
     $budgets = Get-Content -Raw -LiteralPath $Budget | ConvertFrom-Json -AsHashtable
     $reports = @(Get-ChildItem -LiteralPath $Path -Filter '*-report-full-compressed.json' -File -Recurse)
     if (-not $reports) {
@@ -38,7 +41,10 @@ function Get-BenchmarkBudgetProblem {
     foreach ($report in $reports) {
         foreach ($benchmark in (Get-Content -Raw -LiteralPath $report.FullName | ConvertFrom-Json -AsHashtable)['Benchmarks']) {
             $name = [string] $benchmark['FullName']
-            $null = $seen.Add($name)
+            if (-not $seen.Add($name)) {
+                "${name}: in more than one report under $Path. Run the benchmarks into an empty folder."
+                continue
+            }
             $limit = $budgets[$name]
             if ($null -eq $limit) {
                 "${name}: no budget in $(Split-Path -Leaf $Budget). Add one, with maxMeanNanoseconds and maxAllocatedBytes."
