@@ -22,6 +22,9 @@ areas:
         gap: "No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, the runners' Android SDK, and the checks that move to Windows (code shape, duplicate code with PMD's batch launcher, the SBOM) are untested (ADR-0059)."
         status: proposed
         needs: "a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change"
+      - id: GAP-031
+        gap: "The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059)."
+        status: proposed
   - id: craft
     name: Craft
     perfect: "Code built on the fundamentals (SOLID, DRY, KISS, YAGNI, separation of concerns, acyclic dependencies), within metric limits a tool enforces, using every library only through its documented API; every defect fixed at its root, and no known-worse design left unnamed."
@@ -125,6 +128,10 @@ areas:
       - id: GAP-008
         gap: "No rule for safe database migrations (backward-compatible steps, tested before deploy). Closed by ADR-0054: DAT-003 to DAT-005 (proposed) in docs/standards/data.md, and the shared app checks run Test-SafeMigrations.ps1 on every migration; ADR-0053 adds the database guide."
         status: closed
+      - id: GAP-030
+        gap: "Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059)."
+        status: proposed
+        needs: "a change to the safe-migrations check"
   - id: observability
     name: Observability
     perfect: "Structured logs, metrics and traces through OpenTelemetry, with one ID following a request from end to end."
@@ -257,13 +264,13 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 8 | 4 | 4 | 4 | 2 |
+| Architecture | 8 | 4 | 4 | 4 | 3 |
 | Craft | 10 | 5 | 5 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 8 | 7 | 1 | 0 | 0 |
 | Tests | 7 | 4 | 3 | 3 | 3 |
 | Security | 7 | 5 | 2 | 4 | 0 |
-| Reliability | 3 | 2 | 1 | 2 | 0 |
+| Reliability | 3 | 2 | 1 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 3 | 3 | 0 | 3 | 0 |
 | Performance | 1 | 0 | 1 | 0 | 1 |
@@ -273,16 +280,18 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 24 proposed; 11 open gaps.
+**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 24 proposed; 13 open gaps.
 
 Open gaps:
 
 - **GAP-026** (Architecture, proposed; needs a CI change): Nightly mutation testing (mutation.reusable.yml) and the Dependabot lock-file refresh (dependabot-lockfiles.yml) run on Linux against the whole solution, so they can't build one with MAUI or desktop projects; they need the solution filter the .NET CI uses, or a Windows runner for the lock files (ADR-0059).
 - **GAP-028** (Architecture, proposed; needs a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change): No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, the runners' Android SDK, and the checks that move to Windows (code shape, duplicate code with PMD's batch launcher, the SBOM) are untested (ADR-0059).
+- **GAP-031** (Architecture, proposed): The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059).
 - **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-008 proposes the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
+- **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions); nothing runs them yet.
 - **GAP-023** (Supply chain and build, proposed; needs a scheduled check of PMD's releases and advisories, or a pin Dependabot can update): PMD, which the duplicate code check downloads in CI (ADR-0051), is pinned by version and SHA-256 in dotnet-ci.reusable.yml, where Dependabot can't see it: nothing tells the kit when PMD releases a new version or has a security advisory.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0054, Option 4).
