@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- A fixture for Test-Duplication.Tests.ps1, in the shape of PMD CPD 7's XML report: one duplication found in two
-     places. -->
+     places, and one file CPD couldn't read. -->
 <pmd-cpd xmlns="https://pmd-code.org/schema/cpd-report"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          pmdVersion="7.29.0"
@@ -14,4 +14,5 @@
       <file column="37" endcolumn="75" endline="100" line="68" begintoken="5700" endtoken="5938" path="/repo/src/Invoices.cs"/>
       <codefragment><![CDATA[decimal total = 0;]]></codefragment>
    </duplication>
+   <error filename="/repo/tests/RawTests.cs" msg="Lexical error in file '/repo/tests/RawTests.cs' at line 44, column 40: token recognition error at: '$$'">net.sourceforge.pmd.lang.ast.LexException: stack trace</error>
 </pmd-cpd>

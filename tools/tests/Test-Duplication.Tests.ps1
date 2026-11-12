@@ -35,6 +35,25 @@ Describe 'Test-Duplication.ps1' {
         }
     }
 
+    # CI on PR 49: CPD 7.29.0's C# tokenizer can't read a raw string literal ("""..."""), and stops the run. A file it
+    # can't read is skipped, and named as a warning so a reader knows it wasn't checked.
+    Context 'a file CPD cannot read' {
+        It 'reads each skipped file with where CPD stopped' {
+            $skipped = @(Get-SkippedFile -Report (Join-Path $script:fixtures 'cpd-report.xml'))
+
+            $skipped.Count | Should -Be 1
+            $skipped[0].Path | Should -Be '/repo/tests/RawTests.cs'
+            $skipped[0].Line | Should -Be 44
+            $skipped[0].Column | Should -Be 40
+        }
+
+        It 'prints it as an MSBuild warning that it was not checked' {
+            $lines = @(Get-SkippedFile -Report (Join-Path $script:fixtures 'cpd-report.xml') | Format-SkippedFile -Solution 'App.slnx')
+
+            $lines | Should -Be "/repo/tests/RawTests.cs(44,40): warning CRF003: CPD can't read this C# (token recognition error at: '`$`$'), so the file isn't checked for duplicate code. [App.slnx]"
+        }
+    }
+
     Context 'running CPD' {
         It 'asks for C# with the tuning ADR-0051 records' {
             $arguments = Get-CpdArgument -FileList 'files.txt'
@@ -46,6 +65,7 @@ Describe 'Test-Duplication.ps1' {
             ($arguments -join ' ') | Should -Match '--language cs --minimum-tokens 100 '
             ($arguments -join ' ') | Should -Match '--file-list files\.txt --format xml'
             $arguments | Should -Contain '--no-fail-on-violation'
+            $arguments | Should -Contain '--no-fail-on-error'
         }
     }
 }

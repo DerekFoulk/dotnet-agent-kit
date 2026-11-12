@@ -63,6 +63,9 @@ function Get-Duplication {
     }
 }
 
+function Get-SkippedFile { param([string] $Report) }
+function Format-SkippedFile { param([Parameter(ValueFromPipeline)] $Skipped, [string] $Solution) process { } }
+
 # One MSBuild-format error line per place a duplication occurs, naming the other places.
 function Format-Duplication {
     param(
