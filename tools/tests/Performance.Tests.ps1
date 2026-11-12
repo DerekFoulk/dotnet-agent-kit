@@ -118,7 +118,7 @@ Describe 'Performance tests (GAP-012)' {
             $run = Find-Step $benchmarks 'Run each benchmarks project and check its budget'
 
             $run | Should -HaveCount 1
-            $run[0]['run'] | Should -Match 'Where-Object \{ Test-BenchmarksProject -Name '
+            $run[0]['run'] | Should -Match 'Where-Object \{ Test-BenchmarksProject -Name \(\[IO\.Path\]::GetFileNameWithoutExtension\(\$_\)\) \}'
             $run[0]['run'] | Should -Match 'No benchmarks project'
             # CRF-003: it reads the solution as every kit script does.
             $run[0]['run'] | Should -Match 'Import-Module "\$env:KIT/tools/KitSolution\.psm1"'

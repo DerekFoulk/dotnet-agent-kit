@@ -120,11 +120,14 @@ Describe 'Test-BenchmarksProject' {
         $script:empty | Should -BeFalse
     }
 
-    # MSBuild can't call the module, so its copy is checked against it: each condition that picks out a benchmarks
-    # project is MSBuildProjectName.EndsWith, which MSBuild runs as .NET's String.EndsWith(string).
+    # MSBuild can't call the module, so its copy is checked against it. The file picks out projects by name only with
+    # MSBuildProjectName.EndsWith, which MSBuild runs as .NET's String.EndsWith(string): 'Tests' for test projects, and
+    # every other suffix for benchmarks projects. Each condition is picked by that structure, never by the suffix it
+    # checks, so one that drifts fails here instead of dropping out (review 1).
     It 'agrees with sample/Directory.Build.props, an app''s tests/Directory.Build.props' -ForEach @(@{ Cases = $BenchmarksNames }) {
         $props = [xml] (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'sample' 'Directory.Build.props'))
-        $conditions = @($props.SelectNodes('//*[@Condition]') | ForEach-Object { $_.GetAttribute('Condition') } | Where-Object { $_ -match 'benchmarks' })
+        $conditions = @($props.SelectNodes('//*[@Condition]') | ForEach-Object { $_.GetAttribute('Condition') } |
+                Where-Object { $_ -match 'MSBuildProjectName' -and $_ -ne "`$(MSBuildProjectName.EndsWith('Tests'))" })
 
         $conditions.Count | Should -BeGreaterThan 0 -Because 'the file sets up benchmarks projects'
         foreach ($condition in $conditions) {
@@ -136,12 +139,18 @@ Describe 'Test-BenchmarksProject' {
         }
     }
 
-    # .editorconfig's section turns CA1515 off in benchmarks projects' folders, named by a glob. The glob is compared
-    # case-sensitively here, as the rule is; that a folder is named after its project is the kit's convention.
+    # .editorconfig's section turns CA1515 off in benchmarks projects' folders, named by a glob; it's picked by what it
+    # sets, not by its glob. The glob is compared case-sensitively here, as the rule is; that a folder is named after its
+    # project is the kit's convention.
     It 'agrees with .editorconfig''s section for benchmarks projects' -ForEach @(@{ Cases = $BenchmarksNames }) {
-        $sections = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' '.editorconfig') | Where-Object { $_ -match '^\[.*benchmarks.*\]$' })
+        $sections = @()
+        $header = $null
+        foreach ($line in Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' '.editorconfig')) {
+            if ($line -match '^\[.*\]$') { $header = $line }
+            elseif ($line -match '^\s*dotnet_diagnostic\.CA1515\.severity\s*=\s*none\b') { $sections += $header }
+        }
 
-        $sections.Count | Should -BeGreaterThan 0 -Because '.editorconfig has a section for benchmarks projects'
+        $sections.Count | Should -BeGreaterThan 0 -Because '.editorconfig turns CA1515 off for benchmarks projects'
         foreach ($section in $sections) {
             # The project's folder at the repo's root, or at any depth; the same glob for both.
             $section | Should -Match '^\[\{(?<glob>[^/,{}]+)/\*\*\.cs,\*\*/\k<glob>/\*\*\.cs\}\]$'
@@ -153,17 +162,19 @@ Describe 'Test-BenchmarksProject' {
     }
 
     # The kit's scripts and workflows ask the module; a second copy of the rule could drift from it. A copy is a
-    # wildcard ending in .Benchmarks or an EndsWith('.Benchmarks'), the two ways the copies were written.
+    # wildcard ending in .Benchmarks or an EndsWith('.Benchmarks'), the two ways the copies were written, or a regex
+    # ending in \.Benchmarks$. A copy written another way (a suffix built from parts) isn't found.
     It 'is the only place a kit script or workflow states the rule' {
         $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        $tests = Join-Path $root 'tools' 'tests' ''
         $files = @(
             Get-ChildItem -LiteralPath (Join-Path $root 'tools') -File -Include '*.ps1', '*.psm1' -Recurse |
-                Where-Object { $_.FullName -notlike (Join-Path $root 'tools' 'tests' '*') -and $_.Name -ne 'KitSolution.psm1' }
+                Where-Object { -not $_.FullName.StartsWith($tests, [StringComparison]::OrdinalIgnoreCase) -and $_.Name -ne 'KitSolution.psm1' }
             Get-ChildItem -LiteralPath (Join-Path $root '.github') -File -Include '*.yml', '*.yaml' -Recurse
             Get-ChildItem -LiteralPath (Join-Path $root 'templates') -File -Include '*.yml', '*.yaml', '*.ps1', '*.psm1' -Recurse -Force
         )
 
-        $copies = @($files | Select-String -Pattern '\*\.Benchmarks[''"]|EndsWith\(\s*[''"]\.Benchmarks' |
+        $copies = @($files | Select-String -Pattern '\*\.Benchmarks[''"]|EndsWith\(\s*[''"]\.Benchmarks|\\\.Benchmarks\$' |
                 ForEach-Object { '{0}:{1}' -f [IO.Path]::GetRelativePath($root, $_.Path), $_.LineNumber })
 
         $files.Count | Should -BeGreaterThan 10 -Because 'the search must reach the kit''s scripts and workflows'
