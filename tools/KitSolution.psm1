@@ -1,6 +1,7 @@
 #Requires -Version 7.6
-# How the kit's scripts read a .NET solution (CRF-003): the projects a .slnx lists, and the framework MSBuild must
-# evaluate a multi-target project through. Every kit script and shared workflow that reads a solution comes here.
+# How the kit's scripts read a .NET solution (CRF-003): the projects a .slnx lists, the framework MSBuild must
+# evaluate a multi-target project through, and which projects are benchmarks projects. Every kit script and shared
+# workflow that reads a solution comes here.
 
 Set-StrictMode -Version Latest
 
