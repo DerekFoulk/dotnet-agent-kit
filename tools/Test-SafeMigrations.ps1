@@ -54,6 +54,8 @@ function Get-CSharpFile {
 function Get-MigrationProblem {
     param([Parameter(Mandatory)] [string] $Path)
 
+    # .NET resolves a relative path from the process's folder, not PowerShell's location, so resolve it here.
+    $Path = (Resolve-Path -LiteralPath $Path).ProviderPath
     foreach ($file in Get-CSharpFile -Folder $Path) {
         $text = Get-Content -LiteralPath $file.FullName -Raw
         # Get-Content returns nothing for an empty file, which has no migration in it.
