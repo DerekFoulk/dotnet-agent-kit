@@ -9,7 +9,9 @@ $script:PinFileName = 'pmd-dist-bin.zip.sha256'
 
 # PMD's version, from the pom's one pmd-dist dependency. It ends up in a URL and a file name, so only a release
 # version (x.y.z) passes: no path characters, no snapshot.
-function Get-PmdVersion([string] $Path) {
+function Get-PmdVersion {
+    param([Parameter(Mandatory)] [string] $Path)
+
     $pomFile = Join-Path $Path 'pom.xml'
     [xml] $pom = Get-Content -Raw -LiteralPath $pomFile
     $namespace = @{ m = 'http://maven.apache.org/POM/4.0.0' }
@@ -82,4 +84,4 @@ function Set-PmdPin {
     [IO.File]::WriteAllText((Join-Path $Path $script:PinFileName), $pin, [Text.UTF8Encoding]::new($false))
 }
 
-Export-ModuleMember -Function Get-PmdPin, Set-PmdPin
+Export-ModuleMember -Function Get-PmdVersion, Get-PmdPin, Set-PmdPin

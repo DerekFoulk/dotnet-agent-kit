@@ -88,7 +88,8 @@ Describe 'dependabot-lockfiles.yml' {
         # GAP-023 (ADR-0060): one push job for both kinds of Dependabot PR, so one place holds the write token.
         It 'runs after either job, only when that job succeeded and changed something' {
             @($push['needs']) | Should -Be @('refresh', 'pin-pmd')
-            "$($push['if'])" | Should -Match '^!cancelled\(\) && '
+            # In ${{ }}: a bare ! at the start of a YAML value is a tag.
+            "$($push['if'])" | Should -Match '^\$\{\{ !cancelled\(\) && '
             "$($push['if'])" | Should -Match "needs\.refresh\.result == 'success' && needs\.refresh\.outputs\.changed == 'true'"
             "$($push['if'])" | Should -Match "needs\.pin-pmd\.result == 'success' && needs\.pin-pmd\.outputs\.changed == 'true'"
         }
