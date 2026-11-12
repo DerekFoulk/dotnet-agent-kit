@@ -116,4 +116,15 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
     }
+
+    # A failed download must stop CI here, not as a puzzling browser error in the tests.
+    It 'fails, with the installer''s exit code, when the install fails' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'failing'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built -ExitCode 3
+        $solution = New-Solution $repo 'App.E2E.Tests'
+
+        { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } |
+            Should -Throw '*exit code 3*'
+    }
 }
