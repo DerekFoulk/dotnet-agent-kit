@@ -18,6 +18,9 @@ $ErrorActionPreference = 'Stop'
 # project's own source.
 $script:BuildFolders = 'bin', 'obj'
 
+# What counts as a project's own code: C#, and Razor components and pages (a Razor class library may hold only those).
+$script:SourceExtensions = '.cs', '.razor', '.cshtml'
+
 function New-Problem {
     param([string] $Message)
     [pscustomobject]@{ Message = $Message }
@@ -37,7 +40,8 @@ function Get-EmptyProjectProblem {
     foreach ($project in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $relative = $project.GetAttribute('Path')
         $projectFolder = Split-Path -Parent (Join-Path $solutionFolder $relative)
-        $files = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File -Filter '*.cs' |
+        $files = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File |
+            Where-Object Extension -In $script:SourceExtensions |
             Where-Object { [IO.Path]::GetRelativePath($projectFolder, $_.FullName).Split([IO.Path]::DirectorySeparatorChar)[0] -notin $script:BuildFolders })
         $placeholders = @($files | Where-Object { Test-PlaceholderFile -File $_ })
         if ($files.Count -eq $placeholders.Count) {
