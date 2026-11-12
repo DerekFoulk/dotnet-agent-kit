@@ -8,8 +8,8 @@
     --exclude-test-projects reads only each project file's XML, so it misses a test project marked by a
     Directory.Build.props, as the kit's sample and every app's tests are. This asks MSBuild instead: a project
     whose evaluated IsTestProject is true is left out. So is a benchmarks project, whose name ends in ".Benchmarks"
-    (ADR-0062), as the coverage gate knows it. The filter is named after the solution, so the SBOM is too,
-    and it names the solution relative to itself, as a solution filter does. It writes the filter's path.
+    (ADR-0062), as Test-BenchmarksProject in KitSolution.psm1 knows it. The filter is named after the solution, so the
+    SBOM is too, and it names the solution relative to itself, as a solution filter does. It writes the filter's path.
 
 .EXAMPLE
     ./tools/New-ShippedSolutionFilter.ps1 -Solution Contoso.Orders.slnx -Destination $env:RUNNER_TEMP/sbom-input

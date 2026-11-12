@@ -20,8 +20,9 @@
 
   <!-- Benchmarks projects: BenchmarkDotNet console apps, each with a benchmark-budget.json beside it (ADR-0062). Not
        test projects, so dotnet test leaves them alone; the coverage gate and the SBOM leave them out by name. The name
-       rule's source is Test-BenchmarksProject in the kit's tools/KitSolution.psm1; the kit's tests check these
-       conditions against it. -->
+       rule's source is Test-BenchmarksProject in the kit's tools/KitSolution.psm1 (.kit/tools in an app), which the
+       coverage gate and SBOM filter use; the kit's tests check the kit's copy of these conditions against it. Change
+       the rule in the kit, not here. -->
   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Benchmarks'))">
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
