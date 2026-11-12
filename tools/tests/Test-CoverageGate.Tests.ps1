@@ -49,8 +49,9 @@ Describe 'Test-CoverageGate.ps1' {
     }
 
     Context 'Get-CoverageSummary' {
-        # Microsoft's collector writes <packages /> for a test project that loads no assembly it counts; GAP-004 met one,
-        # in one clone only, cause not found. PowerShell reads an empty element as a string, which has no .package.
+        # Microsoft's collector writes <packages /> for a test project that loads no assembly it counts, and on Windows for a
+        # clone whose path is too long (testing.md, "Browser and accessibility tests"). PowerShell reads an empty element as
+        # a string, which has no .package.
         It 'reads a report with no packages as no lines, and still counts the other reports' {
             $dir = Join-Path $TestDrive 'empty-report'
             New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'src/Bookmark.cs'; Lines = (Get-Lines -Covered 2 -Missed 0) }) } | Out-Null

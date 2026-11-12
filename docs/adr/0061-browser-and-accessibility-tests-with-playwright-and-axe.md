@@ -24,7 +24,7 @@ Checked for this decision:
 ## Options
 
 **Hosting, for every option below.** The browser reaches the app through `WebApplicationFactory` on Kestrel, or through Aspire testing.
-- **WebApplicationFactory:** needs no AppHost, runs in the test process (so the coverage gate counts the web project), and uses the same factory pattern as the sample's functional tests.
+- **WebApplicationFactory:** needs no AppHost, runs in the test process (so the coverage gate counts the web project; on Windows, only from a clone in a short folder, as testing.md says), and uses the same factory pattern as the sample's functional tests.
 - **Aspire testing:** suits an app that has an Aspire AppHost, where it starts the whole distributed app.
 
 The intake now offers WebApplicationFactory by default, and Aspire testing for an app with an AppHost.
