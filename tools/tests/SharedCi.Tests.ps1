@@ -515,6 +515,8 @@ Describe 'Shared CI for app repos' {
             $windows['run'] | Should -Match 'Test-Duplication\.ps1" -Solution \$env:SOLUTION -Pmd \$env:PMD'
             # GAP-023 (ADR-0060): both read the kit's pin, so the workflow holds no PMD version or hash of its own.
             $dotnet.Yaml.ContainsKey('env') -and ($dotnet.Yaml['env'].Contains('PMD_VERSION') -or $dotnet.Yaml['env'].Contains('PMD_SHA256')) | Should -BeFalse
+            # Review of the PR 53 merge: no SHA-256 anywhere in the workflow, under any name (action pins are 40 hex digits).
+            $dotnet.Text | Should -Not -Match '[0-9a-f]{64}'
         }
 
         # The SBOM (SUP-009) lists the shipped projects through MSBuild too, and must include the UI app, which ships.
@@ -690,7 +692,9 @@ Describe 'Shared CI for app repos' {
         }
 
         It 'on Windows, downloads the URL the pin names and checks it against the pinned SHA-256' {
-            $windows[0]['run'] | Should -Match 'Invoke-WebRequest -Uri \$pin\.Url'
+            $windows[0]['run'] | Should -Match 'Invoke-WebRequest -Uri \$pin\.Url -OutFile \$zip'
+            # Review of the PR 53 merge: the file it unpacks is the file it checked.
+            $windows[0]['run'] | Should -Match 'Expand-Archive -LiteralPath \$zip '
             $windows[0]['run'] | Should -Match '\(Get-FileHash -LiteralPath \$zip -Algorithm SHA256\)\.Hash'
             $windows[0]['run'] | Should -Match 'bin/pmd\.bat'
         }
