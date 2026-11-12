@@ -427,6 +427,52 @@ Describe 'New-KitApp run' {
             Get-WriteCall | Should -BeNullOrEmpty
             Test-Path -LiteralPath $app | Should -BeFalse
         }
+
+        It 'refuses one from before the intake, since it has no cards to check the answers against' {
+            git -C $kit switch -q -c no-intake
+            git -C $kit rm -q templates/app-intake.json
+            git -C $kit commit -q -m 'chore: no intake'
+            $old = (git -C $kit rev-parse HEAD).Trim()
+            git -C $kit switch -q main
+            $app = Join-Path $TestDrive 'NoIntake.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'no-intake-remote.git')
+
+            { New-KitApp -Name 'NoIntake.Orders' -KitRef $old -Destination $app -KitRoot $kit 6>$null } |
+                Should -Throw '*has no templates/app-intake.json*newer -KitRef*'
+            $script:calls | Should -BeNullOrEmpty -Because 'the answers are checked before gh is called at all'
+            Test-Path -LiteralPath $app | Should -BeFalse
+        }
+    }
+
+    # The answers are checked before any step and before gh is called, with -WhatIf too, so a wrong answer leaves
+    # nothing behind and the skill can ask again (ADR-0058).
+    Context 'refusing the intake answers before any change: <Case>' -ForEach @(
+        @{ Case = 'no -Intake'; Answers = $null; Path = ''; Message = 'Pass -Intake*new-app skill*' }
+        @{ Case = 'a file that doesn''t exist'; Answers = $null; Path = 'missing.json'; Message = "*missing.json doesn't exist*" }
+        @{ Case = 'a file that isn''t JSON'; Answers = 'not json {'; Path = 'bad.json'; Message = "*aren't valid JSON*" }
+        @{ Case = 'JSON that isn''t an object'; Answers = '["web-api"]'; Path = 'list.json'; Message = "*aren't a JSON object*" }
+        @{ Case = 'an answer that isn''t an option'; Path = 'okta.json'
+            Answers = '{ "appType": "web-api", "data": "none", "database": "none", "signIn": "okta", "hosting": "none" }'
+            Message = "*'okta' isn't an option of the 'signIn' card*" }
+    ) {
+        BeforeAll {
+            $app = Join-Path $TestDrive "intake-$Path"
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive "intake-$Path.git")
+            $file = if ($Path) { Join-Path $TestDrive $Path } else { '' }
+            if ($null -ne $Answers) { Set-Content -LiteralPath $file -Value $Answers }
+            $runError = $null
+            try { New-KitApp -Name 'Intake.Orders' -KitRef $commit -Destination $app -KitRoot $kit -Intake $file -WhatIf 6>$null }
+            catch { $runError = $_ }
+        }
+
+        It 'stops with a message saying why' {
+            "$runError" | Should -BeLike $Message
+        }
+
+        It 'calls no gh and writes no file' {
+            $script:calls | Should -BeNullOrEmpty
+            Test-Path -LiteralPath $app | Should -BeFalse
+        }
     }
 
     Context 'run as a command' {
