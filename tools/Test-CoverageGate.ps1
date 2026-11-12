@@ -92,11 +92,14 @@ function Invoke-CoverageGate {
 
     $failed = $false
 
-    # A production project that no test loads isn't in any report, so it would drop out silently.
+    # A production project that no test loads isn't in any report, so it would drop out silently. UI projects are
+    # exempt (ARC-010, ADR-0057): they hold only views, platform code and startup wiring, which no test loads.
     if ($Solution) {
+        $exempt = @(& (Join-Path $PSScriptRoot 'Get-UiProject.ps1') -Solution $Solution | ForEach-Object Name)
+        foreach ($name in $exempt) { Write-Host ('{0,-32} exempt (UI project, ARC-010)' -f $name) }
         $expected = ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project') |
             ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.GetAttribute('Path')) } |
-            Where-Object { $_ -notlike '*Tests' }
+            Where-Object { $_ -notlike '*Tests' -and $exempt -notcontains $_ }
         foreach ($name in $expected) {
             if ($summary.Package -notcontains $name) {
                 $failed = $true
