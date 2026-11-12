@@ -60,4 +60,17 @@ Describe 'Test-LoadBudget.ps1' {
 
         @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget (New-StandardBudget))) | Should -BeNullOrEmpty
     }
+
+    It 'names the request, the percentile, its time and its budget when a percentile is over budget' {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats @(
+            (New-Row 'POST' '/bookmarks' -Requests 400 -P95 210 -P99 260)
+            (New-Row '' 'Aggregated' -Requests 400 -P95 210 -P99 610))
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget (New-StandardBudget))) } | Should -Not -Throw
+
+        $script:problems | Should -Be @(
+            'Aggregated: 99% of requests took up to 610 ms, over its budget of 600 ms.'
+            'POST /bookmarks: 95% of requests took up to 210 ms, over its budget of 200 ms.')
+    }
 }
