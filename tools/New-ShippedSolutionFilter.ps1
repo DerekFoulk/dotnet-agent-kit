@@ -34,9 +34,9 @@ function New-ShippedSolutionFilter {
 
     $shipped = foreach ($node in ([xml] (Get-Content -LiteralPath $solutionPath -Raw)).SelectNodes('//Project')) {
         $relative = $node.GetAttribute('Path')
-        # CycloneDX reads only these project types (its Utils.IsSupportedProjectType); MSBuild may not evaluate the
-        # rest, such as a shared project (.shproj), on Linux.
-        if ([IO.Path]::GetExtension($relative) -notin '.csproj', '.fsproj', '.vbproj') { continue }
+        # CycloneDX reads only these project types (Utils.IsSupportedProjectType at the version the kit pins); MSBuild
+        # may not evaluate the rest, such as a shared project (.shproj), on Linux.
+        if ([IO.Path]::GetExtension($relative) -notin '.csproj', '.fsproj', '.vbproj', '.xsproj') { continue }
         $output = @(& dotnet msbuild (Join-Path $solutionFolder $relative) -nologo -getProperty:IsTestProject 2>&1)
         if ($LASTEXITCODE -ne 0) { throw "MSBuild couldn't read $relative, so it's unknown whether it ships:`n$($output -join "`n")" }
         # The value is MSBuild's last line; an evaluation warning comes before it. Anything else is a surprise.
