@@ -5,7 +5,7 @@
     or LCOM4 (ADR-0050).
 
 .DESCRIPTION
-    Lists the solution's projects with `dotnet sln list` and skips any that isn't C#. For each, it asks MSBuild for
+    Lists the .slnx solution's projects (KitSolution.psm1) and skips any that isn't C#. For each, it asks MSBuild for
     the project's Compile items and DefineConstants (`dotnet msbuild -getItem -getProperty`, which evaluates the
     project without building it; a multi-target project, through its first framework), so the check reads the files
     the compiler would. The SDK's implicit symbols, such as NET10_0_OR_GREATER, come from a build target, not the
@@ -26,26 +26,18 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
 
 # The C# projects in a solution, each with its preprocessor symbols and source files, as Kit.CodeShape's manifest
 # lists them.
 function Get-CodeShapeProject {
     param([Parameter(Mandatory)] [string] $Solution)
 
-    $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).Path
-    $listed = @(dotnet sln $Solution list)
-    if ($LASTEXITCODE -ne 0) { throw "dotnet sln list failed for '$Solution': $($listed -join "`n")" }
-
-    # The listing's two header lines end at the dashes; every line after them is a project path.
-    $paths = $listed | Select-Object -Skip ([array]::FindIndex([string[]] $listed, [Predicate[string]] { $args[0] -match '^-+$' }) + 1)
-    foreach ($path in $paths | Where-Object { $_ -like '*.csproj' }) {
-        $project = Join-Path $folder $path
+    foreach ($project in Get-SolutionProject -Solution $Solution | ForEach-Object FullPath | Where-Object { $_ -like '*.csproj' }) {
         $evaluated = Read-MSBuildProject -Project $project
         # With TargetFrameworks, the outer evaluation has no Compile items: read the project through its first one.
-        if (-not $evaluated.Properties.TargetFramework -and $evaluated.Properties.TargetFrameworks) {
-            $first = ($evaluated.Properties.TargetFrameworks -split ';' | Where-Object { $_ })[0]
-            $evaluated = Read-MSBuildProject -Project $project -TargetFramework $first
-        }
+        $first = Get-FirstTargetFramework -Properties $evaluated.Properties
+        if ($first) { $evaluated = Read-MSBuildProject -Project $project -TargetFramework $first }
 
         [pscustomobject]@{
             name    = $project

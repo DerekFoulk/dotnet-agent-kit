@@ -25,6 +25,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
 
 # The MSBuild property that makes a project a UI project, its kind, and the GitHub runners that build it.
 $script:UiKinds = @(
@@ -37,11 +38,9 @@ $script:UiKinds = @(
 function Get-UiProject {
     param([Parameter(Mandatory)] [string] $Solution, [string] $FilterPath, [string] $Runner)
 
-    if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) { throw "No solution file at '$Solution'." }
-    $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).Path
-    $projects = foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
-        $path = $node.GetAttribute('Path')
-        $file = [IO.Path]::GetFullPath((Join-Path $folder ($path -replace '\\', '/')))
+    $projects = foreach ($listed in Get-SolutionProject -Solution $Solution) {
+        $path = $listed.Path
+        $file = $listed.FullPath
         if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "The solution $Solution lists $path, which doesn't exist." }
         [xml] $xml = Get-Content -LiteralPath $file -Raw
         $kind = $script:UiKinds | Where-Object {
@@ -70,7 +69,7 @@ function Get-UiProject {
 
     foreach ($project in $ui) {
         [pscustomobject]@{
-            Name     = [IO.Path]::GetFileNameWithoutExtension($project.Path)
+            Name     = [IO.Path]::GetFileNameWithoutExtension($project.File)
             Path     = $project.Path
             FullPath = $project.File
             Kind     = $project.Kind.Kind

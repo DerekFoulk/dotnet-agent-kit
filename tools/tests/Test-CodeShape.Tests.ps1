@@ -31,6 +31,15 @@ Describe 'Test-CodeShape.ps1' {
 
             $multi[0].files | ForEach-Object { Split-Path $_ -Leaf } | Should -Be 'Multi.cs'
         }
+
+        # The kit's solutions are .slnx, and the check reads them as every kit script does (KitSolution.psm1).
+        It 'refuses a .sln, saying how to convert it' {
+            $solution = Join-Path $TestDrive 'Old.sln'
+            Push-Location $TestDrive
+            try { dotnet new sln -n Old --format sln *> $null } finally { Pop-Location }
+
+            { Get-CodeShapeProject -Solution $solution } | Should -Throw "*Old.sln isn't a .slnx solution*migrate*"
+        }
     }
 
     Context 'running the check' {

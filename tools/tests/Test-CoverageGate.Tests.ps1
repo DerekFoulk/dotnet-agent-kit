@@ -205,6 +205,25 @@ Describe 'Test-CoverageGate.ps1' {
             $exitCode | Should -Be 0
         }
 
+        # .NET on Linux reads a backslash as part of a file name, so this fails there unless both the exempt names and
+        # the solution's names come from each project's full path.
+        It 'names projects the solution writes with backslashes by their file names, on every OS' {
+            $dir = Join-Path $TestDrive 'backslashes'
+            New-CoberturaReport -Directory $dir -Packages @{ 'App.Core' = @(@{ File = 'c.cs'; Lines = Get-Lines 10 0 }) } | Out-Null
+            $solution = New-TestSolution -Name 'Backslashes' -Projects @{
+                'src/App.Core/App.Core.csproj' = ''
+                'src/App.Maui/App.Maui.csproj' = '<UseMaui>true</UseMaui>'
+            }
+            [regex]::Replace((Get-Content -Raw -LiteralPath $solution), 'Path="[^"]+"', { $args[0].Value.Replace('/', '\') }) |
+                Set-Content -LiteralPath $solution
+
+            $output = Invoke-CoverageGate -Path $dir -Solution $solution 6>&1
+            $exitCode = @($output | Where-Object { $_ -is [int] })[-1]
+
+            ($output | Where-Object { $_ -isnot [int] }) -join "`n" | Should -BeLike '*App.Maui*exempt (UI project, ARC-010)*'
+            $exitCode | Should -Be 0
+        }
+
         # ADR-0062: a benchmarks project (its name ends in .Benchmarks) is test-side code, like a test project: it
         # measures production code and ships nothing, and no test loads it.
         It 'leaves out a benchmarks project, says so, and leaves its lines out of the overall' {

@@ -14,6 +14,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
 
 # Where the build writes output and generated C# by default (BaseOutputPath and BaseIntermediateOutputPath): not the
 # project's own source.
@@ -58,22 +59,20 @@ function Get-ProjectSourceFile {
 function Get-EmptyProjectProblem {
     param([Parameter(Mandatory)] [string] $Solution)
 
-    if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) {
-        throw "No solution file at $Solution."
-    }
+    $projects = @(Get-SolutionProject -Solution $Solution)
     # The file system's own path, not a PowerShell drive's (TestDrive:\, a mapped drive), which .NET can't read.
     $solutionFolder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).ProviderPath
-    foreach ($project in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
-        # A hand-written solution may use Windows separators; PowerShell reads / on every platform.
-        $relative = $project.GetAttribute('Path').Replace('\', '/')
+    foreach ($project in $projects) {
+        # Messages name the project as the solution does, with / on every platform.
+        $relative = $project.Path.Replace('\', '/')
         if ([IO.Path]::GetExtension($relative) -ne $script:ProjectExtension) {
             continue
         }
-        if (-not (Test-Path -LiteralPath (Join-Path $solutionFolder $relative) -PathType Leaf)) {
+        if (-not (Test-Path -LiteralPath $project.FullPath -PathType Leaf)) {
             New-Problem -Message "$relative is in the solution but isn't there"
             continue
         }
-        $projectFolder = Split-Path -Parent (Join-Path $solutionFolder $relative)
+        $projectFolder = Split-Path -Parent $project.FullPath
         $files = @(Get-ProjectSourceFile -Folder $projectFolder)
         $placeholders = @($files | Where-Object { Test-PlaceholderFile -File $_ })
         if ($files.Count -eq $placeholders.Count) {

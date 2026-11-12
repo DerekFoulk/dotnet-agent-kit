@@ -23,6 +23,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
 
 # TST-004. The first matching rule applies; the overall minimum covers every counted assembly.
 $script:CoverageRules = @(
@@ -130,8 +131,8 @@ function Invoke-CoverageGate {
 
     # A production project that no test loads isn't in any report, so it would drop out silently.
     if ($Solution) {
-        $expected = ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project') |
-            ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.GetAttribute('Path')) } |
+        $expected = Get-SolutionProject -Solution $Solution |
+            ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.FullPath) } |
             Where-Object { $exempt -notcontains $_ }
         foreach ($name in $expected) {
             if (Test-BenchmarksAssembly $name) { Write-Host ('{0,-32} left out (benchmarks project, ADR-0062)' -f $name) }

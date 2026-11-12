@@ -51,7 +51,7 @@ $script:KitTools = @(
     'Test-ConventionalTitle.ps1', 'Test-RedGreenOrder.ps1', 'Test-AdrSections.ps1', 'Test-CoverageGate.ps1',
     'Test-DeprecatedPackages.ps1', 'KitReview.psm1', 'Initialize-DevMachine.ps1', 'Build-AgentRules.ps1',
     'KitFrontMatter.psm1', 'Set-AgentMode.ps1', 'Test-Runbook.ps1',
-    'Test-EmptyProjects.ps1', 'Test-SafeMigrations.ps1', 'Get-UiProject.ps1',
+    'Test-EmptyProjects.ps1', 'Test-SafeMigrations.ps1', 'Get-UiProject.ps1', 'KitSolution.psm1',
     'Test-BenchmarkBudget.ps1', 'Test-LoadBudget.ps1'
 )
 
