@@ -25,6 +25,17 @@ internal sealed class AppUnderTest : IAsyncDisposable
     /// <summary>The page, with the app's address as its base, so tests go to "/" or "checks".</summary>
     public IPage Page { get; }
 
+    /// <summary>
+    /// Opens a page of the app and checks it loaded: axe finds nothing wrong with an error page, so a test that only
+    /// ran axe would pass on a broken app.
+    /// </summary>
+    public async Task OpenAsync(string path)
+    {
+        IResponse? response = await Page.GotoAsync(path);
+        response.Should().NotBeNull();
+        response!.Status.Should().Be(200, "{0} should load", path);
+    }
+
     public static async Task<AppUnderTest> StartAsync()
     {
         AppFactory factory = new();

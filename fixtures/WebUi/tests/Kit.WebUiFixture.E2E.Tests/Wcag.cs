@@ -18,4 +18,9 @@ internal static class Wcag
         AxeResult result = await page.RunAxe(new AxeRunOptions { RunOnly = new RunOnlyOptions { Type = "tag", Values = Tags } });
         return result.Violations;
     }
+
+    /// <summary>One line per broken rule: what it is, how bad, where to read about it, and which elements break it.</summary>
+    public static string Describe(IEnumerable<AxeResultItem> violations) =>
+        string.Join(Environment.NewLine, violations.Select(violation =>
+            $"{violation.Id} ({violation.Impact}): {violation.Help} {violation.HelpUrl} at {string.Join(", ", violation.Nodes.Select(node => node.Target.ToString()))}"));
 }

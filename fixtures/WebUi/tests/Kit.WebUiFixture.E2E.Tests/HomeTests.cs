@@ -16,4 +16,15 @@ public sealed class HomeTests
         response!.Status.Should().Be(200);
         (await app.Page.Locator("h1").AllTextContentsAsync()).Should().Equal("Web UI fixture");
     }
+
+    [Fact]
+    public async Task HomeHasNoWcagFailureAxeCanFind()
+    {
+        await using AppUnderTest app = await AppUnderTest.StartAsync();
+        await app.OpenAsync("/");
+
+        Deque.AxeCore.Commons.AxeResultItem[] violations = await Wcag.FindViolationsAsync(app.Page);
+
+        violations.Should().BeEmpty(Wcag.Describe(violations));
+    }
 }
