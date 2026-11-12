@@ -36,7 +36,7 @@ A tool such as the "Continuous Benchmark" GitHub Action stores each run's result
 Each benchmarks project keeps a `benchmark-budget.json`: for each benchmark, a maximum mean time and a maximum of bytes allocated per operation. Each load test keeps a `load-budget.json`: response-time percentiles and a maximum share of failed requests, for the whole run and for any request it names. Two kit scripts check them: `Test-BenchmarkBudget.ps1` and `Test-LoadBudget.ps1`.
 
 - **Allocation budgets:** exact, because allocations don't vary.
-- **Time and latency budgets:** ceilings with room for the runner, set at about twice what the runner measured. The measured numbers are in the run's artifact.
+- **Time and latency budgets:** ceilings with room for the runner, set at about twice what the runner measured, and a load test's percentiles no lower than 100 ms, since one pause on a shared runner costs tens of milliseconds. The measured numbers are in the run's artifact.
 - **When it runs:** a shared workflow, `performance.reusable.yml`, nightly and on demand in apps. In the kit it also runs on every pull request. It's never a required check.
 - **Trade-offs:** Simple, no stored state, nothing to write. A slower change can merge before the nightly run shows it, unless its pull request runs the workflow (the kit's does). The budgets are numbers someone has to choose and update.
 - **Reversibility:** Easy.

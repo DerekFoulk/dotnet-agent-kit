@@ -1,15 +1,15 @@
 {
   "Aggregated": {
     "maxFailureRatio": 0,
-    "maxMilliseconds": { "95%": 300, "99%": 1000 }
+    "maxMilliseconds": { "95%": 100, "99%": 300 }
   },
   "POST /bookmarks": {
-    "maxMilliseconds": { "95%": 300 }
+    "maxMilliseconds": { "95%": 100 }
   },
   "GET /bookmarks/[id]": {
-    "maxMilliseconds": { "95%": 200 }
+    "maxMilliseconds": { "95%": 100 }
   },
   "GET /bookmarks": {
-    "maxMilliseconds": { "95%": 300 }
+    "maxMilliseconds": { "95%": 100 }
   }
 }
