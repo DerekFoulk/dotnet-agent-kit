@@ -101,11 +101,22 @@ Describe 'Test-Duplication.ps1' {
             $result.Output | Should -Be 'Duplicate code (CRF-003): 1 file checked, nothing repeats in 100 tokens or more; 0 skipped.'
         }
 
-        It 'stops when CPD itself fails' {
+        # Review 2 of GAP-020: the files skipped don't count as checked.
+        It 'passes when CPD skipped a file, counting it apart from the files checked' {
+            $env:KIT_FAKE_CPD_REPORT = Join-Path $script:fixtures 'cpd-skipped.xml'
+            $env:KIT_FAKE_CPD_EXIT = '0'
+
+            $result = Invoke-DuplicationCheck -Solution (Join-Path $script:codeShape 'Tidy.slnx') -KitRoot $script:kitRoot -Pmd $script:fakePmd
+
+            $result.ExitCode | Should -Be 0
+            ($result.Output -split "`n")[-1] | Should -Be 'Duplicate code (CRF-003): 0 files checked, nothing repeats in 100 tokens or more; 1 skipped.'
+        }
+
+        It "stops when CPD itself fails, with what CPD printed" {
             $env:KIT_FAKE_CPD_EXIT = '1'
 
             { Invoke-DuplicationCheck -Solution (Join-Path $script:codeShape 'Tidy.slnx') -KitRoot $script:kitRoot -Pmd $script:fakePmd } |
-                Should -Throw '*CPD failed with exit code 1*'
+                Should -Throw '*CPD failed with exit code 1*A console line that must never reach the report.*'
         }
 
         It 'checks nothing, and runs no CPD, when there is no C# file' {

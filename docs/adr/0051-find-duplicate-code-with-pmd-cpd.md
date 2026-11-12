@@ -20,7 +20,7 @@ Measured on the kit's own solution in CI on PR 49: see "Measurement" below.
 
 ### Option 1: PMD CPD in the shared .NET workflow, at 100 tokens
 
-`tools/Test-Duplication.ps1` takes the hand-written C# files from the code shape tool (`Kit.CodeShape --files`, ADR-0050), so generated code is skipped by one rule in one place. It runs `pmd cpd --language cs --minimum-tokens 100 --ignore-usings --ignore-annotations --ignore-literal-sequences --file-list <files> --format xml --no-fail-on-violation --no-fail-on-error` and prints each place a repeat occurs in MSBuild's error format, naming the other places.
+`tools/Test-Duplication.ps1` takes the hand-written C# files from the code shape tool (`Kit.CodeShape --files`, ADR-0050), so generated code is skipped by one rule in one place. It runs `pmd cpd --language cs --minimum-tokens 100 --ignore-usings --ignore-annotations --ignore-literal-sequences --file-list <files> --format xml --report-file <report> --no-fail-on-violation --no-fail-on-error` (when the solution has no C# file, it runs no CPD) and prints each place a repeat occurs in MSBuild's error format, naming the other places.
 
 `dotnet-ci.reusable.yml` downloads PMD 7.29.0 from its GitHub release. It checks the zip's SHA-256 against GitHub's digest for the asset, as the same workflow pins the gitleaks image by digest, and runs the script with the runner's Java.
 

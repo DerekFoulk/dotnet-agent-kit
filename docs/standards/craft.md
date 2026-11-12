@@ -25,7 +25,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-08", "https://pragprog.com/tips/, retrieved 2026-11-10", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"]
-    enforcement: "ci: tools/Test-Duplication.ps1 runs PMD CPD in dotnet-ci.reusable.yml and fails when 100 tokens or more repeat in hand-written C#, outside a CPD-OFF region (ADR-0051); advisory, checked by the reviewer agent: each CPD-OFF region's reason, whether a repeat is knowledge or code that only looks alike, and duplication outside C# (docs, config, scripts) or in a file CPD can't read, and a copy with renamed variables or changed literals"
+    enforcement: "ci: tools/Test-Duplication.ps1 runs PMD CPD in dotnet-ci.reusable.yml and fails when 100 tokens or more repeat in hand-written C#, outside a CPD-OFF region (ADR-0051); advisory, checked by the reviewer agent: each CPD-OFF region's reason, whether a repeat is knowledge or code that only looks alike, and duplication outside C# (docs, config, scripts) or in a file CPD can't read, or a copy with renamed variables or changed literals"
     scope: core
     paths: ["**"]
   - id: CRF-004
