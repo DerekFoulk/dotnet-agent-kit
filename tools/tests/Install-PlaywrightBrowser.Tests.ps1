@@ -15,10 +15,11 @@ Describe 'Install-PlaywrightBrowser.ps1' {
         # A project at src/<Name>/<Name>.csproj. With -Libraries, its restore graph (obj/project.assets.json) holds those
         # packages; with -Built, its output in -Configuration holds a playwright.ps1 that appends its arguments to
         # calls.txt (and exits with -ExitCode).
-        function New-Project([string] $Repo, [string] $Name, [string[]] $Libraries = @(), [switch] $Built, [string] $Configuration = 'Release', [int] $ExitCode = 0) {
+        function New-Project([string] $Repo, [string] $Name, [string[]] $Libraries = @(), [switch] $Built, [string] $Configuration = 'Release', [int] $ExitCode = 0, [string] $Frameworks) {
             $folder = Join-Path $Repo "src/$Name"
             New-Item -ItemType Directory -Force -Path (Join-Path $folder 'obj') | Out-Null
-            '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>' |
+            $target = if ($Frameworks) { "<TargetFrameworks>$Frameworks</TargetFrameworks>" } else { '<TargetFramework>net10.0</TargetFramework>' }
+            "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup>$target</PropertyGroup></Project>" |
                 Set-Content -LiteralPath (Join-Path $folder "$Name.csproj")
             $assets = [ordered]@{ version = 3; libraries = [ordered]@{} }
             foreach ($library in $Libraries) { $assets.libraries[$library] = @{ type = 'package' } }
@@ -126,5 +127,18 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } |
             Should -Throw '*exit code 3*'
+    }
+
+    # With TargetFrameworks, MSBuild's outer evaluation has no TargetDir; read the project through its first framework,
+    # as Test-CodeShape.ps1 does.
+    It 'reads a multi-targeted Playwright project through its first framework' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'multi'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built -Frameworks 'net10.0;net9.0'
+        $solution = New-Solution $repo 'App.E2E.Tests'
+
+        { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } | Should -Not -Throw
+
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
     }
 }
