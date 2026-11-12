@@ -72,6 +72,38 @@ Describe 'New-ShippedSolutionFilter.ps1' {
             Should -Throw '*src/Bad/Bad.csproj*'
     }
 
+    # Review 2 of PR 48: MSBuild prints an evaluation warning before the value, so the whole output isn't the value.
+    It 'reads the value past an MSBuild warning, and keeps one shipped project as a list' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $warned = Join-Path $TestDrive 'warned'
+        New-Project $warned 'src/App/App.csproj'
+        New-Project $warned 'tests/T/T.csproj' '<PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup><Import Project="x.props" /><Import Project="x.props" />'
+        '<Project />' | Set-Content -LiteralPath (Join-Path $warned 'tests/T/x.props')
+        '<Solution><Project Path="src/App/App.csproj" /><Project Path="tests/T/T.csproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $warned 'W.slnx')
+
+        $filter = New-ShippedSolutionFilter -Solution (Join-Path $warned 'W.slnx') -Destination (Join-Path $TestDrive 'out5')
+        $text = Get-Content -Raw -LiteralPath $filter
+
+        @(($text | ConvertFrom-Json).solution.projects) | Should -Be @('src/App/App.csproj')
+        $text | Should -Match '"projects":\s*\[' -Because 'CycloneDX reads projects as an array, even with one'
+    }
+
+    # CycloneDX reads only C#, F# and Visual Basic projects; MSBuild may not evaluate the rest (a .shproj) on Linux.
+    It 'asks MSBuild only about the project types CycloneDX reads' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $mixed = Join-Path $TestDrive 'mixed'
+        New-Project $mixed 'src/App/App.csproj'
+        New-Item -ItemType Directory -Force -Path (Join-Path $mixed 'src/Shared') | Out-Null
+        'not a project' | Set-Content -LiteralPath (Join-Path $mixed 'src/Shared/Shared.shproj')
+        '<Solution><Project Path="src/App/App.csproj" /><Project Path="src/Shared/Shared.shproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $mixed 'M.slnx')
+
+        { $script:filter = New-ShippedSolutionFilter -Solution (Join-Path $mixed 'M.slnx') -Destination (Join-Path $TestDrive 'out6') } |
+            Should -Not -Throw
+        $filter = $script:filter
+
+        @((Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json).solution.projects) | Should -Be @('src/App/App.csproj')
+    }
+
     It 'says plainly when the solution file is missing' {
         Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         { New-ShippedSolutionFilter -Solution (Join-Path $TestDrive 'missing.slnx') -Destination $TestDrive } |
