@@ -210,6 +210,21 @@ Describe 'Test-BenchmarkBudget.ps1' {
         $problems | Should -Be @('App.Benchmarks.ParseBenchmarks.Parse(Length: 1000): mean 9,000 ns is over its budget of 8,000 ns.')
     }
 
+    # Review 1 of PR 57: each check on a budget entry's values, so none can be dropped unnoticed.
+    It 'names a budget entry that <Case>' -ForEach @(
+        @{ Case = 'has a negative limit'; Entry = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = -1 } }
+        @{ Case = 'has a limit that isn''t a number'; Entry = [ordered]@{ maxMeanNanoseconds = '1000'; maxAllocatedBytes = 192 } }
+        @{ Case = 'isn''t an object'; Entry = 1000 }
+    ) {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @((New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse' -Mean 900 -Allocated 0))
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = $Entry })
+
+        $problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget)
+
+        $problems | Should -Be @('App.Benchmarks.ParseBenchmarks.Parse: its budget must have exactly maxMeanNanoseconds and maxAllocatedBytes, as numbers of 0 or more.')
+    }
+
     It 'returns exit code <Code> when the benchmarks are <State>' -ForEach @(
         @{ State = 'within budget'; Mean = 900; Code = 0 }
         @{ State = 'over budget'; Mean = 1100; Code = 1 }

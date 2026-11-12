@@ -118,6 +118,19 @@ Describe 'Test-LoadBudget.ps1' {
         $script:problems | Should -Be @("POST /bookmarks: has a budget, but the stats have no such request. Locust names a request '<Type> <Name>'; was it renamed?")
     }
 
+    # Locust's whole-run row has no Type; a request that happens to be named Aggregated is just a request.
+    It 'takes only the row with no Type as the whole run' {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats @(
+            (New-Row 'GET' 'Aggregated' -Requests 400 -P95 150)
+            (New-Row 'POST' '/bookmarks' -Requests 400 -P95 150)
+            (New-Row '' 'Aggregated' -Requests 800 -P95 150 -P99 700))
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget (New-StandardBudget))) } | Should -Not -Throw
+
+        $script:problems | Should -Be @('Aggregated: 99% of requests took up to 700 ms, over its budget of 600 ms.')
+    }
+
     # Review 1 of PR 57: Locust's names are case-sensitive URLs, so a budget matches a request only as Locust spells it.
     It 'matches a budgeted request to the stats only in the same case' {
         Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
@@ -159,6 +172,13 @@ Describe 'Test-LoadBudget.ps1' {
             Problem = 'Aggregated: maxFailureRatio must be a number from 0 to 1, such as 0.01 for 1%.' }
         @{ Case = 'has a negative time'; Budget = [ordered]@{ 'Aggregated' = [ordered]@{ maxFailureRatio = 0; maxMilliseconds = [ordered]@{ '95%' = -1 } } }
             Problem = 'Aggregated: the 95% budget must be a number of milliseconds, 0 or more.' }
+        # Review 1 of PR 57: each remaining check on the file, so none can be dropped unnoticed.
+        @{ Case = 'has a negative failure ratio'; Budget = [ordered]@{ 'Aggregated' = [ordered]@{ maxFailureRatio = -0.1 } }
+            Problem = 'Aggregated: maxFailureRatio must be a number from 0 to 1, such as 0.01 for 1%.' }
+        @{ Case = 'gives a request an empty entry'; Budget = [ordered]@{ 'Aggregated' = [ordered]@{ maxFailureRatio = 0 }; 'POST /bookmarks' = [ordered]@{} }
+            Problem = 'POST /bookmarks: give it a maxFailureRatio, a maxMilliseconds, or both.' }
+        @{ Case = 'gives a request no percentiles'; Budget = [ordered]@{ 'Aggregated' = [ordered]@{ maxFailureRatio = 0 }; 'POST /bookmarks' = [ordered]@{ maxMilliseconds = [ordered]@{} } }
+            Problem = 'POST /bookmarks: maxMilliseconds maps percentiles to milliseconds, such as { "95%": 300 }.' }
     ) {
         Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $stats = Write-Stats @(
