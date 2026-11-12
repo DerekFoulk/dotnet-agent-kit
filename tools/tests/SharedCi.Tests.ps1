@@ -321,6 +321,19 @@ Describe 'Shared CI for app repos' {
             $deprecated['run'] | Should -Match 'Test-DeprecatedPackages\.ps1" -Path \$env:FILTER'
         }
 
+        # The code shape check (CRF-011) evaluates every project with MSBuild, and a MAUI project doesn't evaluate on
+        # Linux, which has no workloads. So with UI projects it runs on Windows, over the whole solution; without, on
+        # Linux as before. Either way the required job gates it.
+        It 'checks code shape on Linux only without UI projects, and on Windows over the whole solution with them' {
+            $count = Get-JobStep $jobs['dotnet'] 'Count projects'
+            $count['run'] | Should -Match '"ui=\$\(\$ui\.Count\)" >> \$env:GITHUB_OUTPUT'
+            $linux = Get-JobStep $jobs['dotnet'] 'Code shape'
+            $linux['if'] | Should -Be "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'"
+            $windows = Get-JobStep $jobs['ui'] 'Code shape'
+            $windows['if'] | Should -Be "runner.os == 'Windows'"
+            $windows['run'] | Should -Match 'Test-CodeShape\.ps1" -Solution \$env:SOLUTION'
+        }
+
         # The ruleset requires "dotnet / Build, test and package checks" by name (templates/github/main-protection.json),
         # so that job waits for the UI builds and fails when they did: a required check can't be weakened by them.
         It 'keeps the required job''s name, and has it wait for the UI builds unless the run was cancelled' {
