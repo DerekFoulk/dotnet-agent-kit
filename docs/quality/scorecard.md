@@ -40,11 +40,13 @@ areas:
     sources:
       - "owner, 2026-11-06"
       - "https://martinfowler.com/bliki/Yagni.html, retrieved 2026-11-07"
-    rules: [CRF-004]
+      - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-11"
+      - "https://learn.microsoft.com/en-us/azure/well-architected/reliability/simplify, retrieved 2026-11-11"
+    rules: [CRF-004, ARC-009]
     gaps:
       - id: GAP-002
-        gap: "No rule says how much structure a small app should get, so an agent can build every layer for a tiny app."
-        status: proposed
+        gap: "No rule says how much structure a small app should get, so an agent can build every layer for a tiny app. Closed by ADR-0052: ARC-009 (proposed) sizes an app's modules, projects and patterns to its requirements, and the shared .NET CI runs Test-EmptyProjects.ps1, which fails a C# project with no code of its own, or one that keeps the class library template's empty Class1."
+        status: closed
   - id: code
     name: Code
     perfect: "Idiomatic C# that follows Microsoft's conventions, with nullable on, every analyzer on and no warnings; async code that passes cancellation tokens on to the methods it calls."
@@ -239,7 +241,7 @@ Each area in the front matter above has:
 |---|---|---|---|---|---|
 | Architecture | 8 | 4 | 4 | 0 | 1 |
 | Craft | 10 | 5 | 5 | 1 | 1 |
-| Proportion | 1 | 0 | 1 | 0 | 1 |
+| Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 8 | 7 | 1 | 0 | 0 |
 | Tests | 7 | 4 | 3 | 0 | 1 |
 | Security | 7 | 5 | 2 | 4 | 0 |
@@ -253,13 +255,12 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 10 proposed; 11 open gaps.
+**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 11 proposed; 10 open gaps.
 
 Open gaps:
 
 - **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
 - **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
-- **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
