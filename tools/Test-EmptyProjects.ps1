@@ -37,6 +37,19 @@ function Test-PlaceholderFile {
     $File.Name -eq 'Class1.cs' -and (Get-Content -LiteralPath $File.FullName -Raw) -match '\bclass\s+Class1\s*\{\s*\}'
 }
 
+# The project's own source files: under its folder, outside its bin/ and obj/, and outside any subfolder that holds a
+# project of its own (a console tool's tests can sit beneath it).
+function Get-ProjectSourceFile {
+    param([Parameter(Mandatory)] [string] $Folder, [switch] $IsProjectRoot)
+
+    Get-ChildItem -LiteralPath $Folder -File | Where-Object Extension -In $script:SourceExtensions
+    foreach ($child in Get-ChildItem -LiteralPath $Folder -Directory) {
+        if ($IsProjectRoot -and $child.Name -in $script:BuildFolders) { continue }
+        if (Get-ChildItem -LiteralPath $child.FullName -File -Filter '*.*proj') { continue }
+        Get-ProjectSourceFile -Folder $child.FullName
+    }
+}
+
 function Get-EmptyProjectProblem {
     param([Parameter(Mandatory)] [string] $Solution)
 
@@ -54,9 +67,7 @@ function Get-EmptyProjectProblem {
             continue
         }
         $projectFolder = Split-Path -Parent (Join-Path $solutionFolder $relative)
-        $files = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File |
-            Where-Object Extension -In $script:SourceExtensions |
-            Where-Object { [IO.Path]::GetRelativePath($projectFolder, $_.FullName).Split([IO.Path]::DirectorySeparatorChar)[0] -notin $script:BuildFolders })
+        $files = @(Get-ProjectSourceFile -Folder $projectFolder -IsProjectRoot)
         $placeholders = @($files | Where-Object { Test-PlaceholderFile -File $_ })
         if ($files.Count -eq $placeholders.Count) {
             New-Problem -Message "$relative has no source files of its own"
