@@ -34,6 +34,10 @@ function Get-BenchmarkBudgetProblem {
         foreach ($benchmark in (Get-Content -Raw -LiteralPath $report.FullName | ConvertFrom-Json -AsHashtable)['Benchmarks']) {
             $name = [string] $benchmark['FullName']
             $limit = $budgets[$name]
+            if ($null -eq $limit) {
+                "${name}: no budget in $(Split-Path -Leaf $Budget). Add one, with maxMeanNanoseconds and maxAllocatedBytes."
+                continue
+            }
             $mean = [double] $benchmark['Statistics']['Mean']
             if ($mean -gt [double] $limit['maxMeanNanoseconds']) {
                 "${name}: mean $(Format-Number $mean) ns is over its budget of $(Format-Number $limit['maxMeanNanoseconds']) ns."
