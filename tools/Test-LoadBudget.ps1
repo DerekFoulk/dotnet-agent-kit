@@ -62,6 +62,13 @@ function Get-LoadBudgetProblem {
             }
         }
     }
+
+    $exceptions = "${Path}_exceptions.csv"
+    if (Test-Path -LiteralPath $exceptions -PathType Leaf) {
+        foreach ($exception in (Import-Csv -LiteralPath $exceptions)) {
+            "The locustfile raised $($exception.Message) $($exception.Count) time(s); see the exceptions CSV for its traceback."
+        }
+    }
 }
 
 # The name a budget gives a stats row: "Aggregated" for the whole run, "<Type> <Name>" for a request.
