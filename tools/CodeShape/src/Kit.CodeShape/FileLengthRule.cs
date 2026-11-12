@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Kit.CodeShape;
 
-/// <summary>Finds files longer than <see cref="Limits.LinesPerFile"/> lines (CRF-008, ADR-0050).</summary>
+/// <summary>Finds files longer than <see cref="Limits.LinesPerFile"/> lines (CRF-011, ADR-0050).</summary>
 internal static class FileLengthRule
 {
     public static IEnumerable<Finding> Check(SourceFile file)
@@ -20,7 +20,7 @@ internal static class FileLengthRule
                 file.Path,
                 Limits.LinesPerFile + 1,
                 1,
-                $"The file has {count} lines; the limit is {Limits.LinesPerFile} (CRF-008).");
+                $"The file has {count} lines; the limit is {Limits.LinesPerFile} (CRF-011).");
         }
     }
 }

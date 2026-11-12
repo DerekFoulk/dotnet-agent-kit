@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Kit.CodeShape;
 
 /// <summary>Finds members whose statements nest deeper than <see cref="Limits.NestingDepth"/> control-flow
-/// statements (CRF-008, ADR-0050).</summary>
+/// statements (CRF-011, ADR-0050).</summary>
 internal static class NestingRule
 {
     public static IEnumerable<Finding> Check(SourceFile file)
@@ -24,7 +24,7 @@ internal static class NestingRule
                 yield return Finding.At(
                     file.Path,
                     deepest.Statement.GetLocation(),
-                    $"{member.Name} nests {deepest.Depth} levels deep; the limit is {Limits.NestingDepth} (CRF-008).");
+                    $"{member.Name} nests {deepest.Depth} levels deep; the limit is {Limits.NestingDepth} (CRF-011).");
             }
         }
     }

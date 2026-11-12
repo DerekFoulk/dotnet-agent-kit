@@ -5,8 +5,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Kit.CodeShape;
 
-/// <summary>The kit's way to exempt one member, type or file from the CRF-008 limits: a single-line comment
-/// "// CRF-008 exception: &lt;reason&gt;". Like [SuppressMessage] with a Justification for an analyzer rule, it
+/// <summary>The kit's way to exempt one member, type or file from the CRF-011 limits: a single-line comment
+/// "// CRF-011 exception: &lt;reason&gt;". Like [SuppressMessage] with a Justification for an analyzer rule, it
 /// carries its reason where it lives, and the reviewer checks the reason holds (craft.md, "Exceptions"; ADR-0050).
 /// Where it sits says what it covers:
 /// <list type="bullet">
@@ -62,6 +62,6 @@ internal static partial class LimitException
     private static bool IsMarker(SyntaxTrivia trivia) =>
         trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) && Marker().IsMatch(trivia.ToString());
 
-    [GeneratedRegex(@"^//\s*CRF-008 exception:\s*\S", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^//\s*CRF-011 exception:\s*\S", RegexOptions.CultureInvariant)]
     private static partial Regex Marker();
 }

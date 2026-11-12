@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Kit.CodeShape;
 
 /// <summary>Finds types whose methods fall into more than <see cref="Limits.Lcom4"/> groups that share no state
-/// (LCOM4; CRF-008, ADR-0050).</summary>
+/// (LCOM4; CRF-011, ADR-0050).</summary>
 internal static class CohesionRule
 {
     // The running .NET's own assemblies, a documented runtime property. They let the compiler bind the code's own
@@ -42,7 +42,7 @@ internal static class CohesionRule
                     yield return Finding.At(
                         tree.FilePath,
                         declaration.Identifier.GetLocation(),
-                        $"{type.Name}'s methods form {groups.Count} groups that share no state (LCOM4 {groups.Count}; the limit is {Limits.Lcom4}): {listed} (CRF-008).");
+                        $"{type.Name}'s methods form {groups.Count} groups that share no state (LCOM4 {groups.Count}; the limit is {Limits.Lcom4}): {listed} (CRF-011).");
                 }
             }
         }

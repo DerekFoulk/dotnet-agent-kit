@@ -22,7 +22,7 @@ public sealed class CohesionRuleTests
             Path = "Ledger.cs",
             Line = 1,
             Column = 7,
-            Message = "Ledger's methods form 2 groups that share no state (LCOM4 2; the limit is 1): [Add, Total], [Rename] (CRF-008).",
+            Message = "Ledger's methods form 2 groups that share no state (LCOM4 2; the limit is 1): [Add, Total], [Rename] (CRF-011).",
         });
     }
 

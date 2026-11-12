@@ -1,6 +1,6 @@
 namespace Kit.CodeShape;
 
-/// <summary>Runs every CRF-008 limit over one project's hand-written files. Generated files are read too, for the
+/// <summary>Runs every CRF-011 limit over one project's hand-written files. Generated files are read too, for the
 /// state a partial type declares in them, but never reported on.</summary>
 internal static class ProjectCheck
 {

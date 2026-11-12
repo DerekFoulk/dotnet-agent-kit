@@ -37,7 +37,7 @@ public sealed class NestingRuleTests
             Path = "Deep.cs",
             Line = 15,
             Column = 29,
-            Message = "Run nests 5 levels deep; the limit is 4 (CRF-008).",
+            Message = "Run nests 5 levels deep; the limit is 4 (CRF-011).",
         });
     }
 
@@ -87,7 +87,7 @@ public sealed class NestingRuleTests
     public void EachControlFlowStatementAddsALevelAndLambdasKeepCounting(string before, string after)
     {
         NestingRule.Check(FourIfsIn(before, after)).Should().ContainSingle()
-            .Which.Message.Should().Be("Run nests 5 levels deep; the limit is 4 (CRF-008).");
+            .Which.Message.Should().Be("Run nests 5 levels deep; the limit is 4 (CRF-011).");
     }
 
     [Theory]
@@ -135,7 +135,7 @@ public sealed class NestingRuleTests
             """.Replace("FIVE", $"if (a > 0) {{ {FourIfs} }}", StringComparison.Ordinal));
 
         NestingRule.Check(file).Should().ContainSingle()
-            .Which.Message.Should().Be($"{name} nests 5 levels deep; the limit is 4 (CRF-008).");
+            .Which.Message.Should().Be($"{name} nests 5 levels deep; the limit is 4 (CRF-011).");
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public sealed class NestingRuleTests
         SourceFile file = new("Program.cs", $"int a = 0; if (a > 0) {{ {FourIfs} }}");
 
         NestingRule.Check(file).Should().ContainSingle()
-            .Which.Message.Should().Be("top-level statements nests 5 levels deep; the limit is 4 (CRF-008).");
+            .Which.Message.Should().Be("top-level statements nests 5 levels deep; the limit is 4 (CRF-011).");
     }
 
     // A method whose body is four nested ifs, with the given text before and after them.

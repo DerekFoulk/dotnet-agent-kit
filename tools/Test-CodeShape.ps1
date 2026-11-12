@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Fails when C# code breaks a CRF-008 limit that no analyzer checks: nesting, statements per member, file length
+    Fails when C# code breaks a CRF-011 limit that no analyzer checks: nesting, statements per member, file length
     or LCOM4 (ADR-0050).
 
 .DESCRIPTION
@@ -12,7 +12,7 @@
     evaluation, so code under an #if on one of them is read as if the symbol weren't defined. It then runs the kit's
     Kit.CodeShape tool over the files, built from the kit's own source with the safety nets Invoke-KitCodeShape lists.
     Run it from the repo root, so the repo's global.json picks the SDK. Each finding prints in MSBuild's error format,
-    which setup-dotnet's problem matcher turns into an annotation on the PR. A "// CRF-008 exception: <reason>"
+    which setup-dotnet's problem matcher turns into an annotation on the PR. A "// CRF-011 exception: <reason>"
     comment exempts one member, type or file (craft.md, "Exceptions"). Exit code: 0 when every limit holds, otherwise
     1; a tool that doesn't build stops the check with its errors.
 

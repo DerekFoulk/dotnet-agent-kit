@@ -12,7 +12,7 @@ public sealed class StatementRuleTests
             Path = "Long.cs",
             Line = 3,
             Column = 10,
-            Message = "Run has 101 statements; the limit is 100 (CRF-008).",
+            Message = "Run has 101 statements; the limit is 100 (CRF-011).",
         });
     }
 
@@ -31,7 +31,7 @@ public sealed class StatementRuleTests
 
         // 49 + 49, plus the declaration of f, the local function itself and its call: 101.
         StatementRule.Check(Method("Nested.cs", body)).Should().ContainSingle()
-            .Which.Message.Should().Be("Run has 101 statements; the limit is 100 (CRF-008).");
+            .Which.Message.Should().Be("Run has 101 statements; the limit is 100 (CRF-011).");
     }
 
     private static string Statements(int count) => string.Concat(Enumerable.Repeat("a++; ", count));

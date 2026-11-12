@@ -1,6 +1,6 @@
 namespace Kit.CodeShape;
 
-/// <summary>The limits CRF-008 sets beyond Microsoft's metric rules (ADR-0050). CRF-008 states the same numbers, and
+/// <summary>The limits CRF-011 sets beyond Microsoft's metric rules (ADR-0050). CRF-011 states the same numbers, and
 /// tools/tests/Test-CodeShape.Tests.ps1 fails if the two disagree.</summary>
 internal static class Limits
 {
