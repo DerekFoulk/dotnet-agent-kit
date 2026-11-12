@@ -134,7 +134,7 @@ The mode is yours alone. Review mode writes `review` to `.agent-mode`, which eve
 
 | Workflow | What it checks |
 |---|---|
-| `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage, the coverage gate (TST-004), and deprecated packages. It also runs a gitleaks secret scan of the full git history |
+| `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage, the coverage gate (TST-004), deprecated packages, and empty projects (ARC-009). It also runs a gitleaks secret scan of the full git history |
 | `codeql.reusable.yml` | CodeQL code scanning of the GitHub Actions workflows, and of the C# once there is some, with no build (ADR-0036). Results go to the repo's Security tab. In the kit, the ruleset's code scanning rule blocks a merge on its results (see "GitHub settings on this repo"), and every public app `New-KitApp` creates gets the same rule |
 | `kit-checks.reusable.yml` | All Pester tests, rule sources, the quality scorecard, ADR sections, generated-file drift, and on pull requests the commit subjects and red→green order (the branch's own commits) |
 | `pr-title.yml` | The PR title is a Conventional Commit. It also runs when the PR is edited, because the title becomes the merge commit's subject |
@@ -200,7 +200,7 @@ jobs:
 
 | Shared workflow | What it checks in the app |
 |---|---|
-| `dotnet-ci.reusable.yml` | Restore, build, format, tests with coverage, the coverage gate, deprecated packages, and the secret scan. `solution` is required |
+| `dotnet-ci.reusable.yml` | Restore, build, format, tests with coverage, the coverage gate, deprecated packages, empty projects, and the secret scan. `solution` is required |
 | `codeql.reusable.yml` | CodeQL code scanning of the workflows, and the C# once there is some. Skipped on a private app |
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`, and the runbook, `docs/runbook.md` (OPS-004), which fails when it's missing. Called from any other event, it fails rather than pass having checked nothing |
 | `kit-sync.reusable.yml` | Not a check: on Dependabot's kit-pin PR, brings the release's other kit-managed files into it (see "Keep an app current"). Called from anything but Dependabot's own GitHub Actions PR, it fails |
