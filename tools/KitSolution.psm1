@@ -44,4 +44,12 @@ function Get-FirstTargetFramework {
     }
 }
 
-Export-ModuleMember -Function Get-SolutionProject, Get-FirstTargetFramework
+# Whether a project, by its name (its file name without the extension, which is its assembly name), is a benchmarks
+# project (ADR-0062).
+function Test-BenchmarksProject {
+    param([Parameter(Mandatory)] [string] $Name)
+
+    $false
+}
+
+Export-ModuleMember -Function Get-SolutionProject, Get-FirstTargetFramework, Test-BenchmarksProject

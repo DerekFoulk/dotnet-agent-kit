@@ -91,6 +91,24 @@ Describe 'Get-SolutionProject' {
     }
 }
 
+# ADR-0062: a benchmarks project is known by its name alone, and this is the one statement of that rule (CRF-003).
+Describe 'Test-BenchmarksProject' {
+    It 'says <Name> is a benchmarks project: <Expected>' -ForEach @(
+        @{ Name = 'App.Benchmarks'; Expected = $true }
+        @{ Name = 'Contoso.Orders.Benchmarks'; Expected = $true }
+        # The case MSBuild's EndsWith in tests/Directory.Build.props matches: exactly.
+        @{ Name = 'App.benchmarks'; Expected = $false }
+        @{ Name = 'App.BENCHMARKS'; Expected = $false }
+        @{ Name = 'AppBenchmarks'; Expected = $false }
+        @{ Name = 'Benchmarks'; Expected = $false }
+        @{ Name = 'App.Benchmarks.Tests'; Expected = $false }
+        @{ Name = 'App.Benchmarks.Core'; Expected = $false }
+        @{ Name = 'App'; Expected = $false }
+    ) {
+        Test-BenchmarksProject -Name $Name | Should -Be $Expected
+    }
+}
+
 # MSBuild's outer evaluation of a multi-target project (TargetFrameworks, no TargetFramework) has no Compile items or
 # output folder; the evaluation for one framework does. Callers evaluate again through the framework this returns.
 Describe 'Get-FirstTargetFramework' {
