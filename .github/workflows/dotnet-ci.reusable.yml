@@ -49,9 +49,9 @@ jobs:
           # -InputObject keeps the list whole: [] when empty. (-AsArray with it would wrap it in another array.)
           "os=$(ConvertTo-Json -Compress -InputObject $os)" >> $env:GITHUB_OUTPUT
 
-  # Builds what each runner can: every project on Windows, all but the Windows-only UI ones on macOS. Tests run on
-  # Linux, in the dotnet job, where Testcontainers' Linux containers work. A matrix with no values fails the run,
-  # hence the if.
+  # Builds what each runner can: every project on Windows, all but the Windows-only UI ones on macOS. Windows also
+  # checks format, deprecated packages and code shape. Tests run on Linux, in the dotnet job, where Testcontainers'
+  # Linux containers work. A matrix with no values fails the run, hence the if.
   ui:
     name: Build UI projects (${{ matrix.os }})
     needs: ui-projects

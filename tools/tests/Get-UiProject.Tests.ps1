@@ -68,6 +68,13 @@ Describe 'Get-UiProject.ps1' {
         $found[0].Os | Should -Be @('windows-latest')
     }
 
+    # Review 5: the Linux job skips the code shape check whenever there are UI projects, because the Windows ui job
+    # runs it. A kind that didn't build on Windows would drop the check without a sound.
+    It 'builds every UI kind on Windows, where the code shape check runs for them' {
+        $script:UiKinds | Should -Not -BeNullOrEmpty
+        foreach ($kind in $script:UiKinds) { $kind.Os | Should -Contain 'windows-latest' -Because "$($kind.Kind) projects need the Windows job's checks" }
+    }
+
     # MSBuild compares property values without regard to case.
     It 'reads the property as MSBuild does: True counts, false doesn''t' {
         $solution = New-Solution @(
