@@ -100,6 +100,31 @@ Describe 'Test-EmptyProjects.ps1' {
         @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
     }
 
+    # Only a C# project's code is something the check can read; a database, compose or JavaScript project holds
+    # other kinds of files.
+    It 'leaves out a <Kind> project' -ForEach @(
+        @{ Kind = 'SQL'; Project = 'App.Db.sqlproj'; File = 'Tables/Orders.sql' }
+        @{ Kind = 'Docker Compose'; Project = 'docker-compose.dcproj'; File = 'docker-compose.yml' }
+        @{ Kind = 'JavaScript'; Project = 'App.Web.esproj'; File = 'src/main.ts' }
+        @{ Kind = 'F#'; Project = 'App.Fs.fsproj'; File = 'Library.fs' }
+    ) {
+        $folder = Join-Path $TestDrive "sln-$(New-Guid)"
+        New-Item -ItemType Directory -Force -Path (Join-Path $folder 'src' 'P' (Split-Path $File)) | Out-Null
+        Set-Content -LiteralPath (Join-Path $folder 'src' 'P' $Project) -Value '<Project />'
+        Set-Content -LiteralPath (Join-Path $folder 'src' 'P' $File) -Value 'x'
+        $solution = Join-Path $folder 'App.slnx'
+        "<Solution><Project Path=""src/P/$Project"" /></Solution>" | Set-Content -LiteralPath $solution
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
+    }
+
+    # Grpc.Tools generates the C# from .proto files at build time, so a contracts project may hold only those.
+    It 'counts .proto files as source' {
+        $solution = New-Solution @{ 'App.Contracts' = @{ 'Protos/orders.proto' = 'syntax = "proto3";' } }
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
+    }
+
     It 'says plainly when the solution file is missing' {
         { Get-EmptyProjectProblem -Solution (Join-Path $TestDrive 'missing.slnx') } | Should -Throw '*No solution file at*'
     }
