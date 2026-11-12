@@ -195,11 +195,13 @@ Describe 'Agent configuration' {
         # owner asked (2026-11-11) to be asked only before destructive steps and releases. Playwright's script
         # always sits under bin/<config>/<tfm>/, so a bare or absolute path to it asks too (review 2). The trade-off
         # (review 3): a command that quotes the full path through bin with "install" after it, such as a commit
-        # message or a grep, asks as well; a missed install is worse than an extra prompt. Known misses, left to
+        # message or a grep, asks as well, and so does any PowerShell command that starts with ./, .\ or & and quotes
+        # "playwright.ps1 install" later on; a missed install is worse than an extra prompt. Known misses, left to
         # "Always ask" and the reviewer (ADR-0026, ADR-0061): an install run through a variable or a pipeline
         # ('& $pw install', 'Get-ChildItem -Filter playwright.ps1 | ForEach-Object { & $_ install }'), a quoted
-        # path, a wrapper such as 'bash -c', and the kit script by an absolute path, without ./ or .\ (as
-        # 'pwsh tools/...'), or dot-sourced and then called. Whether Claude Code checks each command of a compound
+        # path, a wrapper such as 'bash -c', and the kit script by an absolute path, without ./ (as
+        # 'pwsh tools/...'), by 'pwsh' with .\ or with flags other than -File and -NoProfile, or dot-sourced and
+        # then called. Whether Claude Code checks each command of a compound
         # line on its own isn't verified. The kit script is kit-only (apps run it in CI from the kit's download),
         # so its rules use the kit's paths and app copies drop them.
         It 'asks before installing a browser locally: <Tool>(<Command>)' -ForEach @(
@@ -254,7 +256,14 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'npx playwright test tests/install.spec.ts' }
                 @{ Tool = $tool; Command = 'npx vitest install-helpers' }
                 @{ Tool = $tool; Command = 'pwsh bin/Debug/net10.0/playwright.ps1 show-trace trace.zip' }
+                # Review 4: pins each rule's "install" anchor, so running playwright.ps1 for anything else stays quiet.
+                @{ Tool = $tool; Command = 'pwsh tests/App.E2E.Tests/bin/Debug/net10.0/playwright.ps1 show-trace trace.zip' }
+                @{ Tool = $tool; Command = 'git diff -- tests/App/bin/Debug/net10.0/playwright.ps1' }
             }
+            @{ Tool = 'PowerShell'; Command = './playwright.ps1 show-trace trace.zip' }
+            @{ Tool = 'PowerShell'; Command = '.\playwright.ps1 --help' }
+            @{ Tool = 'PowerShell'; Command = '& ./playwright.ps1 codegen' }
+            @{ Tool = 'PowerShell'; Command = 'C:\src\app\bin\Debug\net10.0\playwright.ps1 codegen' }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
         }
