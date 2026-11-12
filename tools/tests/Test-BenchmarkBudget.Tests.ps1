@@ -73,4 +73,18 @@ Describe 'Test-BenchmarkBudget.ps1' {
         $problems.Count | Should -Be 1
         $problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: allocates 216 bytes per operation, over its budget of 192*'
     }
+
+    # Every benchmark states its budget, so a new one can't go unchecked.
+    It 'names a benchmark that has no budget' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @(
+            (New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse')
+            (New-Benchmark 'App.Benchmarks.ParseBenchmarks.ParseLong'))
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 192 } })
+
+        $problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget)
+
+        $problems.Count | Should -Be 1
+        $problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.ParseLong: no budget in *-budget.json*'
+    }
 }
