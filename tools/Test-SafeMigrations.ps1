@@ -68,25 +68,42 @@ function Get-MigrationProblem {
 
         $relative = [IO.Path]::GetRelativePath($Path, $file.FullName) -replace '\\', '/'
 
-        # A contract step is reviewed: a "// DAT-003: <reason>" comment in its file says why the running version
-        # works after it. A comment with no reason approves nothing.
-        $approved = $false
-        foreach ($comment in [regex]::Matches($text, '(?m)^[ \t]*//[ \t]*DAT-003:(?<reason>[^\r\n]*)')) {
-            if ($comment.Groups['reason'].Value.Trim()) {
-                $approved = $true
-            }
-            else {
-                New-Problem -Message "${relative}:$(Get-LineNumber $text $comment.Index): the DAT-003 comment must say why the version still running works after this migration"
-            }
-        }
-        if ($approved) { continue }
-
+        $lines = $text -split '\r?\n'
         $call = "\b$([regex]::Escape($up.Groups['builder'].Value))\s*\.\s*(?<op>\w+)\s*(?:<[^()]*>)?\s*\("
         foreach ($match in [regex]::Matches($body, $call)) {
             if ($match.Index -lt $up.Index) { continue }
             $operation = $match.Groups['op'].Value
-            if ($operation -cnotin $script:UnsafeOperations) { continue }
-            New-Problem -Message "${relative}:$(Get-LineNumber $text $match.Index): Up calls $operation, which the version still running may need (DAT-003)"
+            if ($operation -notin $script:UnsafeOperations) { continue }
+
+            $line = Get-LineNumber $text $match.Index
+            # A call after // on its line is commented out.
+            $start = $text.LastIndexOf("`n", $match.Index) + 1
+            if ($text.Substring($start, $match.Index - $start).Contains('//')) { continue }
+
+            # A reviewed contract step has a "// DAT-003: <reason>" comment at the end of its line or directly above
+            # it, saying why the running version still works. A comment with no reason approves nothing.
+            $comment = Get-Dat003Comment -Lines $lines -Line $line
+            if ($comment -and $comment.Reason) { continue }
+            if ($comment) {
+                New-Problem -Message "${relative}:$($comment.Line): the DAT-003 comment must say why the version still running works after this call"
+            }
+            New-Problem -Message "${relative}:${line}: Up calls $operation, which the version still running may need (DAT-003)"
+        }
+    }
+}
+
+# The DAT-003 comment for the call on 1-based Line: at the end of that line, or in the comment lines directly above it.
+function Get-Dat003Comment {
+    param([string[]] $Lines, [int] $Line)
+
+    $pattern = '//[ \t]*DAT-003:(?<reason>.*)$'
+    $candidates = @($Line)
+    for ($above = $Line - 1; $above -ge 1 -and $Lines[$above - 1] -match '^\s*//'; $above--) { $candidates += $above }
+
+    foreach ($number in $candidates) {
+        $found = [regex]::Match($Lines[$number - 1], $pattern)
+        if ($found.Success) {
+            return [pscustomobject]@{ Line = $number; Reason = $found.Groups['reason'].Value.Trim() }
         }
     }
 }
@@ -107,7 +124,7 @@ function Invoke-SafeMigrationsCheck {
     }
 
     if ($problems) {
-        Write-Host "`n$($problems.Count) unsafe migration step(s) under $Path. Split the change into expand and contract, or give the contract step a // DAT-003: <reason> comment (docs/standards/data.md)." -ForegroundColor Red
+        Write-Host "`n$($problems.Count) unsafe migration step(s) under $Path. Leave drops and renames to a later release (expand, then contract), and put a '// DAT-003: <reason>' comment directly above each call that's safe, saying why the version still running works (docs/standards/data.md)." -ForegroundColor Red
         return 1
     }
 
