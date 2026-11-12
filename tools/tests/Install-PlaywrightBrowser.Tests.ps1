@@ -252,4 +252,19 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
     }
+
+    # Review round 1: MSBuild can print an evaluation warning before the JSON it gives for -getProperty.
+    It 'reads MSBuild''s answer past an evaluation warning' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'warned'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
+        '<Project />' | Set-Content -LiteralPath (Join-Path $repo 'src/App.E2E.Tests/x.props')
+        '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><Import Project="x.props" /><Import Project="x.props" /></Project>' |
+            Set-Content -LiteralPath (Join-Path $repo 'src/App.E2E.Tests/App.E2E.Tests.csproj')
+        $solution = New-Solution $repo 'App.E2E.Tests'
+
+        { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } | Should -Not -Throw
+
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
+    }
 }
