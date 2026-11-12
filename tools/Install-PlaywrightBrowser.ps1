@@ -30,9 +30,14 @@ function Install-PlaywrightBrowser {
         $project = Join-Path $folder $node.GetAttribute('Path')
         $json = (& dotnet msbuild $project -nologo -getProperty:ProjectAssetsFile -getProperty:TargetDir "-p:Configuration=$Configuration") -join "`n" | ConvertFrom-Json
         $assets = Get-Content -Raw -LiteralPath $json.Properties.ProjectAssetsFile | ConvertFrom-Json
-        if ($assets.libraries.PSObject.Properties.Name -like 'Microsoft.Playwright/*') { $project }
+        if ($assets.libraries.PSObject.Properties.Name -like 'Microsoft.Playwright/*') {
+            Join-Path $json.Properties.TargetDir 'playwright.ps1'
+        }
     }
-    if (-not $users) { 'No project uses Playwright; no browser to install.' }
+    if (-not $users) { 'No project uses Playwright; no browser to install.'; return }
+    foreach ($script in $users) {
+        & pwsh -NoProfile -File $script install chromium
+    }
 }
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
