@@ -73,6 +73,24 @@ rules:
     enforcement: "settings: the kit repo requires actions pinned to a full-length commit SHA (GitHub's Actions setting, on since 2026-11-09), and .github/dependabot.yml updates the pins; Pester tests also check the pins in the release, Dependabot lock-file and shared app workflows, and Dependabot.Tests.ps1 checks the waits in the kit's and the app template's dependabot.yml; New-KitApp turns the same setting on for every app (templates/github/actions.json)"
     scope: core
     paths: [".github/**"]
+  - id: SUP-009
+    statement: "Every build of a solution with projects writes a CycloneDX SBOM of its shipped projects, leaving out test projects, and keeps it as the run's 'sbom' artifact."
+    why: "When a package is found vulnerable, the SBOM answers which builds ship it; the Microsoft cloud security benchmark asks for an SBOM in SPDX or CycloneDX (GAP-013)."
+    layer: outside
+    status: proposed
+    sources: ["ADR-0055", "https://learn.microsoft.com/security/benchmark/azure/mcsb-v2-devops-security, retrieved 2026-11-11", "https://github.com/CycloneDX/cyclonedx-dotnet, retrieved 2026-11-11"]
+    enforcement: "ci: dotnet-ci.reusable.yml runs the CycloneDX .NET tool at the version .config/dotnet-tools.json pins and uploads the SBOM, failing when it's missing; tools/tests/SharedCi.Tests.ps1 checks the steps"
+    scope: core
+    paths: [".github/workflows/**", ".config/dotnet-tools.json"]
+  - id: SUP-010
+    statement: "Every public repo runs OpenSSF Scorecard through the kit's scorecard.reusable.yml on each push to main and weekly, publishing its score and uploading its findings to code scanning, with only the security-events and id-token write permissions the action documents."
+    why: "Scorecard checks the supply-chain practices from outside, with a public score that shows drift (GAP-014); publishing needs the action's workflow restrictions."
+    layer: outside
+    status: proposed
+    sources: ["ADR-0056", "https://github.com/ossf/scorecard-action, retrieved 2026-11-11"]
+    enforcement: "ci: scorecard.yml in the kit and in the app template call scorecard.reusable.yml; tools/tests/SharedCi.Tests.ps1 checks the triggers, the permissions, the pins and each publishing restriction"
+    scope: core
+    paths: [".github/workflows/**"]
 ---
 
 # Supply chain
