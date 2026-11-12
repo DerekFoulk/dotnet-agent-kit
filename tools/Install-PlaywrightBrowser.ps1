@@ -36,8 +36,9 @@ function Install-PlaywrightBrowser {
         }
     }
     if (-not $users) { 'No project uses Playwright; no browser to install.'; return }
+    $arguments = @('install') + @(if ($WithDependencies) { '--with-deps' }) + 'chromium'
     foreach ($script in $users) {
-        & pwsh -NoProfile -File $script install chromium
+        & pwsh -NoProfile -File $script @arguments
     }
 }
 
