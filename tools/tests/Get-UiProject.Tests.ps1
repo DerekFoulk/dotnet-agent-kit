@@ -51,4 +51,18 @@ Describe 'Get-UiProject.ps1' {
         $found[0].Kind | Should -Be 'Maui'
         $found[0].Os | Should -Be @('windows-latest', 'macos-latest')
     }
+
+    It 'finds a <Kind> project, which builds on Windows only' -ForEach @(
+        @{ Property = 'UseWPF'; Kind = 'Wpf' }
+        @{ Property = 'UseWindowsForms'; Kind = 'WindowsForms' }
+        @{ Property = 'UseWinUI'; Kind = 'WinUI' }
+    ) {
+        $solution = New-Solution @(@{ Path = 'src/App.Desktop/App.Desktop.csproj'; Properties = "<$Property>true</$Property>" })
+
+        $found = @(Get-UiProject -Solution $solution)
+
+        $found | Should -HaveCount 1
+        $found[0].Kind | Should -Be $Kind
+        $found[0].Os | Should -Be @('windows-latest')
+    }
 }
