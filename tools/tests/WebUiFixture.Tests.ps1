@@ -15,11 +15,13 @@ Describe 'The web UI fixture''s accessibility check' {
         $statement = @($rules | Where-Object { $_['id'] -eq 'UI-002' })[0]['statement']
         $named = @([regex]::Matches($statement, '\bwcag\w+') | ForEach-Object Value)
         $code = Get-Content -Raw -LiteralPath (Join-Path $root 'fixtures' 'WebUi' 'tests' 'Kit.WebUi.E2E.Tests' 'Wcag.cs')
-        $values = [regex]::Match($code, 'Values = \[(?<tags>[^\]]*)\]').Groups['tags'].Value
+        # The type and the tags from the one RunOnlyOptions initializer, so a comment elsewhere can't satisfy the test.
+        $options = [regex]::Match($code, 'RunOnlyOptions \{ Type = "(?<type>[^"]*)", Values = \[(?<tags>[^\]]*)\]')
+        $values = $options.Groups['tags'].Value
         $run = @([regex]::Matches($values, '"(?<tag>[^"]+)"') | ForEach-Object { $_.Groups['tag'].Value })
 
         $named | Should -Not -BeNullOrEmpty -Because 'UI-002 names the tags'
         $run | Should -Be $named -Because 'Wcag.cs runs the tags UI-002 names, in the same order'
-        $code | Should -Match 'Type = "tag"' -Because 'the values are tags, not rule ids'
+        $options.Groups['type'].Value | Should -Be 'tag' -Because 'the values are tags, not rule ids'
     }
 }
