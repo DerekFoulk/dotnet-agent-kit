@@ -26,4 +26,8 @@ function Get-SolutionProject {
     }
 }
 
-Export-ModuleMember -Function Get-SolutionProject
+function Get-FirstTargetFramework {
+    param([Parameter(Mandatory)] [object] $Properties)
+}
+
+Export-ModuleMember -Function Get-SolutionProject, Get-FirstTargetFramework

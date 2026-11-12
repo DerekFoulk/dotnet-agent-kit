@@ -89,3 +89,12 @@ Describe 'Get-SolutionProject' {
         { Get-SolutionProject -Solution $other } | Should -Throw "*App.xml isn't a .slnx solution*"
     }
 }
+
+# MSBuild's outer evaluation of a multi-target project (TargetFrameworks, no TargetFramework) has no Compile items or
+# output folder; the evaluation for one framework does. Callers evaluate again through the framework this returns.
+Describe 'Get-FirstTargetFramework' {
+    It 'gives the first framework of a multi-target project' {
+        Get-FirstTargetFramework -Properties ([pscustomobject]@{ TargetFramework = ''; TargetFrameworks = 'net10.0;net9.0' }) |
+            Should -Be 'net10.0'
+    }
+}
