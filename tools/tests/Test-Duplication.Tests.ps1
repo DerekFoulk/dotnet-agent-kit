@@ -68,4 +68,55 @@ Describe 'Test-Duplication.ps1' {
             $arguments | Should -Contain '--no-fail-on-error'
         }
     }
+
+    # Review 1 of GAP-020: what decides pass or fail, run with a stand-in for PMD's launcher, so it needs no Java.
+    Context 'checking a solution' {
+        BeforeAll {
+            $script:codeShape = Join-Path $PSScriptRoot 'fixtures' 'CodeShape'
+            $script:kitRoot = Join-Path $PSScriptRoot '..' '..'
+            $script:fakePmd = Join-Path $script:fixtures 'FakePmd.ps1'
+        }
+
+        AfterEach {
+            Remove-Item Env:KIT_FAKE_CPD_REPORT, Env:KIT_FAKE_CPD_EXIT -ErrorAction Ignore
+        }
+
+        It 'fails when code repeats, naming each repeat and each file CPD skipped' {
+            $env:KIT_FAKE_CPD_REPORT = Join-Path $script:fixtures 'cpd-report.xml'
+            $env:KIT_FAKE_CPD_EXIT = '0'
+
+            $result = Invoke-DuplicationCheck -Solution (Join-Path $script:codeShape 'Tidy.slnx') -KitRoot $script:kitRoot -Pmd $script:fakePmd
+
+            $result.ExitCode | Should -Be 1
+            @($result.Output -split "`n" | ForEach-Object { ($_ -split ': ')[1] }) | Should -Be 'warning CRF003', 'error CRF003', 'error CRF003'
+        }
+
+        It 'passes when nothing repeats, counting the files it checked' {
+            $env:KIT_FAKE_CPD_REPORT = Join-Path $script:fixtures 'cpd-empty.xml'
+            $env:KIT_FAKE_CPD_EXIT = '0'
+
+            $result = Invoke-DuplicationCheck -Solution (Join-Path $script:codeShape 'Tidy.slnx') -KitRoot $script:kitRoot -Pmd $script:fakePmd
+
+            $result.ExitCode | Should -Be 0
+            $result.Output | Should -Be 'Duplicate code (CRF-003): 1 file checked, nothing repeats in 100 tokens or more; 0 skipped.'
+        }
+
+        It 'stops when CPD itself fails' {
+            $env:KIT_FAKE_CPD_EXIT = '1'
+
+            { Invoke-DuplicationCheck -Solution (Join-Path $script:codeShape 'Tidy.slnx') -KitRoot $script:kitRoot -Pmd $script:fakePmd } |
+                Should -Throw '*CPD failed with exit code 1*'
+        }
+
+        It 'checks nothing, and runs no CPD, when there is no C# file' {
+            $env:KIT_FAKE_CPD_EXIT = '1' # CPD would fail if it ran
+
+            { $script:result = Invoke-DuplicationCheck -Solution (Join-Path $script:codeShape 'NoCSharp.slnx') -KitRoot $script:kitRoot -Pmd $script:fakePmd } |
+                Should -Not -Throw
+            $result = $script:result
+
+            $result.ExitCode | Should -Be 0
+            $result.Output | Should -Be 'Duplicate code (CRF-003): no C# files to check.'
+        }
+    }
 }
