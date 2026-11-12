@@ -28,6 +28,9 @@ function Get-LoadBudgetProblem {
         [Parameter(Mandatory)] [string] $Budget
     )
 
+    if (-not (Test-Path -LiteralPath $Budget -PathType Leaf)) {
+        return "No budget file at $Budget. A load test keeps its budget in load-budget.json, beside its locustfile."
+    }
     $budgets = Get-Content -Raw -LiteralPath $Budget | ConvertFrom-Json -AsHashtable
     # A broken budget checks the wrong thing, so it's reported alone.
     $budgetProblems = @(Get-BudgetFileProblem $budgets)
