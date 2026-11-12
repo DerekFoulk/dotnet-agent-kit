@@ -35,11 +35,11 @@ Describe 'the intake data' {
                 $parent = $intake['cards'] | Where-Object id -EQ $card['dependsOn']
                 foreach ($parentOption in $parent['options']) {
                     $fitting = @($card['options'] | Where-Object { $parentOption['id'] -in $_['fits'] })
-                    $fitting.Count | Should -BeIn 1..4 -Because "$($card['id']) offers 1 to 4 options for $($card['dependsOn']) = $($parentOption['id'])"
+                    $fitting.Count | Should -BeIn @(1, 2, 3, 4) -Because "$($card['id']) offers 1 to 4 options for $($card['dependsOn']) = $($parentOption['id'])"
                 }
             }
             else {
-                $ids.Count | Should -BeIn 2..4 -Because "card $($card['id']) has 2 to 4 options"
+                $ids.Count | Should -BeIn @(2, 3, 4) -Because "card $($card['id']) has 2 to 4 options"
             }
         }
     }

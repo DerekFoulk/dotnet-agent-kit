@@ -1,0 +1,172 @@
+{
+  "about": "The new-app intake (ADR-0058): the question cards the new-app skill shows the owner, and the test tools for each kind of test. New-KitApp checks the answers against this file and writes them to the app's docs/app-profile.md. Each card's first option is its recommendation. A card with dependsOn shows only the options whose fits lists the other card's answer. Every option and tool has a cost label: Free, Free tier (free up to a limit) or Paid, with the price, its source and the date checked.",
+  "cards": [
+    {
+      "id": "appType",
+      "header": "App type",
+      "question": "What kind of app is it?",
+      "options": [
+        {
+          "id": "web-api-blazor",
+          "label": "Web API and a Blazor web app",
+          "description": "An ASP.NET Core API with a Blazor web front end. The API can serve a phone app later. Fits most apps people use in a browser."
+        },
+        {
+          "id": "web-api",
+          "label": "Web API only",
+          "description": "An ASP.NET Core HTTP API with no user interface of its own, for other apps or services to call."
+        },
+        {
+          "id": "blazor",
+          "label": "Blazor web app only",
+          "description": "A Blazor web app with no separate API: the pages read and write the data themselves."
+        },
+        {
+          "id": "maui",
+          "label": ".NET MAUI app (phone or desktop)",
+          "description": "A native app for Android, iOS, Windows or macOS, built with .NET MAUI."
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "header": "Data",
+      "question": "Where does the app keep its data, and what shape is it?",
+      "options": [
+        {
+          "id": "relational",
+          "label": "On a server, as related tables",
+          "description": "Records that refer to each other, such as customers and their orders, shared by every user. Most business apps."
+        },
+        {
+          "id": "documents",
+          "label": "On a server, as documents",
+          "description": "Items read by one key, with a shape that changes often, or data spread across regions."
+        },
+        {
+          "id": "device",
+          "label": "Only on the user's device",
+          "description": "Each user's data stays in the app on their phone or computer; nothing is shared."
+        },
+        {
+          "id": "none",
+          "label": "It keeps no data",
+          "description": "The app stores nothing of its own, for example a calculator or a front end to another service."
+        }
+      ]
+    },
+    {
+      "id": "database",
+      "header": "Database",
+      "question": "Which database should it use?",
+      "dependsOn": "data",
+      "prices": "docs/database-guide.md",
+      "options": [
+        {
+          "id": "azure-sql-free",
+          "label": "Azure SQL Database, free offer",
+          "description": "SQL Server in Azure, free up to a monthly limit, and paused rather than billed past it. Tests run on SQL Server in a container.",
+          "fits": [ "relational" ]
+        },
+        {
+          "id": "postgresql",
+          "label": "Azure Database for PostgreSQL",
+          "description": "PostgreSQL in Azure: free for 12 months with an Azure free account, then billed.",
+          "fits": [ "relational" ]
+        },
+        {
+          "id": "cosmos-free",
+          "label": "Azure Cosmos DB, free tier",
+          "description": "A document database in Azure, free up to 1000 RU/s and 25 GB for the account's life.",
+          "fits": [ "documents" ]
+        },
+        {
+          "id": "sqlite",
+          "label": "SQLite",
+          "description": "A database in a file inside the app. Free.",
+          "fits": [ "device" ]
+        },
+        {
+          "id": "none",
+          "label": "No database",
+          "description": "The app keeps no data.",
+          "fits": [ "none" ]
+        }
+      ]
+    },
+    {
+      "id": "signIn",
+      "header": "Sign-in",
+      "question": "Who signs in to the app?",
+      "options": [
+        {
+          "id": "entra-external-id",
+          "label": "Customers or the public",
+          "description": "People sign in with Microsoft Entra External ID: email, or a Google or Microsoft account. The app never stores passwords (SEC-008).",
+          "cost": {
+            "label": "Free tier",
+            "free": "The first 50,000 monthly active users; add-ons such as SMS codes have no free amount",
+            "price": "Past 50,000 monthly active users: not verified",
+            "source": "https://learn.microsoft.com/en-us/entra/external-id/customers/faq-customers#external-id-pricing",
+            "checked": "2026-11-11"
+          }
+        },
+        {
+          "id": "entra-id",
+          "label": "People in one organization",
+          "description": "Staff sign in with their work account in Microsoft Entra ID. The app never stores passwords (SEC-008).",
+          "cost": {
+            "label": "Free tier",
+            "free": "Microsoft Entra ID Free: users, groups and single sign-on",
+            "price": "P1 and P2, for Conditional Access and ID Protection: not verified",
+            "source": "https://learn.microsoft.com/en-us/entra/fundamentals/licensing",
+            "checked": "2026-11-11"
+          }
+        },
+        {
+          "id": "none",
+          "label": "No sign-in",
+          "description": "Everyone sees the same thing and nobody signs in. Every endpoint then has to be public on purpose (SEC-007).",
+          "cost": { "label": "Free" }
+        }
+      ]
+    },
+    {
+      "id": "hosting",
+      "header": "Hosting",
+      "question": "Where should it run?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Not yet: on this machine and in CI",
+          "description": "Build and test it first; choose hosting when the first deployment is due. Nothing to pay or set up now.",
+          "cost": { "label": "Free" }
+        },
+        {
+          "id": "container-apps",
+          "label": "Azure Container Apps",
+          "description": "Runs the app in a container that scales to zero when nobody uses it.",
+          "cost": {
+            "label": "Free tier",
+            "free": "Each month, per subscription: 180,000 vCPU-seconds, 360,000 GiB-seconds and 2 million requests",
+            "price": "Consumption plan, East US: $0.000024 per vCPU-second and $0.000003 per GiB-second while active, $0.40 per million requests",
+            "source": "https://learn.microsoft.com/en-us/azure/container-apps/billing#consumption-plan and https://prices.azure.com/api/retail/prices",
+            "checked": "2026-11-11"
+          }
+        },
+        {
+          "id": "app-service",
+          "label": "Azure App Service",
+          "description": "Runs the app on a managed web server, without containers.",
+          "cost": {
+            "label": "Free tier",
+            "free": "The F1 plan: shared compute with daily limits, no custom domain certificate and no scale-out (limits not verified)",
+            "price": "B1, the first paid plan, East US: $0.017 an hour on Linux, $0.075 an hour on Windows",
+            "source": "https://prices.azure.com/api/retail/prices",
+            "checked": "2026-11-11"
+          }
+        }
+      ]
+    }
+  ]
+}
