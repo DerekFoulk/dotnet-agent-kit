@@ -2,7 +2,7 @@ using Deque.AxeCore.Commons;
 using Deque.AxeCore.Playwright;
 using Microsoft.Playwright;
 
-namespace Kit.WebUiFixture.E2E.Tests;
+namespace Kit.WebUi.E2E.Tests;
 
 /// <summary>The WCAG 2.2 level A and AA checks axe can make on a rendered page (UI-001, UI-002).</summary>
 internal static class Wcag

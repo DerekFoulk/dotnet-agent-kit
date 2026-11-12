@@ -1,6 +1,6 @@
 using Microsoft.Playwright;
 
-namespace Kit.WebUiFixture.E2E.Tests;
+namespace Kit.WebUi.E2E.Tests;
 
 /// <summary>
 /// The running app, a headless Chromium and one page in a fresh browser context, for one test: each test starts its

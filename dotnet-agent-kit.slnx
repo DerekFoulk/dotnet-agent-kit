@@ -2,10 +2,10 @@
   <Folder Name="/fixtures/" />
   <Folder Name="/fixtures/WebUi/" />
   <Folder Name="/fixtures/WebUi/src/">
-    <Project Path="fixtures/WebUi/src/Kit.WebUiFixture/Kit.WebUiFixture.csproj" />
+    <Project Path="fixtures/WebUi/src/Kit.WebUi/Kit.WebUi.csproj" />
   </Folder>
   <Folder Name="/fixtures/WebUi/tests/">
-    <Project Path="fixtures/WebUi/tests/Kit.WebUiFixture.E2E.Tests/Kit.WebUiFixture.E2E.Tests.csproj" />
+    <Project Path="fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/Kit.WebUi.E2E.Tests.csproj" />
   </Folder>
   <Folder Name="/sample/" />
   <Folder Name="/sample/src/">

@@ -100,8 +100,8 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 - **testing.md** gains "Browser and accessibility tests", and **craft.md** says code in `.razor` files escapes the code shape, duplicate code and mutation checks.
 
 **Fixture.** The kit's solution gains a web UI fixture, `fixtures/WebUi`, so the required job proves the pattern on every pull request.
-- **Kit.WebUiFixture:** static server rendering with enhanced navigation; two pages, a stylesheet, `blazor.web.js` and FocusOnNavigate.
-- **Kit.WebUiFixture.E2E.Tests:** axe on every page; a check that axe really finds a level A and a 2.2 AA failure; focus after a link; the first Tab and its outline; the port; and the content root under Stryker.
+- **Kit.WebUi:** static server rendering with enhanced navigation; two pages, a stylesheet, `blazor.web.js` and FocusOnNavigate.
+- **Kit.WebUi.E2E.Tests:** axe on every page; a check that axe really finds a level A and a 2.2 AA failure; focus after a link; the first Tab and its outline; the port; and the content root under Stryker.
 - **No bUnit project:** the fixture has no component with logic of its own (ARC-009).
 - **In the kit's own outputs:** the fixture ships in the kit's SBOM, as the sample does, and Stryker mutates its `Program.cs`.
 

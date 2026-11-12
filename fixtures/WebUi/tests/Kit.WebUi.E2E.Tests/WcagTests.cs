@@ -1,6 +1,6 @@
 using Deque.AxeCore.Commons;
 
-namespace Kit.WebUiFixture.E2E.Tests;
+namespace Kit.WebUi.E2E.Tests;
 
 /// <summary>The accessibility check itself: it must find what it's meant to find, or a passing page proves nothing.</summary>
 public sealed class WcagTests

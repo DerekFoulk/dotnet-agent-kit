@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 
-namespace Kit.WebUiFixture.E2E.Tests;
+namespace Kit.WebUi.E2E.Tests;
 
 /// <summary>
 /// Hosts the fixture app on Kestrel, so a real browser can reach it, on a port the operating system picks: port 0,

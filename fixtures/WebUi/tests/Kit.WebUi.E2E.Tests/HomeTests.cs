@@ -1,6 +1,6 @@
 using Microsoft.Playwright;
 
-namespace Kit.WebUiFixture.E2E.Tests;
+namespace Kit.WebUi.E2E.Tests;
 
 /// <summary>The home page, in a real browser: what axe can't check, such as where keyboard focus goes.</summary>
 public sealed class HomeTests

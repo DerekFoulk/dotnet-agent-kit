@@ -1,4 +1,4 @@
-using Kit.WebUiFixture.Components;
+using Kit.WebUi.Components;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents();

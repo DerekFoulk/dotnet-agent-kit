@@ -1,6 +1,6 @@
 using Deque.AxeCore.Commons;
 
-namespace Kit.WebUiFixture.E2E.Tests;
+namespace Kit.WebUi.E2E.Tests;
 
 /// <summary>Every page of the app, checked by axe once it has loaded (UI-002).</summary>
 public sealed class PageTests

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Kit.WebUiFixture.E2E.Tests;
+namespace Kit.WebUi.E2E.Tests;
 
 /// <summary>The factory that hosts the app for the browser.</summary>
 public sealed class AppFactoryTests
@@ -36,7 +36,7 @@ public sealed class AppFactoryTests
 
         home.StatusCode.Should().Be(HttpStatusCode.OK);
         factory.Services.GetRequiredService<IHostEnvironment>().ContentRootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Should().EndWith(Path.Combine("src", "Kit.WebUiFixture"));
+            .Should().EndWith(Path.Combine("src", "Kit.WebUi"));
     }
 
     /// <summary>Points the content root at a missing folder first, as the factory's fallback does under Stryker.</summary>

@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Kit.WebUiFixture\Kit.WebUiFixture.csproj" />
+    <ProjectReference Include="..\..\src\Kit.WebUi\Kit.WebUi.csproj" />
     <PackageReference Include="Deque.AxeCore.Playwright" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.Playwright" />
