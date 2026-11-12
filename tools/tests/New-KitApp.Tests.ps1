@@ -39,7 +39,10 @@ Describe 'New-KitApp settings' {
                 # The kit sync runs only on Dependabot's kit-pin PRs (ADR-0044), so it can't be required on every PR.
                 if ($Matches[1] -eq 'kit-sync.reusable.yml') { continue }
                 $shared = ConvertFrom-Yaml (Get-Content -Raw -LiteralPath (Join-Path $root '.github' 'workflows' $Matches[1]))
-                foreach ($job in $shared['jobs'].Values) { "$jobId / $($job['name'])" }
+                # A job another job needs is gated by it: the .NET CI's required job fails when the UI builds it
+                # waits for did (ADR-0057, SharedCi.Tests.ps1). Only the jobs nothing needs are required by name.
+                $needed = @($shared['jobs'].Values | ForEach-Object { @($_['needs']) } | Where-Object { $_ })
+                foreach ($id in $shared['jobs'].Keys | Where-Object { $needed -notcontains $_ }) { "$jobId / $($shared['jobs'][$id]['name'])" }
             }
         }
         @($expected).Count | Should -Be 3
