@@ -21,16 +21,20 @@ Describe 'Agent configuration' {
         }
 
         # Whether an ask rule catches a command. A rule's '*' matches any text, as in Claude Code's patterns; [, ]
-        # and ? are taken literally. The match is case-sensitive, the stricter reading, since whether Claude Code
-        # ignores case isn't documented.
+        # and ? are taken literally. By default the match is case-sensitive, the stricter reading for a test that a
+        # rule asks. -IgnoreCase is the stricter reading for a test that a rule doesn't ask, and the real one for
+        # PowerShell: on 2026-11-11 a scan of the session transcripts found 38 prompts for PowerShell commands that
+        # matched '*git *push* -f*' only through a later '-Force' or '-F' (Claude Code's docs don't say either way).
         # A rule ending in ":*" is Claude Code's older prefix syntax: the text before it is a literal prefix and any
         # '*' in it isn't expanded (review 4 of PR 19, from Claude Code's own rule parser).
-        function Test-AskRuleMatch([string] $Tool, [string] $Command) {
+        function Test-AskRuleMatch([string] $Tool, [string] $Command, [switch] $IgnoreCase) {
+            $comparison = if ($IgnoreCase) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
             [bool] @(Get-RuleList 'ask' | Where-Object {
                     if ($_ -notmatch "^$Tool\((.*)\)$") { return $false }
                     $pattern = $Matches[1]
-                    if ($pattern -match '^(.+):\*$') { return $Command -ceq $Matches[1] -or $Command.StartsWith("$($Matches[1]) ", [StringComparison]::Ordinal) }
-                    $Command -clike ($pattern -replace '[\[\]?]', '`$0')
+                    if ($pattern -match '^(.+):\*$') { return [string]::Equals($Command, $Matches[1], $comparison) -or $Command.StartsWith("$($Matches[1]) ", $comparison) }
+                    $wildcard = $pattern -replace '[\[\]?]', '`$0'
+                    if ($IgnoreCase) { $Command -ilike $wildcard } else { $Command -clike $wildcard }
                 }).Count
         }
     }
@@ -162,8 +166,26 @@ Describe 'Agent configuration' {
         }
 
         It 'still lets an ordinary push run unasked' {
-            Test-AskRuleMatch -Tool 'Bash' -Command 'git push -q -u origin feat/agent-modes' | Should -BeFalse
-            Test-AskRuleMatch -Tool 'PowerShell' -Command 'git push origin feat/defer-fix' | Should -BeFalse
+            Test-AskRuleMatch -Tool 'Bash' -Command 'git push -q -u origin feat/agent-modes' -IgnoreCase | Should -BeFalse
+            Test-AskRuleMatch -Tool 'PowerShell' -Command 'git push origin feat/defer-fix' -IgnoreCase | Should -BeFalse
+        }
+
+        # The owner asked (2026-11-11) to be asked only before destructive steps and releases. A push followed by
+        # cleanup with -Force isn't a force-push. (A later separate -F, as in 'git commit -F msg.txt', still asks:
+        # a rule can't tell it from a force-push's -f.)
+        It 'doesn''t ask for a push that only a later -Force follows: <Tool>(<Command>)' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'git push -u origin feat/x 2>&1 | Select-Object -Last 2; if (Test-Path $c) { Remove-Item $c -Recurse -Force }' }
+                @{ Tool = $tool; Command = 'git push -u origin feat/x; Remove-Item -LiteralPath $d -Recurse -Force' }
+            }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
+        }
+
+        It 'asks before a force-push with -f at the end: <Tool>(git push origin feat/x -f)' -ForEach @(
+            @{ Tool = 'Bash' }, @{ Tool = 'PowerShell' }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command 'git push origin feat/x -f' | Should -BeTrue
         }
 
         It 'gives review mode exactly the rules auto mode drops from the shared settings' {
