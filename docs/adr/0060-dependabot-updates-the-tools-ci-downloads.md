@@ -63,7 +63,7 @@ Option 1: Dependabot proposes both tools on its usual schedule with its usual wa
 Option 1, decided in auto mode (ADR-0035) on 2026-11-11, at the owner's request.
 
 - Merging a PMD or gitleaks update stays the owner's: ADR-0041 lets agents merge only NuGet, .NET tool and SDK updates.
-- Option 4 waits: today's guarantee is kept, not lowered. Revisit it if a PMD release key is published somewhere the kit already trusts, or if a pin ever has to be taken from an unverified source.
+- Option 4 waits, as GAP-029: today's guarantee is kept, not lowered, and the signature check adds a third party's key to pin and rotate. Revisit it if a PMD release key is published somewhere the kit already trusts, or if a pin ever has to be taken from an unverified source.
 
 ## Consequences
 
