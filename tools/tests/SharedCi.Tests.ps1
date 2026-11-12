@@ -309,6 +309,7 @@ Describe 'Shared CI for app repos' {
             foreach ($asked in @(@($scorecard.Yaml['permissions']) + @($scJobs.Values | ForEach-Object { $_['permissions'] }))) {
                 foreach ($scope in @($asked.Keys)) {
                     $granted = if ($job['permissions'].Contains($scope)) { $job['permissions'][$scope] } else { 'none' }
+                    $rank.ContainsKey($asked[$scope]) -and $rank.ContainsKey($granted) | Should -BeTrue -Because "'$($asked[$scope])' and '$granted' are permission levels"
                     $rank[$granted] | Should -BeGreaterOrEqual $rank[$asked[$scope]] -Because "scorecard.reusable.yml asks for '${scope}: $($asked[$scope])', and $File grants '${scope}: $granted'"
                 }
             }
