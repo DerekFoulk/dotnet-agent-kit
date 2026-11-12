@@ -28,8 +28,33 @@ function Get-LoadBudgetProblem {
         [Parameter(Mandatory)] [string] $Budget
     )
 
-    $null = Get-Content -Raw -LiteralPath $Budget | ConvertFrom-Json -AsHashtable
-    $null = Import-Csv -LiteralPath "${Path}_stats.csv"
+    $budgets = Get-Content -Raw -LiteralPath $Budget | ConvertFrom-Json -AsHashtable
+    $rows = @{}
+    foreach ($row in (Import-Csv -LiteralPath "${Path}_stats.csv")) { $rows[(Get-RequestKey $row)] = $row }
+
+    # The whole run first, then each request, so the output reads the same every time.
+    $keys = @('Aggregated') + @($budgets.Keys | Where-Object { $_ -cne 'Aggregated' } | Sort-Object -CaseSensitive)
+    foreach ($key in $keys) {
+        $limit = $budgets[$key]
+        $row = $rows[$key]
+        foreach ($percentile in $limit['maxMilliseconds'].Keys) {
+            $time = [double] $row.$percentile
+            $max = [double] $limit['maxMilliseconds'][$percentile]
+            if ($time -gt $max) {
+                "${key}: $percentile of requests took up to $(Format-Number $time) ms, over its budget of $(Format-Number $max) ms."
+            }
+        }
+    }
+}
+
+# The name a budget gives a stats row: "Aggregated" for the whole run, "<Type> <Name>" for a request.
+function Get-RequestKey([object] $Row) {
+    if ($Row.Name -ceq 'Aggregated' -and -not $Row.Type) { 'Aggregated' } else { "$($Row.Type) $($Row.Name)" }
+}
+
+# The same text on every machine, whatever its culture: 1,000.4.
+function Format-Number([double] $Value) {
+    $Value.ToString('#,0.###', [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
 function Invoke-LoadBudgetCheck {
