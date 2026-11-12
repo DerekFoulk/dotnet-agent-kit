@@ -63,7 +63,7 @@ Proposed (auto mode, ADR-0035), with TST-007 and TST-008; the owner accepts or c
 
 - New `templates/app-intake.json`, `tools/KitIntake.psm1`, the `new-app` skill (kit only: `Export-KitApp` leaves it out of apps, which can't run `New-KitApp`), and `-Intake` on `New-KitApp`, which is now required. Every new app starts with `docs/app-profile.md`, which the app owns: it isn't in the manifest, and the kit sync never changes it.
 - `New-KitApp` reads `templates/app-intake.json` from the kit at `-KitRef`, as it reads `templates/github`, and refuses a file whose `schemaVersion` it doesn't know. No release has the file yet, so until one does, the skill passes a `-KitRef` at or after the commit that added it.
-- The database card's prices live in `docs/database-guide.md` (ADR-0052); the card names the guide rather than repeating them. Its options must stay in step with the guide's; a test checks each option's name appears in the guide. The guide comes from another branch, so that test is skipped until the guide is on `main`.
+- The database card's prices live in `docs/database-guide.md` (ADR-0053); the card names the guide rather than repeating them. Its options must stay in step with the guide's; a test checks each option's name appears in the guide. The app profile links the kit's guide at the commit the app was made from, on purpose: that's the version the owner's answers were priced against. The app's own copy of the guide, which the kit sync keeps current, has today's prices.
 - TST-007 (proposed): the tools list lives only in `templates/app-intake.json`. TST-008 (proposed): a check enforces the test matrix; GAP-027 tracks it.
 - What gets harder: a kit change to the cards changes what every later new app is asked, so a card's options are reviewed like code.
 
@@ -79,4 +79,5 @@ Proposed (auto mode, ADR-0035), with TST-007 and TST-008; the owner accepts or c
 - ADR-0001
 - ADR-0033
 - ADR-0052
+- ADR-0053
 - ADR-0057

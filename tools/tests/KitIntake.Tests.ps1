@@ -11,13 +11,8 @@ BeforeAll {
 }
 
 Describe 'the intake data' {
-    BeforeDiscovery {
-        # docs/database-guide.md (ADR-0052) comes from another branch; this check starts once it's on main.
-        $hasGuide = Test-Path -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'docs' 'database-guide.md')
-    }
-
     # The guide holds the database options' prices and trade-offs (CRF-003); the card names the same options.
-    It 'names each database option as docs/database-guide.md does' -Skip:(-not $hasGuide) {
+    It 'names each database option as docs/database-guide.md does' {
         $guide = Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'database-guide.md')
         $card = $intake['cards'] | Where-Object { $_['id'] -eq 'database' }
         $card['prices'] | Should -Be 'docs/database-guide.md'
@@ -196,7 +191,7 @@ Describe 'Resolve-KitIntakeAnswer' {
         $card.Other | Should -Be 'MongoDB Atlas'
     }
 
-    # The database guide (ADR-0052) picks the database from where the data lives and its shape.
+    # The database guide (ADR-0053) picks the database from where the data lives and its shape.
     It 'refuses a database that doesn''t fit the data answer, naming the ones that do' {
         $answers = New-Answer
         $answers['database'] = 'sqlite'

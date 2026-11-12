@@ -203,7 +203,7 @@
     {
       "id": "functional",
       "name": "Functional",
-      "checks": "The whole app in memory through its real HTTP pipeline; Blazor components",
+      "checks": "The whole app in a test host, through its real HTTP pipeline; Blazor components",
       "runs": "Every PR",
       "tools": [
         { "id": "webapplicationfactory", "name": "WebApplicationFactory", "package": "Microsoft.AspNetCore.Mvc.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } },
