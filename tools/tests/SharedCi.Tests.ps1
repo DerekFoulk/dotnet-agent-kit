@@ -178,6 +178,67 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # ADR-0057: Linux can't build MAUI or desktop (UI) projects. A small job finds them; a matrix job builds the whole
+    # solution on the runners they need, with the workload set pinned; the required job waits for it.
+    Context 'dotnet-ci.reusable.yml UI builds' {
+        BeforeAll {
+            $jobs = if ($dotnet.Yaml.ContainsKey('jobs')) { $dotnet.Yaml['jobs'] } else { @{} }
+            function Get-JobStep($Job, [string] $Name) {
+                $step = if ($Job) { @($Job['steps'] | Where-Object { $_['name'] -eq $Name })[0] }
+                $step | Should -Not -BeNullOrEmpty -Because "the job should have a step named '$Name'"
+                $step
+            }
+        }
+
+        It 'finds the UI projects with the kit''s script and outputs their runners as a JSON list' {
+            $jobs.ContainsKey('ui-projects') | Should -BeTrue -Because 'a ui-projects job finds the UI projects'
+            $find = Get-JobStep $jobs['ui-projects'] 'Find UI projects'
+            $find['run'] | Should -Match '\$env:KIT/tools/Get-UiProject\.ps1" -Solution \$env:SOLUTION'
+            $find['run'] | Should -Match 'ConvertTo-Json -Compress -AsArray'
+            $jobs['ui-projects']['outputs']['os'] | Should -Be "`${{ steps.$($find['id']).outputs.os }}"
+        }
+
+        It 'builds on each of those runners, and is skipped when there are none (an empty matrix would fail the run)' {
+            $ui = $jobs['ui']
+            $ui | Should -Not -BeNullOrEmpty
+            $ui['needs'] | Should -Be 'ui-projects'
+            $ui['if'] | Should -Be "needs.ui-projects.outputs.os != '[]'"
+            $ui['strategy']['matrix']['os'] | Should -Be '${{ fromJSON(needs.ui-projects.outputs.os) }}'
+            $ui['strategy']['fail-fast'] | Should -BeFalse
+            $ui['runs-on'] | Should -Be '${{ matrix.os }}'
+            @($ui['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })[0]['with']['persist-credentials'] | Should -BeFalse
+        }
+
+        # SUP-011: the workload set whose version is the SDK's own, so a build never picks up the latest workloads.
+        It 'restores the workloads at the workload set of the SDK in use, never unpinned' {
+            $restore = Get-JobStep $jobs['ui'] 'Restore workloads (pinned)'
+            $restore['run'] | Should -Match 'dotnet workload restore \$env:SOLUTION --version \(dotnet --version\)'
+            $dotnet.Text | Should -Not -Match 'dotnet workload (install|update)'
+        }
+
+        It 'restores locked on Windows; on macOS restores, then checks each lock file against the committed one' {
+            $windows = Get-JobStep $jobs['ui'] 'Restore (locked)'
+            $windows['if'] | Should -Be "runner.os == 'Windows'"
+            $windows['run'] | Should -Match '--locked-mode'
+            $mac = Get-JobStep $jobs['ui'] 'Restore (macOS)'
+            $mac['if'] | Should -Be "runner.os == 'macOS'"
+            $mac['run'] | Should -Match '-p:RestoreLockedMode=false'
+            $subset = Get-JobStep $jobs['ui'] 'Lock files match the committed ones'
+            $subset['if'] | Should -Be "runner.os == 'macOS'"
+            $subset['run'] | Should -Match '\$env:KIT/tools/Test-LockFileSubset\.ps1" -RepoRoot \$env:GITHUB_WORKSPACE'
+        }
+
+        It 'builds the whole solution with zero warnings, and on Windows checks its format and deprecated packages' {
+            (Get-JobStep $jobs['ui'] 'Build (zero warnings)')['run'] | Should -Match 'dotnet build \$env:SOLUTION --no-restore --configuration Release -warnaserror'
+            $format = Get-JobStep $jobs['ui'] 'Format check'
+            $format['if'] | Should -Be "runner.os == 'Windows'"
+            $format['run'] | Should -Match 'dotnet format \$env:SOLUTION --verify-no-changes --no-restore'
+            $deprecated = Get-JobStep $jobs['ui'] 'Deprecated packages'
+            $deprecated['if'] | Should -Be "runner.os == 'Windows'"
+            $deprecated['run'] | Should -Match 'Test-DeprecatedPackages\.ps1" -Path \$env:SOLUTION'
+        }
+    }
+
     Context 'app-checks.reusable.yml' {
         BeforeAll {
             $run = (@(Get-Steps $app.Yaml) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
