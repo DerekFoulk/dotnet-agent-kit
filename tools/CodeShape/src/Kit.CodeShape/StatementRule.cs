@@ -10,7 +10,7 @@ internal static class StatementRule
         ArgumentNullException.ThrowIfNull(file);
 
         return Member.Of(CSharpSyntaxTree.ParseText(file.Text, path: file.Path).GetCompilationUnitRoot())
-            .Where(member => member.Statements.Count > Limits.StatementsPerMember)
+            .Where(member => member.Statements.Count > Limits.StatementsPerMember && !LimitException.Covers(member.Node))
             .Select(member => Finding.At(
                 file.Path,
                 member.Location,

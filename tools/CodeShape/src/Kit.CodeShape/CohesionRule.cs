@@ -27,7 +27,7 @@ internal static class CohesionRule
             SemanticModel model = compilation.GetSemanticModel(tree);
             foreach (TypeDeclarationSyntax declaration in tree.GetRoot().DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
-                if (model.GetDeclaredSymbol(declaration) is not { } type)
+                if (model.GetDeclaredSymbol(declaration) is not { } type || IsExempt(type))
                 {
                     continue;
                 }
@@ -44,6 +44,10 @@ internal static class CohesionRule
             }
         }
     }
+
+    // A partial type is exempt when any of its declarations carries the exception.
+    private static bool IsExempt(INamedTypeSymbol type) =>
+        type.DeclaringSyntaxReferences.Any(reference => LimitException.Covers(reference.GetSyntax()));
 
     // The type's methods that use its instance state, grouped by what they share, in declaration order.
     private static IReadOnlyList<IReadOnlyList<ISymbol>> Groups(INamedTypeSymbol type, Compilation compilation)
