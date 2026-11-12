@@ -86,4 +86,15 @@ Describe 'Get-UiProject.ps1' {
 
         { Get-UiProject -Solution $solution } | Should -Throw '*lists src/A/A.csproj, which doesn''t exist*'
     }
+
+    # ARC-010: logic lives outside UI projects, so nothing needs to reference one. A test project that did would
+    # fail on Linux with a confusing workload error; this says what's wrong instead.
+    It 'fails when another project references a UI project' {
+        $solution = New-Solution @(
+            @{ Path = 'src/App.Maui/App.Maui.csproj'; Properties = '<UseMaui>true</UseMaui>' }
+            @{ Path = 'tests/App.Maui.Tests/App.Maui.Tests.csproj'; Properties = '</PropertyGroup><ItemGroup><ProjectReference Include="..\..\src\App.Maui\App.Maui.csproj" /></ItemGroup><PropertyGroup>' }
+        )
+
+        { Get-UiProject -Solution $solution } | Should -Throw '*tests/App.Maui.Tests/App.Maui.Tests.csproj references the UI project src/App.Maui/App.Maui.csproj*ARC-010*'
+    }
 }
