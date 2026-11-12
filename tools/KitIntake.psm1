@@ -22,6 +22,11 @@ function Resolve-KitIntakeAnswer {
         $accepts = "$($ids -join ', '), or 'Other: <text>'"
         $value = $Answers[$id]
         if ($value -isnot [string] -or -not $value.Trim()) { throw "The answers have no answer for '$id'. It takes one of: $accepts." }
+        # AskUserQuestion always offers Other: the owner's own answer, which the profile says needs an ADR.
+        if ($value -match '(?s)^Other:\s*(?<text>\S.*)$') {
+            [pscustomobject]@{ Id = $id; Card = $card; Option = $null; Other = $Matches['text'].Trim() }
+            continue
+        }
         $option = @($card['options'] | Where-Object { $_['id'] -ceq $value })
         if (-not $option) { throw "'$value' isn't an option of the '$id' card. It takes one of: $accepts." }
         [pscustomobject]@{ Id = $id; Card = $card; Option = $option[0]; Other = $null }
