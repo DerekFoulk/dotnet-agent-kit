@@ -100,6 +100,28 @@ Describe 'Test-SafeMigrations.ps1' {
             $messages[1] | Should -BeLike '*:14: Up calls DropTable, *'
         }
 
+        It 'names files relative to a relative -Path, resolved from the current location' {
+            New-Migration -Up 'migrationBuilder.DropTable(name: "Orders");'
+
+            Push-Location -LiteralPath $script:repo
+            try { $messages = @(Get-MigrationProblem -Path '.') | ForEach-Object Message }
+            finally { Pop-Location }
+
+            $messages | Should -BeLike 'src/Contoso.Orders.Infrastructure/Migrations/20261111120000_ChangeOrders.cs:13: *'
+        }
+
+        It 'reads Up when Down comes first in the file' {
+            $folder = Join-Path $script:repo 'Migrations'
+            New-Item -ItemType Directory -Path $folder | Out-Null
+            Set-Content -LiteralPath (Join-Path $folder 'M.cs') -Value (@(
+                    'public partial class M : Migration {'
+                    '    protected override void Down(MigrationBuilder b) { b.DropTable(name: "Lines"); }'
+                    '    protected override void Up(MigrationBuilder b) { b.CreateTable(name: "Lines"); }'
+                    '}') -join "`n")
+
+            Get-Message | Should -BeNullOrEmpty
+        }
+
         It 'reads a builder parameter with another name' {
             New-Migration -Builder 'builder' -Up 'builder.DropColumn(name: "Notes", table: "Orders");'
 
@@ -195,7 +217,7 @@ Describe 'Test-SafeMigrations.ps1' {
             Get-Message | Should -BeNullOrEmpty
         }
 
-        It 'skips build output in <Folder>' -ForEach @(@{ Folder = 'bin' }, @{ Folder = 'obj' }) {
+        It 'skips build output and git''s files in <Folder>' -ForEach @(@{ Folder = 'bin' }, @{ Folder = 'obj' }, @{ Folder = '.git' }) {
             $folder = Join-Path $script:repo "src/$Folder"
             New-Item -ItemType Directory -Force -Path $folder | Out-Null
             Set-Content -LiteralPath (Join-Path $folder 'Copy.cs') -Value (New-MigrationText -Up 'migrationBuilder.DropTable(name: "Orders");')
