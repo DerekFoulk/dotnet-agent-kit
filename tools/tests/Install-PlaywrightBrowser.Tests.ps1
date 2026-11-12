@@ -141,4 +141,14 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
     }
+
+    It 'fails, naming the project and MSBuild''s message, when MSBuild can''t read a project' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'broken'
+        New-Project $repo 'Bad'
+        'not a project' | Set-Content -LiteralPath (Join-Path $repo 'src/Bad/Bad.csproj')
+        $solution = New-Solution $repo 'Bad'
+
+        { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } | Should -Throw '*Bad.csproj*MSB*'
+    }
 }
