@@ -11,7 +11,14 @@ function Resolve-KitIntakeAnswer {
         [Parameter(Mandatory)] [Collections.IDictionary] $Answers
     )
 
-    $null
+    $cards = foreach ($card in $Intake['cards']) {
+        $value = $Answers[$card['id']]
+        [pscustomobject]@{ Id = $card['id']; Card = $card; Option = @($card['options'] | Where-Object { $_['id'] -ceq $value })[0]; Other = $null }
+    }
+    $kinds = foreach ($kind in $Intake['testKinds']) {
+        [pscustomobject]@{ Kind = $kind; Tools = @($kind['tools'] | Where-Object { $_['default'] }) }
+    }
+    [pscustomobject]@{ Cards = @($cards); TestKinds = @($kinds) }
 }
 
 Export-ModuleMember -Function Resolve-KitIntakeAnswer
