@@ -56,14 +56,14 @@ Describe 'Test-Duplication.ps1' {
 
     Context 'running CPD' {
         It 'asks for C# with the tuning ADR-0051 records' {
-            $arguments = Get-CpdArgument -FileList 'files.txt'
+            $arguments = Get-CpdArgument -FileList 'files.txt' -Report 'cpd.xml'
 
             $arguments[0] | Should -Be 'cpd'
             $arguments | Should -Contain '--ignore-usings'
             $arguments | Should -Contain '--ignore-literal-sequences'
             $arguments | Should -Contain '--ignore-annotations'
             ($arguments -join ' ') | Should -Match '--language cs --minimum-tokens 100 '
-            ($arguments -join ' ') | Should -Match '--file-list files\.txt --format xml'
+            ($arguments -join ' ') | Should -Match '--file-list files\.txt --format xml --report-file cpd\.xml'
             $arguments | Should -Contain '--no-fail-on-violation'
             $arguments | Should -Contain '--no-fail-on-error'
         }

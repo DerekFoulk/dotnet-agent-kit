@@ -30,19 +30,23 @@ $ErrorActionPreference = 'Stop'
 # on, or it would be reset.
 . (Join-Path $PSScriptRoot 'Test-CodeShape.ps1') -Solution $Solution
 
-# The fewest tokens a repeat must have to count. Below about 100, CPD finds look-alike code: argument checks, small
-# test arrangements, property lists (ADR-0051).
+# The fewest tokens a repeat must have to count: a starting point, long enough that a repeat is rarely an accident of
+# style; shorter thresholds weren't measured (ADR-0051).
 $script:MinimumTokens = 100
 
 # CPD's command line for C#, tuned to find repeated knowledge rather than code that only looks alike (ADR-0051).
 function Get-CpdArgument {
-    param([Parameter(Mandatory)] [string] $FileList)
+    param(
+        [Parameter(Mandatory)] [string] $FileList,
+        [Parameter(Mandatory)] [string] $Report
+    )
 
     @(
         'cpd', '--language', 'cs', '--minimum-tokens', $script:MinimumTokens,
         '--ignore-usings', '--ignore-annotations', '--ignore-literal-sequences',
-        '--file-list', $FileList, '--format', 'xml', '--no-fail-on-violation',
-        # A file CPD can't read is skipped, not a failure; Get-SkippedFile names each one.
+        '--file-list', $FileList, '--format', 'xml', '--report-file', $Report, '--no-fail-on-violation',
+        # A safety net (CRF-001): CPD 7.29.0's C# tokenizer can't read a raw string literal (C# 11), and would stop the
+        # whole run. With this, it skips such a file instead, and Get-SkippedFile names each one as a warning.
         '--no-fail-on-error'
     )
 }
@@ -128,10 +132,15 @@ function Invoke-DuplicationCheck {
         ConvertTo-Json -InputObject @(Get-CodeShapeProject -Solution $Solution) -Depth 4 | Set-Content -LiteralPath $manifest
         $files = @(Invoke-KitCodeShape -KitRoot $KitRoot -Argument '--files', $manifest)
         if ($LASTEXITCODE -ne 0) { throw "Kit.CodeShape couldn't list the files: $($files -join "`n")" }
+        if (-not $files) {
+            return [pscustomobject]@{ ExitCode = 0; Output = 'Duplicate code (CRF-003): no C# files to check.' }
+        }
         $files | Set-Content -LiteralPath $fileList
 
-        & $Pmd @(Get-CpdArgument -FileList $fileList) | Set-Content -LiteralPath $report
-        if ($LASTEXITCODE -ne 0) { throw "CPD failed with exit code $LASTEXITCODE (1: an exception, 2: a usage error)." }
+        # CPD writes the report itself, so no output line or console encoding can reach the XML.
+        $cpdArguments = Get-CpdArgument -FileList $fileList -Report $report
+        $console = @(& $Pmd @cpdArguments)
+        if ($LASTEXITCODE -ne 0) { throw "CPD failed with exit code $LASTEXITCODE (1: an exception, 2: a usage error):`n$($console -join "`n")" }
 
         $skipped = @(Get-SkippedFile -Report $report)
         $warnings = @($skipped | Format-SkippedFile -Solution $Solution)
@@ -141,7 +150,7 @@ function Invoke-DuplicationCheck {
         }
 
         $checked = $files.Count - $skipped.Count
-        $summary = "Duplicate code (CRF-003): $checked files, nothing repeats in $script:MinimumTokens tokens or more; $($skipped.Count) skipped."
+        $summary = "Duplicate code (CRF-003): $checked $(if ($checked -eq 1) { 'file' } else { 'files' }) checked, nothing repeats in $script:MinimumTokens tokens or more; $($skipped.Count) skipped."
         [pscustomobject]@{ ExitCode = 0; Output = ($warnings + $summary) -join "`n" }
     }
     finally {
