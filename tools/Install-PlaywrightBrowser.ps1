@@ -31,14 +31,18 @@ function Install-PlaywrightBrowser {
         $project = Join-Path $folder $node.GetAttribute('Path')
         $json = (& dotnet msbuild $project -nologo -getProperty:ProjectAssetsFile -getProperty:TargetDir "-p:Configuration=$Configuration") -join "`n" | ConvertFrom-Json
         $assets = Get-Content -Raw -LiteralPath $json.Properties.ProjectAssetsFile | ConvertFrom-Json
-        if ($assets.libraries.PSObject.Properties.Name -like 'Microsoft.Playwright/*') {
-            Join-Path $json.Properties.TargetDir 'playwright.ps1'
+        # A list on the left, so -like filters it even when the graph holds one library.
+        $library = @(@($assets.libraries.PSObject.Properties.Name) -like 'Microsoft.Playwright/*')
+        if ($library) {
+            [pscustomobject]@{ Version = ($library[0] -split '/')[1]; Script = Join-Path $json.Properties.TargetDir 'playwright.ps1' }
         }
     }
     if (-not $users) { 'No project uses Playwright; no browser to install.'; return }
     $arguments = @('install') + @(if ($WithDependencies) { '--with-deps' }) + 'chromium'
-    foreach ($script in $users) {
-        & pwsh -NoProfile -File $script @arguments
+    # Each Playwright version pins its own browser build, so one install per version.
+    $installed = [Collections.Generic.HashSet[string]]::new()
+    foreach ($user in $users | Where-Object { $installed.Add($_.Version) }) {
+        & pwsh -NoProfile -File $user.Script @arguments
     }
 }
 
