@@ -21,8 +21,9 @@ function Get-SolutionProject {
     $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).ProviderPath
     foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $path = $node.GetAttribute('Path')
-        # A hand-written solution may use Windows separators, which .NET on Linux reads as part of a name.
-        [pscustomobject]@{ Path = $path; FullPath = [IO.Path]::GetFullPath((Join-Path $folder ($path -replace '\\', '/'))) }
+        # A hand-written solution may use Windows separators; PowerShell's Join-Path reads them on every OS (the tests,
+        # which CI runs on Linux, pin it), so FullPath has this OS's own.
+        [pscustomobject]@{ Path = $path; FullPath = [IO.Path]::GetFullPath((Join-Path $folder $path)) }
     }
 }
 
