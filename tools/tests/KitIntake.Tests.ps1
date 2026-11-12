@@ -43,4 +43,35 @@ Describe 'the intake data' {
             }
         }
     }
+
+    # One list of test tools (TST-007, CRF-003): the testing standard and ADR-0003 name tools, and each one they
+    # name has to be in this list, so the two can't drift apart.
+    It 'lists every kind of test TST-003 names, and every tool TST-005 and ADR-0003 name' {
+        Import-Module powershell-yaml
+        Import-Module (Join-Path $root 'tools' 'KitFrontMatter.psm1') -Force
+        $rules = (Read-FrontMatter -Path (Join-Path $root 'docs' 'standards' 'testing.md'))['rules']
+        $kinds = @($intake['testKinds'])
+        $kinds | Should -Not -BeNullOrEmpty -Because 'templates/app-intake.json lists the test kinds'
+        $tools = @($kinds | ForEach-Object { $_['tools'] })
+
+        $matrix = [regex]::Match(($rules | Where-Object id -EQ 'TST-003')['statement'], '\(([^)]+)\)').Groups[1].Value
+        foreach ($kind in $matrix -split ',\s*') {
+            @($kinds.id) | Should -Contain $kind.ToLowerInvariant() -Because "TST-003's matrix has $kind tests"
+        }
+
+        $named = [regex]::Match(($rules | Where-Object id -EQ 'TST-005')['statement'], '\(([^)]+)\)').Groups[1].Value -replace '\s+and the ADR-0003 additions$', ''
+        foreach ($name in $named -split ',\s*') {
+            @($tools | Where-Object { $_['name'] -like "$name*" }) | Should -Not -BeNullOrEmpty -Because "TST-005 names $name"
+        }
+
+        # ADR-0003's "Added:" line names each tool by its package, in backticks, or by its name.
+        $added = [regex]::Match((Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'adr' '0003-test-toolset.md')), '(?m)^- Added: (.+)$').Groups[1].Value
+        $added | Should -Not -BeNullOrEmpty
+        foreach ($item in $added.TrimEnd('.') -split ',\s*') {
+            $names = if ($item -match '`') { [regex]::Matches($item, '`([^`]+)`').ForEach({ $_.Groups[1].Value }) } else { @($item.Trim()) }
+            foreach ($name in $names) {
+                @($tools | Where-Object { $_['name'] -eq $name -or $_['package'] -eq $name }) | Should -Not -BeNullOrEmpty -Because "ADR-0003 adds $name"
+            }
+        }
+    }
 }
