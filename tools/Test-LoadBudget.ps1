@@ -37,6 +37,10 @@ function Get-LoadBudgetProblem {
     foreach ($key in $keys) {
         $limit = $budgets[$key]
         $row = $rows[$key]
+        if ($null -eq $row) {
+            "${key}: has a budget, but the stats have no such request. Locust names a request '<Type> <Name>'; was it renamed?"
+            continue
+        }
         $requests = [long] $row.'Request Count'
         if ($requests -eq 0) {
             "${key}: no requests were made, so there is nothing to check. Is the app up, and does the locustfile run?"
