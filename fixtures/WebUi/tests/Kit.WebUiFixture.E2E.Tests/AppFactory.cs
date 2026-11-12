@@ -10,7 +10,7 @@ namespace Kit.WebUiFixture.E2E.Tests;
 /// clash. It sets the app's content root itself, relative to the solution, for the reason the sample's ApiFactory
 /// gives: under Stryker.NET the factory's own lookup finds a folder that doesn't exist (ADR-0039).
 /// </summary>
-internal sealed class AppFactory : WebApplicationFactory<Program>
+internal class AppFactory : WebApplicationFactory<Program>
 {
     public AppFactory() => UseKestrel(0);
 
