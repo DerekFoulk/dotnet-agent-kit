@@ -39,6 +39,18 @@ Describe 'Dependabot configuration' {
         }
     }
 
+    # GAP-023 (ADR-0060): the tools the shared .NET CI downloads itself are pinned in manifests under .config, so
+    # Dependabot proposes their new versions: PMD in a Maven pom, the gitleaks image in a Dockerfile.
+    It 'watches the manifest that pins <Tool> for the shared .NET CI, in the kit' -ForEach @(
+        @{ Tool = 'PMD'; Ecosystem = 'maven'; Directory = '/.config/pmd' }
+        @{ Tool = 'the gitleaks image'; Ecosystem = 'docker'; Directory = '/.config/gitleaks' }
+    ) {
+        $matching = @(Get-Update '.github/dependabot.yml' |
+                Where-Object { $_['package-ecosystem'] -eq $Ecosystem -and $_['directory'] -eq $Directory })
+
+        $matching.Count | Should -Be 1 -Because "Dependabot's $Ecosystem updater must read $Directory"
+    }
+
     It 'waits at least 14 days before proposing a major version of a package or the SDK, in <Path>' -ForEach @(
         @{ Path = '.github/dependabot.yml' }, @{ Path = 'templates/app/.github/dependabot.yml' }
     ) {
