@@ -45,6 +45,16 @@ Describe 'Get-SolutionProject' {
         (Get-SolutionProject -Solution $solution).FullPath | Should -Be ([IO.Path]::GetFullPath((Join-Path $TestDrive 'repo' 'shared' 'Lib' 'Lib.csproj')))
     }
 
+    # .NET on Linux reads a backslash as part of a name, so this fails there without the module's own conversion.
+    It 'reads a path written with backslashes as this OS''s full path, keeping Path as written' {
+        $solution = Write-Solution '<Project Path="src\App\App.csproj" />'
+
+        $project = Get-SolutionProject -Solution $solution
+
+        $project.Path | Should -Be 'src\App\App.csproj'
+        $project.FullPath | Should -Be ([IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $solution) 'src' 'App' 'App.csproj')))
+    }
+
     It 'reads a solution given by a PowerShell drive path' {
         $solution = Write-Solution '<Project Path="src/App/App.csproj" />' -Folder (Join-Path $TestDrive 'drive')
 
