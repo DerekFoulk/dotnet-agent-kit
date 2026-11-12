@@ -28,8 +28,8 @@
           "description": "A native app for Android, iOS, Windows or macOS, built with .NET MAUI.",
           "cost": {
             "label": "Free tier",
-            "free": "On a public repo, GitHub Actions' standard runners are free, so its Windows and macOS builds cost nothing (ADR-0059)",
-            "price": "A private repo uses its account's Actions minutes for every pull request's Windows and macOS builds: $0.010 a minute on Windows and $0.062 on macOS, against $0.006 on Linux",
+            "free": "Its Windows and macOS builds cost nothing on a public repo, where GitHub Actions' standard runners are free; a private repo first spends its plan's included Actions minutes (ADR-0059)",
+            "price": "a private repo pays for each pull request's Windows and macOS builds by the minute: $0.010 a minute on Windows and $0.062 on macOS, against $0.006 on Linux",
             "source": "https://docs.github.com/en/billing/reference/actions-runner-pricing",
             "checked": "2026-11-11"
           }
