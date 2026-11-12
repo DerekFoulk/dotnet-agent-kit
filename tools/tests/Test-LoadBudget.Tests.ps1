@@ -122,9 +122,10 @@ Describe 'Test-LoadBudget.ps1' {
     It 'takes only the row with no Type as the whole run' {
         Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $stats = Write-Stats @(
-            (New-Row 'GET' 'Aggregated' -Requests 400 -P95 150)
+            (New-Row '' 'Aggregated' -Requests 800 -P95 150 -P99 700)
             (New-Row 'POST' '/bookmarks' -Requests 400 -P95 150)
-            (New-Row '' 'Aggregated' -Requests 800 -P95 150 -P99 700))
+            # After the whole-run row, so taking it as the whole run would hide the 700 ms.
+            (New-Row 'GET' 'Aggregated' -Requests 400 -P95 150))
 
         { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget (New-StandardBudget))) } | Should -Not -Throw
 
