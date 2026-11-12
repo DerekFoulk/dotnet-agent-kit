@@ -198,6 +198,35 @@ Describe 'Shared CI for app repos' {
             $jobs['ui-projects']['outputs']['os'] | Should -Be "`${{ steps.$($find['id']).outputs.os }}"
         }
 
+        # Review 2: -AsArray with -InputObject wrapped the list in another array, so the ui job ran with a runner
+        # label nobody has and the required job never started. The step is run here, as CI runs it.
+        It 'outputs os=<Expected> for a solution with <Case>' -ForEach @(
+            @{ Case = 'no UI project'; Properties = @(); Expected = '[]' }
+            @{ Case = 'a WPF project'; Properties = @('<UseWPF>true</UseWPF>'); Expected = '["windows-latest"]' }
+            @{ Case = 'a MAUI and a WPF project'; Properties = @('<UseMaui>true</UseMaui>', '<UseWPF>true</UseWPF>'); Expected = '["windows-latest","macos-latest"]' }
+        ) {
+            $find = Get-JobStep $jobs['ui-projects'] 'Find UI projects'
+            $dir = Join-Path $TestDrive "find-$(New-Guid)"
+            $entries = @('<Project Path="src/Core/Core.csproj" />')
+            New-Item -ItemType Directory -Force -Path (Join-Path $dir 'src/Core') | Out-Null
+            '<Project Sdk="Microsoft.NET.Sdk" />' | Set-Content -LiteralPath (Join-Path $dir 'src/Core/Core.csproj')
+            for ($i = 0; $i -lt $Properties.Count; $i++) {
+                New-Item -ItemType Directory -Force -Path (Join-Path $dir "src/Ui$i") | Out-Null
+                "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup>$($Properties[$i])</PropertyGroup></Project>" | Set-Content -LiteralPath (Join-Path $dir "src/Ui$i/Ui$i.csproj")
+                $entries += "<Project Path=`"src/Ui$i/Ui$i.csproj`" />"
+            }
+            "<Solution>$($entries -join '')</Solution>" | Set-Content -LiteralPath (Join-Path $dir 'App.slnx')
+            $script = Join-Path $dir 'find.ps1'
+            Set-Content -LiteralPath $script -Value $find['run']
+            $output = Join-Path $dir 'github-output'
+            $env:KIT = $root; $env:SOLUTION = Join-Path $dir 'App.slnx'; $env:GITHUB_OUTPUT = $output
+            try { & pwsh -NoProfile -File $script *> $null }
+            finally { Remove-Item Env:KIT, Env:SOLUTION, Env:GITHUB_OUTPUT -ErrorAction SilentlyContinue }
+
+            $LASTEXITCODE | Should -Be 0
+            (Get-Content -Raw -LiteralPath $output).Trim() | Should -Be "os=$Expected"
+        }
+
         It 'builds on each of those runners, and is skipped when there are none (an empty matrix would fail the run)' {
             $ui = $jobs['ui']
             $ui | Should -Not -BeNullOrEmpty
