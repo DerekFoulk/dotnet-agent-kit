@@ -565,7 +565,8 @@ Describe 'Export-KitApp' {
         $appSettings = Get-Content -Raw -LiteralPath (Join-Path $app '.claude/settings.json') | ConvertFrom-Json -AsHashtable
 
         foreach ($list in 'allow', 'ask', 'deny') {
-            $expected = @($kitSettings['permissions'][$list] | Where-Object { $_ -notmatch 'New-KitApp' })
+            # The kit-only scripts with rules: New-KitApp, and Install-PlaywrightBrowser, which apps run only in CI.
+            $expected = @($kitSettings['permissions'][$list] | Where-Object { $_ -notmatch 'New-KitApp|Install-PlaywrightBrowser' })
             @($appSettings['permissions'][$list]) | Should -Be $expected -Because "the app keeps every other $list rule, in order"
         }
         $appSettings['$schema'] | Should -Be $kitSettings['$schema']

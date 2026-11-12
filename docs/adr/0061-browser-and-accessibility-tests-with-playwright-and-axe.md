@@ -24,7 +24,7 @@ Checked for this decision:
 ## Options
 
 **Hosting, for every option below.** The browser reaches the app through `WebApplicationFactory` on Kestrel, or through Aspire testing.
-- **WebApplicationFactory:** needs no AppHost, runs in the test process (so the coverage gate counts the web project), and uses the same factory pattern as the sample's functional tests.
+- **WebApplicationFactory:** needs no AppHost, runs in the test process (so the coverage gate counts the web project; on Windows, only from a clone in a short folder, as testing.md says), and uses the same factory pattern as the sample's functional tests.
 - **Aspire testing:** suits an app that has an Aspire AppHost, where it starts the whole distributed app.
 
 The intake now offers WebApplicationFactory by default, and Aspire testing for an app with an AppHost.
@@ -118,7 +118,7 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 - **GAP-036:** interactive render modes.
 
 **Follow-ups:**
-- **For the owner (a guardrail):** `.claude/settings.json` has no ask rule for installing a browser locally (`playwright.ps1 install`, the kit script). Until he adds one, AGENTS.md and testing.md say it's the owner's step.
+- **For the owner (a guardrail):** installing a browser locally is the owner's step (AGENTS.md, testing.md). Since 2026-11-12, `.claude/settings.json` asks before it, in both modes, when a command runs `playwright.ps1 install` (by `pwsh`, `&`, `./`, `.\`, or any path through `bin`, bare or not), `npx … playwright … install`, or the kit's `Install-PlaywrightBrowser.ps1`. A command that only names them (git, grep, a commit message, Pester) doesn't ask, unless it quotes the full path through `bin` with `install` after it, or starts with `pwsh`, `./`, `.\` or `&` and quotes `playwright.ps1 install` later: then it asks too, because a missed install is worse than an extra prompt. Not caught, and left to "Always ask" and the reviewer (ADR-0026): an install run through a variable or a pipeline, a quoted path, a wrapper such as `bash -c`, and the kit script by an absolute path, without `./` or `.\` in some forms (such as `pwsh tools/…`, `tools\…` or `& tools/…`), by `pwsh` with `.\` or with flags other than `-File` and `-NoProfile`, or dot-sourced and then called. Whether Claude Code checks each command of a compound line on its own isn't verified. `tools/tests/AgentConfig.Tests.ps1` pins both sides.
 - **Solution reading:** the kit's scripts read a solution in two ways. Six read the `.slnx` XML, and Test-CodeShape uses `dotnet sln list`. The new script adds one more XML reader, and repeats Test-CodeShape's first-framework fallback. Putting both in one module is a follow-up (CRF-003).
   - **Update (2026-11-12):** done. `tools/KitSolution.psm1` lists a `.slnx`'s projects for seven scripts (the count above was one too many) and the performance workflow's benchmarks step, and picks the first framework for the two scripts that need it.
 - **Updates:** agents may merge Playwright's minor updates (ADR-0041), and each one moves the browser build. That's intended.

@@ -49,8 +49,9 @@ Describe 'Test-CoverageGate.ps1' {
     }
 
     Context 'Get-CoverageSummary' {
-        # Microsoft's collector writes <packages /> for a test project that loads no assembly it counts; GAP-004 met one,
-        # in one clone only, cause not found. PowerShell reads an empty element as a string, which has no .package.
+        # Microsoft's collector writes <packages /> for a test project that loads no assembly it counts, and on Windows for a
+        # clone whose path is too long (testing.md, "Browser and accessibility tests"). PowerShell reads an empty element as
+        # a string, which has no .package.
         It 'reads a report with no packages as no lines, and still counts the other reports' {
             $dir = Join-Path $TestDrive 'empty-report'
             New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'src/Bookmark.cs'; Lines = (Get-Lines -Covered 2 -Missed 0) }) } | Out-Null
@@ -160,6 +161,31 @@ Describe 'Test-CoverageGate.ps1' {
 
             $exitCode | Should -Be 1
             ($output | Where-Object { $_ -isnot [int] }) -join "`n" | Should -BeLike '*Bookmarks.Worker*no coverage*'
+        }
+
+        # After PR 58: from a Windows clone whose path was too long, Microsoft's collector wrote an empty report for the
+        # E2E project, and the gate blamed the web project as one no test loads. It names each empty report, and the
+        # path-length cause, so the reader isn't sent looking for a missing project reference.
+        It 'names an empty report, and the long-path cause, beside the project it then fails' {
+            $dir = Join-Path $TestDrive 'empty-named'
+            New-CoberturaReport -Directory $dir -Packages @{ 'App.Core' = @(@{ File = 'c.cs'; Lines = Get-Lines 10 0 }) } | Out-Null
+            # Named as the collector names its reports: a GUID.
+            $empty = "$([guid]::NewGuid()).cobertura.xml"
+            Set-Content -LiteralPath (Join-Path $dir $empty) -Value '<?xml version="1.0"?><coverage line-rate="1"><packages /></coverage>'
+            $solution = New-TestSolution -Name 'EmptyNamed' -Projects @{
+                'src/App.Core/App.Core.csproj' = ''
+                'src/App.Web/App.Web.csproj'   = ''
+            }
+
+            $output = Invoke-CoverageGate -Path $dir -Solution $solution 6>&1
+            $exitCode = @($output | Where-Object { $_ -is [int] })[-1]
+            $text = ($output | Where-Object { $_ -isnot [int] }) -join "`n"
+
+            $text | Should -BeLike "*$empty*no assemblies*path*testing.md*"
+            # Review 2: only the empty report, never one that lists assemblies, or every run would blame a long path.
+            @($output | Where-Object { "$_" -like '*lists no assemblies*' }).Count | Should -Be 1
+            $text | Should -BeLike '*App.Web*FAIL*'
+            $exitCode | Should -Be 1
         }
 
         # ARC-010, ADR-0059: a UI project holds only views, platform code and startup wiring, which no plain test
