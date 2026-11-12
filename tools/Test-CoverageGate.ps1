@@ -32,15 +32,10 @@ $script:CoverageRules = @(
 )
 $script:OverallMinimum = 90
 
-# A benchmarks project (ADR-0062): its name ends in ".Benchmarks", in the case tests/Directory.Build.props matches.
-function Test-BenchmarksAssembly([string] $Name) {
-    $Name -clike '*.Benchmarks'
-}
-
-# Test-side code, never counted: test projects (names ending in "Tests") and benchmarks projects, which measure
-# production code and ship nothing.
+# Test-side code, never counted: test projects (names ending in "Tests") and benchmarks projects (KitSolution.psm1,
+# ADR-0062), which measure production code and ship nothing.
 function Test-TestSideAssembly([string] $Name) {
-    $Name -like '*Tests' -or (Test-BenchmarksAssembly $Name)
+    $Name -like '*Tests' -or (Test-BenchmarksProject -Name $Name)
 }
 
 function Test-GeneratedFile {
@@ -135,7 +130,7 @@ function Invoke-CoverageGate {
             ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.FullPath) } |
             Where-Object { $exempt -notcontains $_ }
         foreach ($name in $expected) {
-            if (Test-BenchmarksAssembly $name) { Write-Host ('{0,-32} left out (benchmarks project, ADR-0062)' -f $name) }
+            if (Test-BenchmarksProject -Name $name) { Write-Host ('{0,-32} left out (benchmarks project, ADR-0062)' -f $name) }
             if (Test-TestSideAssembly $name) { continue }
             if ($summary.Package -notcontains $name) {
                 $failed = $true

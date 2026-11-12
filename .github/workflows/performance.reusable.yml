@@ -68,7 +68,7 @@ jobs:
         run: |
           Import-Module "$env:KIT/tools/KitSolution.psm1"
           $projects = @(Get-SolutionProject -Solution $env:SOLUTION | ForEach-Object FullPath |
-              Where-Object { [IO.Path]::GetFileNameWithoutExtension($_) -clike '*.Benchmarks' })
+              Where-Object { Test-BenchmarksProject -Name ([IO.Path]::GetFileNameWithoutExtension($_)) })
           if (-not $projects) {
             "No benchmarks project (a name ending in .Benchmarks) in ${env:SOLUTION}; nothing to run."
             exit 0

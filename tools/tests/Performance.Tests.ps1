@@ -27,10 +27,11 @@ Describe 'Performance tests (GAP-012)' {
             , @($Steps | Where-Object { $_ -and "$($_['name'])" -eq $Name })
         }
 
-        # The solution's benchmarks projects: by name, as the coverage gate, the SBOM filter and the workflow find them.
-        $script:BenchmarkProjects = @(([xml] (Get-Content -Raw -LiteralPath (Join-Path $root 'dotnet-agent-kit.slnx'))).SelectNodes('//Project') |
-                ForEach-Object { $_.GetAttribute('Path') } |
-                Where-Object { [IO.Path]::GetFileNameWithoutExtension($_) -like '*.Benchmarks' })
+        # The solution's benchmarks projects, found as the coverage gate, the SBOM filter and the workflow find them.
+        Import-Module (Join-Path $root 'tools' 'KitSolution.psm1') -Force
+        $script:BenchmarkProjects = @(Get-SolutionProject -Solution (Join-Path $root 'dotnet-agent-kit.slnx') |
+                ForEach-Object Path |
+                Where-Object { Test-BenchmarksProject -Name ([IO.Path]::GetFileNameWithoutExtension($_)) })
     }
 
     Context 'benchmarks projects' {
@@ -117,7 +118,7 @@ Describe 'Performance tests (GAP-012)' {
             $run = Find-Step $benchmarks 'Run each benchmarks project and check its budget'
 
             $run | Should -HaveCount 1
-            $run[0]['run'] | Should -Match "-clike '\*\.Benchmarks'"
+            $run[0]['run'] | Should -Match 'Where-Object \{ Test-BenchmarksProject -Name '
             $run[0]['run'] | Should -Match 'No benchmarks project'
             # CRF-003: it reads the solution as every kit script does.
             $run[0]['run'] | Should -Match 'Import-Module "\$env:KIT/tools/KitSolution\.psm1"'
