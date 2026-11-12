@@ -4,6 +4,22 @@
 # KitSolution.psm1 is the one place the kit's scripts and shared workflows read a solution, and the one place that
 # knows which framework MSBuild must evaluate a multi-target project through (CRF-003).
 
+BeforeDiscovery {
+    # Project names, and whether each is a benchmarks project (ADR-0062). Every copy of the rule must give these answers.
+    $BenchmarksNames = @(
+        @{ Name = 'App.Benchmarks'; Expected = $true }
+        @{ Name = 'Contoso.Orders.Benchmarks'; Expected = $true }
+        # The case MSBuild's EndsWith in tests/Directory.Build.props matches: exactly.
+        @{ Name = 'App.benchmarks'; Expected = $false }
+        @{ Name = 'App.BENCHMARKS'; Expected = $false }
+        @{ Name = 'AppBenchmarks'; Expected = $false }
+        @{ Name = 'Benchmarks'; Expected = $false }
+        @{ Name = 'App.Benchmarks.Tests'; Expected = $false }
+        @{ Name = 'App.Benchmarks.Core'; Expected = $false }
+        @{ Name = 'App'; Expected = $false }
+    )
+}
+
 BeforeAll {
     Import-Module (Join-Path $PSScriptRoot '..' 'KitSolution.psm1') -Force
 
@@ -93,19 +109,39 @@ Describe 'Get-SolutionProject' {
 
 # ADR-0062: a benchmarks project is known by its name alone, and this is the one statement of that rule (CRF-003).
 Describe 'Test-BenchmarksProject' {
-    It 'says <Name> is a benchmarks project: <Expected>' -ForEach @(
-        @{ Name = 'App.Benchmarks'; Expected = $true }
-        @{ Name = 'Contoso.Orders.Benchmarks'; Expected = $true }
-        # The case MSBuild's EndsWith in tests/Directory.Build.props matches: exactly.
-        @{ Name = 'App.benchmarks'; Expected = $false }
-        @{ Name = 'App.BENCHMARKS'; Expected = $false }
-        @{ Name = 'AppBenchmarks'; Expected = $false }
-        @{ Name = 'Benchmarks'; Expected = $false }
-        @{ Name = 'App.Benchmarks.Tests'; Expected = $false }
-        @{ Name = 'App.Benchmarks.Core'; Expected = $false }
-        @{ Name = 'App'; Expected = $false }
-    ) {
+    It 'says <Name> is a benchmarks project: <Expected>' -ForEach $BenchmarksNames {
         Test-BenchmarksProject -Name $Name | Should -Be $Expected
+    }
+
+    # MSBuild can't call the module, so its copy is checked against it: each condition that picks out a benchmarks
+    # project is MSBuildProjectName.EndsWith, which MSBuild runs as .NET's String.EndsWith(string).
+    It 'agrees with sample/Directory.Build.props, an app''s tests/Directory.Build.props' -ForEach @(@{ Cases = $BenchmarksNames }) {
+        $props = [xml] (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'sample' 'Directory.Build.props'))
+        $conditions = @($props.SelectNodes('//*[@Condition]') | ForEach-Object { $_.GetAttribute('Condition') } | Where-Object { $_ -match 'benchmarks' })
+
+        $conditions.Count | Should -BeGreaterThan 0 -Because 'the file sets up benchmarks projects'
+        foreach ($condition in $conditions) {
+            $condition | Should -Match "^\`$\(MSBuildProjectName\.EndsWith\('[^']+'\)\)$"
+            $suffix = [regex]::Match($condition, "EndsWith\('([^']+)'\)").Groups[1].Value
+            foreach ($case in $Cases) {
+                $case.Name.EndsWith($suffix) | Should -Be $case.Expected -Because "$condition must agree on $($case.Name)"
+            }
+        }
+    }
+
+    # .editorconfig's section turns CA1515 off in benchmarks projects' folders, named by a glob, which matches case-sensitively.
+    It 'agrees with .editorconfig''s section for benchmarks projects' -ForEach @(@{ Cases = $BenchmarksNames }) {
+        $sections = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' '.editorconfig') | Where-Object { $_ -match '^\[.*benchmarks.*\]$' })
+
+        $sections.Count | Should -BeGreaterThan 0 -Because '.editorconfig has a section for benchmarks projects'
+        foreach ($section in $sections) {
+            # The project's folder at the repo's root, or at any depth; the same glob for both.
+            $section | Should -Match '^\[\{(?<glob>[^/,{}]+)/\*\*\.cs,\*\*/\k<glob>/\*\*\.cs\}\]$'
+            $glob = [regex]::Match($section, '^\[\{([^/,{}]+)/').Groups[1].Value
+            foreach ($case in $Cases) {
+                $case.Name -clike $glob | Should -Be $case.Expected -Because "$section must agree on $($case.Name)"
+            }
+        }
     }
 
     # The kit's scripts and workflows ask the module; a second copy of the rule could drift from it. A copy is a
