@@ -23,7 +23,8 @@ Describe 'Performance tests (GAP-012)' {
         }
 
         function Find-Step([object[]] $Steps, [string] $Name) {
-            @($Steps | Where-Object { $_ -and "$($_['name'])" -eq $Name })
+            # The comma keeps a one-step result a list, so callers can index it.
+            , @($Steps | Where-Object { $_ -and "$($_['name'])" -eq $Name })
         }
 
         # The solution's benchmarks projects: by name, as the coverage gate, the SBOM filter and the workflow find them.
@@ -108,7 +109,7 @@ Describe 'Performance tests (GAP-012)' {
         It 'reads only the repo, and holds no secret' {
             $workflow.Yaml['permissions'] | Should -Not -BeNullOrEmpty
             $workflow.Yaml['permissions']['contents'] | Should -Be 'read'
-            $workflow.Text | Should -Not -Match 'secrets\.'
+            $workflow.Text | Should -Not -Match '\$\{\{\s*secrets\.'
         }
 
         # The name is the one the coverage gate and the SBOM filter use (ADR-0062).
@@ -235,12 +236,13 @@ Describe 'Performance tests (GAP-012)' {
         It 'runs in an app nightly and on demand, at the kit''s pinned commit' {
             $text = Get-Content -Raw (Join-Path $root 'templates/app/.github/workflows/performance.yml') -ErrorAction SilentlyContinue
             $text | Should -Not -BeNullOrEmpty
-            $app = ConvertFrom-Yaml $text
+            # New-KitApp fills in the placeholders; {{ starts a YAML mapping, so they're filled in here too.
+            $app = ConvertFrom-Yaml ($text -replace '\{\{Name\}\}', 'Contoso' -replace '\{\{KitCommit\}\}', ('0' * 40) -replace '\{\{KitVersion\}\}', 'v0.1.0')
 
             $app['on'].Keys | Should -Contain 'schedule'
             $app['on'].Keys | Should -Contain 'workflow_dispatch'
-            $app['jobs']['performance']['uses'] | Should -Be 'DerekFoulk/dotnet-agent-kit/.github/workflows/performance.reusable.yml@{{KitCommit}}'
-            $app['jobs']['performance']['with']['solution'] | Should -Be '{{Name}}.slnx'
+            $app['jobs']['performance']['uses'] | Should -Be "DerekFoulk/dotnet-agent-kit/.github/workflows/performance.reusable.yml@$('0' * 40)"
+            $app['jobs']['performance']['with']['solution'] | Should -Be 'Contoso.slnx'
         }
     }
 

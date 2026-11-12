@@ -1,0 +1,26 @@
+# {{Name}}'s performance tests (kit TST-009, ADR-0062): each benchmarks project (a name ending in .Benchmarks, with a
+# benchmark-budget.json) runs nightly and on demand, and fails over its budget. Shared runners vary, so it isn't a
+# required check; a failed night shows on the Actions tab. When the app has an HTTP endpoint, add its Locust load test
+# here (the kit's docs/standards/testing.md, "Performance and load tests"):
+#       load-test-project: src/{{Name}}.Api/{{Name}}.Api.csproj
+#       load-test-user-jwt: true
+# The kit is pinned to the commit its release tag points to (ADR-0031); Dependabot moves the pin (kit ADR-0045).
+name: Performance
+
+on:
+  schedule:
+    - cron: '47 6 * * *' # 06:47 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  performance:
+    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/performance.reusable.yml@{{KitCommit}} # {{KitVersion}}
+    with:
+      solution: {{Name}}.slnx

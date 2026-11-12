@@ -1,0 +1,214 @@
+# Performance tests for any repo that uses the kit (GAP-012, TST-009, ADR-0062):
+# - benchmarks: each BenchmarkDotNet project in the solution (its name ends in .Benchmarks), checked against the
+#   benchmark-budget.json beside it;
+# - load: a Locust load test of the app the caller names, started here in Release and Production, checked against the
+#   load-budget.json beside its locustfile. Off unless the caller sets load-test-project.
+# Shared runners vary from run to run, so this is never a required check: budgets leave room for that, and a red run
+# is a finding to answer, not a flaky gate (ADR-0062).
+# Called by this repo's performance.yml, and by app repos pinned to the commit a kit release tag points to:
+#   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/performance.reusable.yml@<commit SHA> # v0.1.0
+name: Performance (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      solution:
+        description: Solution file whose benchmarks projects to run (.slnx).
+        type: string
+        required: true
+      load-test-project:
+        description: The app project the load test starts, one with an HTTP endpoint (.csproj). Empty skips the load test.
+        type: string
+        default: ''
+      load-test-path:
+        description: The folder with locustfile.py, locust.conf (the load) and load-budget.json.
+        type: string
+        default: tests/load
+      load-test-url:
+        description: The URL the app listens on, which Locust loads.
+        type: string
+        default: http://localhost:5000
+      load-test-user-jwt:
+        description: Issue a bearer token for this run with dotnet user-jwts, and hand it to Locust as LOAD_TEST_TOKEN.
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  benchmarks:
+    name: Benchmarks (BenchmarkDotNet)
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      # Through the environment, never pasted into a script, so the name can't break quoting.
+      SOLUTION: ${{ inputs.solution }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # MinVer reads version tags from history
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      # The kit's scripts, at this workflow's own commit (as in dotnet-ci.reusable.yml).
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      # BenchmarkDotNet builds each benchmark into a process of its own and measures it there; --exporters json writes
+      # the report Test-BenchmarkBudget.ps1 reads. A new app has no benchmarks project until it needs one.
+      - name: Run each benchmarks project and check its budget
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $solutionFolder = Split-Path -Parent (Resolve-Path -LiteralPath $env:SOLUTION).Path
+          $projects = @(([xml] (Get-Content -Raw -LiteralPath $env:SOLUTION)).SelectNodes('//Project') |
+              ForEach-Object { Join-Path $solutionFolder $_.GetAttribute('Path') } |
+              Where-Object { [IO.Path]::GetFileNameWithoutExtension($_) -like '*.Benchmarks' })
+          if (-not $projects) {
+            "No benchmarks project (a name ending in .Benchmarks) in ${env:SOLUTION}; nothing to run."
+            exit 0
+          }
+          $failed = $false
+          foreach ($project in $projects) {
+            $name = [IO.Path]::GetFileNameWithoutExtension($project)
+            $artifacts = Join-Path $env:RUNNER_TEMP 'benchmark-results' $name
+            dotnet run --project $project --configuration Release -- --filter '*' --exporters json --artifacts $artifacts
+            if ($LASTEXITCODE -ne 0) {
+              "::error::$name's benchmarks stopped with exit code $LASTEXITCODE; BenchmarkDotNet's output above says why."
+              $failed = $true
+              continue
+            }
+            & "$env:KIT/tools/Test-BenchmarkBudget.ps1" -Path (Join-Path $artifacts 'results') -Budget (Join-Path (Split-Path -Parent $project) 'benchmark-budget.json')
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+          }
+          if ($failed) { exit 1 }
+
+      # Each run's reports and logs, to read the measured times when setting or changing a budget.
+      - name: Upload the benchmark results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benchmark-results
+          path: ${{ runner.temp }}/benchmark-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+  load:
+    name: Load test (Locust)
+    if: inputs.load-test-project != ''
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      PROJECT: ${{ inputs.load-test-project }}
+      LOAD_TEST_PATH: ${{ inputs.load-test-path }}
+      URL: ${{ inputs.load-test-url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # MinVer reads version tags from history
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      # The Python the kit's requirements.txt was compiled for, so every pinned package has a matching file.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: ${{ steps.kit.outputs.path }}/.config/locust/.python-version
+
+      # Locust (MIT) and every package it pulls in, each pinned by version and hash in the kit's .config/locust, which
+      # Dependabot keeps current (ADR-0057, ADR-0062). --require-hashes refuses anything else.
+      - name: Install Locust (pinned by hash)
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          python -m venv "$RUNNER_TEMP/locust"
+          "$RUNNER_TEMP/locust/bin/pip" install --require-hashes -r "$KIT/.config/locust/requirements.txt"
+
+      - name: Build the app (Release)
+        run: dotnet build "$PROJECT" --configuration Release
+
+      # SEC-007: a kit app's endpoints need a bearer token. dotnet user-jwts (in the .NET SDK) issues one, signed with a
+      # key it keeps in the project's user secrets on this runner. Only Development reads user secrets, and the app
+      # runs in Production, so the JWT bearer handler gets that key, its issuer and the audience through the
+      # environment. The token and key are masked before anything else sees them, and die with the runner.
+      - name: Issue a token for this run (dotnet user-jwts)
+        if: inputs.load-test-user-jwt
+        shell: pwsh
+        run: |
+          $token = "$(@(dotnet user-jwts create --project $env:PROJECT --name load-test --audience $env:URL --output token)[-1])".Trim()
+          if ($LASTEXITCODE -ne 0 -or -not $token) { "::error::dotnet user-jwts couldn't issue a token."; exit 1 }
+          "::add-mask::$token"
+          "LOAD_TEST_TOKEN=$token" >> $env:GITHUB_ENV
+          $lines = @(dotnet user-secrets list --project $env:PROJECT --json)
+          $begin = [array]::IndexOf($lines, '//BEGIN')
+          $end = [array]::IndexOf($lines, '//END')
+          if ($LASTEXITCODE -ne 0 -or $begin -lt 0 -or $end -le $begin) { "::error::dotnet user-secrets gave no JSON."; exit 1 }
+          $secrets = ($lines[($begin + 1)..($end - 1)] -join "`n") | ConvertFrom-Json -AsHashtable
+          $keys = @($secrets.Keys | Where-Object { $_ -like 'Authentication:Schemes:Bearer:SigningKeys:*' })
+          if (-not $keys) { "::error::dotnet user-jwts left no signing key in the project's user secrets."; exit 1 }
+          foreach ($key in $keys) {
+            $value = [string] $secrets[$key]
+            # Only the key itself is secret; masking its length or id would hide every "32" in the log.
+            if ($key -like '*:Value') { "::add-mask::$value" }
+            "$($key -replace ':', '__')=$value" >> $env:GITHUB_ENV
+          }
+          'Authentication__Schemes__Bearer__ValidIssuer=dotnet-user-jwts' >> $env:GITHUB_ENV
+          "Authentication__Schemes__Bearer__ValidAudiences__0=$env:URL" >> $env:GITHUB_ENV
+
+      # Microsoft: load test a Release build in Production, never Debug or Development, which log more (ASP.NET Core
+      # load/stress testing). /health is ServiceDefaults' readiness endpoint (OPS-002): up once the app can serve.
+      - name: Start the app (Release, Production)
+        run: |
+          mkdir -p "$RUNNER_TEMP/load-test-results"
+          ASPNETCORE_ENVIRONMENT=Production ASPNETCORE_URLS="$URL" nohup dotnet run --project "$PROJECT" --configuration Release --no-build --no-launch-profile > "$RUNNER_TEMP/load-test-results/app.log" 2>&1 &
+          echo "APP_PID=$!" >> "$GITHUB_ENV"
+          if ! curl --silent --show-error --fail --retry 30 --retry-delay 2 --retry-all-errors --output /dev/null "$URL/health"; then
+            echo "::error::The app didn't answer $URL/health; its log follows."
+            cat "$RUNNER_TEMP/load-test-results/app.log"
+            exit 1
+          fi
+
+      # From the load test's folder, so Locust reads its locustfile.py and locust.conf (users, spawn rate, run time).
+      # The budget decides, not Locust's exit code, which would fail on any failed request, even one the budget allows;
+      # Test-LoadBudget.ps1 also fails on an exception in the locustfile.
+      - name: Load test (Locust, headless)
+        working-directory: ${{ inputs.load-test-path }}
+        env:
+          RESULTS: ${{ runner.temp }}/load-test-results
+        run: '"$RUNNER_TEMP/locust/bin/locust" --headless --host "$URL" --csv "$RESULTS/load" --exit-code-on-error 0 --only-summary'
+
+      - name: Check the load budget
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+          RESULTS: ${{ runner.temp }}/load-test-results
+        run: '& "$env:KIT/tools/Test-LoadBudget.ps1" -Path "$env:RESULTS/load" -Budget (Join-Path $env:LOAD_TEST_PATH ''load-budget.json'')'
+
+      - name: Stop the app
+        if: always()
+        run: |
+          if [ -n "${APP_PID:-}" ]; then
+            kill "$APP_PID" 2>/dev/null || echo "The app had already stopped."
+          fi
+
+      # Locust's CSV stats and the app's log.
+      - name: Upload the load test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: load-test-results
+          path: ${{ runner.temp }}/load-test-results
+          if-no-files-found: ignore
+          retention-days: 14
