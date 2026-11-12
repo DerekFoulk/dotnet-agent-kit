@@ -27,6 +27,20 @@ Describe 'Test-CoverageGate.ps1' {
             $path
         }
 
+        # Writes a solution, and a project file for each of its projects with the given properties.
+        function New-TestSolution([string] $Name, [hashtable] $Projects) {
+            $dir = Join-Path $TestDrive "sln-$Name"
+            $entries = foreach ($path in $Projects.Keys) {
+                $file = Join-Path $dir $path
+                New-Item -ItemType Directory -Force -Path (Split-Path $file) | Out-Null
+                "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup>$($Projects[$path])</PropertyGroup></Project>" | Set-Content -LiteralPath $file
+                "<Project Path=`"$path`" />"
+            }
+            $solution = Join-Path $dir "$Name.slnx"
+            "<Solution>$($entries -join '')</Solution>" | Set-Content -LiteralPath $solution
+            $solution
+        }
+
         function Get-Lines([int] $Covered, [int] $Missed) {
             $n = 0
             # 1..0 counts down in PowerShell, so guard zero counts.
@@ -111,14 +125,34 @@ Describe 'Test-CoverageGate.ps1' {
         It 'fails when a production project in the solution has no coverage at all' {
             $dir = Join-Path $TestDrive 'missing'
             New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'd.cs'; Lines = Get-Lines 10 0 }) } | Out-Null
-            $solution = Join-Path $TestDrive 'Missing.slnx'
-            Set-Content -LiteralPath $solution -Value '<Solution><Project Path="src/Bookmarks.Domain/Bookmarks.Domain.csproj" /><Project Path="src/Bookmarks.Worker/Bookmarks.Worker.csproj" /><Project Path="tests/Bookmarks.Domain.Tests/Bookmarks.Domain.Tests.csproj" /></Solution>'
+            $solution = New-TestSolution -Name 'Missing' -Projects @{
+                'src/Bookmarks.Domain/Bookmarks.Domain.csproj'                   = ''
+                'src/Bookmarks.Worker/Bookmarks.Worker.csproj'                   = ''
+                'tests/Bookmarks.Domain.Tests/Bookmarks.Domain.Tests.csproj' = ''
+            }
 
             $output = Invoke-CoverageGate -Path $dir -Solution $solution 6>&1
             $exitCode = @($output | Where-Object { $_ -is [int] })[-1]
 
             $exitCode | Should -Be 1
             ($output | Where-Object { $_ -isnot [int] }) -join "`n" | Should -BeLike '*Bookmarks.Worker*no coverage*'
+        }
+
+        # ARC-010, ADR-0057: a UI project holds only views, platform code and startup wiring, which no plain test
+        # project can load, so the gate exempts it and says so. Its logic lives in libraries the gate does count.
+        It 'exempts a UI project that no test loads, and says so' {
+            $dir = Join-Path $TestDrive 'ui-unloaded'
+            New-CoberturaReport -Directory $dir -Packages @{ 'App.Core' = @(@{ File = 'c.cs'; Lines = Get-Lines 10 0 }) } | Out-Null
+            $solution = New-TestSolution -Name 'UiUnloaded' -Projects @{
+                'src/App.Core/App.Core.csproj' = ''
+                'src/App.Maui/App.Maui.csproj' = '<UseMaui>true</UseMaui>'
+            }
+
+            $output = Invoke-CoverageGate -Path $dir -Solution $solution 6>&1
+            $exitCode = @($output | Where-Object { $_ -is [int] })[-1]
+
+            ($output | Where-Object { $_ -isnot [int] }) -join "`n" | Should -BeLike '*App.Maui*exempt (UI project, ARC-010)*'
+            $exitCode | Should -Be 0
         }
 
         It 'fails when there is no coverage report, instead of passing an empty run' {
