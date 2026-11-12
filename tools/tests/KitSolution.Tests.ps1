@@ -107,6 +107,24 @@ Describe 'Test-BenchmarksProject' {
     ) {
         Test-BenchmarksProject -Name $Name | Should -Be $Expected
     }
+
+    # The kit's scripts and workflows ask the module; a second copy of the rule could drift from it. A copy is a
+    # wildcard ending in .Benchmarks or an EndsWith('.Benchmarks'), the two ways the copies were written.
+    It 'is the only place a kit script or workflow states the rule' {
+        $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        $files = @(
+            Get-ChildItem -LiteralPath (Join-Path $root 'tools') -File -Include '*.ps1', '*.psm1' -Recurse |
+                Where-Object { $_.FullName -notlike (Join-Path $root 'tools' 'tests' '*') -and $_.Name -ne 'KitSolution.psm1' }
+            Get-ChildItem -LiteralPath (Join-Path $root '.github') -File -Include '*.yml', '*.yaml' -Recurse
+            Get-ChildItem -LiteralPath (Join-Path $root 'templates') -File -Include '*.yml', '*.yaml', '*.ps1', '*.psm1' -Recurse -Force
+        )
+
+        $copies = @($files | Select-String -Pattern '\*\.Benchmarks[''"]|EndsWith\(\s*[''"]\.Benchmarks' |
+                ForEach-Object { '{0}:{1}' -f [IO.Path]::GetRelativePath($root, $_.Path), $_.LineNumber })
+
+        $files.Count | Should -BeGreaterThan 10 -Because 'the search must reach the kit''s scripts and workflows'
+        $copies | Should -BeNullOrEmpty -Because 'Test-BenchmarksProject in tools/KitSolution.psm1 is the rule''s one source (CRF-003)'
+    }
 }
 
 # MSBuild's outer evaluation of a multi-target project (TargetFrameworks, no TargetFramework) has no Compile items or
