@@ -4,15 +4,18 @@
     Lists the UI projects in a .slnx solution: its MAUI and desktop projects (ARC-010, ADR-0057).
 
 .DESCRIPTION
-    The coverage gate exempts UI projects, and the shared .NET CI builds them on Windows and macOS. This is the one
-    place they're found, so both agree.
+    A UI project is one whose project file sets UseMaui, UseWPF, UseWindowsForms or UseWinUI to true. The coverage
+    gate exempts UI projects, and the shared .NET CI builds them on Windows and macOS. This is the one place they're
+    found, so both agree. It fails if any other project references a UI project (ARC-010). With -FilterPath, it also
+    writes a solution filter of every other project, which the Linux CI job builds and tests.
 
 .EXAMPLE
-    ./tools/Get-UiProject.ps1 -Solution Contoso.Orders.slnx
+    ./tools/Get-UiProject.ps1 -Solution Contoso.Orders.slnx -FilterPath $env:RUNNER_TEMP/without-ui.slnf
 #>
 [CmdletBinding()]
 param(
-    [string] $Solution
+    [string] $Solution,
+    [string] $FilterPath
 )
 
 Set-StrictMode -Version Latest
@@ -27,7 +30,7 @@ $script:UiKinds = @(
 )
 
 function Get-UiProject {
-    param([Parameter(Mandatory)] [string] $Solution)
+    param([Parameter(Mandatory)] [string] $Solution, [string] $FilterPath)
 
     if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) { throw "No solution file at '$Solution'." }
     $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).Path
@@ -54,6 +57,12 @@ function Get-UiProject {
         }
     }
 
+    # A solution filter (.slnf) names its solution and the projects, relative to the solution's folder, to load.
+    if ($FilterPath) {
+        $filter = @{ solution = @{ path = (Resolve-Path -LiteralPath $Solution).Path; projects = @($projects | Where-Object { -not $_.Kind } | ForEach-Object Path) } }
+        Set-Content -LiteralPath $FilterPath -Value (ConvertTo-Json -InputObject $filter -Depth 3)
+    }
+
     foreach ($project in $ui) {
         [pscustomobject]@{
             Name = [IO.Path]::GetFileNameWithoutExtension($project.Path)
@@ -67,5 +76,5 @@ function Get-UiProject {
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $Solution) { throw 'Give the solution file to read, with -Solution.' }
-    Get-UiProject -Solution $Solution
+    Get-UiProject -Solution $Solution -FilterPath $FilterPath
 }
