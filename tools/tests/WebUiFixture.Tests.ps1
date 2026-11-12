@@ -20,5 +20,6 @@ Describe 'The web UI fixture''s accessibility check' {
 
         $named | Should -Not -BeNullOrEmpty -Because 'UI-002 names the tags'
         $run | Should -Be $named -Because 'Wcag.cs runs the tags UI-002 names, in the same order'
+        $code | Should -Match 'Type = "tag"' -Because 'the values are tags, not rule ids'
     }
 }
