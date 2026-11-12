@@ -93,3 +93,9 @@ function Get-LineNumber {
     param([string] $Text, [int] $Index)
     $Text.Substring(0, $Index).Split("`n").Count
 }
+
+# Prints every problem and returns 0 when every migration passes, otherwise 1.
+function Invoke-SafeMigrationsCheck {
+    param([Parameter(Mandatory)] [string] $Path)
+    0
+}

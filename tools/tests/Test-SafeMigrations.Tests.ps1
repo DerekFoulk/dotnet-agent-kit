@@ -165,4 +165,34 @@ Describe 'Test-SafeMigrations.ps1' {
             Get-Message | Should -BeNullOrEmpty
         }
     }
+
+    Context 'the result' {
+        BeforeEach {
+            Mock Write-Host { }
+        }
+
+        It 'returns 0 and says so when every migration is safe' {
+            New-Migration -Up 'migrationBuilder.AddColumn<string>(name: "Notes", table: "Orders", nullable: true);'
+
+            Invoke-SafeMigrationsCheck -Path $script:repo | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*migration*safe*' }
+        }
+
+        It 'returns 1 and prints each problem' {
+            New-Migration -Up 'migrationBuilder.DropTable(name: "Orders");'
+
+            Invoke-SafeMigrationsCheck -Path $script:repo | Should -Be 1
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*Up calls DropTable*' }
+        }
+
+        It 'exits 1 when run as a script against an unsafe migration' {
+            New-Migration -Up 'migrationBuilder.RenameColumn(name: "Notes", table: "Orders", newName: "Remarks");'
+            $script = Join-Path $PSScriptRoot '..' 'Test-SafeMigrations.ps1'
+
+            $output = pwsh -NoProfile -File $script -Path $script:repo 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1 -Because $output
+            $output | Should -Match 'Up calls RenameColumn'
+        }
+    }
 }
