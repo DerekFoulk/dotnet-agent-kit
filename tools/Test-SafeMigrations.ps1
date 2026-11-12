@@ -97,5 +97,22 @@ function Get-LineNumber {
 # Prints every problem and returns 0 when every migration passes, otherwise 1.
 function Invoke-SafeMigrationsCheck {
     param([Parameter(Mandatory)] [string] $Path)
+
+    $problems = @(Get-MigrationProblem -Path $Path)
+    foreach ($problem in $problems) {
+        Write-Host "  $($problem.Message)" -ForegroundColor Red
+    }
+
+    if ($problems) {
+        Write-Host "`n$($problems.Count) unsafe migration step(s) under $Path. Split the change into expand and contract, or give the contract step a // DAT-003: <reason> comment (docs/standards/data.md)." -ForegroundColor Red
+        return 1
+    }
+
+    Write-Host "Every migration under $Path is safe for the version still running." -ForegroundColor Green
     0
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    exit (Invoke-SafeMigrationsCheck -Path $Path)
 }
