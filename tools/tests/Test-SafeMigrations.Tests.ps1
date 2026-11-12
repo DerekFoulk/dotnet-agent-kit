@@ -79,6 +79,12 @@ Describe 'Test-SafeMigrations.ps1' {
             @{ Operation = 'DropSequence'; Call = 'migrationBuilder.DropSequence(name: "OrderNumbers");' }
             @{ Operation = 'RenameSequence'; Call = 'migrationBuilder.RenameSequence(name: "OrderNumbers", newName: "Numbers");' }
             @{ Operation = 'DeleteData'; Call = 'migrationBuilder.DeleteData(table: "Statuses", keyColumn: "Id", keyValue: 3);' }
+            @{ Operation = 'UpdateData'; Call = 'migrationBuilder.UpdateData(table: "Statuses", keyColumn: "Id", keyValue: 3, column: "Name", value: "Closed");' }
+            @{ Operation = 'AlterSequence'; Call = 'migrationBuilder.AlterSequence(name: "OrderNumbers", incrementBy: 10);' }
+            @{ Operation = 'RestartSequence'; Call = 'migrationBuilder.RestartSequence(name: "OrderNumbers", startValue: 1L);' }
+            @{ Operation = 'AlterDatabase'; Call = 'migrationBuilder.AlterDatabase(collation: "Latin1_General_100_BIN2");' }
+            @{ Operation = 'AlterTable'; Call = 'migrationBuilder.AlterTable(name: "Orders", comment: "Every order");' }
+            @{ Operation = 'AlterColumn'; Call = 'migrationBuilder.AlterColumn<List<string>>(name: "Tags", table: "Orders", type: "text[]");' }
         ) {
             New-Migration -Up $Call
 
