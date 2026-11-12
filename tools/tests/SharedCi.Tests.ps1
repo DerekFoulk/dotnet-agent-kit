@@ -184,6 +184,7 @@ Describe 'Shared CI for app repos' {
             $step.Count | Should -Be 1
             $step[0]['run'] | Should -Match '\$env:KIT/tools/Test-EmptyProjects\.ps1"? -Solution \$env:SOLUTION'
             $step[0]['shell'] | Should -Be 'pwsh'
+            $step[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
             $step[0].ContainsKey('if') | Should -BeFalse
         }
     }

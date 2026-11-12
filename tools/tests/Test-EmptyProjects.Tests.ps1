@@ -70,6 +70,12 @@ Describe 'Test-EmptyProjects.ps1' {
         $problems[0].Message | Should -BeLike '*App.Domain*has no source*'
     }
 
+    It 'counts an empty class Class1 in a file of another name as code' {
+        $solution = New-Solution @{ 'App.Domain' = @{ 'Marker.cs' = "namespace App.Domain;`n`npublic class Class1`n{`n}" } }
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
+    }
+
     It 'passes a Class1 that someone has filled in' {
         $solution = New-Solution @{ 'App.Domain' = @{ 'Class1.cs' = "namespace App.Domain;`n`npublic class Class1`n{`n    public int Count { get; init; }`n}" } }
 
@@ -87,7 +93,7 @@ Describe 'Test-EmptyProjects.ps1' {
         $problems = @(Get-EmptyProjectProblem -Solution $solution)
 
         $problems | Should -HaveCount 1
-        $problems[0].Message | Should -BeLike '*Class1.cs*placeholder*'
+        $problems[0].Message | Should -BeLike 'src/App.Domain/Class1.cs is*placeholder*'
     }
 
     # A Razor class library can hold only components or pages.
