@@ -10,9 +10,9 @@ namespace Bookmarks.Benchmarks;
 [MemoryDiagnoser]
 public class BookmarkBenchmarks
 {
-    private readonly Uri url = new("https://example.com/articles/benchmarking-dotnet?ref=kit#budgets");
-    private readonly DateTimeOffset createdAt = new(2026, 11, 12, 0, 0, 0, TimeSpan.Zero);
+    private readonly Uri _url = new("https://example.com/articles/benchmarking-dotnet?ref=kit#budgets");
+    private readonly DateTimeOffset _createdAt = new(2026, 11, 12, 0, 0, 0, TimeSpan.Zero);
 
     [Benchmark]
-    public Bookmark Create() => Bookmark.Create("user-1", url, "  Benchmarking in .NET  ", createdAt);
+    public Bookmark Create() => Bookmark.Create("user-1", _url, "  Benchmarking in .NET  ", _createdAt);
 }
