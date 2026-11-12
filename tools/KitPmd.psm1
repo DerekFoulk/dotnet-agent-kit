@@ -7,12 +7,22 @@ Set-StrictMode -Version Latest
 
 $script:PinFileName = 'pmd-dist-bin.zip.sha256'
 
-# PMD's version, from the pom's one pmd-dist dependency.
+# PMD's version, from the pom's one pmd-dist dependency. It ends up in a URL and a file name, so only a release
+# version (x.y.z) passes: no path characters, no snapshot.
 function Get-PmdVersion([string] $Path) {
-    [xml] $pom = Get-Content -Raw -LiteralPath (Join-Path $Path 'pom.xml')
+    $pomFile = Join-Path $Path 'pom.xml'
+    [xml] $pom = Get-Content -Raw -LiteralPath $pomFile
     $namespace = @{ m = 'http://maven.apache.org/POM/4.0.0' }
-    $nodes = @(Select-Xml -Xml $pom -Namespace $namespace -XPath "/m:project/m:dependencies/m:dependency[m:groupId='net.sourceforge.pmd' and m:artifactId='pmd-dist']/m:version")
-    $nodes[0].Node.InnerText.Trim()
+    $xpath = "/m:project/m:dependencies/m:dependency[m:groupId='net.sourceforge.pmd' and m:artifactId='pmd-dist']/m:version"
+    $nodes = @(Select-Xml -Xml $pom -Namespace $namespace -XPath $xpath)
+    if ($nodes.Count -ne 1) {
+        throw "$pomFile must name exactly one net.sourceforge.pmd:pmd-dist dependency with a version; it names $($nodes.Count)."
+    }
+    $version = $nodes[0].Node.InnerText
+    if ($version -notmatch '\A\d+\.\d+\.\d+\z') {
+        throw "$pomFile names PMD '$version', which isn't a release version (x.y.z)."
+    }
+    $version
 }
 
 function Get-PmdPin {
@@ -20,14 +30,20 @@ function Get-PmdPin {
 
     $version = Get-PmdVersion $Path
     $pinFile = Join-Path $Path $script:PinFileName
-    $hash, $fileName = (Get-Content -Raw -LiteralPath $pinFile).Trim() -split '  ', 2
+    $text = [IO.File]::ReadAllText($pinFile)
+    # sha256sum's format, exactly: one line, LF-terminated, of a lowercase SHA-256, two spaces and the zip's name.
+    $line = [regex]::Match($text, '\A(?<hash>[0-9a-f]{64})  (?<file>pmd-dist-[0-9A-Za-z.-]+-bin\.zip)\n\z')
+    if (-not $line.Success) {
+        throw "$pinFile must be one line: a lowercase SHA-256, two spaces and pmd-dist-<version>-bin.zip, ending in LF."
+    }
+    $fileName = $line.Groups['file'].Value
     $expected = "pmd-dist-$version-bin.zip"
-    if ($fileName -ne $expected) {
+    if ($fileName -cne $expected) {
         throw "The pom names PMD $version, but $pinFile pins '$fileName', not $expected. Pin the new zip's SHA-256 with Set-PmdPin (ADR-0060)."
     }
     [pscustomobject]@{
         Version  = $version
-        Sha256   = $hash
+        Sha256   = $line.Groups['hash'].Value
         FileName = $fileName
         Url      = "https://github.com/pmd/pmd/releases/download/pmd_releases%2F$version/$fileName"
         PinFile  = $pinFile
