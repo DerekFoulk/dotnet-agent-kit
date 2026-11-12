@@ -26,8 +26,15 @@ function Get-SolutionProject {
     }
 }
 
+# The framework to evaluate a project through, from MSBuild's evaluated properties (-getProperty:TargetFramework
+# -getProperty:TargetFrameworks): a multi-target project's first, or nothing for a project MSBuild already evaluated
+# for one framework. MSBuild's outer evaluation of a multi-target project has no Compile items or output folder.
 function Get-FirstTargetFramework {
     param([Parameter(Mandatory)] [object] $Properties)
+
+    if (-not $Properties.TargetFramework -and $Properties.TargetFrameworks) {
+        ($Properties.TargetFrameworks -split ';' | Where-Object { $_ })[0]
+    }
 }
 
 Export-ModuleMember -Function Get-SolutionProject, Get-FirstTargetFramework
