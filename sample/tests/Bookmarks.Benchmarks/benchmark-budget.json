@@ -1,0 +1,6 @@
+{
+  "Bookmarks.Benchmarks.BookmarkBenchmarks.Create": {
+    "maxMeanNanoseconds": 2000,
+    "maxAllocatedBytes": 192
+  }
+}

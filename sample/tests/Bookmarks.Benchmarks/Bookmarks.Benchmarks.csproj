@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- sample/Directory.Build.props makes this a BenchmarkDotNet console app (ADR-0062). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Bookmarks.Domain\Bookmarks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -18,4 +18,15 @@
     <Using Include="FluentAssertions" />
   </ItemGroup>
 
+  <!-- Benchmarks projects: BenchmarkDotNet console apps, each with a benchmark-budget.json beside it (ADR-0062). Not
+       test projects, so dotnet test leaves them alone; the coverage gate and the SBOM leave them out by name. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Benchmarks'))">
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Benchmarks'))">
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+
 </Project>
