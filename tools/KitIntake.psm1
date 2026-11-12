@@ -94,7 +94,72 @@ function ConvertTo-KitAppProfile {
         [Parameter(Mandatory)] [string] $KitCommit
     )
 
-    ''
+    $cardRows = foreach ($answer in $Resolved.Cards) {
+        $card = $answer.Card
+        if ($answer.Other) {
+            $value = "Other: $($answer.Other)"
+            $cost = "Needs an ADR: it isn't a kit option, so its cost isn't known yet"
+        }
+        else {
+            $value = $answer.Option['label']
+            $cost = if ($card.Contains('prices')) { "See the kit's [$($card['prices'])](https://github.com/DerekFoulk/dotnet-agent-kit/blob/$KitCommit/$($card['prices']))" }
+            elseif ($answer.Option.Contains('cost')) { Format-KitCost -Cost $answer.Option['cost'] }
+            else { 'No cost of its own' }
+        }
+        "| $(Format-KitCell $card['question']) | $(Format-KitCell $value) | $(Format-KitCell $cost) |"
+    }
+    $kindRows = foreach ($answer in $Resolved.TestKinds) {
+        $kind = $answer.Kind
+        $tools = foreach ($tool in $answer.Tools) {
+            $text = "$($tool['name']) ($($tool['license']), $(Format-KitCost -Cost $tool['cost']))"
+            if ($tool.Contains('note')) { $text += ": $($tool['note'])" }
+            Format-KitCell $text
+        }
+        "| $(Format-KitCell $kind['name']) | $(Format-KitCell $kind['checks']) | $(Format-KitCell $kind['runs']) | $($tools -join '<br>') |"
+    }
+
+    $lines = @(
+        "# App profile: $Name"
+        ''
+        "What this app is, as the owner chose it at the new-app intake (kit ADR-0058), from dotnet-agent-kit commit ``$KitCommit``. Plans start from it. To change an answer, write an ADR in ``docs/adr/`` that says why, and update this file in the same PR. An answer marked ""Needs an ADR"" isn't a kit option: write its ADR before building on it."
+        ''
+        'Prices are as checked on the date shown, and they change: check again before relying on one.'
+        ''
+        '## Choices'
+        ''
+        '| Question | Answer | Cost |'
+        '|---|---|---|'
+        $cardRows
+        ''
+        '## Test tools'
+        ''
+        "The tools each kind of test uses (kit TST-003, TST-005). A tool that isn't listed here needs an ADR."
+        ''
+        '| Kind | What it checks | Runs | Tools |'
+        '|---|---|---|---|'
+        $kindRows
+    )
+    ($lines -join "`n") + "`n"
+}
+
+# A cost as the profile shows it: the label, with what's free and the price, its source and date unless Free.
+function Format-KitCost {
+    param([Parameter(Mandatory)] [Collections.IDictionary] $Cost)
+
+    $checked = if ($Cost.Contains('checked')) { " (checked $($Cost['checked']), $($Cost['source']))" } else { '' }
+    switch ($Cost['label']) {
+        'Free tier' { "Free tier: $($Cost['free']). Past it: $($Cost['price'])$checked" }
+        'Paid' { "Paid: $($Cost['price'])$checked" }
+        default { $Cost['label'] }
+    }
+}
+
+# Text for one Markdown table cell: a | would end the cell and a line break the row, and the Other answers are the
+# owner's own words.
+function Format-KitCell {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Text)
+
+    ($Text -replace '\|', '\|' -replace '\s*\r?\n\s*', ' ').Trim()
 }
 
 Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile
