@@ -53,8 +53,8 @@ areas:
     rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, CRF-008, CRF-010]
     gaps:
       - id: GAP-021
-        gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version."
-        status: proposed
+        gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version. Closed by ADR-0049, which found the 48 counted each diagnostic twice (24 places then, 32 by the time it was decided): CA1014 is on, and Directory.Build.props declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be; a library published for other .NET languages declares CLSCompliant(true) instead."
+        status: closed
         needs: "an ADR, and a change to every project or a recorded opt-out"
   - id: tests
     name: Tests
@@ -241,7 +241,7 @@ Each area in the front matter above has:
 | Architecture | 8 | 4 | 4 | 2 | 1 |
 | Craft | 10 | 4 | 6 | 0 | 2 |
 | Proportion | 1 | 0 | 1 | 0 | 1 |
-| Code | 8 | 7 | 1 | 0 | 1 |
+| Code | 8 | 7 | 1 | 0 | 0 |
 | Tests | 7 | 4 | 3 | 1 | 2 |
 | Security | 7 | 5 | 2 | 4 | 0 |
 | Reliability | 3 | 2 | 1 | 2 | 0 |
@@ -254,7 +254,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 15 proposed; 13 open gaps.
+**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 15 proposed; 12 open gaps.
 
 Open gaps:
 
@@ -262,7 +262,6 @@ Open gaps:
 - **GAP-019** (Craft, proposed; needs an analyzer package or a kit check, and a CI change): No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent.
 - **GAP-020** (Craft, proposed; needs a tool and a CI change): No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
-- **GAP-021** (Code, proposed; needs an ADR, and a change to every project or a recorded opt-out): CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
 - **GAP-023** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
