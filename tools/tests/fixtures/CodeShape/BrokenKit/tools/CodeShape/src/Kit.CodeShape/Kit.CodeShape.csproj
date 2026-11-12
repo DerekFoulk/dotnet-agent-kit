@@ -1,4 +1,4 @@
-<Project>
+<Project DefaultTargets="Build">
 
   <!-- A fixture for Test-CodeShape.Tests.ps1: a kit whose code shape tool doesn't build. -->
   <Target Name="Restore" />

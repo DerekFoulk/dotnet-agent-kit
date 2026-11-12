@@ -7,12 +7,14 @@
 .DESCRIPTION
     Lists the solution's projects with `dotnet sln list` and skips any that isn't C#. For each, it asks MSBuild for
     the project's Compile items and DefineConstants (`dotnet msbuild -getItem -getProperty`, which evaluates the
-    project without building it), so the check reads exactly the files the compiler would. It then runs the kit's
-    Kit.CodeShape tool over them, built from the kit's own source with analyzers off (the app's SDK may carry newer
-    analyzers than the kit's tool was written against) and without MinVer (the kit's download isn't a git checkout). Run it from the repo root, so the repo's global.json picks the
-    SDK. Each finding prints in MSBuild's error format, which setup-dotnet's problem matcher turns into an annotation
-    on the PR. A "// CRF-008 exception: <reason>" comment exempts one member, type or file (craft.md, "Exceptions").
-    Exit code: 0 when every limit holds, otherwise 1.
+    project without building it; a multi-target project, through its first framework), so the check reads the files
+    the compiler would. The SDK's implicit symbols, such as NET10_0_OR_GREATER, come from a build target, not the
+    evaluation, so code under an #if on one of them is read as if the symbol weren't defined. It then runs the kit's
+    Kit.CodeShape tool over the files, built from the kit's own source with the safety nets Invoke-KitCodeShape lists.
+    Run it from the repo root, so the repo's global.json picks the SDK. Each finding prints in MSBuild's error format,
+    which setup-dotnet's problem matcher turns into an annotation on the PR. A "// CRF-008 exception: <reason>"
+    comment exempts one member, type or file (craft.md, "Exceptions"). Exit code: 0 when every limit holds, otherwise
+    1; a tool that doesn't build stops the check with its errors.
 
 .EXAMPLE
     ./tools/Test-CodeShape.ps1 -Solution dotnet-agent-kit.slnx
@@ -38,16 +40,51 @@ function Get-CodeShapeProject {
     $paths = $listed | Select-Object -Skip ([array]::FindIndex([string[]] $listed, [Predicate[string]] { $args[0] -match '^-+$' }) + 1)
     foreach ($path in $paths | Where-Object { $_ -like '*.csproj' }) {
         $project = Join-Path $folder $path
-        $json = dotnet msbuild $project -getItem:Compile -getProperty:DefineConstants
-        if ($LASTEXITCODE -ne 0) { throw "dotnet msbuild couldn't evaluate '$project': $($json -join "`n")" }
+        $evaluated = Read-MSBuildProject -Project $project
+        # With TargetFrameworks, the outer evaluation has no Compile items: read the project through its first one.
+        if (-not $evaluated.Properties.TargetFramework -and $evaluated.Properties.TargetFrameworks) {
+            $first = ($evaluated.Properties.TargetFrameworks -split ';' | Where-Object { $_ })[0]
+            $evaluated = Read-MSBuildProject -Project $project -TargetFramework $first
+        }
 
-        $evaluated = ($json -join "`n") | ConvertFrom-Json
         [pscustomobject]@{
             name    = $project
             defines = @($evaluated.Properties.DefineConstants -split ';' | Where-Object { $_ })
             files   = @($evaluated.Items.Compile | ForEach-Object FullPath)
         }
     }
+}
+
+# MSBuild's evaluation of a project, without a build: its Compile items, preprocessor symbols and target frameworks.
+function Read-MSBuildProject {
+    param(
+        [Parameter(Mandatory)] [string] $Project,
+        [string] $TargetFramework
+    )
+
+    $framework = @(if ($TargetFramework) { "-p:TargetFramework=$TargetFramework" })
+    $json = dotnet msbuild $Project -getItem:Compile -getProperty:DefineConstants -getProperty:TargetFramework -getProperty:TargetFrameworks @framework
+    if ($LASTEXITCODE -ne 0) { throw "dotnet msbuild couldn't evaluate '$Project': $($json -join "`n")" }
+    ($json -join "`n") | ConvertFrom-Json
+}
+
+# Builds the kit's Kit.CodeShape tool, then runs it, leaving its exit code in $LASTEXITCODE. A tool that doesn't build
+# stops the check with the build's errors, so a broken check never reads as a finding in the code.
+function Invoke-KitCodeShape {
+    param(
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [Parameter(Mandatory)] [string[]] $Argument
+    )
+
+    $tool = Join-Path $KitRoot 'tools/CodeShape/src/Kit.CodeShape/Kit.CodeShape.csproj'
+    # Safety nets for a build in an app's CI, which can't change the kit's code (CRF-001): analyzers and
+    # warnings-as-errors are off, since the app's SDK may be newer than the one the kit's tool was written for, and so
+    # is NuGet's audit, which the kit's own CI runs on these packages. MinVer is skipped, since the kit there is a
+    # download of its commit, not a git checkout, and the tool needs no version.
+    $settings = '-p:RunAnalyzers=false', '-p:TreatWarningsAsErrors=false', '-p:MSBuildTreatWarningsAsErrors=false', '-p:NuGetAudit=false', '-p:MinVerSkip=true'
+    $build = @(dotnet build $tool --configuration Release -nologo -verbosity:quiet @settings 2>&1)
+    if ($LASTEXITCODE -ne 0) { throw "The kit's code shape tool didn't build:`n$($build -join "`n")" }
+    dotnet run --project $tool --configuration Release --no-build -- @Argument
 }
 
 # Runs Kit.CodeShape over the solution's C# projects and returns its exit code and output.
@@ -60,10 +97,7 @@ function Invoke-CodeShapeCheck {
     $manifest = Join-Path ([IO.Path]::GetTempPath()) "codeshape-$(New-Guid).json"
     try {
         ConvertTo-Json -InputObject @(Get-CodeShapeProject -Solution $Solution) -Depth 4 | Set-Content -LiteralPath $manifest
-        $tool = Join-Path $KitRoot 'tools/CodeShape/src/Kit.CodeShape/Kit.CodeShape.csproj'
-        # In CI the kit is a download of its commit, not a git checkout, so MinVer can't read a version there; the
-        # tool needs none.
-        $output = @(dotnet run --project $tool --configuration Release -p:RunAnalyzers=false -p:MinVerSkip=true -- $manifest)
+        $output = @(Invoke-KitCodeShape -KitRoot $KitRoot -Argument $manifest)
         [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output -join "`n" }
     }
     finally {
