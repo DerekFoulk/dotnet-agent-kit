@@ -70,10 +70,11 @@ function Get-UiProject {
 
     foreach ($project in $ui) {
         [pscustomobject]@{
-            Name = [IO.Path]::GetFileNameWithoutExtension($project.Path)
-            Path = $project.Path
-            Kind = $project.Kind.Kind
-            Os   = $project.Kind.Os
+            Name     = [IO.Path]::GetFileNameWithoutExtension($project.Path)
+            Path     = $project.Path
+            FullPath = $project.File
+            Kind     = $project.Kind.Kind
+            Os       = $project.Kind.Os
         }
     }
 }
