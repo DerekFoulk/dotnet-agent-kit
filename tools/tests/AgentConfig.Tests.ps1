@@ -220,6 +220,10 @@ Describe 'Agent configuration' {
                 # The trade-off above: quoting the full path through bin asks too.
                 @{ Tool = $tool; Command = 'git commit -m "docs: pwsh fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install chromium"' }
             }
+            # Run from the test project's folder by a bare path (review 5).
+            @{ Tool = 'PowerShell'; Command = 'bin/Debug/net10.0/playwright.ps1 install chromium' }
+            @{ Tool = 'PowerShell'; Command = 'bin\Debug\net10.0\playwright.ps1 install' }
+            @{ Tool = 'Bash'; Command = 'bin/Debug/net10.0/playwright.ps1 install chromium' }
             # Run from the output folder itself, after cd bin/Debug/net10.0.
             @{ Tool = 'PowerShell'; Command = './playwright.ps1 install chromium' }
             @{ Tool = 'PowerShell'; Command = '.\playwright.ps1 install' }
@@ -264,6 +268,9 @@ Describe 'Agent configuration' {
             @{ Tool = 'PowerShell'; Command = '.\playwright.ps1 --help' }
             @{ Tool = 'PowerShell'; Command = '& ./playwright.ps1 codegen' }
             @{ Tool = 'PowerShell'; Command = 'C:\src\app\bin\Debug\net10.0\playwright.ps1 codegen' }
+            @{ Tool = 'PowerShell'; Command = 'bin/Debug/net10.0/playwright.ps1 show-trace trace.zip' }
+            @{ Tool = 'PowerShell'; Command = 'bin\Debug\net10.0\playwright.ps1 codegen' }
+            @{ Tool = 'Bash'; Command = 'bin/Debug/net10.0/playwright.ps1 show-trace trace.zip' }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
         }
