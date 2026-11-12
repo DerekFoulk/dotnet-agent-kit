@@ -157,4 +157,26 @@ Describe 'Test-LoadBudget.ps1' {
 
         $script:problems | Should -Be @($Problem)
     }
+
+    # Locust writes no stats when it stops before the run, such as on a locustfile it can't import.
+    It 'says when Locust wrote no stats' {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $prefix = Join-Path $TestDrive 'crashed'
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $prefix -Budget (Write-Budget (New-StandardBudget))) } | Should -Not -Throw
+
+        $script:problems | Should -Be @("No Locust stats at ${prefix}_stats.csv: Locust stopped before the run. Its output above says why.")
+    }
+
+    It 'returns exit code <Code> when the run is <State>' -ForEach @(
+        @{ State = 'within budget'; P95 = 150; Code = 0 }
+        @{ State = 'over budget'; P95 = 350; Code = 1 }
+    ) {
+        Get-Command Invoke-LoadBudgetCheck -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats @(
+            (New-Row 'POST' '/bookmarks' -Requests 400 -P95 150)
+            (New-Row '' 'Aggregated' -Requests 400 -P95 $P95))
+
+        Invoke-LoadBudgetCheck -Path $stats -Budget (Write-Budget (New-StandardBudget)) 6>$null | Should -Be $Code
+    }
 }
