@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Deep/Deep.csproj" />
+  <Project Path="Other/Other.fsproj" />
+</Solution>
