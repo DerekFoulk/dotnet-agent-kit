@@ -49,6 +49,23 @@ Describe 'New-ShippedSolutionFilter.ps1' {
         @($json.solution.projects) | Should -Be @('src/App/App.csproj', 'src/App.Contracts/App.Contracts.csproj')
     }
 
+    # ADR-0062: a benchmarks project measures what ships and ships nothing itself; it's known by its name, as the
+    # coverage gate and the performance workflow know it.
+    It 'leaves out a benchmarks project, whose name ends in .Benchmarks' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $benchRepo = Join-Path $TestDrive 'bench-repo'
+        New-Project $benchRepo 'src/App/App.csproj'
+        New-Project $benchRepo 'tests/App.Benchmarks/App.Benchmarks.csproj' '<PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>'
+        $benchSolution = Join-Path $benchRepo 'App.slnx'
+        '<Solution><Project Path="src/App/App.csproj" /><Project Path="tests/App.Benchmarks/App.Benchmarks.csproj" /></Solution>' |
+            Set-Content -LiteralPath $benchSolution
+
+        $filter = New-ShippedSolutionFilter -Solution $benchSolution -Destination (Join-Path $TestDrive 'bench-out')
+        $json = Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json
+
+        @($json.solution.projects) | Should -Be @('src/App/App.csproj')
+    }
+
     It 'names the filter after the solution, and points it at the solution from wherever it''s written' {
         Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $destination = Join-Path $TestDrive 'elsewhere' 'sbom'
