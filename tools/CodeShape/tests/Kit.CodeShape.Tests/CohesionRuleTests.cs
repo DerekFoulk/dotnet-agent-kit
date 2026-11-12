@@ -49,6 +49,59 @@ public sealed class CohesionRuleTests
         }
         """)]).Should().BeEmpty();
 
+    // A property's accessor is a method too: methods that use the property share the state it reads.
+    [Fact]
+    public void APropertyJoinsTheMethodsThatUseItToTheStateItReads() => CohesionRule.Check([new SourceFile("Api.cs", """
+        class Api
+        {
+            private readonly Host _host = new();
+
+            private Client Client => _host.Client;
+
+            void Get() => Client.Send();
+            void Dispose() => _host.Dispose();
+        }
+        """)]).Should().BeEmpty();
+
+    // A field the constructor builds from another depends on it, so methods using either share state.
+    [Fact]
+    public void AFieldTheConstructorBuildsFromAnotherJoinsThem() => CohesionRule.Check([new SourceFile("Tests.cs", """
+        class Tests
+        {
+            private readonly Connection _connection = new();
+            private readonly Options _options;
+
+            Tests()
+            {
+                _options = new Options(_connection);
+            }
+
+            void Find() => Use(_options);
+            void Dispose() => _connection.Dispose();
+            static void Use(Options options) { }
+        }
+        """)]).Should().BeEmpty();
+
+    // Fields a constructor only fills from its parameters stay apart: the constructor touches every field, so
+    // counting it as a method would make every class look cohesive.
+    [Fact]
+    public void FieldsTheConstructorFillsFromParametersStayApart() => CohesionRule.Check([new SourceFile("Service.cs", """
+        class Service
+        {
+            private readonly int _a;
+            private readonly int _b;
+
+            Service(int a, int b)
+            {
+                _a = a;
+                _b = b;
+            }
+
+            int A() => _a;
+            int B() => _b;
+        }
+        """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [B]");
+
     [Fact]
     public void MethodsThatShareAFieldFormOneGroup() => CohesionRule.Check([new SourceFile("Counter.cs", """
         class Counter
