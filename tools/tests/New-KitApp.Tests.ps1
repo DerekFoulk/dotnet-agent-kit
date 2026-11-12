@@ -201,7 +201,14 @@ Describe 'New-KitApp run' {
         }
 
         function Get-WriteCall { @($script:calls | Where-Object { $_.Arguments -match '--method (POST|PATCH|PUT|DELETE)' }) }
+
+        # The intake answers the new-app skill writes (ADR-0058). Every run below takes them unless it passes its own.
+        $answersPath = Join-Path $TestDrive 'answers.json'
+        @{ appType = 'web-api-blazor'; data = 'relational'; database = 'azure-sql-free'; signIn = 'entra-external-id'; hosting = 'none'
+            testTools = @{ load = @('jmeter') } } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $answersPath
+        $PSDefaultParameterValues['New-KitApp:Intake'] = $answersPath
     }
+    AfterAll { $PSDefaultParameterValues.Remove('New-KitApp:Intake') }
 
     Context 'a private app' {
         BeforeAll {
@@ -449,7 +456,7 @@ Describe 'New-KitApp run' {
             try {
                 $env:PATH = $fake + [IO.Path]::PathSeparator + $env:PATH
                 $folder = Join-Path $TestDrive "command-$Visibility"
-                $output = pwsh -NoProfile -File $script -Name 'Command.Orders' -KitRef $commit -Destination $folder -KitRoot $kit -WhatIf @Switches 2>&1 | Out-String
+                $output = pwsh -NoProfile -File $script -Name 'Command.Orders' -KitRef $commit -Destination $folder -KitRoot $kit -Intake $answersPath -WhatIf @Switches 2>&1 | Out-String
             }
             finally { $env:PATH = $savedPath }
 
@@ -486,7 +493,7 @@ Describe 'New-KitApp run' {
             "$runError" | Should -Match "Add the 'main protection' ruleset failed: .*HTTP 422"
             # Exactly: a failed step listed as done would tell the owner main is protected when it isn't.
             $lines = "$runError" -split "`r?`n"
-            $lines | Should -Contain "Done: Export the kit's files at $commit; Make the first commit; Create the private repo with the kit's merge settings; Push main."
+            $lines | Should -Contain "Done: Export the kit's files at $commit; Write the intake answers to docs/app-profile.md; Make the first commit; Create the private repo with the kit's merge settings; Push main."
             # The repo stays private: making it public comes after the ruleset.
             $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn on Dependabot alerts and security updates; Require actions pinned to a full commit SHA; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Require CodeQL results to merge; Turn the commit hook on in the local copy."
             @($script:calls.Arguments) | Should -Not -Match '--method PATCH'
