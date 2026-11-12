@@ -18,6 +18,12 @@ on:
 permissions:
   contents: read
 
+# PMD for the duplicate code check (CRF-003, ADR-0051), in one place for both jobs that run it. The release is pinned,
+# and its SHA-256 is GitHub's digest for the asset.
+env:
+  PMD_VERSION: '7.29.0'
+  PMD_SHA256: d27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179
+
 jobs:
   # ADR-0057: Linux can't build MAUI or desktop (UI) projects. This job finds them, and the runners that build them.
   ui-projects:
@@ -145,6 +151,27 @@ jobs:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
 
+      # CRF-003, over the whole solution, for the same reason as code shape: it lists each project's files through
+      # MSBuild. The runner's Java runs PMD's Windows launcher.
+      - name: Download PMD
+        if: runner.os == 'Windows'
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'pmd.zip'
+          Invoke-WebRequest -Uri "https://github.com/pmd/pmd/releases/download/pmd_releases%2F$env:PMD_VERSION/pmd-dist-$env:PMD_VERSION-bin.zip" -OutFile $zip
+          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
+          if ($hash -ne $env:PMD_SHA256) {
+            "::error::pmd.zip's SHA-256 is $hash; expected $env:PMD_SHA256."
+            exit 1
+          }
+          Expand-Archive -LiteralPath $zip -DestinationPath $env:RUNNER_TEMP
+          "PMD=$(Join-Path $env:RUNNER_TEMP "pmd-bin-$env:PMD_VERSION/bin/pmd.bat")" >> $env:GITHUB_ENV
+
+      - name: Duplicate code
+        if: runner.os == 'Windows'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-Duplication.ps1" -Solution $env:SOLUTION -Pmd $env:PMD'
+
   # The required check (templates/github/main-protection.json names it). It waits for the UI builds and fails when
   # they did, so they gate a merge too; !cancelled() lets it run after a skipped or failed UI build to say so.
   dotnet:
@@ -262,12 +289,10 @@ jobs:
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
 
       # CRF-003: the same code in more than one place, found by PMD's copy-paste detector, CPD (BSD-style licence;
-      # ADR-0051). The release is pinned, and its SHA-256 is GitHub's digest for the asset; the runner's Java runs it.
+      # ADR-0051), at the release pinned above; the runner's Java runs it. Like code shape, it evaluates every project
+      # with MSBuild, so with UI projects the ui job runs it on Windows instead (ADR-0057).
       - name: Download PMD
-        if: steps.projects.outputs.count != '0'
-        env:
-          PMD_VERSION: '7.29.0'
-          PMD_SHA256: d27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         run: |
           curl --fail --silent --show-error --location --output "$RUNNER_TEMP/pmd.zip" \
             "https://github.com/pmd/pmd/releases/download/pmd_releases%2F$PMD_VERSION/pmd-dist-$PMD_VERSION-bin.zip"
@@ -276,7 +301,7 @@ jobs:
           echo "PMD=$RUNNER_TEMP/pmd-bin-$PMD_VERSION/bin/pmd" >> "$GITHUB_ENV"
 
       - name: Duplicate code
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
