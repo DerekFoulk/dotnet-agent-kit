@@ -169,7 +169,9 @@ Describe 'Test-CoverageGate.ps1' {
         It 'names an empty report, and the long-path cause, beside the project it then fails' {
             $dir = Join-Path $TestDrive 'empty-named'
             New-CoberturaReport -Directory $dir -Packages @{ 'App.Core' = @(@{ File = 'c.cs'; Lines = Get-Lines 10 0 }) } | Out-Null
-            Set-Content -LiteralPath (Join-Path $dir 'e2e.cobertura.xml') -Value '<?xml version="1.0"?><coverage line-rate="1"><packages /></coverage>'
+            # Named as the collector names its reports: a GUID.
+            $empty = "$([guid]::NewGuid()).cobertura.xml"
+            Set-Content -LiteralPath (Join-Path $dir $empty) -Value '<?xml version="1.0"?><coverage line-rate="1"><packages /></coverage>'
             $solution = New-TestSolution -Name 'EmptyNamed' -Projects @{
                 'src/App.Core/App.Core.csproj' = ''
                 'src/App.Web/App.Web.csproj'   = ''
@@ -179,7 +181,9 @@ Describe 'Test-CoverageGate.ps1' {
             $exitCode = @($output | Where-Object { $_ -is [int] })[-1]
             $text = ($output | Where-Object { $_ -isnot [int] }) -join "`n"
 
-            $text | Should -BeLike '*e2e.cobertura.xml*no assemblies*path*testing.md*'
+            $text | Should -BeLike "*$empty*no assemblies*path*testing.md*"
+            # Review 2: only the empty report, never one that lists assemblies, or every run would blame a long path.
+            @($output | Where-Object { "$_" -like '*lists no assemblies*' }).Count | Should -Be 1
             $text | Should -BeLike '*App.Web*FAIL*'
             $exitCode | Should -Be 1
         }
