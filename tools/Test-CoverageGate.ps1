@@ -43,7 +43,8 @@ function Get-CoverageSummary {
     $lines = @{}
     foreach ($report in Get-ChildItem -Path $Path -Recurse -Filter '*.cobertura.xml' -File) {
         [xml] $xml = Get-Content -LiteralPath $report.FullName -Raw
-        foreach ($package in @($xml.coverage.packages.package)) {
+        # XPath, not property access: PowerShell reads an empty <packages /> as a string, which has no .package.
+        foreach ($package in @($xml.SelectNodes('/coverage/packages/package'))) {
             $name = [string] $package.name
             if ($name -like '*Tests') { continue }
             foreach ($class in @($package.classes.class)) {
