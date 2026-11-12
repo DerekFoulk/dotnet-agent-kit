@@ -276,7 +276,7 @@ Describe 'Agent configuration' {
             # Every skill folder: the kit's own and the curated ones from dotnet/skills (ADR-0042).
             $skillFolders = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot '..' '..' '.claude' 'skills') -Directory |
                     ForEach-Object { @{ Skill = $_.Name } })
-            $kitSkills = @('start-work', 'plan-checklist', 'tdd-cycle', 'write-adr', 'finish-work', 'address-review')
+            $kitSkills = @('start-work', 'plan-checklist', 'tdd-cycle', 'write-adr', 'finish-work', 'address-review', 'new-app')
         }
 
         It 'has the kit''s <Skill> skill' -ForEach @($kitSkills | ForEach-Object { @{ Skill = $_ } }) {
