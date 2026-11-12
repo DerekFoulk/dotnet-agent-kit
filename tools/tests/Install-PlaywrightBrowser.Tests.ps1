@@ -151,4 +151,20 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } | Should -Throw '*Bad.csproj*MSB*'
     }
+
+    # Linux has no MAUI workload, so MSBuild can't evaluate a MAUI project there (ADR-0059). Get-UiProject.ps1 names the
+    # UI projects; they're skipped unread. This one would fail to evaluate anywhere: it imports a file that isn't there.
+    It 'skips the UI projects Get-UiProject.ps1 names, without asking MSBuild about them' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'ui'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
+        New-Project $repo 'App.Maui'
+        '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><UseMaui>true</UseMaui></PropertyGroup><Import Project="missing.props" /></Project>' |
+            Set-Content -LiteralPath (Join-Path $repo 'src/App.Maui/App.Maui.csproj')
+        $solution = New-Solution $repo 'App.Maui', 'App.E2E.Tests'
+
+        { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } | Should -Not -Throw
+
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
+    }
 }
