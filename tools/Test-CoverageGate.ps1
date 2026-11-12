@@ -8,8 +8,8 @@
     Reads every Cobertura report under -Path (one per test project, from
     `dotnet test --coverage --coverage-output-format cobertura --results-directory <Path>`) and merges them:
     a line counts as covered if any report covers it. Test assemblies (names ending in "Tests"), benchmarks
-    assemblies (names ending in ".Benchmarks", ADR-0062) and generated files (*.g.cs, *.generated.cs, anything under obj/) are left out. No report at all is a
-    failure, so a run that collected nothing can't pass.
+    assemblies (names ending in ".Benchmarks", ADR-0062) and generated files (*.g.cs, *.generated.cs, anything
+    under obj/) are left out. No report at all is a failure, so a run that collected nothing can't pass.
 
 .EXAMPLE
     dotnet test --coverage --coverage-output-format cobertura --results-directory TestResults
@@ -31,10 +31,15 @@ $script:CoverageRules = @(
 )
 $script:OverallMinimum = 90
 
-# Test-side code, never counted: test projects (names ending in "Tests") and benchmarks projects (names ending in
-# ".Benchmarks", ADR-0062), which measure production code and ship nothing.
+# A benchmarks project (ADR-0062): its name ends in ".Benchmarks", in the case tests/Directory.Build.props matches.
+function Test-BenchmarksAssembly([string] $Name) {
+    $Name -clike '*.Benchmarks'
+}
+
+# Test-side code, never counted: test projects (names ending in "Tests") and benchmarks projects, which measure
+# production code and ship nothing.
 function Test-TestSideAssembly([string] $Name) {
-    $Name -like '*Tests' -or $Name -like '*.Benchmarks'
+    $Name -like '*Tests' -or (Test-BenchmarksAssembly $Name)
 }
 
 function Test-GeneratedFile {
@@ -110,7 +115,7 @@ function Invoke-CoverageGate {
             ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.GetAttribute('Path')) } |
             Where-Object { $exempt -notcontains $_ }
         foreach ($name in $expected) {
-            if ($name -like '*.Benchmarks') { Write-Host ('{0,-32} left out (benchmarks project, ADR-0062)' -f $name) }
+            if (Test-BenchmarksAssembly $name) { Write-Host ('{0,-32} left out (benchmarks project, ADR-0062)' -f $name) }
             if (Test-TestSideAssembly $name) { continue }
             if ($summary.Package -notcontains $name) {
                 $failed = $true

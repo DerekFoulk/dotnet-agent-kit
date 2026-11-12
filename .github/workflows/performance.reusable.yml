@@ -69,7 +69,7 @@ jobs:
           $solutionFolder = Split-Path -Parent (Resolve-Path -LiteralPath $env:SOLUTION).Path
           $projects = @(([xml] (Get-Content -Raw -LiteralPath $env:SOLUTION)).SelectNodes('//Project') |
               ForEach-Object { Join-Path $solutionFolder $_.GetAttribute('Path') } |
-              Where-Object { [IO.Path]::GetFileNameWithoutExtension($_) -like '*.Benchmarks' })
+              Where-Object { [IO.Path]::GetFileNameWithoutExtension($_) -clike '*.Benchmarks' })
           if (-not $projects) {
             "No benchmarks project (a name ending in .Benchmarks) in ${env:SOLUTION}; nothing to run."
             exit 0
