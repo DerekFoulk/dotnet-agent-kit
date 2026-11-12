@@ -57,7 +57,7 @@ Proposed (auto mode, ADR-0035), with SUP-010; the owner accepts or changes it.
 - `.github/workflows/scorecard.reusable.yml`, called by `.github/workflows/scorecard.yml` and `templates/app/.github/workflows/scorecard.yml`. `tools/tests/SharedCi.Tests.ps1` checks each restriction, the permissions and the pins.
 - It isn't a required check: it doesn't run on pull requests, and the ruleset requires only checks from workflows that do (`New-KitApp.Tests.ps1` checks the list).
 - On a private repo only the visibility job runs, a few seconds of a Linux runner per push to `main` and per week, which count against the owner's included Actions minutes.
-- GitHub turns off a public repo's scheduled workflows after 60 days with no activity, so a quiet app's weekly run stops until something is pushed.
+- GitHub turns off a public repo's scheduled workflows after 60 days with no activity, so a quiet app's whole Scorecard workflow stays off, pushes included, until someone turns it back on from the Actions tab or with `gh workflow enable scorecard.yml`.
 - Scorecard's findings appear in each repo's Security tab beside CodeQL's. A low check score is a finding to triage, not a failed build.
 
 ## Pillars affected
