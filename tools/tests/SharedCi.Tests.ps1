@@ -425,6 +425,34 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # GAP-023 (ADR-0060): the gitleaks image is pinned by tag and digest in the kit's .config/gitleaks/Dockerfile, where
+    # Dependabot's docker updater moves both. The job keeps its name: the ruleset requires "Secret scan (gitleaks)".
+    Context 'dotnet-ci.reusable.yml secret scan' {
+        BeforeAll {
+            $secrets = $dotnet.Yaml['jobs']['secrets']
+            $scan = @(@($secrets['steps']) | Where-Object { "$($_['run'])" -match 'docker run' })
+            $dockerfile = Get-Content -LiteralPath (Join-Path $root '.config' 'gitleaks' 'Dockerfile')
+        }
+
+        It "pins the image in the kit's Dockerfile: one FROM line, by tag and digest, and nothing else" {
+            $instructions = @($dockerfile | Where-Object { $_ -notmatch '^\s*(#|$)' })
+
+            $instructions | Should -HaveCount 1
+            $instructions[0] | Should -Match '^FROM ghcr\.io/gitleaks/gitleaks:v\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$'
+        }
+
+        It 'runs the image the kit''s Dockerfile names, requiring its tag and digest, and names none itself' {
+            $secrets['name'] | Should -Be 'Secret scan (gitleaks)'
+            @(@($secrets['steps']) | Where-Object { "$($_['uses'])" -eq '$/.github/actions/kit-tools' }) | Should -HaveCount 1
+            $scan | Should -HaveCount 1
+            $scan[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+            $scan[0]['run'] | Should -Match '"\$KIT/\.config/gitleaks/Dockerfile"'
+            $scan[0]['run'] | Should -Match ([regex]::Escape('@sha256:[0-9a-f]{64}'))
+            $scan[0]['run'] | Should -Match '"\$image" git /repo --redact --verbose'
+            $dotnet.Text | Should -Not -Match 'gitleaks/gitleaks:' -Because 'the Dockerfile is the one pin'
+        }
+    }
+
     Context 'app-checks.reusable.yml' {
         BeforeAll {
             $run =(@(Get-Steps $app.Yaml) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
