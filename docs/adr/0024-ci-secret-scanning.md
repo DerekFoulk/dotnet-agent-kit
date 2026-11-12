@@ -41,6 +41,7 @@ Accepted as recommended (owner, 2026-11-01).
 - ~~A pre-commit hook runs the same scanner locally.~~ Not built: ADR-0027 (2026-11-03) keeps secret scanning in CI only, because a local scan needs Docker Desktop running for every commit.
 - GitHub secret scanning stays off for these repos.
 - **Amended by ADR-0031 (2026-11-05):** the kit repo is public, where GitHub secret scanning runs for free. The CI gitleaks scan stays the required check for every repo, and the only scan on private app repos.
+- **Amended by ADR-0060 (2026-11-11):** the gitleaks image is pinned by tag and digest in the kit's `.config/gitleaks/Dockerfile`, where Dependabot's docker updater moves both; the scan runs the image that file names.
 
 ## Pillars affected
 

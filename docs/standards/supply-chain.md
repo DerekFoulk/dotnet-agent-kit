@@ -69,8 +69,8 @@ rules:
     why: "A tag can be moved to malicious code; a SHA can't. A release that's pulled or found compromised in its first days never reaches a PR."
     layer: owner
     status: accepted
-    sources: ["owner, 2026-11-01", "owner, 2026-11-09", "ADR-0041"]
-    enforcement: "settings: the kit repo requires actions pinned to a full-length commit SHA (GitHub's Actions setting, on since 2026-11-09), and .github/dependabot.yml updates the pins; Pester tests also check the pins in the release, Dependabot lock-file and shared app workflows, and Dependabot.Tests.ps1 checks the waits in the kit's and the app template's dependabot.yml; New-KitApp turns the same setting on for every app (templates/github/actions.json)"
+    sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-11", "ADR-0041", "ADR-0060"]
+    enforcement: "settings: the kit repo requires actions pinned to a full-length commit SHA (GitHub's Actions setting, on since 2026-11-09), and .github/dependabot.yml updates the pins; Pester tests also check the pins in the release, Dependabot lock-file and shared app workflows, and Dependabot.Tests.ps1 checks the waits in the kit's and the app template's dependabot.yml, and that it watches the manifests pinning the two tools the shared .NET CI downloads, PMD and the gitleaks image (SharedCi.Tests.ps1 checks the CI reads only those pins); New-KitApp turns the same setting on for every app (templates/github/actions.json)"
     scope: core
     paths: [".github/**"]
   - id: SUP-009
