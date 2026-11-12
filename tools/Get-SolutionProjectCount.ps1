@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Writes the number of projects in a .slnx solution.
+    Writes the number of projects in a .slnx solution, read through KitSolution.psm1.
 
 .DESCRIPTION
     The shared .NET CI and mutation workflows skip their .NET steps while a new app's solution is still empty: an empty
@@ -18,12 +18,12 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
 
 function Get-SolutionProjectCount {
     param([Parameter(Mandatory)] [string] $Solution)
 
-    if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) { throw "No solution file at '$Solution'." }
-    ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project').Count
+    @(Get-SolutionProject -Solution $Solution).Count
 }
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
