@@ -35,4 +35,20 @@ Describe 'Get-UiProject.ps1' {
 
         @(Get-UiProject -Solution $solution) | Should -HaveCount 0
     }
+
+    # MAUI builds Apple targets only on a Mac and Windows targets only on Windows, so it needs both runners.
+    It 'finds a MAUI project, which builds on Windows and macOS' {
+        $solution = New-Solution @(
+            @{ Path = 'src/App.Core/App.Core.csproj'; Properties = '' }
+            @{ Path = 'src/App.Maui/App.Maui.csproj'; Properties = '<UseMaui>true</UseMaui><OutputType>Exe</OutputType>' }
+        )
+
+        $found = @(Get-UiProject -Solution $solution)
+
+        $found | Should -HaveCount 1
+        $found[0].Name | Should -Be 'App.Maui'
+        $found[0].Path | Should -Be 'src/App.Maui/App.Maui.csproj'
+        $found[0].Kind | Should -Be 'Maui'
+        $found[0].Os | Should -Be @('windows-latest', 'macos-latest')
+    }
 }
