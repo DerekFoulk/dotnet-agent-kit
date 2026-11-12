@@ -12,7 +12,8 @@
 [CmdletBinding()]
 param(
     [string] $Solution,
-    [string] $Configuration = 'Release'
+    [string] $Configuration = 'Release',
+    [switch] $WithDependencies
 )
 
 Set-StrictMode -Version Latest
@@ -37,12 +38,14 @@ function Install-PlaywrightBrowser {
         [switch] $WithDependencies
     )
 
+    if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) { throw "No solution file at '$Solution'." }
     $solutionPath = (Resolve-Path -LiteralPath $Solution).Path
     $folder = Split-Path -Parent $solutionPath
     # UI projects (MAUI, desktop) don't evaluate without their workloads, as on Linux, and hold no browser tests (ADR-0059).
     $ui = @(& (Join-Path $PSScriptRoot 'Get-UiProject.ps1') -Solution $solutionPath | ForEach-Object FullPath)
     $users = foreach ($node in ([xml] (Get-Content -LiteralPath $solutionPath -Raw)).SelectNodes('//Project')) {
-        $project = [IO.Path]::GetFullPath((Join-Path $folder $node.GetAttribute('Path')))
+        # As Get-UiProject.ps1 builds its FullPath, so the two compare equal on every OS.
+        $project = [IO.Path]::GetFullPath((Join-Path $folder ($node.GetAttribute('Path') -replace '\\', '/')))
         if ($ui -contains $project) { continue }
         $json = Read-ProjectOutput -Project $project -Configuration $Configuration
         # With TargetFrameworks, the outer evaluation has no TargetDir: read the project through its first framework.
@@ -74,5 +77,5 @@ function Install-PlaywrightBrowser {
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $Solution) { throw 'Give the solution file to read, with -Solution.' }
-    Install-PlaywrightBrowser -Solution $Solution -Configuration $Configuration
+    Install-PlaywrightBrowser -Solution $Solution -Configuration $Configuration -WithDependencies:$WithDependencies
 }
