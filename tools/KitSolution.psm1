@@ -45,13 +45,15 @@ function Get-FirstTargetFramework {
     }
 }
 
-# Whether a project, by its name (its file name without the extension, which is its assembly name), is a benchmarks
+# Whether a project, by its name (its file name without the extension, also its assembly name unless the project sets
+# AssemblyName; the coverage gate passes assembly names, the SBOM filter and the workflow file names), is a benchmarks
 # project (ADR-0062): one whose name ends in ".Benchmarks", in that case. This is the one statement of that rule
 # (CRF-003). The coverage gate, the SBOM's solution filter and performance.reusable.yml call it. MSBuild
 # (sample/Directory.Build.props, an app's tests/Directory.Build.props) and .editorconfig can't, so KitSolution.Tests.ps1
 # checks each of them against it.
 function Test-BenchmarksProject {
-    param([Parameter(Mandatory)] [string] $Name)
+    # An empty name (a Cobertura package or a solution entry with none) is no benchmarks project, as before the move.
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Name)
 
     # Case-sensitive, as MSBuild's String.EndsWith in tests/Directory.Build.props is.
     $Name -clike '*.Benchmarks'
