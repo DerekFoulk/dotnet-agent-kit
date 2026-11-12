@@ -132,4 +132,29 @@ Describe 'Test-LoadBudget.ps1' {
             "The locustfile raised KeyError('id') 3 time(s); see the exceptions CSV for its traceback."
             'The locustfile raised ValueError: bad, "quoted" value 3 time(s); see the exceptions CSV for its traceback.')
     }
+
+    # A misspelled limit would otherwise check nothing; the whole run's failure budget is always stated.
+    It 'rejects a budget that <Case>' -ForEach @(
+        @{ Case = 'has no Aggregated entry'; Budget = [ordered]@{ 'POST /bookmarks' = [ordered]@{ maxFailureRatio = 0 } }
+            Problem = 'The budget has no "Aggregated" entry with a maxFailureRatio: the whole run''s failures are always budgeted.' }
+        @{ Case = 'gives Aggregated no failure ratio'; Budget = [ordered]@{ 'Aggregated' = [ordered]@{ maxMilliseconds = [ordered]@{ '95%' = 300 } } }
+            Problem = 'The budget has no "Aggregated" entry with a maxFailureRatio: the whole run''s failures are always budgeted.' }
+        @{ Case = 'has an unknown key'; Budget = [ordered]@{ 'Aggregated' = [ordered]@{ maxFailureRatio = 0; maxMs = [ordered]@{ '95%' = 300 } } }
+            Problem = 'Aggregated: unknown budget key "maxMs"; use maxFailureRatio and maxMilliseconds.' }
+        @{ Case = 'names a percentile Locust doesn''t report'; Budget = [ordered]@{ 'Aggregated' = [ordered]@{ maxFailureRatio = 0; maxMilliseconds = [ordered]@{ '97%' = 300 } } }
+            Problem = 'Aggregated: Locust reports no "97%" percentile; use one of 50%, 66%, 75%, 80%, 90%, 95%, 98%, 99%, 99.9%, 99.99%, 100%.' }
+        @{ Case = 'has a failure ratio above 1'; Budget = [ordered]@{ 'Aggregated' = [ordered]@{ maxFailureRatio = 5 } }
+            Problem = 'Aggregated: maxFailureRatio must be a number from 0 to 1, such as 0.01 for 1%.' }
+        @{ Case = 'has a negative time'; Budget = [ordered]@{ 'Aggregated' = [ordered]@{ maxFailureRatio = 0; maxMilliseconds = [ordered]@{ '95%' = -1 } } }
+            Problem = 'Aggregated: the 95% budget must be a number of milliseconds, 0 or more.' }
+    ) {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats @(
+            (New-Row 'POST' '/bookmarks' -Requests 400 -P95 150)
+            (New-Row '' 'Aggregated' -Requests 400 -P95 150))
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget $Budget)) } | Should -Not -Throw
+
+        $script:problems | Should -Be @($Problem)
+    }
 }
