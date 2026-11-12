@@ -146,7 +146,8 @@ Describe 'Install-PlaywrightBrowser.ps1' {
         Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $repo = Join-Path $TestDrive 'broken'
         New-Project $repo 'Bad'
-        'not a project' | Set-Content -LiteralPath (Join-Path $repo 'src/Bad/Bad.csproj')
+        # Well-formed, so Get-UiProject.ps1 reads it, but MSBuild can't: it imports a file that isn't there.
+        '<Project Sdk="Microsoft.NET.Sdk"><Import Project="missing.props" /></Project>' | Set-Content -LiteralPath (Join-Path $repo 'src/Bad/Bad.csproj')
         $solution = New-Solution $repo 'Bad'
 
         { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } | Should -Throw '*Bad.csproj*MSB*'

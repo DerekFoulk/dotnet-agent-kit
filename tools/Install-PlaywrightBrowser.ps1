@@ -39,8 +39,11 @@ function Install-PlaywrightBrowser {
 
     $solutionPath = (Resolve-Path -LiteralPath $Solution).Path
     $folder = Split-Path -Parent $solutionPath
+    # UI projects (MAUI, desktop) don't evaluate without their workloads, as on Linux, and hold no browser tests (ADR-0059).
+    $ui = @(& (Join-Path $PSScriptRoot 'Get-UiProject.ps1') -Solution $solutionPath | ForEach-Object FullPath)
     $users = foreach ($node in ([xml] (Get-Content -LiteralPath $solutionPath -Raw)).SelectNodes('//Project')) {
-        $project = Join-Path $folder $node.GetAttribute('Path')
+        $project = [IO.Path]::GetFullPath((Join-Path $folder $node.GetAttribute('Path')))
+        if ($ui -contains $project) { continue }
         $json = Read-ProjectOutput -Project $project -Configuration $Configuration
         # With TargetFrameworks, the outer evaluation has no TargetDir: read the project through its first framework.
         if (-not $json.Properties.TargetFramework -and $json.Properties.TargetFrameworks) {
