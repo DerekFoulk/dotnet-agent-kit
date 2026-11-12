@@ -137,9 +137,10 @@ function Invoke-DuplicationCheck {
         }
         $files | Set-Content -LiteralPath $fileList
 
-        # CPD writes the report itself, so no output line or console encoding can reach the XML.
+        # CPD writes the report itself, so no output line or console encoding can reach the XML. Its log goes to
+        # stderr, which is kept with stdout to explain a failure.
         $cpdArguments = Get-CpdArgument -FileList $fileList -Report $report
-        $console = @(& $Pmd @cpdArguments)
+        $console = @(& $Pmd @cpdArguments 2>&1)
         if ($LASTEXITCODE -ne 0) { throw "CPD failed with exit code $LASTEXITCODE (1: an exception, 2: a usage error):`n$($console -join "`n")" }
 
         $skipped = @(Get-SkippedFile -Report $report)
