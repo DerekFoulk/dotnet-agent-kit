@@ -31,22 +31,35 @@ function Get-UiProject {
 
     if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) { throw "No solution file at '$Solution'." }
     $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).Path
-    foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
+    $projects = foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $path = $node.GetAttribute('Path')
-        $file = Join-Path $folder $path
+        $file = [IO.Path]::GetFullPath((Join-Path $folder ($path -replace '\\', '/')))
         if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "The solution $Solution lists $path, which doesn't exist." }
-        [xml] $project = Get-Content -LiteralPath $file -Raw
-        foreach ($kind in $script:UiKinds) {
-            $values = @($project.SelectNodes("//PropertyGroup/$($kind.Property)") | ForEach-Object { $_.InnerText.Trim() })
-            if ($values -contains 'true') {
-                [pscustomobject]@{
-                    Name = [IO.Path]::GetFileNameWithoutExtension($path)
-                    Path = $path
-                    Kind = $kind.Kind
-                    Os   = $kind.Os
-                }
-                break
+        [xml] $xml = Get-Content -LiteralPath $file -Raw
+        $kind = $script:UiKinds | Where-Object {
+            @($xml.SelectNodes("//PropertyGroup/$($_.Property)") | ForEach-Object { $_.InnerText.Trim() }) -contains 'true'
+        } | Select-Object -First 1
+        [pscustomobject]@{ Path = $path; File = $file; Xml = $xml; Kind = $kind }
+    }
+
+    $ui = @($projects | Where-Object Kind)
+    # ARC-010: nothing references a UI project. MSBuild paths are relative to the project and may use either slash.
+    foreach ($project in $projects) {
+        foreach ($reference in $project.Xml.SelectNodes('//ItemGroup/ProjectReference')) {
+            $target = [IO.Path]::GetFullPath((Join-Path (Split-Path $project.File) ($reference.GetAttribute('Include') -replace '\\', '/')))
+            $hit = $ui | Where-Object File -EQ $target | Select-Object -First 1
+            if ($hit) {
+                throw "$($project.Path) references the UI project $($hit.Path). Put the code it needs in a UI-independent library instead (ARC-010)."
             }
+        }
+    }
+
+    foreach ($project in $ui) {
+        [pscustomobject]@{
+            Name = [IO.Path]::GetFileNameWithoutExtension($project.Path)
+            Path = $project.Path
+            Kind = $project.Kind.Kind
+            Os   = $project.Kind.Os
         }
     }
 }
