@@ -46,14 +46,18 @@ function Install-PlaywrightBrowser {
     $users = foreach ($node in ([xml] (Get-Content -LiteralPath $solutionPath -Raw)).SelectNodes('//Project')) {
         # As Get-UiProject.ps1 builds its FullPath, so the two compare equal on every OS.
         $project = [IO.Path]::GetFullPath((Join-Path $folder ($node.GetAttribute('Path') -replace '\\', '/')))
-        if ($ui -contains $project) { continue }
+        if ($ui -contains $project -or [IO.Path]::GetExtension($project) -notin '.csproj', '.fsproj', '.vbproj') { continue }
         $json = Read-ProjectOutput -Project $project -Configuration $Configuration
         # With TargetFrameworks, the outer evaluation has no TargetDir: read the project through its first framework.
         if (-not $json.Properties.TargetFramework -and $json.Properties.TargetFrameworks) {
             $first = ($json.Properties.TargetFrameworks -split ';' | Where-Object { $_ })[0]
             $json = Read-ProjectOutput -Project $project -Configuration $Configuration -TargetFramework $first
         }
-        $assets = Get-Content -Raw -LiteralPath $json.Properties.ProjectAssetsFile | ConvertFrom-Json
+        $assetsFile = $json.Properties.ProjectAssetsFile
+        if (-not $assetsFile -or -not (Test-Path -LiteralPath $assetsFile -PathType Leaf)) {
+            throw "$project has no restore graph (obj/project.assets.json), so it's unknown whether it uses Playwright. Restore it first."
+        }
+        $assets = Get-Content -Raw -LiteralPath $assetsFile | ConvertFrom-Json
         # A list on the left, so -like filters it even when the graph holds one library.
         $library = @(@($assets.libraries.PSObject.Properties.Name) -like 'Microsoft.Playwright/*')
         if ($library) {
