@@ -38,7 +38,7 @@ internal static class NestingRule
     private static bool IsLevel(SyntaxNode node) => node switch
     {
         IfStatementSyntax ifStatement => ifStatement.Parent is not ElseClauseSyntax,
-        SwitchStatementSyntax or ForStatementSyntax or ForEachStatementSyntax or WhileStatementSyntax or DoStatementSyntax
+        SwitchStatementSyntax or ForStatementSyntax or CommonForEachStatementSyntax or WhileStatementSyntax or DoStatementSyntax
             or TryStatementSyntax => true,
         _ => false,
     };
