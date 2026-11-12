@@ -22,7 +22,7 @@ Measured on the kit's own solution in CI on PR 49: see "Measurement" below.
 
 `tools/Test-Duplication.ps1` takes the hand-written C# files from the code shape tool (`Kit.CodeShape --files`, ADR-0050), so generated code is skipped by one rule in one place. It runs `pmd cpd --language cs --minimum-tokens 100 --ignore-usings --ignore-annotations --ignore-literal-sequences --file-list <files> --format xml --no-fail-on-violation --no-fail-on-error` and prints each place a repeat occurs in MSBuild's error format, naming the other places.
 
-`dotnet-ci.reusable.yml` downloads PMD 7.29.0 from its GitHub release. It checks the zip's SHA-256 against GitHub's digest for the asset, as the gitleaks image is pinned by digest (ADR-0024), and runs the script with the runner's Java.
+`dotnet-ci.reusable.yml` downloads PMD 7.29.0 from its GitHub release. It checks the zip's SHA-256 against GitHub's digest for the asset, as the same workflow pins the gitleaks image by digest, and runs the script with the runner's Java.
 
 - **Trade-offs:** the C#-aware tokenizer and ignore options fit what CRF-003 asks.
   - The pinned, hash-checked download adds no package to the solution. But Dependabot can't see the version, so a newer PMD is a manual bump of two lines.
@@ -52,7 +52,7 @@ Option 1: the only free tool with a C# tokenizer and C#-specific ignores, run wh
 Option 1, decided in auto mode (ADR-0035) on 2026-11-11, at the owner's request to close the open scorecard gaps.
 
 **Tuning, for knowledge rather than looks:**
-- **100 tokens.** About 10 to 15 lines of ordinary C#, long enough that a repeat is rarely an accident of style.
+- **100 tokens.** By estimate, not measurement, about 10 to 15 lines of ordinary C#: long enough that a repeat is rarely an accident of style.
 - **Ignore using directives, attributes and runs of literals.**
   - Usings are bookkeeping.
   - Attributes repeat by design (`[Fact]`, `[InlineData]`).
@@ -74,7 +74,7 @@ The first run, before `--no-fail-on-error`, stopped with exit code 5 on the same
 ## Consequences
 
 - Every app's CI runs the check after the code shape check, using the runner's Java (preinstalled on `ubuntu-latest`).
-- PMD's version and SHA-256 sit in one place, the "Download PMD" step of `dotnet-ci.reusable.yml`. Bumping PMD means updating both, from the release's asset digest.
+- PMD's version and SHA-256 sit in one place, the "Download PMD" step of `dotnet-ci.reusable.yml`. Bumping PMD means updating both, from the release's asset digest. Dependabot can't see a download, so nothing yet tells the kit when PMD releases or has an advisory (GAP-023).
 - CPD finds repeated code, not repeated knowledge. A rule stated in two shapes passes, and so does duplication in docs, config and scripts. The reviewer agent still checks those (CRF-003's enforcement says so).
 - A file CPD can't read isn't checked: the CI log and the PR name each one, and the reviewer covers it. A later PMD release may read raw string literals; bumping PMD is the time to look.
 - GAP-020 is closed. GAP-022 now also covers running this check on an app's own machine.
@@ -84,13 +84,13 @@ The first run, before `--no-fail-on-error`, stopped with exit code 5 on the same
 - **Operational excellence:** one more gate in CI, annotated on the PR.
 - **Reliability:** knowledge kept once is changed once.
 - **Security:** a downloaded executable, pinned to a version and checked against its published SHA-256 before it runs.
-- **Cost:** about 20 to 40 seconds of CI per run; no licence.
+- **Cost:** about 13 seconds of CI per run on the kit, from the download to the summary (run 43139481712); no licence.
 - **Performance:** none.
 
 ## Sources
 
 - owner, 2026-11-11 (close the open scorecard gaps)
-- CRF-003; ADR-0024; ADR-0050
+- CRF-003; ADR-0050
 - https://docs.pmd-code.org/latest/pmd_userdocs_cpd.html, retrieved 2026-11-11 (options, exit codes, CPD-OFF and CPD-ON)
 - https://docs.pmd-code.org/latest/pmd_userdocs_cpd_report_formats.html, retrieved 2026-11-11 (the XML report)
 - https://github.com/pmd/pmd/releases/tag/pmd_releases%2F7.29.0, retrieved 2026-11-11 (the release and its asset digest)

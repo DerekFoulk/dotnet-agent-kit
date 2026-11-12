@@ -71,6 +71,17 @@ public sealed class CliTests : IDisposable
     }
 
     [Fact]
+    public void TwoArgumentsWithoutFilesFirstAreAMistake()
+    {
+        using StringWriter output = new();
+
+        int exitCode = Cli.Run(["--list", "manifest.json"], output);
+
+        exitCode.Should().Be(2);
+        output.ToString().Should().StartWith("Usage:");
+    }
+
+    [Fact]
     public void ItCountsEveryProjectAndFile()
     {
         string one = Write("One.cs", "class One { }");

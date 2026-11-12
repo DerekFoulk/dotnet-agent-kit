@@ -164,6 +164,10 @@ areas:
         gap: "OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside."
         status: proposed
         needs: "a GitHub Action and a CI change"
+      - id: GAP-023
+        gap: "PMD, which the duplicate code check downloads in CI (ADR-0051), is pinned by version and SHA-256 in dotnet-ci.reusable.yml, where Dependabot can't see it: nothing tells the kit when PMD releases a new version or has a security advisory."
+        status: proposed
+        needs: "a scheduled check of PMD's releases and advisories, or a pin Dependabot can update"
   - id: delivery
     name: Delivery
     perfect: "Every merge builds a release candidate; deploys go to staging, then production, with a tested rollback and no downtime; infrastructure is code."
@@ -243,13 +247,13 @@ Each area in the front matter above has:
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 3 | 3 | 0 | 3 | 0 |
 | Performance | 1 | 0 | 1 | 0 | 1 |
-| Supply chain and build | 8 | 8 | 0 | 0 | 2 |
+| Supply chain and build | 8 | 8 | 0 | 0 | 3 |
 | Delivery | 1 | 1 | 0 | 0 | 2 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 10 proposed; 10 open gaps.
+**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 10 proposed; 11 open gaps.
 
 Open gaps:
 
@@ -261,6 +265,7 @@ Open gaps:
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
 - **GAP-013** (Supply chain and build, proposed; needs a tool or GitHub Action, and a CI change): No SBOM is produced for an app's build.
 - **GAP-014** (Supply chain and build, proposed; needs a GitHub Action and a CI change): OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside.
+- **GAP-023** (Supply chain and build, proposed; needs a scheduled check of PMD's releases and advisories, or a pin Dependabot can update): PMD, which the duplicate code check downloads in CI (ADR-0051), is pinned by version and SHA-256 in dotnet-ci.reusable.yml, where Dependabot can't see it: nothing tells the kit when PMD releases a new version or has a security advisory.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet.
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 <!-- scorecard-table:end -->
