@@ -38,6 +38,10 @@ function Get-BenchmarkBudgetProblem {
             if ($mean -gt [double] $limit['maxMeanNanoseconds']) {
                 "${name}: mean $(Format-Number $mean) ns is over its budget of $(Format-Number $limit['maxMeanNanoseconds']) ns."
             }
+            $allocated = [double] $benchmark['Memory']['BytesAllocatedPerOperation']
+            if ($allocated -gt [double] $limit['maxAllocatedBytes']) {
+                "${name}: allocates $(Format-Number $allocated) bytes per operation, over its budget of $(Format-Number $limit['maxAllocatedBytes'])."
+            }
         }
     }
 }
