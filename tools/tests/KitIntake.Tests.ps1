@@ -140,4 +140,17 @@ Describe 'Resolve-KitIntakeAnswer' {
         @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'load' }).Tools | ForEach-Object { $_['id'] }) | Should -Be @('locust')
         @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) | Should -Not -Contain 'awesomeassertions'
     }
+
+    # Checked before New-KitApp changes anything, so a wrong answer leaves nothing behind.
+    It 'refuses <Case>, naming the card and what it accepts' -ForEach @(
+        @{ Case = 'a missing card'; Change = { param($a) $a.Remove('hosting') }; Message = "*no answer for 'hosting'*none, container-apps, app-service*" }
+        @{ Case = 'an answer that isn''t text'; Change = { param($a) $a['hosting'] = @('none') }; Message = "*no answer for 'hosting'*" }
+        @{ Case = 'an unknown card'; Change = { param($a) $a['colour'] = 'blue' }; Message = "*'colour' isn't an intake card*appType, data, database, signIn, hosting, testTools*" }
+        @{ Case = 'an unknown option'; Change = { param($a) $a['signIn'] = 'okta' }; Message = "*'okta' isn't an option of the 'signIn' card*entra-external-id, entra-id, none*Other: <text>*" }
+        @{ Case = 'an option in the wrong case'; Change = { param($a) $a['hosting'] = 'NONE' }; Message = "*'NONE' isn't an option of the 'hosting' card*" }
+    ) {
+        $answers = New-Answer
+        & $Change $answers
+        { Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Throw $Message
+    }
 }
