@@ -29,10 +29,13 @@ $script:UiKinds = @(
 function Get-UiProject {
     param([Parameter(Mandatory)] [string] $Solution)
 
+    if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) { throw "No solution file at '$Solution'." }
     $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).Path
     foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $path = $node.GetAttribute('Path')
-        [xml] $project = Get-Content -LiteralPath (Join-Path $folder $path) -Raw
+        $file = Join-Path $folder $path
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "The solution $Solution lists $path, which doesn't exist." }
+        [xml] $project = Get-Content -LiteralPath $file -Raw
         foreach ($kind in $script:UiKinds) {
             $values = @($project.SelectNodes("//PropertyGroup/$($kind.Property)") | ForEach-Object { $_.InnerText.Trim() })
             if ($values -contains 'true') {
