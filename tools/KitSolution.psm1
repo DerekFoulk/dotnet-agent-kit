@@ -33,7 +33,7 @@ function Get-FirstTargetFramework {
     param([Parameter(Mandatory)] [object] $Properties)
 
     if (-not $Properties.TargetFramework -and $Properties.TargetFrameworks) {
-        ($Properties.TargetFrameworks -split ';' | Where-Object { $_ })[0]
+        $Properties.TargetFrameworks -split ';' | Where-Object { $_ } | Select-Object -First 1
     }
 }
 
