@@ -36,9 +36,16 @@ function Test-PlaceholderFile {
 function Get-EmptyProjectProblem {
     param([Parameter(Mandatory)] [string] $Solution)
 
+    if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) {
+        throw "No solution file at $Solution."
+    }
     $solutionFolder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).Path
     foreach ($project in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $relative = $project.GetAttribute('Path')
+        if (-not (Test-Path -LiteralPath (Join-Path $solutionFolder $relative) -PathType Leaf)) {
+            New-Problem -Message "$relative is in the solution but isn't there"
+            continue
+        }
         $projectFolder = Split-Path -Parent (Join-Path $solutionFolder $relative)
         $files = @(Get-ChildItem -LiteralPath $projectFolder -Recurse -File |
             Where-Object Extension -In $script:SourceExtensions |
