@@ -80,11 +80,17 @@ function Test-CoverageMinimum {
 }
 
 # Prints each assembly against its minimum, then the overall total. With -Solution, every production
-# project in it must appear in the reports. Returns 0 when all pass, else 1.
+# project in it except UI projects must appear in the reports, and UI projects are left out. Returns 0 when
+# all pass, else 1.
 function Invoke-CoverageGate {
     param([Parameter(Mandatory)] [string] $Path, [string] $Solution)
 
-    $summary = @(Get-CoverageSummary -Path $Path)
+    # UI projects are exempt (ARC-010, ADR-0059): they hold only views, platform code and startup wiring, which no
+    # plain test project can load; their logic lives in libraries the gate counts.
+    $exempt = if ($Solution) { @(& (Join-Path $PSScriptRoot 'Get-UiProject.ps1') -Solution $Solution | ForEach-Object Name) } else { @() }
+    foreach ($name in $exempt) { Write-Host ('{0,-32} exempt (UI project, ARC-010)' -f $name) }
+
+    $summary = @(Get-CoverageSummary -Path $Path | Where-Object { $exempt -notcontains $_.Package })
     if ($summary.Count -eq 0) {
         Write-Host "No Cobertura coverage report with counted lines under $Path; run dotnet test with --coverage first."
         return 1
@@ -96,7 +102,7 @@ function Invoke-CoverageGate {
     if ($Solution) {
         $expected = ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project') |
             ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.GetAttribute('Path')) } |
-            Where-Object { $_ -notlike '*Tests' }
+            Where-Object { $_ -notlike '*Tests' -and $exempt -notcontains $_ }
         foreach ($name in $expected) {
             if ($summary.Package -notcontains $name) {
                 $failed = $true

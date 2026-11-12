@@ -342,10 +342,256 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # ADR-0059: Linux can't build MAUI or desktop (UI) projects. A small job finds them; a matrix job builds the whole
+    # solution on the runners they need, with the workload set pinned; the required job waits for it.
+    Context 'dotnet-ci.reusable.yml UI builds' {
+        BeforeAll {
+            $jobs = if ($dotnet.Yaml.ContainsKey('jobs')) { $dotnet.Yaml['jobs'] } else { @{} }
+            function Get-JobStep($Job, [string] $Name) {
+                $step = if ($Job) { @($Job['steps'] | Where-Object { $_['name'] -eq $Name })[0] }
+                $step | Should -Not -BeNullOrEmpty -Because "the job should have a step named '$Name'"
+                $step
+            }
+
+            # A solution in its own folder: a plain project, then one project per UI property given (src/Ui<n>).
+            function New-StepSolution([string[]] $Properties) {
+                $dir = Join-Path $TestDrive "step-$(New-Guid)"
+                $entries = @('<Project Path="src/Core/Core.csproj" />')
+                New-Item -ItemType Directory -Force -Path (Join-Path $dir 'src/Core') | Out-Null
+                '<Project Sdk="Microsoft.NET.Sdk" />' | Set-Content -LiteralPath (Join-Path $dir 'src/Core/Core.csproj')
+                for ($i = 0; $i -lt $Properties.Count; $i++) {
+                    New-Item -ItemType Directory -Force -Path (Join-Path $dir "src/Ui$i") | Out-Null
+                    "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup>$($Properties[$i])</PropertyGroup></Project>" | Set-Content -LiteralPath (Join-Path $dir "src/Ui$i/Ui$i.csproj")
+                    $entries += "<Project Path=`"src/Ui$i/Ui$i.csproj`" />"
+                }
+                "<Solution>$($entries -join '')</Solution>" | Set-Content -LiteralPath (Join-Path $dir 'App.slnx')
+                Join-Path $dir 'App.slnx'
+            }
+
+            # Runs a pwsh step's script as CI does, with the given environment, and puts back what was there before.
+            function Invoke-Step([string] $Run, [hashtable] $Environment) {
+                $script = Join-Path $TestDrive "step-$(New-Guid).ps1"
+                Set-Content -LiteralPath $script -Value $Run
+                $saved = @{}
+                foreach ($name in $Environment.Keys) {
+                    $saved[$name] = [Environment]::GetEnvironmentVariable($name)
+                    [Environment]::SetEnvironmentVariable($name, $Environment[$name])
+                }
+                try {
+                    $output = & pwsh -NoProfile -File $script 2>&1 | Out-String
+                    [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
+                }
+                finally {
+                    foreach ($name in $saved.Keys) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
+                }
+            }
+        }
+
+        It 'finds the UI projects with the kit''s script and outputs their runners as a JSON list' {
+            $jobs.ContainsKey('ui-projects') | Should -BeTrue -Because 'a ui-projects job finds the UI projects'
+            $find = Get-JobStep $jobs['ui-projects'] 'Find UI projects'
+            $find['run'] | Should -Match '\$env:KIT/tools/Get-UiProject\.ps1" -Solution \$env:SOLUTION'
+            $find['run'] | Should -Match 'ConvertTo-Json -Compress -InputObject '
+            $jobs['ui-projects']['outputs']['os'] | Should -Be "`${{ steps.$($find['id']).outputs.os }}"
+        }
+
+        # Review 2: -AsArray with -InputObject wrapped the list in another array, so the ui job ran with a runner
+        # label nobody has and the required job never started. The step is run here, as CI runs it.
+        It 'outputs os=<Expected> for a solution with <Case>' -ForEach @(
+            @{ Case = 'no UI project'; Properties = @(); Expected = '[]' }
+            @{ Case = 'a WPF project'; Properties = @('<UseWPF>true</UseWPF>'); Expected = '["windows-latest"]' }
+            @{ Case = 'a MAUI and a WPF project'; Properties = @('<UseMaui>true</UseMaui>', '<UseWPF>true</UseWPF>'); Expected = '["windows-latest","macos-latest"]' }
+        ) {
+            $find = Get-JobStep $jobs['ui-projects'] 'Find UI projects'
+            $solution = New-StepSolution $Properties
+            $output = Join-Path (Split-Path $solution) 'github-output'
+
+            $result = Invoke-Step $find['run'] @{ KIT = $root; SOLUTION = $solution; GITHUB_OUTPUT = $output }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Output
+            (Get-Content -Raw -LiteralPath $output).Trim() | Should -Be "os=$Expected"
+        }
+
+        # Review 3: a mutant that dropped -Runner from the script's own entry point survived every test, and both
+        # runners would then have built no UI project at all. The step is run here, as CI runs it.
+        It 'writes a filter with the UI projects <Runner> builds, run as CI runs it' -ForEach @(
+            @{ Runner = 'macos-latest'; Expected = @('src/Core/Core.csproj', 'src/Ui0/Ui0.csproj') }
+            @{ Runner = 'windows-latest'; Expected = @('src/Core/Core.csproj', 'src/Ui0/Ui0.csproj', 'src/Ui1/Ui1.csproj') }
+        ) {
+            $step = Get-JobStep $jobs['ui'] 'Solution filter'
+            $solution = New-StepSolution @('<UseMaui>true</UseMaui>', '<UseWPF>true</UseWPF>')
+            $dir = Split-Path $solution
+            $githubEnv = Join-Path $dir 'github-env'
+
+            $result = Invoke-Step $step['run'] @{ KIT = $root; SOLUTION = $solution; RUNNER_LABEL = $Runner; RUNNER_TEMP = $dir; GITHUB_ENV = $githubEnv }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Output
+            $filter = (@(Get-Content -LiteralPath $githubEnv) -match '^FILTER=') -replace '^FILTER=', ''
+            (Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json).solution.projects | Should -Be $Expected
+        }
+
+        It 'builds on each of those runners, and is skipped when there are none (an empty matrix would fail the run)' {
+            $ui = $jobs['ui']
+            $ui | Should -Not -BeNullOrEmpty
+            $ui['needs'] | Should -Be 'ui-projects'
+            $ui['if'] | Should -Be "needs.ui-projects.outputs.os != '[]'"
+            $ui['strategy']['matrix']['os'] | Should -Be '${{ fromJSON(needs.ui-projects.outputs.os) }}'
+            $ui['strategy']['fail-fast'] | Should -BeFalse
+            $ui['runs-on'] | Should -Be '${{ matrix.os }}'
+            @($ui['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })[0]['with']['persist-credentials'] | Should -BeFalse
+        }
+
+        # Review 2: each runner builds only what it can. An app with a MAUI client and a WPF tool would fail on macOS
+        # building the WPF one (NETSDK1100), so each runner works on a filter: every project but the UI ones it
+        # doesn't build. On Windows, that's the whole solution.
+        It 'works on a filter of the projects its runner can build' {
+            $ui = $jobs['ui']
+            $ui['env']['RUNNER_LABEL'] | Should -Be '${{ matrix.os }}'
+            $ui['env'].ContainsKey('EnableWindowsTargeting') | Should -BeFalse -Because 'macOS no longer builds Windows-only projects'
+            $filter = Get-JobStep $ui 'Solution filter'
+            $filter['run'] | Should -Match 'Get-UiProject\.ps1" -Solution \$env:SOLUTION -FilterPath \$filter -Runner \$env:RUNNER_LABEL'
+            $filter['run'] | Should -Match 'FILTER=\$filter" >> \$env:GITHUB_ENV'
+        }
+
+        # SUP-011: the workload set whose version is the SDK's own, so a build never picks up the latest workloads.
+        It 'restores the workloads of the UI projects it builds, at the workload set of the SDK in use, never unpinned' {
+            $restore = Get-JobStep $jobs['ui'] 'Restore workloads (pinned)'
+            $restore['run'] | Should -Match 'Where-Object \{ \$_\.Os -contains \$env:RUNNER_LABEL \}'
+            # Review 3: the full path, since CI runs from the repo root and the solution may sit in a subfolder.
+            $restore['run'] | Should -Match 'dotnet workload restore \$project\.FullPath --version \$version'
+            $restore['run'] | Should -Match '\$version = dotnet --version'
+            $dotnet.Text | Should -Not -Match 'dotnet workload (install|update)'
+        }
+
+        It 'restores locked on Windows; on macOS restores, then checks each lock file against the committed one' {
+            $windows = Get-JobStep $jobs['ui'] 'Restore (locked)'
+            $windows['if'] | Should -Be "runner.os == 'Windows'"
+            $windows['run'] | Should -Be 'dotnet restore $env:FILTER --locked-mode'
+            $mac = Get-JobStep $jobs['ui'] 'Restore (macOS)'
+            $mac['if'] | Should -Be "runner.os == 'macOS'"
+            $mac['run'] | Should -Be 'dotnet restore $env:FILTER -p:RestoreLockedMode=false'
+            $subset = Get-JobStep $jobs['ui'] 'Lock files match the committed ones'
+            $subset['if'] | Should -Be "runner.os == 'macOS'"
+            $subset['run'] | Should -Match '\$env:KIT/tools/Test-LockFileSubset\.ps1" -RepoRoot \$env:GITHUB_WORKSPACE'
+        }
+
+        It 'builds its filter with zero warnings, and on Windows checks its format and deprecated packages' {
+            (Get-JobStep $jobs['ui'] 'Build (zero warnings)')['run'] | Should -Be 'dotnet build $env:FILTER --no-restore --configuration Release -warnaserror'
+            $format = Get-JobStep $jobs['ui'] 'Format check'
+            $format['if'] | Should -Be "runner.os == 'Windows'"
+            $format['run'] | Should -Be 'dotnet format $env:FILTER --verify-no-changes --no-restore'
+            $deprecated = Get-JobStep $jobs['ui'] 'Deprecated packages'
+            $deprecated['if'] | Should -Be "runner.os == 'Windows'"
+            $deprecated['run'] | Should -Match 'Test-DeprecatedPackages\.ps1" -Path \$env:FILTER'
+        }
+
+        # The code shape check (CRF-011) evaluates every project with MSBuild, and a MAUI project doesn't evaluate on
+        # Linux, which has no workloads. So with UI projects it runs on Windows, over the whole solution; without, on
+        # Linux as before. Either way the required job gates it.
+        It 'checks code shape on Linux only without UI projects, and on Windows over the whole solution with them' {
+            $count = Get-JobStep $jobs['dotnet'] 'Count projects'
+            $count['run'] | Should -Match '"ui=\$\(\$ui\.Count\)" >> \$env:GITHUB_OUTPUT'
+            $linux = Get-JobStep $jobs['dotnet'] 'Code shape'
+            $linux['if'] | Should -Be "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'"
+            $windows = Get-JobStep $jobs['ui'] 'Code shape'
+            $windows['if'] | Should -Be "runner.os == 'Windows'"
+            $windows['run'] | Should -Match 'Test-CodeShape\.ps1" -Solution \$env:SOLUTION'
+        }
+
+        # The duplicate code check (CRF-003) lists each project's files through the same MSBuild evaluation, so it
+        # follows code shape: on Windows with UI projects, on Linux without. One PMD release and digest for both.
+        It 'checks duplicate code on Linux only without UI projects, and on Windows over the whole solution with them' {
+            $linuxOnly = "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'"
+            (Get-JobStep $jobs['dotnet'] 'Download PMD')['if'] | Should -Be $linuxOnly
+            (Get-JobStep $jobs['dotnet'] 'Duplicate code')['if'] | Should -Be $linuxOnly
+            $download = Get-JobStep $jobs['ui'] 'Download PMD'
+            $download['if'] | Should -Be "runner.os == 'Windows'"
+            $download['run'] | Should -Match 'Get-FileHash'
+            # Review 6: a hash mismatch must stop the job, and Windows runs PMD's batch launcher.
+            $download['run'] | Should -Match 'if \(\$hash -ne \$env:PMD_SHA256\) \{\s+"::error::[^"]+"\s+exit 1\s+\}'
+            $download['run'] | Should -Match 'bin/pmd\.bat"\)" >> \$env:GITHUB_ENV'
+            $windows = Get-JobStep $jobs['ui'] 'Duplicate code'
+            $windows['if'] | Should -Be "runner.os == 'Windows'"
+            $windows['run'] | Should -Match 'Test-Duplication\.ps1" -Solution \$env:SOLUTION -Pmd \$env:PMD'
+            foreach ($step in @((Get-JobStep $jobs['dotnet'] 'Download PMD'), $download)) { $step.Contains('env') -and $step['env'].Contains('PMD_VERSION') | Should -BeFalse }
+            $dotnet.Yaml['env']['PMD_VERSION'] | Should -Match '^\d+\.\d+\.\d+$'
+            $dotnet.Yaml['env']['PMD_SHA256'] | Should -Match '^[0-9a-f]{64}$'
+        }
+
+        # The SBOM (SUP-009) lists the shipped projects through MSBuild too, and must include the UI app, which ships.
+        # So with UI projects the Windows leg writes it, after restoring the whole solution; the steps are the Linux
+        # job's, word for word, so the SBOM is made one way.
+        It 'writes the SBOM on Windows over the whole solution when there are UI projects, with the Linux job''s steps' {
+            foreach ($name in 'Install CycloneDX', 'Write the SBOM', 'Upload the SBOM') {
+                $linux = Get-JobStep $jobs['dotnet'] $name
+                $windows = Get-JobStep $jobs['ui'] $name
+                $windows['if'] | Should -Be "runner.os == 'Windows'" -Because "'$name' runs on the Windows leg only"
+                # Review 7: after the locked restore, whose assets CycloneDX's --disable-package-restore reads.
+                $names = @($jobs['ui']['steps'] | ForEach-Object { $_['name'] })
+                $names.IndexOf('Restore (locked)') | Should -BeGreaterOrEqual 0 -Because 'the ui job restores locked'
+                $names.IndexOf($name) | Should -BeGreaterThan $names.IndexOf('Restore (locked)') -Because "'$name' needs the restore's assets"
+                foreach ($key in 'shell', 'env', 'run', 'uses', 'with') {
+                    ($windows[$key] | ConvertTo-Json -Depth 5) | Should -Be ($linux[$key] | ConvertTo-Json -Depth 5) -Because "'$name' has the Linux job's $key"
+                }
+            }
+        }
+
+        # The ruleset requires "dotnet / Build, test and package checks" by name (templates/github/main-protection.json),
+        # so that job waits for the UI builds and fails when they did: a required check can't be weakened by them.
+        It 'keeps the required job''s name, and has it wait for the UI builds unless the run was cancelled' {
+            $required = $jobs['dotnet']
+            $required['name'] | Should -Be 'Build, test and package checks'
+            @($required['needs']) | Should -Be @('ui-projects', 'ui')
+            $required['if'] | Should -Be '${{ !cancelled() }}'
+            $check = Get-JobStep $required 'UI projects built'
+            $check['if'] | Should -Be '${{ !cancelled() }}'
+            $check['env']['FIND'] | Should -Be '${{ needs.ui-projects.result }}'
+            $check['env']['UI'] | Should -Be '${{ needs.ui.result }}'
+            $check['env']['OS'] | Should -Be '${{ needs.ui-projects.outputs.os }}'
+        }
+
+        # One path for every app: the kit's own CI runs it on each pull request. The coverage gate still reads the
+        # whole solution, so it can tell a UI project (exempt) from a project no test loads (a failure).
+        It 'builds, formats, tests and checks packages on Linux through a filter of every project but the UI ones' {
+            $required = $jobs['dotnet']
+            $count = Get-JobStep $required 'Count projects'
+            $count['run'] | Should -Match 'Get-UiProject\.ps1" -Solution \$env:SOLUTION -FilterPath \$filter'
+            $count['run'] | Should -Match 'FILTER=\$filter" >> \$env:GITHUB_ENV'
+            $count['run'] | Should -Match 'Get-SolutionProjectCount\.ps1" -Solution \$env:SOLUTION\) - \$ui\.Count'
+            (Get-JobStep $required 'Restore (locked)')['run'] | Should -Be 'dotnet restore "$FILTER" --locked-mode'
+            (Get-JobStep $required 'Build (zero warnings)')['run'] | Should -Match '^dotnet build "\$FILTER" '
+            (Get-JobStep $required 'Format check')['run'] | Should -Match '^dotnet format "\$FILTER" '
+            (Get-JobStep $required 'Test with coverage')['run'] | Should -Match '^dotnet test --solution "\$FILTER" '
+            (Get-JobStep $required 'Coverage gate')['run'] | Should -Match '-Solution \$env:SOLUTION'
+            (Get-JobStep $required 'Deprecated packages')['run'] | Should -Match '-Path \$env:FILTER'
+        }
+
+        It 'passes the required job only when the UI builds <Case>' -ForEach @(
+            @{ Case = 'succeeded'; Find = 'success'; Ui = 'success'; Os = '["windows-latest","macos-latest"]'; Exit = 0 }
+            @{ Case = 'were skipped because there are no UI projects'; Find = 'success'; Ui = 'skipped'; Os = '[]'; Exit = 0 }
+            @{ Case = 'failed: not when one leg failed'; Find = 'success'; Ui = 'failure'; Os = '["windows-latest"]'; Exit = 1 }
+            @{ Case = 'were cancelled: not then'; Find = 'success'; Ui = 'cancelled'; Os = '["windows-latest"]'; Exit = 1 }
+            @{ Case = 'were skipped though there are UI projects: not then'; Find = 'success'; Ui = 'skipped'; Os = '["windows-latest"]'; Exit = 1 }
+            @{ Case = 'never ran because finding them failed: not then'; Find = 'failure'; Ui = 'skipped'; Os = ''; Exit = 1 }
+        ) {
+            $check = Get-JobStep $jobs['dotnet'] 'UI projects built'
+            $check['shell'] | Should -Be 'pwsh'
+            $script = Join-Path $TestDrive "ui-check-$(New-Guid).ps1"
+            Set-Content -LiteralPath $script -Value $check['run']
+            $env:FIND = $Find; $env:UI = $Ui; $env:OS = $Os
+            try { & pwsh -NoProfile -File $script *> $null }
+            finally { Remove-Item Env:FIND, Env:UI, Env:OS -ErrorAction SilentlyContinue }
+
+            $LASTEXITCODE | Should -Be $Exit
+        }
+    }
+
     # GAP-013 (SUP-009, ADR-0055): every build lists what it's made of, as a CycloneDX SBOM.
     Context 'dotnet-ci.reusable.yml SBOM' {
         BeforeAll {
-            $steps = @(Get-Steps $dotnet.Yaml)
+            # The Linux job's steps. With UI projects the ui job writes the SBOM instead, with the same steps (ADR-0059),
+            # which the UI builds context checks against these.
+            $steps = @($dotnet.Yaml['jobs']['dotnet']['steps'])
             $sbomRun = ($steps | Where-Object { "$($_['run'])" -match 'dotnet-CycloneDX' } | ForEach-Object { $_['run'] }) -join "`n"
         }
 
@@ -378,11 +624,11 @@ Describe 'Shared CI for app repos' {
             $sbomRun | Should -Match '--filename sbom\.cdx\.json'
         }
 
-        It 'runs every SBOM step only once the solution has projects' {
+        It 'runs every SBOM step only once the solution has projects, and on Linux only without UI projects' {
             $sbomSteps = @($steps | Where-Object { "$($_['run'])" -match 'CycloneDX' -or "$($_['uses'])" -like 'actions/upload-artifact@*' })
 
             $sbomSteps | Should -HaveCount 3
-            foreach ($step in $sbomSteps) { $step['if'] | Should -Be "steps.projects.outputs.count != '0'" }
+            foreach ($step in $sbomSteps) { $step['if'] | Should -Be "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'" }
         }
 
         It 'uploads the SBOM it wrote as the "sbom" artifact, failing when it''s missing' {

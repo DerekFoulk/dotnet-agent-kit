@@ -85,7 +85,7 @@ Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which 
 
 ## Coverage
 
-`dotnet test --coverage --coverage-output-format cobertura --results-directory <dir>` writes one Cobertura report per test project (Microsoft.Testing.Extensions.CodeCoverage, on Microsoft Testing Platform via `global.json`). `./tools/Test-CoverageGate.ps1 -Path <dir>` merges them and applies TST-004. It leaves out test assemblies and generated files (`*.g.cs`, `*.generated.cs`, anything under `obj/`), and it fails when it finds no report.
+`dotnet test --coverage --coverage-output-format cobertura --results-directory <dir>` writes one Cobertura report per test project (Microsoft.Testing.Extensions.CodeCoverage, on Microsoft Testing Platform via `global.json`). `./tools/Test-CoverageGate.ps1 -Path <dir>` merges them and applies TST-004. It leaves out test assemblies and generated files (`*.g.cs`, `*.generated.cs`, anything under `obj/`), and it fails when it finds no report. Given the solution, it also fails for any production project no test loads, except a UI project (a MAUI or desktop project, found by `tools/Get-UiProject.ps1`), which it exempts and names: its logic lives in libraries the gate counts (ARC-010, ADR-0059).
 
 ## Mutation testing
 

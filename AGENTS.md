@@ -103,6 +103,7 @@ In review mode, also ask the owner first before you:
 | Every rule has a source and an enforcement | `./tools/Test-RuleSources.ps1` |
 | Every rule in force has a quality area, and the scorecard's table is current; `-Update` rewrites the table after a rule or area changes | `./tools/Test-Scorecard.ps1` |
 | Every ADR has its required sections | `./tools/Test-AdrSections.ps1` |
+| List the solution's MAUI and desktop (UI) projects, which CI builds on Windows and macOS and the coverage gate exempts (ARC-010) | `./tools/Get-UiProject.ps1 -Solution dotnet-agent-kit.slnx` |
 | Regenerate agent rule files after editing a standard or this file | `./tools/Build-AgentRules.ps1` |
 | Check generated files are current | `./tools/Build-AgentRules.ps1 -Check` |
 | PR title and commit subjects are Conventional Commits | `./tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD` |

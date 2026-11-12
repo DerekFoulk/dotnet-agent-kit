@@ -87,10 +87,17 @@ Describe 'the intake data' {
     # The owner, 2026-11-11: every option says what it costs, paid ones stay on the list, and the defaults are free.
     It 'labels every tool and priced option Free, Free tier or Paid, with a price, source and date unless Free, and makes every default Free' {
         # A card is priced when its choice itself costs something (sign-in, hosting); the database card's prices are in
-        # its guide (prices), and the app type and data cards cost nothing in themselves.
+        # its guide (prices). On the other cards an option costs nothing in itself, unless it says otherwise: a MAUI app
+        # builds on Windows and macOS runners too, which a private repo pays for (ADR-0059).
         $pricedCards = @($intake['cards'] | Where-Object { $_['priced'] })
         @($pricedCards.id) | Should -Be @('signIn', 'hosting')
-        $priced = @($pricedCards | ForEach-Object { $_['options'] }) +
+        $pricedOptions = @($intake['cards'] | Where-Object { -not $_['priced'] } | ForEach-Object { $_['options'] } | Where-Object { $_.Contains('cost') })
+        @($pricedOptions.id) | Should -Be @('maui')
+        $maui = $pricedOptions[0]['cost']
+        $maui['label'] | Should -Be 'Free tier'
+        $maui['free'] | Should -Match 'public'
+        $maui['price'] | Should -Match 'macOS'
+        $priced = @($pricedCards | ForEach-Object { $_['options'] }) + $pricedOptions +
             @($intake['testKinds'] | ForEach-Object { $_['tools'] })
         foreach ($entry in $priced) {
             $cost = $entry['cost']

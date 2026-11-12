@@ -74,7 +74,7 @@ rules:
     scope: core
     paths: ["src/**"]
   - id: ARC-009
-    statement: "Give an app only the structure today's requirements need: a web app starts with one ARC-001 module and gets another only for a second distinct business area (its own language, data and rules), never one per entity or feature; a console tool, a standalone worker or a library is one project and its tests, its concerns kept apart by namespace, until code another app must share or a boundary the compiler must enforce needs a second project (MAUI and desktop apps are GAP-001's to settle); every project, each of a module's five included, is created with its first real type, never before; and inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository or an interface that inverts no dependency come only with the requirement the plan names for each."
+    statement: "Give an app only the structure today's requirements need: a web app starts with one ARC-001 module and gets another only for a second distinct business area (its own language, data and rules), never one per entity or feature; a console tool, a standalone worker or a library is one project and its tests, its concerns kept apart by namespace, until code another app must share or a boundary the compiler must enforce needs a second project (ARC-010 settles MAUI and desktop apps); every project, each of a module's five included, is created with its first real type, never before; and inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository or an interface that inverts no dependency come only with the requirement the plan names for each."
     why: "Microsoft keeps DDD and CQRS patterns for complex domains and calls them over-engineering for simple services, and the Well-Architected Framework asks for every component to be justified by a requirement; an agent following ARC-001 to the letter can still build every layer and pattern for a tiny app (GAP-002)."
     layer: outside
     status: proposed
@@ -82,6 +82,24 @@ rules:
     enforcement: "ci: dotnet-ci.reusable.yml runs tools/Test-EmptyProjects.ps1, which fails on a C# project in the solution with no source of its own (C#, Razor or .proto files) or with the class library template's empty Class1 left in it; the number of modules and the patterns inside them are advisory: the plan-checklist skill asks, and the reviewer agent checks"
     scope: core
     paths: ["**"]
+  - id: ARC-010
+    statement: "In MAUI and desktop apps, view models and all other logic live in UI-independent libraries (ARC-003); a UI project, one that sets UseMaui, UseWPF, UseWindowsForms or UseWinUI, holds only views, platform code and startup wiring, no other project references it, and the coverage gate exempts it."
+    why: "No plain test project can load a UI project, and Linux CI can't build one; with the logic in libraries it's tested and covered like any other code, and the UI project has nothing left to cover."
+    layer: owner
+    status: proposed
+    sources: ["ADR-0008", "ADR-0059", "https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-01"]
+    enforcement: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects; that a UI project holds no logic is advisory, checked by the reviewer agent"
+    scope: core
+    paths: ["src/**", "**/*.csproj"]
+  - id: ARC-011
+    statement: "Desktop apps use .NET MAUI (Windows and Mac Catalyst), the same stack as mobile; WPF, Windows Forms or WinUI 3 need an ADR."
+    why: "One UI stack across phone and desktop shares the most code and the kit's CI and rules; the others serve Windows alone."
+    layer: owner
+    status: proposed
+    sources: ["ADR-0008", "ADR-0059"]
+    enforcement: "advisory: an architecture choice; the reviewer agent checks for the ADR"
+    scope: core
+    paths: ["**/*.csproj"]
 ---
 
 # Architecture
@@ -97,4 +115,17 @@ ARC-001 sets the shape of a web app; ARC-009 sets how much of it to build, in fo
 3. **No empty projects.** A project is created with its first real type, and that includes each of ARC-001's five module projects: ARC-009 reads them as a module's full shape, reached as each one's first type arrives, not a set to scaffold on day one. A one-module app with no other module to call it has no Contracts project yet (ARC-002). `tools/Test-EmptyProjects.ps1` fails CI on a C# project with no source of its own (C#, Razor or `.proto` files), and on one that keeps `dotnet new classlib`'s empty `Class1`.
 4. **Patterns.** Inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository, or an interface that inverts no dependency (speculation, by CRF-004: see craft.md's SOLID notes) come only with the requirement the plan names for each. An interface that lets a test replace infrastructure does invert a dependency. A CRUD feature stays a simple endpoint, handler and data model.
 
-MAUI and desktop apps keep ADR-0008's MVVM defaults; their project structure is GAP-001's to settle.
+MAUI and desktop apps keep ADR-0008's MVVM defaults, with the project structure below (ARC-010).
+
+## MAUI and desktop apps
+
+ADR-0059 sets how these are shaped and built.
+
+- **Thin UI projects (ARC-010).** The UI project holds views (XAML and their code-behind), platform code and `MauiProgram`'s wiring. View models, commands, validation and everything else go in plain `net10.0` libraries, tested like any other. CommunityToolkit.Mvvm doesn't depend on a UI, so view models built with it live there too.
+- **CI.** The shared .NET CI finds UI projects with `tools/Get-UiProject.ps1`. Linux builds and tests every other project through a solution filter. A `ui` job builds with zero warnings on Windows (the whole solution) and on macOS (all but the Windows-only UI projects), with the workloads restored at the workload set of the SDK in use (SUP-011). The required check waits for it. Tests stay on Linux, where Testcontainers' Linux containers work.
+- **Lock files.** They're made on Windows, where a MAUI project targets every platform. macOS builds a subset, so it restores without locked mode, and `tools/Test-LockFileSubset.ps1` then fails unless each lock file matches the committed one for every framework it lists.
+- **On your machine.** Install the MAUI workload at the same workload set CI uses: `dotnet workload install maui --version <the version dotnet --version prints>`. Visual Studio's installer manages its own workloads instead; either works for building.
+
+## Pending ratification
+
+ARC-010 and ARC-011 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them. The coverage gate's exemption is in force once this change merges, which needs your yes, since it changes a CI check (AGENTS.md, "Working modes").

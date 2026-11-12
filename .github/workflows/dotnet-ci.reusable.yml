@@ -18,9 +18,197 @@ on:
 permissions:
   contents: read
 
+# PMD for the duplicate code check (CRF-003, ADR-0051), in one place for both jobs that run it. The release is pinned,
+# and its SHA-256 is GitHub's digest for the asset.
+env:
+  PMD_VERSION: '7.29.0'
+  PMD_SHA256: d27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179
+
 jobs:
+  # ADR-0059: Linux can't build MAUI or desktop (UI) projects. This job finds them, and the runners that build them.
+  ui-projects:
+    name: Find UI projects
+    runs-on: ubuntu-latest
+    outputs:
+      os: ${{ steps.find.outputs.os }}
+    env:
+      SOLUTION: ${{ inputs.solution }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      # Get-UiProject also fails when another project references a UI project (ARC-010).
+      - name: Find UI projects
+        id: find
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $ui = @(& "$env:KIT/tools/Get-UiProject.ps1" -Solution $env:SOLUTION)
+          $ui | ForEach-Object { "UI project: $($_.Path) ($($_.Kind)), built on $($_.Os -join ' and ')" }
+          if (-not $ui) { 'No UI projects; nothing to build on Windows or macOS.' }
+          $os = @($ui | ForEach-Object Os | Select-Object -Unique)
+          # -InputObject keeps the list whole: [] when empty. (-AsArray with it would wrap it in another array.)
+          "os=$(ConvertTo-Json -Compress -InputObject $os)" >> $env:GITHUB_OUTPUT
+
+  # Builds what each runner can: every project on Windows, all but the Windows-only UI ones on macOS. Windows also
+  # checks format, deprecated packages, code shape and duplicate code, and writes the SBOM. Tests run on Linux, in the
+  # dotnet job, where Testcontainers' Linux containers work. A matrix with no values fails the run, hence the if.
+  ui:
+    name: Build UI projects (${{ matrix.os }})
+    needs: ui-projects
+    if: needs.ui-projects.outputs.os != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(needs.ui-projects.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      SOLUTION: ${{ inputs.solution }}
+      RUNNER_LABEL: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # MinVer reads version tags from history
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      # Every project this runner can build: on Windows the whole solution; on macOS all but the Windows-only UI
+      # projects (WPF, Windows Forms, WinUI), which fail off Windows (NETSDK1100).
+      - name: Solution filter
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $filter = Join-Path $env:RUNNER_TEMP 'runner.slnf'
+          & "$env:KIT/tools/Get-UiProject.ps1" -Solution $env:SOLUTION -FilterPath $filter -Runner $env:RUNNER_LABEL | Out-Null
+          "FILTER=$filter" >> $env:GITHUB_ENV
+          Get-Content -Raw -LiteralPath $filter
+
+      # SUP-011: the workload set whose version is the SDK's own (one ships with each SDK release), never the latest.
+      # Not sdk.workloadVersion in global.json: every build then fails on a machine without that set (ADR-0059).
+      - name: Restore workloads (pinned)
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $version = dotnet --version
+          $ui = @(& "$env:KIT/tools/Get-UiProject.ps1" -Solution $env:SOLUTION | Where-Object { $_.Os -contains $env:RUNNER_LABEL })
+          foreach ($project in $ui) {
+            dotnet workload restore $project.FullPath --version $version
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Restore (locked)
+        if: runner.os == 'Windows'
+        run: dotnet restore $env:FILTER --locked-mode
+
+      # The lock files are made on Windows, where a MAUI project also targets Windows. macOS builds a subset of those
+      # frameworks, and NuGet refuses a locked restore whose frameworks differ (NU1004). So macOS restores unlocked
+      # and the next step holds it to the committed lock files instead (SUP-001, ADR-0059).
+      - name: Restore (macOS)
+        if: runner.os == 'macOS'
+        run: dotnet restore $env:FILTER -p:RestoreLockedMode=false
+
+      - name: Lock files match the committed ones
+        if: runner.os == 'macOS'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-LockFileSubset.ps1" -RepoRoot $env:GITHUB_WORKSPACE'
+
+      - name: Build (zero warnings)
+        run: dotnet build $env:FILTER --no-restore --configuration Release -warnaserror
+
+      # The Linux job checks every project but the UI ones; these cover the UI projects too.
+      - name: Format check
+        if: runner.os == 'Windows'
+        run: dotnet format $env:FILTER --verify-no-changes --no-restore
+
+      - name: Deprecated packages
+        if: runner.os == 'Windows'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:FILTER'
+
+      # CRF-011 (ADR-0050), over the whole solution: Linux can't evaluate a MAUI project, so the dotnet job skips it
+      # when there are UI projects. From the repo root, so its global.json picks the SDK.
+      - name: Code shape
+        if: runner.os == 'Windows'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
+
+      # CRF-003, over the whole solution, for the same reason as code shape: it lists each project's files through
+      # MSBuild. The runner's Java runs PMD's Windows launcher.
+      - name: Download PMD
+        if: runner.os == 'Windows'
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'pmd.zip'
+          Invoke-WebRequest -Uri "https://github.com/pmd/pmd/releases/download/pmd_releases%2F$env:PMD_VERSION/pmd-dist-$env:PMD_VERSION-bin.zip" -OutFile $zip
+          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
+          if ($hash -ne $env:PMD_SHA256) {
+            "::error::pmd.zip's SHA-256 is $hash; expected $env:PMD_SHA256."
+            exit 1
+          }
+          Expand-Archive -LiteralPath $zip -DestinationPath $env:RUNNER_TEMP
+          "PMD=$(Join-Path $env:RUNNER_TEMP "pmd-bin-$env:PMD_VERSION/bin/pmd.bat")" >> $env:GITHUB_ENV
+
+      - name: Duplicate code
+        if: runner.os == 'Windows'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-Duplication.ps1" -Solution $env:SOLUTION -Pmd $env:PMD'
+
+      # SUP-009 (ADR-0055), with the dotnet job's steps word for word: the SBOM of what ships, the UI app included,
+      # from this leg's restore of the whole solution.
+      - name: Install CycloneDX
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.cyclonedx.version
+          dotnet tool install CycloneDX --version $version --tool-path "$env:RUNNER_TEMP/cyclonedx"
+
+      # Test projects ship nothing, so they're left out: MSBuild names them, through a solution filter of the rest,
+      # because CycloneDX's own --exclude-test-projects misses one marked in Directory.Build.props. The locked
+      # restore above already wrote the package graph.
+      - name: Write the SBOM
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $filter = & "$env:KIT/tools/New-ShippedSolutionFilter.ps1" -Solution $env:SOLUTION -Destination "$env:RUNNER_TEMP/sbom-input"
+          & "$env:RUNNER_TEMP/cyclonedx/dotnet-CycloneDX" $filter --disable-package-restore --output-format Json --output "$env:RUNNER_TEMP/sbom" --filename sbom.cdx.json
+
+      - name: Upload the SBOM
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: ${{ runner.temp }}/sbom/sbom.cdx.json
+          if-no-files-found: error
+
+  # The required check (templates/github/main-protection.json names it). It waits for the UI builds and fails when
+  # they did, so they gate a merge too; !cancelled() lets it run after a skipped or failed UI build to say so.
   dotnet:
     name: Build, test and package checks
+    needs: [ui-projects, ui]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
       DOTNET_NOLOGO: 'true'
@@ -41,39 +229,45 @@ jobs:
       - id: kit
         uses: $/.github/actions/kit-tools
 
-      # An empty solution only warns "no project to restore", which would fail the zero-warnings gate.
-      # The .NET steps start running when the first project is added (build step 6).
+      # The steps below work on a solution filter (FILTER) of every project but the UI ones, which Linux can't build;
+      # the ui job builds those (ADR-0059). An empty filter only warns "no project to restore", which would fail
+      # the zero-warnings gate, so the .NET steps start running when the first such project is added (build step 6).
       - name: Count projects
         id: projects
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: |
-          $count = & "$env:KIT/tools/Get-SolutionProjectCount.ps1" -Solution $env:SOLUTION
+          $filter = Join-Path $env:RUNNER_TEMP 'without-ui.slnf'
+          $ui = @(& "$env:KIT/tools/Get-UiProject.ps1" -Solution $env:SOLUTION -FilterPath $filter)
+          "FILTER=$filter" >> $env:GITHUB_ENV
+          $count = (& "$env:KIT/tools/Get-SolutionProjectCount.ps1" -Solution $env:SOLUTION) - $ui.Count
           "count=$count" >> $env:GITHUB_OUTPUT
-          "Projects in ${env:SOLUTION}: $count"
+          "ui=$($ui.Count)" >> $env:GITHUB_OUTPUT
+          "Projects in ${env:SOLUTION} built here: $count; UI projects, built by the ui job: $($ui.Count)"
 
       # NuGetAudit and TreatWarningsAsErrors (Directory.Build.props) make a known vulnerability fail here.
       - name: Restore (locked)
         if: steps.projects.outputs.count != '0'
-        run: dotnet restore "$SOLUTION" --locked-mode
+        run: dotnet restore "$FILTER" --locked-mode
 
       # -warnaserror also fails warnings raised outside any project, such as NuGet's solution-level ones,
       # which Directory.Build.props can't reach (owner, 2026-11-04).
       - name: Build (zero warnings)
         if: steps.projects.outputs.count != '0'
-        run: dotnet build "$SOLUTION" --no-restore --configuration Release -warnaserror
+        run: dotnet build "$FILTER" --no-restore --configuration Release -warnaserror
 
       - name: Format check
         if: steps.projects.outputs.count != '0'
-        run: dotnet format "$SOLUTION" --verify-no-changes --no-restore
+        run: dotnet format "$FILTER" --verify-no-changes --no-restore
 
       # Microsoft Testing Platform (global.json) runs every test project; each writes a Cobertura report.
       - name: Test with coverage
         if: steps.projects.outputs.count != '0'
-        run: dotnet test --solution "$SOLUTION" --no-build --configuration Release --coverage --coverage-output-format cobertura --results-directory "$RUNNER_TEMP/test-results"
+        run: dotnet test --solution "$FILTER" --no-build --configuration Release --coverage --coverage-output-format cobertura --results-directory "$RUNNER_TEMP/test-results"
 
-      # TST-004: 100% line coverage for *.Domain, 95% for *.Application, 90% overall.
+      # TST-004: 100% line coverage for *.Domain, 95% for *.Application, 90% overall. It reads the whole solution,
+      # to tell a UI project (exempt, ARC-010) from a project no test loads (a failure).
       - name: Coverage gate
         if: steps.projects.outputs.count != '0'
         shell: pwsh
@@ -85,7 +279,28 @@ jobs:
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
-        run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:SOLUTION'
+        run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:FILTER'
+
+      # Last, and even after a failed step, so this job reports its own checks and the UI builds' result together.
+      - name: UI projects built
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        env:
+          FIND: ${{ needs.ui-projects.result }}
+          UI: ${{ needs.ui.result }}
+          OS: ${{ needs.ui-projects.outputs.os }}
+        run: |
+          if ($env:FIND -ne 'success') {
+            "::error::Finding the UI projects ended with '$env:FIND', so they weren't built."
+            exit 1
+          }
+          # Skipped is right only when there was nothing to build.
+          $expected = if ($env:OS -eq '[]') { 'skipped' } else { 'success' }
+          if ($env:UI -ne $expected) {
+            "::error::The UI builds ended with '$env:UI'; expected '$expected'. See the Build UI projects jobs."
+            exit 1
+          }
+          "UI builds: $env:UI."
 
       - name: Empty projects
         shell: pwsh
@@ -95,20 +310,20 @@ jobs:
 
       # CRF-011's limits, which no analyzer checks: nesting, statements per member, file length and LCOM4 (ADR-0050).
       # It runs from the repo root, so the repo's global.json picks the SDK that builds the kit's checking tool.
+      # It evaluates every project with MSBuild, and a MAUI project doesn't evaluate here, without workloads; with UI
+      # projects, the ui job runs it on Windows instead (ADR-0059).
       - name: Code shape
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
 
       # CRF-003: the same code in more than one place, found by PMD's copy-paste detector, CPD (BSD-style licence;
-      # ADR-0051). The release is pinned, and its SHA-256 is GitHub's digest for the asset; the runner's Java runs it.
+      # ADR-0051), at the release pinned above; the runner's Java runs it. Like code shape, it evaluates every project
+      # with MSBuild, so with UI projects the ui job runs it on Windows instead (ADR-0059).
       - name: Download PMD
-        if: steps.projects.outputs.count != '0'
-        env:
-          PMD_VERSION: '7.29.0'
-          PMD_SHA256: d27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         run: |
           curl --fail --silent --show-error --location --output "$RUNNER_TEMP/pmd.zip" \
             "https://github.com/pmd/pmd/releases/download/pmd_releases%2F$PMD_VERSION/pmd-dist-$PMD_VERSION-bin.zip"
@@ -117,7 +332,7 @@ jobs:
           echo "PMD=$RUNNER_TEMP/pmd-bin-$PMD_VERSION/bin/pmd" >> "$GITHUB_ENV"
 
       - name: Duplicate code
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
@@ -125,9 +340,10 @@ jobs:
 
       # SUP-009 (ADR-0055): an SBOM (software bill of materials) of what the build ships, in CycloneDX JSON. The OWASP
       # CycloneDX .NET tool (Apache-2.0) is installed for this run only, at the version the kit's tool manifest pins
-      # (.config/dotnet-tools.json, which Dependabot keeps current).
+      # (.config/dotnet-tools.json, which Dependabot keeps current). MSBuild evaluates every project to name the
+      # shipped ones, so with UI projects the ui job writes the SBOM on Windows instead, with these same steps (ADR-0059).
       - name: Install CycloneDX
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
@@ -139,7 +355,7 @@ jobs:
       # because CycloneDX's own --exclude-test-projects misses one marked in Directory.Build.props. The locked
       # restore above already wrote the package graph.
       - name: Write the SBOM
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
@@ -148,7 +364,7 @@ jobs:
           & "$env:RUNNER_TEMP/cyclonedx/dotnet-CycloneDX" $filter --disable-package-restore --output-format Json --output "$env:RUNNER_TEMP/sbom" --filename sbom.cdx.json
 
       - name: Upload the SBOM
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom

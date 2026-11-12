@@ -39,7 +39,18 @@ Describe 'New-KitApp settings' {
                 # The kit sync runs only on Dependabot's kit-pin PRs (ADR-0044), so it can't be required on every PR.
                 if ($Matches[1] -eq 'kit-sync.reusable.yml') { continue }
                 $shared = ConvertFrom-Yaml (Get-Content -Raw -LiteralPath (Join-Path $root '.github' 'workflows' $Matches[1]))
-                foreach ($job in $shared['jobs'].Values) { "$jobId / $($job['name'])" }
+                # A job another job needs is gated by it: the .NET CI's required job fails when the UI builds it
+                # waits for did (ADR-0059, SharedCi.Tests.ps1). Only the jobs nothing needs are required by name.
+                $needed = @($shared['jobs'].Values | ForEach-Object { @($_['needs']) } | Where-Object { $_ })
+                foreach ($id in $shared['jobs'].Keys | Where-Object { $needed -notcontains $_ }) { "$jobId / $($shared['jobs'][$id]['name'])" }
+                # Review 1: that holds only if each required job that needs another runs after it fails (a skipped
+                # required check counts as passed) and reads its result; otherwise a failed needed job slips through.
+                $requiredWithNeeds = $shared['jobs'].Keys | Where-Object { $needed -notcontains $_ -and $shared['jobs'][$_]['needs'] }
+                foreach ($job in $requiredWithNeeds | ForEach-Object { $shared['jobs'][$_] }) {
+                    $job['if'] | Should -Be '${{ !cancelled() }}' -Because "$($job['name']) gates the jobs it needs"
+                    $text = ConvertTo-Yaml $job['steps']
+                    foreach ($need in @($job['needs'])) { $text | Should -Match "needs\.$need\.result" }
+                }
             }
         }
         @($expected).Count | Should -Be 3

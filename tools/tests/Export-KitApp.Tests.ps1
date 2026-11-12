@@ -507,6 +507,22 @@ Describe 'Export-KitApp' {
             Should -BeNullOrEmpty
     }
 
+    # The coverage gate calls Get-UiProject.ps1 beside it (ADR-0059); an app missing a script another one calls
+    # would fail only when that line runs.
+    It 'includes every kit script that an exported kit script calls from its own folder' {
+        $targets = @($map | ForEach-Object { $_.Target })
+        $tools = @($targets | Where-Object { $_ -like '.kit/tools/*' })
+        $called = foreach ($tool in $tools) {
+            $text = Get-Content -Raw -LiteralPath (Join-Path $checkout 'tools' (Split-Path $tool -Leaf))
+            [regex]::Matches($text, "Join-Path \`$PSScriptRoot '([^'/\\]+\.ps(?:m)?1)'") | ForEach-Object { $_.Groups[1].Value }
+        }
+
+        $called | Should -Contain 'Get-UiProject.ps1'
+        foreach ($name in @($called | Sort-Object -Unique)) {
+            $tools | Should -Contain ".kit/tools/$name"
+        }
+    }
+
     # ADR-0043: Directory.Build.props points every project at files beside it (CodeMetricsConfig.txt,
     # BannedSymbols.txt); an app without one of them would build without the check it feeds.
     It 'includes every file the kit''s Directory.Build.props points to' {
