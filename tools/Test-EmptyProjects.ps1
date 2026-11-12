@@ -61,7 +61,8 @@ function Get-EmptyProjectProblem {
     if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) {
         throw "No solution file at $Solution."
     }
-    $solutionFolder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).Path
+    # The file system's own path, not a PowerShell drive's (TestDrive:\, a mapped drive), which .NET can't read.
+    $solutionFolder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).ProviderPath
     foreach ($project in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         # A hand-written solution may use Windows separators; PowerShell reads / on every platform.
         $relative = $project.GetAttribute('Path').Replace('\', '/')
