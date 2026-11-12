@@ -67,7 +67,7 @@ Describe 'the intake data' {
         # ADR-0003's "Added:" line names each tool by its package, in backticks, or by its name.
         $added = [regex]::Match((Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'adr' '0003-test-toolset.md')), '(?m)^- Added: (.+)$').Groups[1].Value
         $added | Should -Not -BeNullOrEmpty
-        foreach ($item in $added.TrimEnd('.') -split ',\s*') {
+        foreach ($item in $added.TrimEnd().TrimEnd('.') -split ',\s*') {
             $names = if ($item -match '`') { [regex]::Matches($item, '`([^`]+)`').ForEach({ $_.Groups[1].Value }) } else { @($item.Trim()) }
             foreach ($name in $names) {
                 @($tools | Where-Object { $_['name'] -eq $name -or $_['package'] -eq $name }) | Should -Not -BeNullOrEmpty -Because "ADR-0003 adds $name"

@@ -168,5 +168,137 @@
         }
       ]
     }
+  ],
+  "testKinds": [
+    {
+      "id": "unit",
+      "name": "Unit",
+      "checks": "One class or function: domain rules, application handlers, view models",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "xunit", "name": "xUnit v3", "package": "xunit.v3", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } },
+        { "id": "moq", "name": "Moq", "package": "Moq", "license": "BSD-3-Clause", "default": true, "cost": { "label": "Free" } },
+        { "id": "fluentassertions", "name": "FluentAssertions 8", "package": "FluentAssertions", "license": "Xceed Community License", "default": true, "cost": { "label": "Free" }, "note": "Free only while the app isn't sold or paid for; a commercial app uses AwesomeAssertions instead (ADR-0004)" },
+        { "id": "awesomeassertions", "name": "AwesomeAssertions", "package": "AwesomeAssertions", "license": "Apache-2.0", "default": false, "cost": { "label": "Free" }, "note": "FluentAssertions' API and namespace under Apache-2.0, for commercial apps (ADR-0004)" },
+        { "id": "bogus", "name": "Bogus", "package": "Bogus", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "fscheck", "name": "FsCheck", "package": "FsCheck", "license": "BSD-3-Clause", "default": true, "cost": { "label": "Free" } },
+        { "id": "faketimeprovider", "name": "FakeTimeProvider", "package": "Microsoft.Extensions.TimeProvider.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "fakelogger", "name": "FakeLogger", "package": "Microsoft.Extensions.Diagnostics.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "integration",
+      "name": "Integration",
+      "checks": "Our code plus one real outside thing: database, HTTP service, file system",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "testcontainers", "name": "Testcontainers", "package": "Testcontainers", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "respawn", "name": "Respawn", "package": "Respawn", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } },
+        { "id": "wiremock", "name": "WireMock.Net", "package": "WireMock.Net", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "functional",
+      "name": "Functional",
+      "checks": "The whole app in memory through its real HTTP pipeline; Blazor components",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "webapplicationfactory", "name": "WebApplicationFactory", "package": "Microsoft.AspNetCore.Mvc.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "bunit", "name": "bUnit", "package": "bunit", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "ui",
+      "name": "UI (end to end)",
+      "checks": "The running system in a real browser, accessibility included",
+      "runs": "Key paths on every PR; the full set nightly",
+      "tools": [
+        { "id": "playwright", "name": "Playwright", "package": "Microsoft.Playwright", "license": "MIT", "default": true, "cost": { "label": "Free" } },
+        { "id": "axe", "name": "Deque axe for Playwright", "package": "Deque.AxeCore.Playwright", "license": "MPL-2.0", "default": true, "cost": { "label": "Free" } },
+        { "id": "aspire-testing", "name": "Aspire testing", "package": "Aspire.Hosting.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "system",
+      "name": "System (smoke)",
+      "checks": "The deployed app in staging actually works",
+      "runs": "After each deployment",
+      "tools": [
+        { "id": "playwright", "name": "Playwright", "package": "Microsoft.Playwright", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "architecture",
+      "name": "Architecture",
+      "checks": "Layers and modules depend only in allowed directions",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "archunitnet", "name": "ArchUnitNET", "package": "TngTech.ArchUnitNET.xUnitV3", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "contract",
+      "name": "Contract",
+      "checks": "The public API didn't break",
+      "runs": "Every PR",
+      "tools": [
+        { "id": "openapi-snapshot", "name": "OpenAPI snapshot test", "package": "Microsoft.AspNetCore.OpenApi", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "The API's OpenAPI document must match a committed snapshot, as in the kit's sample (ContractTests.cs)" },
+        { "id": "package-validation", "name": ".NET package validation", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Part of the .NET SDK; for apps that publish NuGet packages" }
+      ]
+    },
+    {
+      "id": "performance",
+      "name": "Performance",
+      "checks": "Hot paths stay within their time and memory budget",
+      "runs": "Nightly or on demand",
+      "tools": [
+        { "id": "benchmarkdotnet", "name": "BenchmarkDotNet", "package": "BenchmarkDotNet", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+      ]
+    },
+    {
+      "id": "load",
+      "name": "Load",
+      "checks": "The deployed app keeps its response times under many users at once",
+      "runs": "On demand, before a release that changes load",
+      "tools": [
+        { "id": "locust", "name": "Locust", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Runs in GitHub Actions, which is free on a public repo (ADR-0057)" },
+        { "id": "jmeter", "name": "Apache JMeter", "license": "Apache-2.0", "default": false, "cost": { "label": "Free" }, "note": "For apps that need heavy database or queue load (ADR-0057)" },
+        {
+          "id": "azure-load-testing",
+          "name": "Azure Load Testing",
+          "license": "Microsoft Azure service",
+          "default": false,
+          "cost": {
+            "label": "Paid",
+            "price": "East US: $10 per resource per month, plus $0.15 per virtual user hour up to 10,000 and $0.06 after; each run bills at least 10 virtual users per engine for at least 10 minutes. A monthly virtual-user-hour limit on the resource stops tests at the cap",
+            "source": "https://prices.azure.com/api/retail/prices (Azure App Testing), https://azure.microsoft.com/en-us/pricing/details/load-testing/ and https://learn.microsoft.com/en-us/azure/app-testing/load-testing/how-to-manage-usage-limits",
+            "checked": "2026-11-11"
+          },
+          "note": "Runs JMeter or Locust scripts at scale from Azure. The resource fee includes some virtual user hours; how many is not verified (ADR-0057)"
+        },
+        {
+          "id": "nbomber",
+          "name": "NBomber",
+          "license": "NBomber license",
+          "default": false,
+          "cost": {
+            "label": "Paid",
+            "price": "Free for personal use only; any organization needs Business, $1,500 a year per company, or Enterprise, $2,500 a year",
+            "source": "https://nbomber.com/pricing",
+            "checked": "2026-11-11"
+          },
+          "note": "Load tests written in C# (ADR-0057)"
+        }
+      ]
+    },
+    {
+      "id": "mutation",
+      "name": "Mutation",
+      "checks": "The tests themselves catch real bugs",
+      "runs": "Nightly (TST-004, ADR-0039)",
+      "tools": [
+        { "id": "stryker", "name": "Stryker.NET", "package": "dotnet-stryker", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } }
+      ]
+    }
   ]
 }
