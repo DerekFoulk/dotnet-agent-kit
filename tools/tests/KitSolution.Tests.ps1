@@ -4,6 +4,22 @@
 # KitSolution.psm1 is the one place the kit's scripts and shared workflows read a solution, and the one place that
 # knows which framework MSBuild must evaluate a multi-target project through (CRF-003).
 
+BeforeDiscovery {
+    # Project names, and whether each is a benchmarks project (ADR-0062). Every copy of the rule must give these answers.
+    $BenchmarksNames = @(
+        @{ Name = 'App.Benchmarks'; Expected = $true }
+        @{ Name = 'Contoso.Orders.Benchmarks'; Expected = $true }
+        # The case MSBuild's EndsWith in tests/Directory.Build.props matches: exactly.
+        @{ Name = 'App.benchmarks'; Expected = $false }
+        @{ Name = 'App.BENCHMARKS'; Expected = $false }
+        @{ Name = 'AppBenchmarks'; Expected = $false }
+        @{ Name = 'Benchmarks'; Expected = $false }
+        @{ Name = 'App.Benchmarks.Tests'; Expected = $false }
+        @{ Name = 'App.Benchmarks.Core'; Expected = $false }
+        @{ Name = 'App'; Expected = $false }
+    )
+}
+
 BeforeAll {
     Import-Module (Join-Path $PSScriptRoot '..' 'KitSolution.psm1') -Force
 
@@ -88,6 +104,82 @@ Describe 'Get-SolutionProject' {
         $other = Write-Solution '<Project Path="src/App/App.csproj" />' -Name 'App.xml'
 
         { Get-SolutionProject -Solution $other } | Should -Throw "*App.xml isn't a .slnx solution*"
+    }
+}
+
+# ADR-0062: a benchmarks project is known by its name alone, and this is the one statement of that rule (CRF-003).
+Describe 'Test-BenchmarksProject' {
+    It 'says <Name> is a benchmarks project: <Expected>' -ForEach $BenchmarksNames {
+        Test-BenchmarksProject -Name $Name | Should -Be $Expected
+    }
+
+    # As each caller's own check did before the rule moved here: a Cobertura package or a solution entry (".csproj")
+    # with an empty name is no benchmarks project.
+    It 'says an empty name is no benchmarks project' {
+        { $script:empty = Test-BenchmarksProject -Name '' } | Should -Not -Throw
+        $script:empty | Should -Be $false
+    }
+
+    # MSBuild can't call the module, so its copy is checked against it. The file picks out projects by name only with
+    # MSBuildProjectName.EndsWith, which MSBuild runs as .NET's String.EndsWith(string): 'Tests' for test projects, and
+    # every other suffix for benchmarks projects. Each condition is picked by that structure, never by the suffix it
+    # checks, so one that drifts fails here instead of dropping out (review 1).
+    It 'agrees with sample/Directory.Build.props, an app''s tests/Directory.Build.props' -ForEach @(@{ Cases = $BenchmarksNames }) {
+        $props = [xml] (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'sample' 'Directory.Build.props'))
+        $conditions = @($props.SelectNodes('//*[@Condition]') | ForEach-Object { $_.GetAttribute('Condition') } |
+                Where-Object { $_ -match 'MSBuildProjectName' -and $_ -ne "`$(MSBuildProjectName.EndsWith('Tests'))" })
+
+        # Two: the PropertyGroup and the ItemGroup. A count also catches a condition that drifted out of this shape.
+        $conditions.Count | Should -Be 2 -Because 'the file sets up benchmarks projects in a PropertyGroup and an ItemGroup'
+        foreach ($condition in $conditions) {
+            $condition | Should -Match "^\`$\(MSBuildProjectName\.EndsWith\('[^']+'\)\)$"
+            $suffix = [regex]::Match($condition, "EndsWith\('([^']+)'\)").Groups[1].Value
+            foreach ($case in $Cases) {
+                $case.Name.EndsWith($suffix) | Should -Be $case.Expected -Because "$condition must agree on $($case.Name)"
+            }
+        }
+    }
+
+    # .editorconfig's section turns CA1515 off in benchmarks projects' folders, named by a glob; it's picked by what it
+    # sets, not by its glob. The glob is compared case-sensitively here, as the rule is; that a folder is named after its
+    # project is the kit's convention.
+    It 'agrees with .editorconfig''s section for benchmarks projects' -ForEach @(@{ Cases = $BenchmarksNames }) {
+        $sections = @()
+        $header = $null
+        foreach ($line in Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' '.editorconfig')) {
+            if ($line -match '^\[.*\]$') { $header = $line }
+            elseif ($line -match '^\s*dotnet_diagnostic\.CA1515\.severity\s*=\s*none\b') { $sections += $header }
+        }
+
+        $sections.Count | Should -BeGreaterThan 0 -Because '.editorconfig turns CA1515 off for benchmarks projects'
+        foreach ($section in $sections) {
+            # The project's folder at the repo's root, or at any depth; the same glob for both.
+            $section | Should -Match '^\[\{(?<glob>[^/,{}]+)/\*\*\.cs,\*\*/\k<glob>/\*\*\.cs\}\]$'
+            $glob = [regex]::Match($section, '^\[\{([^/,{}]+)/').Groups[1].Value
+            foreach ($case in $Cases) {
+                $case.Name -clike $glob | Should -Be $case.Expected -Because "$section must agree on $($case.Name)"
+            }
+        }
+    }
+
+    # The kit's scripts and workflows ask the module; a second copy of the rule could drift from it. A copy is a
+    # wildcard ending in .Benchmarks or an EndsWith('.Benchmarks'), the two ways the copies were written, or a regex
+    # ending in \.Benchmarks$. A copy written another way (a suffix built from parts) isn't found.
+    It 'is the only place a kit script or workflow states the rule' {
+        $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+        $tests = Join-Path $root 'tools' 'tests' ''
+        $files = @(
+            Get-ChildItem -LiteralPath (Join-Path $root 'tools') -File -Include '*.ps1', '*.psm1' -Recurse |
+                Where-Object { -not $_.FullName.StartsWith($tests, [StringComparison]::OrdinalIgnoreCase) -and $_.Name -ne 'KitSolution.psm1' }
+            Get-ChildItem -LiteralPath (Join-Path $root '.github') -File -Include '*.yml', '*.yaml' -Recurse
+            Get-ChildItem -LiteralPath (Join-Path $root 'templates') -File -Include '*.yml', '*.yaml', '*.ps1', '*.psm1' -Recurse -Force
+        )
+
+        $copies = @($files | Select-String -Pattern '\*\.Benchmarks[''"]|EndsWith\(\s*[''"]\.Benchmarks|\\\.Benchmarks\$' |
+                ForEach-Object { '{0}:{1}' -f [IO.Path]::GetRelativePath($root, $_.Path), $_.LineNumber })
+
+        $files.Count | Should -BeGreaterThan 10 -Because 'the search must reach the kit''s scripts and workflows'
+        $copies | Should -BeNullOrEmpty -Because 'Test-BenchmarksProject in tools/KitSolution.psm1 is the rule''s one source (CRF-003)'
     }
 }
 

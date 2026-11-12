@@ -178,6 +178,8 @@ dotnet_diagnostic.CA2007.severity = none
 
 # (kit) ADR-0062: BenchmarkDotNet runs only public, unsealed benchmark classes, and CA1515 asks an app (a benchmarks
 # project is an Exe) to make its public types internal. Off in benchmarks projects (names ending in .Benchmarks) only.
+# The name rule's source is Test-BenchmarksProject in the kit's tools/KitSolution.psm1 (.kit/tools in an app), which the
+# coverage gate and SBOM filter use; the kit's tests check the kit's copy of this section against it. Change it there.
 [{*.Benchmarks/**.cs,**/*.Benchmarks/**.cs}]
 dotnet_diagnostic.CA1515.severity = none
 

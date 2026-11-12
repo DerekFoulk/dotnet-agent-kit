@@ -8,8 +8,8 @@
     --exclude-test-projects reads only each project file's XML, so it misses a test project marked by a
     Directory.Build.props, as the kit's sample and every app's tests are. This asks MSBuild instead: a project
     whose evaluated IsTestProject is true is left out. So is a benchmarks project, whose name ends in ".Benchmarks"
-    (ADR-0062), as the coverage gate knows it. The filter is named after the solution, so the SBOM is too,
-    and it names the solution relative to itself, as a solution filter does. It writes the filter's path.
+    (ADR-0062), as Test-BenchmarksProject in KitSolution.psm1 knows it. The filter is named after the solution, so the
+    SBOM is too, and it names the solution relative to itself, as a solution filter does. It writes the filter's path.
 
 .EXAMPLE
     ./tools/New-ShippedSolutionFilter.ps1 -Solution Contoso.Orders.slnx -Destination $env:RUNNER_TEMP/sbom-input
@@ -39,7 +39,7 @@ function New-ShippedSolutionFilter {
         # may not evaluate the rest, such as a shared project (.shproj), on Linux.
         if ([IO.Path]::GetExtension($relative) -notin '.csproj', '.fsproj', '.vbproj', '.xsproj') { continue }
         # A benchmarks project measures what ships and ships nothing; it's known by its name (ADR-0062).
-        if ([IO.Path]::GetFileNameWithoutExtension($relative) -clike '*.Benchmarks') { continue }
+        if (Test-BenchmarksProject -Name ([IO.Path]::GetFileNameWithoutExtension($relative))) { continue }
         $output = @(& dotnet msbuild $project.FullPath -nologo -getProperty:IsTestProject 2>&1)
         if ($LASTEXITCODE -ne 0) { throw "MSBuild couldn't read $relative, so it's unknown whether it ships:`n$($output -join "`n")" }
         # The value is MSBuild's last line; an evaluation warning comes before it. Anything else is a surprise.
