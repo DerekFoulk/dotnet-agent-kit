@@ -528,6 +528,7 @@ Describe 'Shared CI for app repos' {
                 $windows['if'] | Should -Be "runner.os == 'Windows'" -Because "'$name' runs on the Windows leg only"
                 # Review 7: after the locked restore, whose assets CycloneDX's --disable-package-restore reads.
                 $names = @($jobs['ui']['steps'] | ForEach-Object { $_['name'] })
+                $names.IndexOf('Restore (locked)') | Should -BeGreaterOrEqual 0 -Because 'the ui job restores locked'
                 $names.IndexOf($name) | Should -BeGreaterThan $names.IndexOf('Restore (locked)') -Because "'$name' needs the restore's assets"
                 foreach ($key in 'shell', 'env', 'run', 'uses', 'with') {
                     ($windows[$key] | ConvertTo-Json -Depth 5) | Should -Be ($linux[$key] | ConvertTo-Json -Depth 5) -Because "'$name' has the Linux job's $key"
