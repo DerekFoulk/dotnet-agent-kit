@@ -1,20 +1,26 @@
 namespace Kit.CodeShape;
 
-/// <summary>Runs every CRF-008 limit over one project's hand-written files.</summary>
+/// <summary>Runs every CRF-008 limit over one project's hand-written files. Generated files are read too, for the
+/// state a partial type declares in them, but never reported on.</summary>
 internal static class ProjectCheck
 {
     public static IEnumerable<Finding> Check(ProjectFiles project)
     {
         ArgumentNullException.ThrowIfNull(project);
 
-        SourceFile[] files = [.. project.Files
-            .Select(path => new SourceFile(path, File.ReadAllText(path)) { Defines = project.Defines })
-            .Where(file => !GeneratedCode.Is(file))];
+        SourceFile[] files = [.. project.Files.Select(path => Read(path, project.Defines))];
         return files
+            .Where(file => !file.Generated)
             .SelectMany(file => NestingRule.Check(file).Concat(StatementRule.Check(file)).Concat(FileLengthRule.Check(file)))
             .Concat(CohesionRule.Check(files))
             .OrderBy(finding => finding.Path, StringComparer.Ordinal)
             .ThenBy(finding => finding.Line)
             .ThenBy(finding => finding.Column);
+    }
+
+    private static SourceFile Read(string path, IReadOnlyList<string> defines)
+    {
+        SourceFile file = new(path, File.ReadAllText(path)) { Defines = defines };
+        return file with { Generated = GeneratedCode.Is(file) };
     }
 }
