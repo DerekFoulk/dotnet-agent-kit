@@ -18,8 +18,12 @@ $ErrorActionPreference = 'Stop'
 # project's own source.
 $script:BuildFolders = 'bin', 'obj'
 
-# What counts as a project's own code: C#, and Razor components and pages (a Razor class library may hold only those).
-$script:SourceExtensions = '.cs', '.razor', '.cshtml'
+# The check reads C# projects only; other kinds (a database, compose or JavaScript project) hold other files.
+$script:ProjectExtension = '.csproj'
+
+# What counts as a C# project's own code: C#, Razor components and pages (a Razor class library may hold only those),
+# and .proto files, which Grpc.Tools turns into C# at build time.
+$script:SourceExtensions = '.cs', '.razor', '.cshtml', '.proto'
 
 function New-Problem {
     param([string] $Message)
@@ -42,6 +46,9 @@ function Get-EmptyProjectProblem {
     $solutionFolder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).Path
     foreach ($project in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $relative = $project.GetAttribute('Path')
+        if ([IO.Path]::GetExtension($relative) -ne $script:ProjectExtension) {
+            continue
+        }
         if (-not (Test-Path -LiteralPath (Join-Path $solutionFolder $relative) -PathType Leaf)) {
             New-Problem -Message "$relative is in the solution but isn't there"
             continue
