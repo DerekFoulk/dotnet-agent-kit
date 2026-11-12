@@ -2,3 +2,9 @@ body {
     font-family: system-ui, sans-serif;
     margin: 1rem;
 }
+
+/* A focus outline that shows on keyboard focus and contrasts at least 3:1 with the white page (UI-001). */
+:focus-visible {
+    outline: 3px solid #1a5fb4;
+    outline-offset: 2px;
+}
