@@ -74,7 +74,8 @@ The first run, before `--no-fail-on-error`, stopped with exit code 5 on the same
 ## Consequences
 
 - Every app's CI runs the check after the code shape check, using the runner's Java (preinstalled on `ubuntu-latest`, and on `windows-latest`, where an app with UI projects runs it, ADR-0059).
-- PMD's version and SHA-256 sit in one place, the workflow-level `env` of `dotnet-ci.reusable.yml`, which both "Download PMD" steps read (the Windows one runs for an app with UI projects, ADR-0059). Bumping PMD means updating both, from the release's asset digest. Dependabot can't see a download, so nothing yet tells the kit when PMD releases or has an advisory (GAP-023).
+- ~~PMD's version and SHA-256 sit in one place, the workflow-level `env` of `dotnet-ci.reusable.yml`, which both "Download PMD" steps read (the Windows one runs for an app with UI projects, ADR-0059). Bumping PMD means updating both, from the release's asset digest. Dependabot can't see a download, so nothing yet tells the kit when PMD releases or has an advisory (GAP-023).~~
+- **Amended by ADR-0060 (2026-11-11):** PMD's version sits in `.config/pmd/pom.xml`, where Dependabot's maven updater moves it, and the zip's SHA-256 in `.config/pmd/pmd-dist-bin.zip.sha256`. On Dependabot's PR, `dependabot-lockfiles.yml` pins the new hash from the release's asset digest; both "Download PMD" steps, on Linux and on Windows, read both from the kit and check the zip against that hash. GAP-023 is closed.
 - CPD finds repeated code, not repeated knowledge. A rule stated in two shapes passes, and so does duplication in docs, config and scripts. The reviewer agent still checks those (CRF-003's enforcement says so).
 - A file CPD can't read isn't checked: the CI log and the PR name each one, and the reviewer covers it. A later PMD release may read raw string literals; bumping PMD is the time to look.
 - GAP-020 is closed. GAP-022 now also covers running this check on an app's own machine.

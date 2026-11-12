@@ -15,7 +15,7 @@
     repeats, otherwise 1.
 
 .EXAMPLE
-    ./tools/Test-Duplication.ps1 -Solution dotnet-agent-kit.slnx -Pmd ~/pmd-bin-7.29.0/bin/pmd
+    ./tools/Test-Duplication.ps1 -Solution dotnet-agent-kit.slnx -Pmd ~/pmd-bin-<version>/bin/pmd
 #>
 [CmdletBinding()]
 param(

@@ -1,13 +1,16 @@
-name: dependabot lock files
+name: dependabot lock files and pins
 
 # Dependabot updates the lock file of the project that references a package, but not the lock files of
 # projects that get it through a project reference under central package management
 # (dependabot-core#13950). Locked restore in CI then fails. On Dependabot's NuGet PRs this workflow
 # refreshes every lock file and pushes them to the PR.
+# On Dependabot's maven PRs, which move PMD's version in .config/pmd/pom.xml (ADR-0060), it pins the new
+# release zip's SHA-256 beside it, from GitHub's digest for the asset, as a person did by hand before.
 #
-# Two jobs, so the write token never shares a runner with code from the PR: "refresh" runs restore
-# (which evaluates the PR's MSBuild files) with a read-only token and uploads only the lock files;
-# "push" never sets up .NET, validates the files, commits, pushes and approves CI.
+# The write token never shares a runner with code from the PR: "refresh" runs restore (which evaluates
+# the PR's MSBuild files) and "pin-pmd" runs the PR's copy of KitPmd.psm1, each with a read-only token,
+# and uploads only what it changed; "push" runs neither, validates the files, commits, pushes and
+# approves CI.
 #
 # The push is made with GITHUB_TOKEN, so the PR's CI runs for it are expected to wait for approval, as
 # the release PR's do (spikes/release-please); "push" approves them. If that ever doesn't happen, close
@@ -19,7 +22,7 @@ permissions:
   contents: read
 
 # A newer Dependabot run for the same PR (Dependabot rebased) replaces an older one. The actor is in the
-# group so the lock-file commit's own runs (actor github-actions[bot]) never cancel this one.
+# group so the pushed commit's own runs (actor github-actions[bot]) never cancel this one.
 concurrency:
   group: dependabot-lockfiles-${{ github.head_ref }}-${{ github.actor }}
   cancel-in-progress: true
@@ -79,10 +82,51 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  pin-pmd:
+    name: Pin PMD's release zip
+    # Dependabot's own maven PR, from a branch in this repo (not a fork), triggered by Dependabot.
+    if: github.actor == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'dependabot/maven/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.pin.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      # Set-PmdPin refuses a release without the zip, a zip GitHub gives no SHA-256 digest for, and one
+      # uploaded or changed under 7 days ago (ADR-0060).
+      - name: Pin the zip of the pom's version
+        id: pin
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          Import-Module ./tools/KitPmd.psm1
+          $version = Get-PmdVersion -Path .config/pmd
+          $release = gh api "repos/pmd/pmd/releases/tags/pmd_releases%2F$version" | ConvertFrom-Json
+          Set-PmdPin -Path .config/pmd -Release $release
+          $changed = [bool] (git status --porcelain -- .config/pmd/pmd-dist-bin.zip.sha256)
+          "Pin changed: $changed"
+          "changed=$($changed.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.pin.outputs.changed == 'true'
+        with:
+          name: pmd-pin
+          path: .config/pmd/pmd-dist-bin.zip.sha256
+          retention-days: 1
+          if-no-files-found: error
+
   push:
-    name: Push refreshed lock files
-    needs: refresh
-    if: needs.refresh.outputs.changed == 'true'
+    name: Push refreshed lock files or pin
+    # Runs once either job has changed something; at most one of them runs, chosen by the PR's branch.
+    needs: [refresh, pin-pmd]
+    if: ${{ !cancelled() && ((needs.refresh.result == 'success' && needs.refresh.outputs.changed == 'true') || (needs.pin-pmd.result == 'success' && needs.pin-pmd.outputs.changed == 'true')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -94,6 +138,7 @@ jobs:
           persist-credentials: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.refresh.outputs.changed == 'true'
         with:
           name: lockfiles
           path: ${{ runner.temp }}/lockfiles
@@ -101,6 +146,7 @@ jobs:
       # Trust nothing from the refresh job: every file must be a packages.lock.json beside an existing
       # project, with no ".." in its path, no links, and lock-file JSON. Then copy them into place.
       - name: Validate and place the lock files
+        if: needs.refresh.outputs.changed == 'true'
         run: |
           cd "$RUNNER_TEMP/lockfiles"
           if [ -n "$(find . ! -type f ! -type d)" ]; then
@@ -126,21 +172,51 @@ jobs:
             echo "Placed: $file"
           done < <(find . -type f)
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.pin-pmd.outputs.changed == 'true'
+        with:
+          name: pmd-pin
+          path: ${{ runner.temp }}/pmd-pin
+
+      # Trust only the pin's shape: one regular file, one line of a SHA-256, two spaces and a release
+      # zip's name. A pin for another version than the pom names is CI's to refuse (Get-PmdPin), as a
+      # wrong lock file is locked restore's. Nothing here runs the PR's code.
+      - name: Validate and place PMD's pin
+        if: needs.pin-pmd.outputs.changed == 'true'
+        run: |
+          cd "$RUNNER_TEMP/pmd-pin"
+          if [ "$(find . -mindepth 1)" != "./pmd-dist-bin.zip.sha256" ] || [ -L pmd-dist-bin.zip.sha256 ] || [ ! -f pmd-dist-bin.zip.sha256 ]; then
+            echo "::error::The artifact must hold only the regular file pmd-dist-bin.zip.sha256"
+            exit 1
+          fi
+          if [ "$(wc -l < pmd-dist-bin.zip.sha256)" -ne 1 ] || ! grep -Eqx '[0-9a-f]{64}  pmd-dist-[0-9]+\.[0-9]+\.[0-9]+-bin\.zip' pmd-dist-bin.zip.sha256; then
+            echo "::error::pmd-dist-bin.zip.sha256 must be one line: a SHA-256, two spaces and pmd-dist-<x.y.z>-bin.zip"
+            exit 1
+          fi
+          cp -- pmd-dist-bin.zip.sha256 "$GITHUB_WORKSPACE/.config/pmd/pmd-dist-bin.zip.sha256"
+          echo "Placed: .config/pmd/pmd-dist-bin.zip.sha256"
+
       - name: Commit and push
         id: push
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.head_ref }}
+          PMD_PIN: ${{ needs.pin-pmd.outputs.changed }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- '*packages.lock.json'
+          git add -- '*packages.lock.json' .config/pmd/pmd-dist-bin.zip.sha256
           if git diff --cached --quiet; then
             echo "Nothing to commit after validation."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git commit --quiet -m "chore(deps): refresh NuGet lock files"
+          if [ "$PMD_PIN" = "true" ]; then
+            subject="chore(deps): pin the SHA-256 of PMD's release zip"
+          else
+            subject="chore(deps): refresh NuGet lock files"
+          fi
+          git commit --quiet -m "$subject"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -166,6 +242,6 @@ jobs:
           waiting="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --event pull_request --status action_required --json databaseId --jq 'length')"
           echo "ci.yml runs on $sha: $ci; still waiting for approval: $waiting"
           if [ "$ci" -eq 0 ] || [ "$waiting" -gt 0 ]; then
-            echo "::error::CI for the lock-file commit $sha never started or is still waiting for approval; close and reopen the PR to run it"
+            echo "::error::CI for the pushed commit $sha never started or is still waiting for approval; close and reopen the PR to run it"
             exit 1
           fi

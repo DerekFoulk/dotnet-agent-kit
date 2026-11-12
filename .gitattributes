@@ -9,3 +9,5 @@
 .githooks/commit-msg text eol=lf
 *.yml  text eol=lf
 *.yaml text eol=lf
+# sha256sum --check reads the pin's line as is; a CR would end up in the file name.
+*.sha256 text eol=lf

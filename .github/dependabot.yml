@@ -1,17 +1,17 @@
-# Keeps packages, dotnet tools (.config/dotnet-tools.json), pinned GitHub Actions and the global.json SDK pin
-# current (SUP-008, ADR-0025).
+# Keeps packages, dotnet tools (.config/dotnet-tools.json), pinned GitHub Actions, the global.json SDK pin, and the
+# two tools the shared .NET CI downloads itself (ADR-0060): PMD, pinned in .config/pmd/pom.xml, and the gitleaks
+# image, pinned by tag and digest in .config/gitleaks/Dockerfile, current (SUP-008, ADR-0025).
 # The "chore" prefix makes each PR title a Conventional Commit, which CI requires, and "include: scope" adds
 # "(deps)": "chore(deps): bump ...". The NuGet updater ignores the scope for now (dependabot-core#15158), so
 # NuGet PRs come as "chore: Bump ...", which CI accepts too; keep "include: scope" for when that's fixed.
-# Not covered: the gitleaks image in dotnet-ci.reusable.yml is pinned inside a run command, so bump it
-# by hand with its release.
-# NuGet PRs: dependabot-lockfiles.yml refreshes the lock files Dependabot misses (dependabot-core#13950).
+# NuGet PRs: dependabot-lockfiles.yml refreshes the lock files Dependabot misses (dependabot-core#13950). PMD PRs:
+# the same workflow pins the new release zip's SHA-256, from GitHub's digest for the asset.
 # Each version update waits before Dependabot proposes it, so a release that's pulled or found compromised
 # in its first days never reaches a PR (ADR-0041): 7 days, and 14 for a NuGet or SDK major. Dependabot's own
 # default is 3 days. Security updates, on since 2026-11-09, don't wait. Shortening any wait here (a semver-minor-days or
 # semver-patch-days below 7 too), or narrowing it with an exclude or include list, is a guardrail change: an agent
 # merges it only on the owner's yes. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors,
-# 0.x packages and GitHub Actions bumps are the owner's.
+# 0.x packages, GitHub Actions bumps, and PMD and gitleaks bumps are the owner's.
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -45,3 +45,26 @@ updates:
     cooldown:
       default-days: 7
       semver-major-days: 14
+
+  # PMD for the duplicate code check (ADR-0051). Its release zip isn't on Maven Central, but pmd-dist's version is.
+  - package-ecosystem: maven
+    directory: /.config/pmd
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+
+  # The gitleaks image for the secret scan (ADR-0024). Docker takes no semver-*-days, so every update waits 7.
+  - package-ecosystem: docker
+    directory: /.config/gitleaks
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7

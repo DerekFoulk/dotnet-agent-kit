@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Pins PMD, which the shared .NET CI downloads for the duplicate code check (CRF-003, ADR-0051), where Dependabot's
+     maven updater can see it (ADR-0060). Nothing builds this project: CI reads the version here, downloads PMD's
+     release zip, pmd-dist-<version>-bin.zip, from GitHub and checks it against pmd-dist-bin.zip.sha256 beside this file.
+     On Dependabot's PR, dependabot-lockfiles.yml pins the new zip's SHA-256 from GitHub's digest for the asset. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>io.github.derekfoulk.dotnet-agent-kit</groupId>
+  <artifactId>pmd-pin</artifactId>
+  <version>1</version>
+  <packaging>pom</packaging>
+
+  <dependencies>
+    <dependency>
+      <groupId>net.sourceforge.pmd</groupId>
+      <artifactId>pmd-dist</artifactId>
+      <version>7.29.0</version>
+    </dependency>
+  </dependencies>
+</project>

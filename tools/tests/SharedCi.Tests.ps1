@@ -508,14 +508,15 @@ Describe 'Shared CI for app repos' {
             $download['if'] | Should -Be "runner.os == 'Windows'"
             $download['run'] | Should -Match 'Get-FileHash'
             # Review 6: a hash mismatch must stop the job, and Windows runs PMD's batch launcher.
-            $download['run'] | Should -Match 'if \(\$hash -ne \$env:PMD_SHA256\) \{\s+"::error::[^"]+"\s+exit 1\s+\}'
+            $download['run'] | Should -Match 'if \(\$hash -ne \$pin\.Sha256\) \{\s+"::error::[^"]+"\s+exit 1\s+\}'
             $download['run'] | Should -Match 'bin/pmd\.bat"\)" >> \$env:GITHUB_ENV'
             $windows = Get-JobStep $jobs['ui'] 'Duplicate code'
             $windows['if'] | Should -Be "runner.os == 'Windows'"
             $windows['run'] | Should -Match 'Test-Duplication\.ps1" -Solution \$env:SOLUTION -Pmd \$env:PMD'
-            foreach ($step in @((Get-JobStep $jobs['dotnet'] 'Download PMD'), $download)) { $step.Contains('env') -and $step['env'].Contains('PMD_VERSION') | Should -BeFalse }
-            $dotnet.Yaml['env']['PMD_VERSION'] | Should -Match '^\d+\.\d+\.\d+$'
-            $dotnet.Yaml['env']['PMD_SHA256'] | Should -Match '^[0-9a-f]{64}$'
+            # GAP-023 (ADR-0060): both read the kit's pin, so the workflow holds no PMD version or hash of its own.
+            $dotnet.Yaml.ContainsKey('env') -and ($dotnet.Yaml['env'].Contains('PMD_VERSION') -or $dotnet.Yaml['env'].Contains('PMD_SHA256')) | Should -BeFalse
+            # Review of the PR 53 merge: no SHA-256 anywhere in the workflow, under any name (action pins are 40 hex digits).
+            $dotnet.Text | Should -Not -Match '[0-9a-f]{64}'
         }
 
         # The SBOM (SUP-009) lists the shipped projects through MSBuild too, and must include the UI app, which ships.
@@ -640,6 +641,91 @@ Describe 'Shared CI for app repos' {
             $upload[0]['with']['if-no-files-found'] | Should -Be 'error'
             $output | Should -Not -BeNullOrEmpty
             $upload[0]['with']['path'] | Should -Be "$output/sbom.cdx.json"
+        }
+    }
+
+    # GAP-023 (ADR-0060): PMD's version is in the kit's .config/pmd/pom.xml, where Dependabot moves it, and the zip's
+    # SHA-256 beside it. An app's CI runs this workflow at its kit pin, so it reads the kit's copy ($env:KIT), never
+    # the app's workspace, which has none.
+    # Two steps download PMD: the dotnet job's on Linux, and the ui job's on Windows for an app with UI projects (ADR-0059).
+    Context 'dotnet-ci.reusable.yml PMD' {
+        BeforeAll {
+            $download = @(Get-Steps $dotnet.Yaml | Where-Object { $_['name'] -eq 'Download PMD' })
+            $linux = @(@($dotnet.Yaml['jobs']['dotnet']['steps']) | Where-Object { $_['name'] -eq 'Download PMD' })
+            $windows = @(@($dotnet.Yaml['jobs']['ui']['steps']) | Where-Object { $_['name'] -eq 'Download PMD' })
+        }
+
+        It "pins PMD in the kit's own manifest, consistently" {
+            Import-Module (Join-Path $root 'tools' 'KitPmd.psm1') -Force
+
+            $pin = Get-PmdPin -Path (Join-Path $root '.config' 'pmd')
+
+            $pin.Version | Should -Match '^\d+\.\d+\.\d+$'
+        }
+
+        It "reads PMD's version and SHA-256 from the kit's pin, through KitPmd.psm1, on Linux and on Windows" {
+            $download | Should -HaveCount 2
+            $linux | Should -HaveCount 1
+            $windows | Should -HaveCount 1
+            $linux[0]['shell'] | Should -Be 'pwsh'
+            $dotnet.Yaml['jobs']['ui']['defaults']['run']['shell'] | Should -Be 'pwsh'
+            foreach ($step in $download) {
+                $step['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+                $step['run'] | Should -Match 'Import-Module "\$env:KIT/tools/KitPmd\.psm1"'
+                $step['run'] | Should -Match '\$pin = Get-PmdPin -Path "\$env:KIT/\.config/pmd"'
+            }
+        }
+
+        It 'holds no PMD version or hash of its own, in either step' {
+            foreach ($step in $download) {
+                @($step['env'].Keys) | Should -Be @('KIT')
+                $step['run'] | Should -Not -Match '[0-9a-f]{64}'
+                $step['run'] | Should -Not -Match '\d+\.\d+\.\d+'
+                $step['run'] | Should -Not -Match 'PMD_VERSION|PMD_SHA256'
+            }
+        }
+
+        It 'on Linux, downloads the URL the pin names, checks it against the pin file, and stops on any failed command' {
+            $linux[0]['run'] | Should -Match '\$PSNativeCommandUseErrorActionPreference = \$true'
+            $linux[0]['run'] | Should -Match 'curl --fail .*\$pin\.Url'
+            $linux[0]['run'] | Should -Match 'sha256sum --check --strict \$pin\.PinFile'
+        }
+
+        It 'on Windows, downloads the URL the pin names and checks it against the pinned SHA-256' {
+            $windows[0]['run'] | Should -Match 'Invoke-WebRequest -Uri \$pin\.Url -OutFile \$zip'
+            # Review of the PR 53 merge: the file it unpacks is the file it checked.
+            $windows[0]['run'] | Should -Match 'Expand-Archive -LiteralPath \$zip '
+            $windows[0]['run'] | Should -Match '\(Get-FileHash -LiteralPath \$zip -Algorithm SHA256\)\.Hash'
+            $windows[0]['run'] | Should -Match 'bin/pmd\.bat'
+        }
+    }
+
+    # GAP-023 (ADR-0060): the gitleaks image is pinned by tag and digest in the kit's .config/gitleaks/Dockerfile, where
+    # Dependabot's docker updater moves both. The job keeps its name: the ruleset requires "Secret scan (gitleaks)".
+    Context 'dotnet-ci.reusable.yml secret scan' {
+        BeforeAll {
+            $secrets = $dotnet.Yaml['jobs']['secrets']
+            $scan = @(@($secrets['steps']) | Where-Object { "$($_['run'])" -match 'docker run' })
+            $dockerfile = Get-Content -LiteralPath (Join-Path $root '.config' 'gitleaks' 'Dockerfile')
+        }
+
+        It "pins the image in the kit's Dockerfile: one FROM line, by tag and digest, and nothing else" {
+            $instructions = @($dockerfile | Where-Object { $_ -notmatch '^\s*(#|$)' })
+
+            $instructions | Should -HaveCount 1
+            $instructions[0] | Should -Match '^FROM ghcr\.io/gitleaks/gitleaks:v\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$'
+        }
+
+        It 'runs the image the kit''s Dockerfile names, requiring its tag and digest, and names none itself' {
+            $secrets['name'] | Should -Be 'Secret scan (gitleaks)'
+            @(@($secrets['steps']) | Where-Object { "$($_['uses'])" -eq '$/.github/actions/kit-tools' }) | Should -HaveCount 1
+            $scan | Should -HaveCount 1
+            $scan[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+            $scan[0]['run'] | Should -Match '"\$KIT/\.config/gitleaks/Dockerfile"'
+            $scan[0]['run'] | Should -Match ([regex]::Escape('@sha256:[0-9a-f]{64}'))
+            $scan[0]['run'] | Should -Match '"\$image" git /repo --redact --verbose'
+            # The step's pattern names the image too, but no tag: v[0-9]+, never v8.
+            $dotnet.Text | Should -Not -Match 'gitleaks/gitleaks:v\d' -Because 'the Dockerfile is the one pin'
         }
     }
 

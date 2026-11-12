@@ -18,12 +18,6 @@ on:
 permissions:
   contents: read
 
-# PMD for the duplicate code check (CRF-003, ADR-0051), in one place for both jobs that run it. The release is pinned,
-# and its SHA-256 is GitHub's digest for the asset.
-env:
-  PMD_VERSION: '7.29.0'
-  PMD_SHA256: d27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179
-
 jobs:
   # ADR-0059: Linux can't build MAUI or desktop (UI) projects. This job finds them, and the runners that build them.
   ui-projects:
@@ -152,19 +146,24 @@ jobs:
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
 
       # CRF-003, over the whole solution, for the same reason as code shape: it lists each project's files through
-      # MSBuild. The runner's Java runs PMD's Windows launcher.
+      # MSBuild. The release is the one the kit pins (ADR-0060), checked against the same committed SHA-256 as on
+      # Linux. The runner's Java runs PMD's Windows launcher.
       - name: Download PMD
         if: runner.os == 'Windows'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
         run: |
-          $zip = Join-Path $env:RUNNER_TEMP 'pmd.zip'
-          Invoke-WebRequest -Uri "https://github.com/pmd/pmd/releases/download/pmd_releases%2F$env:PMD_VERSION/pmd-dist-$env:PMD_VERSION-bin.zip" -OutFile $zip
+          Import-Module "$env:KIT/tools/KitPmd.psm1"
+          $pin = Get-PmdPin -Path "$env:KIT/.config/pmd"
+          $zip = Join-Path $env:RUNNER_TEMP $pin.FileName
+          Invoke-WebRequest -Uri $pin.Url -OutFile $zip
           $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
-          if ($hash -ne $env:PMD_SHA256) {
-            "::error::pmd.zip's SHA-256 is $hash; expected $env:PMD_SHA256."
+          if ($hash -ne $pin.Sha256) {
+            "::error::$($pin.FileName)'s SHA-256 is $hash; $($pin.PinFile) pins $($pin.Sha256)."
             exit 1
           }
           Expand-Archive -LiteralPath $zip -DestinationPath $env:RUNNER_TEMP
-          "PMD=$(Join-Path $env:RUNNER_TEMP "pmd-bin-$env:PMD_VERSION/bin/pmd.bat")" >> $env:GITHUB_ENV
+          "PMD=$(Join-Path $env:RUNNER_TEMP "pmd-bin-$($pin.Version)/bin/pmd.bat")" >> $env:GITHUB_ENV
 
       - name: Duplicate code
         if: runner.os == 'Windows'
@@ -320,16 +319,23 @@ jobs:
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
 
       # CRF-003: the same code in more than one place, found by PMD's copy-paste detector, CPD (BSD-style licence;
-      # ADR-0051), at the release pinned above; the runner's Java runs it. Like code shape, it evaluates every project
-      # with MSBuild, so with UI projects the ui job runs it on Windows instead (ADR-0059).
+      # ADR-0051). The kit pins the release (ADR-0060): its version in .config/pmd/pom.xml, which Dependabot moves, and
+      # the zip's SHA-256 beside it, from GitHub's digest for the asset. The runner's Java runs it. Like code shape, it
+      # evaluates every project with MSBuild, so with UI projects the ui job runs it on Windows instead (ADR-0059).
       - name: Download PMD
         if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
         run: |
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/pmd.zip" \
-            "https://github.com/pmd/pmd/releases/download/pmd_releases%2F$PMD_VERSION/pmd-dist-$PMD_VERSION-bin.zip"
-          echo "$PMD_SHA256  $RUNNER_TEMP/pmd.zip" | sha256sum --check --strict
-          unzip -q "$RUNNER_TEMP/pmd.zip" -d "$RUNNER_TEMP"
-          echo "PMD=$RUNNER_TEMP/pmd-bin-$PMD_VERSION/bin/pmd" >> "$GITHUB_ENV"
+          $PSNativeCommandUseErrorActionPreference = $true
+          Import-Module "$env:KIT/tools/KitPmd.psm1"
+          $pin = Get-PmdPin -Path "$env:KIT/.config/pmd"
+          Set-Location $env:RUNNER_TEMP
+          curl --fail --silent --show-error --location --output $pin.FileName $pin.Url
+          sha256sum --check --strict $pin.PinFile
+          unzip -q $pin.FileName
+          "PMD=$env:RUNNER_TEMP/pmd-bin-$($pin.Version)/bin/pmd" >> $env:GITHUB_ENV
 
       - name: Duplicate code
         if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
@@ -380,12 +386,24 @@ jobs:
           fetch-depth: 0 # scan every commit, not just the latest tree
           persist-credentials: false # nothing in .git for the container to read
 
-      # The gitleaks CLI (MIT) from its official image, pinned by digest (ADR-0024). The GIT_CONFIG_*
-      # variables mark the mounted checkout as safe for git inside the container.
+      # The kit's files, at this workflow's own commit, for the image pin below.
+      - id: kit
+        uses: $/.github/actions/kit-tools
+
+      # The gitleaks CLI (MIT) from its official image, pinned by tag and digest in the kit's .config/gitleaks/Dockerfile,
+      # where Dependabot moves both (ADR-0024, ADR-0060). Nothing builds that file; a FROM line without both fails here.
+      # The GIT_CONFIG_* variables mark the mounted checkout as safe for git inside the container.
       - name: Scan the full git history
-        run: >-
-          docker run --rm
-          -v "$GITHUB_WORKSPACE:/repo"
-          -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo
-          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
-          git /repo --redact --verbose
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          dockerfile="$KIT/.config/gitleaks/Dockerfile"
+          image="$(sed -n -E 's#^FROM (ghcr\.io/gitleaks/gitleaks:v[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64})$#\1#p' "$dockerfile")"
+          if [ "$(grep -c '^FROM ' "$dockerfile")" -ne 1 ] || [ -z "$image" ]; then
+            echo "::error::$dockerfile must have one FROM line, naming the gitleaks image by tag and digest"
+            exit 1
+          fi
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/repo" \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            "$image" git /repo --redact --verbose
