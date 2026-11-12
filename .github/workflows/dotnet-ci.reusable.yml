@@ -114,8 +114,12 @@ jobs:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:SOLUTION'
 
+  # The required check (templates/github/main-protection.json names it). It waits for the UI builds and fails when
+  # they did, so they gate a merge too; !cancelled() lets it run after a skipped or failed UI build to say so.
   dotnet:
     name: Build, test and package checks
+    needs: [ui-projects, ui]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
       DOTNET_NOLOGO: 'true'
@@ -181,6 +185,27 @@ jobs:
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:SOLUTION'
+
+      # Last, and even after a failed step, so this job reports its own checks and the UI builds' result together.
+      - name: UI projects built
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        env:
+          FIND: ${{ needs.ui-projects.result }}
+          UI: ${{ needs.ui.result }}
+          OS: ${{ needs.ui-projects.outputs.os }}
+        run: |
+          if ($env:FIND -ne 'success') {
+            "::error::Finding the UI projects ended with '$env:FIND', so they weren't built."
+            exit 1
+          }
+          # Skipped is right only when there was nothing to build.
+          $expected = if ($env:OS -eq '[]') { 'skipped' } else { 'success' }
+          if ($env:UI -ne $expected) {
+            "::error::The UI builds ended with '$env:UI'; expected '$expected'. See the Build UI projects jobs."
+            exit 1
+          }
+          "UI builds: $env:UI."
 
   secrets:
     name: Secret scan (gitleaks)
