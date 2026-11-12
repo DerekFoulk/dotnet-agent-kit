@@ -54,6 +54,15 @@ Describe 'Get-UiProject.ps1' {
         $found[0].Os | Should -Be @('windows-latest', 'macos-latest')
     }
 
+    # .NET on Linux reads a backslash as part of a file name, so this fails there unless the name comes from the full path.
+    It 'names a UI project the solution writes with backslashes by its file name, on every OS' {
+        $solution = New-Solution @(@{ Path = 'src/App.Maui/App.Maui.csproj'; Properties = '<UseMaui>true</UseMaui>' })
+        (Get-Content -Raw -LiteralPath $solution).Replace('src/App.Maui/App.Maui.csproj', 'src\App.Maui\App.Maui.csproj') |
+            Set-Content -LiteralPath $solution
+
+        (Get-UiProject -Solution $solution).Name | Should -Be 'App.Maui'
+    }
+
     It 'finds a <Kind> project, which builds on Windows only' -ForEach @(
         @{ Property = 'UseWPF'; Kind = 'Wpf' }
         @{ Property = 'UseWindowsForms'; Kind = 'WindowsForms' }
