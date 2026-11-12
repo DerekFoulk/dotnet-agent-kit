@@ -30,9 +30,11 @@ function Get-BenchmarkBudgetProblem {
 
     $budgets = Get-Content -Raw -LiteralPath $Budget | ConvertFrom-Json -AsHashtable
     $reports = @(Get-ChildItem -LiteralPath $Path -Filter '*-report-full-compressed.json' -File -Recurse)
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($report in $reports) {
         foreach ($benchmark in (Get-Content -Raw -LiteralPath $report.FullName | ConvertFrom-Json -AsHashtable)['Benchmarks']) {
             $name = [string] $benchmark['FullName']
+            $null = $seen.Add($name)
             $limit = $budgets[$name]
             if ($null -eq $limit) {
                 "${name}: no budget in $(Split-Path -Leaf $Budget). Add one, with maxMeanNanoseconds and maxAllocatedBytes."
@@ -46,6 +48,12 @@ function Get-BenchmarkBudgetProblem {
             if ($allocated -gt [double] $limit['maxAllocatedBytes']) {
                 "${name}: allocates $(Format-Number $allocated) bytes per operation, over its budget of $(Format-Number $limit['maxAllocatedBytes'])."
             }
+        }
+    }
+
+    foreach ($name in ($budgets.Keys | Sort-Object -CaseSensitive)) {
+        if (-not $seen.Contains($name)) {
+            "${name}: has a budget, but no report has it. Was it renamed or removed? Keep $(Split-Path -Leaf $Budget) in step."
         }
     }
 }
