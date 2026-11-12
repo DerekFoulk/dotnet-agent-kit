@@ -21,8 +21,8 @@ function Get-SolutionProject {
     $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).ProviderPath
     foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
         $path = $node.GetAttribute('Path')
-        # A hand-written solution may use Windows separators; PowerShell's Join-Path reads them on every OS (the tests,
-        # which CI runs on Linux, pin it), so FullPath has this OS's own.
+        # A hand-written solution may use Windows separators. PowerShell's commands, Join-Path among them, accept \ or /
+        # on every OS (about_Path_Syntax), so FullPath has this OS's own; the tests, which CI runs on Linux too, pin it.
         [pscustomobject]@{ Path = $path; FullPath = [IO.Path]::GetFullPath((Join-Path $folder $path)) }
     }
 }
@@ -39,7 +39,7 @@ function Get-FirstTargetFramework {
             throw "MSBuild's evaluated properties have no $name; evaluate the project with -getProperty:$name."
         }
     }
-    if (-not $Properties.TargetFramework -and $Properties.TargetFrameworks) {
+    if (-not $Properties.TargetFramework) {
         $Properties.TargetFrameworks -split ';' | Where-Object { $_ } | Select-Object -First 1
     }
 }

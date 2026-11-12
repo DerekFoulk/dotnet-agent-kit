@@ -245,9 +245,9 @@ Describe 'Install-PlaywrightBrowser.ps1' {
         Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
     }
 
-    # Review round 1: a solution may write a path with backslashes; Get-UiProject.ps1 turns them into slashes, and so
-    # must this script, or on Linux the UI project's path wouldn't match and MSBuild would be asked to read it. (Windows
-    # reads either slash, so only the Linux run of this test catches a script that stops turning them.)
+    # Review round 1: a solution may write a path with backslashes. This script and Get-UiProject.ps1 both take the
+    # project's FullPath from KitSolution.psm1, or on Linux the UI project's path wouldn't match and MSBuild would be
+    # asked to read it. (Windows reads either slash, so only the Linux run of this test catches a mismatch.)
     It 'skips a UI project whose path the solution writes with backslashes' {
         Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $repo = Join-Path $TestDrive 'backslash'

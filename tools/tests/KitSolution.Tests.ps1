@@ -45,7 +45,8 @@ Describe 'Get-SolutionProject' {
         (Get-SolutionProject -Solution $solution).FullPath | Should -Be ([IO.Path]::GetFullPath((Join-Path $TestDrive 'repo' 'shared' 'Lib' 'Lib.csproj')))
     }
 
-    # .NET on Linux reads a backslash as part of a name, so this fails there without the module's own conversion.
+    # .NET on Linux reads a backslash as part of a name; PowerShell's Join-Path accepts it as a separator on every OS
+    # (about_Path_Syntax). This pins that, on Linux in CI.
     It 'reads a path written with backslashes as this OS''s full path, keeping Path as written' {
         $solution = Write-Solution '<Project Path="src\App\App.csproj" />'
 
