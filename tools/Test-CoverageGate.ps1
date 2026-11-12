@@ -48,12 +48,21 @@ function Test-GeneratedFile {
 }
 
 # One row per assembly: lines covered, lines counted, and the percentage, merged across reports.
+# Every Cobertura report under the path, parsed: the one place that says which files are reports.
+function Get-CoberturaReport {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    foreach ($file in Get-ChildItem -Path $Path -Recurse -Filter '*.cobertura.xml' -File) {
+        [pscustomobject]@{ Name = $file.Name; Xml = [xml] (Get-Content -LiteralPath $file.FullName -Raw) }
+    }
+}
+
 function Get-CoverageSummary {
     param([Parameter(Mandatory)] [string] $Path)
 
     $lines = @{}
-    foreach ($report in Get-ChildItem -Path $Path -Recurse -Filter '*.cobertura.xml' -File) {
-        [xml] $xml = Get-Content -LiteralPath $report.FullName -Raw
+    foreach ($report in Get-CoberturaReport -Path $Path) {
+        $xml = $report.Xml
         # XPath at every level, not property access: PowerShell reads an empty element (<packages />, <classes />,
         # <lines />) as a string, which has none of the children's properties.
         foreach ($package in @($xml.SelectNodes('/coverage/packages/package'))) {
@@ -105,8 +114,8 @@ function Invoke-CoverageGate {
     # An empty report is legitimate for a test project that loads nothing the gate counts, but on Windows Microsoft's
     # collector also writes one when the clone's path is too long, and the project it should have counted then fails
     # below as one no test loads. Name each, so that cause is in sight.
-    foreach ($report in Get-ChildItem -Path $Path -Recurse -Filter '*.cobertura.xml' -File) {
-        if (([xml] (Get-Content -LiteralPath $report.FullName -Raw)).SelectNodes('/coverage/packages/package').Count -eq 0) {
+    foreach ($report in Get-CoberturaReport -Path $Path) {
+        if ($report.Xml.SelectNodes('/coverage/packages/package').Count -eq 0) {
             Write-Host "$($report.Name) lists no assemblies. On Windows that can mean the clone's path is too long for the coverage collector; see docs/standards/testing.md, ""Browser and accessibility tests""."
         }
     }
