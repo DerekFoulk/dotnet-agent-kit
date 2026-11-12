@@ -119,6 +119,10 @@ Describe 'Performance tests (GAP-012)' {
             $run | Should -HaveCount 1
             $run[0]['run'] | Should -Match "-clike '\*\.Benchmarks'"
             $run[0]['run'] | Should -Match 'No benchmarks project'
+            # CRF-003: it reads the solution as every kit script does.
+            $run[0]['run'] | Should -Match 'Import-Module "\$env:KIT/tools/KitSolution\.psm1"'
+            $run[0]['run'] | Should -Match 'Get-SolutionProject -Solution \$env:SOLUTION'
+            $run[0]['run'] | Should -Not -Match '\[xml\]'
             $run[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
         }
 
