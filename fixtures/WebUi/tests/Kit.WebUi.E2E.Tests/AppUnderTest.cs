@@ -13,21 +13,20 @@ internal sealed class AppUnderTest : IAsyncDisposable
     private readonly IBrowser _browser;
     private readonly IBrowserContext _context;
 
-    private AppUnderTest(AppFactory factory, IPlaywright playwright, IBrowser browser, IBrowserContext context, IPage page)
+    private AppUnderTest(AppFactory factory, IPlaywright playwright, IBrowser browser, IBrowserContext context)
     {
         _factory = factory;
         Address = factory.ClientOptions.BaseAddress;
         _playwright = playwright;
         _browser = browser;
         _context = context;
-        Page = page;
     }
 
     /// <summary>Where the app listens, such as http://127.0.0.1:53124/.</summary>
     public Uri Address { get; }
 
-    /// <summary>The page, with the app's address as its base, so tests go to "/" or "checks".</summary>
-    public IPage Page { get; }
+    /// <summary>The context's one page, with the app's address as its base, so tests go to "/" or "checks".</summary>
+    public IPage Page => _context.Pages[0];
 
     /// <summary>
     /// Opens a page of the app and checks it loaded: axe finds nothing wrong with an error page, so a test that only
@@ -47,7 +46,8 @@ internal sealed class AppUnderTest : IAsyncDisposable
         IPlaywright playwright = await Playwright.CreateAsync();
         IBrowser browser = await playwright.Chromium.LaunchAsync();
         IBrowserContext context = await browser.NewContextAsync(new BrowserNewContextOptions { BaseURL = factory.ClientOptions.BaseAddress.ToString() });
-        return new AppUnderTest(factory, playwright, browser, context, await context.NewPageAsync());
+        await context.NewPageAsync();
+        return new AppUnderTest(factory, playwright, browser, context);
     }
 
     public async ValueTask DisposeAsync()
