@@ -194,7 +194,7 @@ Describe 'Shared CI for app repos' {
             $jobs.ContainsKey('ui-projects') | Should -BeTrue -Because 'a ui-projects job finds the UI projects'
             $find = Get-JobStep $jobs['ui-projects'] 'Find UI projects'
             $find['run'] | Should -Match '\$env:KIT/tools/Get-UiProject\.ps1" -Solution \$env:SOLUTION'
-            $find['run'] | Should -Match 'ConvertTo-Json -Compress -AsArray'
+            $find['run'] | Should -Match 'ConvertTo-Json -Compress -InputObject '
             $jobs['ui-projects']['outputs']['os'] | Should -Be "`${{ steps.$($find['id']).outputs.os }}"
         }
 
