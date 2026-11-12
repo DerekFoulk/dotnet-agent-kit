@@ -82,7 +82,7 @@ function Get-MigrationProblem {
             $start = $text.LastIndexOf("`n", $match.Index) + 1
             if ($text.Substring($start, $match.Index - $start).Contains('//')) { continue }
 
-            # A reviewed contract step has a "// DAT-003: <reason>" comment at the end of its line or directly above
+            # A reviewed contract step has a "// DAT-003: <reason>" comment at the end of the line it starts on or directly above
             # it, saying why the running version still works. A comment with no reason approves nothing.
             $comment = Get-Dat003Comment -Lines $lines -Line $line
             if ($comment -and $comment.Reason) { continue }
@@ -126,7 +126,7 @@ function Invoke-SafeMigrationsCheck {
     }
 
     if ($problems) {
-        Write-Host "`n$($problems.Count) unsafe migration step(s) under $Path. Leave drops and renames to a later release (expand, then contract), and put a '// DAT-003: <reason>' comment directly above each call that's safe, saying why the version still running works (docs/standards/data.md)." -ForegroundColor Red
+        Write-Host "`n$($problems.Count) migration problem(s) under $Path. Leave drops and renames to a later release (expand, then contract), and put a '// DAT-003: <reason>' comment directly above each call that's safe, saying why the version still running works (docs/standards/data.md)." -ForegroundColor Red
         return 1
     }
 

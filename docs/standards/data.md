@@ -20,7 +20,7 @@ rules:
     scope: core
     paths: ["**/*Infrastructure*/**", "**/Migrations/**", "**/Program.cs"]
   - id: DAT-003
-    statement: "Every migration of a database that more than one version of the app can reach (a server database, not one on the user's device) keeps working with the version still running: a schema change is split into expand (add, in one release), migrate (move data and code over) and contract (drop or rename, in a later release, once no running version uses the old shape); each call in a migration's Up that drops, renames or alters something, changes data or runs raw SQL carries a '// DAT-003: <reason>' comment, directly above it or at the end of its line, saying why the running version still works."
+    statement: "Every migration of a database that more than one version of the app can reach (a server database, not one on the user's device) keeps working with the version still running: a schema change is split into expand (add, in one release), migrate (move data and code over) and contract (drop or rename, in a later release, once no running version uses the old shape); each call in a migration's Up that drops, renames or alters something, changes data or runs raw SQL carries a '// DAT-003: <reason>' comment, directly above it or at the end of the line it starts on, saying why the running version still works."
     why: "During a deployment, and after a rollback, the old version runs against the new schema; a migration that drops or renames what it reads breaks it, and the Well-Architected Framework asks for backward-compatible changes so a release can roll back (GAP-008)."
     layer: outside
     status: proposed
@@ -34,7 +34,7 @@ rules:
     layer: outside
     status: proposed
     sources: ["ADR-0053", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying, retrieved 2026-11-11"]
-    enforcement: "advisory: nothing deploys an app yet (GAP-015), so the production workflow will apply the bundle once it exists; until then the reviewer checks Program.cs for Migrate outside development"
+    enforcement: "advisory: nothing deploys an app yet (GAP-015), so the production workflow will apply the bundle once it exists; until then the reviewer checks Program.cs for Migrate against a server database outside development"
     scope: core
     paths: ["**/Program.cs", ".github/workflows/**"]
   - id: DAT-005
@@ -69,7 +69,7 @@ While a release rolls out, and again after a rollback, the version that was runn
 
 1. **Expand:** add the new table or column, nullable or with a default. Both versions work.
 2. **Migrate:** ship code that writes both shapes and reads the new one, then copy the old data across.
-3. **Contract:** once no running version reads the old shape, drop or rename it, in a later release. Put a comment directly above that call, or at the end of its line, that says why it's safe:
+3. **Contract:** once no running version reads the old shape, drop or rename it, in a later release. Put a comment directly above that call, or at the end of the line it starts on, that says why it's safe:
 
    ```csharp
    // DAT-003: release 1.4 stopped reading Notes, and every instance runs 1.4 or later.
