@@ -61,3 +61,26 @@ function Get-EmptyProjectProblem {
         }
     }
 }
+
+# Prints every problem and returns 0 when every project holds code of its own, otherwise 1.
+function Invoke-EmptyProjectsCheck {
+    param([Parameter(Mandatory)] [string] $Solution)
+
+    $problems = @(Get-EmptyProjectProblem -Solution $Solution)
+    foreach ($problem in $problems) {
+        Write-Host "  $($problem.Message)" -ForegroundColor Red
+    }
+
+    if ($problems) {
+        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red
+        return 1
+    }
+
+    Write-Host "Every project in $Solution holds code of its own." -ForegroundColor Green
+    0
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    exit (Invoke-EmptyProjectsCheck -Solution $Solution)
+}
