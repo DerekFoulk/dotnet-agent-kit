@@ -15,9 +15,12 @@ Describe 'agent files shared with app repos' {
                 (Join-Path $root '.github' 'pull_request_template.md'), (Join-Path $root '.vscode' 'settings.json'),
                 (Join-Path $root 'docs' 'adr' '0000-template.md')) +
             @(Get-ChildItem -LiteralPath (Join-Path $root '.claude' 'rules'), (Join-Path $root '.github' 'instructions') -File -Filter '*.md')
+        # A kit-only skill, such as new-app, never reaches an app, so it may name the kit's own scripts. Export-KitApp
+        # says which those are.
+        . (Join-Path $root 'tools' 'Export-KitApp.ps1')
         $files = @($shared | ForEach-Object {
                 @{ Path = $_.FullName; Name = [IO.Path]::GetRelativePath($root, $_.FullName) -replace '\\', '/' }
-            })
+            } | Where-Object { -not (Test-KitOnlyPath -Path $_.Name) })
     }
 
     It '<Name> names no path under the kit''s own tools/ folder' -ForEach $files {

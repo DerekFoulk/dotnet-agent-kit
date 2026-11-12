@@ -38,6 +38,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 | Path | What |
 |---|---|
 | `src/`, `tests/` | This app's projects and their tests, created with the first feature. `tests/Directory.Build.props` sets up every `*Tests` project (xUnit v3, coverage) |
+| `docs/app-profile.md` | What this app is, as the owner chose at the new-app intake: app type, data, database, sign-in, hosting and test tools, with their costs (kit ADR-0058). An app made before the intake has none. Where it exists, plans start from it, and changing an answer takes an ADR in `docs/adr/` |
 | `docs/adr/` | This app's decisions, numbered from ADR-0001 |
 | `docs/standards/` | The kit's rules, in full (managed by the kit) |
 | `docs/runbook.md` | How to deploy, roll back, check, restore and run this app in an incident (OPS-004). A Draft until the first production deployment: fill in every `[fill in: ...]`, then set it to In use |

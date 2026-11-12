@@ -5,4 +5,4 @@ applyTo: 'Directory.Packages.props,**/*.csproj'
 
 # Testing
 
-- TST-005: Use the kit test toolset (xUnit v3, Moq, FluentAssertions 8, Bogus, bUnit, Playwright, Testcontainers, ArchUnitNET, FsCheck, Stryker and the ADR-0003 additions); a different tool needs an ADR.
+- TST-005: Use the kit test toolset (xUnit v3, Moq, FluentAssertions 8, Bogus, bUnit, Playwright, Testcontainers, ArchUnitNET, FsCheck, Stryker, Locust and the ADR-0003 additions); a different tool needs an ADR.

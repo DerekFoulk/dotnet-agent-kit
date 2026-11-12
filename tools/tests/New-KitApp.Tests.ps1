@@ -201,7 +201,14 @@ Describe 'New-KitApp run' {
         }
 
         function Get-WriteCall { @($script:calls | Where-Object { $_.Arguments -match '--method (POST|PATCH|PUT|DELETE)' }) }
+
+        # The intake answers the new-app skill writes (ADR-0058). Every run below takes them unless it passes its own.
+        $answersPath = Join-Path $TestDrive 'answers.json'
+        @{ appType = 'web-api-blazor'; data = 'relational'; database = 'azure-sql-free'; signIn = 'entra-external-id'; hosting = 'none'
+            testTools = @{ load = @('jmeter') } } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $answersPath
+        $PSDefaultParameterValues['New-KitApp:Intake'] = $answersPath
     }
+    AfterAll { $PSDefaultParameterValues.Remove('New-KitApp:Intake') }
 
     Context 'a private app' {
         BeforeAll {
@@ -253,6 +260,14 @@ Describe 'New-KitApp run' {
             # Windows doesn't record the executable bit, so the first commit has to set it (ADR-0032).
             (git -C $remote ls-tree main .githooks/commit-msg) | Should -Match '^100755 '
             (git -C $remote ls-tree main .githooks/commit-msg.ps1) | Should -Match '^100644 '
+        }
+
+        It 'commits the intake answers as docs/app-profile.md, in the first commit' {
+            $profileText = git -C $remote show main:docs/app-profile.md 2>$null | Out-String
+            $profileText | Should -Match '^# App profile: Contoso\.Orders' -Because 'the profile names the app'
+            $profileText | Should -Match '\| Which database should it use\? \| Azure SQL Database, free offer \|'
+            $profileText | Should -Match "Apache JMeter \(Apache-2\.0, Free\)" -Because 'the answers chose JMeter for load tests'
+            $profileText | Should -Match ([regex]::Escape($commit)) -Because 'it names the kit commit the cards came from'
         }
 
         It 'turns the commit hook on in the local copy' {
@@ -412,6 +427,52 @@ Describe 'New-KitApp run' {
             Get-WriteCall | Should -BeNullOrEmpty
             Test-Path -LiteralPath $app | Should -BeFalse
         }
+
+        It 'refuses one from before the intake, since it has no cards to check the answers against' {
+            git -C $kit switch -q -c no-intake
+            git -C $kit rm -q templates/app-intake.json
+            git -C $kit commit -q -m 'chore: no intake'
+            $old = (git -C $kit rev-parse HEAD).Trim()
+            git -C $kit switch -q main
+            $app = Join-Path $TestDrive 'NoIntake.Orders'
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive 'no-intake-remote.git')
+
+            { New-KitApp -Name 'NoIntake.Orders' -KitRef $old -Destination $app -KitRoot $kit 6>$null } |
+                Should -Throw '*has no templates/app-intake.json*newer -KitRef*'
+            $script:calls | Should -BeNullOrEmpty -Because 'the answers are checked before gh is called at all'
+            Test-Path -LiteralPath $app | Should -BeFalse
+        }
+    }
+
+    # The answers are checked before any step and before gh is called, with -WhatIf too, so a wrong answer leaves
+    # nothing behind and the skill can ask again (ADR-0058).
+    Context 'refusing the intake answers before any change: <Case>' -ForEach @(
+        @{ Case = 'no -Intake'; Answers = $null; Path = ''; Message = 'Pass -Intake*new-app skill*' }
+        @{ Case = 'a file that doesn''t exist'; Answers = $null; Path = 'missing.json'; Message = "*missing.json doesn't exist*" }
+        @{ Case = 'a file that isn''t JSON'; Answers = 'not json {'; Path = 'bad.json'; Message = "*aren't valid JSON*" }
+        @{ Case = 'JSON that isn''t an object'; Answers = '["web-api"]'; Path = 'list.json'; Message = "*aren't a JSON object*" }
+        @{ Case = 'an answer that isn''t an option'; Path = 'okta.json'
+            Answers = '{ "appType": "web-api", "data": "none", "database": "none", "signIn": "okta", "hosting": "none" }'
+            Message = "*'okta' isn't an option of the 'signIn' card*" }
+    ) {
+        BeforeAll {
+            $app = Join-Path $TestDrive "intake-$Path"
+            Initialize-FakeGitHub -Remote (Join-Path $TestDrive "intake-$Path.git")
+            $file = if ($Path) { Join-Path $TestDrive $Path } else { '' }
+            if ($null -ne $Answers) { Set-Content -LiteralPath $file -Value $Answers }
+            $runError = $null
+            try { New-KitApp -Name 'Intake.Orders' -KitRef $commit -Destination $app -KitRoot $kit -Intake $file -WhatIf 6>$null }
+            catch { $runError = $_ }
+        }
+
+        It 'stops with a message saying why' {
+            "$runError" | Should -BeLike $Message
+        }
+
+        It 'calls no gh and writes no file' {
+            $script:calls | Should -BeNullOrEmpty
+            Test-Path -LiteralPath $app | Should -BeFalse
+        }
     }
 
     Context 'run as a command' {
@@ -441,7 +502,7 @@ Describe 'New-KitApp run' {
             try {
                 $env:PATH = $fake + [IO.Path]::PathSeparator + $env:PATH
                 $folder = Join-Path $TestDrive "command-$Visibility"
-                $output = pwsh -NoProfile -File $script -Name 'Command.Orders' -KitRef $commit -Destination $folder -KitRoot $kit -WhatIf @Switches 2>&1 | Out-String
+                $output = pwsh -NoProfile -File $script -Name 'Command.Orders' -KitRef $commit -Destination $folder -KitRoot $kit -Intake $answersPath -WhatIf @Switches 2>&1 | Out-String
             }
             finally { $env:PATH = $savedPath }
 
@@ -478,7 +539,7 @@ Describe 'New-KitApp run' {
             "$runError" | Should -Match "Add the 'main protection' ruleset failed: .*HTTP 422"
             # Exactly: a failed step listed as done would tell the owner main is protected when it isn't.
             $lines = "$runError" -split "`r?`n"
-            $lines | Should -Contain "Done: Export the kit's files at $commit; Make the first commit; Create the private repo with the kit's merge settings; Push main."
+            $lines | Should -Contain "Done: Export the kit's files at $commit; Write the intake answers to docs/app-profile.md; Make the first commit; Create the private repo with the kit's merge settings; Push main."
             # The repo stays private: making it public comes after the ruleset.
             $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn on Dependabot alerts and security updates; Require actions pinned to a full commit SHA; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Require CodeQL results to merge; Turn the commit hook on in the local copy."
             @($script:calls.Arguments) | Should -Not -Match '--method PATCH'

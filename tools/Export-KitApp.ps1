@@ -36,6 +36,10 @@ $script:KitCopies = @(
     '.github/pull_request_template.md', 'docs/adr/0000-template.md', 'docs/database-guide.md'
 )
 
+# Kit skills an app doesn't get, though it gets the rest of .claude/skills/: new-app runs New-KitApp, which only the
+# kit has (ADR-0058).
+$script:KitOnlySkills = @('.claude/skills/new-app/')
+
 # Kit files an app gets at another path.
 $script:KitMoves = [ordered]@{
     # The test-project settings the kit's sample uses (xUnit v3, coverage); an app's tests live in tests/.
@@ -64,6 +68,13 @@ $script:KitBlockPattern = '(?s)<!-- kit:begin.*?<!-- kit:end -->'
 # Templates the app owns except for the block between kit:begin and kit:end, which is the kit's.
 $script:KitBlockTemplates = @('AGENTS.md', 'THIRD-PARTY-NOTICES.md')
 
+# Whether a kit file stays in the kit, inside a folder the app otherwise gets.
+function Test-KitOnlyPath {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    [bool] @($script:KitOnlySkills | Where-Object { $Path.StartsWith($_, [StringComparison]::Ordinal) })
+}
+
 # Lists what goes where: Source is a path in the kit, Target a path in the app. Owner says who changes
 # the file later: Kit (the sync job replaces it), KitBlock (only the kit:begin..kit:end block is the
 # kit's) or App.
@@ -80,7 +91,7 @@ function Get-KitAppFileMap {
 
     foreach ($path in $script:KitCopies) {
         if ($path.EndsWith('/')) {
-            foreach ($file in $inFolders | Where-Object { $_.StartsWith($path) }) {
+            foreach ($file in $inFolders | Where-Object { $_.StartsWith($path) -and -not (Test-KitOnlyPath -Path $_) }) {
                 [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = $file; Target = $file }
             }
         }
