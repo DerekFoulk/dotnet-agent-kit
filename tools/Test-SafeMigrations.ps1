@@ -23,7 +23,8 @@ $ErrorActionPreference = 'Stop'
 # MigrationBuilder operations that remove or change what the running version reads or writes.
 $script:UnsafeOperations = @(
     'DropTable', 'DropColumn', 'RenameTable', 'RenameColumn', 'AlterColumn', 'DropSchema', 'DropSequence', 'RenameSequence',
-    'DeleteData',
+    'AlterSequence', 'RestartSequence', 'AlterTable', 'AlterDatabase',
+    'DeleteData', 'UpdateData',
     # Raw SQL could do anything, so it's reported too.
     'Sql'
 )
@@ -80,7 +81,7 @@ function Get-MigrationProblem {
         }
         if ($approved) { continue }
 
-        $call = "\b$([regex]::Escape($up.Groups['builder'].Value))\s*\.\s*(?<op>\w+)\s*(?:<[^>]*>)?\s*\("
+        $call = "\b$([regex]::Escape($up.Groups['builder'].Value))\s*\.\s*(?<op>\w+)\s*(?:<[^()]*>)?\s*\("
         foreach ($match in [regex]::Matches($body, $call)) {
             if ($match.Index -lt $up.Index) { continue }
             $operation = $match.Groups['op'].Value
