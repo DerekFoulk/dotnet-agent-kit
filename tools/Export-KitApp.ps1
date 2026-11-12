@@ -33,7 +33,7 @@ $script:KitCopies = @(
     '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt',
     'CLAUDE.md', '.mcp.json', '.vscode/mcp.json', '.vscode/settings.json',
     '.claude/agents/reviewer.md', '.claude/skills/', 'docs/standards/', '.githooks/',
-    '.github/pull_request_template.md', 'docs/adr/0000-template.md'
+    '.github/pull_request_template.md', 'docs/adr/0000-template.md', 'docs/database-guide.md'
 )
 
 # Kit files an app gets at another path.
