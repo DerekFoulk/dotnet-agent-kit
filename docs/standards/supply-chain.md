@@ -74,12 +74,12 @@ rules:
     scope: core
     paths: [".github/**"]
   - id: SUP-009
-    statement: "Every build of a solution with projects writes a CycloneDX SBOM of its shipped projects, leaving out every project MSBuild marks as a test project, and keeps it as the run's 'sbom' artifact."
+    statement: "Every build of a solution with projects writes a CycloneDX SBOM of its shipped projects, leaving out every project MSBuild marks as a test project and every benchmarks project (ADR-0062), and keeps it as the run's 'sbom' artifact."
     why: "When a package is found vulnerable, the SBOM answers which builds ship it; the Microsoft cloud security benchmark asks for an SBOM in SPDX or CycloneDX (GAP-013)."
     layer: outside
     status: proposed
     sources: ["ADR-0055", "https://learn.microsoft.com/security/benchmark/azure/mcsb-v2-devops-security, retrieved 2026-11-11", "https://github.com/CycloneDX/cyclonedx-dotnet, retrieved 2026-11-11"]
-    enforcement: "ci: dotnet-ci.reusable.yml runs the CycloneDX .NET tool at the version .config/dotnet-tools.json pins, on the solution filter tools/New-ShippedSolutionFilter.ps1 writes of the projects MSBuild doesn't mark IsTestProject, and uploads the SBOM, failing when it's missing; tools/tests/SharedCi.Tests.ps1 and New-ShippedSolutionFilter.Tests.ps1 check them"
+    enforcement: "ci: dotnet-ci.reusable.yml runs the CycloneDX .NET tool at the version .config/dotnet-tools.json pins, on the solution filter tools/New-ShippedSolutionFilter.ps1 writes of the projects MSBuild doesn't mark IsTestProject and whose names don't end in .Benchmarks, and uploads the SBOM, failing when it's missing; tools/tests/SharedCi.Tests.ps1 and New-ShippedSolutionFilter.Tests.ps1 check them"
     scope: core
     paths: [".github/workflows/**", ".config/dotnet-tools.json"]
   - id: SUP-010

@@ -268,8 +268,8 @@
     {
       "id": "load",
       "name": "Load",
-      "checks": "The deployed app keeps its response times under many users at once",
-      "runs": "On demand, before a release that changes load",
+      "checks": "The app keeps its response times and error rate within budget under many users at once",
+      "runs": "Nightly or on demand, against the app started in CI; against a deployment once it has one",
       "tools": [
         { "id": "locust", "name": "Locust", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Runs in GitHub Actions: free on a public repo; a private one uses its account's Actions minutes (ADR-0057)" },
         { "id": "jmeter", "name": "Apache JMeter", "license": "Apache-2.0", "default": false, "cost": { "label": "Free" }, "note": "For apps that need heavy database or queue load (ADR-0057)" },

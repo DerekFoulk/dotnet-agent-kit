@@ -55,7 +55,7 @@ Decided by the owner, 2026-11-11: Locust is the default, run in GitHub Actions a
 
 - `templates/app-intake.json` lists the four under the "load" kind of test, with their licenses, labels and prices, and Locust as the default (ADR-0058). Its tests (`tools/tests/KitIntake.Tests.ps1`) pin this decision.
 - TST-005's toolset names Locust for load tests.
-- Nothing runs a load test yet: an app adds its Locust workflow when its first deployment exists to test (GAP-012, GAP-015). The prices above go stale; check them again before an app chooses a paid option.
+- ADR-0062 (2026-11-12) runs Locust: the shared performance workflow load tests an app started in CI, against a budget. A load test of a deployed app waits for its deployment (GAP-015). The prices above go stale; check them again before an app chooses a paid option.
 
 ## Pillars affected
 
