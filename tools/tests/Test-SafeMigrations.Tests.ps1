@@ -108,27 +108,50 @@ Describe 'Test-SafeMigrations.ps1' {
     }
 
     Context 'a reviewed contract step' {
-        It 'passes a migration whose DAT-003 comment says why it''s safe' {
-            New-Migration -Header '    // DAT-003: release 1.4 stopped reading Notes, and every instance runs 1.4 or later.' `
-                -Up 'migrationBuilder.DropColumn(name: "Notes", table: "Orders");'
+        It 'passes a call with a DAT-003 comment directly above it that says why it''s safe' {
+            New-Migration -Up '// Notes moved to OrderNotes in 1.3.',
+                '// DAT-003: release 1.4 stopped reading Notes, and every instance runs 1.4 or later.',
+                'migrationBuilder.DropColumn(', '    name: "Notes",', '    table: "Orders");'
 
             Get-Message | Should -BeNullOrEmpty
         }
 
-        It 'reports a DAT-003 comment with no reason, and still reports the operation' {
-            New-Migration -Header '    // DAT-003:   ' -Up 'migrationBuilder.DropColumn(name: "Notes", table: "Orders");'
+        It 'passes a call with a DAT-003 comment at the end of its line' {
+            New-Migration -Up 'migrationBuilder.DropColumn(name: "Notes", table: "Orders"); // DAT-003: unused since 1.4.'
+
+            Get-Message | Should -BeNullOrEmpty
+        }
+
+        It 'still reports another unsafe call in the same migration' {
+            New-Migration -Up '// DAT-003: release 1.4 stopped reading Notes.',
+                'migrationBuilder.DropColumn(name: "Notes", table: "Orders");',
+                'migrationBuilder.RenameColumn(name: "Total", table: "Orders", newName: "Amount");'
+
+            Get-Message | Should -BeLike '*:15: Up calls RenameColumn, *'
+        }
+
+        It 'doesn''t take a DAT-003 comment that isn''t directly above the call' {
+            New-Migration -Header '    // DAT-003: release 1.4 stopped reading Notes.' `
+                -Up 'migrationBuilder.DropColumn(name: "Notes", table: "Orders");' `
+                -Down '// DAT-003: release 1.4 stopped reading Notes.'
+
+            Get-Message | Should -BeLike '*:14: Up calls DropColumn, *'
+        }
+
+        It 'reports a DAT-003 comment with no reason, and still reports the call' {
+            New-Migration -Up '// DAT-003:   ', 'migrationBuilder.DropColumn(name: "Notes", table: "Orders");'
 
             $messages = @(Get-Message)
             $messages.Count | Should -Be 2
-            $messages[0] | Should -BeLike '*:7: the DAT-003 comment must say why the version still running works after this migration'
+            $messages[0] | Should -BeLike '*:13: the DAT-003 comment must say why the version still running works after this call'
             $messages[1] | Should -BeLike '*:14: Up calls DropColumn, *'
         }
 
-        It 'doesn''t take a DAT-003 comment in another file as a reason' {
-            New-Migration -Name '20261110120000_Earlier.cs' -Header '    // DAT-003: an earlier contract step.'
-            New-Migration -Up 'migrationBuilder.DropColumn(name: "Notes", table: "Orders");'
+        It 'doesn''t report a call that''s commented out' {
+            New-Migration -Up '// migrationBuilder.DropColumn(name: "Notes", table: "Orders");',
+                'migrationBuilder.AddColumn<string>(name: "Remarks", table: "Orders", nullable: true); // migrationBuilder.DropTable('
 
-            Get-Message | Should -BeLike '*_ChangeOrders.cs:13: Up calls DropColumn, *'
+            Get-Message | Should -BeNullOrEmpty
         }
     }
 
