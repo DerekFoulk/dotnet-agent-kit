@@ -39,6 +39,16 @@ BeforeAll {
     }
 }
 
+Describe 'Get-PmdVersion' {
+    # The workflow that pins a new zip asks GitHub for the release of this version.
+    It "gives the pom's version" {
+        $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
+
+        Get-Command -Module KitPmd -Name Get-PmdVersion -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        Get-PmdVersion -Path $folder | Should -Be '7.30.0'
+    }
+}
+
 Describe 'Get-PmdPin' {
     It "takes the version from the pom and the zip's SHA-256 from the pin file" {
         $folder = New-PinFolder -Version '7.29.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
