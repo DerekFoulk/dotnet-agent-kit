@@ -68,7 +68,7 @@ Option 3, decided in auto mode (ADR-0035) on 2026-11-12, at the owner's request 
 ## Consequences
 
 - `tools/Test-BenchmarkBudget.ps1`, `tools/Test-LoadBudget.ps1` and their tests. Apps get both in `.kit/tools`.
-- `.github/workflows/performance.reusable.yml`, the kit's `performance.yml` (nightly, on demand, every pull request), and the app template's `performance.yml` (nightly and on demand). An app adds the load test's inputs when it has an HTTP endpoint.
+- `.github/workflows/performance.reusable.yml`, the kit's `performance.yml` (nightly, on demand, every pull request), and the app template's `performance.yml` (nightly and on demand). The app owns that file, so the kit's sync never changes it: an app adds the load test's inputs there when it has an HTTP endpoint, and Dependabot moves its kit pin.
 - The sample has `sample/tests/Bookmarks.Benchmarks`, which benchmarks `Bookmark.Create`, and `sample/tests/load`, a Locust test of the bookmarks API. Both prove the workflow in CI. The load test measures the API and its SQLite file on a shared runner, not a deployment. A release-level load test of a deployed app waits for a deployment pipeline (GAP-015).
 - The coverage gate, the SBOM (SUP-009) and `.editorconfig` each leave out `*.Benchmarks` projects. The owner approved the coverage gate and SBOM changes on 2026-11-12, because they narrow CI checks. A benchmarks project is test-side code: it measures production code, ships nothing, and no test loads it, so the gate would otherwise fail it as untested, and the SBOM would list packages that never ship.
 - New dependencies:

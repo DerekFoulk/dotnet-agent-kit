@@ -4,7 +4,8 @@
 # here (the kit's docs/standards/testing.md, "Performance and load tests"):
 #       load-test-project: src/{{Name}}.Api/{{Name}}.Api.csproj
 #       load-test-user-jwt: true
-# The kit is pinned to the commit its release tag points to (ADR-0031); Dependabot moves the pin (kit ADR-0045).
+# This file is the app's: the kit's sync never changes it. The kit is pinned to the commit its release tag points to
+# (ADR-0031); Dependabot moves the pin (kit ADR-0045).
 name: Performance
 
 on:

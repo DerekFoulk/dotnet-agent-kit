@@ -55,8 +55,10 @@ $script:KitTools = @(
     'Test-BenchmarkBudget.ps1', 'Test-LoadBudget.ps1'
 )
 
-# Templates the app owns from the start: the sync job never changes them. The app fills in its runbook (OPS-004).
-$script:AppOwnedTemplates = @('README.md', 'App.slnx', 'docs/corrections-log.md', 'docs/runbook.md', '.github/dependabot.yml')
+# Templates the app owns from the start: the sync job never changes them. The app fills in its runbook (OPS-004), and
+# names its load test in performance.yml (ADR-0062); Dependabot still moves that file's kit pin.
+$script:AppOwnedTemplates = @('README.md', 'App.slnx', 'docs/corrections-log.md', 'docs/runbook.md', '.github/dependabot.yml',
+    '.github/workflows/performance.yml')
 
 # Where the app's own Build-AgentRules writes the rule files it generates from the kit's standards. The kit
 # manages them, but they're rebuilt, never edited, so the sync job never merges them.
