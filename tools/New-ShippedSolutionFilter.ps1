@@ -34,9 +34,15 @@ function New-ShippedSolutionFilter {
 
     $shipped = foreach ($node in ([xml] (Get-Content -LiteralPath $solutionPath -Raw)).SelectNodes('//Project')) {
         $relative = $node.GetAttribute('Path')
-        $output = & dotnet msbuild (Join-Path $solutionFolder $relative) -nologo -getProperty:IsTestProject 2>&1
+        # CycloneDX reads only these project types (its Utils.IsSupportedProjectType); MSBuild may not evaluate the
+        # rest, such as a shared project (.shproj), on Linux.
+        if ([IO.Path]::GetExtension($relative) -notin '.csproj', '.fsproj', '.vbproj') { continue }
+        $output = @(& dotnet msbuild (Join-Path $solutionFolder $relative) -nologo -getProperty:IsTestProject 2>&1)
         if ($LASTEXITCODE -ne 0) { throw "MSBuild couldn't read $relative, so it's unknown whether it ships:`n$($output -join "`n")" }
-        if ("$output".Trim() -ne 'true') { $relative }
+        # The value is MSBuild's last line; an evaluation warning comes before it. Anything else is a surprise.
+        $value = if ($output.Count) { "$($output[-1])".Trim() } else { '' }
+        if ($value -notin 'true', 'false', '') { throw "MSBuild gave '$value' as $relative's IsTestProject:`n$($output -join "`n")" }
+        if ($value -ne 'true') { $relative }
     }
 
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
