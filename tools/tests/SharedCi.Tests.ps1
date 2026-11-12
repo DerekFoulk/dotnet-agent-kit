@@ -345,6 +345,24 @@ Describe 'Shared CI for app repos' {
             $windows['run'] | Should -Match 'Test-CodeShape\.ps1" -Solution \$env:SOLUTION'
         }
 
+        # The duplicate code check (CRF-003) lists each project's files through the same MSBuild evaluation, so it
+        # follows code shape: on Windows with UI projects, on Linux without. One PMD release and digest for both.
+        It 'checks duplicate code on Linux only without UI projects, and on Windows over the whole solution with them' {
+            $linuxOnly = "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'"
+            (Get-JobStep $jobs['dotnet'] 'Download PMD')['if'] | Should -Be $linuxOnly
+            (Get-JobStep $jobs['dotnet'] 'Duplicate code')['if'] | Should -Be $linuxOnly
+            $download = Get-JobStep $jobs['ui'] 'Download PMD'
+            $download['if'] | Should -Be "runner.os == 'Windows'"
+            $download['run'] | Should -Match 'Get-FileHash'
+            $download['run'] | Should -Match '\$env:PMD_SHA256'
+            $windows = Get-JobStep $jobs['ui'] 'Duplicate code'
+            $windows['if'] | Should -Be "runner.os == 'Windows'"
+            $windows['run'] | Should -Match 'Test-Duplication\.ps1" -Solution \$env:SOLUTION -Pmd \$env:PMD'
+            foreach ($step in @((Get-JobStep $jobs['dotnet'] 'Download PMD'), $download)) { $step.Contains('env') -and $step['env'].Contains('PMD_VERSION') | Should -BeFalse }
+            $dotnet.Yaml['env']['PMD_VERSION'] | Should -Match '^\d+\.\d+\.\d+$'
+            $dotnet.Yaml['env']['PMD_SHA256'] | Should -Match '^[0-9a-f]{64}$'
+        }
+
         # The ruleset requires "dotnet / Build, test and package checks" by name (templates/github/main-protection.json),
         # so that job waits for the UI builds and fails when they did: a required check can't be weakened by them.
         It 'keeps the required job''s name, and has it wait for the UI builds unless the run was cancelled' {
