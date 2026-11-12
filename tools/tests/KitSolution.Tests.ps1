@@ -29,4 +29,10 @@ Describe 'Get-SolutionProject' {
         $projects.FullPath | Should -Be ([IO.Path]::GetFullPath((Join-Path $folder 'src' 'App' 'App.csproj'))),
             ([IO.Path]::GetFullPath((Join-Path $folder 'tests' 'App.Tests' 'App.Tests.csproj')))
     }
+
+    It 'says plainly when the solution file is missing' {
+        $missing = Join-Path $TestDrive 'missing.slnx'
+
+        { Get-SolutionProject -Solution $missing } | Should -Throw "No solution file at '$missing'."
+    }
 }
