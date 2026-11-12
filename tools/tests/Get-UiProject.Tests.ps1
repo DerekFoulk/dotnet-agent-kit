@@ -115,4 +115,22 @@ Describe 'Get-UiProject.ps1' {
         $json.solution.path | Should -Be (Resolve-Path -LiteralPath $solution).Path
         $json.solution.projects | Should -Be @('src/App.Core/App.Core.csproj', 'tests/App.Core.Tests/App.Core.Tests.csproj')
     }
+
+    # Review 2: macOS builds the MAUI project but not a WPF one beside it, which fails off Windows (NETSDK1100).
+    It 'with -Runner, also puts in the filter the UI projects that runner builds: <Runner>' -ForEach @(
+        @{ Runner = 'macos-latest'; Expected = @('src/App.Core/App.Core.csproj', 'src/App.Maui/App.Maui.csproj') }
+        @{ Runner = 'windows-latest'; Expected = @('src/App.Core/App.Core.csproj', 'src/App.Maui/App.Maui.csproj', 'src/App.Wpf/App.Wpf.csproj') }
+    ) {
+        $solution = New-Solution @(
+            @{ Path = 'src/App.Core/App.Core.csproj'; Properties = '' }
+            @{ Path = 'src/App.Maui/App.Maui.csproj'; Properties = '<UseMaui>true</UseMaui>' }
+            @{ Path = 'src/App.Wpf/App.Wpf.csproj'; Properties = '<UseWPF>true</UseWPF>' }
+        )
+        $filter = Join-Path $TestDrive "filter-$(New-Guid).slnf"
+        (Get-Command Get-UiProject).Parameters.ContainsKey('Runner') | Should -BeTrue
+
+        Get-UiProject -Solution $solution -FilterPath $filter -Runner $Runner | Out-Null
+
+        (Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json).solution.projects | Should -Be $Expected
+    }
 }
