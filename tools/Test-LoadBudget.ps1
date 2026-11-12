@@ -37,6 +37,15 @@ function Get-LoadBudgetProblem {
     foreach ($key in $keys) {
         $limit = $budgets[$key]
         $row = $rows[$key]
+        if ($limit.Contains('maxFailureRatio')) {
+            $requests = [long] $row.'Request Count'
+            $failures = [long] $row.'Failure Count'
+            $max = [double] $limit['maxFailureRatio']
+            if ($failures -gt $requests * $max) {
+                "${key}: $failures of $requests requests failed ($(Format-Number (100.0 * $failures / $requests))%), over its budget of $(Format-Number (100 * $max))%."
+            }
+        }
+        if (-not $limit.Contains('maxMilliseconds')) { continue }
         foreach ($percentile in $limit['maxMilliseconds'].Keys) {
             $time = [double] $row.$percentile
             $max = [double] $limit['maxMilliseconds'][$percentile]
