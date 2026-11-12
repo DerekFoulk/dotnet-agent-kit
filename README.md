@@ -134,7 +134,7 @@ The mode is yours alone. Review mode writes `review` to `.agent-mode`, which eve
 
 | Workflow | What it checks |
 |---|---|
-| `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage, the coverage gate (TST-004), and deprecated packages, then uploads a CycloneDX SBOM of the shipped projects as the `sbom` artifact (SUP-009, ADR-0055). It also runs a gitleaks secret scan of the full git history |
+| `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage, the coverage gate (TST-004), and deprecated packages, then uploads an SBOM (software bill of materials: every package the build ships, with its version and licence) as the `sbom` artifact, in CycloneDX JSON, with test projects left out (SUP-009, ADR-0055). It also runs a gitleaks secret scan of the full git history |
 | `codeql.reusable.yml` | CodeQL code scanning of the GitHub Actions workflows, and of the C# once there is some, with no build (ADR-0036). Results go to the repo's Security tab. In the kit, the ruleset's code scanning rule blocks a merge on its results (see "GitHub settings on this repo"), and every public app `New-KitApp` creates gets the same rule |
 | `kit-checks.reusable.yml` | All Pester tests, rule sources, the quality scorecard, ADR sections, generated-file drift, and on pull requests the commit subjects and red→green order (the branch's own commits) |
 | `pr-title.yml` | The PR title is a Conventional Commit. It also runs when the PR is edited, because the title becomes the merge commit's subject |
@@ -146,7 +146,7 @@ Two more workflows act rather than check:
 | `release.yml` | On every push to `main`, release-please keeps a release PR open with the next version and its notes; merging that PR tags `vX.Y.Z` (ADR-0022) |
 | `dependabot-lockfiles.yml` | On Dependabot's NuGet PRs, refreshes every lock file (Dependabot misses the ones that get a package through a project reference) and pushes them as a `chore(deps)` commit |
 
-`scorecard.yml` runs OpenSSF Scorecard through `scorecard.reusable.yml` on every push to `main` and weekly (SUP-010, ADR-0056). It publishes the kit's score to the OpenSSF API, which anyone can read, and uploads its findings to the Security tab beside CodeQL's. It doesn't run on pull requests, so it isn't a required check.
+`scorecard.yml` runs OpenSSF Scorecard through `scorecard.reusable.yml` on every push to `main` and weekly (SUP-010, ADR-0056). OpenSSF Scorecard, not to be confused with the kit's quality scorecard, is the OpenSSF's tool that scores a repo's supply-chain practices from 0 to 10, such as pinned actions, token permissions and branch protection. It publishes the kit's score to the OpenSSF API, which anyone can read, and uploads its findings to the Security tab beside CodeQL's. It doesn't run on pull requests, so it isn't a required check.
 
 The release and lock-file workflows push with the workflow's own token, so CI on the PR they create or update waits for approval, and they approve it. If a release or Dependabot PR is ever stuck with no checks reporting, close and reopen it: that runs CI as you. Expect the first CI run on each Dependabot NuGet PR to fail locked restore; the lock-file commit replaces it. Once that commit is on the branch, Dependabot may stop rebasing the PR on its own; comment `@dependabot rebase` on it, and the workflow adds the lock files again.
 
@@ -204,7 +204,7 @@ jobs:
 |---|---|
 | `dotnet-ci.reusable.yml` | Restore, build, format, tests with coverage, the coverage gate, deprecated packages, the `sbom` artifact, and the secret scan. `solution` is required |
 | `codeql.reusable.yml` | CodeQL code scanning of the workflows, and the C# once there is some. Skipped on a private app |
-| `scorecard.reusable.yml` | Not a pull request check: OpenSSF Scorecard on `main` and weekly, from the app's `scorecard.yml`, publishing the score. Skipped on a private app, where publishing would make its score public |
+| `scorecard.reusable.yml` | Not a pull request check: OpenSSF Scorecard on `main` and weekly, from the app's `scorecard.yml`, publishing the score. Skipped on a private app, where the action publishes nothing and code scanning needs a paid licence. An app made before this kit version adds the template's `scorecard.yml` by hand ("WorkflowByHand") |
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`, and the runbook, `docs/runbook.md` (OPS-004), which fails when it's missing. Called from any other event, it fails rather than pass having checked nothing |
 | `kit-sync.reusable.yml` | Not a check: on Dependabot's kit-pin PR, brings the release's other kit-managed files into it (see "Keep an app current"). Called from anything but Dependabot's own GitHub Actions PR, it fails |
 

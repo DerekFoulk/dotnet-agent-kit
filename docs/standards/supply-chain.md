@@ -74,25 +74,25 @@ rules:
     scope: core
     paths: [".github/**"]
   - id: SUP-009
-    statement: "Every build of a solution with projects writes a CycloneDX SBOM of its shipped projects, leaving out test projects, and keeps it as the run's 'sbom' artifact."
+    statement: "Every build of a solution with projects writes a CycloneDX SBOM of its shipped projects, leaving out every project MSBuild marks as a test project, and keeps it as the run's 'sbom' artifact."
     why: "When a package is found vulnerable, the SBOM answers which builds ship it; the Microsoft cloud security benchmark asks for an SBOM in SPDX or CycloneDX (GAP-013)."
     layer: outside
     status: proposed
     sources: ["ADR-0055", "https://learn.microsoft.com/security/benchmark/azure/mcsb-v2-devops-security, retrieved 2026-11-11", "https://github.com/CycloneDX/cyclonedx-dotnet, retrieved 2026-11-11"]
-    enforcement: "ci: dotnet-ci.reusable.yml runs the CycloneDX .NET tool at the version .config/dotnet-tools.json pins and uploads the SBOM, failing when it's missing; tools/tests/SharedCi.Tests.ps1 checks the steps"
+    enforcement: "ci: dotnet-ci.reusable.yml runs the CycloneDX .NET tool at the version .config/dotnet-tools.json pins, on the solution filter tools/New-ShippedSolutionFilter.ps1 writes of the projects MSBuild doesn't mark IsTestProject, and uploads the SBOM, failing when it's missing; tools/tests/SharedCi.Tests.ps1 and New-ShippedSolutionFilter.Tests.ps1 check them"
     scope: core
     paths: [".github/workflows/**", ".config/dotnet-tools.json"]
   - id: SUP-010
-    statement: "Every public repo runs OpenSSF Scorecard through the kit's scorecard.reusable.yml on each push to main and weekly, publishing its score and uploading its findings to code scanning, with only the security-events and id-token write permissions the action documents."
+    statement: "Every public repo runs OpenSSF Scorecard through the kit's scorecard.reusable.yml on each push to main and weekly, publishing its score and uploading its findings to code scanning, with only the security-events and id-token write permissions the action documents; a private repo skips it."
     why: "Scorecard checks the supply-chain practices from outside, with a public score that shows drift (GAP-014); publishing needs the action's workflow restrictions."
     layer: outside
     status: proposed
     sources: ["ADR-0056", "https://github.com/ossf/scorecard-action, retrieved 2026-11-11"]
-    enforcement: "ci: scorecard.yml in the kit and in the app template call scorecard.reusable.yml; tools/tests/SharedCi.Tests.ps1 checks the triggers, the permissions, the pins and each publishing restriction"
+    enforcement: "ci: scorecard.yml in the kit and in the app template call scorecard.reusable.yml, which reads the repo's visibility from the API and skips a private repo; tools/tests/SharedCi.Tests.ps1 checks the triggers, the permissions, the pins, the skip and each publishing restriction; advisory: an app made before it adds the template's scorecard.yml by hand (WorkflowByHand)"
     scope: core
     paths: [".github/workflows/**"]
 ---
 
 # Supply chain
 
-Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project and accepted its items for all repos on 2026-11-09.
+Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project and accepted its items for all repos on 2026-11-09. SUP-009 and SUP-010 came later, and stay proposed until he accepts them.

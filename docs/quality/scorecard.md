@@ -154,10 +154,10 @@ areas:
     rules: [SUP-001, SUP-002, SUP-003, SUP-004, SUP-005, SUP-006, SUP-007, SUP-008, SUP-009, SUP-010]
     gaps:
       - id: GAP-013
-        gap: "No SBOM is produced for an app's build. Closed by ADR-0055: the shared .NET CI writes a CycloneDX SBOM of each build's shipped projects and uploads it as the 'sbom' artifact (SUP-009, proposed)."
+        gap: "No SBOM is produced for an app's build. Closed by ADR-0055: the shared .NET CI writes a CycloneDX SBOM of each build's shipped projects, leaving out the projects MSBuild marks as tests, and uploads it as the 'sbom' artifact (SUP-009, proposed)."
         status: closed
       - id: GAP-014
-        gap: "OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside. Closed by ADR-0056: the kit and every public app run it through scorecard.reusable.yml on main and weekly, publishing the score (SUP-010, proposed)."
+        gap: "OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside. Closed by ADR-0056: the kit and every new public app run it through scorecard.reusable.yml on main and weekly, publishing the score; an existing app runs it once it adds the template's scorecard.yml (SUP-010, proposed)."
         status: closed
   - id: delivery
     name: Delivery

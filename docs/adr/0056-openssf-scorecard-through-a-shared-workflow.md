@@ -13,9 +13,9 @@ Publishing only works from a workflow that keeps the action's documented restric
 - that job has no `env`, `defaults`, container or services, and runs on GitHub's Ubuntu runners;
 - its steps are only actions from an allowed list (checkout, upload-artifact, CodeQL's upload-sarif, scorecard-action, harden-runner).
 
-The action's example job asks for only `security-events: write` (the SARIF upload) and `id-token: write` (to sign the published results). It names `push` and `schedule` on the default branch as the supported triggers.
+The OpenSSF's example workflow (`scorecard-analysis.yml`) gives its job only `security-events: write` (the SARIF upload) and `id-token: write` (to sign the published results). It names `push` and `schedule` on the default branch as the supported triggers.
 
-The kit and new apps are public (ADR-0031, ADR-0033). The action and code scanning are free there; on a private repo, code scanning needs GitHub Code Security, a paid licence, as for CodeQL (ADR-0036). The "code scanning" ruleset (`templates/github/code-scanning.json`) only gates on CodeQL's results, so Scorecard's SARIF doesn't block a merge.
+The kit and new apps are public (ADR-0031, ADR-0033). The action and code scanning are free there. On a private repo the action never publishes, and its code scanning upload needs GitHub Code Security, a paid licence, as for CodeQL (ADR-0036). A scheduled run's event carries no repository, so `github.event.repository.private` can't tell a private repo there. The "code scanning" ruleset (`templates/github/code-scanning.json`) only gates on CodeQL's results, so Scorecard's SARIF doesn't block a merge.
 
 This ADR was decided in auto mode (ADR-0035).
 
@@ -23,9 +23,9 @@ This ADR was decided in auto mode (ADR-0035).
 
 ### Option 1: A shared workflow, `scorecard.reusable.yml`, called by the kit and by each app
 
-The shared workflow holds the one job, kept to the restrictions above and pinned by SHA. The kit's `scorecard.yml` and the app template's call it on every push to `main` and weekly. The app's caller skips a private repo.
+The shared workflow's Scorecard job keeps the restrictions above, with every action pinned by SHA. A first job asks the API for the repo's visibility, and the Scorecard job is skipped on a private repo, on every trigger. The kit's `scorecard.yml` and the app template's call it on every push to `main` and weekly.
 
-- **Trade-offs:** Versioned and tested with the kit, like the CodeQL workflow. An app picks up a new action version with its next kit pin. It's a new workflow file, so existing apps add the template's `scorecard.yml` by hand ("WorkflowByHand", ADR-0044); new apps get it from `New-KitApp`. GitHub's OIDC token names the shared workflow that ran, so the publish check reads that file, in the kit, at the pinned commit.
+- **Trade-offs:** Versioned and tested with the kit, like the CodeQL workflow. An app picks up a new action version with its next kit pin. It's a new workflow file, so existing apps add the template's `scorecard.yml` by hand ("WorkflowByHand", ADR-0044); new apps get it from `New-KitApp`. The OIDC certificate names the shared workflow that ran, and the OpenSSF's publish check reads that file, in the kit, at the pinned commit (`api/app/server/post_results.go` in `ossf/scorecard-infra`).
 - **Reversibility:** Easy. Delete the three files.
 - **Risk:** Low to medium. It can't run before merge, because publishing only works on the default branch, so the first run on `main` is the proof.
 
@@ -55,7 +55,7 @@ Proposed (auto mode, ADR-0035), with SUP-010; the owner accepts or changes it.
 
 - New rule SUP-010 (proposed) in `docs/standards/supply-chain.md`. GAP-014 is closed.
 - `.github/workflows/scorecard.reusable.yml`, called by `.github/workflows/scorecard.yml` and `templates/app/.github/workflows/scorecard.yml`. `tools/tests/SharedCi.Tests.ps1` checks each restriction, the permissions and the pins.
-- It isn't a required check: it doesn't run on pull requests, and New-KitApp derives required checks from workflows that do.
+- It isn't a required check: it doesn't run on pull requests, and the ruleset requires only checks from workflows that do (`New-KitApp.Tests.ps1` checks the list).
 - Scorecard's findings appear in each repo's Security tab beside CodeQL's. A low check score is a finding to triage, not a failed build.
 
 ## Pillars affected
@@ -67,7 +67,11 @@ Proposed (auto mode, ADR-0035), with SUP-010; the owner accepts or changes it.
 
 ## Sources
 
-- https://github.com/ossf/scorecard-action (README, "Workflow Restrictions" and the example workflow), retrieved 2026-11-11
+- https://github.com/ossf/scorecard-action (README, "Workflow Restrictions"), retrieved 2026-11-11
+- https://github.com/ossf/scorecard/blob/main/.github/workflows/scorecard-analysis.yml (the example workflow and its job permissions), retrieved 2026-11-11
+- https://github.com/ossf/scorecard-action/blob/fa7117db83c52d787ae5a89f350999701505d78e/options/options.go (no publishing from a private repo), retrieved 2026-11-11
+- https://github.com/ossf/scorecard-infra/blob/main/api/app/server/post_results.go (the publish check reads the workflow the certificate names), retrieved 2026-11-11
+- https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule (no webhook payload), retrieved 2026-11-11
 - https://github.com/ossf/scorecard-action/releases/tag/v2.5.0 (commit fa7117db83c52d787ae5a89f350999701505d78e), retrieved 2026-11-11
 - https://github.com/ossf/scorecard/blob/main/docs/checks.md, retrieved 2026-11-11
 - https://openssf.org/, retrieved 2026-11-11
