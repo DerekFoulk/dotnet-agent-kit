@@ -33,6 +33,8 @@
   <ItemGroup Label="Kit tools">
     <!-- Parses and binds C# for the code shape check (CRF-008, ADR-0050): Microsoft's, from dotnet/roslyn. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    <!-- Microsoft.CodeAnalysis.CSharp 5.9.0 asks for a preview of its analyzers (5.9.0-1.26328.17); this pins the stable release. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
   </ItemGroup>
 
   <!-- Tests: the kit toolset (TST-005) and Microsoft's test pieces (owner approved, 2026-11-04). -->

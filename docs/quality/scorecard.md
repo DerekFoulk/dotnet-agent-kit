@@ -24,9 +24,12 @@ areas:
     rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010]
     gaps:
       - id: GAP-019
-        gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent."
+        gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-008 states the four as limits."
+        status: closed
+      - id: GAP-022
+        gap: "An app can't run the code shape check (CRF-008, ADR-0050) on its own machine: the check needs the kit's Kit.CodeShape source, which isn't in .kit/tools, so it runs only in the app's CI and a breach shows up on the pull request."
         status: proposed
-        needs: "an analyzer package or a kit check, and a CI change"
+        needs: "the check shipped as a .NET tool the app restores, or its source exported with the kit's files"
       - id: GAP-020
         gap: "No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent."
         status: proposed
@@ -251,7 +254,7 @@ Each area in the front matter above has:
 Open gaps:
 
 - **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
-- **GAP-019** (Craft, proposed; needs an analyzer package or a kit check, and a CI change): No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent.
+- **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-008, ADR-0050) on its own machine: the check needs the kit's Kit.CodeShape source, which isn't in .kit/tools, so it runs only in the app's CI and a breach shows up on the pull request.
 - **GAP-020** (Craft, proposed; needs a tool and a CI change): No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
