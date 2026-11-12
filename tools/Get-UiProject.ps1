@@ -9,6 +9,9 @@
     found, so both agree. It fails if any other project references a UI project (ARC-010). With -FilterPath, it also
     writes a solution filter of every other project, which the Linux CI job builds and tests.
 
+    It reads each project file as written: a property set in Directory.Build.props, an import or through another
+    property, and a reference path that uses $(...), aren't seen. Set them in the project file (ADR-0057).
+
 .EXAMPLE
     ./tools/Get-UiProject.ps1 -Solution Contoso.Orders.slnx -FilterPath $env:RUNNER_TEMP/without-ui.slnf
 #>

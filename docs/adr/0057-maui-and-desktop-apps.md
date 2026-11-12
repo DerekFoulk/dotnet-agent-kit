@@ -57,6 +57,9 @@ Pending the owner's yes: the coverage exemption and the required check's new sha
 - New rules, proposed: ARC-010 (thin UI projects, no references to them, exempt from the coverage gate), ARC-011 (desktop apps use MAUI; others by ADR), SUP-011 (workloads at the SDK's own workload set). ADR-0008 points here for desktop.
 - New scripts: `tools/Get-UiProject.ps1` (exported to apps, since the coverage gate calls it) and `tools/Test-LockFileSubset.ps1` (CI only).
 - `dotnet-ci.reusable.yml` gains the `ui-projects` and `ui` jobs; the required job waits for them.
+- **A better design, deferred (CRF-002):** the required job waits for the UI builds, so in an app with MAUI, Linux's build and tests start only after the macOS build. Running them side by side needs the required check to become a small job that waits for both, which changes the ruleset's required checks in every app: the owner's call (AGENTS.md, "Always ask"). It's worth doing once a MAUI app's CI time shows the wait matters.
+- **Limits of `Get-UiProject`:** it reads each project file as written. It doesn't see `UseMaui` or the other properties when they're set in `Directory.Build.props`, an import or through another property, or a project reference whose path uses `$(...)`. Set them in the project file, as the templates do.
+- In the `ui` job, `EnableWindowsTargeting` is true, so macOS can build a solution that has a WPF, Windows Forms or WinUI project beside its MAUI one (NETSDK1100).
 - GAP-001 closes. New gaps: GAP-024 (nightly mutation and the Dependabot lock-file refresh run on Linux and can't build a solution with UI projects), GAP-025 (no MAUI sample or fixture proves the Windows and macOS jobs).
 
 ## Pillars affected
