@@ -1,7 +1,8 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Fails when a project in the solution holds no code of its own (ARC-009, ADR-0049).
+    Fails when a C# project in the solution holds no code of its own, or keeps the class library template's empty
+    Class1 (ARC-009, ADR-0049).
 
 .EXAMPLE
     ./tools/Test-EmptyProjects.ps1 -Solution dotnet-agent-kit.slnx

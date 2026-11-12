@@ -110,7 +110,7 @@ In review mode, also ask the owner first before you:
 | PR title and commit subjects are Conventional Commits | `./tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD` |
 | Every red commit is made green | `./tools/Test-RedGreenOrder.ps1 -Range origin/main..HEAD` |
 | No deprecated NuGet packages | `./tools/Test-DeprecatedPackages.ps1 -Path dotnet-agent-kit.slnx` |
-| Every project holds code of its own, and no class library template's empty `Class1` is left anywhere (ARC-009) | `./tools/Test-EmptyProjects.ps1 -Solution dotnet-agent-kit.slnx` |
+| Every C# project in the solution holds code of its own, and none keeps the class library template's empty `Class1` (ARC-009) | `./tools/Test-EmptyProjects.ps1 -Solution dotnet-agent-kit.slnx` |
 | List a PR's open review findings; reply; resolve a thread | `Import-Module ./tools/KitReview.psm1`, then `Get-OpenFinding`, `Resolve-ReviewFinding`, `Add-ReviewReply` (see the `address-review` skill) |
 | Build | `dotnet build` |
 | .NET tests with coverage, then the coverage gate (TST-004) | Delete `TestResults` first (the gate merges every report it finds), then `dotnet test --coverage --coverage-output-format cobertura --results-directory TestResults` and `./tools/Test-CoverageGate.ps1 -Path TestResults -Solution dotnet-agent-kit.slnx` |
