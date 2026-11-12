@@ -121,7 +121,7 @@ CI (`.github/workflows/ci.yml`) runs all of these on every pull request, plus a 
 
 The commit-msg hook in `.githooks/` rejects a commit whose subject isn't a Conventional Commit, because only a history rewrite can fix one later (ADR-0027). `./tools/Initialize-DevMachine.ps1` reports whether it's on for this clone. If the hook rejects a commit, fix the subject; never skip the hook.
 
-`./tools/New-KitApp.ps1 -Name <Name>` creates a new app repo on GitHub (README, "Start a new app"; ADR-0033). Each new repo is the owner's call, so run it only when he names the repo, and run it with `-WhatIf` first.
+`./tools/New-KitApp.ps1 -Name <Name> -Intake <answers.json>` creates a new app repo on GitHub (README, "Start a new app"; ADR-0033). The `new-app` skill asks the owner the intake cards and writes the answers file, which becomes the app's `docs/app-profile.md` (ADR-0058). Each new repo is the owner's call, so run it only when he names the repo, and run it with `-WhatIf` first.
 
 Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS (ADR-0040). Every script and check gets Pester tests, written first.
 

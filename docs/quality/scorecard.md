@@ -63,7 +63,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-07"
       - "ADR-0003"
       - "ADR-0018"
-    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, GIT-005]
+    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, TST-007, TST-008, GIT-005]
     gaps:
       - id: GAP-003
         gap: "Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1. Closed by ADR-0039: a shared nightly Stryker.NET workflow for the kit and every app, failing below 85%."
@@ -73,6 +73,10 @@ areas:
         gap: "Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI."
         status: proposed
         needs: "packages and a CI change"
+      - id: GAP-027
+        gap: "No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-008 proposes the check; it waits for GAP-002 to settle which projects an app has."
+        status: proposed
+        needs: "a kit check and a CI change"
   - id: security
     name: Security
     perfect: "A threat model for anything touching data or sign-in; authentication and authorization by default; validated input; no secrets in code; dependencies, code and history all scanned."
@@ -141,7 +145,7 @@ areas:
     rules: [ARC-006]
     gaps:
       - id: GAP-012
-        gap: "No benchmarks or performance budgets for hot paths, and no load tests."
+        gap: "No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions); nothing runs them yet."
         status: proposed
         needs: "packages"
   - id: supply-chain
@@ -234,7 +238,7 @@ Each area in the front matter above has:
 | Craft | 10 | 4 | 6 | 0 | 2 |
 | Proportion | 1 | 0 | 1 | 0 | 1 |
 | Code | 8 | 7 | 1 | 0 | 0 |
-| Tests | 7 | 4 | 3 | 0 | 1 |
+| Tests | 7 | 4 | 3 | 2 | 2 |
 | Security | 7 | 5 | 2 | 4 | 0 |
 | Reliability | 3 | 2 | 1 | 0 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
@@ -246,7 +250,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 9 proposed; 11 open gaps.
+**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 11 proposed; 12 open gaps.
 
 Open gaps:
 
@@ -255,8 +259,9 @@ Open gaps:
 - **GAP-020** (Craft, proposed; needs a tool and a CI change): No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
+- **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-008 proposes the check; it waits for GAP-002 to settle which projects an app has.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
-- **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
+- **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions); nothing runs them yet.
 - **GAP-013** (Supply chain and build, proposed; needs a tool or GitHub Action, and a CI change): No SBOM is produced for an app's build.
 - **GAP-014** (Supply chain and build, proposed; needs a GitHub Action and a CI change): OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet.
