@@ -1,6 +1,6 @@
 # {{Name}}'s OpenSSF Scorecard (kit SUP-010, ADR-0056): on every push to main and weekly. It isn't a pull request
-# check: Scorecard scores the default branch. It's skipped on a private repo, where publishing would make the score
-# public and code scanning needs GitHub Code Security, a paid licence. The kit is pinned to the commit its release
+# check: Scorecard scores the default branch. The shared workflow skips a private repo, where the action publishes
+# nothing and code scanning needs GitHub Code Security, a paid licence. The kit is pinned to the commit its release
 # tag points to (ADR-0031); Dependabot moves the pin with each kit release (kit ADR-0045).
 name: OpenSSF Scorecard
 
@@ -15,7 +15,6 @@ permissions:
 
 jobs:
   scorecard:
-    if: ${{ !github.event.repository.private }}
     permissions:
       security-events: write
       id-token: write

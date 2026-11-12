@@ -4,8 +4,9 @@
 # Called by this repo's scorecard.yml, and by app repos pinned to the commit a kit release tag points to:
 #   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/scorecard.reusable.yml@<commit SHA> # v0.1.0
 # Publishing needs the workflow restrictions the action lists (github.com/ossf/scorecard-action, "Workflow
-# Restrictions"): no top-level env or defaults, no workflow-level write, id-token only in this job, Ubuntu, no
-# container or services, and only its allowed actions as steps. SharedCi.Tests.ps1 checks each one.
+# Restrictions"): no top-level env or defaults, no workflow-level write, id-token only in the Scorecard job, and that
+# job on Ubuntu, with no container or services and only the allowed actions as steps. The publish check reads this
+# file at the commit the caller pins. SharedCi.Tests.ps1 checks each restriction.
 name: OpenSSF Scorecard (reusable)
 
 on:
@@ -15,8 +16,29 @@ permissions:
   contents: read
 
 jobs:
+  # On a private repo the action publishes nothing, and its code scanning upload needs GitHub Code Security, a paid
+  # licence, so the analysis is skipped there. A scheduled run's event carries no repository, so the visibility
+  # comes from the API, which answers on every trigger.
+  visibility:
+    name: Repository visibility
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      private: ${{ steps.check.outputs.private }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        # The assignment on its own line, so a failed call fails the step (bash -e) instead of skipping Scorecard.
+        run: |
+          private=$(gh api "repos/$REPO" --jq .private)
+          echo "private=$private" >> "$GITHUB_OUTPUT"
+
   analysis:
     name: Scorecard analysis
+    needs: visibility
+    if: needs.visibility.outputs.private == 'false'
     runs-on: ubuntu-latest
     # The job permissions in the action's own example: the SARIF upload and the OIDC token for publishing.
     permissions:
