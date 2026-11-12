@@ -17,8 +17,8 @@ This ADR was decided in auto mode (ADR-0035). Both tools below are free and open
 
 `dotnet-CycloneDX` reads the package graph that the locked restore already wrote, for each project it's given, and writes CycloneDX JSON. It accepts a solution or a solution filter (`.slnf`). Its own `--exclude-test-projects` reads only each project file's XML, so it misses a test project marked in a `Directory.Build.props`, as the kit's sample and every app's tests are. So the kit's `New-ShippedSolutionFilter.ps1` asks MSBuild for each project's `IsTestProject` and writes a filter of the rest, and the tool runs on that. The shared workflow installs it for that run only, at the version pinned in the kit's `.config/dotnet-tools.json`, as it does Stryker.NET. Dependabot keeps that version current.
 
-- **Trade-offs:** One step, with no build output needed. It describes the packages each shipped project resolves, including transitive ones. CycloneDX is an OWASP standard, one of the two formats the benchmark names, and widely read by vulnerability scanners such as OWASP Dependency-Track. It doesn't hash the built files; that belongs with build provenance and a deployment pipeline (GAP-015).
-- **Reversibility:** Easy. Remove the three steps and the manifest entry.
+- **Trade-offs:** No build output needed: one workflow step, with the kit's filter script. It describes the packages each shipped project resolves, including transitive ones; build-only packages, such as MinVer, appear with scope `excluded`. CycloneDX is an OWASP standard, one of the two formats the benchmark names, and widely read by vulnerability scanners such as OWASP Dependency-Track. It doesn't hash the built files; that belongs with build provenance and a deployment pipeline (GAP-015).
+- **Reversibility:** Easy. Remove the three steps, the manifest entry, and `tools/New-ShippedSolutionFilter.ps1` with its tests.
 - **Risk:** Low. A tool failure fails the build, which is visible and fixed by a version change.
 
 ### Option 2: Microsoft's SBOM tool (`Microsoft.Sbom.DotNetTool`, MIT), SPDX
@@ -39,7 +39,7 @@ GitHub can export an SPDX SBOM of a repo's dependency graph, from the Insights t
 
 ## Recommendation
 
-Option 1: it describes exactly the projects a build ships, from the restore the build already did, in one step with a pinned, Dependabot-managed tool. Option 2 fits a release drop better, and the deployment pipeline (GAP-015) can add it there if a consumer asks for SPDX.
+Option 1: it describes exactly the projects a build ships, from the restore the build already did, with a pinned, Dependabot-managed tool. Option 2 fits a release drop better, and the deployment pipeline (GAP-015) can add it there if a consumer asks for SPDX.
 
 ## Decision
 

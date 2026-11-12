@@ -15,7 +15,7 @@ Publishing only works from a workflow that keeps the action's documented restric
 
 The OpenSSF's example workflow (`scorecard-analysis.yml`) gives its job only `security-events: write` (the SARIF upload) and `id-token: write` (to sign the published results). It names `push` and `schedule` on the default branch as the supported triggers.
 
-The kit and new apps are public (ADR-0031, ADR-0033). The action and code scanning are free there. On a private repo the action never publishes, and its code scanning upload needs GitHub Code Security, a paid licence, as for CodeQL (ADR-0036). A scheduled run's event carries no repository, so `github.event.repository.private` can't tell a private repo there. The "code scanning" ruleset (`templates/github/code-scanning.json`) only gates on CodeQL's results, so Scorecard's SARIF doesn't block a merge.
+The kit and new apps are public (ADR-0031, ADR-0033). The action and code scanning are free there. On a private repo the action never publishes, and the code scanning upload needs GitHub Code Security, a paid licence, as for CodeQL (ADR-0036). A scheduled run's event carries no repository, so `github.event.repository.private` can't tell a private repo there. The "code scanning" ruleset (`templates/github/code-scanning.json`) only gates on CodeQL's results, so Scorecard's SARIF doesn't block a merge.
 
 This ADR was decided in auto mode (ADR-0035).
 
@@ -56,6 +56,7 @@ Proposed (auto mode, ADR-0035), with SUP-010; the owner accepts or changes it.
 - New rule SUP-010 (proposed) in `docs/standards/supply-chain.md`. GAP-014 is closed.
 - `.github/workflows/scorecard.reusable.yml`, called by `.github/workflows/scorecard.yml` and `templates/app/.github/workflows/scorecard.yml`. `tools/tests/SharedCi.Tests.ps1` checks each restriction, the permissions and the pins.
 - It isn't a required check: it doesn't run on pull requests, and the ruleset requires only checks from workflows that do (`New-KitApp.Tests.ps1` checks the list).
+- GitHub turns off a public repo's scheduled workflows after 60 days with no activity, so a quiet app's weekly run stops until something is pushed.
 - Scorecard's findings appear in each repo's Security tab beside CodeQL's. A low check score is a finding to triage, not a failed build.
 
 ## Pillars affected
