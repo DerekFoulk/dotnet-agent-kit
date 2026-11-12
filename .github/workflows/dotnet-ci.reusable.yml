@@ -66,9 +66,7 @@ jobs:
       DOTNET_NOLOGO: 'true'
       DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
       SOLUTION: ${{ inputs.solution }}
-      # A solution with a MAUI project and a WPF, Windows Forms or WinUI one builds all of them on macOS too, and a
-      # Windows-targeting project fails off Windows unless this is true (NETSDK1100). Windows ignores it.
-      EnableWindowsTargeting: 'true'
+      RUNNER_LABEL: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -82,21 +80,40 @@ jobs:
       - id: kit
         uses: $/.github/actions/kit-tools
 
+      # Every project this runner can build: on Windows the whole solution; on macOS all but the Windows-only UI
+      # projects (WPF, Windows Forms, WinUI), which fail off Windows (NETSDK1100).
+      - name: Solution filter
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $filter = Join-Path $env:RUNNER_TEMP 'runner.slnf'
+          & "$env:KIT/tools/Get-UiProject.ps1" -Solution $env:SOLUTION -FilterPath $filter -Runner $env:RUNNER_LABEL | Out-Null
+          "FILTER=$filter" >> $env:GITHUB_ENV
+          Get-Content -Raw -LiteralPath $filter
+
       # SUP-011: the workload set whose version is the SDK's own (one ships with each SDK release), never the latest.
       # Not sdk.workloadVersion in global.json: every build then fails on a machine without that set (ADR-0057).
       - name: Restore workloads (pinned)
-        run: dotnet workload restore $env:SOLUTION --version (dotnet --version)
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $version = dotnet --version
+          $ui = @(& "$env:KIT/tools/Get-UiProject.ps1" -Solution $env:SOLUTION | Where-Object { $_.Os -contains $env:RUNNER_LABEL })
+          foreach ($project in $ui) {
+            dotnet workload restore $project.Path --version $version
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Restore (locked)
         if: runner.os == 'Windows'
-        run: dotnet restore $env:SOLUTION --locked-mode
+        run: dotnet restore $env:FILTER --locked-mode
 
       # The lock files are made on Windows, where a MAUI project also targets Windows. macOS builds a subset of those
       # frameworks, and NuGet refuses a locked restore whose frameworks differ (NU1004). So macOS restores unlocked
       # and the next step holds it to the committed lock files instead (SUP-001, ADR-0057).
       - name: Restore (macOS)
         if: runner.os == 'macOS'
-        run: dotnet restore $env:SOLUTION -p:RestoreLockedMode=false
+        run: dotnet restore $env:FILTER -p:RestoreLockedMode=false
 
       - name: Lock files match the committed ones
         if: runner.os == 'macOS'
@@ -105,18 +122,18 @@ jobs:
         run: '& "$env:KIT/tools/Test-LockFileSubset.ps1" -RepoRoot $env:GITHUB_WORKSPACE'
 
       - name: Build (zero warnings)
-        run: dotnet build $env:SOLUTION --no-restore --configuration Release -warnaserror
+        run: dotnet build $env:FILTER --no-restore --configuration Release -warnaserror
 
-      # The Linux job checks every other project; these cover the UI projects too.
+      # The Linux job checks every project but the UI ones; these cover the UI projects too.
       - name: Format check
         if: runner.os == 'Windows'
-        run: dotnet format $env:SOLUTION --verify-no-changes --no-restore
+        run: dotnet format $env:FILTER --verify-no-changes --no-restore
 
       - name: Deprecated packages
         if: runner.os == 'Windows'
         env:
           KIT: ${{ steps.kit.outputs.path }}
-        run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:SOLUTION'
+        run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:FILTER'
 
   # The required check (templates/github/main-protection.json names it). It waits for the UI builds and fails when
   # they did, so they gate a merge too; !cancelled() lets it run after a skipped or failed UI build to say so.
