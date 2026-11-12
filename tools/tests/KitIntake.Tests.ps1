@@ -200,3 +200,22 @@ Describe 'Resolve-KitIntakeAnswer' {
         { Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Throw $Message
     }
 }
+
+# New-KitApp reads templates/app-intake.json from the kit at -KitRef but runs this module from the current kit, so
+# a file laid out for another version of the module is refused rather than misread.
+Describe 'Get-KitIntake' {
+    BeforeAll { Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force }
+
+    It 'reads the kit''s own intake file' {
+        { $script:read = Get-KitIntake -Text (Get-Content -Raw -LiteralPath $intakePath) } | Should -Not -Throw
+        @($script:read['cards'] | ForEach-Object { $_['id'] }) | Should -Contain 'appType'
+    }
+
+    It 'refuses <Case>' -ForEach @(
+        @{ Case = 'another schemaVersion'; Text = '{ "schemaVersion": 2, "cards": [], "testKinds": [] }'; Message = "*schemaVersion 2*reads version 1*same kit version*" }
+        @{ Case = 'no schemaVersion'; Text = '{ "cards": [], "testKinds": [] }'; Message = "*schemaVersion none*reads version 1*" }
+        @{ Case = 'text that isn''t a JSON object'; Text = '[1, 2]'; Message = "*isn't a JSON object*" }
+    ) {
+        { Get-KitIntake -Text $Text } | Should -Throw $Message
+    }
+}

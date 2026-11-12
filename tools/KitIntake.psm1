@@ -4,6 +4,13 @@
 
 Set-StrictMode -Version Latest
 
+# Reads templates/app-intake.json.
+function Get-KitIntake {
+    param([Parameter(Mandatory)] [string] $Text)
+
+    $null
+}
+
 # Checks the answers against the intake and returns each card's answer and each kind of test's tools.
 function Resolve-KitIntakeAnswer {
     param(
@@ -69,4 +76,4 @@ function Resolve-KitIntakeAnswer {
     [pscustomobject]@{ Cards = @($cards); TestKinds = @($kinds) }
 }
 
-Export-ModuleMember -Function Resolve-KitIntakeAnswer
+Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer
