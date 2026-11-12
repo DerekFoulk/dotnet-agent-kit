@@ -50,8 +50,36 @@ function Get-PmdPin {
     }
 }
 
+# Pins the zip of the pom's version from GitHub's release data (`gh api repos/pmd/pmd/releases/tags/<tag>`): the
+# SHA-256 GitHub computed for the asset when it was uploaded. The asset must be at least 7 days old, the same wait
+# Dependabot's cooldown gives the version on Maven Central (ADR-0041), so a zip replaced after the release is caught.
 function Set-PmdPin {
-    param([Parameter(Mandatory)] [string] $Path, [Parameter(Mandatory)] [object] $Release, [datetimeoffset] $Now = [datetimeoffset]::UtcNow)
+    param(
+        [Parameter(Mandatory)] [string] $Path,
+        [Parameter(Mandatory)] [object] $Release,
+        [datetimeoffset] $Now = [datetimeoffset]::UtcNow
+    )
+
+    $version = Get-PmdVersion $Path
+    $tag = "pmd_releases/$version"
+    if ($Release.tag_name -cne $tag) {
+        throw "The pom names PMD $version, so the release must be $tag, not '$($Release.tag_name)'."
+    }
+    $fileName = "pmd-dist-$version-bin.zip"
+    $assets = @($Release.assets | Where-Object { $_.name -ceq $fileName })
+    if ($assets.Count -ne 1) {
+        throw "Release $tag has no asset named $fileName."
+    }
+    $asset = $assets[0]
+    if ("$($asset.digest)" -notmatch '\Asha256:(?<hash>[0-9a-f]{64})\z') {
+        throw "GitHub gives no SHA-256 digest for $fileName in $tag ('$($asset.digest)'); pin it by hand from a verified download."
+    }
+    $age = $Now - [datetimeoffset] $asset.updated_at
+    if ($age -lt [timespan]::FromDays(7)) {
+        throw "$fileName in $tag was uploaded or changed at $($asset.updated_at), under 7 days ago; run this again once it's 7 days old."
+    }
+    $pin = "$($Matches['hash'])  $fileName`n"
+    [IO.File]::WriteAllText((Join-Path $Path $script:PinFileName), $pin, [Text.UTF8Encoding]::new($false))
 }
 
 Export-ModuleMember -Function Get-PmdPin, Set-PmdPin
