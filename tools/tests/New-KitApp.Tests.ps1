@@ -255,6 +255,14 @@ Describe 'New-KitApp run' {
             (git -C $remote ls-tree main .githooks/commit-msg.ps1) | Should -Match '^100644 '
         }
 
+        It 'commits the intake answers as docs/app-profile.md, in the first commit' {
+            $profileText = git -C $remote show main:docs/app-profile.md 2>$null | Out-String
+            $profileText | Should -Match '^# App profile: Contoso\.Orders' -Because 'the profile names the app'
+            $profileText | Should -Match '\| Which database should it use\? \| Azure SQL Database, free offer \|'
+            $profileText | Should -Match "Apache JMeter \(Apache-2\.0, Free\)" -Because 'the answers chose JMeter for load tests'
+            $profileText | Should -Match ([regex]::Escape($commit)) -Because 'it names the kit commit the cards came from'
+        }
+
         It 'turns the commit hook on in the local copy' {
             (git -C $app config --local --get core.hooksPath) | Should -Be '.githooks'
         }
