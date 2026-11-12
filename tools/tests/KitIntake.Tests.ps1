@@ -223,6 +223,7 @@ Describe 'Resolve-KitIntakeAnswer' {
         @{ Case = 'an unknown kind of test'; Tools = @{ soak = @('locust') }; Message = "*'soak', which isn't a kind of test*unit, integration*" }
         @{ Case = 'an unknown tool'; Tools = @{ load = @('k6') }; Message = "*'k6' isn't on the kit's list for load tests*locust, jmeter, azure-load-testing, nbomber*ADR*" }
         @{ Case = 'an empty list'; Tools = @{ load = @() }; Message = "*no tools for load tests*" }
+        @{ Case = 'a tool named twice'; Tools = @{ load = @('locust', 'locust') }; Message = "*names 'locust' twice for load tests*" }
         @{ Case = 'testTools that isn''t a map'; Tools = 'locust'; Message = "*testTools*map*" }
     ) {
         $answers = New-Answer
@@ -244,6 +245,7 @@ Describe 'Get-KitIntake' {
 
     It 'refuses <Case>' -ForEach @(
         @{ Case = 'another schemaVersion'; Text = '{ "schemaVersion": 2, "cards": [], "testKinds": [] }'; Message = "*schemaVersion 2*reads version 1*same kit version*" }
+        @{ Case = 'a schemaVersion written as text'; Text = '{ "schemaVersion": "1", "cards": [], "testKinds": [] }'; Message = "*schemaVersion 1*reads version 1*" }
         @{ Case = 'no schemaVersion'; Text = '{ "cards": [], "testKinds": [] }'; Message = "*schemaVersion none*reads version 1*" }
         @{ Case = 'text that isn''t a JSON object'; Text = '[1, 2]'; Message = "*isn't a JSON object*" }
     ) {
