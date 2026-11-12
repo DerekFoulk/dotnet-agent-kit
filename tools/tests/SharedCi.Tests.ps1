@@ -220,10 +220,43 @@ Describe 'Shared CI for app repos' {
             $permissions['id-token'] | Should -Be 'write'
             $permissions['security-events'] | Should -Be 'write'
             Assert-ReadOnly $scorecard.Yaml['permissions'] 'scorecard.reusable.yml'
+            # Review 2 of PR 48: a job's `write-all` would include id-token, so the other jobs get no permission at all.
             foreach ($name in @($scJobs.Keys | Where-Object { $_ -ne $scName })) {
                 $other = $scJobs[$name]['permissions']
-                if ($other) { @($other.Keys) | Should -Not -Contain 'id-token' -Because 'only the Scorecard job may ask for an OIDC token' }
+                $other | Should -BeOfType ([System.Collections.IDictionary]) -Because "$name names its permissions, with no write-all"
+                $other.Count | Should -Be 0 -Because "$name only reads the repo's metadata, which every token can"
             }
+        }
+
+        # Review 2 of PR 48: a wrong step id empties the output, and Scorecard would skip every repo with a green run.
+        It 'passes the visibility on from the step that reads it, and fails the run when the API call fails' -ForEach @(
+            @{ Case = 'a public repo'; Gh = 'echo false'; Exit = 0; Expected = 'private=false' }
+            @{ Case = 'a private repo'; Gh = 'echo true'; Exit = 0; Expected = 'private=true' }
+            @{ Case = 'a failed API call'; Gh = 'exit 1'; Exit = 1; Expected = '' }
+        ) {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $visibility = $scJobs[@($scJob['needs'])[0]]
+            $step = @($visibility['steps'] | Where-Object { "$($_['run'])" -match 'gh api' })[0]
+            $visibility['outputs']['private'] | Should -Be "`${{ steps.$($step['id']).outputs.private }}"
+            $step['env']['GH_TOKEN'] | Should -Be '${{ github.token }}'
+
+            $dir = Join-Path $TestDrive "visibility-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $dir 'bin') | Out-Null
+            Set-Content -LiteralPath (Join-Path $dir 'bin' 'gh') -Value "#!/usr/bin/env bash`n$Gh" -NoNewline
+            Set-Content -LiteralPath (Join-Path $dir 'step.sh') -Value ($step['run'] -replace "`r`n", "`n") -NoNewline
+            $output = Join-Path $dir 'github-output'
+            New-Item -ItemType File -Path $output | Out-Null
+            # On Windows, Git's own bash: the one on PATH may be WSL's, with no Linux installed.
+            $bash = if ($IsWindows) { Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin' 'bash.exe' } else { 'bash' }
+            Push-Location $dir
+            try {
+                $env:GITHUB_OUTPUT = $output; $env:REPO = 'owner/app'
+                & $bash --noprofile --norc -e -c 'chmod +x bin/gh; PATH="$PWD/bin:$PATH" bash -e ./step.sh'
+            }
+            finally { Pop-Location; Remove-Item Env:GITHUB_OUTPUT, Env:REPO -ErrorAction SilentlyContinue }
+
+            ($LASTEXITCODE -ne 0) | Should -Be ($Exit -ne 0) -Because "the step should $(if ($Exit) { 'fail' } else { 'pass' }) for $Case"
+            "$(Get-Content -Raw -LiteralPath $output)".Trim() | Should -Be $Expected
         }
 
         # Review of PR 48: a scheduled run's event carries no repository, so github.event.repository.private is empty
@@ -314,7 +347,9 @@ Describe 'Shared CI for app repos' {
         # Review of PR 48: CycloneDX's --exclude-test-projects reads only each .csproj, so it misses a test project that
         # Directory.Build.props marks, as the kit's and every app's are. MSBuild decides instead, in the kit's script.
         It 'lists the shipped projects MSBuild names, as JSON, from the restore already done' {
-            $sbomRun | Should -Match '\$env:KIT/tools/New-ShippedSolutionFilter\.ps1"? -Solution \$env:SOLUTION'
+            $sbomRun | Should -Match '\$filter = & "\$env:KIT/tools/New-ShippedSolutionFilter\.ps1" -Solution \$env:SOLUTION'
+            # Review 2 of PR 48: CycloneDX reads that filter, not the solution.
+            $sbomRun | Should -Match '/dotnet-CycloneDX" \$filter '
             $sbomRun | Should -Not -Match '--exclude-test-projects' -Because 'the filter already leaves the test projects out'
             $sbomRun | Should -Match '--disable-package-restore'
             $sbomRun | Should -Match '--output-format Json'
