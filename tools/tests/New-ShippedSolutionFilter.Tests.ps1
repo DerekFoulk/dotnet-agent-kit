@@ -88,7 +88,7 @@ Describe 'New-ShippedSolutionFilter.ps1' {
         $text | Should -Match '"projects":\s*\[' -Because 'CycloneDX reads projects as an array, even with one'
     }
 
-    # CycloneDX reads only C#, F# and Visual Basic projects; MSBuild may not evaluate the rest (a .shproj) on Linux.
+    # CycloneDX reads only C#, F#, Visual Basic and X# projects; MSBuild may not evaluate the rest (a .shproj) on Linux.
     It 'asks MSBuild only about the project types CycloneDX reads' {
         Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $mixed = Join-Path $TestDrive 'mixed'
