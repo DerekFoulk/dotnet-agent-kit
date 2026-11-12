@@ -168,4 +168,27 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
     }
+
+    # CI runs the script file, not the function: every parameter must reach the function.
+    It 'passes -Configuration and -WithDependencies on when run as a script, as CI runs it' {
+        Test-Path $scriptPath | Should -BeTrue
+        $repo = Join-Path $TestDrive 'script'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built -Configuration Debug
+        $solution = New-Solution $repo 'App.E2E.Tests'
+
+        & pwsh -NoProfile -File $scriptPath -Solution $solution -Configuration Debug -WithDependencies *> $null
+
+        $LASTEXITCODE | Should -Be 0
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install --with-deps chromium')
+    }
+
+    It 'fails as a script, naming the file, when the solution isn''t there' {
+        Test-Path $scriptPath | Should -BeTrue
+        $missing = Join-Path $TestDrive 'nowhere/App.slnx'
+
+        $output = & pwsh -NoProfile -File $scriptPath -Solution $missing 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Not -Be 0
+        $output | Should -Match ([regex]::Escape('nowhere'))
+    }
 }
