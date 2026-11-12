@@ -32,6 +32,12 @@ function Get-SolutionProject {
 function Get-FirstTargetFramework {
     param([Parameter(Mandatory)] [object] $Properties)
 
+    # MSBuild gives every property it was asked for, empty or not; a missing one means the caller didn't ask.
+    foreach ($name in 'TargetFramework', 'TargetFrameworks') {
+        if (-not $Properties.PSObject.Properties[$name]) {
+            throw "MSBuild's evaluated properties have no $name; evaluate the project with -getProperty:$name."
+        }
+    }
     if (-not $Properties.TargetFramework -and $Properties.TargetFrameworks) {
         $Properties.TargetFrameworks -split ';' | Where-Object { $_ } | Select-Object -First 1
     }
