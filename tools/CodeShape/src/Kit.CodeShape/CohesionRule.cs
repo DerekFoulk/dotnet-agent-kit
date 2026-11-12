@@ -78,9 +78,44 @@ internal static class CohesionRule
                     sets.Join(symbol, used);
                 }
             }
+
+            JoinDerivedState(declaration, type, model, sets);
         }
 
         return [.. methods.GroupBy(sets.Root, SymbolEqualityComparer.Default).Select(group => (IReadOnlyList<ISymbol>)[.. group])];
+    }
+
+    // State built from other state shares it. A property's accessors are methods (as LCOM4 counts them), so a
+    // property joins the state it reads. A constructor isn't a method here, since it touches every field and would
+    // make any class look cohesive; but a field or property it assigns from other state (an options object built
+    // from a connection, say) is joined to that state. The kit's choices, beyond Hitz and Montazeri's LCOM4 (ADR-0050).
+    private static void JoinDerivedState(TypeDeclarationSyntax declaration, INamedTypeSymbol type, SemanticModel model, DisjointSets sets)
+    {
+        foreach (BasePropertyDeclarationSyntax property in declaration.Members.OfType<BasePropertyDeclarationSyntax>())
+        {
+            if (model.GetDeclaredSymbol(property) is { IsStatic: false } symbol)
+            {
+                foreach (ISymbol used in InstanceMembersUsed(property, type, model))
+                {
+                    sets.Join(symbol, used);
+                }
+            }
+        }
+
+        IEnumerable<AssignmentExpressionSyntax> assignments = declaration.Members.OfType<ConstructorDeclarationSyntax>()
+            .Where(constructor => !constructor.Modifiers.Any(SyntaxKind.StaticKeyword))
+            .SelectMany(constructor => constructor.DescendantNodes().OfType<AssignmentExpressionSyntax>());
+        foreach (AssignmentExpressionSyntax assignment in assignments)
+        {
+            if (model.GetSymbolInfo(assignment.Left).Symbol is { IsStatic: false } target
+                && SymbolEqualityComparer.Default.Equals(target.ContainingType, type))
+            {
+                foreach (ISymbol used in InstanceMembersUsed(assignment.Right, type, model))
+                {
+                    sets.Join(target, used);
+                }
+            }
+        }
     }
 
     // The type's own instance members that a body names.
