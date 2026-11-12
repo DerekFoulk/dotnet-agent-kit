@@ -1,6 +1,7 @@
-# Keeps packages, dotnet tools (.config/dotnet-tools.json), pinned GitHub Actions, the global.json SDK pin, and the
-# two tools the shared .NET CI downloads itself (ADR-0060): PMD, pinned in .config/pmd/pom.xml, and the gitleaks
-# image, pinned by tag and digest in .config/gitleaks/Dockerfile, current (SUP-008, ADR-0025).
+# Keeps packages, dotnet tools (.config/dotnet-tools.json), pinned GitHub Actions, the global.json SDK pin, the two
+# tools the shared .NET CI downloads itself (ADR-0060): PMD, pinned in .config/pmd/pom.xml, and the gitleaks image,
+# pinned by tag and digest in .config/gitleaks/Dockerfile, and Locust for the shared load tests, pinned by hash in
+# .config/locust (ADR-0062), current (SUP-008, ADR-0025).
 # The "chore" prefix makes each PR title a Conventional Commit, which CI requires, and "include: scope" adds
 # "(deps)": "chore(deps): bump ...". The NuGet updater ignores the scope for now (dependabot-core#15158), so
 # NuGet PRs come as "chore: Bump ...", which CI accepts too; keep "include: scope" for when that's fixed.
@@ -11,7 +12,7 @@
 # default is 3 days. Security updates, on since 2026-11-09, don't wait. Shortening any wait here (a semver-minor-days or
 # semver-patch-days below 7 too), or narrowing it with an exclude or include list, is a guardrail change: an agent
 # merges it only on the owner's yes. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors,
-# 0.x packages, GitHub Actions bumps, and PMD and gitleaks bumps are the owner's.
+# 0.x packages (BenchmarkDotNet among them), GitHub Actions bumps, and PMD, gitleaks and Locust (pip) bumps are the owner's.
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -54,6 +55,22 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+
+  # Locust for the load tests in the shared performance workflow (ADR-0057, ADR-0062): requirements.in names it, and
+  # requirements.txt is pip-compile's output, every package pinned by hash, which Dependabot recompiles with the
+  # command in its header. "all" lets it move the packages Locust pulls in too, not only Locust.
+  - package-ecosystem: pip
+    directory: /.config/locust
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    allow:
+      - dependency-type: all
     cooldown:
       default-days: 7
       semver-major-days: 14

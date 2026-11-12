@@ -183,9 +183,10 @@ jobs:
           $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.cyclonedx.version
           dotnet tool install CycloneDX --version $version --tool-path "$env:RUNNER_TEMP/cyclonedx"
 
-      # Test projects ship nothing, so they're left out: MSBuild names them, through a solution filter of the rest,
-      # because CycloneDX's own --exclude-test-projects misses one marked in Directory.Build.props. The locked
-      # restore above already wrote the package graph.
+      # Test and benchmarks projects ship nothing, so they're left out, through a solution filter of the rest: MSBuild
+      # names the test projects, because CycloneDX's own --exclude-test-projects misses one marked in
+      # Directory.Build.props, and a benchmarks project goes by its name (ADR-0062). The locked restore above already
+      # wrote the package graph.
       - name: Write the SBOM
         if: runner.os == 'Windows'
         shell: pwsh
@@ -369,9 +370,10 @@ jobs:
           $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.cyclonedx.version
           dotnet tool install CycloneDX --version $version --tool-path "$env:RUNNER_TEMP/cyclonedx"
 
-      # Test projects ship nothing, so they're left out: MSBuild names them, through a solution filter of the rest,
-      # because CycloneDX's own --exclude-test-projects misses one marked in Directory.Build.props. The locked
-      # restore above already wrote the package graph.
+      # Test and benchmarks projects ship nothing, so they're left out, through a solution filter of the rest: MSBuild
+      # names the test projects, because CycloneDX's own --exclude-test-projects misses one marked in
+      # Directory.Build.props, and a benchmarks project goes by its name (ADR-0062). The locked restore above already
+      # wrote the package graph.
       - name: Write the SBOM
         if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh

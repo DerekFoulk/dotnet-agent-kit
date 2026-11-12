@@ -176,6 +176,11 @@ dotnet_code_quality.CA2007.output_kind = DynamicallyLinkedLibrary
 [{*Tests/**.cs,**/*Tests/**.cs}]
 dotnet_diagnostic.CA2007.severity = none
 
+# (kit) ADR-0062: BenchmarkDotNet runs only public, unsealed benchmark classes, and CA1515 asks an app (a benchmarks
+# project is an Exe) to make its public types internal. Off in benchmarks projects (names ending in .Benchmarks) only.
+[{*.Benchmarks/**.cs,**/*.Benchmarks/**.cs}]
+dotnet_diagnostic.CA1515.severity = none
+
 # XML project and build files
 [*.{csproj,vbproj,proj,nativeproj,locproj,props,targets,config,nuspec}]
 indent_size = 2

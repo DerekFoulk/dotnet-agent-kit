@@ -67,7 +67,7 @@ Don't rely on color alone to carry meaning (1.4.1): an error is red *and* says s
   - consistent help and redundant entry (WCAG 2.2's new level A criteria), and accessible authentication;
   - what a screen reader says;
   - anything behind an interaction a test didn't make, such as a menu that's never opened.
-- **Interactive Blazor:** the fixture uses static server rendering with enhanced navigation. Pages with interactive render modes, where a click before the circuit connects is lost, have no kit pattern yet (GAP-034).
+- **Interactive Blazor:** the fixture uses static server rendering with enhanced navigation. Pages with interactive render modes, where a click before the circuit connects is lost, have no kit pattern yet (GAP-036).
 - **Native UI:** there's no CI check, and no automated UI test yet (GAP-032). Test with each platform's tools (Accessibility Insights for Windows and Android, Accessibility Inspector for iOS and macOS) and its screen reader (Narrator, TalkBack, VoiceOver). Microsoft's MAUI guide says manual testing on devices is the most reliable check.
 - **Plans:** the plan-checklist skill's Accessibility heading points here.
 

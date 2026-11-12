@@ -113,7 +113,7 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 **New gaps:**
 - **GAP-032:** native UI tests for MAUI and desktop.
 - **GAP-033:** the unverified browser download.
-- **GAP-034:** interactive render modes.
+- **GAP-036:** interactive render modes.
 
 **Follow-ups:**
 - **For the owner (a guardrail):** `.claude/settings.json` has no ask rule for installing a browser locally (`playwright.ps1 install`, the kit script). Until he adds one, AGENTS.md and testing.md say it's the owner's step.

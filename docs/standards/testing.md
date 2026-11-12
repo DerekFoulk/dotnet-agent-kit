@@ -34,7 +34,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039"]
-    enforcement: "ci: tools/Test-CoverageGate.ps1 in dotnet-ci.reusable.yml fails a build below the line-coverage minimums (tools/tests/Test-CoverageGate.Tests.ps1); mutation.reusable.yml runs Stryker.NET nightly and fails below a mutation score of 85% (ADR-0039, tools/tests/MutationCi.Tests.ps1); it isn't a required check, so a low score shows as a failed nightly run, not a blocked pull request"
+    enforcement: "ci: tools/Test-CoverageGate.ps1 in dotnet-ci.reusable.yml fails a build below the line-coverage minimums, leaving out test and benchmarks projects (tools/tests/Test-CoverageGate.Tests.ps1, ADR-0062); mutation.reusable.yml runs Stryker.NET nightly and fails below a mutation score of 85% (ADR-0039, tools/tests/MutationCi.Tests.ps1); it isn't a required check, so a low score shows as a failed nightly run, not a blocked pull request"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
@@ -73,6 +73,15 @@ rules:
     enforcement: "advisory: not built yet; it waits for ARC-009, which settles which projects an app has, to be accepted (scorecard GAP-027)"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
+  - id: TST-009
+    statement: "Each hot path gets a benchmark, and each app with an HTTP endpoint a load test, each with a budget kept beside it (benchmark-budget.json, load-budget.json) and checked by the kit's shared performance workflow; the tools are the intake's defaults for the performance and load kinds of test (TST-007)."
+    why: "A budget is a requirement only when something checks it; shared runners vary, so the check runs off the required path, with exact allocation budgets and time budgets that leave room for the runner (ADR-0062)."
+    layer: owner
+    status: proposed
+    sources: ["owner, 2026-11-11", "ADR-0057", "ADR-0062"]
+    enforcement: "ci: performance.reusable.yml runs every *.Benchmarks project and the load test the caller names, and fails over budget through tools/Test-BenchmarkBudget.ps1 and tools/Test-LoadBudget.ps1 (tools/tests/Performance.Tests.ps1 and both scripts' tests); nightly and on demand, and on every kit pull request, never a required check; advisory for which paths are hot and whether an app has its load test"
+    scope: core
+    paths: ["**/*.Benchmarks/**", "**/tests/load/**", "**/benchmark-budget.json", "**/load-budget.json"]
 ---
 
 # Testing
@@ -85,7 +94,7 @@ Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which 
 
 ## Coverage
 
-`dotnet test --coverage --coverage-output-format cobertura --results-directory <dir>` writes one Cobertura report per test project (Microsoft.Testing.Extensions.CodeCoverage, on Microsoft Testing Platform via `global.json`). `./tools/Test-CoverageGate.ps1 -Path <dir>` merges them and applies TST-004. It leaves out test assemblies and generated files (`*.g.cs`, `*.generated.cs`, anything under `obj/`), and it fails when it finds no report. Given the solution, it also fails for any production project no test loads, except a UI project (a MAUI or desktop project, found by `tools/Get-UiProject.ps1`), which it exempts and names: its logic lives in libraries the gate counts (ARC-010, ADR-0059). Don't put "Fixture" in a production project's name: Microsoft's coverage collector left out an assembly named `Kit.WebUiFixture` entirely (an empty report, so the gate couldn't see it), while the same code named `Kit.WebUi` was counted, at 100% (ADR-0061).
+`dotnet test --coverage --coverage-output-format cobertura --results-directory <dir>` writes one Cobertura report per test project (Microsoft.Testing.Extensions.CodeCoverage, on Microsoft Testing Platform via `global.json`). `./tools/Test-CoverageGate.ps1 -Path <dir>` merges them and applies TST-004. It leaves out test assemblies, benchmarks assemblies (`*.Benchmarks`, ADR-0062) and generated files (`*.g.cs`, `*.generated.cs`, anything under `obj/`), and it fails when it finds no report. Given the solution, it also fails for any production project no test loads, except a UI project (a MAUI or desktop project, found by `tools/Get-UiProject.ps1`), which it exempts and names: its logic lives in libraries the gate counts (ARC-010, ADR-0059). Don't put "Fixture" in a production project's name: Microsoft's coverage collector left out an assembly named `Kit.WebUiFixture` entirely (an empty report, so the gate couldn't see it), while the same code named `Kit.WebUi` was counted, at 100% (ADR-0061).
 
 ## Mutation testing
 
@@ -104,11 +113,22 @@ An app with a web UI (Blazor, Razor) tests it in a real browser from its `E2E.Te
 - **Waiting:** Playwright's `Expect(...)` assertions and locators wait for the page by themselves; never sleep.
 - **Pages behind sign-in:** the factory signs the browser in with a test authentication scheme, as Microsoft's "Integration tests in ASP.NET Core" page shows, never through the real identity provider.
 - **Components:** a Razor component with logic of its own gets bUnit tests (the intake's Functional kind), which run in milliseconds and need no browser; Microsoft's "Test Razor components" page says which to use when. The fixture has no such component, so it has no bUnit project. Keep logic in `.razor.cs` files or plain classes rather than `@code` blocks: the code shape and duplicate code checks and Stryker don't read code in `.razor` files (`docs/standards/craft.md`).
-- **Interactive render modes** aren't covered yet (GAP-034): the fixture is static server rendering with enhanced navigation.
+- **Interactive render modes** aren't covered yet (GAP-036): the fixture is static server rendering with enhanced navigation.
 
 **In CI.** `dotnet-ci.reusable.yml` runs the E2E tests in its "Test with coverage" step, in the required job. Just before, its "Playwright browser" step runs `tools/Install-PlaywrightBrowser.ps1`. For each project whose restore graph holds Microsoft.Playwright, it runs the `playwright.ps1` the build put beside the test assembly: `install --with-deps chromium`, once per Playwright version. Without such a project it does nothing. The Chromium build is the one the Microsoft.Playwright version pins, so Dependabot moves it with the package. Playwright's installer checks no hash of what it downloads (GAP-033). The nightly mutation run builds and installs the same way before Stryker.
 
 **On your machine.** The tests need the Chromium build the Microsoft.Playwright version pins. Installing it is the owner's step ("Always ask" in AGENTS.md): after a build, `pwsh tests/<App>.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install chromium` (the target framework folder is the project's). Without it, the tests fail with Playwright's own message naming that command.
+
+## Performance and load tests
+
+TST-009, ADR-0062. Both check a budget kept in the repo, and both run in `.github/workflows/performance.reusable.yml`: nightly and on demand in an app, and also on every pull request in the kit. Shared runners vary from run to run, so it's never a required check. A red run on a pull request is a finding to answer before merging: fix the change, or change the budget and give the reason in the pull request.
+
+**Benchmarks.** A benchmarks project is `tests/<App>.Benchmarks`. `tests/Directory.Build.props` makes it a BenchmarkDotNet console app; it isn't a test project. Its `Program.cs` calls `BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args)`, and each benchmark class is public, unsealed and marked `[MemoryDiagnoser]`. Beside it, `benchmark-budget.json` gives each benchmark, by its full name, a `maxMeanNanoseconds` and a `maxAllocatedBytes`. Allocations don't vary, so set that budget to what the benchmark allocates. Time varies, so set it to about twice the mean the CI run measured: read it in the run's `benchmark-results` artifact (the sample's `Bookmark.Create`: 842.5 ns on the runner, so 1,700). `Test-BenchmarkBudget.ps1` fails a benchmark over budget, one without a budget or without a result, a budget with no benchmark, and a report without allocations. The kit's sample benchmarks `Bookmark.Create` (`sample/tests/Bookmarks.Benchmarks`).
+
+**Load tests.** A load test is `tests/load/`. `locustfile.py` describes what users do; `locust.conf` sets how many users, how fast they start and how long the run lasts; `load-budget.json` sets the limits. Its `"Aggregated"` entry, the whole run, needs a `maxFailureRatio`. It and any request Locust names (`"<Type> <Name>"`, such as `"GET /bookmarks/[id]"`; give a request with an id in its URL a `name=`) can set `maxMilliseconds` for any of Locust's percentiles, such as `"95%"`. Set them to about twice what the run's `load-test-results` artifact shows, and no lower than 100 ms: one pause on a shared runner costs tens of milliseconds (the sample's 95th percentile was 4 ms, its 99th 8 ms, and the slowest request 540 ms). The workflow starts the app the caller names in `load-test-project`, built in Release, in Production, on `load-test-url`, and waits for `/health`. With `load-test-user-jwt: true` it issues a token with `dotnet user-jwts` and hands it to the locustfile as `LOAD_TEST_TOKEN`. `Test-LoadBudget.ps1` fails a percentile or failure ratio over budget, a run or budgeted request with no requests, and any exception in the locustfile. The numbers measure the app on a shared runner; a load test of a deployed app waits for a deployment pipeline (GAP-015). The kit's sample load tests the bookmarks API (`sample/tests/load`).
+
+Locust is pinned with every package it pulls in, by hash, in the kit's `.config/locust/requirements.txt`, for Linux and the Python in `.config/locust/.python-version`, where CI runs it. To run a load test locally, install Locust your own way. An app's locustfile can't add Python packages of its own.
+
 ## Script tests
 
 A Pester test file that makes git repos imports `tools/tests/TestGit.psm1`. It calls `Set-TestGitEnvironment` in its `BeforeAll` and `Restore-TestGitEnvironment` in its `AfterAll`, and makes any bare repo it pushes into with `New-TestGitRemote`. Nothing git reads from the machine reaches a test repo:

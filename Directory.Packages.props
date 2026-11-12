@@ -39,6 +39,8 @@
 
   <!-- Tests: the kit toolset (TST-005) and Microsoft's test pieces (owner approved, 2026-11-04). -->
   <ItemGroup>
+    <!-- Benchmarks with a budget (ADR-0003, ADR-0062). A 0.x package, so its updates are the owner's to merge (ADR-0041). -->
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <!-- Browser and accessibility tests (GAP-004, ADR-0061; named by ADR-0003): Playwright for .NET (MIT), and Deque's axe
          for Playwright (MIT; its axe-core engine, Deque.AxeCore.Commons, is MPL-2.0). -->
     <PackageVersion Include="Deque.AxeCore.Playwright" Version="4.14.0" />

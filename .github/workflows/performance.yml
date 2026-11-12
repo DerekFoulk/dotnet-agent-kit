@@ -1,0 +1,28 @@
+# This repo's performance tests (GAP-012, TST-009, ADR-0062): the sample's BenchmarkDotNet benchmarks and its Locust
+# load test, each against its budget. Nightly, on demand, and on every pull request, so a change that slows a hot
+# path shows before it merges. Shared runners vary, so it isn't a required check; a red run is a finding to answer.
+name: Performance
+
+on:
+  schedule:
+    - cron: '47 6 * * *' # 06:47 UTC daily, after the mutation run
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  performance:
+    uses: ./.github/workflows/performance.reusable.yml
+    with:
+      solution: dotnet-agent-kit.slnx
+      # The sample API needs a bearer token (SEC-007); the URL is its launch profile's, which its token's audience uses.
+      load-test-project: sample/src/Bookmarks.Api/Bookmarks.Api.csproj
+      load-test-path: sample/tests/load
+      load-test-url: http://localhost:5191
+      load-test-user-jwt: true

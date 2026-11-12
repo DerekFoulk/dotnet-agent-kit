@@ -166,8 +166,9 @@ Describe 'Export-KitApp' {
             $listed[$path]['sha256'] | Should -Be $actual -Because "$path's hash should match the exported file"
         }
 
-        # The app owns these from the start; the sync job never touches them. The runbook is the app's to fill in.
-        foreach ($path in 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md') {
+        # The app owns these from the start; the sync job never touches them. The runbook is the app's to fill in, and
+        # performance.yml is where it names its load test (review 1 of PR 57; ADR-0062).
+        foreach ($path in 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md', '.github/workflows/performance.yml') {
             $listed.ContainsKey($path) | Should -BeFalse -Because "$path belongs to the app"
         }
 
@@ -268,6 +269,15 @@ Describe 'Export-KitApp' {
         $output = & pwsh -NoProfile -File $check -Solution (Join-Path $app 'Contoso.Orders.slnx') 2>&1 | Out-String
 
         $LASTEXITCODE | Should -Be 0 -Because $output
+    }
+
+    # ADR-0062: the performance workflow runs them in CI; an app runs them too, against a local benchmark or load run.
+    It 'gets the <Script> check, which its AGENTS.md lists' -ForEach @(
+        @{ Script = 'Test-BenchmarkBudget.ps1' }
+        @{ Script = 'Test-LoadBudget.ps1' }
+    ) {
+        Test-Path -LiteralPath (Join-Path $app '.kit/tools' $Script) | Should -BeTrue
+        Get-Content -Raw -LiteralPath (Join-Path $app 'AGENTS.md') | Should -Match ([regex]::Escape("./.kit/tools/$Script"))
     }
 
     It 'gets the database guide that DAT-001 and the plan checklist point to' {
