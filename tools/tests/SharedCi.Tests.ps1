@@ -302,6 +302,17 @@ Describe 'Shared CI for app repos' {
             Assert-ReadOnly $yaml['permissions'] $File
             $job['uses'] | Should -Be $Uses
             @($job['permissions'].Keys | Sort-Object) | Should -Be @('id-token', 'security-events')
+            # The first run on main failed to start (PR 48): GitHub refuses a called workflow that asks, at its top or
+            # in a job, for a permission its caller's job doesn't grant ("requesting 'contents: read', but is only
+            # allowed 'contents: none'").
+            $rank = @{ none = 0; read = 1; write = 2 }
+            foreach ($asked in @(@($scorecard.Yaml['permissions']) + @($scJobs.Values | ForEach-Object { $_['permissions'] }))) {
+                foreach ($scope in @($asked.Keys)) {
+                    $granted = if ($job['permissions'].Contains($scope)) { $job['permissions'][$scope] } else { 'none' }
+                    $rank.ContainsKey($asked[$scope]) -and $rank.ContainsKey($granted) | Should -BeTrue -Because "'$($asked[$scope])' and '$granted' are permission levels"
+                    $rank[$granted] | Should -BeGreaterOrEqual $rank[$asked[$scope]] -Because "scorecard.reusable.yml asks for '${scope}: $($asked[$scope])', and $File grants '${scope}: $granted'"
+                }
+            }
             # The shared workflow skips a private repo itself, on every trigger.
             $job.ContainsKey('if') | Should -BeFalse
         }
