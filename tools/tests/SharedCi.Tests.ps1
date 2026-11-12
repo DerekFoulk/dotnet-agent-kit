@@ -386,9 +386,48 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # GAP-023 (ADR-0060): PMD's version is in the kit's .config/pmd/pom.xml, where Dependabot moves it, and the zip's
+    # SHA-256 beside it. An app's CI runs this workflow at its kit pin, so it reads the kit's copy ($env:KIT), never
+    # the app's workspace, which has none.
+    Context 'dotnet-ci.reusable.yml PMD' {
+        BeforeAll {
+            $download = @(Get-Steps $dotnet.Yaml | Where-Object { $_['name'] -eq 'Download PMD' })
+        }
+
+        It "pins PMD in the kit's own manifest, consistently" {
+            Import-Module (Join-Path $root 'tools' 'KitPmd.psm1') -Force
+
+            $pin = Get-PmdPin -Path (Join-Path $root '.config' 'pmd')
+
+            $pin.Version | Should -Match '^\d+\.\d+\.\d+$'
+        }
+
+        It "reads PMD's version and SHA-256 from the kit's pin, through KitPmd.psm1" {
+            $download | Should -HaveCount 1
+            $download[0]['shell'] | Should -Be 'pwsh'
+            $download[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+            $download[0]['run'] | Should -Match 'Import-Module "\$env:KIT/tools/KitPmd\.psm1"'
+            $download[0]['run'] | Should -Match '\$pin = Get-PmdPin -Path "\$env:KIT/\.config/pmd"'
+        }
+
+        It 'holds no PMD version or hash of its own' {
+            $download[0].ContainsKey('env') | Should -BeTrue
+            @($download[0]['env'].Keys) | Should -Be @('KIT')
+            $download[0]['run'] | Should -Not -Match '[0-9a-f]{64}'
+            $download[0]['run'] | Should -Not -Match '\d+\.\d+\.\d+'
+        }
+
+        It 'downloads the URL the pin names, checks it against the pin file, and stops on any failed command' {
+            $download[0]['run'] | Should -Match '\$PSNativeCommandUseErrorActionPreference = \$true'
+            $download[0]['run'] | Should -Match 'curl --fail .*\$pin\.Url'
+            $download[0]['run'] | Should -Match 'sha256sum --check --strict \$pin\.PinFile'
+            $download[0]['if'] | Should -Be "steps.projects.outputs.count != '0'"
+        }
+    }
+
     Context 'app-checks.reusable.yml' {
         BeforeAll {
-            $run = (@(Get-Steps $app.Yaml) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
+            $run =(@(Get-Steps $app.Yaml) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
         }
 
         It 'is a shared workflow with a job named "App checks"' {
