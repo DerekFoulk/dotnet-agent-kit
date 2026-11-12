@@ -21,27 +21,32 @@ areas:
       - "owner, 2026-11-08"
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"
       - "ADR-0043"
-    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010]
+      - "ADR-0050"
+    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010, CRF-011]
     gaps:
       - id: GAP-019
-        gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent."
+        gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-011 (proposed) states the four as limits."
+        status: closed
+      - id: GAP-022
+        gap: "An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request."
         status: proposed
-        needs: "an analyzer package or a kit check, and a CI change"
+        needs: "the check shipped as a .NET tool the app restores, or its source exported with the kit's files"
       - id: GAP-020
-        gap: "No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent."
-        status: proposed
-        needs: "a tool and a CI change"
+        gap: "No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent. Closed by ADR-0051: tools/Test-Duplication.ps1 runs PMD's CPD over hand-written C# in dotnet-ci.reusable.yml; whether a repeat is knowledge stays the reviewer's call."
+        status: closed
   - id: proportion
     name: Proportion
     perfect: "The smallest design that meets today's requirements: no layer, pattern, package or project the app doesn't need yet. Over-engineering is a defect too."
     sources:
       - "owner, 2026-11-06"
       - "https://martinfowler.com/bliki/Yagni.html, retrieved 2026-11-07"
-    rules: [CRF-004]
+      - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-11"
+      - "https://learn.microsoft.com/en-us/azure/well-architected/reliability/simplify, retrieved 2026-11-11"
+    rules: [CRF-004, ARC-009]
     gaps:
       - id: GAP-002
-        gap: "No rule says how much structure a small app should get, so an agent can build every layer for a tiny app."
-        status: proposed
+        gap: "No rule says how much structure a small app should get, so an agent can build every layer for a tiny app. Closed by ADR-0052: ARC-009 (proposed) sizes an app's modules, projects and patterns to its requirements, and the shared .NET CI runs Test-EmptyProjects.ps1, which fails a C# project with no code of its own, or one that keeps the class library template's empty Class1."
+        status: closed
   - id: code
     name: Code
     perfect: "Idiomatic C# that follows Microsoft's conventions, with nullable on, every analyzer on and no warnings; async code that passes cancellation tokens on to the methods it calls."
@@ -74,7 +79,7 @@ areas:
         status: proposed
         needs: "packages and a CI change"
       - id: GAP-027
-        gap: "No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-008 proposes the check; it waits for GAP-002 to settle which projects an app has."
+        gap: "No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-008 proposes the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted."
         status: proposed
         needs: "a kit check and a CI change"
   - id: security
@@ -165,6 +170,10 @@ areas:
         gap: "OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside."
         status: proposed
         needs: "a GitHub Action and a CI change"
+      - id: GAP-023
+        gap: "PMD, which the duplicate code check downloads in CI (ADR-0051), is pinned by version and SHA-256 in dotnet-ci.reusable.yml, where Dependabot can't see it: nothing tells the kit when PMD releases a new version or has a security advisory."
+        status: proposed
+        needs: "a scheduled check of PMD's releases and advisories, or a pin Dependabot can update"
   - id: delivery
     name: Delivery
     perfect: "Every merge builds a release candidate; deploys go to staging, then production, with a tested rollback and no downtime; infrastructure is code."
@@ -235,8 +244,8 @@ Each area in the front matter above has:
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
 | Architecture | 8 | 4 | 4 | 0 | 1 |
-| Craft | 10 | 4 | 6 | 0 | 2 |
-| Proportion | 1 | 0 | 1 | 0 | 1 |
+| Craft | 10 | 5 | 5 | 1 | 1 |
+| Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 8 | 7 | 1 | 0 | 0 |
 | Tests | 7 | 4 | 3 | 2 | 2 |
 | Security | 7 | 5 | 2 | 4 | 0 |
@@ -244,26 +253,25 @@ Each area in the front matter above has:
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 3 | 3 | 0 | 3 | 0 |
 | Performance | 1 | 0 | 1 | 0 | 1 |
-| Supply chain and build | 8 | 8 | 0 | 0 | 2 |
+| Supply chain and build | 8 | 8 | 0 | 0 | 3 |
 | Delivery | 1 | 1 | 0 | 0 | 2 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 11 proposed; 12 open gaps.
+**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 13 proposed; 11 open gaps.
 
 Open gaps:
 
 - **GAP-001** (Architecture, proposed): No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only.
-- **GAP-019** (Craft, proposed; needs an analyzer package or a kit check, and a CI change): No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent.
-- **GAP-020** (Craft, proposed; needs a tool and a CI change): No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent.
-- **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
+- **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
-- **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-008 proposes the check; it waits for GAP-002 to settle which projects an app has.
+- **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-008 proposes the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
 - **GAP-008** (Reliability, proposed): No rule for safe database migrations (backward-compatible steps, tested before deploy).
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions); nothing runs them yet.
 - **GAP-013** (Supply chain and build, proposed; needs a tool or GitHub Action, and a CI change): No SBOM is produced for an app's build.
 - **GAP-014** (Supply chain and build, proposed; needs a GitHub Action and a CI change): OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside.
+- **GAP-023** (Supply chain and build, proposed; needs a scheduled check of PMD's releases and advisories, or a pin Dependabot can update): PMD, which the duplicate code check downloads in CI (ADR-0051), is pinned by version and SHA-256 in dotnet-ci.reusable.yml, where Dependabot can't see it: nothing tells the kit when PMD releases a new version or has a security advisory.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet.
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 <!-- scorecard-table:end -->

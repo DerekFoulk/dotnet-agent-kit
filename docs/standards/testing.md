@@ -70,7 +70,7 @@ rules:
     layer: owner
     status: proposed
     sources: ["owner, 2026-11-11", "ADR-0058"]
-    enforcement: "advisory: not built yet; it waits for GAP-002 to settle which projects an app has (scorecard GAP-027)"
+    enforcement: "advisory: not built yet; it waits for ARC-009, which settles which projects an app has, to be accepted (scorecard GAP-027)"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
 ---

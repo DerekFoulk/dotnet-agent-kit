@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A fixture for Test-CodeShape.Tests.ps1: a project with several target frameworks, whose outer evaluation has
+       no Compile items. -->
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net9.0</TargetFrameworks>
+  </PropertyGroup>
+
+</Project>

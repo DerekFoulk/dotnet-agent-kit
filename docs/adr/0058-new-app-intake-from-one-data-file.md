@@ -39,13 +39,13 @@ The second open question, whether a check enforces the test matrix, has two opti
 
 A script in app CI that fails when a production project lacks a test project of each kind TST-003 requires.
 
-- **Trade-offs:** TST-003 stops being advisory for apps at once. But which projects an app has is what GAP-002 (how much structure an app gets) is settling, so the check would encode a structure that may change, and no app has projects yet to check.
+- **Trade-offs:** TST-003 stops being advisory for apps at once. But which projects an app has is what ARC-009 (ADR-0052, which closed GAP-002) settles, and ARC-009 is still proposed, so the check would encode a structure that may change, and no app has projects yet to check.
 - **Reversibility:** Moderate: a required check is a guardrail, and changing it needs the owner's yes.
 - **Risk:** Medium: a check built on the wrong structure blocks correct apps.
 
-### Option 5: Propose the check now, build it after GAP-002
+### Option 5: Propose the check now, build it once ARC-009 is accepted
 
-TST-008 (proposed) says a check enforces the matrix; scorecard GAP-027 tracks building it once GAP-002 decides an app's projects.
+TST-008 (proposed) says a check enforces the matrix; scorecard GAP-027 tracks building it once ARC-009, which decides an app's projects, is accepted.
 
 - **Trade-offs:** No check until then, so the reviewer agent carries TST-003 for the first app. The check, when built, fits the structure apps actually get.
 - **Reversibility:** Easy.
@@ -53,7 +53,7 @@ TST-008 (proposed) says a check enforces the matrix; scorecard GAP-027 tracks bu
 
 ## Recommendation
 
-Option 1: one file feeds the cards, the answer check and the tests, so nothing is stated twice. For the matrix, option 5: checking now would fix a structure that GAP-002 may change, so the better check waits for it, named (CRF-002).
+Option 1: one file feeds the cards, the answer check and the tests, so nothing is stated twice. For the matrix, option 5: checking now would fix a structure that ARC-009, still proposed, may change, so the better check waits for it, named (CRF-002).
 
 ## Decision
 
