@@ -134,7 +134,7 @@ The mode is yours alone. Review mode writes `review` to `.agent-mode`, which eve
 
 | Workflow | What it checks |
 |---|---|
-| `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage, the coverage gate (TST-004), deprecated packages, empty projects (ARC-009), the code shape check (CRF-011) and the duplicate code check (CRF-003, which downloads PMD and needs the runner's Java), then uploads an SBOM (software bill of materials: every package the build ships, with its version and licence) as the `sbom` artifact, in CycloneDX JSON, with test projects left out and build-only packages marked `excluded` (SUP-009, ADR-0055). It also runs a gitleaks secret scan of the full git history |
+| `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage, the coverage gate (TST-004), deprecated packages, empty projects (ARC-009), the code shape check (CRF-011) and the duplicate code check (CRF-003, which downloads PMD and needs the runner's Java), then uploads an SBOM (software bill of materials: every package the build ships, with its version and licence) as the `sbom` artifact, in CycloneDX JSON, with test projects left out and build-only packages marked `excluded` (SUP-009, ADR-0055). An app with MAUI or desktop (UI) projects also builds them on Windows and macOS, and its code shape, duplicate code and SBOM steps run on the Windows leg, since Linux can't evaluate those projects; the tests stay on Linux (ARC-010, ADR-0059). Windows and macOS runners are free on a public repo; a private one pays for them, macOS at a multiple of the Linux rate. It also runs a gitleaks secret scan of the full git history |
 | `codeql.reusable.yml` | CodeQL code scanning of the GitHub Actions workflows, and of the C# once there is some, with no build (ADR-0036). Results go to the repo's Security tab. In the kit, the ruleset's code scanning rule blocks a merge on its results (see "GitHub settings on this repo"), and every public app `New-KitApp` creates gets the same rule |
 | `kit-checks.reusable.yml` | All Pester tests, rule sources, the quality scorecard, ADR sections, generated-file drift, and on pull requests the commit subjects and red→green order (the branch's own commits) |
 | `pr-title.yml` | The PR title is a Conventional Commit. It also runs when the PR is edited, because the title becomes the merge commit's subject |
@@ -202,7 +202,7 @@ jobs:
 
 | Shared workflow | What it checks in the app |
 |---|---|
-| `dotnet-ci.reusable.yml` | Restore, build, format, tests with coverage, the coverage gate, deprecated packages, empty projects, code shape, duplicate code, the `sbom` artifact, and the secret scan. `solution` is required |
+| `dotnet-ci.reusable.yml` | Restore, build, format, tests with coverage, the coverage gate, deprecated packages, empty projects, code shape, duplicate code, the `sbom` artifact, and the secret scan. With MAUI or desktop projects, also a build on Windows and macOS, which runs code shape, duplicate code and the SBOM on Windows (ADR-0059). `solution` is required |
 | `codeql.reusable.yml` | CodeQL code scanning of the workflows, and the C# once there is some. Skipped on a private app |
 | `scorecard.reusable.yml` | Not a pull request check: OpenSSF Scorecard on `main` and weekly, from the app's `scorecard.yml`, publishing the score. Skipped on a private app, where the action publishes nothing and code scanning needs a paid licence. An app made before `scorecard.yml` joined the template adds it by hand ("WorkflowByHand") |
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`, the runbook, `docs/runbook.md` (OPS-004), which fails when it's missing, and every EF Core migration's `Up`, which mustn't drop or rename what the running version uses without a reason (DAT-003). Called from any other event, it fails rather than pass having checked nothing |
@@ -219,22 +219,25 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 ```
 
 - The files come from a clean checkout of `-KitRef` (a temporary git worktree), never from your working tree, so an uncommitted edit can't reach an app.
-- The app gets the kit's build files, agent files, skills, reviewer, standards and commit hook unchanged, except that its `.claude/settings.json` leaves out the rules for kit scripts it doesn't get (such as `New-KitApp`); the checking scripts in `.kit/tools/`; the database guide, `docs/database-guide.md`; and its own `AGENTS.md`, `THIRD-PARTY-NOTICES.md`, `README.md`, `<Name>.slnx` (no projects yet), CI callers pinned to the kit commit, a Draft runbook (`docs/runbook.md`) to fill in before its first deployment, and a `.github/dependabot.yml` for its NuGet packages and the kit pin, rendered from `templates/app/`. Its agent rule files are generated during the export.
+- The app gets the kit's build files, agent files, skills (except the kit-only `new-app` skill), reviewer, standards and commit hook unchanged, except that its `.claude/settings.json` leaves out the rules for kit scripts it doesn't get (such as `New-KitApp`); the checking scripts in `.kit/tools/`; the database guide, `docs/database-guide.md`; and its own `AGENTS.md`, `THIRD-PARTY-NOTICES.md`, `README.md`, `<Name>.slnx` (no projects yet), CI callers pinned to the kit commit, a Draft runbook (`docs/runbook.md`) to fill in before its first deployment, and a `.github/dependabot.yml` for its NuGet packages and the kit pin, rendered from `templates/app/`. Its agent rule files are generated during the export.
 - `Directory.Packages.props` keeps the kit's build and test packages and drops the ones in the `ItemGroup` labelled `Sample app`.
 - `.kit/manifest.json` records the kit version (the release tag on the commit, or `unreleased`) and commit, and the SHA-256 of every file the kit manages, taken over the text with LF line endings so it's the same on every checkout. The kit sync uses it to know what it may replace, and `appName` to export the app again. In `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, only the block between `kit:begin` and `kit:end` is the kit's.
 - It refuses a folder that isn't empty, a name that isn't a dotted .NET name (or contains a Windows device name such as `Con`), and a ref that isn't a commit or tag, before writing anything. If it fails partway, it removes what it wrote.
 
 ### Start a new app
 
+Ask an agent in the chat for a new app. Its `new-app` skill asks you the intake cards, each with a recommended answer and its cost (Free, Free tier or Paid, with the price): app type, data, database, sign-in, hosting, and the test tools for each kind of test, free by default (for a commercial app, FluentAssertions 8 is swapped for AwesomeAssertions, ADR-0004). It writes your answers to a file, runs `New-KitApp` with `-WhatIf`, and creates the repo once you say yes. The answers become the app's `docs/app-profile.md`, which its plans start from (ADR-0058). The cards and the test tools live in `templates/app-intake.json`.
+
 `tools/New-KitApp.ps1` creates an app repo on your own GitHub account, with the kit's files, settings and ruleset, using your existing `gh` sign-in (ADR-0033). Try it with `-WhatIf` first: it runs the checks and lists the steps, and changes nothing.
 
 ```powershell
-./tools/New-KitApp.ps1 -Name Contoso.Orders -WhatIf
-./tools/New-KitApp.ps1 -Name Contoso.Orders
+./tools/New-KitApp.ps1 -Name Contoso.Orders -Intake ./answers.json -WhatIf
+./tools/New-KitApp.ps1 -Name Contoso.Orders -Intake ./answers.json
 ```
 
 | Parameter | Default |
 |---|---|
+| `-Intake` | Required: the intake answers, a JSON file the `new-app` skill writes, checked against `templates/app-intake.json` at `-KitRef`. No release has that file yet, so until one does, pass a `-KitRef` from after it was added |
 | `-RepoName` | The app name. Set it for a repo name a .NET namespace can't have, such as `contoso-orders` (GitHub allows letters, digits, `-`, `_` and `.`) |
 | `-KitRef` | The kit's newest release tag (`vX.Y.Z`). Until one exists, pass a kit commit or tag |
 | `-Destination` | A folder named after the repo, next to the kit's folder |
@@ -242,17 +245,18 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 
 The app name (`-Name`) must be a dotted .NET name, because it becomes the solution's name and the root namespace, which can't contain hyphens.
 
-It checks first, before changing anything: the app and repo names, an empty folder, the kit ref (which must have `templates/github`), that `gh` is signed in, and that the repo doesn't exist yet. Then, in order:
+It checks first, before changing anything: the app and repo names, an empty folder, the kit ref (which must have `templates/github` and `templates/app-intake.json`), the intake answers, that `gh` is signed in, and that the repo doesn't exist yet. Then, in order:
 
 1. Exports the files (`Export-KitApp`).
-2. Makes the first commit, `chore: start from dotnet-agent-kit <version>`, with the commit hook stored as executable for Linux and macOS.
-3. Creates the repo, private for now, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
-4. Pushes `main`.
-5. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved.
-6. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
-7. Requires every GitHub Action in a workflow to be pinned to a full commit SHA (`templates/github/actions.json`, SUP-008).
-8. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, requires approval before any fork's PR runs (`templates/github/public.json`), and adds a "code scanning" ruleset that blocks a merge on a CodeQL error or a high security alert (`templates/github/code-scanning.json`, SEC-006). A private app doesn't run CodeQL, and a rule requiring it would block every merge, so it doesn't get that ruleset. Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
-9. Turns the commit hook on in the local copy.
+2. Writes the intake answers to `docs/app-profile.md`, which the app owns: the kit sync never changes it.
+3. Makes the first commit, `chore: start from dotnet-agent-kit <version>`, with the commit hook stored as executable for Linux and macOS.
+4. Creates the repo, private for now, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
+5. Pushes `main`.
+6. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved.
+7. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
+8. Requires every GitHub Action in a workflow to be pinned to a full commit SHA (`templates/github/actions.json`, SUP-008).
+9. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, requires approval before any fork's PR runs (`templates/github/public.json`), and adds a "code scanning" ruleset that blocks a merge on a CodeQL error or a high security alert (`templates/github/code-scanning.json`, SEC-006). A private app doesn't run CodeQL, and a rule requiring it would block every merge, so it doesn't get that ruleset. Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
+10. Turns the commit hook on in the local copy.
 
 If a step fails, it stops and says what's done and what's left, and whether the repo or the folder is kept. It never deletes a repo. Claude Code asks before running it.
 

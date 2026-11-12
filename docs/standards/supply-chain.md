@@ -7,7 +7,7 @@ rules:
     layer: owner
     status: accepted
     sources: ["ADR-0020"]
-    enforcement: "build: RestorePackagesWithLockFile, RestoreLockedMode when CI=true; tools/tests/BuildConfig.Tests.ps1; ci: dependabot-lockfiles.yml refreshes the lock files Dependabot misses on its NuGet PRs (tools/tests/DependabotLockfiles.Tests.ps1)"
+    enforcement: "build: RestorePackagesWithLockFile, RestoreLockedMode when CI=true; tools/tests/BuildConfig.Tests.ps1; ci: dependabot-lockfiles.yml refreshes the lock files Dependabot misses on its NuGet PRs (tools/tests/DependabotLockfiles.Tests.ps1); on macOS, where a MAUI project builds a subset of its frameworks, CI restores unlocked and tools/Test-LockFileSubset.ps1 holds each lock file to the committed one (ADR-0059)"
     scope: core
     paths: ["**/*.csproj", "**/packages.lock.json", "Directory.Build.props"]
   - id: SUP-002
@@ -91,6 +91,15 @@ rules:
     enforcement: "ci: scorecard.yml in the kit and in the app template call scorecard.reusable.yml, which reads the repo's visibility from the API and skips a private repo; tools/tests/SharedCi.Tests.ps1 checks the triggers, the permissions, the pins, the skip and each publishing restriction; advisory: an app made before it adds the template's scorecard.yml by hand (WorkflowByHand)"
     scope: core
     paths: [".github/workflows/**"]
+  - id: SUP-011
+    statement: "Workloads such as MAUI install at the workload set whose version is the SDK's own (dotnet workload restore --version with the version dotnet --version prints), never the latest."
+    why: "Unpinned workloads change under a build without any commit; a workload set ships with each SDK release and moves with the SDK pin. sdk.workloadVersion in global.json would pin it too, but every build then fails on a machine without that set (ADR-0059)."
+    layer: outside
+    status: proposed
+    sources: ["ADR-0059", "https://learn.microsoft.com/dotnet/core/tools/dotnet-workload-sets, retrieved 2026-11-11"]
+    enforcement: "ci: dotnet-ci.reusable.yml's ui job restores workloads with --version (dotnet --version), and tools/tests/SharedCi.Tests.ps1 fails on an unpinned workload install or update"
+    scope: core
+    paths: [".github/workflows/**", "global.json"]
 ---
 
 # Supply chain

@@ -507,6 +507,22 @@ Describe 'Export-KitApp' {
             Should -BeNullOrEmpty
     }
 
+    # The coverage gate calls Get-UiProject.ps1 beside it (ADR-0059); an app missing a script another one calls
+    # would fail only when that line runs.
+    It 'includes every kit script that an exported kit script calls from its own folder' {
+        $targets = @($map | ForEach-Object { $_.Target })
+        $tools = @($targets | Where-Object { $_ -like '.kit/tools/*' })
+        $called = foreach ($tool in $tools) {
+            $text = Get-Content -Raw -LiteralPath (Join-Path $checkout 'tools' (Split-Path $tool -Leaf))
+            [regex]::Matches($text, "Join-Path \`$PSScriptRoot '([^'/\\]+\.ps(?:m)?1)'") | ForEach-Object { $_.Groups[1].Value }
+        }
+
+        $called | Should -Contain 'Get-UiProject.ps1'
+        foreach ($name in @($called | Sort-Object -Unique)) {
+            $tools | Should -Contain ".kit/tools/$name"
+        }
+    }
+
     # ADR-0043: Directory.Build.props points every project at files beside it (CodeMetricsConfig.txt,
     # BannedSymbols.txt); an app without one of them would build without the check it feeds.
     It 'includes every file the kit''s Directory.Build.props points to' {
@@ -523,6 +539,13 @@ Describe 'Export-KitApp' {
     It 'leaves out New-KitApp and the GitHub settings, which only the kit runs' {
         @($map | Where-Object { $_.Source -match 'New-KitApp|^templates/github/' }) | Should -BeNullOrEmpty
         Get-ChildItem -LiteralPath $app -Recurse -File -Filter 'New-KitApp*' | Should -BeNullOrEmpty
+    }
+
+    # The new-app skill runs New-KitApp, which an app doesn't have (ADR-0058).
+    It 'leaves out the new-app intake: its skill, cards and module' {
+        Test-Path -LiteralPath (Join-Path $checkout '.claude' 'skills' 'new-app' 'SKILL.md') | Should -BeTrue -Because 'the kit has the skill'
+        @($map | Where-Object { $_.Source -match '^\.claude/skills/new-app/|^templates/app-intake\.json$|KitIntake\.psm1$' }) | Should -BeNullOrEmpty
+        Test-Path -LiteralPath (Join-Path $app '.claude' 'skills' 'new-app') | Should -BeFalse
     }
 
     # The owner, 2026-11-09: an app's settings shouldn't carry rules for kit scripts it doesn't have, such as

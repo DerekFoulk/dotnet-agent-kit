@@ -68,7 +68,7 @@ Option 1, decided in auto mode (ADR-0035) on 2026-11-11, at the owner's request.
 ## Consequences
 
 - `.github/dependabot.yml` gains a `maven` entry for `/.config/pmd` (7 days, 14 for a major) and a `docker` entry for `/.config/gitleaks` (7 days; Docker takes no semver-specific wait). GAP-023 is closed.
-- `dotnet-ci.reusable.yml` holds no tool version or hash of its own. The secret scan job gets the kit through `kit-tools`, as the .NET job does. Its name, which the ruleset requires, is unchanged.
+- `dotnet-ci.reusable.yml` holds no tool version or hash of its own. Both PMD downloads, the dotnet job's on Linux and the ui job's on Windows for an app with UI projects (ADR-0059), read the kit's pin and check the zip against its SHA-256. The secret scan job gets the kit through `kit-tools`, as the .NET job does. Its name, which the ruleset requires, is unchanged.
 - An app needs nothing. Its CI runs the kit's workflow at its kit pin, which reads the kit's pins, and the app gets newer ones with each kit release (ADR-0045). `Export-KitApp` doesn't copy `.config/`, so an app's Dependabot never sees these manifests.
 - A Dependabot maven PR carries two commits: Dependabot's pom change and the workflow's pin. To check the pin, compare it with the digest on the release page. A PR whose `pin-pmd` job failed (for example, a zip under 7 days old) gets its pin by running that job again once the cause is gone. That includes a Dependabot security update for PMD: it skips the cooldown, but `Set-PmdPin` still waits until the zip is 7 days old, so an urgent fix needs its job run again then, or a pin taken by hand from a verified download.
 - ADR-0051's "Download PMD" now reads the kit's pin; ADR-0024's image pin moves to the Dockerfile.

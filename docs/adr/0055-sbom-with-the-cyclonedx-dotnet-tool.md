@@ -49,7 +49,7 @@ Proposed (auto mode, ADR-0035), with SUP-009; the owner accepts or changes it.
 
 - New rule SUP-009 (proposed) in `docs/standards/supply-chain.md`. GAP-013 is closed.
 - `tools/New-ShippedSolutionFilter.ps1`, with Pester tests, writes the filter of shipped projects. It runs from the kit's copy (the `kit-tools` action), so an app needs none.
-- `dotnet-ci.reusable.yml` installs CycloneDX at the version the kit's tool manifest pins, writes `sbom.cdx.json` and uploads it as the `sbom` artifact, which GitHub keeps for the repo's artifact retention period (90 days by default). It runs only once the solution has projects, like the other .NET steps. An app gets it with its next kit pin, with no change of its own.
+- `dotnet-ci.reusable.yml` installs CycloneDX at the version the kit's tool manifest pins, writes `sbom.cdx.json` and uploads it as the `sbom` artifact, which GitHub keeps for the repo's artifact retention period (90 days by default). It runs only once the solution has projects, like the other .NET steps. In an app with MAUI or desktop projects, the Windows leg of the `ui` job writes it instead, with the same steps (ADR-0059). An app gets it with its next kit pin, with no change of its own.
 - `.config/dotnet-tools.json` pins `cyclonedx`, so `dotnet tool restore` installs it locally too.
 - `tools/tests/SharedCi.Tests.ps1` checks the steps.
 
