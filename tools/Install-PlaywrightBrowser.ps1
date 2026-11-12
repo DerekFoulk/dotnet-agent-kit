@@ -34,7 +34,11 @@ function Install-PlaywrightBrowser {
         # A list on the left, so -like filters it even when the graph holds one library.
         $library = @(@($assets.libraries.PSObject.Properties.Name) -like 'Microsoft.Playwright/*')
         if ($library) {
-            [pscustomobject]@{ Version = ($library[0] -split '/')[1]; Script = Join-Path $json.Properties.TargetDir 'playwright.ps1' }
+            $script = Join-Path $json.Properties.TargetDir 'playwright.ps1'
+            if (-not (Test-Path -LiteralPath $script -PathType Leaf)) {
+                throw "$project uses Playwright, but its $Configuration build has no playwright.ps1 at $script. Build it in $Configuration first."
+            }
+            [pscustomobject]@{ Version = ($library[0] -split '/')[1]; Script = $script }
         }
     }
     if (-not $users) { 'No project uses Playwright; no browser to install.'; return }
