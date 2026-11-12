@@ -191,4 +191,32 @@ Describe 'Install-PlaywrightBrowser.ps1' {
         $LASTEXITCODE | Should -Not -Be 0
         $output | Should -Match ([regex]::Escape('nowhere'))
     }
+
+    # Review of the plan, round 3: a solution may list projects that NuGet never restores, such as a NoTargets-style .proj
+    # or a shared project (.shproj). Only .NET language projects (C#, F#, Visual Basic) can reference Playwright.
+    It 'reads only C#, F# and Visual Basic projects, so a .proj or .shproj in the solution is no problem' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'other-kinds'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
+        New-Item -ItemType Directory -Force -Path (Join-Path $repo 'src/Db'), (Join-Path $repo 'src/Shared') | Out-Null
+        '<Project><Target Name="Build" /></Project>' | Set-Content -LiteralPath (Join-Path $repo 'src/Db/Db.proj')
+        '<Project><Import Project="missing.projitems" /></Project>' | Set-Content -LiteralPath (Join-Path $repo 'src/Shared/Shared.shproj')
+        '<Solution><Project Path="src/Db/Db.proj" /><Project Path="src/Shared/Shared.shproj" /><Project Path="src/App.E2E.Tests/App.E2E.Tests.csproj" /></Solution>' |
+            Set-Content -LiteralPath (Join-Path $repo 'App.slnx')
+
+        { Install-PlaywrightBrowser -Solution (Join-Path $repo 'App.slnx') -Configuration Release *> $null } | Should -Not -Throw
+
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
+    }
+
+    # A .NET project with no restore graph hasn't been restored: say so, rather than guess it doesn't use Playwright.
+    It 'fails, naming the project, when a .NET project hasn''t been restored' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'unrestored'
+        New-Project $repo 'App.E2E.Tests'
+        Remove-Item -LiteralPath (Join-Path $repo 'src/App.E2E.Tests/obj/project.assets.json')
+        $solution = New-Solution $repo 'App.E2E.Tests'
+
+        { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } | Should -Throw '*App.E2E.Tests*restore*'
+    }
 }
