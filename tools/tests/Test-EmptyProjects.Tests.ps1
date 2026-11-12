@@ -124,6 +124,46 @@ Describe 'Test-EmptyProjects.ps1' {
         @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
     }
 
+    # A link back up the tree would loop forever if followed; Get-ChildItem -Recurse doesn't follow links.
+    It 'doesn''t follow a link inside a project''s folder' {
+        $solution = New-Solution @{ 'App.Api' = @{ 'Features/Orders.cs' = 'class Orders { }' } }
+        $features = Join-Path (Split-Path $solution) 'src' 'App.Api' 'Features'
+        $type = if ($IsWindows) { 'Junction' } else { 'SymbolicLink' }
+        $link = Join-Path $features 'up'
+        New-Item -ItemType $type -Path $link -Target $features | Out-Null
+        try {
+            { $script:problems = @(Get-EmptyProjectProblem -Solution $solution) } | Should -Not -Throw
+            $script:problems | Should -BeNullOrEmpty
+        }
+        finally {
+            # Pester's TestDrive cleanup would follow the link; deleting it without recursing removes only the link.
+            [IO.Directory]::Delete($link)
+        }
+    }
+
+    It 'counts a Bin or Obj folder below the project''s top level as source' {
+        $solution = New-Solution @{ 'App.Domain' = @{ 'Features/Bin/Order.cs' = 'class Order { }' } }
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
+    }
+
+    # The project at the root has to remove the nested folder from its Compile items (<Compile Remove="tests/**" />),
+    # since the SDK's default **/*.cs glob would compile the tests' files too.
+    It 'doesn''t count files that belong to a nested <Kind> project' -ForEach @(
+        @{ Kind = 'C#'; Project = 'App.Tests.csproj' }
+        @{ Kind = 'SQL'; Project = 'App.Db.sqlproj' }
+    ) {
+        $folder = Join-Path $TestDrive "sln-$(New-Guid)"
+        New-Item -ItemType Directory -Force -Path (Join-Path $folder 'tests' 'Nested') | Out-Null
+        Set-Content -LiteralPath (Join-Path $folder 'App.csproj') -Value '<Project Sdk="Microsoft.NET.Sdk" />'
+        Set-Content -LiteralPath (Join-Path $folder 'tests' 'Nested' $Project) -Value '<Project />'
+        Set-Content -LiteralPath (Join-Path $folder 'tests' 'Nested' 'Script.cs') -Value 'class Script { }'
+        $solution = Join-Path $folder 'App.slnx'
+        '<Solution><Project Path="App.csproj" /></Solution>' | Set-Content -LiteralPath $solution
+
+        @(Get-EmptyProjectProblem -Solution $solution) | Should -HaveCount 1
+    }
+
     # A console tool and its tests (ARC-009) may sit with the tool's project at the root and the tests beneath it.
     It 'doesn''t count files that belong to another project in a subfolder' {
         $folder = Join-Path $TestDrive "sln-$(New-Guid)"
