@@ -76,6 +76,7 @@ public sealed class NestingRuleTests
     [InlineData("switch (a) { case 0: ", " break; }")]
     [InlineData("for (;;) { ", " }")]
     [InlineData("foreach (int x in new int[0]) { ", " }")]
+    [InlineData("foreach (var (x, y) in new (int, int)[0]) { ", " }")]
     [InlineData("while (a > 0) { ", " }")]
     [InlineData("do { ", " } while (a > 0);")]
     [InlineData("try { ", " } finally { }")]
@@ -122,6 +123,8 @@ public sealed class NestingRuleTests
     [InlineData("int P { get { int a = 0; FIVE return a; } }", "P.get")]
     [InlineData("int this[int a] { set { FIVE } }", "this[].set")]
     [InlineData("event System.Action E { add { int a = 0; FIVE } remove { } }", "E.add")]
+    [InlineData("System.Action P => () => { int a = 0; FIVE };", "P")]
+    [InlineData("System.Action this[int a] => () => { FIVE };", "this[]")]
     public void EveryMemberWithABodyIsMeasuredAndNamed(string member, string name)
     {
         SourceFile file = new("Kinds.cs", $$"""
