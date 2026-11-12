@@ -99,4 +99,17 @@ Describe 'Test-EmptyProjects.ps1' {
 
         @(Get-EmptyProjectProblem -Solution $solution) | Should -BeNullOrEmpty
     }
+
+    It 'says plainly when the solution file is missing' {
+        { Get-EmptyProjectProblem -Solution (Join-Path $TestDrive 'missing.slnx') } | Should -Throw '*No solution file at*'
+    }
+
+    It 'reports a project the solution lists but the disk doesn''t have' {
+        $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' } }
+        Remove-Item -LiteralPath (Join-Path (Split-Path $solution) 'src' 'App.Api') -Recurse -Force
+
+        { $script:problems = @(Get-EmptyProjectProblem -Solution $solution) } | Should -Not -Throw
+        $script:problems | Should -HaveCount 1
+        $script:problems[0].Message | Should -BeLike '*src/App.Api/App.Api.csproj*isn''t there*'
+    }
 }
