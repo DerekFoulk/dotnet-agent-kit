@@ -31,9 +31,20 @@ function Get-BenchmarkBudgetProblem {
     $budgets = Get-Content -Raw -LiteralPath $Budget | ConvertFrom-Json -AsHashtable
     $reports = @(Get-ChildItem -LiteralPath $Path -Filter '*-report-full-compressed.json' -File -Recurse)
     foreach ($report in $reports) {
-        $null = Get-Content -Raw -LiteralPath $report.FullName | ConvertFrom-Json -AsHashtable
+        foreach ($benchmark in (Get-Content -Raw -LiteralPath $report.FullName | ConvertFrom-Json -AsHashtable)['Benchmarks']) {
+            $name = [string] $benchmark['FullName']
+            $limit = $budgets[$name]
+            $mean = [double] $benchmark['Statistics']['Mean']
+            if ($mean -gt [double] $limit['maxMeanNanoseconds']) {
+                "${name}: mean $(Format-Number $mean) ns is over its budget of $(Format-Number $limit['maxMeanNanoseconds']) ns."
+            }
+        }
     }
-    $null = $budgets
+}
+
+# The same text on every machine, whatever its culture: 1,000.4.
+function Format-Number([double] $Value) {
+    $Value.ToString('#,0.###', [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
 function Invoke-BenchmarkBudgetCheck {
