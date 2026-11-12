@@ -16,11 +16,15 @@ internal sealed class AppUnderTest : IAsyncDisposable
     private AppUnderTest(AppFactory factory, IPlaywright playwright, IBrowser browser, IBrowserContext context, IPage page)
     {
         _factory = factory;
+        Address = factory.ClientOptions.BaseAddress;
         _playwright = playwright;
         _browser = browser;
         _context = context;
         Page = page;
     }
+
+    /// <summary>Where the app listens, such as http://127.0.0.1:53124/.</summary>
+    public Uri Address { get; }
 
     /// <summary>The page, with the app's address as its base, so tests go to "/" or "checks".</summary>
     public IPage Page { get; }
