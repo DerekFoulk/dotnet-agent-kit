@@ -22,6 +22,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
 
 function New-ShippedSolutionFilter {
     param(
@@ -29,18 +30,17 @@ function New-ShippedSolutionFilter {
         [Parameter(Mandatory)] [string] $Destination
     )
 
-    if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) { throw "No solution file at '$Solution'." }
+    $projects = @(Get-SolutionProject -Solution $Solution)
     $solutionPath = (Resolve-Path -LiteralPath $Solution).Path
-    $solutionFolder = Split-Path -Parent $solutionPath
 
-    $shipped = foreach ($node in ([xml] (Get-Content -LiteralPath $solutionPath -Raw)).SelectNodes('//Project')) {
-        $relative = $node.GetAttribute('Path')
+    $shipped = foreach ($project in $projects) {
+        $relative = $project.Path
         # CycloneDX reads only these project types (Utils.IsSupportedProjectType at the version the kit pins); MSBuild
         # may not evaluate the rest, such as a shared project (.shproj), on Linux.
         if ([IO.Path]::GetExtension($relative) -notin '.csproj', '.fsproj', '.vbproj', '.xsproj') { continue }
         # A benchmarks project measures what ships and ships nothing; it's known by its name (ADR-0062).
         if ([IO.Path]::GetFileNameWithoutExtension($relative) -clike '*.Benchmarks') { continue }
-        $output = @(& dotnet msbuild (Join-Path $solutionFolder $relative) -nologo -getProperty:IsTestProject 2>&1)
+        $output = @(& dotnet msbuild $project.FullPath -nologo -getProperty:IsTestProject 2>&1)
         if ($LASTEXITCODE -ne 0) { throw "MSBuild couldn't read $relative, so it's unknown whether it ships:`n$($output -join "`n")" }
         # The value is MSBuild's last line; an evaluation warning comes before it. Anything else is a surprise.
         $value = if ($output.Count) { "$($output[-1])".Trim() } else { '' }
