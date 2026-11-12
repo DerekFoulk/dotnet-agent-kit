@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     Fails when an EF Core migration's Up method makes a change the version of the app still running can't work
-    with (DAT-003, ADR-0050).
+    with (DAT-003, ADR-0053).
 
 .DESCRIPTION
     Reads every C# file under -Path (bin, obj and .git left out) that overrides Up(MigrationBuilder), as an EF Core
@@ -64,13 +64,32 @@ function Get-MigrationProblem {
         $body = $text.Substring(0, $end)
 
         $relative = [IO.Path]::GetRelativePath($Path, $file.FullName) -replace '\\', '/'
+
+        # A contract step is reviewed: a "// DAT-003: <reason>" comment in its file says why the running version
+        # works after it. A comment with no reason approves nothing.
+        $approved = $false
+        foreach ($comment in [regex]::Matches($text, '(?m)^[ \t]*//[ \t]*DAT-003:(?<reason>[^\r\n]*)')) {
+            if ($comment.Groups['reason'].Value.Trim()) {
+                $approved = $true
+            }
+            else {
+                New-Problem -Message "${relative}:$(Get-LineNumber $text $comment.Index): the DAT-003 comment must say why the version still running works after this migration"
+            }
+        }
+        if ($approved) { continue }
+
         $call = "\b$([regex]::Escape($up.Groups['builder'].Value))\s*\.\s*(?<op>\w+)\s*(?:<[^>]*>)?\s*\("
         foreach ($match in [regex]::Matches($body, $call)) {
             if ($match.Index -lt $up.Index) { continue }
             $operation = $match.Groups['op'].Value
             if ($operation -cnotin $script:UnsafeOperations) { continue }
-            $line = $text.Substring(0, $match.Index).Split("`n").Count
-            New-Problem -Message "${relative}:${line}: Up calls $operation, which the version still running may need (DAT-003)"
+            New-Problem -Message "${relative}:$(Get-LineNumber $text $match.Index): Up calls $operation, which the version still running may need (DAT-003)"
         }
     }
+}
+
+# The 1-based line the character at Index is on.
+function Get-LineNumber {
+    param([string] $Text, [int] $Index)
+    $Text.Substring(0, $Index).Split("`n").Count
 }
