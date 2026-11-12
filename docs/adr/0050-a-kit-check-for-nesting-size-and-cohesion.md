@@ -115,6 +115,7 @@ How each limit is measured (the kit's own choices, each with tests in `tools/Cod
 - **An app can't yet run the check on its own machine:** the tool's source isn't in `.kit/tools`. It runs only in the app's CI (GAP-022). This waits for the kit's move to a .NET tool (v0.2.0), so it isn't solved twice.
 - **EF Core migrations:** EF Core marks the model snapshot and `.Designer.cs` files as generated, so they're skipped. A migration file itself may not be, and a very large one may need the exception comment. Not measured: the sample has no migrations.
 - GAP-019 is closed. CRF-008's enforcement points to CRF-011. `tools/CodeShape/src/Kit.CodeShape/Limits.cs` is the one source of the numbers, and `tools/tests/Test-CodeShape.Tests.ps1` fails if CRF-011's statement and `Limits.cs` disagree.
+- **Update (2026-11-12):** Test-CodeShape no longer lists projects with `dotnet sln list`. It reads the solution, and picks a multi-target project's first framework, through `tools/KitSolution.psm1`, as every kit script and shared workflow does (CRF-003). That reads `.slnx` only, so the check now refuses a `.sln` and names `dotnet sln migrate`, which converts one. It read a `.sln` before only because `dotnet sln list` does; nothing in the kit passes one, and CI runs Get-UiProject, which needs a `.slnx`, on the same solution first.
 
 ## Pillars affected
 
