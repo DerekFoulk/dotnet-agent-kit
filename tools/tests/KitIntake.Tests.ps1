@@ -165,4 +165,17 @@ Describe 'Resolve-KitIntakeAnswer' {
         $card.Option | Should -BeNullOrEmpty
         $card.Other | Should -Be 'MongoDB Atlas'
     }
+
+    # The database guide (ADR-0052) picks the database from where the data lives and its shape.
+    It 'refuses a database that doesn''t fit the data answer, naming the ones that do' {
+        $answers = New-Answer
+        $answers['database'] = 'sqlite'
+        { Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Throw "*'sqlite' doesn't fit data 'relational'*azure-sql-free, postgresql*"
+    }
+
+    It 'checks no fit when either answer is Other' {
+        $answers = New-Answer
+        $answers['data'] = 'Other: a graph of friends'
+        { Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Not -Throw
+    }
 }
