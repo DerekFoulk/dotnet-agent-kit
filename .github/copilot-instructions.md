@@ -111,7 +111,9 @@ In review mode, also ask the owner first before you:
 | PR title and commit subjects are Conventional Commits | `./tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD` |
 | Every red commit is made green | `./tools/Test-RedGreenOrder.ps1 -Range origin/main..HEAD` |
 | No deprecated NuGet packages | `./tools/Test-DeprecatedPackages.ps1 -Path dotnet-agent-kit.slnx` |
+| Every C# project in the solution holds code of its own, and none keeps the class library template's empty `Class1` (ARC-009) | `./tools/Test-EmptyProjects.ps1 -Solution dotnet-agent-kit.slnx` |
 | Nesting, statements per member, file length and LCOM4 within CRF-011's limits (proposed) | `./tools/Test-CodeShape.ps1 -Solution dotnet-agent-kit.slnx` |
+| No duplicate code (CRF-003): in CI; locally only with Java and PMD, which are the owner's to install | CI: the "Duplicate code" step of `dotnet-ci.reusable.yml`. Locally: `./tools/Test-Duplication.ps1 -Solution dotnet-agent-kit.slnx -Pmd <PMD folder>/bin/pmd` (`pmd.bat` on Windows) |
 | List a PR's open review findings; reply; resolve a thread | `Import-Module ./tools/KitReview.psm1`, then `Get-OpenFinding`, `Resolve-ReviewFinding`, `Add-ReviewReply` (see the `address-review` skill) |
 | Build | `dotnet build` |
 | .NET tests with coverage, then the coverage gate (TST-004) | Delete `TestResults` first (the gate merges every report it finds), then `dotnet test --coverage --coverage-output-format cobertura --results-directory TestResults` and `./tools/Test-CoverageGate.ps1 -Path TestResults -Solution dotnet-agent-kit.slnx` |

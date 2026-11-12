@@ -1,6 +1,6 @@
 # .NET gates for any repo that uses the kit: locked restore with NuGet audit, build with zero warnings,
-# format check, tests with a coverage gate, deprecated packages, code shape (CRF-011), and a secret scan of the whole
-# history.
+# format check, tests with a coverage gate, deprecated packages, empty projects (ARC-009), code shape (CRF-011),
+# duplicate code (CRF-003), and a secret scan of the whole history.
 # Called by this repo's ci.yml, and by app repos pinned to the commit a kit release tag points to:
 #   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/dotnet-ci.reusable.yml@<commit SHA> # v0.1.0
 # The kit's scripts come from the kit at the same version (kit-tools), so an app needs no copy of them.
@@ -244,6 +244,12 @@ jobs:
           }
           "UI builds: $env:UI."
 
+      - name: Empty projects
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-EmptyProjects.ps1" -Solution $env:SOLUTION'
+
       # CRF-011's limits, which no analyzer checks: nesting, statements per member, file length and LCOM4 (ADR-0050).
       # It runs from the repo root, so the repo's global.json picks the SDK that builds the kit's checking tool.
       # It evaluates every project with MSBuild, and a MAUI project doesn't evaluate here, without workloads; with UI
@@ -254,6 +260,27 @@ jobs:
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
+
+      # CRF-003: the same code in more than one place, found by PMD's copy-paste detector, CPD (BSD-style licence;
+      # ADR-0051). The release is pinned, and its SHA-256 is GitHub's digest for the asset; the runner's Java runs it.
+      - name: Download PMD
+        if: steps.projects.outputs.count != '0'
+        env:
+          PMD_VERSION: '7.29.0'
+          PMD_SHA256: d27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179
+        run: |
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/pmd.zip" \
+            "https://github.com/pmd/pmd/releases/download/pmd_releases%2F$PMD_VERSION/pmd-dist-$PMD_VERSION-bin.zip"
+          echo "$PMD_SHA256  $RUNNER_TEMP/pmd.zip" | sha256sum --check --strict
+          unzip -q "$RUNNER_TEMP/pmd.zip" -d "$RUNNER_TEMP"
+          echo "PMD=$RUNNER_TEMP/pmd-bin-$PMD_VERSION/bin/pmd" >> "$GITHUB_ENV"
+
+      - name: Duplicate code
+        if: steps.projects.outputs.count != '0'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-Duplication.ps1" -Solution $env:SOLUTION -Pmd $env:PMD'
 
   secrets:
     name: Secret scan (gitleaks)

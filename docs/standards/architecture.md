@@ -73,6 +73,15 @@ rules:
     enforcement: "advisory: the banned-API analyzer now runs in every project (ADR-0043), but the ban list for pure assemblies (clock, randomness, file and network access) isn't written yet (web profile, after v0.1)"
     scope: core
     paths: ["src/**"]
+  - id: ARC-009
+    statement: "Give an app only the structure today's requirements need: a web app starts with one ARC-001 module and gets another only for a second distinct business area (its own language, data and rules), never one per entity or feature; a console tool, a standalone worker or a library is one project and its tests, its concerns kept apart by namespace, until code another app must share or a boundary the compiler must enforce needs a second project (ARC-010 settles MAUI and desktop apps); every project, each of a module's five included, is created with its first real type, never before; and inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository or an interface that inverts no dependency come only with the requirement the plan names for each."
+    why: "Microsoft keeps DDD and CQRS patterns for complex domains and calls them over-engineering for simple services, and the Well-Architected Framework asks for every component to be justified by a requirement; an agent following ARC-001 to the letter can still build every layer and pattern for a tiny app (GAP-002)."
+    layer: outside
+    status: proposed
+    sources: ["ADR-0052", "ADR-0008", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/ddd-oriented-microservice, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/eshoponcontainers-cqrs-ddd-microservice, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/well-architected/reliability/simplify, retrieved 2026-11-11"]
+    enforcement: "ci: dotnet-ci.reusable.yml runs tools/Test-EmptyProjects.ps1, which fails on a C# project in the solution with no source of its own (C#, Razor or .proto files) or with the class library template's empty Class1 left in it; the number of modules and the patterns inside them are advisory: the plan-checklist skill asks, and the reviewer agent checks"
+    scope: core
+    paths: ["**"]
   - id: ARC-010
     statement: "In MAUI and desktop apps, view models and all other logic live in UI-independent libraries (ARC-003); a UI project, one that sets UseMaui, UseWPF, UseWindowsForms or UseWinUI, holds only views, platform code and startup wiring, no other project references it, and the coverage gate exempts it."
     why: "No plain test project can load a UI project, and Linux CI can't build one; with the logic in libraries it's tested and covered like any other code, and the UI project has nothing left to cover."
@@ -96,6 +105,17 @@ rules:
 # Architecture
 
 The defaults are Clean Architecture for web apps, and native MAUI with the MVVM Toolkit and Shell for mobile (ADR-0008). Architecture practice follows the Azure Well-Architected Framework (ADR-0016). Diagrams live as Mermaid in `docs/architecture/` and are updated in the same PR as the change they describe.
+
+## How much structure (ARC-009)
+
+ARC-001 sets the shape of a web app; ARC-009 sets how much of it to build, in four steps (ADR-0052):
+
+1. **Modules.** A web app starts with one ARC-001 module. It gets a second only for a second distinct business area, one with its own language, data and rules (a bounded context, in domain-driven design's terms), never one per entity or feature.
+2. **Projects outside ARC-001.** A console tool, a standalone worker or a library is one project and its tests (TST-003), with its concerns kept apart by namespace. It gets a second project only for code another app must share, or a boundary the compiler must enforce.
+3. **No empty projects.** A project is created with its first real type, and that includes each of ARC-001's five module projects: ARC-009 reads them as a module's full shape, reached as each one's first type arrives, not a set to scaffold on day one. A one-module app with no other module to call it has no Contracts project yet (ARC-002). `tools/Test-EmptyProjects.ps1` fails CI on a C# project with no source of its own (C#, Razor or `.proto` files), and on one that keeps `dotnet new classlib`'s empty `Class1`.
+4. **Patterns.** Inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository, or an interface that inverts no dependency (speculation, by CRF-004: see craft.md's SOLID notes) come only with the requirement the plan names for each. An interface that lets a test replace infrastructure does invert a dependency. A CRUD feature stays a simple endpoint, handler and data model.
+
+MAUI and desktop apps keep ADR-0008's MVVM defaults, with the project structure below (ARC-010).
 
 ## MAUI and desktop apps
 

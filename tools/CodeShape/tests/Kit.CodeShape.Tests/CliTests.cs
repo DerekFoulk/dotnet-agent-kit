@@ -42,6 +42,23 @@ public sealed class CliTests : IDisposable
         output.Should().Be($"Code shape (CRF-011): 1 project, 1 file, no findings.{Environment.NewLine}");
     }
 
+    // Test-Duplication.ps1 hands the duplicate finder the same hand-written files, so generated code is skipped by
+    // one rule in one place (CRF-003).
+    [Fact]
+    public void WithFilesItListsEachHandWrittenFileAndChecksNothing()
+    {
+        string tidy = Write("Tidy.cs", "class Tidy { }");
+        string generated = Write("Tidy.g.cs", "class Generated { }");
+        string manifest = Path.Join(_folder.FullName, "manifest.json");
+        File.WriteAllText(manifest, JsonSerializer.Serialize(new[] { new { name = "App.csproj", defines = Array.Empty<string>(), files = new[] { tidy, generated } } }));
+        using StringWriter output = new();
+
+        int exitCode = Cli.Run(["--files", manifest], output);
+
+        exitCode.Should().Be(0);
+        output.ToString().Should().Be($"{tidy}{Environment.NewLine}");
+    }
+
     [Fact]
     public void WithoutAManifestItSaysHowToRunIt()
     {
@@ -50,7 +67,18 @@ public sealed class CliTests : IDisposable
         int exitCode = Cli.Run([], output);
 
         exitCode.Should().Be(2);
-        output.ToString().Should().Be($"Usage: Kit.CodeShape <manifest.json>{Environment.NewLine}");
+        output.ToString().Should().Be($"Usage: Kit.CodeShape [--files] <manifest.json>{Environment.NewLine}");
+    }
+
+    [Fact]
+    public void TwoArgumentsWithoutFilesFirstAreAMistake()
+    {
+        using StringWriter output = new();
+
+        int exitCode = Cli.Run(["--list", "manifest.json"], output);
+
+        exitCode.Should().Be(2);
+        output.ToString().Should().StartWith("Usage:");
     }
 
     [Fact]
