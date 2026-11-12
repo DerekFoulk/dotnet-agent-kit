@@ -172,6 +172,37 @@ jobs:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-Duplication.ps1" -Solution $env:SOLUTION -Pmd $env:PMD'
 
+      # SUP-009 (ADR-0055), with the dotnet job's steps word for word: the SBOM of what ships, the UI app included,
+      # from this leg's restore of the whole solution.
+      - name: Install CycloneDX
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.cyclonedx.version
+          dotnet tool install CycloneDX --version $version --tool-path "$env:RUNNER_TEMP/cyclonedx"
+
+      # Test projects ship nothing, so they're left out: MSBuild names them, through a solution filter of the rest,
+      # because CycloneDX's own --exclude-test-projects misses one marked in Directory.Build.props. The locked
+      # restore above already wrote the package graph.
+      - name: Write the SBOM
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $filter = & "$env:KIT/tools/New-ShippedSolutionFilter.ps1" -Solution $env:SOLUTION -Destination "$env:RUNNER_TEMP/sbom-input"
+          & "$env:RUNNER_TEMP/cyclonedx/dotnet-CycloneDX" $filter --disable-package-restore --output-format Json --output "$env:RUNNER_TEMP/sbom" --filename sbom.cdx.json
+
+      - name: Upload the SBOM
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: ${{ runner.temp }}/sbom/sbom.cdx.json
+          if-no-files-found: error
+
   # The required check (templates/github/main-protection.json names it). It waits for the UI builds and fails when
   # they did, so they gate a merge too; !cancelled() lets it run after a skipped or failed UI build to say so.
   dotnet:
@@ -309,9 +340,10 @@ jobs:
 
       # SUP-009 (ADR-0055): an SBOM (software bill of materials) of what the build ships, in CycloneDX JSON. The OWASP
       # CycloneDX .NET tool (Apache-2.0) is installed for this run only, at the version the kit's tool manifest pins
-      # (.config/dotnet-tools.json, which Dependabot keeps current).
+      # (.config/dotnet-tools.json, which Dependabot keeps current). MSBuild evaluates every project to name the
+      # shipped ones, so with UI projects the ui job writes the SBOM on Windows instead, with these same steps (ADR-0059).
       - name: Install CycloneDX
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
@@ -323,7 +355,7 @@ jobs:
       # because CycloneDX's own --exclude-test-projects misses one marked in Directory.Build.props. The locked
       # restore above already wrote the package graph.
       - name: Write the SBOM
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
@@ -332,7 +364,7 @@ jobs:
           & "$env:RUNNER_TEMP/cyclonedx/dotnet-CycloneDX" $filter --disable-package-restore --output-format Json --output "$env:RUNNER_TEMP/sbom" --filename sbom.cdx.json
 
       - name: Upload the SBOM
-        if: steps.projects.outputs.count != '0'
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom
