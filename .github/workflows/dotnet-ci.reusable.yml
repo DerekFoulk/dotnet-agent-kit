@@ -103,18 +103,22 @@ jobs:
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
 
       # CRF-003: the same code in more than one place, found by PMD's copy-paste detector, CPD (BSD-style licence;
-      # ADR-0051). The release is pinned, and its SHA-256 is GitHub's digest for the asset; the runner's Java runs it.
+      # ADR-0051). The kit pins the release (ADR-0060): its version in .config/pmd/pom.xml, which Dependabot moves, and
+      # the zip's SHA-256 beside it, from GitHub's digest for the asset. The runner's Java runs it.
       - name: Download PMD
         if: steps.projects.outputs.count != '0'
+        shell: pwsh
         env:
-          PMD_VERSION: '7.29.0'
-          PMD_SHA256: d27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179
+          KIT: ${{ steps.kit.outputs.path }}
         run: |
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/pmd.zip" \
-            "https://github.com/pmd/pmd/releases/download/pmd_releases%2F$PMD_VERSION/pmd-dist-$PMD_VERSION-bin.zip"
-          echo "$PMD_SHA256  $RUNNER_TEMP/pmd.zip" | sha256sum --check --strict
-          unzip -q "$RUNNER_TEMP/pmd.zip" -d "$RUNNER_TEMP"
-          echo "PMD=$RUNNER_TEMP/pmd-bin-$PMD_VERSION/bin/pmd" >> "$GITHUB_ENV"
+          $PSNativeCommandUseErrorActionPreference = $true
+          Import-Module "$env:KIT/tools/KitPmd.psm1"
+          $pin = Get-PmdPin -Path "$env:KIT/.config/pmd"
+          Set-Location $env:RUNNER_TEMP
+          curl --fail --silent --show-error --location --output $pin.FileName $pin.Url
+          sha256sum --check --strict $pin.PinFile
+          unzip -q $pin.FileName
+          "PMD=$env:RUNNER_TEMP/pmd-bin-$($pin.Version)/bin/pmd" >> $env:GITHUB_ENV
 
       - name: Duplicate code
         if: steps.projects.outputs.count != '0'
