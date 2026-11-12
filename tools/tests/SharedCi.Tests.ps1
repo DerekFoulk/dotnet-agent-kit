@@ -237,6 +237,39 @@ Describe 'Shared CI for app repos' {
             $deprecated['if'] | Should -Be "runner.os == 'Windows'"
             $deprecated['run'] | Should -Match 'Test-DeprecatedPackages\.ps1" -Path \$env:SOLUTION'
         }
+
+        # The ruleset requires "dotnet / Build, test and package checks" by name (templates/github/main-protection.json),
+        # so that job waits for the UI builds and fails when they did: a required check can't be weakened by them.
+        It 'keeps the required job''s name, and has it wait for the UI builds unless the run was cancelled' {
+            $required = $jobs['dotnet']
+            $required['name'] | Should -Be 'Build, test and package checks'
+            @($required['needs']) | Should -Be @('ui-projects', 'ui')
+            $required['if'] | Should -Be '${{ !cancelled() }}'
+            $check = Get-JobStep $required 'UI projects built'
+            $check['if'] | Should -Be '${{ !cancelled() }}'
+            $check['env']['FIND'] | Should -Be '${{ needs.ui-projects.result }}'
+            $check['env']['UI'] | Should -Be '${{ needs.ui.result }}'
+            $check['env']['OS'] | Should -Be '${{ needs.ui-projects.outputs.os }}'
+        }
+
+        It 'passes the required job only when the UI builds <Case>' -ForEach @(
+            @{ Case = 'succeeded'; Find = 'success'; Ui = 'success'; Os = '["windows-latest","macos-latest"]'; Exit = 0 }
+            @{ Case = 'were skipped because there are no UI projects'; Find = 'success'; Ui = 'skipped'; Os = '[]'; Exit = 0 }
+            @{ Case = 'failed: not when one leg failed'; Find = 'success'; Ui = 'failure'; Os = '["windows-latest"]'; Exit = 1 }
+            @{ Case = 'were cancelled: not then'; Find = 'success'; Ui = 'cancelled'; Os = '["windows-latest"]'; Exit = 1 }
+            @{ Case = 'were skipped though there are UI projects: not then'; Find = 'success'; Ui = 'skipped'; Os = '["windows-latest"]'; Exit = 1 }
+            @{ Case = 'never ran because finding them failed: not then'; Find = 'failure'; Ui = 'skipped'; Os = ''; Exit = 1 }
+        ) {
+            $check = Get-JobStep $jobs['dotnet'] 'UI projects built'
+            $check['shell'] | Should -Be 'pwsh'
+            $script = Join-Path $TestDrive "ui-check-$(New-Guid).ps1"
+            Set-Content -LiteralPath $script -Value $check['run']
+            $env:FIND = $Find; $env:UI = $Ui; $env:OS = $Os
+            try { & pwsh -NoProfile -File $script *> $null }
+            finally { Remove-Item Env:FIND, Env:UI, Env:OS -ErrorAction SilentlyContinue }
+
+            $LASTEXITCODE | Should -Be $Exit
+        }
     }
 
     Context 'app-checks.reusable.yml' {
