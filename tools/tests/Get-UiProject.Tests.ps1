@@ -97,4 +97,22 @@ Describe 'Get-UiProject.ps1' {
 
         { Get-UiProject -Solution $solution } | Should -Throw '*tests/App.Maui.Tests/App.Maui.Tests.csproj references the UI project src/App.Maui/App.Maui.csproj*ARC-010*'
     }
+
+    # The Linux CI job builds and tests everything but the UI projects through this filter (ADR-0057).
+    It 'writes a solution filter of every other project, pointing at the solution''s full path' {
+        $solution = New-Solution @(
+            @{ Path = 'src/App.Core/App.Core.csproj'; Properties = '' }
+            @{ Path = 'src/App.Maui/App.Maui.csproj'; Properties = '<UseMaui>true</UseMaui>' }
+            @{ Path = 'tests/App.Core.Tests/App.Core.Tests.csproj'; Properties = '' }
+        )
+        $filter = Join-Path $TestDrive "filter-$(New-Guid).slnf"
+        (Get-Command Get-UiProject).Parameters.ContainsKey('FilterPath') | Should -BeTrue
+
+        $found = @(Get-UiProject -Solution $solution -FilterPath $filter)
+
+        $found.Name | Should -Be @('App.Maui')
+        $json = Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json
+        $json.solution.path | Should -Be (Resolve-Path -LiteralPath $solution).Path
+        $json.solution.projects | Should -Be @('src/App.Core/App.Core.csproj', 'tests/App.Core.Tests/App.Core.Tests.csproj')
+    }
 }
