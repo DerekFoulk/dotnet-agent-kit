@@ -49,6 +49,18 @@ Describe 'Test-CoverageGate.ps1' {
     }
 
     Context 'Get-CoverageSummary' {
+        # Microsoft's collector writes <packages /> for a test project that loads no assembly it counts (GAP-004 found one:
+        # an assembly whose name it leaves out). PowerShell reads an empty element as a string, which has no .package.
+        It 'reads a report with no packages as no lines, and still counts the other reports' {
+            $dir = Join-Path $TestDrive 'empty-report'
+            New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'src/Bookmark.cs'; Lines = (Get-Lines -Covered 2 -Missed 0) }) } | Out-Null
+            Set-Content -LiteralPath (Join-Path $dir 'empty.cobertura.xml') -Value '<?xml version="1.0"?><coverage line-rate="1"><packages /></coverage>'
+
+            { $script:summary = @(Get-CoverageSummary -Path $dir) } | Should -Not -Throw
+
+            @($script:summary.Package) | Should -Be @('Bookmarks.Domain')
+        }
+
         It 'merges reports: a line covered in any report counts as covered' {
             $dir = Join-Path $TestDrive 'merge'
             New-CoberturaReport -Directory $dir -Packages @{ 'Bookmarks.Domain' = @(@{ File = 'src/Bookmark.cs'; Lines = @(@(1, 1), @(2, 0)) }) } | Out-Null
