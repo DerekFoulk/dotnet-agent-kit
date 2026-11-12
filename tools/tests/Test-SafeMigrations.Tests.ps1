@@ -101,6 +101,31 @@ Describe 'Test-SafeMigrations.ps1' {
         }
     }
 
+    Context 'a reviewed contract step' {
+        It 'passes a migration whose DAT-003 comment says why it''s safe' {
+            New-Migration -Header '    // DAT-003: release 1.4 stopped reading Notes, and every instance runs 1.4 or later.' `
+                -Up 'migrationBuilder.DropColumn(name: "Notes", table: "Orders");'
+
+            Get-Message | Should -BeNullOrEmpty
+        }
+
+        It 'reports a DAT-003 comment with no reason, and still reports the operation' {
+            New-Migration -Header '    // DAT-003:   ' -Up 'migrationBuilder.DropColumn(name: "Notes", table: "Orders");'
+
+            $messages = @(Get-Message)
+            $messages.Count | Should -Be 2
+            $messages[0] | Should -BeLike '*:7: the DAT-003 comment must say why the version still running works after this migration'
+            $messages[1] | Should -BeLike '*:14: Up calls DropColumn, *'
+        }
+
+        It 'doesn''t take a DAT-003 comment in another file as a reason' {
+            New-Migration -Name '20261110120000_Earlier.cs' -Header '    // DAT-003: an earlier contract step.'
+            New-Migration -Up 'migrationBuilder.DropColumn(name: "Notes", table: "Orders");'
+
+            Get-Message | Should -BeLike '*_ChangeOrders.cs:13: Up calls DropColumn, *'
+        }
+    }
+
     Context 'what it leaves alone' {
         It 'passes a repo with no migrations' {
             Get-Message | Should -BeNullOrEmpty
