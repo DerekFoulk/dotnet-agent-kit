@@ -503,6 +503,13 @@ Describe 'Export-KitApp' {
         Get-ChildItem -LiteralPath $app -Recurse -File -Filter 'New-KitApp*' | Should -BeNullOrEmpty
     }
 
+    # The new-app skill runs New-KitApp, which an app doesn't have (ADR-0058).
+    It 'leaves out the new-app intake: its skill, cards and module' {
+        Test-Path -LiteralPath (Join-Path $checkout '.claude' 'skills' 'new-app' 'SKILL.md') | Should -BeTrue -Because 'the kit has the skill'
+        @($map | Where-Object { $_.Source -match '^\.claude/skills/new-app/|^templates/app-intake\.json$|KitIntake\.psm1$' }) | Should -BeNullOrEmpty
+        Test-Path -LiteralPath (Join-Path $app '.claude' 'skills' 'new-app') | Should -BeFalse
+    }
+
     # The owner, 2026-11-09: an app's settings shouldn't carry rules for kit scripts it doesn't have, such as
     # the asks before ./tools/New-KitApp (review 1 of PR 17, finding 10).
     It 'gives the app the kit''s permission rules, without those for kit scripts the app doesn''t get' {
