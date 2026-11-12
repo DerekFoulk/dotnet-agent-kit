@@ -118,7 +118,7 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 - **GAP-036:** interactive render modes.
 
 **Follow-ups:**
-- **For the owner (a guardrail):** `.claude/settings.json` has no ask rule for installing a browser locally (`playwright.ps1 install`, the kit script). Until he adds one, AGENTS.md and testing.md say it's the owner's step.
+- **For the owner (a guardrail):** installing a browser locally is the owner's step (AGENTS.md, testing.md). Since 2026-11-12, `.claude/settings.json` asks before it, in both modes: `playwright.ps1 install`, `playwright install` and the kit's `Install-PlaywrightBrowser.ps1`.
 - **Solution reading:** the kit's scripts read a solution in two ways. Six read the `.slnx` XML, and Test-CodeShape uses `dotnet sln list`. The new script adds one more XML reader, and repeats Test-CodeShape's first-framework fallback. Putting both in one module is a follow-up (CRF-003).
 - **Updates:** agents may merge Playwright's minor updates (ADR-0041), and each one moves the browser build. That's intended.
 
