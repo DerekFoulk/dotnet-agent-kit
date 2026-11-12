@@ -1,0 +1,44 @@
+# OpenSSF Scorecard for any public repo that uses the kit (GAP-014, SUP-010, ADR-0056). Scorecard checks the repo's
+# supply-chain practices (pinned actions, token permissions, branch protection, dangerous workflows and more),
+# publishes the score to the OpenSSF API, and uploads its findings to the repo's code scanning.
+# Called by this repo's scorecard.yml, and by app repos pinned to the commit a kit release tag points to:
+#   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/scorecard.reusable.yml@<commit SHA> # v0.1.0
+# Publishing needs the workflow restrictions the action lists (github.com/ossf/scorecard-action, "Workflow
+# Restrictions"): no top-level env or defaults, no workflow-level write, id-token only in this job, Ubuntu, no
+# container or services, and only its allowed actions as steps. SharedCi.Tests.ps1 checks each one.
+name: OpenSSF Scorecard (reusable)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    # The job permissions in the action's own example: the SARIF upload and the OIDC token for publishing.
+    permissions:
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 14
+
+      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: results.sarif
