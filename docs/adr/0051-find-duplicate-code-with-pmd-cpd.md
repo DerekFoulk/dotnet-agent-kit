@@ -73,7 +73,7 @@ The first run, before `--no-fail-on-error`, stopped with exit code 5 on the same
 
 ## Consequences
 
-- Every app's CI runs the check after the code shape check, using the runner's Java (preinstalled on `ubuntu-latest`).
+- Every app's CI runs the check after the code shape check, using the runner's Java (preinstalled on `ubuntu-latest`, and on `windows-latest`, where an app with UI projects runs it, ADR-0059).
 - PMD's version and SHA-256 sit in one place, the workflow-level `env` of `dotnet-ci.reusable.yml`, which both "Download PMD" steps read (the Windows one runs for an app with UI projects, ADR-0059). Bumping PMD means updating both, from the release's asset digest. Dependabot can't see a download, so nothing yet tells the kit when PMD releases or has an advisory (GAP-023).
 - CPD finds repeated code, not repeated knowledge. A rule stated in two shapes passes, and so does duplication in docs, config and scripts. The reviewer agent still checks those (CRF-003's enforcement says so).
 - A file CPD can't read isn't checked: the CI log and the PR name each one, and the reviewer covers it. A later PMD release may read raw string literals; bumping PMD is the time to look.
