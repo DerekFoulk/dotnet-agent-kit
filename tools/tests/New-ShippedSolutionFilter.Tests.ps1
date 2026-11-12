@@ -104,6 +104,31 @@ Describe 'New-ShippedSolutionFilter.ps1' {
         @((Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json).solution.projects) | Should -Be @('src/App/App.csproj')
     }
 
+    # Review 3 of PR 48: the list matches CycloneDX 6.3.1's Utils.IsSupportedProjectType, .xsproj (X#) included.
+    It 'asks MSBuild about a <Extension> project, a type CycloneDX reads' -ForEach @(
+        @{ Extension = '.csproj' }, @{ Extension = '.fsproj' }, @{ Extension = '.vbproj' }, @{ Extension = '.xsproj' }
+    ) {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $typed = Join-Path $TestDrive "typed$Extension"
+        New-Item -ItemType Directory -Force -Path (Join-Path $typed 'src/Lib') | Out-Null
+        'not a project' | Set-Content -LiteralPath (Join-Path $typed "src/Lib/Lib$Extension")
+        "<Solution><Project Path=`"src/Lib/Lib$Extension`" /></Solution>" | Set-Content -LiteralPath (Join-Path $typed 'T.slnx')
+
+        # An unreadable project fails only if MSBuild was asked about it.
+        { New-ShippedSolutionFilter -Solution (Join-Path $typed 'T.slnx') -Destination (Join-Path $TestDrive "out-$Extension") } |
+            Should -Throw "*src/Lib/Lib$Extension*"
+    }
+
+    It 'fails on an IsTestProject value that is neither true nor false' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $odd = Join-Path $TestDrive 'odd'
+        New-Project $odd 'src/App/App.csproj' '<PropertyGroup><IsTestProject>maybe</IsTestProject></PropertyGroup>'
+        '<Solution><Project Path="src/App/App.csproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $odd 'O.slnx')
+
+        { New-ShippedSolutionFilter -Solution (Join-Path $odd 'O.slnx') -Destination (Join-Path $TestDrive 'out7') } |
+            Should -Throw "*'maybe'*"
+    }
+
     It 'says plainly when the solution file is missing' {
         Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         { New-ShippedSolutionFilter -Solution (Join-Path $TestDrive 'missing.slnx') -Destination $TestDrive } |
