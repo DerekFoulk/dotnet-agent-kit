@@ -1,0 +1,80 @@
+#Requires -Version 7.6
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
+
+# New-ShippedSolutionFilter.ps1 writes a solution filter (.slnf) of the projects a build ships, for the SBOM (SUP-009,
+# ADR-0055). CycloneDX's own --exclude-test-projects reads only each .csproj's XML, so it misses a test project marked
+# by Directory.Build.props, as the kit's sample and every app's tests are (review of PR 48). MSBuild decides instead.
+
+Describe 'New-ShippedSolutionFilter.ps1' {
+    BeforeAll {
+        $scriptPath = Join-Path $PSScriptRoot '..' 'New-ShippedSolutionFilter.ps1'
+        if (Test-Path $scriptPath) { . $scriptPath }
+
+        function New-Project([string] $Repo, [string] $RelativePath, [string] $Body = '') {
+            $path = Join-Path $Repo $RelativePath
+            New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
+            "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>$Body</Project>" |
+                Set-Content -LiteralPath $path
+        }
+
+        # A repo laid out like an app: a test project marked only by tests/Directory.Build.props, as the kit's is.
+        $repo = Join-Path $TestDrive 'repo'
+        New-Project $repo 'src/App/App.csproj'
+        New-Project $repo 'src/App.Contracts/App.Contracts.csproj'
+        New-Project $repo 'tests/App.Tests/App.Tests.csproj'
+        New-Project $repo 'tests/App.Probe/App.Probe.csproj' '<PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup>'
+        '<Project><PropertyGroup Condition="$(MSBuildProjectName.EndsWith(''Tests''))"><IsTestProject>true</IsTestProject></PropertyGroup></Project>' |
+            Set-Content -LiteralPath (Join-Path $repo 'tests/Directory.Build.props')
+        $solution = Join-Path $repo 'App.slnx'
+        @'
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/App/App.csproj" />
+    <Project Path="src/App.Contracts/App.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/App.Tests/App.Tests.csproj" />
+    <Project Path="tests/App.Probe/App.Probe.csproj" />
+  </Folder>
+</Solution>
+'@ | Set-Content -LiteralPath $solution
+    }
+
+    It 'lists only the projects MSBuild doesn''t call test projects, wherever IsTestProject is set' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+
+        $filter = New-ShippedSolutionFilter -Solution $solution -Destination (Join-Path $TestDrive 'out1')
+        $json = Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json
+
+        @($json.solution.projects) | Should -Be @('src/App/App.csproj', 'src/App.Contracts/App.Contracts.csproj')
+    }
+
+    It 'names the filter after the solution, and points it at the solution from wherever it''s written' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $destination = Join-Path $TestDrive 'elsewhere' 'sbom'
+
+        $filter = New-ShippedSolutionFilter -Solution $solution -Destination $destination
+        $json = Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json
+
+        Split-Path -Leaf $filter | Should -Be 'App.slnf'
+        [IO.Path]::IsPathRooted($json.solution.path) | Should -BeFalse -Because 'a solution filter names its solution relative to itself'
+        (Resolve-Path -LiteralPath (Join-Path $destination $json.solution.path)).Path | Should -Be (Resolve-Path -LiteralPath $solution).Path
+    }
+
+    It 'fails when MSBuild can''t read a project, rather than guessing whether it ships' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $broken = Join-Path $TestDrive 'broken'
+        New-Item -ItemType Directory -Force -Path (Join-Path $broken 'src/Bad') | Out-Null
+        'not a project' | Set-Content -LiteralPath (Join-Path $broken 'src/Bad/Bad.csproj')
+        '<Solution><Project Path="src/Bad/Bad.csproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $broken 'Bad.slnx')
+
+        { New-ShippedSolutionFilter -Solution (Join-Path $broken 'Bad.slnx') -Destination (Join-Path $TestDrive 'out3') } |
+            Should -Throw '*src/Bad/Bad.csproj*'
+    }
+
+    It 'says plainly when the solution file is missing' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        { New-ShippedSolutionFilter -Solution (Join-Path $TestDrive 'missing.slnx') -Destination $TestDrive } |
+            Should -Throw '*No solution file at*'
+    }
+}

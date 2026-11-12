@@ -171,12 +171,20 @@ Describe 'Shared CI for app repos' {
         BeforeAll {
             $scorecard = Read-Yaml '.github/workflows/scorecard.reusable.yml'
             $scJobs = if ($scorecard.Yaml.ContainsKey('jobs')) { $scorecard.Yaml['jobs'] } else { @{} }
-            $scJob = @($scJobs.Values)[0]
+            # The restrictions apply to the job that runs the action; the visibility job only reads the API.
+            $scName = @($scJobs.Keys | Where-Object { @($scJobs[$_]['steps'] | Where-Object { "$($_['uses'])" -like 'ossf/scorecard-action@*' }).Count -gt 0 })[0]
+            $scJob = if ($scName) { $scJobs[$scName] } else { $null }
+
+            # Review of PR 48: `write-all` is a string, with no .Values to search, so check the shape itself.
+            function Assert-ReadOnly($Permissions, [string] $Where) {
+                $Permissions | Should -BeOfType ([System.Collections.IDictionary]) -Because "$Where's permissions name each scope, with no write-all"
+                foreach ($value in $Permissions.Values) { $value | Should -BeIn @('read', 'none') -Because "$Where writes nothing at workflow level" }
+            }
         }
 
-        It 'is a shared workflow with one job, on Ubuntu, with no env, defaults, container or services' {
+        It 'is a shared workflow whose Scorecard job runs on Ubuntu, with no env, defaults, container or services' {
             $scorecard.Text | Should -Match '(?m)^\s*workflow_call:' -Because 'scorecard.reusable.yml runs Scorecard for the kit and its apps'
-            $scJobs.Count | Should -Be 1
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
             $scJob['runs-on'] | Should -Be 'ubuntu-latest'
             foreach ($key in 'env', 'defaults') { $scorecard.Yaml.ContainsKey($key) | Should -BeFalse; $scJob.ContainsKey($key) | Should -BeFalse }
             foreach ($key in 'container', 'services') { $scJob.ContainsKey($key) | Should -BeFalse }
@@ -211,7 +219,28 @@ Describe 'Shared CI for app repos' {
             @($permissions.Keys | Sort-Object) | Should -Be @('id-token', 'security-events')
             $permissions['id-token'] | Should -Be 'write'
             $permissions['security-events'] | Should -Be 'write'
-            @($scorecard.Yaml['permissions'].Values) | Should -Not -Contain 'write'
+            Assert-ReadOnly $scorecard.Yaml['permissions'] 'scorecard.reusable.yml'
+            foreach ($name in @($scJobs.Keys | Where-Object { $_ -ne $scName })) {
+                $other = $scJobs[$name]['permissions']
+                if ($other) { @($other.Keys) | Should -Not -Contain 'id-token' -Because 'only the Scorecard job may ask for an OIDC token' }
+            }
+        }
+
+        # Review of PR 48: a scheduled run's event carries no repository, so github.event.repository.private is empty
+        # there and an `if` on it lets a private repo's weekly run through. The API answers on every trigger.
+        It 'skips a private repo on every trigger, asking the API for its visibility' {
+            $scJob | Should -Not -BeNullOrEmpty -Because 'scorecard.reusable.yml has a Scorecard job'
+            $needs = @($scJob['needs'] | Where-Object { $_ })
+            $needs | Should -HaveCount 1
+            $visibility = $scJobs[$needs[0]]
+            $step = @($visibility['steps'] | Where-Object { "$($_['run'])" -match 'gh api' })
+
+            $step | Should -HaveCount 1
+            $step[0]['run'] | Should -Match 'gh api "repos/\$REPO" --jq \.private'
+            $step[0]['env']['REPO'] | Should -Be '${{ github.repository }}'
+            $step[0]['run'] | Should -Not -Match '\$\{\{'
+            $scJob['if'] | Should -Be "needs.$($needs[0]).outputs.private == 'false'"
+            $scorecard.Text | Should -Not -Match 'github\.event\.repository\.private'
         }
 
         It 'checks out without keeping the token' {
@@ -223,8 +252,8 @@ Describe 'Shared CI for app repos' {
         }
 
         It 'runs in <Caller> on main and weekly, never on a pull request, granting only what the job needs' -ForEach @(
-            @{ Caller = 'the kit'; File = '.github/workflows/scorecard.yml'; Uses = './.github/workflows/scorecard.reusable.yml'; SkipsPrivate = $false }
-            @{ Caller = 'every app'; File = 'templates/app/.github/workflows/scorecard.yml'; Uses = 'DerekFoulk/dotnet-agent-kit/.github/workflows/scorecard.reusable.yml@X'; SkipsPrivate = $true }
+            @{ Caller = 'the kit'; File = '.github/workflows/scorecard.yml'; Uses = './.github/workflows/scorecard.reusable.yml' }
+            @{ Caller = 'every app'; File = 'templates/app/.github/workflows/scorecard.yml'; Uses = 'DerekFoulk/dotnet-agent-kit/.github/workflows/scorecard.reusable.yml@X' }
         ) {
             $path = Join-Path $root $File
             Test-Path -LiteralPath $path | Should -BeTrue -Because "$File calls the shared Scorecard workflow"
@@ -237,11 +266,11 @@ Describe 'Shared CI for app repos' {
             @($on['schedule']).Count | Should -Be 1
             $on.ContainsKey('pull_request') | Should -BeFalse
             foreach ($key in 'env', 'defaults') { $yaml.ContainsKey($key) | Should -BeFalse }
-            @($yaml['permissions'].Values) | Should -Not -Contain 'write'
+            Assert-ReadOnly $yaml['permissions'] $File
             $job['uses'] | Should -Be $Uses
             @($job['permissions'].Keys | Sort-Object) | Should -Be @('id-token', 'security-events')
-            # Publishing a private repo's results would make them public; its code scanning needs a paid licence.
-            if ($SkipsPrivate) { $job['if'] | Should -Match '!\s*github\.event\.repository\.private' }
+            # The shared workflow skips a private repo itself, on every trigger.
+            $job.ContainsKey('if') | Should -BeFalse
         }
     }
 
@@ -278,25 +307,36 @@ Describe 'Shared CI for app repos' {
 
             $install | Should -HaveCount 1
             $install[0]['run'] | Should -Match '\$env:KIT/\.config/dotnet-tools\.json'
+            $install[0]['run'] | Should -Match '\.tools\.cyclonedx\.version'
             $install[0]['run'] | Should -Match '--version \$version --tool-path "\$env:RUNNER_TEMP/'
-            $install[0]['if'] | Should -Be "steps.projects.outputs.count != '0'"
         }
 
-        It 'lists the solution''s shipped projects as JSON, from the restore already done' {
-            $sbomRun | Should -Match '"\$SOLUTION"'
-            $sbomRun | Should -Match '--exclude-test-projects'
+        # Review of PR 48: CycloneDX's --exclude-test-projects reads only each .csproj, so it misses a test project that
+        # Directory.Build.props marks, as the kit's and every app's are. MSBuild decides instead, in the kit's script.
+        It 'lists the shipped projects MSBuild names, as JSON, from the restore already done' {
+            $sbomRun | Should -Match '\$env:KIT/tools/New-ShippedSolutionFilter\.ps1"? -Solution \$env:SOLUTION'
+            $sbomRun | Should -Not -Match '--exclude-test-projects' -Because 'the filter already leaves the test projects out'
             $sbomRun | Should -Match '--disable-package-restore'
             $sbomRun | Should -Match '--output-format Json'
             $sbomRun | Should -Match '--filename sbom\.cdx\.json'
         }
 
-        It 'uploads the SBOM as the "sbom" artifact, failing when it''s missing' {
+        It 'runs every SBOM step only once the solution has projects' {
+            $sbomSteps = @($steps | Where-Object { "$($_['run'])" -match 'CycloneDX' -or "$($_['uses'])" -like 'actions/upload-artifact@*' })
+
+            $sbomSteps | Should -HaveCount 3
+            foreach ($step in $sbomSteps) { $step['if'] | Should -Be "steps.projects.outputs.count != '0'" }
+        }
+
+        It 'uploads the SBOM it wrote as the "sbom" artifact, failing when it''s missing' {
             $upload = @($steps | Where-Object { "$($_['uses'])" -like 'actions/upload-artifact@*' })
+            $output = [regex]::Match($sbomRun, '--output "([^"]+)"').Groups[1].Value -replace '\$env:RUNNER_TEMP', '${{ runner.temp }}'
 
             $upload | Should -HaveCount 1
             $upload[0]['with']['name'] | Should -Be 'sbom'
             $upload[0]['with']['if-no-files-found'] | Should -Be 'error'
-            $upload[0]['if'] | Should -Be "steps.projects.outputs.count != '0'"
+            $output | Should -Not -BeNullOrEmpty
+            $upload[0]['with']['path'] | Should -Be "$output/sbom.cdx.json"
         }
     }
 
