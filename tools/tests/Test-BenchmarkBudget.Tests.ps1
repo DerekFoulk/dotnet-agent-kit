@@ -141,6 +141,21 @@ Describe 'Test-BenchmarkBudget.ps1' {
         $problems[0] | Should -BeLike 'No BenchmarkDotNet JSON report under *empty-results*--exporters json*'
     }
 
+    # A misspelled limit would otherwise read as no limit, or as zero.
+    It 'names a budget entry that lacks <Missing> or has an unknown key' -ForEach @(
+        @{ Missing = 'maxMeanNanoseconds'; Entry = [ordered]@{ maxMeanNs = 1000; maxAllocatedBytes = 192 } }
+        @{ Missing = 'maxAllocatedBytes'; Entry = [ordered]@{ maxMeanNanoseconds = 1000 } }
+    ) {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @((New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse'))
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = $Entry })
+
+        $problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget)
+
+        $problems.Count | Should -Be 1
+        $problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: its budget must have exactly maxMeanNanoseconds and maxAllocatedBytes, as numbers*'
+    }
+
     It 'returns exit code <Code> when the benchmarks are <State>' -ForEach @(
         @{ State = 'within budget'; Mean = 900; Code = 0 }
         @{ State = 'over budget'; Mean = 1100; Code = 1 }
