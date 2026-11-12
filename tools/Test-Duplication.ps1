@@ -41,7 +41,9 @@ function Get-CpdArgument {
     @(
         'cpd', '--language', 'cs', '--minimum-tokens', $script:MinimumTokens,
         '--ignore-usings', '--ignore-annotations', '--ignore-literal-sequences',
-        '--file-list', $FileList, '--format', 'xml', '--no-fail-on-violation'
+        '--file-list', $FileList, '--format', 'xml', '--no-fail-on-violation',
+        # A file CPD can't read is skipped, not a failure; Get-SkippedFile names each one.
+        '--no-fail-on-error'
     )
 }
 
@@ -63,8 +65,36 @@ function Get-Duplication {
     }
 }
 
-function Get-SkippedFile { param([string] $Report) }
-function Format-SkippedFile { param([Parameter(ValueFromPipeline)] $Skipped, [string] $Solution) process { } }
+# Each file CPD couldn't read, with where it stopped. CPD 7.29.0's C# tokenizer doesn't know some newer C#, such as a
+# raw string literal, and skips such a file (ADR-0051).
+function Get-SkippedFile {
+    param([Parameter(Mandatory)] [string] $Report)
+
+    $xml = [xml] (Get-Content -Raw -LiteralPath $Report)
+    $namespaces = [System.Xml.XmlNamespaceManager]::new($xml.NameTable)
+    $namespaces.AddNamespace('cpd', 'https://pmd-code.org/schema/cpd-report')
+    foreach ($failure in $xml.SelectNodes('/cpd:pmd-cpd/cpd:error', $namespaces)) {
+        $where = [regex]::Match($failure.msg, 'at line (\d+), column (\d+): (.*)$')
+        [pscustomobject]@{
+            Path   = $failure.filename
+            Line   = if ($where.Success) { [int] $where.Groups[1].Value } else { 1 }
+            Column = if ($where.Success) { [int] $where.Groups[2].Value } else { 1 }
+            Reason = if ($where.Success) { $where.Groups[3].Value } else { $failure.msg }
+        }
+    }
+}
+
+# An MSBuild-format warning for each file CPD skipped, so the CI log and the PR say it wasn't checked.
+function Format-SkippedFile {
+    param(
+        [Parameter(Mandatory, ValueFromPipeline)] $Skipped,
+        [Parameter(Mandatory)] [string] $Solution
+    )
+
+    process {
+        "$($Skipped.Path)($($Skipped.Line),$($Skipped.Column)): warning CRF003: CPD can't read this C# ($($Skipped.Reason)), so the file isn't checked for duplicate code. [$Solution]"
+    }
+}
 
 # One MSBuild-format error line per place a duplication occurs, naming the other places.
 function Format-Duplication {
@@ -101,14 +131,18 @@ function Invoke-DuplicationCheck {
         $files | Set-Content -LiteralPath $fileList
 
         & $Pmd @(Get-CpdArgument -FileList $fileList) | Set-Content -LiteralPath $report
-        if ($LASTEXITCODE -ne 0) { throw "CPD failed with exit code $LASTEXITCODE (1: an exception, 2: a usage error, 5: a file it couldn't read)." }
+        if ($LASTEXITCODE -ne 0) { throw "CPD failed with exit code $LASTEXITCODE (1: an exception, 2: a usage error)." }
 
+        $skipped = @(Get-SkippedFile -Report $report)
+        $warnings = @($skipped | Format-SkippedFile -Solution $Solution)
         $lines = @(Get-Duplication -Report $report | Format-Duplication -Solution $Solution)
         if ($lines) {
-            return [pscustomobject]@{ ExitCode = 1; Output = $lines -join "`n" }
+            return [pscustomobject]@{ ExitCode = 1; Output = ($warnings + $lines) -join "`n" }
         }
 
-        [pscustomobject]@{ ExitCode = 0; Output = "Duplicate code (CRF-003): $($files.Count) files, nothing repeats in $script:MinimumTokens tokens or more." }
+        $checked = $files.Count - $skipped.Count
+        $summary = "Duplicate code (CRF-003): $checked files, nothing repeats in $script:MinimumTokens tokens or more; $($skipped.Count) skipped."
+        [pscustomobject]@{ ExitCode = 0; Output = ($warnings + $summary) -join "`n" }
     }
     finally {
         Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction Ignore
