@@ -105,4 +105,16 @@ Describe 'Test-LoadBudget.ps1' {
             'Aggregated: no requests were made, so there is nothing to check. Is the app up, and does the locustfile run?'
             'POST /bookmarks: no requests were made, so there is nothing to check. Is the app up, and does the locustfile run?')
     }
+
+    # A renamed request would otherwise leave its budget checking nothing.
+    It 'names a budgeted request that the stats don''t have' {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats @(
+            (New-Row 'POST' '/bookmarks/' -Requests 400 -P95 150)
+            (New-Row '' 'Aggregated' -Requests 400 -P95 150))
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget (New-StandardBudget))) } | Should -Not -Throw
+
+        $script:problems | Should -Be @("POST /bookmarks: has a budget, but the stats have no such request. Locust names a request '<Type> <Name>'; was it renamed?")
+    }
 }
