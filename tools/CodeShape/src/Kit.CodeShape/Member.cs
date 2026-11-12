@@ -18,7 +18,7 @@ internal sealed record Member(string Name, Location Location, SyntaxNode Node, I
         ArgumentNullException.ThrowIfNull(root);
 
         StatementSyntax[] topLevel = [.. root.Members.OfType<GlobalStatementSyntax>()
-            .SelectMany(global => StatementsIn(global.Statement, includeSelf: true))];
+            .SelectMany(global => StatementsIn(global.Statement))];
         if (topLevel.Length > 0)
         {
             yield return new Member("top-level statements", topLevel[0].GetLocation(), root, topLevel);
@@ -28,13 +28,14 @@ internal sealed record Member(string Name, Location Location, SyntaxNode Node, I
         {
             if (NameOf(node) is var (name, token))
             {
-                yield return new Member(name, token.GetLocation(), node, [.. StatementsIn(node, includeSelf: false)]);
+                yield return new Member(name, token.GetLocation(), node, [.. StatementsIn(node)]);
             }
         }
     }
 
-    private static IEnumerable<StatementSyntax> StatementsIn(SyntaxNode node, bool includeSelf) =>
-        (includeSelf ? node.DescendantNodesAndSelf() : node.DescendantNodes())
+    // A member's declaration isn't a statement, so taking the node itself only matters for a top-level statement.
+    private static IEnumerable<StatementSyntax> StatementsIn(SyntaxNode node) =>
+        node.DescendantNodesAndSelf()
             .OfType<StatementSyntax>()
             .Where(statement => statement is not BlockSyntax);
 

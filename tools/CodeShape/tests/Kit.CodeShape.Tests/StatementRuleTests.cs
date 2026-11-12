@@ -17,6 +17,11 @@ public sealed class StatementRuleTests
     }
 
     [Fact]
+    public void TopLevelStatementsAreCountedAsOneMember() =>
+        StatementRule.Check(new SourceFile("Program.cs", "int a = 0; " + Statements(100))).Should().ContainSingle()
+            .Which.Message.Should().Be("top-level statements has 101 statements; the limit is 100 (CRF-011).");
+
+    [Fact]
     public void AMemberWithOneHundredStatementsIsWithinTheLimit() =>
         StatementRule.Check(Method("AtLimit.cs", Statements(100))).Should().BeEmpty();
 

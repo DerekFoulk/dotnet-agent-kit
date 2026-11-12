@@ -49,6 +49,19 @@ public sealed class ExceptionTests
         "// CRF-011 exception: a facade over two stores.\nclass Ledger { }\n" + string.Join('\n', Enumerable.Repeat("// a line", 800))))
         .Should().ContainSingle();
 
+    // Review 2 of GAP-019: the blank line must come right after the file's marker, not further down.
+    [Fact]
+    public void AFilesMarkerWithoutABlankLineRightBelowItExemptsNothing() => FileLengthRule.Check(new SourceFile(
+        "Long.cs",
+        "// CRF-011 exception: one table of every country code.\n// a note\n\n" + string.Join('\n', Enumerable.Repeat("// a line", 800))))
+        .Should().ContainSingle();
+
+    // A blank line above a type's marker doesn't matter; only the one between the marker and the type does.
+    [Fact]
+    public void ATypesMarkerBelowABlankLineStillCoversIt() => CohesionRule.Check([new SourceFile("Ledger.cs",
+        "using System;\n\n// CRF-011 exception: a facade over two stores.\nclass Ledger { private int _a; private int _b; void A() => _a++; void B() => _b++; }")])
+        .Should().BeEmpty();
+
     [Fact]
     public void AnExceptionSetApartByABlankLineExemptsNothing() => NestingRule.Check(new SourceFile("Deep.cs", $$"""
         class Deep

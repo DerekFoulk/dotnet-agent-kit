@@ -53,7 +53,8 @@ internal static class CohesionRule
         type.DeclaringSyntaxReferences.Any(reference => LimitException.Covers(reference.GetSyntax()));
 
     // The type's methods that use its instance state, grouped by what they share, in declaration order. A property
-    // or indexer with a body is a method too (its accessors are), as LCOM4 counts them; an auto-property is state.
+    // isn't a method here: it links the state it reads (JoinDerivedState), or every options class and record with two
+    // computed properties over different state would look like two classes.
     private static IReadOnlyList<IReadOnlyList<ISymbol>> Groups(INamedTypeSymbol type, Compilation compilation)
     {
         DisjointSets sets = new();
@@ -61,7 +62,7 @@ internal static class CohesionRule
         foreach (TypeDeclarationSyntax declaration in type.DeclaringSyntaxReferences.Select(reference => reference.GetSyntax()).OfType<TypeDeclarationSyntax>())
         {
             SemanticModel model = compilation.GetSemanticModel(declaration.SyntaxTree);
-            foreach (MemberDeclarationSyntax member in declaration.Members.Where(IsMethodLike))
+            foreach (MethodDeclarationSyntax member in declaration.Members.OfType<MethodDeclarationSyntax>())
             {
                 if (model.GetDeclaredSymbol(member) is not { IsStatic: false } symbol)
                 {
@@ -87,21 +88,11 @@ internal static class CohesionRule
         return [.. methods.GroupBy(sets.Root, SymbolEqualityComparer.Default).Select(group => (IReadOnlyList<ISymbol>)[.. group])];
     }
 
-    private static bool IsMethodLike(MemberDeclarationSyntax member) => member switch
-    {
-        MethodDeclarationSyntax => true,
-        PropertyDeclarationSyntax property => property.ExpressionBody is not null || HasAccessorBody(property.AccessorList),
-        IndexerDeclarationSyntax indexer => indexer.ExpressionBody is not null || HasAccessorBody(indexer.AccessorList),
-        _ => false,
-    };
-
-    private static bool HasAccessorBody(AccessorListSyntax? accessors) =>
-        accessors?.Accessors.Any(accessor => accessor.Body is not null || accessor.ExpressionBody is not null) == true;
-
-    // State built from other state shares it. A constructor isn't a method here, since it touches every field and
-    // would make any class look cohesive; but a field or property it assigns from other state (an options object
-    // built from a connection, say) is joined to that state, and so is one initialized from other state, such as a
-    // primary constructor's parameter. The kit's choices, beyond Hitz and Montazeri's LCOM4 (ADR-0050).
+    // State built from other state shares it. A property or indexer links the state it reads. A constructor isn't a
+    // method here, since it touches every field and would make any class look cohesive; but a field or property it
+    // assigns from other state (an options object built from a connection, say) is joined to that state, and so is one
+    // initialized from other state, such as a primary constructor's parameter. The kit's choices, beyond Hitz and
+    // Montazeri's LCOM4 (ADR-0050).
     private static void JoinDerivedState(TypeDeclarationSyntax declaration, INamedTypeSymbol type, SemanticModel model, DisjointSets sets)
     {
         IEnumerable<(ISymbol? Target, ExpressionSyntax Source)> assignments = declaration.Members.OfType<ConstructorDeclarationSyntax>()
@@ -116,9 +107,14 @@ internal static class CohesionRule
             .Where(property => property.Initializer is not null)
             .Select(property => ((ISymbol?)model.GetDeclaredSymbol(property), property.Initializer!.Value));
 
-        foreach ((ISymbol? target, ExpressionSyntax source) in assignments.Concat(fieldInitializers).Concat(propertyInitializers))
+        IEnumerable<(ISymbol? Target, SyntaxNode Source)> properties = declaration.Members.OfType<BasePropertyDeclarationSyntax>()
+            .Select(property => (model.GetDeclaredSymbol(property), (SyntaxNode)property));
+
+        // A target outside the type's state joins nothing any method uses, so it needs no filter.
+        foreach ((ISymbol? target, SyntaxNode source) in assignments.Concat(fieldInitializers).Concat(propertyInitializers)
+            .Select(pair => (pair.Target, (SyntaxNode)pair.Source)).Concat(properties))
         {
-            if (target is { IsStatic: false } && SymbolEqualityComparer.Default.Equals(target.ContainingSymbol, type))
+            if (target is not null)
             {
                 foreach (ISymbol used in InstanceStateUsed(source, type, model))
                 {
@@ -134,6 +130,7 @@ internal static class CohesionRule
     private static IEnumerable<ISymbol> InstanceStateUsed(SyntaxNode body, INamedTypeSymbol type, SemanticModel model) =>
         body.DescendantNodes().OfType<SimpleNameSyntax>()
             .SelectMany(name => Meanings(model.GetSymbolInfo(name)))
+            .Select(symbol => symbol.OriginalDefinition) // a call to Helper<int> means the method declared as Helper<T>
             .Where(symbol => !symbol.IsStatic && IsStateOf(symbol, type));
 
     private static bool IsStateOf(ISymbol symbol, INamedTypeSymbol type) => symbol switch

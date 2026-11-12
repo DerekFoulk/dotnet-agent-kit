@@ -70,5 +70,21 @@ Describe 'Test-CodeShape.ps1' {
             $stated | Should -Be $enforced
             $enforced | Should -Not -Contain ''
         }
+
+        # Review 2 of GAP-019: until the owner accepts CRF-011, CRF-008 states the same numbers as aims; they stay in step.
+        It "match CRF-008's aims, while it states them" {
+            $limits = Get-Content -Raw (Join-Path $script:kitRoot 'tools/CodeShape/src/Kit.CodeShape/Limits.cs')
+            $craft = Get-Content -Raw (Join-Path $script:kitRoot 'docs/standards/craft.md')
+            $statement = [regex]::Match($craft, '(?m)^  - id: CRF-008\r?\n    statement: "(?<s>[^"]+)"').Groups['s'].Value
+            if ($statement -notmatch 'aim for') { Set-ItResult -Skipped -Because "CRF-008 no longer states CRF-011's numbers" }
+
+            $enforced = 'NestingDepth', 'StatementsPerMember', 'LinesPerFile', 'Lcom4' | ForEach-Object {
+                [regex]::Match($limits, "const int $_ = (\d+);").Groups[1].Value
+            }
+            $stated = 'nesting (\d+) levels deep', 'about (\d+) statements per method', 'about (\d+) lines per file', 'LCOM4 of (\d+)' |
+                ForEach-Object { [regex]::Match($statement, $_).Groups[1].Value }
+
+            $stated | Should -Be $enforced
+        }
     }
 }

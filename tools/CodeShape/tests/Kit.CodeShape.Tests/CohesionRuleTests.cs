@@ -153,18 +153,90 @@ public sealed class CohesionRuleTests
         }
         """)]).Should().BeEmpty();
 
-    // A property's accessors are methods, as LCOM4 counts them.
+    // Review 2 of GAP-019: a property links the state it reads but isn't a method of its own, or every options class
+    // and record with two computed properties over different state would fail.
     [Fact]
-    public void APropertyThatReadsStateIsAMethodOfItsOwn() => CohesionRule.Check([new SourceFile("Prop.cs", """
+    public void APropertyLinksTheStateItReadsWithoutBeingAMethod() => CohesionRule.Check([new SourceFile("Prop.cs", """
         class Prop
         {
             private int _a;
             private int _b;
 
             int A => _a;
+            int B { get { return _b; } }
+            int this[int i] => _a + i;
             void M() => _b++;
         }
-        """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [M]");
+        """)]).Should().BeEmpty();
+
+    [Fact]
+    public void AnOptionsClassAndARecordWithComputedPropertiesPass() => CohesionRule.Check([new SourceFile("Shapes.cs", """
+        class Options
+        {
+            public string Host { get; set; } = "";
+            public int Port { get; set; }
+            public System.TimeSpan Timeout { get; set; }
+            public string Endpoint => $"https://{Host}:{Port}";
+            public bool HasTimeout => Timeout > System.TimeSpan.Zero;
+        }
+
+        record Order(decimal Price, int Quantity, string Customer)
+        {
+            public decimal Total => Price * Quantity;
+            public string Label => Customer.ToUpperInvariant();
+        }
+        """)]).Should().BeEmpty();
+
+    // Review 2 of GAP-019: a call binds to the constructed method (Helper<int>), which must join the one declared.
+    [Fact]
+    public void ACallToAGenericMethodJoinsItsCaller() => CohesionRule.Check([new SourceFile("GenericCall.cs", """
+        class GenericCall<TItem>
+        {
+            private int _a;
+            private int _b;
+
+            int A() => _a + Helper<int>(1) + Other<string>("x");
+            int Helper<T>(T value) => _b + value!.GetHashCode();
+            int Other<T>(T value) => _b;
+        }
+        """)]).Should().BeEmpty();
+
+    // A constructor's ordinary parameters aren't state: two fields filled from the same one stay apart.
+    [Fact]
+    public void FieldsFilledFromTheSameConstructorParameterStayApart() => CohesionRule.Check([new SourceFile("Pair.cs", """
+        class Pair
+        {
+            private readonly int _a;
+            private readonly int _b;
+
+            Pair(int x)
+            {
+                _a = x;
+                _b = x;
+            }
+
+            int A() => _a;
+            int B() => _b;
+        }
+        """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [B]");
+
+    [Fact]
+    public void APropertyInitializedFromAPrimaryConstructorParameterSharesItsState() => CohesionRule.Check([new SourceFile("Svc.cs", """
+        class Svc(Connection connection)
+        {
+            public Options Options { get; } = new(connection);
+
+            void Find() => Use(Options);
+            void Dispose() => connection.Dispose();
+            static void Use(Options options) { }
+        }
+        """)]).Should().BeEmpty();
+
+    [Fact]
+    public void AnExceptionOnOnePartOfAPartialTypeCoversItAll() => CohesionRule.Check([
+        new SourceFile("Ledger.cs", "partial class Ledger { private int _a; void A() => _a++; }"),
+        new SourceFile("Ledger.Title.cs", "// CRF-011 exception: a facade over two stores.\npartial class Ledger { private int _b; void B() => _b++; }"),
+    ]).Should().BeEmpty();
 
     // A generated half of a partial type declares state the hand-written half uses; it's read, though never reported.
     [Fact]
