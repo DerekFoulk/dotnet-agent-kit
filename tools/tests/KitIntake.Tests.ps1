@@ -11,6 +11,20 @@ BeforeAll {
 }
 
 Describe 'the intake data' {
+    BeforeDiscovery {
+        # docs/database-guide.md (ADR-0052) comes from another branch; this check starts once it's on main.
+        $hasGuide = Test-Path -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'docs' 'database-guide.md')
+    }
+
+    # The guide holds the database options' prices and trade-offs (CRF-003); the card names the same options.
+    It 'names each database option as docs/database-guide.md does' -Skip:(-not $hasGuide) {
+        $guide = Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'database-guide.md')
+        $card = $intake['cards'] | Where-Object { $_['id'] -eq 'database' }
+        $card['prices'] | Should -Be 'docs/database-guide.md'
+        foreach ($option in $card['options'] | Where-Object { $_['id'] -ne 'none' }) {
+            $guide | Should -Match ([regex]::Escape($option['label'])) -Because "the guide lists $($option['label'])"
+        }
+    }
     It 'exists as templates/app-intake.json' {
         Test-Path -LiteralPath $intakePath | Should -BeTrue
     }
