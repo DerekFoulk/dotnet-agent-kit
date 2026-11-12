@@ -102,4 +102,16 @@ Describe 'Test-BenchmarkBudget.ps1' {
         $problems.Count | Should -Be 1
         $problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Gone: has a budget, but no report has it*'
     }
+
+    # A benchmark that throws gets no statistics; BenchmarkDotNet's log says why.
+    It 'names a benchmark that produced no result' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @((New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse' -Mean $null))
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 192 } })
+
+        { $script:problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget) } | Should -Not -Throw
+
+        $script:problems.Count | Should -Be 1
+        $script:problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: no result*'
+    }
 }
