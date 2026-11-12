@@ -30,6 +30,35 @@ Describe 'Get-SolutionProject' {
             ([IO.Path]::GetFullPath((Join-Path $folder 'tests' 'App.Tests' 'App.Tests.csproj')))
     }
 
+    It 'lists nothing for a new app''s empty solution' {
+        @(Get-SolutionProject -Solution (Write-Solution '')) | Should -BeNullOrEmpty
+    }
+
+    # Each caller decides what a missing project means: Test-EmptyProjects reports it, Get-UiProject stops.
+    It 'lists a project the disk doesn''t have' {
+        (Get-SolutionProject -Solution (Write-Solution '<Project Path="src/Gone/Gone.csproj" />')).Path | Should -Be 'src/Gone/Gone.csproj'
+    }
+
+    It 'reads a project the solution reaches through ..' {
+        $solution = Write-Solution '<Project Path="../shared/Lib/Lib.csproj" />' -Folder (Join-Path $TestDrive 'repo' 'app')
+
+        (Get-SolutionProject -Solution $solution).FullPath | Should -Be ([IO.Path]::GetFullPath((Join-Path $TestDrive 'repo' 'shared' 'Lib' 'Lib.csproj')))
+    }
+
+    It 'reads a solution given by a PowerShell drive path' {
+        $solution = Write-Solution '<Project Path="src/App/App.csproj" />' -Folder (Join-Path $TestDrive 'drive')
+
+        $project = Get-SolutionProject -Solution (Join-Path 'TestDrive:' 'drive' 'App.slnx')
+
+        $project.FullPath | Should -Be ([IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $solution) 'src' 'App' 'App.csproj')))
+    }
+
+    It 'reads a solution whose path has wildcard characters, and an upper-case .SLNX' {
+        $solution = Write-Solution '<Project Path="src/App/App.csproj" />' -Name 'App.SLNX' -Folder (Join-Path $TestDrive '[app]')
+
+        (Get-SolutionProject -Solution $solution).Path | Should -Be 'src/App/App.csproj'
+    }
+
     It 'says plainly when the solution file is missing' {
         $missing = Join-Path $TestDrive 'missing.slnx'
 
