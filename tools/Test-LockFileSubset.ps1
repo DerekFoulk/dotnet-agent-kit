@@ -6,7 +6,7 @@
 .DESCRIPTION
     A MAUI project builds fewer target frameworks on macOS than on Windows, where its lock file is made, so NuGet
     refuses a locked restore there (NU1004). The macOS CI job restores without locked mode, and this check then
-    gives the same guarantee for the frameworks macOS builds (SUP-001, ADR-0057): each one's packages, versions and
+    gives the same guarantee for the frameworks macOS builds (SUP-001, ADR-0059): each one's packages, versions and
     hashes must be exactly as committed. A framework the committed file lacks, or a lock file nobody committed,
     fails too. Run it in the checkout, after the restore.
 

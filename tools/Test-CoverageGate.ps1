@@ -85,7 +85,7 @@ function Test-CoverageMinimum {
 function Invoke-CoverageGate {
     param([Parameter(Mandatory)] [string] $Path, [string] $Solution)
 
-    # UI projects are exempt (ARC-010, ADR-0057): they hold only views, platform code and startup wiring, which no
+    # UI projects are exempt (ARC-010, ADR-0059): they hold only views, platform code and startup wiring, which no
     # plain test project can load; their logic lives in libraries the gate counts.
     $exempt = if ($Solution) { @(& (Join-Path $PSScriptRoot 'Get-UiProject.ps1') -Solution $Solution | ForEach-Object Name) } else { @() }
     foreach ($name in $exempt) { Write-Host ('{0,-32} exempt (UI project, ARC-010)' -f $name) }

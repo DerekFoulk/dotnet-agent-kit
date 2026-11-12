@@ -40,7 +40,7 @@ Accepted as recommended, after discussion (owner, 2026-11-01).
 ## Consequences
 
 - Web: Clean Architecture modules in one deployable app; modules talk only through Contracts; feature folders inside Application.
-- MAUI: native UI in C#/XAML; MVVM with CommunityToolkit.Mvvm; Shell for URI navigation and deep links. Blazor Hybrid only by ADR. **Extended by ADR-0057 (2026-11-11):** desktop apps use MAUI too, UI projects stay thin, and the shared CI builds them on Windows and macOS.
+- MAUI: native UI in C#/XAML; MVVM with CommunityToolkit.Mvvm; Shell for URI navigation and deep links. Blazor Hybrid only by ADR. **Extended by ADR-0059 (2026-11-11):** desktop apps use MAUI too, UI projects stay thin, and the shared CI builds them on Windows and macOS.
 - Domain, Application, Contracts, the generated API client, validation rules and UI-independent presentation logic are shared libraries; architecture tests stop them referencing any UI or platform package.
 - Microservices only by ADR.
 

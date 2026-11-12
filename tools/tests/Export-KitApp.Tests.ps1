@@ -496,7 +496,7 @@ Describe 'Export-KitApp' {
             Should -BeNullOrEmpty
     }
 
-    # The coverage gate calls Get-UiProject.ps1 beside it (ADR-0057); an app missing a script another one calls
+    # The coverage gate calls Get-UiProject.ps1 beside it (ADR-0059); an app missing a script another one calls
     # would fail only when that line runs.
     It 'includes every kit script that an exported kit script calls from its own folder' {
         $targets = @($map | ForEach-Object { $_.Target })

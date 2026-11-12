@@ -138,7 +138,7 @@ Describe 'Test-CoverageGate.ps1' {
             ($output | Where-Object { $_ -isnot [int] }) -join "`n" | Should -BeLike '*Bookmarks.Worker*no coverage*'
         }
 
-        # ARC-010, ADR-0057: a UI project holds only views, platform code and startup wiring, which no plain test
+        # ARC-010, ADR-0059: a UI project holds only views, platform code and startup wiring, which no plain test
         # project can load, so the gate exempts it and says so. Its logic lives in libraries the gate does count.
         It 'exempts a UI project that no test loads, and says so' {
             $dir = Join-Path $TestDrive 'ui-unloaded'

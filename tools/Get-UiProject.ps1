@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Lists the UI projects in a .slnx solution: its MAUI and desktop projects (ARC-010, ADR-0057).
+    Lists the UI projects in a .slnx solution: its MAUI and desktop projects (ARC-010, ADR-0059).
 
 .DESCRIPTION
     A UI project is one whose project file sets UseMaui, UseWPF, UseWindowsForms or UseWinUI to true. The coverage
@@ -11,7 +11,7 @@
     GitHub runner label, such as macos-latest), the filter also holds the UI projects that runner builds.
 
     It reads each project file as written: a property set in Directory.Build.props, an import or through another
-    property, and a reference path that uses $(...), aren't seen. Set them in the project file (ADR-0057).
+    property, and a reference path that uses $(...), aren't seen. Set them in the project file (ADR-0059).
 
 .EXAMPLE
     ./tools/Get-UiProject.ps1 -Solution Contoso.Orders.slnx -FilterPath $env:RUNNER_TEMP/without-ui.slnf

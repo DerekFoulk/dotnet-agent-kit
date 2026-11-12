@@ -189,7 +189,7 @@ Describe 'Shared CI for app repos' {
         }
     }
 
-    # ADR-0057: Linux can't build MAUI or desktop (UI) projects. A small job finds them; a matrix job builds the whole
+    # ADR-0059: Linux can't build MAUI or desktop (UI) projects. A small job finds them; a matrix job builds the whole
     # solution on the runners they need, with the workload set pinned; the required job waits for it.
     Context 'dotnet-ci.reusable.yml UI builds' {
         BeforeAll {

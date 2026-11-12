@@ -87,7 +87,7 @@ rules:
     why: "No plain test project can load a UI project, and Linux CI can't build one; with the logic in libraries it's tested and covered like any other code, and the UI project has nothing left to cover."
     layer: owner
     status: proposed
-    sources: ["ADR-0008", "ADR-0057", "https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-01"]
+    sources: ["ADR-0008", "ADR-0059", "https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-01"]
     enforcement: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects; that a UI project holds no logic is advisory, checked by the reviewer agent"
     scope: core
     paths: ["src/**", "**/*.csproj"]
@@ -96,7 +96,7 @@ rules:
     why: "One UI stack across phone and desktop shares the most code and the kit's CI and rules; the others serve Windows alone."
     layer: owner
     status: proposed
-    sources: ["ADR-0008", "ADR-0057"]
+    sources: ["ADR-0008", "ADR-0059"]
     enforcement: "advisory: an architecture choice; the reviewer agent checks for the ADR"
     scope: core
     paths: ["**/*.csproj"]
@@ -119,7 +119,7 @@ MAUI and desktop apps keep ADR-0008's MVVM defaults, with the project structure 
 
 ## MAUI and desktop apps
 
-ADR-0057 sets how these are shaped and built.
+ADR-0059 sets how these are shaped and built.
 
 - **Thin UI projects (ARC-010).** The UI project holds views (XAML and their code-behind), platform code and `MauiProgram`'s wiring. View models, commands, validation and everything else go in plain `net10.0` libraries, tested like any other. CommunityToolkit.Mvvm doesn't depend on a UI, so view models built with it live there too.
 - **CI.** The shared .NET CI finds UI projects with `tools/Get-UiProject.ps1`. Linux builds and tests every other project through a solution filter. A `ui` job builds with zero warnings on Windows (the whole solution) and on macOS (all but the Windows-only UI projects), with the workloads restored at the workload set of the SDK in use (SUP-011). The required check waits for it. Tests stay on Linux, where Testcontainers' Linux containers work.

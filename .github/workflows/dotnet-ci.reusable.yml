@@ -25,7 +25,7 @@ env:
   PMD_SHA256: d27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179
 
 jobs:
-  # ADR-0057: Linux can't build MAUI or desktop (UI) projects. This job finds them, and the runners that build them.
+  # ADR-0059: Linux can't build MAUI or desktop (UI) projects. This job finds them, and the runners that build them.
   ui-projects:
     name: Find UI projects
     runs-on: ubuntu-latest
@@ -100,7 +100,7 @@ jobs:
           Get-Content -Raw -LiteralPath $filter
 
       # SUP-011: the workload set whose version is the SDK's own (one ships with each SDK release), never the latest.
-      # Not sdk.workloadVersion in global.json: every build then fails on a machine without that set (ADR-0057).
+      # Not sdk.workloadVersion in global.json: every build then fails on a machine without that set (ADR-0059).
       - name: Restore workloads (pinned)
         env:
           KIT: ${{ steps.kit.outputs.path }}
@@ -118,7 +118,7 @@ jobs:
 
       # The lock files are made on Windows, where a MAUI project also targets Windows. macOS builds a subset of those
       # frameworks, and NuGet refuses a locked restore whose frameworks differ (NU1004). So macOS restores unlocked
-      # and the next step holds it to the committed lock files instead (SUP-001, ADR-0057).
+      # and the next step holds it to the committed lock files instead (SUP-001, ADR-0059).
       - name: Restore (macOS)
         if: runner.os == 'macOS'
         run: dotnet restore $env:FILTER -p:RestoreLockedMode=false
@@ -199,7 +199,7 @@ jobs:
         uses: $/.github/actions/kit-tools
 
       # The steps below work on a solution filter (FILTER) of every project but the UI ones, which Linux can't build;
-      # the ui job builds those (ADR-0057). An empty filter only warns "no project to restore", which would fail
+      # the ui job builds those (ADR-0059). An empty filter only warns "no project to restore", which would fail
       # the zero-warnings gate, so the .NET steps start running when the first such project is added (build step 6).
       - name: Count projects
         id: projects
@@ -280,7 +280,7 @@ jobs:
       # CRF-011's limits, which no analyzer checks: nesting, statements per member, file length and LCOM4 (ADR-0050).
       # It runs from the repo root, so the repo's global.json picks the SDK that builds the kit's checking tool.
       # It evaluates every project with MSBuild, and a MAUI project doesn't evaluate here, without workloads; with UI
-      # projects, the ui job runs it on Windows instead (ADR-0057).
+      # projects, the ui job runs it on Windows instead (ADR-0059).
       - name: Code shape
         if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         shell: pwsh
@@ -290,7 +290,7 @@ jobs:
 
       # CRF-003: the same code in more than one place, found by PMD's copy-paste detector, CPD (BSD-style licence;
       # ADR-0051), at the release pinned above; the runner's Java runs it. Like code shape, it evaluates every project
-      # with MSBuild, so with UI projects the ui job runs it on Windows instead (ADR-0057).
+      # with MSBuild, so with UI projects the ui job runs it on Windows instead (ADR-0059).
       - name: Download PMD
         if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         run: |

@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
-# Test-LockFileSubset.ps1 (ADR-0057). A MAUI project builds fewer target frameworks on macOS than on Windows, where
+# Test-LockFileSubset.ps1 (ADR-0059). A MAUI project builds fewer target frameworks on macOS than on Windows, where
 # its lock file is made, so NuGet refuses a locked restore there (NU1004). The macOS CI job restores without locked
 # mode, then this check fails unless every lock file it wrote matches the committed one for each framework it lists.
 

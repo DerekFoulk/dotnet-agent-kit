@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
-# Get-UiProject.ps1 lists a solution's UI projects: the MAUI and desktop projects (ARC-010, ADR-0057). The coverage
+# Get-UiProject.ps1 lists a solution's UI projects: the MAUI and desktop projects (ARC-010, ADR-0059). The coverage
 # gate exempts them, and the shared .NET CI builds them on Windows and macOS; this is the one place they're found.
 
 Describe 'Get-UiProject.ps1' {
@@ -107,7 +107,7 @@ Describe 'Get-UiProject.ps1' {
         { Get-UiProject -Solution $solution } | Should -Throw '*tests/App.Maui.Tests/App.Maui.Tests.csproj references the UI project src/App.Maui/App.Maui.csproj*ARC-010*'
     }
 
-    # The Linux CI job builds and tests everything but the UI projects through this filter (ADR-0057).
+    # The Linux CI job builds and tests everything but the UI projects through this filter (ADR-0059).
     It 'writes a solution filter of every other project, pointing at the solution''s full path' {
         $solution = New-Solution @(
             @{ Path = 'src/App.Core/App.Core.csproj'; Properties = '' }

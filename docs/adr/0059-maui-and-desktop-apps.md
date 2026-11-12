@@ -1,4 +1,4 @@
-# ADR-0057: MAUI and desktop apps: thin UI projects, built on Windows and macOS
+# ADR-0059: MAUI and desktop apps: thin UI projects, built on Windows and macOS
 
 - **Status:** Proposed
 - **Date:** 2026-11-11
