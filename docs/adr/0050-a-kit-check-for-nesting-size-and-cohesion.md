@@ -85,8 +85,9 @@ How each limit is measured (the kit's own choices, each with tests in `tools/Cod
 - **Statements:** every statement in the member, nested ones included; a block `{ }` isn't one.
 - **File length:** the file's lines; a final newline ends the last line without starting another.
 - **LCOM4:**
-  - What counts as a method: each non-static method, and each property or indexer with a body (its accessors are methods), that uses the type's instance state. Each joins every piece of state and every method it names.
-  - What counts as state: the type's fields, auto-properties and events, and its primary constructor's parameters, which the compiler keeps for the type's members. A local function belongs to its method, not the type.
+  - What counts as a method: each non-static method that uses the type's instance state. Each joins every piece of state and every method it names. A call to a generic method (`Helper<int>`) joins the method declared (`Helper<T>`).
+  - What counts as state: the type's fields, properties and events, and its primary constructor's parameters, which the compiler keeps for the type's members. A local function belongs to its method, not the type.
+  - Properties: a property or indexer links the state it reads, so a method that uses it shares that state. It isn't a method of its own. Counting it as one, as some LCOM4 tools do, failed every options class and record with two computed properties over different state (review 2), which aren't two classes in one.
   - Grouping: methods are grouped by what they share, and the type is reported when it has more groups than the limit.
   - Constructors: a constructor isn't a method, since it touches every field. But a field or property it assigns from other state, or one initialized from other state (a primary constructor's parameter, say), is joined to that state.
   - Partial types: a partial type is measured whole and reported once. Its generated halves are read for what they declare, never reported on.
@@ -96,9 +97,9 @@ How each limit is measured (the kit's own choices, each with tests in `tools/Cod
   - The compiler's fourth way, `generated_code = true` in .editorconfig, isn't read; such a file takes the exception comment instead.
   - Each file is parsed with its project's DefineConstants. The SDK's implicit symbols, such as `NET10_0_OR_GREATER`, are added by a build target, not the evaluation, so code under an `#if` on one of them is read as if the symbol weren't defined.
 - **Exceptions:** the single-line comment `// CRF-011 exception: <reason>`, the kit's counterpart of `[SuppressMessage]` with a `Justification`, which a non-analyzer check can't use. Where it sits says what it covers:
-  - **Right before a member,** before its attributes and with no blank line between: that member. Before a property, its accessors too.
-  - **Right before a type:** the type's cohesion, not its members.
-  - **The file's first comment, with a blank line below it:** the file's length and its top-level statements.
+  - **Right before a member,** as the last comment before it (before its attributes) with no blank line between: that member. Before a property, its accessors too.
+  - **Right before a type,** in the same way: the type's cohesion, not its members.
+  - **The file's first comment, with a blank line below it:** the file's length and its top-level statements. A file that must start with a license header can't use it; the kit's `.editorconfig` sets no header, and an app that adds one would need this rule widened.
   - A marker without a reason covers nothing, and the reviewer checks the reason holds (CRF-001).
 
 ## Consequences
