@@ -118,6 +118,18 @@ Describe 'Test-LoadBudget.ps1' {
         $script:problems | Should -Be @("POST /bookmarks: has a budget, but the stats have no such request. Locust names a request '<Type> <Name>'; was it renamed?")
     }
 
+    # Review 1 of PR 57: Locust's names are case-sensitive URLs, so a budget matches a request only as Locust spells it.
+    It 'matches a budgeted request to the stats only in the same case' {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats @(
+            (New-Row 'POST' '/Bookmarks' -Requests 400 -P95 150)
+            (New-Row '' 'Aggregated' -Requests 400 -P95 150))
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget (Write-Budget (New-StandardBudget))) } | Should -Not -Throw
+
+        $script:problems | Should -Be @("POST /bookmarks: has a budget, but the stats have no such request. Locust names a request '<Type> <Name>'; was it renamed?")
+    }
+
     # An error in the locustfile's own code isn't a failed request, so no failure budget sees it: the user just stops
     # doing that task. The workflow runs Locust with --exit-code-on-error 0, so this check is what catches it.
     It 'names each exception the locustfile raised' {
