@@ -66,9 +66,8 @@ jobs:
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: |
-          $solutionFolder = Split-Path -Parent (Resolve-Path -LiteralPath $env:SOLUTION).Path
-          $projects = @(([xml] (Get-Content -Raw -LiteralPath $env:SOLUTION)).SelectNodes('//Project') |
-              ForEach-Object { Join-Path $solutionFolder $_.GetAttribute('Path') } |
+          Import-Module "$env:KIT/tools/KitSolution.psm1"
+          $projects = @(Get-SolutionProject -Solution $env:SOLUTION | ForEach-Object FullPath |
               Where-Object { [IO.Path]::GetFileNameWithoutExtension($_) -clike '*.Benchmarks' })
           if (-not $projects) {
             "No benchmarks project (a name ending in .Benchmarks) in ${env:SOLUTION}; nothing to run."
