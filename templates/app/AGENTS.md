@@ -19,6 +19,7 @@ This repo follows dotnet-agent-kit {{KitVersion}} (commit `{{KitCommit}}`): the 
 | No deprecated NuGet packages | `./.kit/tools/Test-DeprecatedPackages.ps1 -Path {{Name}}.slnx` |
 | Every ADR has its required sections | `./.kit/tools/Test-AdrSections.ps1 -AdrPath ./docs/adr` |
 | The runbook has every section, and no placeholder once it's In use (OPS-004) | `./.kit/tools/Test-Runbook.ps1 -Path ./docs/runbook.md` |
+| No migration drops or renames what the running version uses without a `// DAT-003:` reason (DAT-003) | `./.kit/tools/Test-SafeMigrations.ps1 -Path .` |
 | Regenerate agent rule files after editing this file | `./.kit/tools/Build-AgentRules.ps1 -RepoRoot .` |
 | Check generated files are current | `./.kit/tools/Build-AgentRules.ps1 -RepoRoot . -Check` |
 | PR title and commit subjects are Conventional Commits | `./.kit/tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD` |

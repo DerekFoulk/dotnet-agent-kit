@@ -77,3 +77,9 @@ jobs:
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-Runbook.ps1" -Path (Join-Path $env:GITHUB_WORKSPACE ''docs/runbook.md'')'
+
+      # Every EF Core migration's Up keeps the running version working; an app with no migrations passes (DAT-003).
+      - name: Safe migrations
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-SafeMigrations.ps1" -Path $env:GITHUB_WORKSPACE'
