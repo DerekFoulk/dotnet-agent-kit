@@ -9,7 +9,7 @@ The kit said nothing about how an app stores its data: which database, which dat
 
 The owner decided on 2026-11-10 that apps use EF Core with code-first migrations by default, that Azure Cosmos DB stays an option, and that a guide recommends the database by asking, in order, where the data lives, what shape it has, then any preference. He also asked that every option carry a price label (Free, Free tier or Paid), with its price, source and the date it was checked, that a paid option is never dropped, and that there is a free default.
 
-Azure has two free offers that fit most apps for their whole life: the Azure SQL Database free offer (100,000 vCore seconds, 32 GB of data and 32 GB of backup per database per month, up to 10 databases) and the Azure Cosmos DB free tier (1000 RU/s and 25 GB per account, one account per subscription). Each has a setting, chosen when the resource is created, that stops it billing past the free amount. Azure Database for PostgreSQL is free for 12 months with an Azure free account, then bills.
+Azure has two free offers with no end date: the Azure SQL Database free offer (100,000 vCore seconds, 32 GB of data and 32 GB of backup per database per month, up to 10 databases) and the Azure Cosmos DB free tier (1000 RU/s and 25 GB per account, one account per subscription). Microsoft positions the Azure SQL free offer for development and proof of concept, with no SLA. Its free limit, chosen when the database is created, can auto-pause it instead of billing. The Cosmos DB free tier's total throughput limit caps throughput at the free amount, but storage past 25 GB still bills. Azure Database for PostgreSQL is free for 12 months with an Azure free account, then bills.
 
 ## Options
 
@@ -17,7 +17,7 @@ Azure has two free offers that fit most apps for their whole life: the Azure SQL
 
 `docs/database-guide.md` asks the owner's three questions. It picks SQLite for data that stays on the device, the Azure SQL Database free offer for relational server data, and the Cosmos DB free tier for document data. Every option is listed with its label, free amount, guard and price. DAT-001 requires the plan to name the choice and its label. DAT-006 requires the guard.
 
-- **Trade-offs:** The choice is repeatable and costs nothing by default, and the owner sees the price of every alternative. Prices go stale, so each carries its date, and the guide says to check again before deciding. The Azure SQL free offer pauses when idle and has no SLA, so an app with users who can't wait needs a paid tier, which the guide lists.
+- **Trade-offs:** The choice is repeatable and costs nothing by default, and the owner sees the price of every alternative. Prices go stale, so each carries its date, and the guide says to check again before deciding. The Azure SQL free offer pauses when idle, has no SLA and is meant for development and proof of concept, so an app with users who can't wait, or that needs an SLA, moves to a paid tier, which the guide lists. Cosmos DB storage past 25 GB has no guard but the budget alert.
 - **Reversibility:** Easy for a new app. Changing an app's engine later means new migrations and tests, which is why the guide asks first.
 - **Risk:** Low.
 

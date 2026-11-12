@@ -31,7 +31,7 @@ Before {{Name}}'s first production deployment, replace every placeholder in squa
 Roll back to the last known good release: the last one that was healthy in production.
 
 1. Find the last known good release: [fill in: where releases and their builds are listed].
-2. If the release you're leaving changed the database schema, check that the last known good release still works with the new schema. If it doesn't, restore the data first (see "How to restore its data").
+2. If the release you're leaving changed the database schema, check that the last known good release still works with the new schema. It should: each migration keeps the version before it working (DAT-003, `docs/standards/data.md`). If it doesn't, fix the schema forward with a new migration, or restore the data first (see "How to restore its data").
 3. Redeploy the last known good build: [fill in: the workflow or command, and how to pass it the version].
 4. Check production's health and telemetry.
 5. Record the rollback as an incident (see "How to respond to an incident").

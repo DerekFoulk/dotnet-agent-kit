@@ -74,7 +74,7 @@ areas:
         status: proposed
         needs: "packages and a CI change"
       - id: GAP-023
-        gap: "The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers."
+        gap: "The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need."
         status: proposed
         needs: "packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests"
   - id: security
@@ -175,7 +175,7 @@ areas:
     rules: [SUP-006, DAT-004, DAT-006]
     gaps:
       - id: GAP-015
-        gap: "No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet."
+        gap: "No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0053, Option 4)."
         status: proposed
         needs: "cloud resources and cost"
       - id: GAP-016
@@ -264,11 +264,11 @@ Open gaps:
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
 - **GAP-021** (Code, proposed; needs an ADR, and a change to every project or a recorded opt-out): CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
-- **GAP-023** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers.
+- **GAP-023** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-012** (Performance, proposed; needs packages): No benchmarks or performance budgets for hot paths, and no load tests.
 - **GAP-013** (Supply chain and build, proposed; needs a tool or GitHub Action, and a CI change): No SBOM is produced for an app's build.
 - **GAP-014** (Supply chain and build, proposed; needs a GitHub Action and a CI change): OpenSSF Scorecard, a tool that scores a repo's supply-chain security practices, isn't run; it would check this area from outside.
-- **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet.
+- **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0053, Option 4).
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 - **GAP-022** (Delivery, proposed; needs infrastructure as code first (GAP-016)): No check that an app's cloud database keeps its free-tier guard on (DAT-006): the guard is a setting in infrastructure code, which apps don't have yet (GAP-016).
 <!-- scorecard-table:end -->
