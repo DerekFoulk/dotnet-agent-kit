@@ -120,3 +120,24 @@ Describe 'the intake data' {
         $byId['nbomber']['cost']['price'] | Should -Match 'organization'
     }
 }
+
+Describe 'Resolve-KitIntakeAnswer' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        # The skill's example answers: the first option of each card, and the database that fits relational data.
+        function New-Answer {
+            [ordered]@{ appType = 'web-api-blazor'; data = 'relational'; database = 'azure-sql-free'; signIn = 'entra-external-id'; hosting = 'none' }
+        }
+    }
+
+    It 'resolves each card to its option, and each kind of test to its default tools' {
+        $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers (New-Answer)
+
+        @($resolved.Cards.Id) | Should -Be @('appType', 'data', 'database', 'signIn', 'hosting')
+        ($resolved.Cards | Where-Object Id -EQ 'database').Option['label'] | Should -Be 'Azure SQL Database, free offer'
+        ($resolved.Cards | Where-Object Id -EQ 'hosting').Option['id'] | Should -Be 'none'
+        @($resolved.TestKinds.Kind | ForEach-Object { $_['id'] }) | Should -Be @($intake['testKinds'].id)
+        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'load' }).Tools | ForEach-Object { $_['id'] }) | Should -Be @('locust')
+        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) | Should -Not -Contain 'awesomeassertions'
+    }
+}
