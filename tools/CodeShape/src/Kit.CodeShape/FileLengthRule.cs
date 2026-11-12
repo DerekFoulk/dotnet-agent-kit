@@ -14,7 +14,7 @@ internal static class FileLengthRule
 
         // A final newline ends the last line; the empty "line" after it isn't one (and an empty file has none).
         int count = lines[^1].Span.IsEmpty ? lines.Count - 1 : lines.Count;
-        if (count > Limits.LinesPerFile && !LimitException.Covers(file.Parse().GetRoot()))
+        if (count > Limits.LinesPerFile && !LimitException.CoversFile(file.Parse().GetCompilationUnitRoot()))
         {
             yield return new Finding(
                 file.Path,
