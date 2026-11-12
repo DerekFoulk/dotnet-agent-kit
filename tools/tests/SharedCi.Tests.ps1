@@ -178,6 +178,48 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # GAP-013 (SUP-009, ADR-0055): every build lists what it's made of, as a CycloneDX SBOM.
+    Context 'dotnet-ci.reusable.yml SBOM' {
+        BeforeAll {
+            $steps = @(Get-Steps $dotnet.Yaml)
+            $sbomRun = ($steps | Where-Object { "$($_['run'])" -match 'dotnet-CycloneDX' } | ForEach-Object { $_['run'] }) -join "`n"
+        }
+
+        It 'pins the CycloneDX .NET tool in the kit''s tool manifest, where Dependabot keeps it current' {
+            $manifest = Get-Content -Raw (Join-Path $root '.config/dotnet-tools.json') | ConvertFrom-Json -AsHashtable
+
+            $manifest['tools'].ContainsKey('cyclonedx') | Should -BeTrue -Because 'the manifest pins the CycloneDX tool'
+            $manifest['tools']['cyclonedx']['version'] | Should -Match '^\d+\.\d+\.\d+$'
+            @($manifest['tools']['cyclonedx']['commands']) | Should -Contain 'dotnet-CycloneDX'
+        }
+
+        It 'installs the version the kit''s manifest pins, for this run only' {
+            $install = @($steps | Where-Object { "$($_['run'])" -match 'dotnet tool install CycloneDX' })
+
+            $install | Should -HaveCount 1
+            $install[0]['run'] | Should -Match '\$env:KIT/\.config/dotnet-tools\.json'
+            $install[0]['run'] | Should -Match '--version \$version --tool-path "\$env:RUNNER_TEMP/'
+            $install[0]['if'] | Should -Be "steps.projects.outputs.count != '0'"
+        }
+
+        It 'lists the solution''s shipped projects as JSON, from the restore already done' {
+            $sbomRun | Should -Match '"\$SOLUTION"'
+            $sbomRun | Should -Match '--exclude-test-projects'
+            $sbomRun | Should -Match '--disable-package-restore'
+            $sbomRun | Should -Match '--output-format Json'
+            $sbomRun | Should -Match '--filename sbom\.cdx\.json'
+        }
+
+        It 'uploads the SBOM as the "sbom" artifact, failing when it''s missing' {
+            $upload = @($steps | Where-Object { "$($_['uses'])" -like 'actions/upload-artifact@*' })
+
+            $upload | Should -HaveCount 1
+            $upload[0]['with']['name'] | Should -Be 'sbom'
+            $upload[0]['with']['if-no-files-found'] | Should -Be 'error'
+            $upload[0]['if'] | Should -Be "steps.projects.outputs.count != '0'"
+        }
+    }
+
     Context 'app-checks.reusable.yml' {
         BeforeAll {
             $run = (@(Get-Steps $app.Yaml) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
