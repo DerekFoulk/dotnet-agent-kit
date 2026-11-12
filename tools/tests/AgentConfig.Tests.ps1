@@ -189,23 +189,42 @@ Describe 'Agent configuration' {
         }
 
         # Installing software on the owner's machine is "Always ask" (ADR-0061): a local Playwright browser install,
-        # by Playwright's own script or the kit's, prompts in both modes, in any case.
+        # by Playwright's own script, npx or the kit's script, prompts in both modes, in any case. The rules are
+        # anchored at the start of a command, as the New-KitApp rules are, so a command that only names the script
+        # or quotes the install (git add, git diff, grep, a commit message, Invoke-Mutant) doesn't prompt: the
+        # owner asked (2026-11-11) to be asked only before destructive steps and releases. Known misses, left to
+        # "Always ask" and the reviewer (ADR-0026): an install run through a variable or a pipeline, such as
+        # '& $pw install' or 'Get-ChildItem -Filter playwright.ps1 | ForEach-Object { & $_ install }', or one
+        # that follows another command in the same PowerShell line. The kit script is kit-only (apps run it in CI
+        # from the kit's download), so its rules use the kit's paths and app copies drop them.
         It 'asks before installing a browser locally: <Tool>(<Command>)' -ForEach @(
             foreach ($tool in 'Bash', 'PowerShell') {
                 @{ Tool = $tool; Command = 'pwsh fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install chromium' }
                 @{ Tool = $tool; Command = 'pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps' }
-                @{ Tool = $tool; Command = './tools/Install-PlaywrightBrowser.ps1 -Solution dotnet-agent-kit.slnx' }
-                @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./.kit/tools/Install-PlaywrightBrowser.ps1 -Solution App.slnx' }
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./tools/Install-PlaywrightBrowser.ps1 -Solution dotnet-agent-kit.slnx' }
                 @{ Tool = $tool; Command = 'npx playwright install chromium' }
+                @{ Tool = $tool; Command = 'npx playwright@1.49.0 install chromium' }
             }
+            @{ Tool = 'PowerShell'; Command = '& ./bin/Debug/net10.0/playwright.ps1 install chromium' }
+            @{ Tool = 'PowerShell'; Command = './bin/Debug/net10.0/playwright.ps1 install chromium' }
+            @{ Tool = 'PowerShell'; Command = './tools/Install-PlaywrightBrowser.ps1 -Solution dotnet-agent-kit.slnx' }
+            @{ Tool = 'PowerShell'; Command = './tools/Install-PlaywrightBrowser.ps1 dotnet-agent-kit.slnx' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\Install-PlaywrightBrowser.ps1 -Solution dotnet-agent-kit.slnx' }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command -IgnoreCase | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
         }
 
-        It 'doesn''t ask to run the browser tests: <Tool>(<Command>)' -ForEach @(
+        It 'doesn''t ask for a command that only names the install: <Tool>(<Command>)' -ForEach @(
             foreach ($tool in 'Bash', 'PowerShell') {
                 @{ Tool = $tool; Command = 'dotnet test --project fixtures/WebUi/tests/Kit.WebUi.E2E.Tests' }
                 @{ Tool = $tool; Command = 'Invoke-Pester -Path ./tools/tests/Install-PlaywrightBrowser.Tests.ps1' }
+                @{ Tool = $tool; Command = 'git add tools/Install-PlaywrightBrowser.ps1 tools/tests/Install-PlaywrightBrowser.Tests.ps1' }
+                @{ Tool = $tool; Command = 'git diff origin/main -- tools/Install-PlaywrightBrowser.ps1' }
+                @{ Tool = $tool; Command = './tools/Invoke-Mutant.ps1 -Path ./tools/Install-PlaywrightBrowser.ps1 -TestPath ./tools/tests/Install-PlaywrightBrowser.Tests.ps1' }
+                @{ Tool = $tool; Command = 'grep -rn "playwright.ps1 install" docs' }
+                @{ Tool = $tool; Command = 'rg -n "playwright install" docs' }
+                @{ Tool = $tool; Command = "git commit -m 'docs: the owner runs playwright.ps1 install chromium'" }
+                @{ Tool = $tool; Command = 'gh pr create --title x --body "npx playwright install asks first"' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
