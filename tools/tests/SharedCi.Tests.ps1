@@ -496,7 +496,9 @@ Describe 'Shared CI for app repos' {
             $download = Get-JobStep $jobs['ui'] 'Download PMD'
             $download['if'] | Should -Be "runner.os == 'Windows'"
             $download['run'] | Should -Match 'Get-FileHash'
-            $download['run'] | Should -Match '\$env:PMD_SHA256'
+            # Review 6: a hash mismatch must stop the job, and Windows runs PMD's batch launcher.
+            $download['run'] | Should -Match 'if \(\$hash -ne \$env:PMD_SHA256\) \{\s+"::error::[^"]+"\s+exit 1\s+\}'
+            $download['run'] | Should -Match 'bin/pmd\.bat"\)" >> \$env:GITHUB_ENV'
             $windows = Get-JobStep $jobs['ui'] 'Duplicate code'
             $windows['if'] | Should -Be "runner.os == 'Windows'"
             $windows['run'] | Should -Match 'Test-Duplication\.ps1" -Solution \$env:SOLUTION -Pmd \$env:PMD'
