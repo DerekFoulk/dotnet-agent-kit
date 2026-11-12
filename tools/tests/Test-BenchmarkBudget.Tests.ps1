@@ -156,6 +156,46 @@ Describe 'Test-BenchmarkBudget.ps1' {
         $problems[0] | Should -BeLike 'App.Benchmarks.ParseBenchmarks.Parse: its budget must have exactly maxMeanNanoseconds and maxAllocatedBytes, as numbers*'
     }
 
+    # Results left from an earlier run in the same folder would otherwise be checked as well, or instead.
+    It 'names a benchmark that more than one report has' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @((New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse' -Mean 900))
+        $older = Join-Path $results 'older'
+        New-Item -ItemType Directory -Path $older | Out-Null
+        Copy-Item -LiteralPath (Join-Path $results 'App.Benchmarks.ParseBenchmarks-report-full-compressed.json') -Destination $older
+        $budget = Write-Budget ([ordered]@{ 'App.Benchmarks.ParseBenchmarks.Parse' = [ordered]@{ maxMeanNanoseconds = 1000; maxAllocatedBytes = 192 } })
+
+        $problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget)
+
+        $problems | Should -Be @("App.Benchmarks.ParseBenchmarks.Parse: in more than one report under $results. Run the benchmarks into an empty folder.")
+    }
+
+    It 'says when there is no budget file' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @((New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse'))
+        $budget = Join-Path $TestDrive 'missing' 'benchmark-budget.json'
+
+        { $script:problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget) } | Should -Not -Throw
+
+        $script:problems | Should -Be @("No budget file at $budget. Each benchmarks project keeps its budgets in benchmark-budget.json.")
+    }
+
+    # BenchmarkDotNet puts a [Params] value in the full name, so each value has its own budget.
+    It 'keeps a separate budget for each parameter value' {
+        Get-Command Get-BenchmarkBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $results = Write-Result @(
+            (New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse(Length: 10)' -Mean 90)
+            (New-Benchmark 'App.Benchmarks.ParseBenchmarks.Parse(Length: 1000)' -Mean 9000))
+        $budget = Write-Budget ([ordered]@{
+                'App.Benchmarks.ParseBenchmarks.Parse(Length: 10)'   = [ordered]@{ maxMeanNanoseconds = 100; maxAllocatedBytes = 192 }
+                'App.Benchmarks.ParseBenchmarks.Parse(Length: 1000)' = [ordered]@{ maxMeanNanoseconds = 8000; maxAllocatedBytes = 192 }
+            })
+
+        $problems = @(Get-BenchmarkBudgetProblem -Path $results -Budget $budget)
+
+        $problems | Should -Be @('App.Benchmarks.ParseBenchmarks.Parse(Length: 1000): mean 9,000 ns is over its budget of 8,000 ns.')
+    }
+
     It 'returns exit code <Code> when the benchmarks are <State>' -ForEach @(
         @{ State = 'within budget'; Mean = 900; Code = 0 }
         @{ State = 'over budget'; Mean = 1100; Code = 1 }
