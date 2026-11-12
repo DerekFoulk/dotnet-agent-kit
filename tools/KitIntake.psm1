@@ -11,9 +11,20 @@ function Resolve-KitIntakeAnswer {
         [Parameter(Mandatory)] [Collections.IDictionary] $Answers
     )
 
+    $known = @($Intake['cards'] | ForEach-Object { $_['id'] }) + 'testTools'
+    foreach ($key in $Answers.Keys) {
+        if ($key -cnotin $known) { throw "The answers have '$key', which isn't an intake card. The cards are: $($known -join ', ')." }
+    }
+
     $cards = foreach ($card in $Intake['cards']) {
-        $value = $Answers[$card['id']]
-        [pscustomobject]@{ Id = $card['id']; Card = $card; Option = @($card['options'] | Where-Object { $_['id'] -ceq $value })[0]; Other = $null }
+        $id = $card['id']
+        $ids = @($card['options'] | ForEach-Object { $_['id'] })
+        $accepts = "$($ids -join ', '), or 'Other: <text>'"
+        $value = $Answers[$id]
+        if ($value -isnot [string] -or -not $value.Trim()) { throw "The answers have no answer for '$id'. It takes one of: $accepts." }
+        $option = @($card['options'] | Where-Object { $_['id'] -ceq $value })
+        if (-not $option) { throw "'$value' isn't an option of the '$id' card. It takes one of: $accepts." }
+        [pscustomobject]@{ Id = $id; Card = $card; Option = $option[0]; Other = $null }
     }
     $kinds = foreach ($kind in $Intake['testKinds']) {
         [pscustomobject]@{ Kind = $kind; Tools = @($kind['tools'] | Where-Object { $_['default'] }) }
