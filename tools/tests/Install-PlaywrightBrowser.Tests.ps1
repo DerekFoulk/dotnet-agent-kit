@@ -85,9 +85,11 @@ Describe 'Install-PlaywrightBrowser.ps1' {
     It 'installs once for two projects on the same Playwright version, and once more for another version' {
         Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         $repo = Join-Path $TestDrive 'versions'
-        New-Project $repo 'A.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
+        # Review round 1: the version is Microsoft.Playwright's own, not that of a package named like it (axe's, or
+        # Playwright's MSTest adapter), which here share one version across both projects.
+        New-Project $repo 'A.E2E.Tests' -Libraries 'Deque.AxeCore.Playwright/4.14.0', 'Microsoft.Playwright.MSTest/1.64.1', 'Microsoft.Playwright/1.64.1' -Built
         New-Project $repo 'B.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
-        New-Project $repo 'C.E2E.Tests' -Libraries 'Microsoft.Playwright/1.63.0' -Built
+        New-Project $repo 'C.E2E.Tests' -Libraries 'Deque.AxeCore.Playwright/4.14.0', 'Microsoft.Playwright.MSTest/1.64.1', 'Microsoft.Playwright/1.63.0' -Built
         $solution = New-Solution $repo 'A.E2E.Tests', 'B.E2E.Tests', 'C.E2E.Tests'
 
         Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null
@@ -218,5 +220,36 @@ Describe 'Install-PlaywrightBrowser.ps1' {
         $solution = New-Solution $repo 'App.E2E.Tests'
 
         { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } | Should -Throw '*App.E2E.Tests*restore*'
+    }
+
+    # Review round 1: playwright.ps1 doesn't depend on the test project's language.
+    It 'reads an F# Playwright project too' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'fsharp'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
+        Move-Item -LiteralPath (Join-Path $repo 'src/App.E2E.Tests/App.E2E.Tests.csproj') -Destination (Join-Path $repo 'src/App.E2E.Tests/App.E2E.Tests.fsproj')
+        '<Solution><Project Path="src/App.E2E.Tests/App.E2E.Tests.fsproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $repo 'App.slnx')
+
+        Install-PlaywrightBrowser -Solution (Join-Path $repo 'App.slnx') -Configuration Release *> $null
+
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
+    }
+
+    # Review round 1: a solution may write a path with backslashes; Get-UiProject.ps1 turns them into slashes, and so
+    # must this script, or on Linux the UI project's path wouldn't match and MSBuild would be asked to read it. (Windows
+    # reads either slash, so only the Linux run of this test catches a script that stops turning them.)
+    It 'skips a UI project whose path the solution writes with backslashes' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'backslash'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built
+        New-Project $repo 'App.Maui'
+        '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><UseMaui>true</UseMaui></PropertyGroup><Import Project="missing.props" /></Project>' |
+            Set-Content -LiteralPath (Join-Path $repo 'src/App.Maui/App.Maui.csproj')
+        '<Solution><Project Path="src\App.Maui\App.Maui.csproj" /><Project Path="src\App.E2E.Tests\App.E2E.Tests.csproj" /></Solution>' |
+            Set-Content -LiteralPath (Join-Path $repo 'App.slnx')
+
+        { Install-PlaywrightBrowser -Solution (Join-Path $repo 'App.slnx') -Configuration Release *> $null } | Should -Not -Throw
+
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
     }
 }
