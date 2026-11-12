@@ -505,6 +505,20 @@ Describe 'Shared CI for app repos' {
             $dotnet.Yaml['env']['PMD_SHA256'] | Should -Match '^[0-9a-f]{64}$'
         }
 
+        # The SBOM (SUP-009) lists the shipped projects through MSBuild too, and must include the UI app, which ships.
+        # So with UI projects the Windows leg writes it, after restoring the whole solution; the steps are the Linux
+        # job's, word for word, so the SBOM is made one way.
+        It 'writes the SBOM on Windows over the whole solution when there are UI projects, with the Linux job''s steps' {
+            foreach ($name in 'Install CycloneDX', 'Write the SBOM', 'Upload the SBOM') {
+                $linux = Get-JobStep $jobs['dotnet'] $name
+                $windows = Get-JobStep $jobs['ui'] $name
+                $windows['if'] | Should -Be "runner.os == 'Windows'" -Because "'$name' runs on the Windows leg only"
+                foreach ($key in 'shell', 'env', 'run', 'uses', 'with') {
+                    ($windows[$key] | ConvertTo-Json -Depth 5) | Should -Be ($linux[$key] | ConvertTo-Json -Depth 5) -Because "'$name' has the Linux job's $key"
+                }
+            }
+        }
+
         # The ruleset requires "dotnet / Build, test and package checks" by name (templates/github/main-protection.json),
         # so that job waits for the UI builds and fails when they did: a required check can't be weakened by them.
         It 'keeps the required job''s name, and has it wait for the UI builds unless the run was cancelled' {
@@ -558,7 +572,9 @@ Describe 'Shared CI for app repos' {
     # GAP-013 (SUP-009, ADR-0055): every build lists what it's made of, as a CycloneDX SBOM.
     Context 'dotnet-ci.reusable.yml SBOM' {
         BeforeAll {
-            $steps = @(Get-Steps $dotnet.Yaml)
+            # The Linux job's steps. With UI projects the ui job writes the SBOM instead, with the same steps (ADR-0059),
+            # which the UI builds context checks against these.
+            $steps = @($dotnet.Yaml['jobs']['dotnet']['steps'])
             $sbomRun = ($steps | Where-Object { "$($_['run'])" -match 'dotnet-CycloneDX' } | ForEach-Object { $_['run'] }) -join "`n"
         }
 
@@ -591,11 +607,11 @@ Describe 'Shared CI for app repos' {
             $sbomRun | Should -Match '--filename sbom\.cdx\.json'
         }
 
-        It 'runs every SBOM step only once the solution has projects' {
+        It 'runs every SBOM step only once the solution has projects, and on Linux only without UI projects' {
             $sbomSteps = @($steps | Where-Object { "$($_['run'])" -match 'CycloneDX' -or "$($_['uses'])" -like 'actions/upload-artifact@*' })
 
             $sbomSteps | Should -HaveCount 3
-            foreach ($step in $sbomSteps) { $step['if'] | Should -Be "steps.projects.outputs.count != '0'" }
+            foreach ($step in $sbomSteps) { $step['if'] | Should -Be "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'" }
         }
 
         It 'uploads the SBOM it wrote as the "sbom" artifact, failing when it''s missing' {
