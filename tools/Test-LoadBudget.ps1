@@ -40,14 +40,16 @@ function Get-LoadBudgetProblem {
     if (-not (Test-Path -LiteralPath $statsFile -PathType Leaf)) {
         return "No Locust stats at ${statsFile}: Locust stopped before the run. Its output above says why."
     }
-    $rows = @{}
+    # Case-sensitive, as Locust's request names and the budget's keys are.
+    $rows = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
     foreach ($row in (Import-Csv -LiteralPath $statsFile)) { $rows[(Get-RequestKey $row)] = $row }
 
     # The whole run first, then each request, so the output reads the same every time.
     $keys = @('Aggregated') + @($budgets.Keys | Where-Object { $_ -cne 'Aggregated' } | Sort-Object -CaseSensitive)
     foreach ($key in $keys) {
         $limit = $budgets[$key]
-        $row = $rows[$key]
+        $row = $null
+        $null = $rows.TryGetValue($key, [ref] $row)
         if ($null -eq $row) {
             "${key}: has a budget, but the stats have no such request. Locust names a request '<Type> <Name>'; was it renamed?"
             continue
