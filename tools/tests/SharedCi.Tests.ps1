@@ -232,5 +232,14 @@ Describe 'Shared CI for app repos' {
             $step[0]['run'] | Should -Not -Match 'Test-Path'
             $step[0].ContainsKey('if') | Should -BeFalse
         }
+
+        # An app with no migrations passes the check, so it runs on every app rather than skipping (DAT-003).
+        It 'checks every migration in the app on every run' {
+            $step = @(Get-Steps $app.Yaml | Where-Object { "$($_['run'])" -match 'Test-SafeMigrations\.ps1' })
+
+            $step.Count | Should -Be 1
+            $step[0]['run'] | Should -Match 'Test-SafeMigrations\.ps1"? -Path \$env:GITHUB_WORKSPACE'
+            $step[0].ContainsKey('if') | Should -BeFalse
+        }
     }
 }

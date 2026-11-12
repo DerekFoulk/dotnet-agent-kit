@@ -260,6 +260,12 @@ Describe 'Export-KitApp' {
         $LASTEXITCODE | Should -Be 0 -Because $output
     }
 
+    It 'gets the safe-migrations check, which passes an app with no migrations yet' {
+        $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-SafeMigrations.ps1') -Path $app 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $output
+    }
+
     It 'passes its own ADR check, which skips the ADR template' {
         $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-AdrSections.ps1') -AdrPath (Join-Path $app 'docs/adr') 2>&1 | Out-String
 
