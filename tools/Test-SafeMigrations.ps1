@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     Fails when an EF Core migration's Up method makes a change the version of the app still running can't work
-    with (DAT-003, ADR-0053).
+    with (DAT-003, ADR-0054).
 
 .DESCRIPTION
     Reads every C# file under -Path (bin, obj and .git left out) that overrides Up(MigrationBuilder), as an EF Core

@@ -1,0 +1,111 @@
+#Requires -Version 7.6
+<#
+.SYNOPSIS
+    Fails when a C# project in the solution holds no code of its own, or keeps the class library template's empty
+    Class1 (ARC-009, ADR-0052).
+
+.EXAMPLE
+    ./tools/Test-EmptyProjects.ps1 -Solution dotnet-agent-kit.slnx
+#>
+[CmdletBinding()]
+param(
+    [string] $Solution
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# Where the build writes output and generated C# by default (BaseOutputPath and BaseIntermediateOutputPath): not the
+# project's own source.
+$script:BuildFolders = 'bin', 'obj'
+
+# The check reads C# projects only; other kinds (a database, compose or JavaScript project) hold other files.
+$script:ProjectExtension = '.csproj'
+
+# What counts as a C# project's own code: C#, Razor components and pages (a Razor class library may hold only those),
+# and .proto files, which Grpc.Tools turns into C# at build time.
+$script:SourceExtensions = '.cs', '.razor', '.cshtml', '.proto'
+
+function New-Problem {
+    param([string] $Message)
+    [pscustomobject]@{ Message = $Message }
+}
+
+# True for the file `dotnet new classlib` writes, Class1.cs with an empty class Class1, in either namespace style.
+function Test-PlaceholderFile {
+    param([Parameter(Mandatory)] [IO.FileInfo] $File)
+
+    $File.Name -eq 'Class1.cs' -and (Get-Content -LiteralPath $File.FullName -Raw) -match '\bclass\s+Class1\s*\{\s*\}'
+}
+
+# The project's own source files: under its folder, outside its bin/ and obj/, and outside any subfolder that holds a
+# project of its own (a console tool's tests can sit beneath it). One scan, which doesn't follow links, then the
+# folders to leave out are dropped by path: walking folder by folder was 34 times slower under a node_modules.
+function Get-ProjectSourceFile {
+    param([Parameter(Mandatory)] [string] $Folder)
+
+    $Folder = [IO.Path]::GetFullPath($Folder).TrimEnd([IO.Path]::DirectorySeparatorChar)
+    $all = @(Get-ChildItem -LiteralPath $Folder -Recurse -File)
+    $excluded = @($script:BuildFolders | ForEach-Object { Join-Path $Folder $_ }) +
+        @($all | Where-Object { $_.Extension -like '.*proj' -and $_.DirectoryName -ne $Folder } | ForEach-Object DirectoryName)
+    $prefixes = @($excluded | Sort-Object -Unique | ForEach-Object { $_ + [IO.Path]::DirectorySeparatorChar })
+    $all | Where-Object Extension -In $script:SourceExtensions | Where-Object {
+        $path = $_.FullName
+        -not ($prefixes | Where-Object { $path.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) })
+    }
+}
+
+function Get-EmptyProjectProblem {
+    param([Parameter(Mandatory)] [string] $Solution)
+
+    if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) {
+        throw "No solution file at $Solution."
+    }
+    # The file system's own path, not a PowerShell drive's (TestDrive:\, a mapped drive), which .NET can't read.
+    $solutionFolder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).ProviderPath
+    foreach ($project in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {
+        # A hand-written solution may use Windows separators; PowerShell reads / on every platform.
+        $relative = $project.GetAttribute('Path').Replace('\', '/')
+        if ([IO.Path]::GetExtension($relative) -ne $script:ProjectExtension) {
+            continue
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $solutionFolder $relative) -PathType Leaf)) {
+            New-Problem -Message "$relative is in the solution but isn't there"
+            continue
+        }
+        $projectFolder = Split-Path -Parent (Join-Path $solutionFolder $relative)
+        $files = @(Get-ProjectSourceFile -Folder $projectFolder)
+        $placeholders = @($files | Where-Object { Test-PlaceholderFile -File $_ })
+        if ($files.Count -eq $placeholders.Count) {
+            New-Problem -Message "$relative has no source files of its own"
+            continue
+        }
+        foreach ($placeholder in $placeholders) {
+            $path = [IO.Path]::GetRelativePath($solutionFolder, $placeholder.FullName).Replace('\', '/')
+            New-Problem -Message "$path is the class library template's empty placeholder"
+        }
+    }
+}
+
+# Prints every problem and returns 0 when every project holds code of its own, otherwise 1.
+function Invoke-EmptyProjectsCheck {
+    param([Parameter(Mandatory)] [string] $Solution)
+
+    $problems = @(Get-EmptyProjectProblem -Solution $Solution)
+    foreach ($problem in $problems) {
+        Write-Host "  $($problem.Message)" -ForegroundColor Red
+    }
+
+    if ($problems) {
+        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red
+        return 1
+    }
+
+    Write-Host "Every project in $Solution holds code of its own." -ForegroundColor Green
+    0
+}
+
+# Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
+if ($MyInvocation.InvocationName -ne '.') {
+    exit (Invoke-EmptyProjectsCheck -Solution $Solution)
+}

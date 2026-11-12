@@ -1,0 +1,285 @@
+namespace Kit.CodeShape.Tests;
+
+public sealed class CohesionRuleTests
+{
+    [Fact]
+    public void ATypeWhoseMethodsFormTwoGroupsThatShareNoStateIsReportedAtItsName()
+    {
+        SourceFile file = new("Ledger.cs", """
+            class Ledger
+            {
+                private int _total;
+                private string _title = "";
+
+                void Add(int amount) => _total += amount;
+                int Total() => _total;
+                void Rename(string title) => _title = title;
+            }
+            """);
+
+        CohesionRule.Check([file]).Should().ContainSingle().Which.Should().BeEquivalentTo(new
+        {
+            Path = "Ledger.cs",
+            Line = 1,
+            Column = 7,
+            Message = "Ledger's methods form 2 groups that share no state (LCOM4 2; the limit is 1): [Add, Total], [Rename] (CRF-011).",
+        });
+    }
+
+    [Fact]
+    public void APartialTypeIsMeasuredWholeAndReportedOnce() => CohesionRule.Check([
+        new SourceFile("Ledger.cs", "partial class Ledger { private int _total; void Add(int amount) => _total += amount; }"),
+        new SourceFile("Ledger.Title.cs", "partial class Ledger { private string _title = \"\"; void Rename(string t) => _title = t; }"),
+    ]).Should().ContainSingle().Which.Message.Should().Contain("[Add], [Rename]");
+
+    [Fact]
+    public void ACallTheCompilerCantResolveStillJoinsTheMethodsItCouldMean() => CohesionRule.Check([new SourceFile("Store.cs", """
+        class Store
+        {
+            private int _count;
+            private int _imported;
+
+            void Save(Order order) => _count++;
+            void Save(Invoice invoice) => _count++;
+            void Import(Unknown item)
+            {
+                _imported++;
+                Save(item);
+            }
+        }
+        """)]).Should().BeEmpty();
+
+    // A property's accessor is a method too: methods that use the property share the state it reads.
+    [Fact]
+    public void APropertyJoinsTheMethodsThatUseItToTheStateItReads() => CohesionRule.Check([new SourceFile("Api.cs", """
+        class Api
+        {
+            private readonly Host _host = new();
+
+            private Client Client => _host.Client;
+
+            void Get() => Client.Send();
+            void Dispose() => _host.Dispose();
+        }
+        """)]).Should().BeEmpty();
+
+    // A field the constructor builds from another depends on it, so methods using either share state.
+    [Fact]
+    public void AFieldTheConstructorBuildsFromAnotherJoinsThem() => CohesionRule.Check([new SourceFile("Tests.cs", """
+        class Tests
+        {
+            private readonly Connection _connection = new();
+            private readonly Options _options;
+
+            Tests()
+            {
+                _options = new Options(_connection);
+            }
+
+            void Find() => Use(_options);
+            void Dispose() => _connection.Dispose();
+            static void Use(Options options) { }
+        }
+        """)]).Should().BeEmpty();
+
+    // Fields a constructor only fills from its parameters stay apart: the constructor touches every field, so
+    // counting it as a method would make every class look cohesive.
+    [Fact]
+    public void FieldsTheConstructorFillsFromParametersStayApart() => CohesionRule.Check([new SourceFile("Service.cs", """
+        class Service
+        {
+            private readonly int _a;
+            private readonly int _b;
+
+            Service(int a, int b)
+            {
+                _a = a;
+                _b = b;
+            }
+
+            int A() => _a;
+            int B() => _b;
+        }
+        """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [B]");
+
+    // Review 1 of GAP-019: a local function belongs to its method, not to the type's state.
+    [Fact]
+    public void AMethodThatCallsOnlyItsOwnLocalFunctionUsesNoState() => CohesionRule.Check([new SourceFile("L.cs", """
+        class L
+        {
+            private int _x;
+
+            void B() => _x++;
+            int C() => _x;
+            int A(int n)
+            {
+                int Twice() => n * 2;
+                return Twice();
+            }
+        }
+        """)]).Should().BeEmpty();
+
+    // A primary constructor's parameters are the type's state, as the compiler keeps them for its methods.
+    [Fact]
+    public void PrimaryConstructorParametersAreState() => CohesionRule.Check([new SourceFile("Svc.cs", """
+        class Svc(Repo repo, Log log)
+        {
+            void Get() => repo.Get();
+            void Write() => log.Write();
+        }
+        """)]).Should().ContainSingle().Which.Message.Should().Contain("[Get], [Write]");
+
+    [Fact]
+    public void MethodsSharingAPrimaryConstructorParameterFormOneGroup() => CohesionRule.Check([new SourceFile("Svc.cs", """
+        class Svc(Repo repo)
+        {
+            private int _a;
+            private int _b;
+
+            void A() { repo.Get(); _a++; }
+            void B() { repo.Save(); _b++; }
+        }
+        """)]).Should().BeEmpty();
+
+    [Fact]
+    public void AFieldInitializedFromAPrimaryConstructorParameterSharesItsState() => CohesionRule.Check([new SourceFile("Svc.cs", """
+        class Svc(Connection connection)
+        {
+            private readonly Options _options = new(connection);
+
+            void Find() => Use(_options);
+            void Dispose() => connection.Dispose();
+            static void Use(Options options) { }
+        }
+        """)]).Should().BeEmpty();
+
+    // Review 2 of GAP-019: a property links the state it reads but isn't a method of its own, or every options class
+    // and record with two computed properties over different state would fail.
+    [Fact]
+    public void APropertyLinksTheStateItReadsWithoutBeingAMethod() => CohesionRule.Check([new SourceFile("Prop.cs", """
+        class Prop
+        {
+            private int _a;
+            private int _b;
+
+            int A => _a;
+            int B { get { return _b; } }
+            int this[int i] => _a + i;
+            void M() => _b++;
+        }
+        """)]).Should().BeEmpty();
+
+    [Fact]
+    public void AnOptionsClassAndARecordWithComputedPropertiesPass() => CohesionRule.Check([new SourceFile("Shapes.cs", """
+        class Options
+        {
+            public string Host { get; set; } = "";
+            public int Port { get; set; }
+            public System.TimeSpan Timeout { get; set; }
+            public string Endpoint => $"https://{Host}:{Port}";
+            public bool HasTimeout => Timeout > System.TimeSpan.Zero;
+        }
+
+        record Order(decimal Price, int Quantity, string Customer)
+        {
+            public decimal Total => Price * Quantity;
+            public string Label => Customer.ToUpperInvariant();
+        }
+        """)]).Should().BeEmpty();
+
+    // Review 2 of GAP-019: a call binds to the constructed method (Helper<int>), which must join the one declared.
+    [Fact]
+    public void ACallToAGenericMethodJoinsItsCaller() => CohesionRule.Check([new SourceFile("GenericCall.cs", """
+        class GenericCall<TItem>
+        {
+            private int _a;
+            private int _b;
+
+            int A() => _a + Helper<int>(1) + Other<string>("x");
+            int Helper<T>(T value) => _b + value!.GetHashCode();
+            int Other<T>(T value) => _b;
+        }
+        """)]).Should().BeEmpty();
+
+    // A constructor's ordinary parameters aren't state: two fields filled from the same one stay apart.
+    [Fact]
+    public void FieldsFilledFromTheSameConstructorParameterStayApart() => CohesionRule.Check([new SourceFile("Pair.cs", """
+        class Pair
+        {
+            private readonly int _a;
+            private readonly int _b;
+
+            Pair(int x)
+            {
+                _a = x;
+                _b = x;
+            }
+
+            int A() => _a;
+            int B() => _b;
+        }
+        """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [B]");
+
+    // Review 3 of GAP-019: only the type's own instance state is joined through what it's built from; a static field,
+    // a local or a static property built from two fields doesn't make them one group.
+    [Theory]
+    [InlineData("static int s_seen; Split() { s_seen = _a + _b; }")]
+    [InlineData("Split() { int sum; sum = _a + _b; }")]
+    [InlineData("static Split s_default = new(); static int Both => s_default._a + s_default._b;")]
+    public void SomethingOutsideTheTypesStateBuiltFromTwoFieldsDoesNotJoinThem(string member) =>
+        CohesionRule.Check([new SourceFile("Split.cs", $$"""
+            class Split
+            {
+                private int _a;
+                private int _b;
+                {{member}}
+
+                int A() => _a;
+                int B() => _b;
+            }
+            """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [B]");
+
+    // A source that's only a name is still the state it names.
+    [Theory]
+    [InlineData("class Bare { private int _a; private int _b; Bare() { _b = _a; } int A() => _a; int B() => _b; }")]
+    [InlineData("class Bare(int connection) { private readonly int _b = connection; int A() => connection; int B() => _b; }")]
+    public void AFieldBuiltFromJustAnotherNameSharesItsState(string source) =>
+        CohesionRule.Check([new SourceFile("Bare.cs", source)]).Should().BeEmpty();
+
+    [Fact]
+    public void APropertyInitializedFromAPrimaryConstructorParameterSharesItsState() => CohesionRule.Check([new SourceFile("Svc.cs", """
+        class Svc(Connection connection)
+        {
+            public Options Options { get; } = new(connection);
+
+            void Find() => Use(Options);
+            void Dispose() => connection.Dispose();
+            static void Use(Options options) { }
+        }
+        """)]).Should().BeEmpty();
+
+    [Fact]
+    public void AnExceptionOnOnePartOfAPartialTypeCoversItAll() => CohesionRule.Check([
+        new SourceFile("Ledger.cs", "partial class Ledger { private int _a; void A() => _a++; }"),
+        new SourceFile("Ledger.Title.cs", "// CRF-011 exception: a facade over two stores.\npartial class Ledger { private int _b; void B() => _b++; }"),
+    ]).Should().BeEmpty();
+
+    // A generated half of a partial type declares state the hand-written half uses; it's read, though never reported.
+    [Fact]
+    public void AGeneratedHalfIsReadForItsStateButNeverReported() => CohesionRule.Check([
+        new SourceFile("Form.cs", "partial class Form { private int _a; private int _b; void A() { _a++; _shared++; } void B() { _b++; _shared++; } }"),
+        new SourceFile("Form.g.cs", "partial class Form { private int _shared; }") { Generated = true },
+        new SourceFile("Other.g.cs", "class Other { int _a; int _b; void A() => _a++; void B() => _b++; }") { Generated = true },
+    ]).Should().BeEmpty();
+
+    [Fact]
+    public void MethodsThatShareAFieldFormOneGroup() => CohesionRule.Check([new SourceFile("Counter.cs", """
+        class Counter
+        {
+            private int _count;
+
+            void Increment() => _count++;
+            int Count() => _count;
+        }
+        """)]).Should().BeEmpty();
+}

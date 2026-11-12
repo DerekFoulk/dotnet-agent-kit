@@ -260,6 +260,16 @@ Describe 'Export-KitApp' {
         $LASTEXITCODE | Should -Be 0 -Because $output
     }
 
+    # The shared .NET CI runs it on the app's solution from the start, before any project exists (ARC-009).
+    It 'gets the empty-projects check, which its new solution passes' {
+        $check = Join-Path $app '.kit/tools/Test-EmptyProjects.ps1'
+        Test-Path -LiteralPath $check | Should -BeTrue -Because 'the app''s AGENTS.md lists it'
+
+        $output = & pwsh -NoProfile -File $check -Solution (Join-Path $app 'Contoso.Orders.slnx') 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $output
+    }
+
     It 'gets the database guide that DAT-001 and the plan checklist point to' {
         Test-Path -LiteralPath (Join-Path $app 'docs/database-guide.md') | Should -BeTrue
         Get-Content -Raw -LiteralPath (Join-Path $app 'docs/standards/data.md') | Should -Match 'docs/database-guide\.md'
@@ -289,10 +299,11 @@ Describe 'Export-KitApp' {
 
         $versions = @{}
         foreach ($node in $props.SelectNodes('//PackageVersion')) { $versions[$node.Include] = $node.Version }
-        foreach ($sample in $kitProps.SelectNodes('//ItemGroup[@Label="Sample app"]/PackageVersion')) {
-            $versions.ContainsKey($sample.Include) | Should -BeFalse -Because "$($sample.Include) is only the kit's sample app's"
+        # The sample app's packages and the kit's own tools' (built from the kit's download in CI) aren't the app's.
+        foreach ($kitOnly in $kitProps.SelectNodes('//ItemGroup[@Label="Sample app" or @Label="Kit tools"]/PackageVersion')) {
+            $versions.ContainsKey($kitOnly.Include) | Should -BeFalse -Because "$($kitOnly.Include) is only the kit's"
         }
-        $kitTests = @($kitProps.SelectNodes('//ItemGroup[not(@Label="Sample app")]/PackageVersion'))
+        $kitTests = @($kitProps.SelectNodes('//ItemGroup[not(@Label="Sample app") and not(@Label="Kit tools")]/PackageVersion'))
         $kitTests.Count | Should -BeGreaterThan 3
         foreach ($node in $kitTests) {
             $versions[$node.Include] | Should -Be $node.Version -Because "$($node.Include) is part of the kit's toolset"

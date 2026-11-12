@@ -1,4 +1,4 @@
-# ADR-0052: EF Core, with a free default database chosen by a guide
+# ADR-0053: EF Core, with a free default database chosen by a guide
 
 - **Status:** Proposed
 - **Date:** 2026-11-11
@@ -45,8 +45,8 @@ Proposed (auto mode, ADR-0035), with DAT-001, DAT-002 and DAT-006; the owner acc
 
 - New `docs/standards/data.md` with DAT-001, DAT-002 and DAT-006 (proposed), and `docs/database-guide.md`.
 - The plan-checklist skill's Data heading asks for the database choice and its price label.
-- The free-tier guard can't be checked until apps have infrastructure as code (GAP-016); that check is GAP-022. Until then it's advisory, and creating the resource is the owner's call (SEC-003).
-- The sample still uses SQLite with `EnsureCreated`; moving it to SQL Server with migrations and Testcontainers is GAP-023.
+- The free-tier guard can't be checked until apps have infrastructure as code (GAP-016); that check is GAP-024. Until then it's advisory, and creating the resource is the owner's call (SEC-003).
+- The sample still uses SQLite with `EnsureCreated`; moving it to SQL Server with migrations and Testcontainers is GAP-025.
 - The guide's prices need a fresh check whenever an app picks its database.
 
 ## Pillars affected

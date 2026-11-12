@@ -1,6 +1,6 @@
 # Choosing a database
 
-This guide picks the database for an app (DAT-001, ADR-0052). Answer three questions in order. The first answer that settles it wins. Then put the choice, its label and the reason in the plan.
+This guide picks the database for an app (DAT-001, ADR-0053). Answer three questions in order. The first answer that settles it wins. Then put the choice, its label and the reason in the plan.
 
 Every option has a label:
 

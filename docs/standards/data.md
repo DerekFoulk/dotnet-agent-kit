@@ -6,7 +6,7 @@ rules:
     why: "The database is the hardest part of an app to change later, and the cheapest one that fits is the one to start with; asking the same questions in the same order makes the choice repeatable and cheap to review (owner, 2026-11-10; GAP-008)."
     layer: owner
     status: proposed
-    sources: ["owner, 2026-11-10", "ADR-0052", "https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/data-store-decision-tree, retrieved 2026-11-11"]
+    sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/data-store-decision-tree, retrieved 2026-11-11"]
     enforcement: "advisory: the plan-checklist skill's Data heading asks for the choice and its price label, and the reviewer checks the plan names them"
     scope: core
     paths: ["**/*Infrastructure*/**", "**/Directory.Packages.props"]
@@ -15,8 +15,8 @@ rules:
     why: "Migrations are the reviewable, repeatable record of every schema change, so every environment reaches the same schema the same way; EnsureCreated can't change a schema once it exists, so an app that uses it can't evolve its data safely (owner, 2026-11-10)."
     layer: owner
     status: proposed
-    sources: ["owner, 2026-11-10", "ADR-0052", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/ensure-created, retrieved 2026-11-11"]
-    enforcement: "advisory: the reviewer checks for EnsureCreated and for a HasPendingModelChanges test, until the sample follows (GAP-023)"
+    sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/ensure-created, retrieved 2026-11-11"]
+    enforcement: "advisory: the reviewer checks for EnsureCreated and for a HasPendingModelChanges test, until the sample follows (GAP-025)"
     scope: core
     paths: ["**/*Infrastructure*/**", "**/Migrations/**", "**/Program.cs"]
   - id: DAT-003
@@ -24,7 +24,7 @@ rules:
     why: "During a deployment, and after a rollback, the old version runs against the new schema; a migration that drops or renames what it reads breaks it, and the Well-Architected Framework asks for backward-compatible changes so a release can roll back (GAP-008)."
     layer: outside
     status: proposed
-    sources: ["ADR-0053", "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/safe-deployments, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/aks/zero-downtime-migration, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/managing, retrieved 2026-11-11"]
+    sources: ["ADR-0054", "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/safe-deployments, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/aks/zero-downtime-migration, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/managing, retrieved 2026-11-11"]
     enforcement: "ci: Test-SafeMigrations.ps1 in app-checks.reusable.yml fails on each call in a migration's Up to an operation in the script's $UnsafeOperations list (drops, renames, alters, data changes and raw SQL) that has no DAT-003 comment with a reason; advisory: whether the reason is true, and a tightened constraint (a new foreign key, unique or check constraint the running version's writes could break), which the reviewer checks"
     scope: core
     paths: ["**/Migrations/**"]
@@ -33,7 +33,7 @@ rules:
     why: "Migrating at startup races when several instances start at once, needs the app to run with rights to change the schema, and hides a failed migration inside a failed start; Microsoft recommends bundles or scripts for production (GAP-008)."
     layer: outside
     status: proposed
-    sources: ["ADR-0053", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying, retrieved 2026-11-11"]
+    sources: ["ADR-0054", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying, retrieved 2026-11-11"]
     enforcement: "advisory: nothing deploys an app yet (GAP-015), so the production workflow will apply the bundle once it exists; until then the reviewer checks Program.cs for Migrate against a server database outside development"
     scope: core
     paths: ["**/Program.cs", ".github/workflows/**"]
@@ -42,8 +42,8 @@ rules:
     why: "A fake behaves differently from the real engine (case sensitivity, translations, transactions, raw SQL), so tests pass and production fails; Microsoft recommends testing against the production database system and discourages the in-memory provider. Microsoft allows SQLite as a fake when a repository layer isn't an option; the kit rules it out as well, because it differs from the engine it replaces in the same ways (GAP-008)."
     layer: outside
     status: proposed
-    sources: ["ADR-0053", "https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/testing/testing-with-the-database, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux, retrieved 2026-11-11"]
-    enforcement: "advisory: the reviewer checks the test projects' database setup, until the sample proves it (GAP-023)"
+    sources: ["ADR-0054", "https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/testing/testing-with-the-database, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux, retrieved 2026-11-11"]
+    enforcement: "advisory: the reviewer checks the test projects' database setup, until the sample proves it (GAP-025)"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: DAT-006
@@ -51,15 +51,15 @@ rules:
     why: "A free offer that silently starts billing is the most common surprise cost; the guard is a setting chosen when the resource is created, and a budget only alerts, it doesn't stop spending (owner, 2026-11-10; SEC-003)."
     layer: owner
     status: proposed
-    sources: ["owner, 2026-11-10", "ADR-0052", "https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/free-tier, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/limit-total-account-throughput, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets, retrieved 2026-11-11"]
-    enforcement: "advisory: the guard is a setting in infrastructure code, which apps don't have yet (GAP-016), so its check waits (GAP-022); creating a cloud resource is the owner's call in any case (SEC-003)"
+    sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/free-tier, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/limit-total-account-throughput, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets, retrieved 2026-11-11"]
+    enforcement: "advisory: the guard is a setting in infrastructure code, which apps don't have yet (GAP-016), so its check waits (GAP-024); creating a cloud resource is the owner's call in any case (SEC-003)"
     scope: core
     paths: ["**/*.bicep", "**/infra/**"]
 ---
 
 # Data
 
-How an app stores its data: which database it picks (DAT-001, `docs/database-guide.md`, ADR-0052), how its schema changes (DAT-002 to DAT-004, ADR-0053), how its tests reach the database (DAT-005), and how a cloud database stays free until the owner decides otherwise (DAT-006).
+How an app stores its data: which database it picks (DAT-001, `docs/database-guide.md`, ADR-0053), how its schema changes (DAT-002 to DAT-004, ADR-0054), how its tests reach the database (DAT-005), and how a cloud database stays free until the owner decides otherwise (DAT-006).
 
 ## Changing the schema safely
 
@@ -100,7 +100,7 @@ The free offers and the setting that keeps each free are in `docs/database-guide
 
 ## Not yet in the sample
 
-The sample app still uses SQLite, with `EnsureCreated` at startup. Moving it to SQL Server with migrations and Testcontainers, to prove DAT-002 and DAT-005 the way the sample proves the other rules, is GAP-023.
+The sample app still uses SQLite, with `EnsureCreated` at startup. Moving it to SQL Server with migrations and Testcontainers, to prove DAT-002 and DAT-005 the way the sample proves the other rules, is GAP-025.
 
 ## Pending ratification
 

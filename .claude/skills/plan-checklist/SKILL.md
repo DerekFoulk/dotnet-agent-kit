@@ -42,5 +42,10 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 - Is it the simplest design that's fully correct for today's requirements (CRF-004)? Does it state any fact that already lives somewhere else (CRF-003)?
 - Does it use every library, tool and service as its documentation describes for the version in use (CRF-010)? Cite the page.
 
+## Proportion
+- How many modules, and which distinct business area needs each (ARC-009, `docs/standards/architecture.md`)? One, unless a second has its own language, data and rules.
+- Which projects does it add, and what's the first real type in each? A project starts with its first type, never empty, and so does each of a module's five.
+- Which patterns does it add (aggregates, value objects, domain events, CQRS, a mediator, a generic repository, an interface that inverts no dependency)? Name the requirement that needs each.
+
 ## Docs and decisions
 - Which docs change in the same PR? Which choices need an ADR (`write-adr`)? Which dependencies does it add, and, in review mode, which need approval?
