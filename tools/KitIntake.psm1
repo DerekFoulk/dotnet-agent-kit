@@ -15,7 +15,8 @@ function Get-KitIntake {
     $intake = $Text | ConvertFrom-Json -AsHashtable
     if ($intake -isnot [Collections.IDictionary]) { throw "templates/app-intake.json isn't a JSON object." }
     $version = if ($intake.Contains('schemaVersion')) { $intake['schemaVersion'] } else { 'none' }
-    if ($version -ne $script:SchemaVersion) {
+    # A number, compared exactly: "1" as text would pass a loose -ne.
+    if ($version -isnot [long] -or $version -ne $script:SchemaVersion) {
         throw "templates/app-intake.json has schemaVersion $version, and this New-KitApp reads version $($script:SchemaVersion). Run the New-KitApp from the same kit version as -KitRef."
     }
     $intake
@@ -74,6 +75,8 @@ function Resolve-KitIntakeAnswer {
         }
         $names = @($chosen[$id] | Where-Object { $_ })
         if (-not $names) { throw "testTools names no tools for $id tests. Leave $id out to use its defaults." }
+        $twice = @($names | Group-Object -CaseSensitive | Where-Object Count -GT 1)
+        if ($twice) { throw "testTools names '$($twice[0].Name)' twice for $id tests." }
         $tools = foreach ($name in $names) {
             $tool = @($kind['tools'] | Where-Object { $_['id'] -ceq $name })
             if (-not $tool) {
