@@ -1,5 +1,6 @@
 # .NET gates for any repo that uses the kit: locked restore with NuGet audit, build with zero warnings,
-# format check, tests with a coverage gate, deprecated packages, and a secret scan of the whole history.
+# format check, tests with a coverage gate, deprecated packages, an SBOM artifact, and a secret scan of the whole
+# history.
 # Called by this repo's ci.yml, and by app repos pinned to the commit a kit release tag points to:
 #   uses: DerekFoulk/dotnet-agent-kit/.github/workflows/dotnet-ci.reusable.yml@<commit SHA> # v0.1.0
 # The kit's scripts come from the kit at the same version (kit-tools), so an app needs no copy of them.
@@ -85,6 +86,37 @@ jobs:
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-DeprecatedPackages.ps1" -Path $env:SOLUTION'
+
+      # SUP-009 (ADR-0055): an SBOM (software bill of materials) of what the build ships, in CycloneDX JSON. The OWASP
+      # CycloneDX .NET tool (Apache-2.0) is installed for this run only, at the version the kit's tool manifest pins
+      # (.config/dotnet-tools.json, which Dependabot keeps current).
+      - name: Install CycloneDX
+        if: steps.projects.outputs.count != '0'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: |
+          $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.cyclonedx.version
+          dotnet tool install CycloneDX --version $version --tool-path "$env:RUNNER_TEMP/cyclonedx"
+
+      # Test projects ship nothing, so they're left out. The locked restore above already wrote the package graph.
+      - name: Write the SBOM
+        if: steps.projects.outputs.count != '0'
+        run: >-
+          "$RUNNER_TEMP/cyclonedx/dotnet-CycloneDX" "$SOLUTION"
+          --exclude-test-projects
+          --disable-package-restore
+          --output-format Json
+          --output "$RUNNER_TEMP/sbom"
+          --filename sbom.cdx.json
+
+      - name: Upload the SBOM
+        if: steps.projects.outputs.count != '0'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: ${{ runner.temp }}/sbom/sbom.cdx.json
+          if-no-files-found: error
 
   secrets:
     name: Secret scan (gitleaks)
