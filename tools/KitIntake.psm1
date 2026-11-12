@@ -31,6 +31,16 @@ function Resolve-KitIntakeAnswer {
         if (-not $option) { throw "'$value' isn't an option of the '$id' card. It takes one of: $accepts." }
         [pscustomobject]@{ Id = $id; Card = $card; Option = $option[0]; Other = $null }
     }
+    # A card that depends on another (the database on the data) takes only the options that fit that answer.
+    foreach ($answer in $cards | Where-Object { $_.Option -and $_.Card.Contains('dependsOn') }) {
+        $parent = $cards | Where-Object Id -CEQ $answer.Card['dependsOn']
+        if (-not $parent.Option) { continue }
+        $parentId = $parent.Option['id']
+        if ($parentId -cnotin @($answer.Option['fits'])) {
+            $fitting = @($answer.Card['options'] | Where-Object { $parentId -cin @($_['fits']) } | ForEach-Object { $_['id'] })
+            throw "'$($answer.Option['id'])' doesn't fit $($parent.Id) '$parentId'. For that answer, '$($answer.Id)' takes one of: $($fitting -join ', '), or 'Other: <text>'."
+        }
+    }
     $kinds = foreach ($kind in $Intake['testKinds']) {
         [pscustomobject]@{ Kind = $kind; Tools = @($kind['tools'] | Where-Object { $_['default'] }) }
     }
