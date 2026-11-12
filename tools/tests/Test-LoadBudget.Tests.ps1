@@ -168,6 +168,16 @@ Describe 'Test-LoadBudget.ps1' {
         $script:problems | Should -Be @("No Locust stats at ${prefix}_stats.csv: Locust stopped before the run. Its output above says why.")
     }
 
+    It 'says when there is no budget file' {
+        Get-Command Get-LoadBudgetProblem -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $stats = Write-Stats @((New-Row '' 'Aggregated' -Requests 400))
+        $budget = Join-Path $TestDrive 'missing' 'load-budget.json'
+
+        { $script:problems = @(Get-LoadBudgetProblem -Path $stats -Budget $budget) } | Should -Not -Throw
+
+        $script:problems | Should -Be @("No budget file at $budget. A load test keeps its budget in load-budget.json, beside its locustfile.")
+    }
+
     It 'returns exit code <Code> when the run is <State>' -ForEach @(
         @{ State = 'within budget'; P95 = 150; Code = 0 }
         @{ State = 'over budget'; P95 = 350; Code = 1 }
