@@ -9,15 +9,16 @@ namespace Kit.CodeShape;
 /// (https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/compiler-options/language#nullable).</summary>
 internal static class GeneratedCode
 {
-    private static readonly string[] s_suffixes = [".designer.cs", ".generated.cs", ".g.cs", ".g.i.cs"];
-
     public static bool Is(SourceFile file)
     {
         ArgumentNullException.ThrowIfNull(file);
 
         string name = Path.GetFileName(file.Path);
         return name.StartsWith("TemporaryGeneratedFile_", StringComparison.OrdinalIgnoreCase)
-            || s_suffixes.Any(suffix => name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            || name.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".generated.cs", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".g.i.cs", StringComparison.OrdinalIgnoreCase)
             || HasGeneratedHeader(file.Parse());
     }
 
