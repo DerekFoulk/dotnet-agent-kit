@@ -278,10 +278,11 @@ Describe 'Export-KitApp' {
 
         $versions = @{}
         foreach ($node in $props.SelectNodes('//PackageVersion')) { $versions[$node.Include] = $node.Version }
-        foreach ($sample in $kitProps.SelectNodes('//ItemGroup[@Label="Sample app"]/PackageVersion')) {
-            $versions.ContainsKey($sample.Include) | Should -BeFalse -Because "$($sample.Include) is only the kit's sample app's"
+        # The sample app's packages and the kit's own tools' (built from the kit's download in CI) aren't the app's.
+        foreach ($kitOnly in $kitProps.SelectNodes('//ItemGroup[@Label="Sample app" or @Label="Kit tools"]/PackageVersion')) {
+            $versions.ContainsKey($kitOnly.Include) | Should -BeFalse -Because "$($kitOnly.Include) is only the kit's"
         }
-        $kitTests = @($kitProps.SelectNodes('//ItemGroup[not(@Label="Sample app")]/PackageVersion'))
+        $kitTests = @($kitProps.SelectNodes('//ItemGroup[not(@Label="Sample app") and not(@Label="Kit tools")]/PackageVersion'))
         $kitTests.Count | Should -BeGreaterThan 3
         foreach ($node in $kitTests) {
             $versions[$node.Include] | Should -Be $node.Version -Because "$($node.Include) is part of the kit's toolset"

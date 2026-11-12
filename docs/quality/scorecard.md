@@ -29,12 +29,16 @@ areas:
       - "owner, 2026-11-08"
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"
       - "ADR-0043"
-    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010]
+      - "ADR-0050"
+    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010, CRF-011]
     gaps:
       - id: GAP-019
-        gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent."
+        gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-011 (proposed) states the four as limits."
+        status: closed
+      - id: GAP-022
+        gap: "An app can't run the code shape check (CRF-011, ADR-0050) on its own machine: the check needs the kit's Kit.CodeShape source, which isn't in .kit/tools, so it runs only in the app's CI and a breach shows up on the pull request."
         status: proposed
-        needs: "an analyzer package or a kit check, and a CI change"
+        needs: "the check shipped as a .NET tool the app restores, or its source exported with the kit's files"
       - id: GAP-020
         gap: "No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent."
         status: proposed
@@ -239,7 +243,7 @@ Each area in the front matter above has:
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
 | Architecture | 8 | 4 | 4 | 2 | 2 |
-| Craft | 10 | 4 | 6 | 0 | 2 |
+| Craft | 10 | 4 | 6 | 1 | 2 |
 | Proportion | 1 | 0 | 1 | 0 | 1 |
 | Code | 8 | 7 | 1 | 0 | 0 |
 | Tests | 7 | 4 | 3 | 0 | 1 |
@@ -254,13 +258,13 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 1 | 0 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 12 proposed; 12 open gaps.
+**Overall:** 68 rules in force, 41 checked by a tool and 27 advisory; 13 proposed; 12 open gaps.
 
 Open gaps:
 
 - **GAP-024** (Architecture, proposed; needs a CI change): Nightly mutation testing (mutation.reusable.yml) and the Dependabot lock-file refresh (dependabot-lockfiles.yml) run on Linux against the whole solution, so they can't build one with MAUI or desktop projects; they need the solution filter the .NET CI uses, or a Windows runner for the lock files (ADR-0057).
 - **GAP-025** (Architecture, proposed; needs a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change): No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, and the runners' Android SDK are untested (ADR-0057).
-- **GAP-019** (Craft, proposed; needs an analyzer package or a kit check, and a CI change): No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent.
+- **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) on its own machine: the check needs the kit's Kit.CodeShape source, which isn't in .kit/tools, so it runs only in the app's CI and a breach shows up on the pull request.
 - **GAP-020** (Craft, proposed; needs a tool and a CI change): No tool finds duplicated code, so DRY (CRF-003) rests on the reviewer agent.
 - **GAP-002** (Proportion, proposed): No rule says how much structure a small app should get, so an agent can build every layer for a tiny app.
 - **GAP-004** (Tests, proposed; needs packages and a CI change): Browser and accessibility tests (Playwright with axe) aren't set up for apps with a UI.
