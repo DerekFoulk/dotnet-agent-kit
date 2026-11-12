@@ -1,4 +1,12 @@
 <Solution>
+  <Folder Name="/fixtures/" />
+  <Folder Name="/fixtures/WebUi/" />
+  <Folder Name="/fixtures/WebUi/src/">
+    <Project Path="fixtures/WebUi/src/Kit.WebUiFixture/Kit.WebUiFixture.csproj" />
+  </Folder>
+  <Folder Name="/fixtures/WebUi/tests/">
+    <Project Path="fixtures/WebUi/tests/Kit.WebUiFixture.E2E.Tests/Kit.WebUiFixture.E2E.Tests.csproj" />
+  </Folder>
   <Folder Name="/sample/" />
   <Folder Name="/sample/src/">
     <Project Path="sample/src/Bookmarks.Api/Bookmarks.Api.csproj" />

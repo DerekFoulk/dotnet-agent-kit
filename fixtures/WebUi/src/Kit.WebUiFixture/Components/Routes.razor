@@ -1,0 +1,7 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" />
+        @* After each navigation, focus moves to the page's h1, so a screen reader announces the new page (UI-001). *@
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
