@@ -56,7 +56,7 @@ Option 3. It checks a budget on every run without a flaky gate. Allocations, whi
 
 ## Decision
 
-Option 3, decided in auto mode (ADR-0035) on 2026-11-12, at the owner's request (scorecard GAP-012).
+Option 3, decided in auto mode (ADR-0035) on 2026-11-12, at the owner's request (scorecard GAP-012). The owner approved three parts of it on 2026-11-12, because they narrow CI checks or add a dependency no kit rule names: the coverage gate leaves out benchmarks projects ("Yes, skip them"), the SBOM leaves them out, and the load job uses `actions/setup-python` ("Yes to both").
 
 - **Benchmarks projects.** A project whose name ends in `.Benchmarks`, under `tests/`, is a BenchmarkDotNet console app. `sample/Directory.Build.props`, which an app gets as `tests/Directory.Build.props`, makes it an Exe and references BenchmarkDotNet. It isn't a test project, so `dotnet test` leaves it alone. The same name is how three other places know it: the coverage gate and the SBOM's solution filter leave it out, as test-side code that ships nothing, and the workflow runs it.
 - **CA1515 off in benchmarks projects only.** BenchmarkDotNet runs only public, unsealed benchmark classes. CA1515 asks an Exe to make its public types internal. So `.editorconfig` turns CA1515 off in `*.Benchmarks` folders only (STY-006 needs this ADR).
@@ -70,11 +70,11 @@ Option 3, decided in auto mode (ADR-0035) on 2026-11-12, at the owner's request 
 - `tools/Test-BenchmarkBudget.ps1`, `tools/Test-LoadBudget.ps1` and their tests. Apps get both in `.kit/tools`.
 - `.github/workflows/performance.reusable.yml`, the kit's `performance.yml` (nightly, on demand, every pull request), and the app template's `performance.yml` (nightly and on demand). An app adds the load test's inputs when it has an HTTP endpoint.
 - The sample has `sample/tests/Bookmarks.Benchmarks`, which benchmarks `Bookmark.Create`, and `sample/tests/load`, a Locust test of the bookmarks API. Both prove the workflow in CI. The load test measures the API and its SQLite file on a shared runner, not a deployment. A release-level load test of a deployed app waits for a deployment pipeline (GAP-015).
-- The coverage gate, the SBOM (SUP-009) and `.editorconfig` each leave out `*.Benchmarks` projects. The owner approves these, because they narrow CI checks.
+- The coverage gate, the SBOM (SUP-009) and `.editorconfig` each leave out `*.Benchmarks` projects. The owner approved the coverage gate and SBOM changes on 2026-11-12, because they narrow CI checks. A benchmarks project is test-side code: it measures production code, ships nothing, and no test loads it, so the gate would otherwise fail it as untested, and the SBOM would list packages that never ship.
 - New dependencies:
   - BenchmarkDotNet 0.15.8 (MIT; ADR-0003). It's a 0.x package, so its updates are the owner's to merge (ADR-0041).
   - Locust 2.47.0 (MIT; ADR-0057) and its packages. Pip updates are the owner's to merge.
-  - `actions/setup-python` (GitHub's own; MIT), with the owner's OK.
+  - `actions/setup-python` v7.1.0 (GitHub's own; MIT), pinned by SHA, approved by the owner on 2026-11-12.
 - Locust's packages are resolved for Linux and Python 3.12, where CI runs them. On another system a person installs Locust their own way. Nothing moves the Python version, so a Locust release that drops 3.12 needs `.python-version` raised and the file compiled again. An app's locustfile can't add Python packages of its own.
 - The intake offers JMeter and Azure Load Testing beside Locust. The workflow runs only Locust. An app that chooses another tool runs it its own way until the kit supports it.
 - TST-009 (proposed) states the rule. Scorecard GAP-012 is closed.
@@ -90,6 +90,7 @@ Option 3, decided in auto mode (ADR-0035) on 2026-11-12, at the owner's request 
 ## Sources
 
 - owner, 2026-11-11 (Locust by default, ADR-0057)
+- owner, 2026-11-12 (the coverage gate and the SBOM leave out benchmarks projects; actions/setup-python)
 - https://learn.microsoft.com/aspnet/core/test/load-tests?view=aspnetcore-10.0, retrieved 2026-11-12
 - https://learn.microsoft.com/aspnet/core/security/authentication/jwt-authn?view=aspnetcore-10.0, retrieved 2026-11-12
 - https://learn.microsoft.com/entra/msal/dotnet/advanced/performance-testing, retrieved 2026-11-12
