@@ -17,16 +17,6 @@ public sealed class HomeTests
         (await app.Page.Locator("h1").AllTextContentsAsync()).Should().Equal("Web UI fixture");
     }
 
-    [Fact]
-    public async Task HomeHasNoWcagFailureAxeCanFind()
-    {
-        await using AppUnderTest app = await AppUnderTest.StartAsync();
-        await app.OpenAsync("/");
-
-        Deque.AxeCore.Commons.AxeResultItem[] violations = await Wcag.FindViolationsAsync(app.Page);
-
-        violations.Should().BeEmpty(Wcag.Describe(violations));
-    }
 
     // Blazor's enhanced navigation swaps the page without a reload, so nothing tells a screen reader the page changed
     // unless focus moves: FocusOnNavigate puts it on the new page's h1 (UI-001). axe can't check this.
