@@ -97,4 +97,19 @@ Describe 'Get-FirstTargetFramework' {
         Get-FirstTargetFramework -Properties ([pscustomobject]@{ TargetFramework = ''; TargetFrameworks = 'net10.0;net9.0' }) |
             Should -Be 'net10.0'
     }
+
+    It 'skips an empty entry before the first framework' {
+        Get-FirstTargetFramework -Properties ([pscustomobject]@{ TargetFramework = ''; TargetFrameworks = ';net9.0;net10.0' }) |
+            Should -Be 'net9.0'
+    }
+
+    It 'gives nothing for a single-target project' {
+        Get-FirstTargetFramework -Properties ([pscustomobject]@{ TargetFramework = 'net10.0'; TargetFrameworks = '' }) |
+            Should -BeNullOrEmpty
+    }
+
+    It 'gives nothing when MSBuild already evaluated the project for one framework of several' {
+        Get-FirstTargetFramework -Properties ([pscustomobject]@{ TargetFramework = 'net9.0'; TargetFrameworks = 'net10.0;net9.0' }) |
+            Should -BeNullOrEmpty
+    }
 }
