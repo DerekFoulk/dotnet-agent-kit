@@ -42,8 +42,8 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 
 ## Proportion
 - How many modules, and which distinct business area needs each (ARC-009, `docs/standards/architecture.md`)? One, unless a second has its own language, data and rules.
-- Which projects does it add, and what's the first real type in each? A project starts with its first type, never empty.
-- Which patterns does it add (aggregates, value objects, domain events, CQRS, a mediator, a generic repository, an interface)? Name the requirement or test that needs each.
+- Which projects does it add, and what's the first real type in each? A project starts with its first type, never empty, and so does each of a module's five.
+- Which patterns does it add (aggregates, value objects, domain events, CQRS, a mediator, a generic repository, an interface that inverts no dependency)? Name the requirement that needs each.
 
 ## Docs and decisions
 - Which docs change in the same PR? Which choices need an ADR (`write-adr`)? Which dependencies does it add, and, in review mode, which need approval?

@@ -11,8 +11,8 @@ What's already decided limits the answer:
 
 - **ARC-001 and ADR-0008** (owner, accepted): a web app is Clean Architecture in one deployable app; each distinct business area is a module with Domain, Application, Infrastructure, Presentation and Contracts projects; Application code is grouped by feature; a project can deviate by ADR. ADR-0008 records why: the owner builds every project as if an enterprise team builds it, and wants the same libraries reused by web and MAUI apps (ARC-003).
 - **CRF-009** (owner, accepted): each module is separable enough to be deployed on its own later. **ARC-004**: microservices only by ADR.
-- **CRF-005**: an interface with one implementation and no reason to invert a dependency is speculation (craft.md).
-- **TST-003**: one test project per production project, so every extra project also costs a test project.
+- **CRF-004**, in craft.md's SOLID notes: an interface with one implementation and no reason to invert a dependency is speculation.
+- **TST-003**: one test project per production project, plus the shared IntegrationTests, FunctionalTests, E2E.Tests and Architecture.Tests projects, so most extra production projects also bring a test project.
 - **GAP-001** is still open: ARC-001 covers web apps only, and the structure of MAUI and desktop apps isn't settled.
 
 Microsoft's guidance, checked through the Microsoft Learn MCP server on 2026-11-11:
@@ -28,11 +28,16 @@ Microsoft's guidance, checked through the Microsoft Learn MCP server on 2026-11-
 
 ### Option 1: One rule that sizes structure in steps, inside ARC-001, with a check for empty projects
 
-ARC-009 says how to decide, in four steps. A web app keeps ARC-001's structure but starts with one module, and gets another only for a second distinct business area (its own language, data and rules: a bounded context in DDD's terms), never per entity or feature. An app ARC-001 doesn't cover (a console tool, a standalone worker, a library) starts as one project and its tests, its concerns kept apart by namespace, until code that another app must share or a boundary the compiler must enforce needs a second project. No project exists before its first real type. And inside a module, the patterns Microsoft reserves for complex domains (aggregates, value objects, domain events, CQRS, a mediator, a generic repository, an interface that inverts no dependency) come only with a requirement or test the plan names.
+ARC-009 says how to decide, in four steps:
+
+1. A web app keeps ARC-001's structure but starts with one module. It gets another only for a second distinct business area (its own language, data and rules: a bounded context in DDD's terms), never per entity or feature.
+2. A console tool, a standalone worker or a library starts as one project and its tests, its concerns kept apart by namespace. It gets a second project only for code that another app must share, or a boundary the compiler must enforce. MAUI and desktop apps stay GAP-001's.
+3. No project exists before its first real type, and that includes each of ARC-001's five module projects. This reads ARC-001's list as a module's full shape, reached as each project's first type arrives, not a set to scaffold on day one: a one-module app that no other module calls has no Contracts project yet.
+4. Inside a module, some patterns come only with a requirement the plan names. Microsoft keeps aggregates, value objects, domain events and CQRS for complex domains. The kit adds a mediator, a generic repository and an interface that inverts no dependency, which CRF-004 calls speculation until a requirement needs them.
 
 A new script, `Test-EmptyProjects.ps1`, fails CI when a project in the solution has no source of its own, or still holds the class library template's empty `Class1`: the trace an agent leaves when it scaffolds a layer before anything needs it. The plan-checklist skill asks the four questions, and the reviewer agent checks the rest.
 
-- **Trade-offs:** Fits every accepted rule: ARC-001's floor for web apps stays, and proportion governs how many modules there are and what goes inside them. One script and one CI step, no package. The judgment calls (what a business area is, whether a pattern pays) stay advisory.
+- **Trade-offs:** ARC-001's architecture for web apps stays, and proportion governs how many modules there are, when each project appears and what goes inside. Step 3 is a reading of ARC-001 (owner, accepted): it says a module's five projects arrive with their first types, while ARC-001's text can be read as all five from the start. Accepting ARC-009 accepts that reading. One script and one CI step, no package. The judgment calls (what a business area is, whether a pattern pays) stay advisory.
 - **Reversibility:** Easy. Drop the CI step and the script; the rule is text.
 - **Risk:** Low. The check sees only empty projects, not a project with one pointless class; the reviewer covers that.
 
@@ -58,14 +63,14 @@ Option 1: it settles GAP-002 within the owner's accepted architecture, grounded 
 
 ## Decision
 
-Proposed (auto mode, ADR-0035), with ARC-009; the owner accepts or changes it, and decides whether Option 2's single-project web app is worth an amendment to ADR-0008.
+Proposed (auto mode, ADR-0035), with ARC-009. The owner accepts or changes it, including step 3's reading of ARC-001, and decides whether Option 2's single-project web app is worth an amendment to ADR-0008.
 
 ## Consequences
 
 - New rule ARC-009 (proposed) in `docs/standards/architecture.md`, in the scorecard's Proportion area. GAP-002 is closed. CRF-004 points at ARC-009 instead of the gap.
 - `tools/Test-EmptyProjects.ps1`, with Pester tests. `dotnet-ci.reusable.yml` runs it for the kit and every app, after the deprecated-packages step. Export-KitApp copies it to an app's `.kit/tools/`, and the app's `AGENTS.md` lists it.
 - The plan-checklist skill gains a "Proportion" heading with ARC-009's questions.
-- An app whose solution holds an empty project, or the class library template's `Class1`, fails CI when its kit pin moves past this change. Removing the project, or the placeholder, fixes it.
+- An app whose solution holds an empty project, or the class library template's `Class1`, fails CI when its kit pin moves past this change, though ARC-009 is still proposed (as OPS-004's runbook check did, ADR-0047). Removing the project, or the placeholder, fixes it.
 - **What the check misses:** a project with one class nobody needs, a pattern nobody needs, a module per entity. It counts C# and Razor files under each project's folder, outside `bin/` and `obj/`, so a project whose folder holds another project's files, or that compiles only linked files, isn't read correctly. The reviewer agent checks these.
 - MAUI and desktop apps keep ADR-0008's MVVM defaults; their project structure is GAP-001's to settle.
 
