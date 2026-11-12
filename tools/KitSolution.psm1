@@ -11,6 +11,12 @@ function Get-SolutionProject {
     param([Parameter(Mandatory)] [string] $Solution)
 
     if (-not (Test-Path -LiteralPath $Solution -PathType Leaf)) { throw "No solution file at '$Solution'." }
+    # The kit's solutions are .slnx: New-KitApp writes one, and every shared workflow takes one.
+    $extension = [IO.Path]::GetExtension($Solution)
+    if ($extension -ne '.slnx') {
+        $convert = if ($extension -eq '.sln') { " Convert it with 'dotnet sln $Solution migrate'." } else { '' }
+        throw "$Solution isn't a .slnx solution, the only kind the kit's scripts read.$convert"
+    }
     # The file system's own path, not a PowerShell drive's (TestDrive:\, a mapped drive), which .NET can't read.
     $folder = Split-Path -Parent (Resolve-Path -LiteralPath $Solution).ProviderPath
     foreach ($node in ([xml] (Get-Content -LiteralPath $Solution -Raw)).SelectNodes('//Project')) {

@@ -41,7 +41,7 @@ Describe 'Get-SolutionProject' {
         $solution = Join-Path $TestDrive 'Old.sln'
         'Microsoft Visual Studio Solution File, Format Version 12.00' | Set-Content -LiteralPath $solution
 
-        { Get-SolutionProject -Solution $solution } | Should -Throw "*Old.sln isn't a .slnx solution*dotnet sln migrate*"
+        { Get-SolutionProject -Solution $solution } | Should -Throw "*Old.sln isn't a .slnx solution*'dotnet sln *Old.sln migrate'*"
     }
 
     It 'refuses a file of another kind, naming .slnx' {
