@@ -199,8 +199,8 @@ Describe 'Agent configuration' {
         # "playwright.ps1 install" later on; a missed install is worse than an extra prompt. Known misses, left to
         # "Always ask" and the reviewer (ADR-0026, ADR-0061): an install run through a variable or a pipeline
         # ('& $pw install', 'Get-ChildItem -Filter playwright.ps1 | ForEach-Object { & $_ install }'), a quoted
-        # path, a wrapper such as 'bash -c', and the kit script by an absolute path, without ./ or .\ (as
-        # 'pwsh tools/...', 'tools\...' or '& tools/...'), by 'pwsh' with .\ or with flags other than -File and
+        # path, a wrapper such as 'bash -c', and the kit script by an absolute path, without ./ or .\ in some
+        # forms (such as 'pwsh tools/...', 'tools\...' or '& tools/...'), by 'pwsh' with .\ or with flags other than -File and
         # -NoProfile, or dot-sourced and then called. Whether Claude Code checks each command of a compound
         # line on its own isn't verified. The kit script is kit-only (apps run it in CI from the kit's download),
         # so its rules use the kit's paths and app copies drop them.
