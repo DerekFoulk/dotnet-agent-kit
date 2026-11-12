@@ -20,7 +20,7 @@ internal static class CohesionRule
     {
         ArgumentNullException.ThrowIfNull(files);
 
-        SyntaxTree[] trees = [.. files.Select(file => CSharpSyntaxTree.ParseText(file.Text, path: file.Path))];
+        SyntaxTree[] trees = [.. files.Select(file => file.Parse())];
         CSharpCompilation compilation = CSharpCompilation.Create("CodeShape", trees, s_runtime.Value);
         foreach (SyntaxTree tree in trees)
         {

@@ -12,7 +12,7 @@ internal static class NestingRule
     {
         ArgumentNullException.ThrowIfNull(file);
 
-        SyntaxTree tree = CSharpSyntaxTree.ParseText(file.Text, path: file.Path);
+        SyntaxTree tree = file.Parse();
         foreach (Member member in Member.Of(tree.GetCompilationUnitRoot()).Where(member => !LimitException.Covers(member.Node)))
         {
             (StatementSyntax Statement, int Depth) deepest = member.Statements

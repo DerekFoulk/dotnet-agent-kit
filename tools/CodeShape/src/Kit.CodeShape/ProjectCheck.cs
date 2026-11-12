@@ -1,13 +1,15 @@
 namespace Kit.CodeShape;
 
-/// <summary>Runs every CRF-008 limit over one project.</summary>
+/// <summary>Runs every CRF-008 limit over one project's hand-written files.</summary>
 internal static class ProjectCheck
 {
     public static IEnumerable<Finding> Check(ProjectFiles project)
     {
         ArgumentNullException.ThrowIfNull(project);
 
-        SourceFile[] files = [.. project.Files.Select(path => new SourceFile(path, File.ReadAllText(path)))];
+        SourceFile[] files = [.. project.Files
+            .Select(path => new SourceFile(path, File.ReadAllText(path)) { Defines = project.Defines })
+            .Where(file => !GeneratedCode.Is(file))];
         return files
             .SelectMany(file => NestingRule.Check(file).Concat(StatementRule.Check(file)).Concat(FileLengthRule.Check(file)))
             .Concat(CohesionRule.Check(files))
