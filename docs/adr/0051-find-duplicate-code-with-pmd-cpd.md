@@ -20,7 +20,7 @@ Measured on the kit's own solution in CI on PR 49: see "Measurement" below.
 
 ### Option 1: PMD CPD in the shared .NET workflow, at 100 tokens
 
-`tools/Test-Duplication.ps1` takes the hand-written C# files from the code shape tool (`Kit.CodeShape --files`, ADR-0050), so generated code is skipped by one rule in one place. It runs `pmd cpd --language cs --minimum-tokens 100 --ignore-usings --ignore-annotations --ignore-literal-sequences --file-list <files> --format xml` and prints each place a repeat occurs in MSBuild's error format, naming the other places.
+`tools/Test-Duplication.ps1` takes the hand-written C# files from the code shape tool (`Kit.CodeShape --files`, ADR-0050), so generated code is skipped by one rule in one place. It runs `pmd cpd --language cs --minimum-tokens 100 --ignore-usings --ignore-annotations --ignore-literal-sequences --file-list <files> --format xml --no-fail-on-violation --no-fail-on-error` and prints each place a repeat occurs in MSBuild's error format, naming the other places.
 
 `dotnet-ci.reusable.yml` downloads PMD 7.29.0 from its GitHub release. It checks the zip's SHA-256 against GitHub's digest for the asset, as the gitleaks image is pinned by digest (ADR-0024), and runs the script with the runner's Java.
 
@@ -64,13 +64,19 @@ Option 1, decided in auto mode (ADR-0035) on 2026-11-11, at the owner's request 
 
 ## Measurement
 
-PR 49's CI run of the kit's own solution: pending.
+PR 49's CI, on the kit's own solution (run 43139481712, commit `09ae97c`):
+- **Duplicates at 100 tokens:** none, in 52 files.
+- **Files skipped:** 6, each one a test file with a raw string literal (`"""` or `$$"""`). One is the sample's `BookmarksApiTests.cs`; five are the code shape tool's own tests. Each skip shows as a warning annotation.
+- **Not measured:** shorter thresholds. 100 is a starting point, not a tuned optimum. If it lets a real copy through, or flags look-alike code, a later ADR can move it with evidence from the apps.
+
+The first run, before `--no-fail-on-error`, stopped with exit code 5 on the same 6 files.
 
 ## Consequences
 
 - Every app's CI runs the check after the code shape check, using the runner's Java (preinstalled on `ubuntu-latest`).
 - PMD's version and SHA-256 sit in one place, the "Download PMD" step of `dotnet-ci.reusable.yml`. Bumping PMD means updating both, from the release's asset digest.
 - CPD finds repeated code, not repeated knowledge. A rule stated in two shapes passes, and so does duplication in docs, config and scripts. The reviewer agent still checks those (CRF-003's enforcement says so).
+- A file CPD can't read isn't checked: the CI log and the PR name each one, and the reviewer covers it. A later PMD release may read raw string literals; bumping PMD is the time to look.
 - GAP-020 is closed. GAP-022 now also covers running this check on an app's own machine.
 
 ## Pillars affected
