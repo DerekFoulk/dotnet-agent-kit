@@ -42,12 +42,29 @@ internal sealed class AppUnderTest : IAsyncDisposable
     public static async Task<AppUnderTest> StartAsync()
     {
         AppFactory factory = new();
-        factory.StartServer();
-        IPlaywright playwright = await Playwright.CreateAsync();
-        IBrowser browser = await playwright.Chromium.LaunchAsync();
-        IBrowserContext context = await browser.NewContextAsync(new BrowserNewContextOptions { BaseURL = factory.ClientOptions.BaseAddress.ToString() });
-        await context.NewPageAsync();
-        return new AppUnderTest(factory, playwright, browser, context);
+        IPlaywright? playwright = null;
+        IBrowser? browser = null;
+        try
+        {
+            factory.StartServer();
+            playwright = await Playwright.CreateAsync();
+            browser = await playwright.Chromium.LaunchAsync();
+            IBrowserContext context = await browser.NewContextAsync(new BrowserNewContextOptions { BaseURL = factory.ClientOptions.BaseAddress.ToString() });
+            await context.NewPageAsync();
+            return new AppUnderTest(factory, playwright, browser, context);
+        }
+        catch
+        {
+            // Stops what already started when a later step fails, such as the app when Chromium isn't installed.
+            if (browser is not null)
+            {
+                await browser.DisposeAsync();
+            }
+
+            playwright?.Dispose();
+            await factory.DisposeAsync();
+            throw;
+        }
     }
 
     public async ValueTask DisposeAsync()
