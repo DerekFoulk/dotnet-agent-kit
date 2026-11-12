@@ -2,8 +2,8 @@ using System.Text.Json;
 
 namespace Kit.CodeShape;
 
-/// <summary>The command line: Kit.CodeShape &lt;manifest.json&gt;, where the manifest is a JSON array of
-/// <see cref="ProjectFiles"/>.</summary>
+/// <summary>The command line: Kit.CodeShape [--files] &lt;manifest.json&gt;, where the manifest is a JSON array of
+/// <see cref="ProjectFiles"/>. With --files it lists the hand-written files instead of checking them.</summary>
 internal static class Cli
 {
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
@@ -14,13 +14,24 @@ internal static class Cli
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(output);
 
-        if (args.Count != 1)
+        bool listFiles = args.Count == 2 && args[0] == "--files";
+        if (args.Count != 1 && !listFiles)
         {
-            output.WriteLine("Usage: Kit.CodeShape <manifest.json>");
+            output.WriteLine("Usage: Kit.CodeShape [--files] <manifest.json>");
             return 2;
         }
 
-        ProjectFiles[] projects = JsonSerializer.Deserialize<ProjectFiles[]>(File.ReadAllText(args[0]), s_json) ?? [];
+        ProjectFiles[] projects = JsonSerializer.Deserialize<ProjectFiles[]>(File.ReadAllText(args[^1]), s_json) ?? [];
+        if (listFiles)
+        {
+            foreach (SourceFile file in projects.SelectMany(ProjectCheck.HandWritten))
+            {
+                output.WriteLine(file.Path);
+            }
+
+            return 0;
+        }
+
         int findings = 0;
         foreach (ProjectFiles project in projects)
         {
