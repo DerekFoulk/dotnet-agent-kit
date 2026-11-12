@@ -18,6 +18,14 @@ internal static class ProjectCheck
             .ThenBy(finding => finding.Column);
     }
 
+    /// <summary>The project's files that aren't generated code, which the limits and the duplicate finder report on.</summary>
+    public static IEnumerable<SourceFile> HandWritten(ProjectFiles project)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+
+        return project.Files.Select(path => Read(path, project.Defines)).Where(file => !file.Generated);
+    }
+
     private static SourceFile Read(string path, IReadOnlyList<string> defines)
     {
         SourceFile file = new(path, File.ReadAllText(path)) { Defines = defines };

@@ -18,6 +18,7 @@ public sealed class ArgumentTests
         { "Member.Of", () => _ = Member.Of(null!).ToList() },
         { "NestingRule.Check", () => _ = NestingRule.Check(null!).ToList() },
         { "ProjectCheck.Check", () => _ = ProjectCheck.Check(null!).ToList() },
+        { "ProjectCheck.HandWritten", () => _ = ProjectCheck.HandWritten(null!).ToList() },
         { "StatementRule.Check", () => _ = StatementRule.Check(null!).ToList() },
     };
 
