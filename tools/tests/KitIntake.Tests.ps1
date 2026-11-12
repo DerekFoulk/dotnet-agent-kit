@@ -119,6 +119,18 @@ Describe 'the intake data' {
         }
     }
 
+    # ADR-0004: FluentAssertions 8 is free only while the app isn't sold or paid for. A commercial app swaps it for
+    # AwesomeAssertions, so the card has to say so rather than call it Free.
+    It 'labels FluentAssertions 8 free for non-commercial use only, with its commercial price and AwesomeAssertions beside it' {
+        $unit = @($intake['testKinds'] | Where-Object id -EQ 'unit')[0]['tools']
+        $fluent = @($unit | Where-Object id -EQ 'fluentassertions')[0]
+        $fluent['cost']['label'] | Should -Be 'Free tier'
+        $fluent['cost']['free'] | Should -BeLike 'Non-commercial use*'
+        $fluent['cost']['price'] | Should -Match 'commercial'
+        $awesome = @($unit | Where-Object id -EQ 'awesomeassertions')[0]
+        $awesome['cost']['label'] | Should -Be 'Free'
+    }
+
     # ADR-0057, the owner's decision of 2026-11-11.
     It 'offers load testing as the owner decided: Locust by default, JMeter beside it, Azure Load Testing and NBomber as Paid' {
         $load = @($intake['testKinds'] | Where-Object id -EQ 'load')[0]['tools']
