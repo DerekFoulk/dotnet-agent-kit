@@ -252,6 +252,22 @@ Describe 'Shared CI for app repos' {
             $check['env']['OS'] | Should -Be '${{ needs.ui-projects.outputs.os }}'
         }
 
+        # One path for every app: the kit's own CI runs it on each pull request. The coverage gate still reads the
+        # whole solution, so it can tell a UI project (exempt) from a project no test loads (a failure).
+        It 'builds, formats, tests and checks packages on Linux through a filter of every project but the UI ones' {
+            $required = $jobs['dotnet']
+            $count = Get-JobStep $required 'Count projects'
+            $count['run'] | Should -Match 'Get-UiProject\.ps1" -Solution \$env:SOLUTION -FilterPath \$filter'
+            $count['run'] | Should -Match 'FILTER=\$filter" >> \$env:GITHUB_ENV'
+            $count['run'] | Should -Match 'Get-SolutionProjectCount\.ps1" -Solution \$env:SOLUTION\) - \$ui\.Count'
+            (Get-JobStep $required 'Restore (locked)')['run'] | Should -Be 'dotnet restore "$FILTER" --locked-mode'
+            (Get-JobStep $required 'Build (zero warnings)')['run'] | Should -Match '^dotnet build "\$FILTER" '
+            (Get-JobStep $required 'Format check')['run'] | Should -Match '^dotnet format "\$FILTER" '
+            (Get-JobStep $required 'Test with coverage')['run'] | Should -Match '^dotnet test --solution "\$FILTER" '
+            (Get-JobStep $required 'Coverage gate')['run'] | Should -Match '-Solution \$env:SOLUTION'
+            (Get-JobStep $required 'Deprecated packages')['run'] | Should -Match '-Path \$env:FILTER'
+        }
+
         It 'passes the required job only when the UI builds <Case>' -ForEach @(
             @{ Case = 'succeeded'; Find = 'success'; Ui = 'success'; Os = '["windows-latest","macos-latest"]'; Exit = 0 }
             @{ Case = 'were skipped because there are no UI projects'; Find = 'success'; Ui = 'skipped'; Os = '[]'; Exit = 0 }
