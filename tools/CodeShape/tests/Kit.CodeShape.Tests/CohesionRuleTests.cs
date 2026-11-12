@@ -22,7 +22,7 @@ public sealed class CohesionRuleTests
             Path = "Ledger.cs",
             Line = 1,
             Column = 7,
-            Message = "Ledger's methods form 2 groups that share no state (LCOM4 2; the limit is 1): [Add, Total], [Rename] (CRF-008).",
+            Message = "Ledger's methods form 2 groups that share no state (LCOM4 2; the limit is 1): [Add, Total], [Rename] (CRF-011).",
         });
     }
 
@@ -101,6 +101,78 @@ public sealed class CohesionRuleTests
             int B() => _b;
         }
         """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [B]");
+
+    // Review 1 of GAP-019: a local function belongs to its method, not to the type's state.
+    [Fact]
+    public void AMethodThatCallsOnlyItsOwnLocalFunctionUsesNoState() => CohesionRule.Check([new SourceFile("L.cs", """
+        class L
+        {
+            private int _x;
+
+            void B() => _x++;
+            int C() => _x;
+            int A(int n)
+            {
+                int Twice() => n * 2;
+                return Twice();
+            }
+        }
+        """)]).Should().BeEmpty();
+
+    // A primary constructor's parameters are the type's state, as the compiler keeps them for its methods.
+    [Fact]
+    public void PrimaryConstructorParametersAreState() => CohesionRule.Check([new SourceFile("Svc.cs", """
+        class Svc(Repo repo, Log log)
+        {
+            void Get() => repo.Get();
+            void Write() => log.Write();
+        }
+        """)]).Should().ContainSingle().Which.Message.Should().Contain("[Get], [Write]");
+
+    [Fact]
+    public void MethodsSharingAPrimaryConstructorParameterFormOneGroup() => CohesionRule.Check([new SourceFile("Svc.cs", """
+        class Svc(Repo repo)
+        {
+            private int _a;
+            private int _b;
+
+            void A() { repo.Get(); _a++; }
+            void B() { repo.Save(); _b++; }
+        }
+        """)]).Should().BeEmpty();
+
+    [Fact]
+    public void AFieldInitializedFromAPrimaryConstructorParameterSharesItsState() => CohesionRule.Check([new SourceFile("Svc.cs", """
+        class Svc(Connection connection)
+        {
+            private readonly Options _options = new(connection);
+
+            void Find() => Use(_options);
+            void Dispose() => connection.Dispose();
+            static void Use(Options options) { }
+        }
+        """)]).Should().BeEmpty();
+
+    // A property's accessors are methods, as LCOM4 counts them.
+    [Fact]
+    public void APropertyThatReadsStateIsAMethodOfItsOwn() => CohesionRule.Check([new SourceFile("Prop.cs", """
+        class Prop
+        {
+            private int _a;
+            private int _b;
+
+            int A => _a;
+            void M() => _b++;
+        }
+        """)]).Should().ContainSingle().Which.Message.Should().Contain("[A], [M]");
+
+    // A generated half of a partial type declares state the hand-written half uses; it's read, though never reported.
+    [Fact]
+    public void AGeneratedHalfIsReadForItsStateButNeverReported() => CohesionRule.Check([
+        new SourceFile("Form.cs", "partial class Form { private int _a; private int _b; void A() { _a++; _shared++; } void B() { _b++; _shared++; } }"),
+        new SourceFile("Form.g.cs", "partial class Form { private int _shared; }") { Generated = true },
+        new SourceFile("Other.g.cs", "class Other { int _a; int _b; void A() => _a++; void B() => _b++; }") { Generated = true },
+    ]).Should().BeEmpty();
 
     [Fact]
     public void MethodsThatShareAFieldFormOneGroup() => CohesionRule.Check([new SourceFile("Counter.cs", """

@@ -3,8 +3,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Kit.CodeShape;
 
-/// <summary>A member with a body of statements, as the limits measure it: a method, constructor, destructor, operator
-/// or accessor, with any local functions and lambdas inside it; or a file's top-level statements, taken as one.</summary>
+/// <summary>A member with a body of statements, as the limits measure it: a method, constructor, destructor, operator,
+/// accessor, or expression-bodied property or indexer, with any local functions and lambdas inside it; or a file's
+/// top-level statements, taken as one.</summary>
 /// <param name="Name">The member's name, as findings report it.</param>
 /// <param name="Location">Where the member's name is, or the first top-level statement.</param>
 /// <param name="Node">The member's declaration, or the file's root for top-level statements.</param>
@@ -46,6 +47,8 @@ internal sealed record Member(string Name, Location Location, SyntaxNode Node, I
         OperatorDeclarationSyntax op => ($"operator {op.OperatorToken.Text}", op.OperatorToken),
         ConversionOperatorDeclarationSyntax conversion =>
             ($"{conversion.ImplicitOrExplicitKeyword.Text} operator {conversion.Type}", conversion.OperatorKeyword),
+        PropertyDeclarationSyntax { ExpressionBody: not null } property => (property.Identifier.Text, property.Identifier),
+        IndexerDeclarationSyntax { ExpressionBody: not null } indexer => ("this[]", indexer.ThisKeyword),
         AccessorDeclarationSyntax { Parent.Parent: BasePropertyDeclarationSyntax owner } accessor =>
             ($"{OwnerName(owner)}.{accessor.Keyword.Text}", accessor.Keyword),
         _ => null,

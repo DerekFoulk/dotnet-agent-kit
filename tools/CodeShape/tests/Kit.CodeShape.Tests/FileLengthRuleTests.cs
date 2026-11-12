@@ -9,7 +9,7 @@ public sealed class FileLengthRuleTests
             Path = "Long.cs",
             Line = 801,
             Column = 1,
-            Message = "The file has 801 lines; the limit is 800 (CRF-008).",
+            Message = "The file has 801 lines; the limit is 800 (CRF-011).",
         });
 
     [Theory]

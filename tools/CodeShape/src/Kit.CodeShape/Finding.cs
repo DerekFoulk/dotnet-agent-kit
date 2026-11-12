@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Kit.CodeShape;
 
-/// <summary>One place where code breaks a CRF-008 limit.</summary>
+/// <summary>One place where code breaks a CRF-011 limit.</summary>
 /// <param name="Path">The source file.</param>
 /// <param name="Line">The 1-based line the finding points at.</param>
 /// <param name="Column">The 1-based column the finding points at.</param>

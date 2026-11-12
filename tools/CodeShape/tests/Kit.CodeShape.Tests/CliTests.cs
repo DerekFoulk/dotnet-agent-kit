@@ -28,7 +28,7 @@ public sealed class CliTests : IDisposable
 
         exitCode.Should().Be(1);
         output.Should().Be(
-            $"{deep}(5,74): error CRF008: Run nests 5 levels deep; the limit is 4 (CRF-008). [{project}]{Environment.NewLine}");
+            $"{deep}(5,74): error CRF011: Run nests 5 levels deep; the limit is 4 (CRF-011). [{project}]{Environment.NewLine}");
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public sealed class CliTests : IDisposable
         (int exitCode, string output) = Run(new { name = "App.csproj", defines = Array.Empty<string>(), files = new[] { tidy } });
 
         exitCode.Should().Be(0);
-        output.Should().Be($"Code shape (CRF-008): 1 project, 1 file, no findings.{Environment.NewLine}");
+        output.Should().Be($"Code shape (CRF-011): 1 project, 1 file, no findings.{Environment.NewLine}");
     }
 
     // Test-Duplication.ps1 hands the duplicate finder the same hand-written files, so generated code is skipped by

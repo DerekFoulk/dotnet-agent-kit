@@ -49,7 +49,7 @@ This ADR was decided in auto mode (ADR-0035), within the principles the owner se
   - The package is Microsoft's, from dotnet/roslyn, MIT, not deprecated, and runs at build time only. dotnet/roslyn documents it as the analyzer for banning APIs, and the owner's "add whatever we need to" covers adding it.
   - The file bans `BindingFlags.NonPublic`, `UnsafeAccessorAttribute`, `UnsafeAccessorTypeAttribute` and the routes above. Each entry names the public alternative. Routes found later join the list.
 - **Cycles.** An ArchUnitNET slice rule over the root namespace and every namespace under it. A slice is a group of types, here one per namespace, and the rule fails when any two groups depend on each other in a loop. ArchUnitNET is already the kit's architecture-test tool (TST-005).
-- **Trade-offs:** Microsoft's rules match the rest of the analyzer baseline (STY-003) and its documentation, and add no runtime dependency. They don't measure nesting depth, statements per method, file length or cohesion (LCOM4), so those stay advisory (GAP-019).
+- **Trade-offs:** Microsoft's rules match the rest of the analyzer baseline (STY-003) and its documentation, and add no runtime dependency. They don't measure nesting depth, statements per method, file length or cohesion (LCOM4), so those stay advisory (GAP-019). **Update (2026-11-11, ADR-0050):** a kit check now measures them in CI.
 - **Reversibility:** easy. Each check is one line in a config file.
 - **Risk:** low to medium. An update could change how a metric counts; Dependabot PRs build the sample, so a change shows up there first. Microsoft says these rules might be deprecated in a future version; if they are, the metric limits lose their check, and GAP-019's routes (a third-party analyzer, or a kit check) come back on the table.
 
@@ -95,7 +95,7 @@ Option 1, decided in auto mode on 2026-11-10 under the owner's principles of 202
   - `ServiceDefaultsTests` became `HealthEndpointTests`, `TelemetryTests`, `ResilienceTests` and a small `ServiceDefaultsTests` for the argument guards.
   - The OTLP export test now sends the exporter's documented named HttpClients (`OtlpTraceExporter`, `OtlpMetricExporter`, `OtlpLogExporter`; the exporter's README for 1.20.1) to a recording handler, and flushes with the public `ForceFlush`. It no longer reads the non-public `Processor` property. The exporter sends synchronously, so a handler must override `Send` as well as `SendAsync`, as the exporter's API documentation says.
 - **Known gaps, in the scorecard.**
-  - GAP-019: no tool checks nesting, statements per method, file length or LCOM4.
+  - GAP-019: no tool checks nesting, statements per method, file length or LCOM4. **Update (2026-11-11):** closed by ADR-0050, a kit check in CI; CRF-011 (proposed) states the four as limits.
   - GAP-020: no tool finds duplicated code.
   - GAP-021: CA1014 is still off. **Update (2026-11-11):** closed by ADR-0049.
   - Some cases slip past a check today: a long switch expression (CA1502), and routes into internals not on the list yet (the ban). craft.md's "What the checks miss" keeps the list. The reviewer agent checks both. A follow-up PR adds them to its checklist, which is a guardrail, so the owner merges that one.
