@@ -270,6 +270,15 @@ Describe 'Export-KitApp' {
         $LASTEXITCODE | Should -Be 0 -Because $output
     }
 
+    # ADR-0062: the performance workflow runs them in CI; an app runs them too, against a local benchmark or load run.
+    It 'gets the <Script> check, which its AGENTS.md lists' -ForEach @(
+        @{ Script = 'Test-BenchmarkBudget.ps1' }
+        @{ Script = 'Test-LoadBudget.ps1' }
+    ) {
+        Test-Path -LiteralPath (Join-Path $app '.kit/tools' $Script) | Should -BeTrue
+        Get-Content -Raw -LiteralPath (Join-Path $app 'AGENTS.md') | Should -Match ([regex]::Escape("./.kit/tools/$Script"))
+    }
+
     It 'gets the database guide that DAT-001 and the plan checklist point to' {
         Test-Path -LiteralPath (Join-Path $app 'docs/database-guide.md') | Should -BeTrue
         Get-Content -Raw -LiteralPath (Join-Path $app 'docs/standards/data.md') | Should -Match 'docs/database-guide\.md'
