@@ -108,7 +108,7 @@
           "cost": {
             "label": "Free tier",
             "free": "The first 50,000 monthly active users; add-ons such as SMS codes have no free amount",
-            "price": "Past 50,000 monthly active users: not verified",
+            "price": "not verified",
             "source": "https://learn.microsoft.com/en-us/entra/external-id/customers/faq-customers#external-id-pricing",
             "checked": "2026-11-11"
           }
@@ -120,7 +120,7 @@
           "cost": {
             "label": "Free tier",
             "free": "Microsoft Entra ID Free: users, groups and single sign-on",
-            "price": "P1 and P2, for Conditional Access and ID Protection: not verified",
+            "price": "Microsoft Entra ID P1 and P2, for Conditional Access and ID Protection, not verified",
             "source": "https://learn.microsoft.com/en-us/entra/fundamentals/licensing",
             "checked": "2026-11-11"
           }
