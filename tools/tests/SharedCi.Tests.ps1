@@ -238,39 +238,47 @@ Describe 'Shared CI for app repos' {
             @($ui['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' })[0]['with']['persist-credentials'] | Should -BeFalse
         }
 
-        # Review 1: an app with a MAUI client and a WPF tool builds both on macOS too, and a Windows-targeting
-        # project fails there (NETSDK1100) unless EnableWindowsTargeting is true. It changes nothing on Windows.
-        It 'lets macOS build a solution that also has a Windows-only UI project' {
-            $jobs['ui']['env']['EnableWindowsTargeting'] | Should -Be 'true'
+        # Review 2: each runner builds only what it can. An app with a MAUI client and a WPF tool would fail on macOS
+        # building the WPF one (NETSDK1100), so each runner works on a filter: every project but the UI ones it
+        # doesn't build. On Windows, that's the whole solution.
+        It 'works on a filter of the projects its runner can build' {
+            $ui = $jobs['ui']
+            $ui['env']['RUNNER_LABEL'] | Should -Be '${{ matrix.os }}'
+            $ui['env'].ContainsKey('EnableWindowsTargeting') | Should -BeFalse -Because 'macOS no longer builds Windows-only projects'
+            $filter = Get-JobStep $ui 'Solution filter'
+            $filter['run'] | Should -Match 'Get-UiProject\.ps1" -Solution \$env:SOLUTION -FilterPath \$filter -Runner \$env:RUNNER_LABEL'
+            $filter['run'] | Should -Match 'FILTER=\$filter" >> \$env:GITHUB_ENV'
         }
 
         # SUP-011: the workload set whose version is the SDK's own, so a build never picks up the latest workloads.
-        It 'restores the workloads at the workload set of the SDK in use, never unpinned' {
+        It 'restores the workloads of the UI projects it builds, at the workload set of the SDK in use, never unpinned' {
             $restore = Get-JobStep $jobs['ui'] 'Restore workloads (pinned)'
-            $restore['run'] | Should -Match 'dotnet workload restore \$env:SOLUTION --version \(dotnet --version\)'
+            $restore['run'] | Should -Match 'Where-Object \{ \$_\.Os -contains \$env:RUNNER_LABEL \}'
+            $restore['run'] | Should -Match 'dotnet workload restore \$project\.Path --version \$version'
+            $restore['run'] | Should -Match '\$version = dotnet --version'
             $dotnet.Text | Should -Not -Match 'dotnet workload (install|update)'
         }
 
         It 'restores locked on Windows; on macOS restores, then checks each lock file against the committed one' {
             $windows = Get-JobStep $jobs['ui'] 'Restore (locked)'
             $windows['if'] | Should -Be "runner.os == 'Windows'"
-            $windows['run'] | Should -Match '--locked-mode'
+            $windows['run'] | Should -Be 'dotnet restore $env:FILTER --locked-mode'
             $mac = Get-JobStep $jobs['ui'] 'Restore (macOS)'
             $mac['if'] | Should -Be "runner.os == 'macOS'"
-            $mac['run'] | Should -Match '-p:RestoreLockedMode=false'
+            $mac['run'] | Should -Be 'dotnet restore $env:FILTER -p:RestoreLockedMode=false'
             $subset = Get-JobStep $jobs['ui'] 'Lock files match the committed ones'
             $subset['if'] | Should -Be "runner.os == 'macOS'"
             $subset['run'] | Should -Match '\$env:KIT/tools/Test-LockFileSubset\.ps1" -RepoRoot \$env:GITHUB_WORKSPACE'
         }
 
-        It 'builds the whole solution with zero warnings, and on Windows checks its format and deprecated packages' {
-            (Get-JobStep $jobs['ui'] 'Build (zero warnings)')['run'] | Should -Match 'dotnet build \$env:SOLUTION --no-restore --configuration Release -warnaserror'
+        It 'builds its filter with zero warnings, and on Windows checks its format and deprecated packages' {
+            (Get-JobStep $jobs['ui'] 'Build (zero warnings)')['run'] | Should -Be 'dotnet build $env:FILTER --no-restore --configuration Release -warnaserror'
             $format = Get-JobStep $jobs['ui'] 'Format check'
             $format['if'] | Should -Be "runner.os == 'Windows'"
-            $format['run'] | Should -Match 'dotnet format \$env:SOLUTION --verify-no-changes --no-restore'
+            $format['run'] | Should -Be 'dotnet format $env:FILTER --verify-no-changes --no-restore'
             $deprecated = Get-JobStep $jobs['ui'] 'Deprecated packages'
             $deprecated['if'] | Should -Be "runner.os == 'Windows'"
-            $deprecated['run'] | Should -Match 'Test-DeprecatedPackages\.ps1" -Path \$env:SOLUTION'
+            $deprecated['run'] | Should -Match 'Test-DeprecatedPackages\.ps1" -Path \$env:FILTER'
         }
 
         # The ruleset requires "dotnet / Build, test and package checks" by name (templates/github/main-protection.json),
