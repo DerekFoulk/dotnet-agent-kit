@@ -467,7 +467,7 @@ Describe 'Shared CI for app repos' {
 
     Context 'app-checks.reusable.yml' {
         BeforeAll {
-            $run =(@(Get-Steps $app.Yaml) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
+            $run = (@(Get-Steps $app.Yaml) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
         }
 
         It 'is a shared workflow with a job named "App checks"' {
