@@ -35,4 +35,18 @@ Describe 'Get-SolutionProject' {
 
         { Get-SolutionProject -Solution $missing } | Should -Throw "No solution file at '$missing'."
     }
+
+    # The kit's solutions are .slnx (ADR-0050's note): a .sln gets the command that converts it.
+    It 'refuses a .sln, saying how to convert it to .slnx' {
+        $solution = Join-Path $TestDrive 'Old.sln'
+        'Microsoft Visual Studio Solution File, Format Version 12.00' | Set-Content -LiteralPath $solution
+
+        { Get-SolutionProject -Solution $solution } | Should -Throw "*Old.sln isn't a .slnx solution*dotnet sln migrate*"
+    }
+
+    It 'refuses a file of another kind, naming .slnx' {
+        $other = Write-Solution '<Project Path="src/App/App.csproj" />' -Name 'App.xml'
+
+        { Get-SolutionProject -Solution $other } | Should -Throw "*App.xml isn't a .slnx solution*"
+    }
 }
