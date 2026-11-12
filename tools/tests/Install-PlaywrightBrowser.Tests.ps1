@@ -13,8 +13,9 @@ Describe 'Install-PlaywrightBrowser.ps1' {
         if (Test-Path $scriptPath) { . $scriptPath }
 
         # A project at src/<Name>/<Name>.csproj. With -Libraries, its restore graph (obj/project.assets.json) holds those
-        # packages; with -Built, its Release output holds a playwright.ps1 that appends its arguments to calls.txt.
-        function New-Project([string] $Repo, [string] $Name, [string[]] $Libraries = @(), [switch] $Built) {
+        # packages; with -Built, its output in -Configuration holds a playwright.ps1 that appends its arguments to
+        # calls.txt (and exits with -ExitCode).
+        function New-Project([string] $Repo, [string] $Name, [string[]] $Libraries = @(), [switch] $Built, [string] $Configuration = 'Release', [int] $ExitCode = 0) {
             $folder = Join-Path $Repo "src/$Name"
             New-Item -ItemType Directory -Force -Path (Join-Path $folder 'obj') | Out-Null
             '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>' |
@@ -23,9 +24,9 @@ Describe 'Install-PlaywrightBrowser.ps1' {
             foreach ($library in $Libraries) { $assets.libraries[$library] = @{ type = 'package' } }
             $assets | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $folder 'obj/project.assets.json')
             if ($Built) {
-                $out = Join-Path $folder 'bin/Release/net10.0'
+                $out = Join-Path $folder "bin/$Configuration/net10.0"
                 New-Item -ItemType Directory -Force -Path $out | Out-Null
-                "Add-Content -LiteralPath '$(Join-Path $Repo 'calls.txt')' -Value `"$Name`: `$(`$args -join ' ')`"" |
+                "Add-Content -LiteralPath '$(Join-Path $Repo 'calls.txt')' -Value `"$Name`: `$(`$args -join ' ')`"; exit $ExitCode" |
                     Set-Content -LiteralPath (Join-Path $out 'playwright.ps1')
             }
         }
@@ -102,5 +103,17 @@ Describe 'Install-PlaywrightBrowser.ps1' {
 
         { Install-PlaywrightBrowser -Solution $solution -Configuration Release *> $null } |
             Should -Throw '*App.E2E.Tests*Release*'
+    }
+
+    # A local dotnet test builds Debug; CI builds Release.
+    It 'finds the build of the configuration it''s given' {
+        Get-Command Install-PlaywrightBrowser -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $repo = Join-Path $TestDrive 'debug'
+        New-Project $repo 'App.E2E.Tests' -Libraries 'Microsoft.Playwright/1.64.1' -Built -Configuration Debug
+        $solution = New-Solution $repo 'App.E2E.Tests'
+
+        Install-PlaywrightBrowser -Solution $solution -Configuration Debug *> $null
+
+        Get-Call $repo | Should -Be @('App.E2E.Tests: install chromium')
     }
 }
