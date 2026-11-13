@@ -98,6 +98,42 @@ function Get-AgentRuleFile {
     }
 }
 
+# AGENTS.md's Git and "Done means" sections hold a marked block that names a standard; the block is filled with
+# that standard's rules in force, so the copy can't drift from them (CRF-003, ADR-0065). Text outside the blocks
+# stays the author's. Takes and returns text with LF line endings.
+function Update-RuleBlock {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text,
+        [Parameter(Mandatory)] [string] $StandardsPath
+    )
+
+    $open = '<!-- rules from docs/standards/'
+    $close = '<!-- end rules -->'
+    $result = [System.Text.StringBuilder]::new()
+    $rest = $Text
+    while (($start = $rest.IndexOf($open, [StringComparison]::Ordinal)) -ge 0) {
+        $lineEnd = $rest.IndexOf("`n", $start)
+        $openLine = if ($lineEnd -ge 0) { $rest.Substring($start, $lineEnd - $start) } else { $rest.Substring($start) }
+        if ($lineEnd -lt 0 -or $openLine -notmatch '^<!-- rules from docs/standards/(?<file>[\w.-]+\.md)\b[^\n]*-->$') {
+            throw "A rules block opens with '$openLine', which isn't '$open<file>.md: ... -->' on a line of its own."
+        }
+        $file = $Matches['file']
+        $end = $rest.IndexOf($close, $lineEnd, [StringComparison]::Ordinal)
+        if ($end -lt 0) { throw "The rules block for docs/standards/$file has no '$close' line after it." }
+        $path = Join-Path $StandardsPath $file
+        if (-not (Test-Path -LiteralPath $path)) { throw "A rules block names docs/standards/$file, which doesn't exist." }
+
+        [void] $result.Append($rest.Substring(0, $lineEnd + 1))
+        foreach ($rule in @((Read-FrontMatter -Path $path)['rules'] | Where-Object { $_['status'] -eq 'accepted' })) {
+            [void] $result.Append("- $($rule['id']): $($rule['statement'])`n")
+        }
+        [void] $result.Append($close)
+        $rest = $rest.Substring($end + $close.Length)
+    }
+    [void] $result.Append($rest)
+    $result.ToString()
+}
+
 # Visual Studio reads .github/copilot-instructions.md but doesn't document reading AGENTS.md, so the
 # repository instructions are a generated copy of AGENTS.md: one source, no drift.
 function Get-CopilotInstructionsFile {
