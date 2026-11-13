@@ -69,6 +69,15 @@ Describe 'Rules stated in several places agree' {
         Get-Between (Read-Text $Path) $Start $End | Should -Match 'never (merge\w* )?a release PR' -Because "$Name should say never"
     }
 
+    # GIT-003 is about merging only; the two lists that used to ask before a release also ban publishing one
+    # (Copilot's review of PR 66: without this, dropping "or publish a release" passed).
+    It '<Name> says agents never publish a release either' -ForEach @(
+        @{ Name = 'AGENTS.md "Always ask"'; Path = 'AGENTS.md'; Start = '## Always ask'; End = '\r?\n## ' }
+        @{ Name = 'SEC-003'; Path = 'docs/standards/security.md'; Start = 'id: SEC-003\s+statement:'; End = '\r?\n' }
+    ) {
+        Get-Between (Read-Text $Path) $Start $End | Should -Match 'never merge\w* a release PR or publish\w* a release' -Because "$Name should ban publishing too"
+    }
+
     It 'every copy of the guardrail list names <Item>' -ForEach @(
         @{ Item = '"Working modes"' }, @{ Item = '"Always ask"' }, @{ Item = 'SEC-003' }, @{ Item = '\.claude/settings\.json' }
         @{ Item = 'Set-AgentMode\.ps1' }, @{ Item = 'code-review\.instructions\.md' }, @{ Item = 'ruleset' }, @{ Item = 'branch protection' }
