@@ -347,6 +347,22 @@ Describe 'Agent configuration' {
     # ADR-0064: Copilot code review reviews every pull request, against these instructions and the generated rule files.
     # The owner's yes for a guardrail PR is given in chat, which neither GitHub nor Copilot can see; a PR comment
     # records it, so each guardrail merge can be checked from the PR alone (owner, 2026-11-13; Copilot's review of PR 66).
+    # Cleanup step 4 of the rules audit: these sections hold the rules themselves, filled by Build-AgentRules, not a
+    # hand-made copy that drifts (CRF-003, ADR-0065); Build-AgentRules -Check keeps the blocks current.
+    Context 'rule sections generated from the standards' {
+        It '<File>''s "<Section>" section holds the rules of <Standard>' -ForEach @(
+            @{ File = 'AGENTS.md'; Section = 'Git'; Standard = 'git.md' }
+            @{ File = 'AGENTS.md'; Section = 'Done means'; Standard = 'definition-of-done.md' }
+            @{ File = 'templates/app/AGENTS.md'; Section = 'Done means'; Standard = 'definition-of-done.md' }
+        ) {
+            $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File)
+            $body = [regex]::Match($text, "(?s)## $([regex]::Escape($Section))\r?\n(.*?)(?=\r?\n## |\r?\n<!-- kit:end|\z)").Groups[1].Value
+
+            $body | Should -Match ([regex]::Escape("<!-- rules from docs/standards/$Standard"))
+            $body | Should -Match '<!-- end rules -->'
+        }
+    }
+
     Context 'guardrail merges' {
         It 'finish-work records the owner''s yes on the PR, with his words and the head commit, before merging' {
             $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')

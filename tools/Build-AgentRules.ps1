@@ -10,7 +10,9 @@
       .github/instructions/<topic>[-<rule-id>].instructions.md   Copilot, the same split with applyTo:
     Also writes .github/instructions/code-review.instructions.md from docs/code-review.md, for Copilot code
     review (ADR-0064), and .github/copilot-instructions.md as a copy of AGENTS.md, because Visual Studio reads that
-    file but doesn't document reading AGENTS.md. Proposed and retired rules aren't in force, so they're
+    file but doesn't document reading AGENTS.md. It also fills each "rules from docs/standards/<file>.md" block in
+    AGENTS.md and templates/app/AGENTS.md with that standard's rules, leaving the rest of those files alone
+    (ADR-0065). Proposed and retired rules aren't in force, so they're
     left out. Generated files carry a marker; generated files no standard produces any more are removed.
 
     -Check writes nothing and exits 1 when any generated file is missing, hand-edited or stale (S3).
@@ -98,12 +100,59 @@ function Get-AgentRuleFile {
     }
 }
 
+# AGENTS.md's Git and "Done means" sections hold a marked block that names a standard; the block is filled with
+# that standard's rules in force, so the copy can't drift from them (CRF-003, ADR-0065). Text outside the blocks
+# stays the author's. Takes and returns text with LF line endings.
+function Update-RuleBlock {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text,
+        [Parameter(Mandatory)] [string] $StandardsPath
+    )
+
+    $open = '<!-- rules from docs/standards/'
+    $close = '<!-- end rules -->'
+    # Only a marker that starts a line opens a block; text may quote the marker in a sentence.
+    $openAtLineStart = '(?m)^' + [regex]::Escape($open)
+    $result = [System.Text.StringBuilder]::new()
+    $rest = $Text
+    while (($found = [regex]::Match($rest, $openAtLineStart)).Success) {
+        $start = $found.Index
+        $lineEnd = $rest.IndexOf("`n", $start)
+        $openLine = if ($lineEnd -ge 0) { $rest.Substring($start, $lineEnd - $start) } else { $rest.Substring($start) }
+        if ($lineEnd -lt 0 -or $openLine -notmatch '^<!-- rules from docs/standards/(?<file>[\w.-]+\.md)\b[^\n]*-->$') {
+            throw "A rules block opens with '$openLine', which isn't '$open<file>.md: ... -->' on a line of its own."
+        }
+        $file = $Matches['file']
+        # The block ends at the first line that is the closer and nothing else. A closer quoted in a sentence, or
+        # another block's, must not end it: everything up to the closer is replaced, hand-written text included.
+        $after = $rest.Substring($lineEnd + 1)
+        $closeLine = [regex]::Match($after, '(?m)^' + [regex]::Escape($close) + '$')
+        $nextOpen = [regex]::Match($after, $openAtLineStart)
+        if (-not $closeLine.Success -or ($nextOpen.Success -and $nextOpen.Index -lt $closeLine.Index)) {
+            throw "The rules block for docs/standards/$file has no '$close' line of its own before the next block or the end of the file."
+        }
+        $end = $lineEnd + 1 + $closeLine.Index
+        $path = Join-Path $StandardsPath $file
+        if (-not (Test-Path -LiteralPath $path)) { throw "A rules block names docs/standards/$file, which doesn't exist." }
+
+        [void] $result.Append($rest.Substring(0, $lineEnd + 1))
+        foreach ($rule in @((Read-FrontMatter -Path $path)['rules'] | Where-Object { $_['status'] -eq 'accepted' })) {
+            [void] $result.Append("- $($rule['id']): $($rule['statement'])`n")
+        }
+        [void] $result.Append($close)
+        $rest = $rest.Substring($end + $close.Length)
+    }
+    [void] $result.Append($rest)
+    $result.ToString()
+}
+
 # Visual Studio reads .github/copilot-instructions.md but doesn't document reading AGENTS.md, so the
 # repository instructions are a generated copy of AGENTS.md: one source, no drift.
+# -Text is AGENTS.md with its rule blocks already filled, so the copy matches what the build writes.
 function Get-CopilotInstructionsFile {
-    param([Parameter(Mandatory)] [string] $AgentsPath)
+    param([string] $AgentsPath, [string] $Text)
 
-    $agents = (Get-Content -Path $AgentsPath -Raw) -replace "`r`n", "`n"
+    $agents = if ($PSBoundParameters.ContainsKey('Text')) { $Text } else { (Get-Content -Path $AgentsPath -Raw) -replace "`r`n", "`n" }
     $content = ($script:GeneratedMarker -f 'AGENTS.md') + "`n`n" + $agents.TrimEnd("`n") + "`n"
     [pscustomobject]@{ Path = '.github/copilot-instructions.md'; Content = $content }
 }
@@ -135,8 +184,23 @@ function Invoke-AgentRuleBuild {
 
     # Everything is built in memory first, so an invalid source stops the run before any write or delete.
     try {
-        $expected = @(Get-AgentRuleFile -StandardsPath (Join-Path $RepoRoot 'docs' 'standards'))
-        $expected += Get-CopilotInstructionsFile -AgentsPath (Join-Path $RepoRoot 'AGENTS.md')
+        $standardsPath = Join-Path $RepoRoot 'docs' 'standards'
+        $expected = @(Get-AgentRuleFile -StandardsPath $standardsPath)
+        # AGENTS.md, and the kit's template for an app's AGENTS.md, keep their text; only their rule blocks are filled.
+        # Every repo has AGENTS.md, and Copilot's instructions are copied from it, so a missing one stops the build;
+        # only the kit has the template.
+        if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot 'AGENTS.md'))) {
+            throw "AGENTS.md is missing from $RepoRoot; .github/copilot-instructions.md is generated from it."
+        }
+        $agentsText = $null
+        foreach ($relative in 'AGENTS.md', 'templates/app/AGENTS.md') {
+            $path = Join-Path $RepoRoot $relative
+            if (-not (Test-Path -LiteralPath $path)) { continue }
+            $filled = Update-RuleBlock -Text ((Get-Content -Path $path -Raw) -replace "`r`n", "`n") -StandardsPath $standardsPath
+            $expected += [pscustomobject]@{ Path = $relative; Content = $filled }
+            if ($relative -eq 'AGENTS.md') { $agentsText = $filled }
+        }
+        $expected += Get-CopilotInstructionsFile -Text $agentsText
         # An app made before ADR-0064 has no docs/code-review.md until the kit sync brings it.
         $codeReview = Join-Path $RepoRoot 'docs' 'code-review.md'
         if (Test-Path -LiteralPath $codeReview) { $expected += Get-CodeReviewInstructionsFile -SourcePath $codeReview }
