@@ -45,14 +45,28 @@ Describe 'Rules stated in several places agree' {
     }
 
     It 'AGENTS.md and SEC-003 both ask before <Item>' -ForEach @(
-        @{ Item = 'merg\w* a release PR' }, @{ Item = 'publish\w* a release' }, @{ Item = 'guardrails' }
-        @{ Item = 'unmerged work|work that isn''t merged' }
+        @{ Item = 'guardrails' }, @{ Item = 'unmerged work|work that isn''t merged' }
     ) {
-        # README says these in its own lines (releases are the owner's; guardrails in "Working modes"), and
-        # "deleting or rewriting anything" covers unmerged work.
+        # README says guardrails in "Working modes", and "deleting or rewriting anything" covers unmerged work.
         foreach ($name in 'AGENTS.md "Always ask"', 'SEC-003') {
             $askCopies[$name] | Should -Match $Item -Because "$name should name '$Item'"
         }
+    }
+
+    # Releases are the owner's: agents never merge a release PR or publish a release, in either mode (owner,
+    # 2026-11-07). The ask lists used to say "ask first", which contradicted GIT-003 (rules audit, C1).
+    It 'no copy of the "always ask" list offers to ask before a release' {
+        foreach ($copy in $askCopies.GetEnumerator()) {
+            $copy.Value | Should -Not -Match 'release' -Because "$($copy.Key) shouldn't offer to ask: agents never do it"
+        }
+    }
+
+    It '<Name> says agents never merge a release PR' -ForEach @(
+        @{ Name = 'AGENTS.md "Always ask"'; Path = 'AGENTS.md'; Start = '## Always ask'; End = '\r?\n## ' }
+        @{ Name = 'SEC-003'; Path = 'docs/standards/security.md'; Start = 'id: SEC-003\s+statement:'; End = '\r?\n' }
+        @{ Name = 'GIT-003'; Path = 'docs/standards/git.md'; Start = 'id: GIT-003\s+statement:'; End = '\r?\n' }
+    ) {
+        Get-Between (Read-Text $Path) $Start $End | Should -Match 'never (merge\w* )?a release PR' -Because "$Name should say never"
     }
 
     It 'every copy of the guardrail list names <Item>' -ForEach @(
