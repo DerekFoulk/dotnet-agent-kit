@@ -111,9 +111,12 @@ function Update-RuleBlock {
 
     $open = '<!-- rules from docs/standards/'
     $close = '<!-- end rules -->'
+    # Only a marker that starts a line opens a block; text may quote the marker in a sentence.
+    $openAtLineStart = '(?m)^' + [regex]::Escape($open)
     $result = [System.Text.StringBuilder]::new()
     $rest = $Text
-    while (($start = $rest.IndexOf($open, [StringComparison]::Ordinal)) -ge 0) {
+    while (($found = [regex]::Match($rest, $openAtLineStart)).Success) {
+        $start = $found.Index
         $lineEnd = $rest.IndexOf("`n", $start)
         $openLine = if ($lineEnd -ge 0) { $rest.Substring($start, $lineEnd - $start) } else { $rest.Substring($start) }
         if ($lineEnd -lt 0 -or $openLine -notmatch '^<!-- rules from docs/standards/(?<file>[\w.-]+\.md)\b[^\n]*-->$') {
