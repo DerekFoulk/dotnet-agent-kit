@@ -7,4 +7,4 @@ paths:
 
 # Testing
 
-- TST-005: Use the kit's test toolset, the tools templates/app-intake.json lists for each test type (TST-007 keeps that list); a different tool needs an ADR.
+- TST-005: Use the kit's test toolset: in the kit, the tools templates/app-intake.json lists for each test type (TST-007 keeps that list); in an app, the ones its docs/app-profile.md chose from it. A different tool needs an ADR.

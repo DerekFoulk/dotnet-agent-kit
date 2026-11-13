@@ -9,7 +9,7 @@ Canon TDD (ADR-0018): take **one** item from the plan's test list at a time. Nev
 
 ## Red
 
-1. Write one test for the next item. Use the kit's tools: for .NET, the toolset `templates/app-intake.json` lists for each test type (TST-005); Pester 6 for PowerShell.
+1. Write one test for the next item. Use the kit's tools: for .NET, the ones `docs/app-profile.md` lists in an app, or `templates/app-intake.json` in the kit (TST-005); Pester 6 for PowerShell.
 2. Run it and confirm it **fails on an assertion**, for the reason you expect. A compile error, a missing function or a crash in the test itself isn't red yet. Add a stub with the right shape that returns the wrong answer, then rerun.
 3. Commit only the test (and its stub), with the trailer in the final paragraph:
 

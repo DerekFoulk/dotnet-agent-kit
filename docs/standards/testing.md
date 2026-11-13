@@ -69,7 +69,7 @@ rules:
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
-    statement: "Use the kit's test toolset, the tools templates/app-intake.json lists for each test type (TST-007 keeps that list); a different tool needs an ADR."
+    statement: "Use the kit's test toolset: in the kit, the tools templates/app-intake.json lists for each test type (TST-007 keeps that list); in an app, the ones its docs/app-profile.md chose from it. A different tool needs an ADR."
     why: "One toolset the owner chose, listed in one place; FluentAssertions is swapped for AwesomeAssertions in commercial repos (ADR-0004), and Locust is the free default for load tests (ADR-0057)."
     layer: owner
     basis: preference
