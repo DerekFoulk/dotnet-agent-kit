@@ -149,6 +149,14 @@ Describe 'Test-RuleSources.ps1' {
             Get-Problem | Should -BeNullOrEmpty
         }
 
+        It 'accepts an authority rule that cites an http URL' {
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; sources = @('http://example.com/guide, retrieved 2026-11-01')
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
         It 'reports an authority rule that cites no URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{ basis = 'authority'; sources = @('owner, 2026-10-26', 'ADR-0007') })
 
@@ -182,6 +190,34 @@ Describe 'Test-RuleSources.ps1' {
             New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = 'ci: a check' })
 
             (Get-Problem | ForEach-Object Message) | Should -BeLike '*enforcement*list of parts*'
+        }
+
+        # Review 1 of PR 1: a single part not in a list, and a list of strings, were the likeliest mistakes.
+        It 'reports enforcement written as one part, not a list' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = [ordered]@{ kind = 'gate'; in = @('kit'); how = 'ci: a check' } })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*enforcement*list of parts*'
+        }
+
+        It 'reports a part written as a string' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = @('ci: a check') })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike "*part 'ci: a check'*kind, in and how*"
+        }
+
+        It 'reports in written as <In> (<Reason>)' -ForEach @(
+            @{ In = 'kit'; Reason = 'a word, not a list'; Expected = "*in*list*" }
+            @{ In = $null; Reason = 'no in key'; Expected = "*part*no 'in'*" }
+            @{ In = @('kit', 'cloud'); Reason = 'one known place, one not'; Expected = "*in 'cloud'*kit, app*" }
+        ) {
+            $part = [ordered]@{ kind = 'gate'; in = $In; how = 'ci: a check' }
+            if ($null -eq $In) { $part.Remove('in') }
+            New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = @($part) })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike $Expected
         }
 
         It 'reports a part whose <Field> is <Value>' -ForEach @(
