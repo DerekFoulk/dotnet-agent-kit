@@ -370,6 +370,17 @@ Describe 'Agent configuration' {
             $text | Should -Match ([regex]::Escape('gh api repos/DerekFoulk/dotnet-agent-kit/commits/<tag> --jq .sha'))
         }
 
+        # The ruleset's copilot_code_review rule only requests a review: with no required approval, nothing blocks a merge
+        # when no review arrives, so DOD-003 mustn't count it as a gate (Copilot's review of PR 64).
+        It 'are requested by the ruleset, which DOD-003 records as advisory' {
+            $frontMatter = Read-FrontMatter -Path (Join-Path $repoRoot 'docs' 'standards' 'definition-of-done.md')
+            $rule = @($frontMatter['rules'] | Where-Object { $_['id'] -eq 'DOD-003' })[0]
+            $requestParts = @(@($rule['enforcement']) | Where-Object { "$($_['how'])" -match 'copilot_code_review' })
+
+            $requestParts.Count | Should -BeGreaterThan 0
+            @($requestParts | Where-Object { "$($_['kind'])" -ne 'advisory' }).Count | Should -Be 0
+        }
+
         It 'replace the reviewer agent' {
             Join-Path $repoRoot '.claude' 'agents' 'reviewer.md' | Should -Not -Exist
         }
