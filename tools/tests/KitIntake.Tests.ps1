@@ -280,6 +280,18 @@ Describe 'ConvertTo-KitAppProfile' {
         $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name 'Contoso.Orders' -KitCommit 'abc1234'
     }
 
+    # An app doesn't get templates/app-intake.json (Export-KitApp leaves it out), so TST-005, which its agents read,
+    # points it to the tools its profile chose (Copilot's review of PR 65).
+    It 'lists the app''s test tools under the heading TST-005 points an app to' {
+        Import-Module powershell-yaml
+        Import-Module (Join-Path $root 'tools' 'KitFrontMatter.psm1') -Force
+        $rules = (Read-FrontMatter -Path (Join-Path $root 'docs' 'standards' 'testing.md'))['rules']
+        $toolset = ($rules | Where-Object id -EQ 'TST-005')['statement']
+
+        $toolset | Should -Match ([regex]::Escape('docs/app-profile.md'))
+        $profileText | Should -Match '(?m)^## Test tools$'
+    }
+
     It 'names the app and the kit commit it was chosen from' {
         $profileText | Should -Match '^# App profile: Contoso\.Orders\r?\n'
         $profileText | Should -Match 'abc1234'
