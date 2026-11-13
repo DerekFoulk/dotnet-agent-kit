@@ -497,7 +497,7 @@ Describe 'Export-KitApp' {
 
         foreach ($path in '.editorconfig', 'global.json', 'nuget.config', 'Directory.Build.props', 'tests/Directory.Build.props',
             '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt',
-            'THIRD-PARTY-NOTICES.md', 'CLAUDE.md', '.mcp.json', '.claude/settings.json', '.github/instructions/code-review.instructions.md',
+            'THIRD-PARTY-NOTICES.md', 'CLAUDE.md', '.mcp.json', '.claude/settings.json', '.github/instructions/code-review.instructions.md', 'docs/code-review.md',
             '.claude/skills/tdd-cycle/SKILL.md', 'docs/standards/git.md', '.githooks/commit-msg', '.githooks/commit-msg.ps1',
             '.github/pull_request_template.md', 'docs/adr/0000-template.md', '.kit/tools/Test-ConventionalTitle.ps1') {
             $targets | Should -Contain $path
