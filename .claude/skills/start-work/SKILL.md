@@ -14,6 +14,6 @@ description: Start any task that will change files in this repo. Sets up the bra
    - a **test list**: the behaviors to cover, one line each, not yet written as tests;
    - the plan checklist (run the `plan-checklist` skill);
    - the ADRs needed (`write-adr`) and anything that needs the owner's OK (see "Always ask", and in review mode "Also ask in review mode", in `AGENTS.md`).
-5. **Review the plan** (owner, 2026-11-10). For a non-trivial change, run the `reviewer` on the plan and test list before writing any code: say it's a plan review and give it the plan. A design flaw is cheapest to fix here. Fix what it finds in the plan, then go on. A typo, or a docs-only fix that touches no guardrail, skips this. The stopping rule (`finish-work` step 2) ends plan reviews too.
+5. **Review the plan** (owner, 2026-11-10). For a non-trivial change, check the plan and test list against the `plan-checklist` headings, the standards and ADRs for the area, and "Always ask" before writing any code. Copilot reviews the PR, not the plan (ADR-0064). A design flaw is cheapest to fix here. Fix what the check finds in the plan, then go on. A typo, or a docs-only fix that touches no guardrail, skips this.
 6. **Get approval, or go on.** Check the working mode (`AGENTS.md`, "Working modes"). In review mode, show the owner the plan unless the task is trivial (for example, a typo), and wait for his OK. In auto mode, post the plan and go on, unless it hits "Always ask". Restate any answers he gives as a table.
 7. **Start the first red test** with the `tdd-cycle` skill.

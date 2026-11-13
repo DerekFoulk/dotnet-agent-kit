@@ -11,7 +11,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "no tool can tell a fix from a workaround; the plan-checklist skill asks for the root cause, and the reviewer agent checks it"
+        how: "no tool can tell a fix from a workaround; the plan-checklist skill asks for the root cause, and code review checks it"
     scope: core
     paths: ["**"]
   - id: CRF-002
@@ -24,7 +24,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "only a person or the reviewer agent can know a better design exists; the PR template's 'For the owner' and 'Not verified' sections carry it"
+        how: "only a person or code review can know a better design exists; the PR template's 'For the owner' and 'Not verified' sections carry it"
     scope: core
     paths: ["**"]
   - id: CRF-003
@@ -40,7 +40,7 @@ rules:
         how: "ci: tools/Test-Duplication.ps1 runs PMD CPD in dotnet-ci.reusable.yml and fails when 100 tokens or more repeat in hand-written C#, outside a CPD-OFF region (ADR-0051)"
       - kind: advisory
         in: [kit, app]
-        how: "checked by the reviewer agent: each CPD-OFF region's reason, whether a repeat is knowledge or code that only looks alike, and duplication outside C# (docs, config, scripts) or in a file CPD can't read, or a copy with renamed variables or changed literals"
+        how: "checked by code review: each CPD-OFF region's reason, whether a repeat is knowledge or code that only looks alike, and duplication outside C# (docs, config, scripts) or in a file CPD can't read, or a copy with renamed variables or changed literals"
     scope: core
     paths: ["**"]
   - id: CRF-004
@@ -53,7 +53,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "no tool can judge what a requirement needs; the plan-checklist skill asks, and the reviewer agent checks"
+        how: "no tool can judge what a requirement needs; the plan-checklist skill asks, and code review checks"
     scope: core
     paths: ["**"]
   - id: CRF-005
@@ -66,7 +66,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "CA1506 and CA1501 (CRF-008) fail the build on a class with too many collaborators or too deep a hierarchy, which often signals a broken principle, but only the reviewer agent can judge the principles themselves"
+        how: "CA1506 and CA1501 (CRF-008) fail the build on a class with too many collaborators or too deep a hierarchy, which often signals a broken principle, but only code review can judge the principles themselves"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-006
@@ -85,7 +85,7 @@ rules:
         how: "until the app's Architecture.Tests carries the same tests, following the sample"
       - kind: advisory
         in: [kit, app]
-        how: "validation at the boundary, checked by the reviewer agent"
+        how: "validation at the boundary, checked by code review"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-007
@@ -104,7 +104,7 @@ rules:
         how: "until its own Architecture.Tests (TST-003) carries the same test, following the sample"
       - kind: advisory
         in: [kit, app]
-        how: "stable dependencies and component cohesion, checked by the reviewer agent"
+        how: "stable dependencies and component cohesion, checked by code review"
     scope: core
     paths: ["**/*.cs", "**/*.csproj"]
   - id: CRF-008
@@ -120,7 +120,7 @@ rules:
         how: "build: .globalconfig turns on CA1501, CA1502, CA1505, CA1506 and CA1509 at warning, and CodeMetricsConfig.txt sets the limits, so a breach or a malformed limit fails the build (tools/tests/BuildConfig.Tests.ps1, which also checks this statement's numbers against the file)"
       - kind: advisory
         in: [kit, app]
-        how: "nesting, statements per method, file length and LCOM4 are aims, checked by the reviewer agent; CRF-011 (proposed, ADR-0050) states them as limits, which a CI check enforces"
+        how: "nesting, statements per method, file length and LCOM4 are aims, checked by code review; CRF-011 (proposed, ADR-0050) states them as limits, which a CI check enforces"
     scope: core
     paths: ["**/*.cs", ".globalconfig", "CodeMetricsConfig.txt"]
   - id: CRF-009
@@ -133,7 +133,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the coverage and mutation gates (TST-004) expose untestable code, CA1506 tight coupling, and the naming rules (CA17xx) some names, but no tool judges the design as a whole; the reviewer agent checks"
+        how: "the coverage and mutation gates (TST-004) expose untestable code, CA1506 tight coupling, and the naming rules (CA17xx) some names, but no tool judges the design as a whole; code review checks"
     scope: core
     paths: ["**"]
   - id: CRF-010
@@ -149,7 +149,7 @@ rules:
         how: "build: Microsoft.CodeAnalysis.BannedApiAnalyzers rejects the APIs in BannedSymbols.txt (BindingFlags.NonPublic, UnsafeAccessor, and the routes found so far that reach non-public members without it) with RS0030 in every project (tools/tests/BuildConfig.Tests.ps1)"
       - kind: advisory
         in: [kit, app]
-        how: "relying on undocumented behavior, checked by the reviewer agent"
+        how: "relying on undocumented behavior, checked by code review"
     scope: core
     paths: ["**"]
   - id: CRF-011
@@ -202,6 +202,6 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 
 `CodeMetricsConfig.txt` is the one source of the limits; CRF-008 states them for readers, and a Pester test fails if the two disagree. `tools/CodeShape/src/Kit.CodeShape/Limits.cs` is the one source of CRF-011's four, checked against its statement the same way. `.globalconfig` is the one list of the rules `latest-all` leaves off and the kit turns on; each has a fixture in `tools/tests/BuildConfig.Tests.ps1`. CA1509 can only be turned on in a global config, which is why these rules live there and not in `.editorconfig`. All of them are on; for CA1014, `Directory.Build.props` declares every assembly not CLS-compliant (ADR-0049). ADR-0043 records the limits and why each is where it is.
 
-**What the checks miss.** CA1502 doesn't count the arms of a switch expression (measured with SDK 10.0.404), so a long one passes. The ban stops the routes into internals found so far, not every route: a cast such as `(BindingFlags)32`, `Type.GetType`, `Assembly.GetType` or `Module.GetType` with an internal type's name, `Module.ResolveField`, `ResolveMethod` and the other `Resolve` methods with a metadata token, `Type.GetInterfaceMap` and `GetRuntimeInterfaceMap` still get through. So do `PropertyInfo.GetValue` through a private getter and `SetValue` through a private setter, `GetType()` on an instance of an internal type (one handed back through a public interface, say), and `Type.GetInterfaces` or `GetInterface`, which also return internal interfaces a public type implements. None of these four can be banned without blocking their public use. CPD finds repeated code, not repeated knowledge: a rule stated in two shapes passes, and so does duplication in docs, config and scripts. For C# it can't ignore names or literals, so a copy with its variables renamed or its numbers changed, the commonest copy-paste, passes too. CPD takes any comment holding `CPD-OFF` as the start of a region, with or without a reason, and one with no `CPD-ON` runs to the end of the file. It can't read some newer C# (a raw string literal, for one), so it skips such a file with a warning in the CI log. The reviewer agent checks all of these. ADR-0051 records how CPD is tuned. The code shape check reads the code with Roslyn, the C# compiler's own parser. It works out what each name refers to (binding) only within a project's own files, with no package or project references, so a call it can't resolve counts as every member it could mean, or as none when nothing in view could match. It doesn't measure lambdas in field initializers, and it reads code under the SDK's implicit `#if` symbols (such as `NET10_0_OR_GREATER`) as if they weren't defined. Apps run it only in CI for now (GAP-022). ADR-0050 records how each limit is measured. Code in a `.razor` file reaches the compiler as generated code, so the metric analyzers, the code shape and duplicate code checks, and Stryker's mutation testing all skip it: an `@code` block of any size passes them. Keep logic in a `.razor.cs` code-behind file or a plain class, where every check reads it (ADR-0061).
+**What the checks miss.** CA1502 doesn't count the arms of a switch expression (measured with SDK 10.0.404), so a long one passes. The ban stops the routes into internals found so far, not every route: a cast such as `(BindingFlags)32`, `Type.GetType`, `Assembly.GetType` or `Module.GetType` with an internal type's name, `Module.ResolveField`, `ResolveMethod` and the other `Resolve` methods with a metadata token, `Type.GetInterfaceMap` and `GetRuntimeInterfaceMap` still get through. So do `PropertyInfo.GetValue` through a private getter and `SetValue` through a private setter, `GetType()` on an instance of an internal type (one handed back through a public interface, say), and `Type.GetInterfaces` or `GetInterface`, which also return internal interfaces a public type implements. None of these four can be banned without blocking their public use. CPD finds repeated code, not repeated knowledge: a rule stated in two shapes passes, and so does duplication in docs, config and scripts. For C# it can't ignore names or literals, so a copy with its variables renamed or its numbers changed, the commonest copy-paste, passes too. CPD takes any comment holding `CPD-OFF` as the start of a region, with or without a reason, and one with no `CPD-ON` runs to the end of the file. It can't read some newer C# (a raw string literal, for one), so it skips such a file with a warning in the CI log. Code review checks all of these. ADR-0051 records how CPD is tuned. The code shape check reads the code with Roslyn, the C# compiler's own parser. It works out what each name refers to (binding) only within a project's own files, with no package or project references, so a call it can't resolve counts as every member it could mean, or as none when nothing in view could match. It doesn't measure lambdas in field initializers, and it reads code under the SDK's implicit `#if` symbols (such as `NET10_0_OR_GREATER`) as if they weren't defined. Apps run it only in CI for now (GAP-022). ADR-0050 records how each limit is measured. Code in a `.razor` file reaches the compiler as generated code, so the metric analyzers, the code shape and duplicate code checks, and Stryker's mutation testing all skip it: an `@code` block of any size passes them. Keep logic in a `.razor.cs` code-behind file or a plain class, where every check reads it (ADR-0061).
 
-**Exceptions.** Suppressing a metric or design rule for one member is a safety net under CRF-001: the suppression carries its reason (`Justification` on `[SuppressMessage]`, or a comment beside `#pragma warning disable`), and the reviewer checks the reason holds. Raising a limit needs an ADR (CRF-008), and so does turning a rule off for a whole project (STY-003). RS0030 is never suppressed without an ADR, even for one member (CRF-010). The code shape check (CRF-011) has no analyzer to suppress, so its exception is a comment, `// CRF-011 exception: <reason>`, and where it sits says what it covers. As the last comment right before a member or type (before its attributes, with no blank line between), it covers that member, or that type's cohesion but not its members; before a property, its accessors too. As the file's first comment, with a blank line below it, it covers the file's length and its top-level statements. A marker with no reason covers nothing. Generated code is skipped by the compiler's own test (an `<auto-generated>` header, or a name such as `.g.cs` or `.designer.cs`); unlike the analyzers, the check doesn't read `generated_code` in `.editorconfig`, so such a file takes the exception comment. Both checks skip generated code this way. Code that looks alike but changes for different reasons, which CRF-003 keeps apart, goes between `// CPD-OFF <reason>` and `// CPD-ON`, CPD's own markers; the reviewer checks the reason.
+**Exceptions.** Suppressing a metric or design rule for one member is a safety net under CRF-001: the suppression carries its reason (`Justification` on `[SuppressMessage]`, or a comment beside `#pragma warning disable`), and code review checks the reason holds. Raising a limit needs an ADR (CRF-008), and so does turning a rule off for a whole project (STY-003). RS0030 is never suppressed without an ADR, even for one member (CRF-010). The code shape check (CRF-011) has no analyzer to suppress, so its exception is a comment, `// CRF-011 exception: <reason>`, and where it sits says what it covers. As the last comment right before a member or type (before its attributes, with no blank line between), it covers that member, or that type's cohesion but not its members; before a property, its accessors too. As the file's first comment, with a blank line below it, it covers the file's length and its top-level statements. A marker with no reason covers nothing. Generated code is skipped by the compiler's own test (an `<auto-generated>` header, or a name such as `.g.cs` or `.designer.cs`); unlike the analyzers, the check doesn't read `generated_code` in `.editorconfig`, so such a file takes the exception comment. Both checks skip generated code this way. Code that looks alike but changes for different reasons, which CRF-003 keeps apart, goes between `// CPD-OFF <reason>` and `// CPD-ON`, CPD's own markers; code review checks the reason.

@@ -70,10 +70,19 @@ Describe 'New-KitApp settings' {
         $ruleset.enforcement | Should -Be 'active'
         @($ruleset.bypass_actors) | Should -BeNullOrEmpty
         @($ruleset.conditions.ref_name.include) | Should -Be @('~DEFAULT_BRANCH')
-        @($ruleset.rules.type | Sort-Object) | Should -Be @('deletion', 'non_fast_forward', 'pull_request', 'required_status_checks')
+        @($ruleset.rules.type | Sort-Object) | Should -Be @('copilot_code_review', 'deletion', 'non_fast_forward', 'pull_request', 'required_status_checks')
         $pullRequest = ($ruleset.rules | Where-Object type -EQ 'pull_request').parameters
         @($pullRequest.allowed_merge_methods) | Should -Be @('merge')
-        $pullRequest.required_approving_review_count | Should -Be 0 # one owner: the reviewer agent reviews, not a second person
+        $pullRequest.required_approving_review_count | Should -Be 0 # one owner: Copilot code review reviews, not a second person
+    }
+
+    It 'asks Copilot to review every pull request and every push to it, but not drafts (ADR-0064)' {
+        $ruleset = Get-Content -Raw -LiteralPath $rulesetPath | ConvertFrom-Json
+        $copilot = @($ruleset.rules | Where-Object type -EQ 'copilot_code_review')
+
+        $copilot | Should -HaveCount 1
+        $copilot[0].parameters.review_on_push | Should -BeTrue
+        $copilot[0].parameters.review_draft_pull_requests | Should -BeFalse
     }
 
     It 'has a code scanning ruleset that blocks a merge on CodeQL''s errors or high security alerts, as the kit''s does' {

@@ -34,7 +34,7 @@ $script:AllowedValues = [ordered]@{
     basis  = 'authority', 'preference'
     status = 'proposed', 'accepted', 'retired'
 }
-# ADR-0063: each enforcement part is a gate (a tool fails the change) or advisory (a person or the reviewer agent
+# ADR-0063: each enforcement part is a gate (a tool fails the change) or advisory (a person or code review
 # checks it), and says where it applies: in the kit, in apps, or both.
 $script:PartKinds = 'gate', 'advisory'
 $script:PartPlaces = 'kit', 'app'

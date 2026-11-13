@@ -8,7 +8,8 @@
       .claude/rules/<topic>.md                         Claude Code, always loaded (rules with paths **)
       .claude/rules/<topic>-<rule-id>.md               Claude Code, loaded by paths: (one per distinct path set)
       .github/instructions/<topic>[-<rule-id>].instructions.md   Copilot, the same split with applyTo:
-    Also writes .github/copilot-instructions.md as a copy of AGENTS.md, because Visual Studio reads that
+    Also writes .github/instructions/code-review.instructions.md from docs/code-review.md, for Copilot code
+    review (ADR-0064), and .github/copilot-instructions.md as a copy of AGENTS.md, because Visual Studio reads that
     file but doesn't document reading AGENTS.md. Proposed and retired rules aren't in force, so they're
     left out. Generated files carry a marker; generated files no standard produces any more are removed.
 
@@ -107,6 +108,18 @@ function Get-CopilotInstructionsFile {
     [pscustomobject]@{ Path = '.github/copilot-instructions.md'; Content = $content }
 }
 
+# Copilot code review reads path-specific instructions from .github/instructions/ (ADR-0064). Apps rebuild that
+# folder with their own copy of this script, so the review instructions are generated from docs/code-review.md,
+# one source, for every file and for code review only.
+function Get-CodeReviewInstructionsFile {
+    param([Parameter(Mandatory)] [string] $SourcePath)
+
+    $source = (Get-Content -Path $SourcePath -Raw) -replace "`r`n", "`n"
+    $frontMatter = "---`napplyTo: '**'`nexcludeAgent: 'cloud-agent'`n---`n"
+    $content = $frontMatter + ($script:GeneratedMarker -f 'docs/code-review.md') + "`n`n" + $source.TrimEnd("`n") + "`n"
+    [pscustomobject]@{ Path = '.github/instructions/code-review.instructions.md'; Content = $content }
+}
+
 # Writes every generated file and deletes generated files no standard produces any more. With -Check it
 # writes nothing and returns 1 if any file is missing, different or stale (S3: hand-edited copies are
 # flagged). Line endings don't count: git may check files out with CRLF.
@@ -124,6 +137,9 @@ function Invoke-AgentRuleBuild {
     try {
         $expected = @(Get-AgentRuleFile -StandardsPath (Join-Path $RepoRoot 'docs' 'standards'))
         $expected += Get-CopilotInstructionsFile -AgentsPath (Join-Path $RepoRoot 'AGENTS.md')
+        # An app made before ADR-0064 has no docs/code-review.md until the kit sync brings it.
+        $codeReview = Join-Path $RepoRoot 'docs' 'code-review.md'
+        if (Test-Path -LiteralPath $codeReview) { $expected += Get-CodeReviewInstructionsFile -SourcePath $codeReview }
     }
     catch {
         Write-Host "  $($_.Exception.Message)" -ForegroundColor Red

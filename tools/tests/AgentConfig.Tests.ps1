@@ -344,17 +344,60 @@ Describe 'Agent configuration' {
         }
     }
 
-    Context 'reviewer agent' {
-        # It keeps Bash and PowerShell to run the gates, so it's read-only by instruction for the shell.
-        It 'has no Edit or Write tool' {
-            $path = Join-Path $repoRoot '.claude' 'agents' 'reviewer.md'
-            $frontMatter = Read-FrontMatter -Path $path
-            $tools = @("$($frontMatter['tools'])" -split '\s*,\s*')
+    # ADR-0064: Copilot code review reviews every pull request, against these instructions and the generated rule files.
+    Context 'code review instructions' {
+        BeforeAll {
+            $script:reviewPath = Join-Path $repoRoot '.github' 'instructions' 'code-review.instructions.md'
+        }
 
-            $tools | Should -Not -Contain 'Edit'
-            $tools | Should -Not -Contain 'Write'
-            "$($frontMatter['disallowedTools'])" | Should -Match 'Edit'
-            "$($frontMatter['disallowedTools'])" | Should -Match 'Write'
+        It 'apply to every file, for code review only' {
+            $script:reviewPath | Should -Exist
+            $frontMatter = Read-FrontMatter -Path $script:reviewPath
+
+            "$($frontMatter['applyTo'])" | Should -Be '**'
+            "$($frontMatter['excludeAgent'])" | Should -Be 'cloud-agent'
+        }
+
+        It 'rank findings as Blocking, Should fix and Consider' {
+            $text = if (Test-Path -LiteralPath $script:reviewPath) { Get-Content -Raw -LiteralPath $script:reviewPath } else { '' }
+            foreach ($rank in 'Blocking', 'Should fix', 'Consider') { $text | Should -Match "\*\*$rank\*\*" }
+        }
+
+        # In a public repo a pin by SHA can resolve to a fork's commit, so a full SHA alone isn't enough (ADR-0031).
+        It 'require a kit release tag to point to a changed kit pin' {
+            $text = if (Test-Path -LiteralPath $script:reviewPath) { Get-Content -Raw -LiteralPath $script:reviewPath } else { '' }
+            $text | Should -Match 'release tag'
+            $text | Should -Match ([regex]::Escape('gh api repos/DerekFoulk/dotnet-agent-kit/commits/<tag> --jq .sha'))
+        }
+
+        # The ruleset's copilot_code_review rule only requests a review: with no required approval, nothing blocks a merge
+        # when no review arrives, so DOD-003 mustn't count it as a gate (Copilot's review of PR 64).
+        It 'are requested by the ruleset, which DOD-003 records as advisory' {
+            $frontMatter = Read-FrontMatter -Path (Join-Path $repoRoot 'docs' 'standards' 'definition-of-done.md')
+            $rule = @($frontMatter['rules'] | Where-Object { $_['id'] -eq 'DOD-003' })[0]
+            $requestParts = @(@($rule['enforcement']) | Where-Object { "$($_['how'])" -match 'copilot_code_review' })
+
+            $requestParts.Count | Should -BeGreaterThan 0
+            @($requestParts | Where-Object { "$($_['kind'])" -ne 'advisory' }).Count | Should -Be 0
+        }
+
+        # Copilot reviews the PR's diff, and a plan is posted in chat, so it can't check one; the start-work self-check
+        # against plan-checklist replaced the reviewer agent's plan review (ADR-0064; Copilot's review of PR 64).
+        It 'aren''t said to check the plan in <Id>' -ForEach @(
+            @{ Id = 'ARC-006'; File = 'architecture.md' }
+            @{ Id = 'TST-002'; File = 'testing.md' }
+            @{ Id = 'DAT-001'; File = 'data.md' }
+        ) {
+            $frontMatter = Read-FrontMatter -Path (Join-Path $repoRoot 'docs' 'standards' $File)
+            $rule = @($frontMatter['rules'] | Where-Object { $_['id'] -eq $Id })[0]
+            $how = @(@($rule['enforcement']) | ForEach-Object { "$($_['how'])" }) -join ' '
+
+            $how | Should -Match 'start-work'
+            $how | Should -Not -Match 'code review'
+        }
+
+        It 'replace the reviewer agent' {
+            Join-Path $repoRoot '.claude' 'agents' 'reviewer.md' | Should -Not -Exist
         }
     }
 

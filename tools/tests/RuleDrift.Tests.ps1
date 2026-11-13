@@ -57,7 +57,7 @@ Describe 'Rules stated in several places agree' {
 
     It 'every copy of the guardrail list names <Item>' -ForEach @(
         @{ Item = '"Working modes"' }, @{ Item = '"Always ask"' }, @{ Item = 'SEC-003' }, @{ Item = '\.claude/settings\.json' }
-        @{ Item = 'Set-AgentMode\.ps1' }, @{ Item = 'reviewer(` agent|\.md)' }, @{ Item = 'ruleset' }, @{ Item = 'branch protection' }
+        @{ Item = 'Set-AgentMode\.ps1' }, @{ Item = 'code-review\.instructions\.md' }, @{ Item = 'ruleset' }, @{ Item = 'branch protection' }
         @{ Item = 'merge settings' }, @{ Item = 'CI check' }, @{ Item = 'cooldown' }, @{ Item = 'New-KitApp' }
         @{ Item = 'Dependabot alerts and security updates' }
     ) {

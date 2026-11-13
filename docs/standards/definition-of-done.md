@@ -27,20 +27,23 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the finish-work skill and reviewer agent ask for evidence; scored on practice tasks"
+        how: "the finish-work skill asks for evidence, and code review checks the PR's claims; scored on practice tasks"
     scope: core
     paths: ["**"]
   - id: DOD-003
-    statement: "Before the owner reviews, an independent read-only reviewer that hasn't seen the work runs the gates and reports ranked findings; reviews repeat after each round of fixes and end at the first round with nothing blocking or should-fix."
-    why: "A reviewer with fresh eyes caught four blocking issues in one project; reviewing every nit fix again turned PRs 32 and 33 into hours-long loops (owner, 2026-11-09)."
+    statement: "Before the owner reviews, GitHub Copilot code review reviews every pull request and every push to it, against the kit's code-review instructions (.github/instructions/code-review.instructions.md) and rule files; the agent ranks each finding Blocking, Should fix or Consider and answers it (DOD-005), and reviews end at the first Copilot review of the head commit with nothing blocking or should-fix."
+    why: "A reviewer with fresh eyes caught four blocking issues in one project, and reviewing every nit fix again turned PRs 32 and 33 into hours-long loops (owner, 2026-11-09). Copilot code review replaced the kit's reviewer agent (owner, 2026-11-12, ADR-0064); CI runs the gates the agent used to run."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["ADR-0010", "owner, 2026-11-09"]
+    sources: ["ADR-0010", "owner, 2026-11-09", "owner, 2026-11-12", "ADR-0064"]
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the reviewer agent exists (.claude/agents/reviewer.md); running it is a finish-work step no tool enforces"
+        how: "ruleset: main protection's copilot_code_review rule requests a Copilot review on every pull request and push (in an app, templates/github/main-protection.json; tools/tests/New-KitApp.Tests.ps1); it requires no approval, so nothing blocks a merge when no review arrives, and waiting for Copilot's review of the head commit is the agent's (finish-work). Answered findings are DOD-005's"
+      - kind: advisory
+        in: [kit, app]
+        how: "ranking each finding and ending the reviews are the agent's (the finish-work and address-review skills); a review that fails, such as when the owner's AI credits run out, is reported to the owner, and the PR waits"
     scope: core
     paths: ["**"]
   - id: DOD-004
@@ -53,7 +56,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: ".github/pull_request_template.md pre-fills every PR and the reviewer agent checks the evidence table; no CI check reads PR descriptions"
+        how: ".github/pull_request_template.md pre-fills every PR and code review checks the evidence table; no CI check reads PR descriptions"
     scope: core
     paths: ["**"]
   - id: DOD-005
@@ -76,7 +79,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: DOD-006
-    statement: "A PR whose description a bot writes, such as Dependabot's, keeps that description. In either mode, before the PR is merged, the agent handling it posts the template's sections as a PR comment: 'What and why'; 'Red → green evidence' for any behavior change an agent added, one row per test-list item (a bot's own commits need none); 'Checks run', with the reviewer agent's findings and how each was answered; 'For the owner'; and 'Not verified'. The comment names the head commit its counts come from, which must be the commit the PR is merged at: when the head moves, as it does when a lock-file refresh pushes or Dependabot rebases, the agent posts a new one. That comment stands in for the complete description a merge needs, whoever merges the PR. Release PRs are the owner's, so this doesn't cover them."
+    statement: "A PR whose description a bot writes, such as Dependabot's, keeps that description. In either mode, before the PR is merged, the agent handling it posts the template's sections as a PR comment: 'What and why'; 'Red → green evidence' for any behavior change an agent added, one row per test-list item (a bot's own commits need none); 'Checks run', with code review's findings and how each was answered; 'For the owner'; and 'Not verified'. The comment names the head commit its counts come from, which must be the commit the PR is merged at: when the head moves, as it does when a lock-file refresh pushes or Dependabot rebases, the agent posts a new one. That comment stands in for the complete description a merge needs, whoever merges the PR. Release PRs are the owner's, so this doesn't cover them."
     why: "Dependabot writes its own description, so DOD-004's template can't apply to its PRs, yet the owner still needs the evidence, and a merge needs a complete description; PRs 25 and 26 were merged with the evidence in a PR comment instead."
     layer: owner
     basis: preference

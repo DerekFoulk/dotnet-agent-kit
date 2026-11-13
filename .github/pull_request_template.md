@@ -19,7 +19,7 @@
 - [ ] Build: zero warnings
 - [ ] Every test suite: all pass (with the coverage gate, where the table has one)
 - [ ] Every check in the table: exit 0 (generated files current, ADR sections, and the rest)
-- [ ] Independent review by the `reviewer` agent: findings fixed or answered below
+- [ ] Copilot code review of the head commit: findings fixed or answered on the PR
 
 ## For the owner
 
