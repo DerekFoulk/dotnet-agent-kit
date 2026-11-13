@@ -18,13 +18,15 @@ function Invoke-Gh {
 }
 
 # Reads Copilot's summary comment ("ccr-overview-v2"): the verdict line ("### 🟡 Changes recommended",
-# "### 🟢 Approval recommended"), the open-issue count, and one bullet per open issue with its severity
+# "### 🟢 Approval recommended", "### 🔵 Needs a closer look"), the open-issue count, and one bullet per open issue with its severity
 # and a link to its comment thread (#discussion_r<comment id>). An issue with no link has no thread.
 function ConvertFrom-CopilotReviewBody {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Body)
 
+    # The verdict is the summary's first heading, after its colored icon. Copilot has used at least three
+    # ("Changes recommended", "Approval recommended", "Needs a closer look"), so any heading text is kept.
     $verdict = 'Unknown'
-    if ($Body -match '(?m)^###\s+\S*\s*(Changes recommended|Approval recommended)\s*$') {
+    if ($Body -match '(?m)^###\s+[^\p{L}\p{N}\s]*\s*(\S.*?)\s*$') {
         $verdict = $Matches[1]
     }
 
