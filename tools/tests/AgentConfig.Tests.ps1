@@ -344,17 +344,27 @@ Describe 'Agent configuration' {
         }
     }
 
-    Context 'reviewer agent' {
-        # It keeps Bash and PowerShell to run the gates, so it's read-only by instruction for the shell.
-        It 'has no Edit or Write tool' {
-            $path = Join-Path $repoRoot '.claude' 'agents' 'reviewer.md'
-            $frontMatter = Read-FrontMatter -Path $path
-            $tools = @("$($frontMatter['tools'])" -split '\s*,\s*')
+    # ADR-0064: Copilot code review reviews every pull request, against these instructions and the generated rule files.
+    Context 'code review instructions' {
+        BeforeAll {
+            $script:reviewPath = Join-Path $repoRoot '.github' 'instructions' 'code-review.instructions.md'
+        }
 
-            $tools | Should -Not -Contain 'Edit'
-            $tools | Should -Not -Contain 'Write'
-            "$($frontMatter['disallowedTools'])" | Should -Match 'Edit'
-            "$($frontMatter['disallowedTools'])" | Should -Match 'Write'
+        It 'apply to every file, for code review only' {
+            $script:reviewPath | Should -Exist
+            $frontMatter = Read-FrontMatter -Path $script:reviewPath
+
+            "$($frontMatter['applyTo'])" | Should -Be '**'
+            "$($frontMatter['excludeAgent'])" | Should -Be 'cloud-agent'
+        }
+
+        It 'rank findings as Blocking, Should fix and Consider' {
+            $text = if (Test-Path -LiteralPath $script:reviewPath) { Get-Content -Raw -LiteralPath $script:reviewPath } else { '' }
+            foreach ($rank in 'Blocking', 'Should fix', 'Consider') { $text | Should -Match "\*\*$rank\*\*" }
+        }
+
+        It 'replace the reviewer agent' {
+            Join-Path $repoRoot '.claude' 'agents' 'reviewer.md' | Should -Not -Exist
         }
     }
 
