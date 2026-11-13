@@ -5,18 +5,32 @@ rules:
     statement: "Every UI an app ships meets WCAG 2.2 level AA: web UI (Blazor, Razor) as written, native UI (MAUI, desktop) as W3C's WCAG2ICT note applies it. Building UI, an agent checks at least that: everything works by keyboard alone, in a logical order, with no trap; every control and meaningful image has an accessible name and every input a visible label; text contrasts at least 4.5:1 (3:1 for large text), and what identifies a control or its state, such as a focus indicator, at least 3:1; keyboard focus is visible and never fully hidden; pointer targets are at least 24 by 24 CSS pixels (dp, pt or epx natively) or spaced to match; and content reflows at 320 CSS pixels wide and text scales to 200% without loss. Each check keeps WCAG's own exceptions, such as a link inside a sentence or a data table that needs two dimensions."
     why: "WCAG is the global accessibility standard and legal benchmark for web and mobile, and Microsoft's MAUI guidance points apps at it; level AA means every level A and AA criterion. 2.2 is W3C's current Recommendation and adds six level A and AA criteria to 2.1, among them focus not obscured, target size and accessible authentication (GAP-018)."
     layer: outside
+    basis: authority
     status: proposed
     sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-11", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/routing#focus-an-element-on-navigation, retrieved 2026-11-11"]
-    enforcement: "advisory: only partly checked by a tool: for web UI, the axe tests UI-002 asks for run in the shared .NET CI (ADR-0061) and catch the part of WCAG axe can test; the rest stays with the person building and the reviewer agent, which reviews UI changes against this rule once it's accepted, and the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing). Native UI stays a manual check with each platform's tools (GAP-032)"
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "ci: for web UI, the axe tests UI-002 asks for run in the shared .NET CI (ADR-0061) and catch the part of WCAG axe can test"
+      - kind: advisory
+        in: [kit, app]
+        how: "the rest stays with the person building and the reviewer agent, which reviews UI changes against this rule once it's accepted, and the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing); native UI stays a manual check with each platform's tools (GAP-032)"
     scope: core
     paths: ["**/*.razor", "**/*.razor.cs", "**/*.cshtml", "**/*.css", "**/*.html", "**/*.xaml", "**/*.xaml.cs"]
   - id: UI-002
     statement: "Every page of a web UI (Blazor, Razor) has a Playwright test in the app's E2E.Tests project that opens it, checks it loaded, and runs axe's WCAG 2.2 level A and AA rules (the tags wcag2a, wcag2aa, wcag21a, wcag21aa and wcag22aa), failing on any violation; what a person does that axe can't see, such as where focus goes after a link or the first Tab, gets its own Playwright test."
     why: "axe finds, in a real browser, on every pull request and for free, the WCAG failures a tool can find in a rendered page: missing names and labels, text contrast, the page's language and title, autocomplete values, target size. A test must check the page loaded first, because axe passes an error page. Keyboard order, focus movement and whether names make sense need a test written for them or a person (ADR-0061, GAP-004)."
     layer: outside
+    basis: authority
     status: proposed
     sources: ["ADR-0061", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-12", "https://github.com/dequelabs/axe-core/blob/develop/doc/API.md, retrieved 2026-11-12", "https://github.com/dequelabs/axe-core-nuget/blob/develop/packages/playwright/README.md, retrieved 2026-11-12", "https://learn.microsoft.com/aspnet/core/blazor/test?view=aspnetcore-10.0, retrieved 2026-11-12"]
-    enforcement: "advisory: the shared .NET CI installs Playwright's browser and runs every E2E test an app writes (dotnet-ci.reusable.yml, tools/Install-PlaywrightBrowser.ps1, ADR-0061), and the kit's web UI fixture proves the pattern in the kit's own CI, where tools/tests/WebUiFixture.Tests.ps1 holds its axe call to the tags named here; no check finds a page without its test, so the reviewer agent checks that, once the rule is accepted"
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the shared .NET CI installs Playwright's browser and runs every E2E test an app writes (dotnet-ci.reusable.yml, tools/Install-PlaywrightBrowser.ps1, ADR-0061), and the kit's web UI fixture proves the pattern in the kit's own CI, where tools/tests/WebUiFixture.Tests.ps1 holds its axe call to the tags named here"
+      - kind: advisory
+        in: [kit, app]
+        how: "no check finds a page without its test, so the reviewer agent checks that, once the rule is accepted"
     scope: core
     paths: ["**/*.razor", "**/*.cshtml", "**/*E2E.Tests/**"]
 ---

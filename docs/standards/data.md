@@ -5,54 +5,81 @@ rules:
     statement: "Every app that stores data picks its database with docs/database-guide.md, answering in order where the data lives, what shape it has, then any preference; the plan names the database, its price label (Free, Free tier or Paid) and why, and a paid option is listed beside the free default, never dropped."
     why: "The database is the hardest part of an app to change later, and the cheapest one that fits is the one to start with; asking the same questions in the same order makes the choice repeatable and cheap to review (owner, 2026-11-10; GAP-008)."
     layer: owner
+    basis: preference
     status: proposed
     sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/data-store-decision-tree, retrieved 2026-11-11"]
-    enforcement: "advisory: the plan-checklist skill's Data heading asks for the choice and its price label, and the reviewer checks the plan names them"
+    enforcement:
+      - kind: advisory
+        in: [app]
+        how: "the plan-checklist skill's Data heading asks for the choice and its price label, and the reviewer checks the plan names them"
     scope: core
     paths: ["**/*Infrastructure*/**", "**/Directory.Packages.props"]
   - id: DAT-002
     statement: "A relational database is reached through EF Core, and its schema changes only through EF Core code-first migrations kept in the repo; EnsureCreated isn't used, since it can't change a schema that already exists and tests apply the migrations instead (DAT-005), and a test fails when the model has changes no migration covers."
     why: "Migrations are the reviewable, repeatable record of every schema change, so every environment reaches the same schema the same way; EnsureCreated can't change a schema once it exists, so an app that uses it can't evolve its data safely (owner, 2026-11-10)."
     layer: owner
+    basis: authority
     status: proposed
     sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/ensure-created, retrieved 2026-11-11"]
-    enforcement: "advisory: the reviewer checks for EnsureCreated and for a HasPendingModelChanges test, until the sample follows (GAP-025)"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "the reviewer checks for EnsureCreated and for a HasPendingModelChanges test, until the sample follows (GAP-025)"
     scope: core
     paths: ["**/*Infrastructure*/**", "**/Migrations/**", "**/Program.cs"]
   - id: DAT-003
     statement: "Every migration of a database that more than one version of the app can reach (a server database, not one on the user's device) keeps working with the version still running: a schema change is split into expand (add, in one release), migrate (move data and code over) and contract (drop or rename, in a later release, once no running version uses the old shape); each call in a migration's Up that drops, renames or alters something, changes data or runs raw SQL carries a '// DAT-003: <reason>' comment, directly above it or at the end of the line it starts on, saying why the running version still works."
     why: "During a deployment, and after a rollback, the old version runs against the new schema; a migration that drops or renames what it reads breaks it, and the Well-Architected Framework asks for backward-compatible changes so a release can roll back (GAP-008)."
     layer: outside
+    basis: authority
     status: proposed
     sources: ["ADR-0054", "https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/safe-deployments, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/aks/zero-downtime-migration, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/managing, retrieved 2026-11-11"]
-    enforcement: "ci: Test-SafeMigrations.ps1 in app-checks.reusable.yml fails on each call in a migration's Up to an operation in the script's $UnsafeOperations list (drops, renames, alters, data changes and raw SQL) that has no DAT-003 comment with a reason; advisory: whether the reason is true, and a tightened constraint (a new foreign key, unique or check constraint the running version's writes could break), which the reviewer checks"
+    enforcement:
+      - kind: gate
+        in: [app]
+        how: "ci: Test-SafeMigrations.ps1 in app-checks.reusable.yml fails on each call in a migration's Up to an operation in the script's $UnsafeOperations list (drops, renames, alters, data changes and raw SQL) that has no DAT-003 comment with a reason"
+      - kind: advisory
+        in: [app]
+        how: "whether the reason is true, and a tightened constraint (a new foreign key, unique or check constraint the running version's writes could break), which the reviewer checks"
     scope: core
     paths: ["**/Migrations/**"]
   - id: DAT-004
     statement: "Migrations are applied by the deployment, with a migration bundle (or an idempotent SQL script, where someone must review the SQL first), before the new version takes traffic; an app never migrates a server database at startup outside local development. A database on the user's device, which no deployment reaches, is migrated by the app at startup with Migrate."
     why: "Migrating at startup races when several instances start at once, needs the app to run with rights to change the schema, and hides a failed migration inside a failed start; Microsoft recommends bundles or scripts for production (GAP-008)."
     layer: outside
+    basis: authority
     status: proposed
     sources: ["ADR-0054", "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying, retrieved 2026-11-11"]
-    enforcement: "advisory: nothing deploys an app yet (GAP-015), so the production workflow will apply the bundle once it exists; until then the reviewer checks Program.cs for Migrate against a server database outside development"
+    enforcement:
+      - kind: advisory
+        in: [app]
+        how: "nothing deploys an app yet (GAP-015), so the production workflow will apply the bundle once it exists; until then the reviewer checks Program.cs for Migrate against a server database outside development"
     scope: core
     paths: ["**/Program.cs", ".github/workflows/**"]
   - id: DAT-005
     statement: "Integration and functional tests run against the production database engine, in a container (Testcontainers) or its official emulator (the Azure Cosmos DB emulator), with the app's migrations applied; never the EF Core in-memory provider, and never SQLite standing in for another engine."
     why: "A fake behaves differently from the real engine (case sensitivity, translations, transactions, raw SQL), so tests pass and production fails; Microsoft recommends testing against the production database system and discourages the in-memory provider. Microsoft allows SQLite as a fake when a repository layer isn't an option; the kit rules it out as well, because it differs from the engine it replaces in the same ways (GAP-008)."
     layer: outside
+    basis: authority
     status: proposed
     sources: ["ADR-0054", "https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/testing/testing-with-the-database, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux, retrieved 2026-11-11"]
-    enforcement: "advisory: the reviewer checks the test projects' database setup, until the sample proves it (GAP-025)"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "the reviewer checks the test projects' database setup, until the sample proves it (GAP-025)"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: DAT-006
     statement: "A cloud database starts on its free offer where the guide names one, with the setting that keeps it inside the free amount (Azure SQL Database: the free limit with AutoPause, which stops billing; Azure Cosmos DB: the free tier with a total throughput limit of 1000 RU/s, which caps throughput but not storage past 25 GB), plus a Cost Management budget alert, the only signal for what a setting can't stop; turning a guard off or moving to a paid tier is the owner's call."
     why: "A free offer that silently starts billing is the most common surprise cost; the guard is a setting chosen when the resource is created, and a budget only alerts, it doesn't stop spending (owner, 2026-11-10; SEC-003)."
     layer: owner
+    basis: preference
     status: proposed
     sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/free-tier, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/limit-total-account-throughput, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets, retrieved 2026-11-11"]
-    enforcement: "advisory: the guard is a setting in infrastructure code, which apps don't have yet (GAP-016), so its check waits (GAP-024); creating a cloud resource is the owner's call in any case (SEC-003)"
+    enforcement:
+      - kind: advisory
+        in: [app]
+        how: "the guard is a setting in infrastructure code, which apps don't have yet (GAP-016), so its check waits (GAP-024); creating a cloud resource is the owner's call in any case (SEC-003)"
     scope: core
     paths: ["**/*.bicep", "**/infra/**"]
 ---

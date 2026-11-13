@@ -5,8 +5,10 @@
 
 .DESCRIPTION
     Reads the YAML front matter of every docs/standards/*.md file. Each rule needs id, statement, layer,
-    status, sources and enforcement. Each source is "owner, YYYY-MM-DD", "ADR-NNNN" (an existing file in
-    docs/adr) or "<URL>, retrieved YYYY-MM-DD". Enforcement "advisory" needs a reason. Ids are unique.
+    basis, status, sources and enforcement. Each source is "owner, YYYY-MM-DD", "ADR-NNNN" (an existing file
+    in docs/adr) or "<URL>, retrieved YYYY-MM-DD". Basis 'authority' needs a URL source and 'preference' an
+    owner or ADR source. Enforcement is a list of parts, each with kind (gate or advisory), in (kit, app or
+    both) and how (ADR-0063). Ids are unique.
     Exit code: 0 when every rule is traceable, otherwise 1.
 
 .EXAMPLE
@@ -26,10 +28,62 @@ $ErrorActionPreference = 'Stop'
 Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 
-$script:RequiredFields = 'id', 'statement', 'layer', 'status', 'sources', 'enforcement'
+$script:RequiredFields = 'id', 'statement', 'layer', 'basis', 'status', 'sources', 'enforcement'
 $script:AllowedValues = [ordered]@{
     layer  = 'floor', 'owner', 'outside'
+    basis  = 'authority', 'preference'
     status = 'proposed', 'accepted', 'retired'
+}
+# ADR-0063: each enforcement part is a gate (a tool fails the change) or advisory (a person or the reviewer agent
+# checks it), and says where it applies: in the kit, in apps, or both.
+$script:PartKinds = 'gate', 'advisory'
+$script:PartPlaces = 'kit', 'app'
+
+# The problems with a rule's enforcement: it must be a list of parts, each with a known kind, at least one known
+# place, and a non-empty 'how' (for an advisory part, the reason no tool checks it).
+function Get-EnforcementProblem {
+    param([Parameter(Mandatory)] [AllowNull()] [object] $Enforcement)
+
+    if ($Enforcement -is [string] -or $Enforcement -isnot [System.Collections.IEnumerable]) {
+        return "enforcement must be a list of parts, each with kind, in and how (ADR-0063)"
+    }
+    foreach ($part in @($Enforcement)) {
+        if ($part -isnot [System.Collections.IDictionary]) {
+            "enforcement part '$part' must have kind, in and how"
+            continue
+        }
+        if (-not $part.Contains('kind') -or -not (Test-Present $part['kind'])) {
+            "an enforcement part has no kind"
+        }
+        elseif ("$($part['kind'])" -notin $script:PartKinds) {
+            "enforcement part kind '$($part['kind'])' must be one of: $($script:PartKinds -join ', ')"
+        }
+        $places = if ($part.Contains('in')) { @($part['in'] | Where-Object { Test-Present $_ }) } else { @() }
+        if (-not $places) {
+            "an enforcement part has no 'in' (kit, app or both)"
+        }
+        foreach ($place in $places) {
+            if ("$place" -notin $script:PartPlaces) {
+                "enforcement part in '$place' must be one of: $($script:PartPlaces -join ', ')"
+            }
+        }
+        if (-not $part.Contains('how') -or "$($part['how'])" -notmatch '\S') {
+            "an enforcement part has no 'how'"
+        }
+    }
+}
+
+# ADR-0063: an authority's rule cites the authority by URL; a preference cites the owner or the ADR he accepted.
+function Get-BasisProblem {
+    param([string] $Basis, [object[]] $Sources)
+
+    $sources = @($Sources | ForEach-Object { "$_" })
+    if ($Basis -eq 'authority' -and -not ($sources -match '^https?://')) {
+        return "basis 'authority' needs a URL source for the authority"
+    }
+    if ($Basis -eq 'preference' -and -not ($sources -match '^(owner, |ADR-\d{4}$)')) {
+        return "basis 'preference' needs an 'owner, YYYY-MM-DD' or ADR source"
+    }
 }
 
 function New-Problem {
@@ -75,8 +129,20 @@ function Get-RuleSourceProblem {
                     New-Problem -File $file.Name -RuleId $ruleId -Message "$field '$($rule[$field])' must be one of: $($script:AllowedValues[$field] -join ', ')"
                 }
             }
-            if ($rule.Contains('enforcement') -and "$($rule['enforcement'])" -match '^advisory\b' -and "$($rule['enforcement'])" -notmatch '^advisory:\s*\S') {
-                New-Problem -File $file.Name -RuleId $ruleId -Message "advisory enforcement needs a reason: 'advisory: <reason>'"
+            if ($rule.Contains('enforcement') -and (Test-Present $rule['enforcement'])) {
+                foreach ($message in @(Get-EnforcementProblem -Enforcement $rule['enforcement'])) {
+                    New-Problem -File $file.Name -RuleId $ruleId -Message $message
+                }
+            }
+            # Only sources that are valid count toward the basis; a rule with none already has a problem above.
+            $validSources = @(@($(if ($rule.Contains('sources')) { $rule['sources'] })) | Where-Object {
+                    (Test-Present $_) -and -not (Get-SourceProblem -Source "$_" -AdrPath $AdrPath)
+                })
+            if ($rule.Contains('basis') -and $validSources -and "$($rule['basis'])" -in $script:AllowedValues['basis']) {
+                $message = Get-BasisProblem -Basis "$($rule['basis'])" -Sources $validSources
+                if ($message) {
+                    New-Problem -File $file.Name -RuleId $ruleId -Message $message
+                }
             }
             if ($rule.Contains('sources')) {
                 foreach ($source in @($rule['sources'])) {

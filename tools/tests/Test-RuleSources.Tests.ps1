@@ -87,11 +87,11 @@ Describe 'Test-RuleSources.ps1' {
 
     Context 'sources' {
         It 'accepts the source <Source>' -ForEach @(
-            @{ Source = 'owner, 2026-10-26' }
-            @{ Source = 'ADR-0007' }
-            @{ Source = 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01' }
+            @{ Source = 'owner, 2026-10-26'; Basis = 'preference' }
+            @{ Source = 'ADR-0007'; Basis = 'preference' }
+            @{ Source = 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01'; Basis = 'authority' }
         ) {
-            New-StandardsFile -Rules @(New-Rule -Override @{ sources = @($Source) })
+            New-StandardsFile -Rules @(New-Rule -Override @{ sources = @($Source); basis = $Basis })
 
             Get-Problem | Should -BeNullOrEmpty
         }

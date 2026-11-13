@@ -274,7 +274,7 @@ Each area in the front matter above has:
 
 ## The score
 
-`tools/Test-Scorecard.ps1 -Update` writes this table from the rules. A rule counts as **advisory** when its `enforcement` starts with `advisory`: only the agents' instructions and the reviewer stand behind it. Any other start (build, ci, ruleset, check, restore, settings) counts as **checked by a tool**, even when the text adds that part of the rule is advisory, so that number is an upper bound. Proposed rules aren't in force yet, so they're counted apart. A rule can serve more than one area, so the rows add up to more than the overall line, which counts each rule once.
+`tools/Test-Scorecard.ps1 -Update` writes this table from the rules. A rule counts as **advisory** when every part of its `enforcement` is advisory: only the agents' instructions and the reviewer stand behind it. A rule with any gate part counts as **checked by a tool**, even when another part is advisory or the gate runs only in the kit, so that number is an upper bound (ADR-0063). Proposed rules aren't in force yet, so they're counted apart. A rule can serve more than one area, so the rows add up to more than the overall line, which counts each rule once.
 
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
@@ -283,7 +283,7 @@ Each area in the front matter above has:
 | Craft | 10 | 5 | 5 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 8 | 7 | 1 | 0 | 0 |
-| Tests | 7 | 4 | 3 | 3 | 2 |
+| Tests | 7 | 5 | 2 | 3 | 2 |
 | Security | 7 | 5 | 2 | 4 | 0 |
 | Reliability | 3 | 2 | 1 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
@@ -295,7 +295,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 26 proposed; 14 open gaps.
+**Overall:** 68 rules in force, 43 checked by a tool and 25 advisory; 26 proposed; 14 open gaps.
 
 Open gaps:
 

@@ -5,81 +5,135 @@ rules:
     statement: "Write the test first: commit it failing on an assertion (red), then commit the change that makes the full suite pass (green), then refactor on green."
     why: "The owner is \"a true believer in TDD\"; a test seen failing for the right reason proves it tests something."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-10-26", "ADR-0018"]
-    enforcement: "ci: kit-checks.reusable.yml runs tools/Test-RedGreenOrder.ps1, which checks the order of commits marked red or green; a change committed with no marker, and a red that crashed instead of failing an assertion, still pass, so test-first itself is advisory"
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: kit-checks.reusable.yml runs tools/Test-RedGreenOrder.ps1, which checks the order of commits marked red or green"
+      - kind: gate
+        in: [app]
+        how: "ci: app-checks.reusable.yml runs tools/Test-RedGreenOrder.ps1 the same way"
+      - kind: advisory
+        in: [kit, app]
+        how: "a change committed with no marker, and a red that crashed instead of failing an assertion, still pass, so test-first itself is advisory"
     scope: core
     paths: ["**"]
   - id: TST-002
     statement: "Every plan includes a test list; turn one item at a time into a failing test, never the whole list up front."
     why: "Canon TDD: converting the whole list first locks in early design choices that later tests show were wrong."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["ADR-0018"]
-    enforcement: "advisory: the start-work and plan-checklist skills require a test list and the reviewer agent checks for it; no tool can judge a plan"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "the start-work and plan-checklist skills require a test list and the reviewer agent checks for it; no tool can judge a plan"
     scope: core
     paths: ["**"]
   - id: TST-003
     statement: "Each part of an app gets the test kinds in the brief's test matrix (unit, integration, functional, UI, architecture, contract, mutation), in one test project per production project plus the shared IntegrationTests, FunctionalTests, E2E.Tests and Architecture.Tests projects."
     why: "The owner wants complete coverage of all test types, to the extent that is best practice."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-10-25", "owner, 2026-10-26"]
-    enforcement: "ci: the sample's unit, integration, functional, contract and architecture test projects, and the web UI fixture's E2E tests (fixtures/WebUi), run in dotnet-ci.reusable.yml, which installs Playwright's browser first for any project that uses it (ADR-0061); mutation testing runs nightly in mutation.reusable.yml (ADR-0039); advisory for the rest: UI tests apply only to apps with a UI, and a production project without its own test project (the sample's Contracts, Infrastructure, Api) is covered by the shared IntegrationTests and FunctionalTests"
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's unit, integration, functional, contract and architecture test projects, and the web UI fixture's E2E tests (fixtures/WebUi), run in dotnet-ci.reusable.yml, which installs Playwright's browser first for any project that uses it (ADR-0061); mutation testing runs nightly in mutation.reusable.yml (ADR-0039)"
+      - kind: advisory
+        in: [kit, app]
+        how: "the rest: UI tests apply only to apps with a UI, and a production project without its own test project (the sample's Contracts, Infrastructure, Api) is covered by the shared IntegrationTests and FunctionalTests"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
     statement: "Coverage gates: 100% line coverage for pure domain assemblies, 95% for application assemblies, 90% overall; mutation score 85% (nightly)."
     why: "Thresholds approved in one project's plan, then ratified as kit defaults."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039"]
-    enforcement: "ci: tools/Test-CoverageGate.ps1 in dotnet-ci.reusable.yml fails a build below the line-coverage minimums, leaving out test and benchmarks projects (tools/tests/Test-CoverageGate.Tests.ps1, ADR-0062); mutation.reusable.yml runs Stryker.NET nightly and fails below a mutation score of 85% (ADR-0039, tools/tests/MutationCi.Tests.ps1); it isn't a required check, so a low score shows as a failed nightly run, not a blocked pull request"
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "ci: tools/Test-CoverageGate.ps1 in dotnet-ci.reusable.yml fails a build below the line-coverage minimums, leaving out test and benchmarks projects (tools/tests/Test-CoverageGate.Tests.ps1, ADR-0062)"
+      - kind: advisory
+        in: [kit, app]
+        how: "mutation.reusable.yml runs Stryker.NET nightly and fails below a mutation score of 85% (ADR-0039, tools/tests/MutationCi.Tests.ps1); it isn't a required check, so a low score shows as a failed nightly run, not a blocked pull request"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
     statement: "Use the kit test toolset (xUnit v3, Moq, FluentAssertions 8, Bogus, bUnit, Playwright, Testcontainers, ArchUnitNET, FsCheck, Stryker, Locust and the ADR-0003 additions); a different tool needs an ADR."
     why: "One toolset the owner chose; FluentAssertions is swapped for AwesomeAssertions in commercial repos (ADR-0004), and Locust is the free default for load tests (ADR-0057)."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["ADR-0003", "ADR-0057"]
-    enforcement: "advisory: central package management keeps versions in one reviewed file, and tools/tests/KitIntake.Tests.ps1 fails when a tool this rule or ADR-0003 names is missing from templates/app-intake.json; no check stops a project from adding another test package"
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "check: tools/tests/KitIntake.Tests.ps1 fails when a tool this rule or ADR-0003 names is missing from templates/app-intake.json"
+      - kind: advisory
+        in: [kit, app]
+        how: "central package management keeps versions in one reviewed file, but no check stops a project from adding another test package"
     scope: core
     paths: ["Directory.Packages.props", "**/*.csproj"]
   - id: TST-006
     statement: "Every kit script and check has Pester tests, written first."
     why: "Scripts are code; the owner's test-first rule applies to them too."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-01", "ADR-0011"]
-    enforcement: "advisory: CI runs every Pester test (kit-checks.reusable.yml), but no check shows that each script has tests or that they were written first"
+    enforcement:
+      - kind: advisory
+        in: [kit]
+        how: "CI runs every Pester test (kit-checks.reusable.yml), but no check shows that each script has tests or that they were written first"
     scope: core
     paths: ["tools/**"]
   - id: TST-007
     statement: "The kit's list of test tools lives only in templates/app-intake.json: each kind of test, its tools, each tool's license and its cost label (Free, Free tier or Paid, with the price, its source and the date checked unless Free); every default is Free, or free for a non-commercial app (FluentAssertions 8, ADR-0004), and anything else that names test tools is checked against it or points to it."
     why: "One source for the tools the new-app intake offers and the standard names (CRF-003); the owner wants paid options listed with their price beside a free default."
     layer: owner
+    basis: preference
     status: proposed
     sources: ["owner, 2026-11-11", "ADR-0058"]
-    enforcement: "ci: tools/tests/KitIntake.Tests.ps1 fails when a tool TST-005 or ADR-0003 names is missing from the list, when a tool has no license or cost label, when a non-Free one has no price, source or date, or when a default is neither Free nor free for a non-commercial app"
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "check: tools/tests/KitIntake.Tests.ps1 fails when a tool TST-005 or ADR-0003 names is missing from the list, when a tool has no license or cost label, when a non-Free one has no price, source or date, or when a default is neither Free nor free for a non-commercial app"
     scope: core
     paths: ["templates/app-intake.json", "docs/standards/testing.md"]
   - id: TST-008
     statement: "A check fails an app's build when a production project lacks the test projects TST-003's matrix requires for it."
     why: "TST-003 is advisory for apps: nothing notices a project without its tests until a reviewer does."
     layer: owner
+    basis: preference
     status: proposed
     sources: ["owner, 2026-11-11", "ADR-0058"]
-    enforcement: "advisory: not built yet; it waits for ARC-009, which settles which projects an app has, to be accepted (scorecard GAP-027)"
+    enforcement:
+      - kind: advisory
+        in: [app]
+        how: "not built yet; it waits for ARC-009, which settles which projects an app has, to be accepted (scorecard GAP-027)"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-009
     statement: "Each hot path gets a benchmark, and each app with an HTTP endpoint a load test, each with a budget kept beside it (benchmark-budget.json, load-budget.json) and checked by the kit's shared performance workflow; the tools are the intake's defaults for the performance and load kinds of test (TST-007)."
     why: "A budget is a requirement only when something checks it; shared runners vary, so the check runs off the required path, with exact allocation budgets and time budgets that leave room for the runner (ADR-0062)."
     layer: owner
+    basis: preference
     status: proposed
     sources: ["owner, 2026-11-11", "ADR-0057", "ADR-0062"]
-    enforcement: "ci: performance.reusable.yml runs every *.Benchmarks project and the load test the caller names, and fails over budget through tools/Test-BenchmarkBudget.ps1 and tools/Test-LoadBudget.ps1 (tools/tests/Performance.Tests.ps1 and both scripts' tests); nightly and on demand, and on every kit pull request, never a required check; advisory for which paths are hot and whether an app has its load test"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "performance.reusable.yml runs every *.Benchmarks project and the load test the caller names, and fails over budget through tools/Test-BenchmarkBudget.ps1 and tools/Test-LoadBudget.ps1 (tools/tests/Performance.Tests.ps1 and both scripts' tests), nightly and on demand, and on every kit pull request; it's never a required check, so a red run is a finding to answer, not a blocked merge (ADR-0062)"
+      - kind: advisory
+        in: [kit, app]
+        how: "which paths are hot and whether an app has its load test"
     scope: core
     paths: ["**/*.Benchmarks/**", "**/tests/load/**", "**/benchmark-budget.json", "**/load-budget.json"]
 ---

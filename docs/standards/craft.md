@@ -5,99 +5,164 @@ rules:
     statement: "Fix the root cause of every defect, never work around it; a safety net that stays (a retry, a guard for a case that shouldn't happen, a suppressed warning) is labelled as one where it lives, with the reason it's needed."
     why: "The owner: never \"a janky fix, a 'work-around' or otherwise 'settle' for a suboptimal change\"; a workaround hides the defect it leaves behind."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-08"]
-    enforcement: "advisory: no tool can tell a fix from a workaround; the plan-checklist skill asks for the root cause, and the reviewer agent checks it"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "no tool can tell a fix from a workaround; the plan-checklist skill asks for the root cause, and the reviewer agent checks it"
     scope: core
     paths: ["**"]
   - id: CRF-002
     statement: "Never ship a design known to be worse as good enough without saying so: name the better design and why it waits, and plan it in the same PR (a scorecard gap, or a follow-up PR or session)."
     why: "Settling quietly is how a known defect becomes permanent; saying so and planning it keeps the aim at the best design."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-08"]
-    enforcement: "advisory: only a person or the reviewer agent can know a better design exists; the PR template's 'For the owner' and 'Not verified' sections carry it"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "only a person or the reviewer agent can know a better design exists; the PR template's 'For the owner' and 'Not verified' sections carry it"
     scope: core
     paths: ["**"]
   - id: CRF-003
     statement: "Every piece of knowledge has one authoritative source (DRY is about knowledge, not text): any other place that states a rule, value or behavior is generated from that source, checked against it or points to it, while code that only looks alike but changes for different reasons stays apart."
     why: "A fact stated twice is eventually updated once, and the system disagrees with itself; binding together what only looks alike couples it to the wrong abstraction."
     layer: owner
+    basis: authority
     status: accepted
     sources: ["owner, 2026-11-08", "https://pragprog.com/tips/, retrieved 2026-11-10", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"]
-    enforcement: "ci: tools/Test-Duplication.ps1 runs PMD CPD in dotnet-ci.reusable.yml and fails when 100 tokens or more repeat in hand-written C#, outside a CPD-OFF region (ADR-0051); advisory, checked by the reviewer agent: each CPD-OFF region's reason, whether a repeat is knowledge or code that only looks alike, and duplication outside C# (docs, config, scripts) or in a file CPD can't read, or a copy with renamed variables or changed literals"
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "ci: tools/Test-Duplication.ps1 runs PMD CPD in dotnet-ci.reusable.yml and fails when 100 tokens or more repeat in hand-written C#, outside a CPD-OFF region (ADR-0051)"
+      - kind: advisory
+        in: [kit, app]
+        how: "checked by the reviewer agent: each CPD-OFF region's reason, whether a repeat is knowledge or code that only looks alike, and duplication outside C# (docs, config, scripts) or in a file CPD can't read, or a copy with renamed variables or changed literals"
     scope: core
     paths: ["**"]
   - id: CRF-004
     statement: "Build the simplest design that is fully correct for today's requirements (KISS, YAGNI): no speculative layer, option or abstraction and no big design up front, and never a simpler design that's less correct; how much structure an app gets is ARC-009's (proposed) to settle."
     why: "Speculative design costs now and is usually wrong later; design that grows test by test fits the requirements it meets. Simple never means cutting a corner."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-08", "ADR-0018", "https://martinfowler.com/bliki/Yagni.html, retrieved 2026-11-10", "https://martinfowler.com/articles/designDead.html, retrieved 2026-11-10"]
-    enforcement: "advisory: no tool can judge what a requirement needs; the plan-checklist skill asks, and the reviewer agent checks"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "no tool can judge what a requirement needs; the plan-checklist skill asks, and the reviewer agent checks"
     scope: core
     paths: ["**"]
   - id: CRF-005
     statement: "Classes follow SOLID: one reason to change (single responsibility), extended without being edited (open-closed), usable wherever their base type is (Liskov substitution), small interfaces shaped by their clients (interface segregation), and every dependency explicit, passed in as a constructor or method parameter, and pointing toward abstractions, never from business code to infrastructure details (dependency inversion, explicit dependencies)."
     why: "Each principle keeps a change local: a class with one job, honest dependencies and substitutable subtypes can change or be replaced without breaking its callers."
     layer: owner
+    basis: authority
     status: accepted
     sources: ["owner, 2026-11-08", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10", "https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod, retrieved 2026-11-10", "https://en.wikipedia.org/wiki/SOLID, retrieved 2026-11-10", "https://en.wikipedia.org/wiki/Liskov_substitution_principle, retrieved 2026-11-10"]
-    enforcement: "advisory: CA1506 and CA1501 (CRF-008) fail the build on a class with too many collaborators or too deep a hierarchy, which often signals a broken principle, but only the reviewer agent can judge the principles themselves"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "CA1506 and CA1501 (CRF-008) fail the build on a class with too many collaborators or too deep a hierarchy, which often signals a broken principle, but only the reviewer agent can judge the principles themselves"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-006
     statement: "Keep concerns apart: business rules know nothing of UI, persistence or transport, and input is validated where it enters the system (a request, a message, a file, configuration), so the code inside can trust it."
     why: "Business logic that doesn't depend on details is easy to test and change; validating at the boundary stops bad input before it spreads (garbage in, garbage out)."
     layer: owner
+    basis: authority
     status: accepted
     sources: ["owner, 2026-11-08", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"]
-    enforcement: "ci: the sample's LayerTests and SharedLibraryTests (ArchUnitNET) fail when business code depends on infrastructure, UI or the API (ARC-001, ARC-003); validation at the boundary is advisory, checked by the reviewer agent"
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's LayerTests and SharedLibraryTests (ArchUnitNET) fail when business code depends on infrastructure, UI or the API (ARC-001, ARC-003)"
+      - kind: advisory
+        in: [app]
+        how: "until the app's Architecture.Tests carries the same tests, following the sample"
+      - kind: advisory
+        in: [kit, app]
+        how: "validation at the boundary, checked by the reviewer agent"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-007
     statement: "Namespaces depend on each other without cycles; dependencies point toward the more stable, more abstract code; and each project holds classes that change together and are reused together (high cohesion, low coupling)."
     why: "A cycle makes every namespace in it change and test as one; depending on stable abstractions keeps volatile details from rippling inward."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-08", "ADR-0043", "https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod, retrieved 2026-11-10", "https://en.wikipedia.org/wiki/Acyclic_dependencies_principle, retrieved 2026-11-10"]
-    enforcement: "ci: the sample's NamespaceCycleTests (ArchUnitNET slices) fail on a cycle among the Bookmarks namespace and the namespaces under it, in the five production assemblies that hold them; advisory in an app until its own Architecture.Tests (TST-003) carries the same test, following the sample; stable dependencies and component cohesion are advisory, checked by the reviewer agent"
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's NamespaceCycleTests (ArchUnitNET slices) fail on a cycle among the Bookmarks namespace and the namespaces under it, in the five production assemblies that hold them"
+      - kind: advisory
+        in: [app]
+        how: "until its own Architecture.Tests (TST-003) carries the same test, following the sample"
+      - kind: advisory
+        in: [kit, app]
+        how: "stable dependencies and component cohesion, checked by the reviewer agent"
     scope: core
     paths: ["**/*.cs", "**/*.csproj"]
   - id: CRF-008
     statement: "Stay within the metric limits: cyclomatic complexity 15 per method, class coupling 40 types per member and 95 per type, inheritance 5 levels deep, and a maintainability index of at least 10; raising a limit, or suppressing a metric rule for a whole project, needs an ADR. Also aim for nesting 4 levels deep at most, about 100 statements per method, about 800 lines per file, and classes whose members all work together (LCOM4 of 1)."
     why: "Complex, tightly coupled or deeply inherited code is where defects collect; a few limits a tool enforces beat many that people ignore."
     layer: owner
+    basis: authority
     status: accepted
     sources: ["owner, 2026-11-08", "ADR-0043", "https://learn.microsoft.com/en-us/visualstudio/code-quality/code-metrics-cyclomatic-complexity, retrieved 2026-11-10", "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1506, retrieved 2026-11-10"]
-    enforcement: "build: .globalconfig turns on CA1501, CA1502, CA1505, CA1506 and CA1509 at warning, and CodeMetricsConfig.txt sets the limits, so a breach or a malformed limit fails the build (tools/tests/BuildConfig.Tests.ps1, which also checks this statement's numbers against the file); nesting, statements per method, file length and LCOM4 are aims, checked by the reviewer agent; CRF-011 (proposed, ADR-0050) states them as limits, which a CI check enforces"
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: .globalconfig turns on CA1501, CA1502, CA1505, CA1506 and CA1509 at warning, and CodeMetricsConfig.txt sets the limits, so a breach or a malformed limit fails the build (tools/tests/BuildConfig.Tests.ps1, which also checks this statement's numbers against the file)"
+      - kind: advisory
+        in: [kit, app]
+        how: "nesting, statements per method, file length and LCOM4 are aims, checked by the reviewer agent; CRF-011 (proposed, ADR-0050) states them as limits, which a CI check enforces"
     scope: core
     paths: ["**/*.cs", ".globalconfig", "CodeMetricsConfig.txt"]
   - id: CRF-009
     statement: "Avoid the STUPID anti-patterns (Singletons and other mutable global state, tight coupling, untestable code, premature optimization, names that don't say what a thing is, duplication), and design each part to be tested in isolation and each module separable enough to be deployed on its own later (ARC-001: one deployable app, with modules that can become services)."
     why: "Each of these makes code hard to change or to test; designing for testability and deployability keeps it honest."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-08", "ADR-0008", "https://williamdurand.fr/2013/07/30/from-stupid-to-solid-code/, retrieved 2026-11-10", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"]
-    enforcement: "advisory: the coverage and mutation gates (TST-004) expose untestable code, CA1506 tight coupling, and the naming rules (CA17xx) some names, but no tool judges the design as a whole; the reviewer agent checks"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "the coverage and mutation gates (TST-004) expose untestable code, CA1506 tight coupling, and the naming rules (CA17xx) some names, but no tool judges the design as a whole; the reviewer agent checks"
     scope: core
     paths: ["**"]
   - id: CRF-010
     statement: "Use every library, tool and service as its authors document for the version in use, through its public API and documented extension points; never reach into non-public members or rely on undocumented behavior; lifting a ban in BannedSymbols.txt, even for one member, needs an ADR."
     why: "Internals and undocumented behavior change without notice in any release; the documented surface is what the authors promise to keep working."
     layer: owner
+    basis: authority
     status: accepted
-    sources: ["owner, 2026-11-08", "ADR-0043", "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines, retrieved 2026-11-11"]
-    enforcement: "build: Microsoft.CodeAnalysis.BannedApiAnalyzers rejects the APIs in BannedSymbols.txt (BindingFlags.NonPublic, UnsafeAccessor, and the routes found so far that reach non-public members without it) with RS0030 in every project (tools/tests/BuildConfig.Tests.ps1); relying on undocumented behavior is advisory, checked by the reviewer agent"
+    sources: ["owner, 2026-11-08", "ADR-0043", "https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices, retrieved 2026-11-12"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: Microsoft.CodeAnalysis.BannedApiAnalyzers rejects the APIs in BannedSymbols.txt (BindingFlags.NonPublic, UnsafeAccessor, and the routes found so far that reach non-public members without it) with RS0030 in every project (tools/tests/BuildConfig.Tests.ps1)"
+      - kind: advisory
+        in: [kit, app]
+        how: "relying on undocumented behavior, checked by the reviewer agent"
     scope: core
     paths: ["**"]
   - id: CRF-011
     statement: "Keep nesting to 4 levels deep at most, 100 statements per member, 800 lines per file, and classes whose methods all share state (LCOM4 of 1); a member, type or file that needs more carries the comment // CRF-011 exception: <reason>, where it lives."
     why: "CRF-008 aims for these numbers; a tool that enforces them keeps them from drifting, and an exception that carries its reason keeps a rare real case possible without hiding it (CRF-001)."
     layer: owner
+    basis: preference
     status: proposed
     sources: ["owner, 2026-11-11", "ADR-0050"]
-    enforcement: "ci: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml and fails on a breach outside generated code and outside a reasoned exception; tools/CodeShape/src/Kit.CodeShape/Limits.cs is the one source of the numbers, and tools/tests/Test-CodeShape.Tests.ps1 checks this statement against it"
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "ci: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml and fails on a breach outside generated code and outside a reasoned exception; tools/CodeShape/src/Kit.CodeShape/Limits.cs is the one source of the numbers, and tools/tests/Test-CodeShape.Tests.ps1 checks this statement against it"
     scope: core
     paths: ["**/*.cs"]
 ---
