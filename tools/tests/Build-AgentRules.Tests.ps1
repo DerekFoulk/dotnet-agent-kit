@@ -144,6 +144,10 @@ Describe 'Build-AgentRules.ps1' {
         It 'refuses a block that <Case>' -ForEach @(
             @{ Case = 'names a standard that doesn''t exist'; Text = "<!-- rules from docs/standards/nope.md: generated -->`n<!-- end rules -->`n"; Message = '*nope.md*' }
             @{ Case = 'is never closed'; Text = "<!-- rules from docs/standards/git.md: generated -->`n- GIT-001: x`n"; Message = '*end rules*' }
+            # Copilot's review of PR #68: a search for the closer anywhere took one quoted in a sentence, or the next
+            # block's, and regenerating deleted the hand-written text between (AGENTS.md's "Always ask" among it).
+            @{ Case = 'is never closed, before a sentence quoting the closer'; Text = "<!-- rules from docs/standards/git.md: generated -->`n- GIT-001: x`n`n## Always ask`n`nBlocks end at ``<!-- end rules -->``.`n"; Message = '*end rules*' }
+            @{ Case = 'is never closed, before another block'; Text = "<!-- rules from docs/standards/git.md: generated -->`n- GIT-001: x`n`n## Always ask`n`n<!-- rules from docs/standards/git.md: generated -->`n<!-- end rules -->`n"; Message = '*end rules*' }
         ) {
             Get-Command Update-RuleBlock -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the script fills the blocks'
             New-StandardsFile -Topic 'git' -Title 'Git' -Rules @((New-Rule -Id 'GIT-001' -Statement 'Merge.'))
