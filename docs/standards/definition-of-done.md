@@ -38,9 +38,9 @@ rules:
     status: accepted
     sources: ["ADR-0010", "owner, 2026-11-09", "owner, 2026-11-12", "ADR-0064"]
     enforcement:
-      - kind: gate
+      - kind: advisory
         in: [kit, app]
-        how: "ruleset: main protection's copilot_code_review rule requests a Copilot review on every pull request and push (in an app, templates/github/main-protection.json; tools/tests/New-KitApp.Tests.ps1), and its required conversation resolution keeps a finding from being left unanswered (DOD-005)"
+        how: "ruleset: main protection's copilot_code_review rule requests a Copilot review on every pull request and push (in an app, templates/github/main-protection.json; tools/tests/New-KitApp.Tests.ps1); it requires no approval, so nothing blocks a merge when no review arrives, and waiting for Copilot's review of the head commit is the agent's (finish-work). Answered findings are DOD-005's"
       - kind: advisory
         in: [kit, app]
         how: "ranking each finding and ending the reviews are the agent's (the finish-work and address-review skills); a review that fails, such as when the owner's AI credits run out, is reported to the owner, and the PR waits"

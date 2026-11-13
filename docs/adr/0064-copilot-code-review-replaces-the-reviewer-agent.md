@@ -48,6 +48,7 @@ Accepted (owner, 2026-11-12: "Yes, replace it").
 
 - **DOD-003:** Copilot reviews every PR and every push to it. The agent ranks each finding Blocking, Should fix or Consider, answers it (DOD-005), and the reviews end at the first Copilot review of the head commit with nothing blocking or should-fix.
 - **Rulesets:** `templates/github/main-protection.json` gains the `copilot_code_review` rule, with `review_on_push` on and drafts off, so every new app gets it. The kit's own "main protection" ruleset gets the same rule, a ruleset change made on the owner's yes.
+- **Not a gate:** the rule requests a review but requires no approval, so nothing blocks a merge when no review arrives. Waiting for Copilot's review of the head commit is the agent's rule (`finish-work`), and DOD-003's enforcement is advisory. A required status check that finds Copilot's review of the head commit would make it a gate; it waits for the owner's call, because it would also block every merge whenever Copilot can't review.
 - **Files:**
   - `docs/code-review.md` holds the checklist.
   - `Build-AgentRules.ps1` generates `.github/instructions/code-review.instructions.md` from it. That way an app, which rebuilds that folder itself, gets it too.
