@@ -29,7 +29,7 @@ The kit rule wins (AGENTS.md, "Whose rules win"). The copies are never edited, s
 | `author-component` | `dotnet-blazor` | Blazor Web App components, the kit's web UI (ADR-0008) | STY-002 (`var` in samples) |
 | `msbuild` | `dotnet` | Build files in every repo: `Directory.Build.props`, imports, incremental builds and build failures. It bundles the `dotnet-msbuild` plugin's skills as references | None known. It refuses to delete every `bin` and `obj` folder or clear shared NuGet caches without being told to, which fits SEC-003 |
 
-Their descriptions total 6,181 characters. With the kit's own skills that's 7,882 of the 8,000-character budget (ADR-0042). The count is on the safe side: it includes `filter-syntax`, whose description Claude Code doesn't list, and leaves out skill names and the owner's personal and plugin skills, which share the listing.
+Their descriptions total 6,181 characters. With the kit's own skills that's 7,913 of the 8,000-character budget (ADR-0042). The count is on the safe side: it includes `filter-syntax`, whose description Claude Code doesn't list, and leaves out skill names and the owner's personal and plugin skills, which share the listing.
 
 ## Out
 

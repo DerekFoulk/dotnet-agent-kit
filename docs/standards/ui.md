@@ -17,7 +17,7 @@ rules:
         how: "an app's axe tests run in the shared .NET CI only once the app writes them (UI-002)"
       - kind: advisory
         in: [kit, app]
-        how: "the rest stays with the person building and the reviewer agent, which reviews UI changes against this rule once it's accepted, and the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing); native UI stays a manual check with each platform's tools (GAP-032)"
+        how: "the rest stays with the person building and code review, which reviews UI changes against this rule once it's accepted, and the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing); native UI stays a manual check with each platform's tools (GAP-032)"
     scope: core
     paths: ["**/*.razor", "**/*.razor.cs", "**/*.cshtml", "**/*.css", "**/*.html", "**/*.xaml", "**/*.xaml.cs"]
   - id: UI-002
@@ -33,7 +33,7 @@ rules:
         how: "ci: the shared .NET CI installs Playwright's browser and runs every E2E test an app writes (dotnet-ci.reusable.yml, tools/Install-PlaywrightBrowser.ps1, ADR-0061), and the kit's web UI fixture proves the pattern in the kit's own CI, where tools/tests/WebUiFixture.Tests.ps1 holds its axe call to the tags named here"
       - kind: advisory
         in: [kit, app]
-        how: "no check finds a page without its test, so the reviewer agent checks that, once the rule is accepted"
+        how: "no check finds a page without its test, so code review checks that, once the rule is accepted"
     scope: core
     paths: ["**/*.razor", "**/*.cshtml", "**/*E2E.Tests/**"]
 ---
@@ -76,7 +76,7 @@ Don't rely on color alone to carry meaning (1.4.1): an error is red *and* says s
 ## How it's checked
 
 - **Web UI:** every page gets a browser test that runs axe (UI-002, ADR-0061). axe is Deque's library that finds WCAG failures in a page a real browser has rendered; Playwright drives the browser. The test opens the page, checks it loaded (axe finds nothing wrong with an error page), then runs axe's rules for WCAG 2.2 level A and AA, the tags UI-002 names. The kit's web UI fixture, [`fixtures/WebUi`](https://github.com/DerekFoulk/dotnet-agent-kit/tree/main/fixtures/WebUi), shows the pattern: [`Wcag.cs`](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/Wcag.cs) runs axe and lists each broken rule with its impact, help link and elements; [`PageTests.cs`](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/PageTests.cs) runs it on every page; [`WcagTests.cs`](https://github.com/DerekFoulk/dotnet-agent-kit/blob/main/fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/WcagTests.cs) checks that axe really finds a failure for each version and level it runs, so a passing page means something. `docs/standards/testing.md` says how the tests are set up and run.
-- **What axe checks, and what it doesn't.** With those tags, axe checks what it can read from the rendered page: names and labels on controls and images, text contrast, the page's language and title, valid `autocomplete` values, ARIA used correctly, and target size. Its rules for landmarks and heading order are tagged `best-practice`, not WCAG, so they don't run, and it has no rule for the contrast of controls and focus indicators. It can't tell whether a name makes sense, follow a keyboard path, or judge focus order. So a person and the reviewer agent still check:
+- **What axe checks, and what it doesn't.** With those tags, axe checks what it can read from the rendered page: names and labels on controls and images, text contrast, the page's language and title, valid `autocomplete` values, ARIA used correctly, and target size. Its rules for landmarks and heading order are tagged `best-practice`, not WCAG, so they don't run, and it has no rule for the contrast of controls and focus indicators. It can't tell whether a name makes sense, follow a keyboard path, or judge focus order. So a person and code review still check:
   - keyboard: every action works by keyboard, in a logical order, with no trap (write a Playwright test for each key path, as the fixture does for the first Tab);
   - focus: it's visible, never fully hidden, and moves to the new page's `h1` after navigation (the fixture's link test checks that);
   - headings and landmarks: one `h1`, headings in order, and a `main` landmark (1.3.1);

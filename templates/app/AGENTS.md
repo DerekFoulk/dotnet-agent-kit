@@ -47,10 +47,10 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 | `docs/standards/` | The kit's rules, in full (managed by the kit) |
 | `docs/runbook.md` | How to deploy, roll back, check, restore and run this app in an incident (OPS-004). A Draft until the first production deployment: fill in every `[fill in: ...]`, then set it to In use |
 | `docs/corrections-log.md` | Every owner correction and what it became |
-| `.claude/skills/`, `.claude/agents/reviewer.md` | The kit's workflow skills and independent reviewer. Some skills are curated .NET skills that the kit copies unchanged from Microsoft's dotnet/skills at a pinned commit (kit ADR-0042): where one disagrees with a kit rule, the kit rule wins |
+| `.claude/skills/`, `docs/code-review.md` | The kit's workflow skills, and what Copilot code review checks on every PR. Some skills are curated .NET skills that the kit copies unchanged from Microsoft's dotnet/skills at a pinned commit (kit ADR-0042): where one disagrees with a kit rule, the kit rule wins |
 | `.kit/` | The kit's checking scripts (`.kit/tools/`) and the manifest of kit-managed files (`.kit/manifest.json`) |
 
-**Kit ADRs:** "ADR-NNNN" inside a kit-managed file (`docs/standards/`, the skills, the reviewer, the kit sections of this file) means the kit's ADR, at https://github.com/DerekFoulk/dotnet-agent-kit/tree/{{KitCommit}}/docs/adr. This app's own ADRs are in `docs/adr/`. Likewise, a path under `tools/` or `sample/` in `docs/standards/` describes how the kit enforces a rule in its own repo; this repo's commands are the Commands table above.
+**Kit ADRs:** "ADR-NNNN" inside a kit-managed file (`docs/standards/`, the skills, `docs/code-review.md`, the kit sections of this file) means the kit's ADR, at https://github.com/DerekFoulk/dotnet-agent-kit/tree/{{KitCommit}}/docs/adr. This app's own ADRs are in `docs/adr/`. Likewise, a path under `tools/` or `sample/` in `docs/standards/` describes how the kit enforces a rule in its own repo; this repo's commands are the Commands table above.
 
 **Kit-managed files, don't edit:** every file listed in `.kit/manifest.json`, and this file between `kit:begin` and `kit:end`. With each kit release, Dependabot opens a PR that moves the kit pin, and `.github/workflows/kit-sync.yml` adds the release's other kit-managed files to it, merging the kit's changes into any edit this app made and commenting each file that needs a look (kit ADR-0044, ADR-0045). To change one for good, change the kit.
 
@@ -61,7 +61,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 - The build has zero warnings and every test passes.
 - Every check passes: the coverage gate, ADR sections, the runbook, and generated files current.
 - Docs and ADRs are updated in the same PR.
-- The `reviewer` agent has reviewed the change, and its findings are fixed or answered.
+- Copilot has reviewed the head commit, and its findings are fixed or answered.
 - The PR uses `.github/pull_request_template.md`, including the red→green evidence table. A PR whose description a bot writes gets DOD-006's comment instead.
 
 <!-- kit:end -->

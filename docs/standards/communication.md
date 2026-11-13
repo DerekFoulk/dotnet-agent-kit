@@ -76,7 +76,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "a judgment call; the reviewer agent flags deferred cheap fixes"
+        how: "a judgment call; code review flags deferred cheap fixes"
     scope: core
     paths: ["**"]
   - id: COM-007

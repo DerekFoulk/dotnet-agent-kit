@@ -62,7 +62,7 @@ rules:
         how: "ci: Test-Runbook.ps1 in app-checks.reusable.yml fails on a missing runbook, status or review date, a missing or empty section, and a placeholder left once In use"
       - kind: advisory
         in: [app]
-        how: "that the status turns In use before the first production deployment, until the production workflow (GAP-015) refuses a Draft, and whether the steps are right, which the reviewer and a practised restore check"
+        how: "that the status turns In use before the first production deployment, until the production workflow (GAP-015) refuses a Draft, and whether the steps are right, which code review and a practised restore check"
     scope: core
     paths: ["**/docs/runbook.md"]
 ---

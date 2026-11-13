@@ -17,7 +17,7 @@ rules:
         how: "until the app's Architecture.Tests carries the same test, following the sample"
       - kind: advisory
         in: [kit, app]
-        how: "the module's project set and grouping by feature, checked by the reviewer agent"
+        how: "the module's project set and grouping by feature, checked by code review"
     scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-002
@@ -59,7 +59,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "an architecture choice; the reviewer agent checks for the ADR"
+        how: "an architecture choice; code review checks for the ADR"
     scope: core
     paths: ["**"]
   - id: ARC-005
@@ -88,7 +88,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the plan-checklist skill lists the pillars and the reviewer agent checks plans; no tool can judge a plan"
+        how: "the plan-checklist skill lists the pillars and code review checks plans; no tool can judge a plan"
     scope: core
     paths: ["**"]
   - id: ARC-007
@@ -130,7 +130,7 @@ rules:
         how: "ci: dotnet-ci.reusable.yml runs tools/Test-EmptyProjects.ps1, which fails on a C# project in the solution with no source of its own (C#, Razor or .proto files) or with the class library template's empty Class1 left in it"
       - kind: advisory
         in: [kit, app]
-        how: "the number of modules and the patterns inside them: the plan-checklist skill asks, and the reviewer agent checks"
+        how: "the number of modules and the patterns inside them: the plan-checklist skill asks, and code review checks"
     scope: core
     paths: ["**"]
   - id: ARC-010
@@ -146,7 +146,7 @@ rules:
         how: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects"
       - kind: advisory
         in: [kit, app]
-        how: "that a UI project holds no logic, checked by the reviewer agent"
+        how: "that a UI project holds no logic, checked by code review"
     scope: core
     paths: ["src/**", "**/*.csproj"]
   - id: ARC-011
@@ -159,7 +159,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "an architecture choice; the reviewer agent checks for the ADR"
+        how: "an architecture choice; code review checks for the ADR"
     scope: core
     paths: ["**/*.csproj"]
 ---

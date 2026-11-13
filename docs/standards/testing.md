@@ -30,7 +30,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the start-work and plan-checklist skills require a test list and the reviewer agent checks for it; no tool can judge a plan"
+        how: "the start-work and plan-checklist skills require a test list and code review checks for it; no tool can judge a plan"
     scope: core
     paths: ["**"]
   - id: TST-003
@@ -78,7 +78,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "no check stops a project from adding another test package; central package management keeps versions in one reviewed file, where the reviewer checks for the ADR. (tools/tests/KitIntake.Tests.ps1 checks the intake list is complete, which is TST-007's gate, not this rule's)"
+        how: "no check stops a project from adding another test package; central package management keeps versions in one reviewed file, where code review checks for the ADR. (tools/tests/KitIntake.Tests.ps1 checks the intake list is complete, which is TST-007's gate, not this rule's)"
     scope: core
     paths: ["Directory.Packages.props", "**/*.csproj"]
   - id: TST-006
@@ -109,7 +109,7 @@ rules:
     paths: ["templates/app-intake.json", "docs/standards/testing.md"]
   - id: TST-008
     statement: "A check fails an app's build when a production project lacks the test projects TST-003's matrix requires for it."
-    why: "TST-003 is advisory for apps: nothing notices a project without its tests until a reviewer does."
+    why: "TST-003 is advisory for apps: nothing notices a project without its tests until code review does."
     layer: owner
     basis: preference
     status: proposed

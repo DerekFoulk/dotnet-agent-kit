@@ -72,7 +72,7 @@ rules:
         how: "build: global.json's version makes every dotnet command fail on an SDK that doesn't satisfy it; this gates the pin, not its rollForward or prerelease settings"
       - kind: advisory
         in: [kit, app]
-        how: "rollForward latestPatch and no prereleases: no check reads global.json's settings, so the reviewer does; tools/Initialize-DevMachine.ps1 reports an SDK that doesn't satisfy the pin, with the fix"
+        how: "rollForward latestPatch and no prereleases: no check reads global.json's settings, so code review does; tools/Initialize-DevMachine.ps1 reports an SDK that doesn't satisfy the pin, with the fix"
     scope: core
     paths: ["global.json"]
   - id: SUP-006
@@ -101,7 +101,7 @@ rules:
         how: "ci: dotnet-ci.reusable.yml runs tools/Test-DeprecatedPackages.ps1"
       - kind: advisory
         in: [kit, app]
-        how: "preview packages: the reviewer agent checks for the ADR"
+        how: "preview packages: code review checks for the ADR"
     scope: core
     paths: ["Directory.Packages.props"]
   - id: SUP-008

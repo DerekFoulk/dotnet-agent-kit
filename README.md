@@ -79,7 +79,7 @@ After changing a rule or a scorecard area, run `./tools/Test-Scorecard.ps1 -Upda
 | `.claude/rules/*.md` | Claude Code (and VS Code Claude sessions), loaded by path | Generated from `docs/standards` |
 | `.github/instructions/*.instructions.md` | Copilot, loaded by `applyTo` | Generated from `docs/standards` |
 | `.claude/skills/*/SKILL.md` | Claude Code, Visual Studio, VS Code | Hand; the curated .NET skills are copied unchanged from dotnet/skills by `Update-DotnetSkills.ps1` (`docs/dotnet-skills.md`) |
-| `.claude/agents/reviewer.md` | Claude Code | Hand |
+| `docs/code-review.md` | Copilot code review, through the generated `.github/instructions/code-review.instructions.md` | Hand |
 | `.claude/settings.json` | Claude Code: permissions | Hand, owner-approved |
 | `.agent-mode`, `.claude/settings.local.json` (gitignored) | Every agent; Claude Code | `Set-AgentMode.ps1` ("Working modes") |
 | `.mcp.json`, `.vscode/mcp.json` | Claude Code and Visual Studio; VS Code | Hand |
@@ -104,7 +104,7 @@ Agents work in **auto** mode unless you switch to **review** (ADR-0035):
 | Plans | The agent posts its plan and builds it | You approve each non-trivial plan first |
 | Packages | The agent adds one when the kit's sources name it, and says so in the PR | The agent asks you first |
 | CI and repo settings | The agent goes ahead, except for removing or weakening a check, changing a ruleset, branch protection or the merge settings, or turning off Dependabot alerts or security updates | The agent asks you first |
-| Merging | The agent merges its own PR once CI passes and the reviewer's findings are answered, and Dependabot's patch and minor updates of NuGet packages, .NET tools and the SDK (ADR-0041). A PR that changes the guardrails merges on your yes, given in the chat for its head commit; a major, a 0.x package or Actions bump, and a release PR are yours | You merge, or tell the agent to for that PR |
+| Merging | The agent merges its own PR once CI passes and Copilot's review findings are answered, and Dependabot's patch and minor updates of NuGet packages, .NET tools and the SDK (ADR-0041). A PR that changes the guardrails merges on your yes, given in the chat for its head commit; a major, a 0.x package or Actions bump, and a release PR are yours | You merge, or tell the agent to for that PR |
 | "Won't fix" on a review finding | The agent decides, and gives the reason | You decide |
 
 In both modes, the agent asks before:
@@ -221,7 +221,7 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 ```
 
 - The files come from a clean checkout of `-KitRef` (a temporary git worktree), never from your working tree, so an uncommitted edit can't reach an app.
-- The app gets the kit's build files, agent files, skills (except the kit-only `new-app` skill), reviewer, standards and commit hook unchanged, except that its `.claude/settings.json` leaves out the rules for kit scripts it doesn't get (such as `New-KitApp`); the checking scripts in `.kit/tools/`; the database guide, `docs/database-guide.md`; and its own `AGENTS.md`, `THIRD-PARTY-NOTICES.md`, `README.md`, `<Name>.slnx` (no projects yet), CI callers pinned to the kit commit, a Draft runbook (`docs/runbook.md`) to fill in before its first deployment, and a `.github/dependabot.yml` for its NuGet packages and the kit pin, rendered from `templates/app/`. Its agent rule files are generated during the export.
+- The app gets the kit's build files, agent files, skills (except the kit-only `new-app` skill), code-review instructions, standards and commit hook unchanged, except that its `.claude/settings.json` leaves out the rules for kit scripts it doesn't get (such as `New-KitApp`); the checking scripts in `.kit/tools/`; the database guide, `docs/database-guide.md`; and its own `AGENTS.md`, `THIRD-PARTY-NOTICES.md`, `README.md`, `<Name>.slnx` (no projects yet), CI callers pinned to the kit commit, a Draft runbook (`docs/runbook.md`) to fill in before its first deployment, and a `.github/dependabot.yml` for its NuGet packages and the kit pin, rendered from `templates/app/`. Its agent rule files are generated during the export.
 - `Directory.Packages.props` keeps the kit's build and test packages and drops the ones in the `ItemGroup` labelled `Sample app`.
 - `.kit/manifest.json` records the kit version (the release tag on the commit, or `unreleased`) and commit, and the SHA-256 of every file the kit manages, taken over the text with LF line endings so it's the same on every checkout. The kit sync uses it to know what it may replace, and `appName` to export the app again. In `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, only the block between `kit:begin` and `kit:end` is the kit's.
 - It refuses a folder that isn't empty, a name that isn't a dotted .NET name (or contains a Windows device name such as `Con`), and a ref that isn't a commit or tag, before writing anything. If it fails partway, it removes what it wrote.
@@ -254,7 +254,7 @@ It checks first, before changing anything: the app and repo names, an empty fold
 3. Makes the first commit, `chore: start from dotnet-agent-kit <version>`, with the commit hook stored as executable for Linux and macOS.
 4. Creates the repo, private for now, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
 5. Pushes `main`.
-6. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved.
+6. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved, and asks Copilot to review every PR and every push to it (ADR-0064).
 7. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
 8. Requires every GitHub Action in a workflow to be pinned to a full commit SHA (`templates/github/actions.json`, SUP-008).
 9. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, requires approval before any fork's PR runs (`templates/github/public.json`), and adds a "code scanning" ruleset that blocks a merge on a CodeQL error or a high security alert (`templates/github/code-scanning.json`, SEC-006). A private app doesn't run CodeQL, and a rule requiring it would block every merge, so it doesn't get that ruleset. Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
@@ -314,8 +314,14 @@ Applied 2026-11-09 with the owner's OK:
 |---|---|---|
 | Actions: require actions pinned to a full-length commit SHA | On | Enforces SUP-008. The shared workflows' `$/.github/actions/kit-tools` resolves to a full SHA, so it passes |
 | "main protection" ruleset: require code scanning results | CodeQL; blocks on an alert of severity error, or a security alert high or higher, on lines the pull request changes, or while CodeQL's analysis is in progress or missing | Enforces SEC-006 at merge time; CodeQL runs on every pull request |
-| "main protection" ruleset: require conversation resolution | On | Every review thread is resolved before merging; that each one was answered with evidence (DOD-005) is still the agents' and the reviewer's job |
+| "main protection" ruleset: require conversation resolution | On | Every review thread is resolved before merging; that each one was answered with evidence (DOD-005) is still the agents' job |
 | Dependabot alerts and security updates | On | A known vulnerability gets its fix PR at once, without the 7- and 14-day wait version updates have (ADR-0041); New-KitApp turns both on for every app |
+
+Applied 2026-11-12 with the owner's OK:
+
+| Setting | Value | Why |
+|---|---|---|
+| "main protection" ruleset: automatically request Copilot code review | On, with "Review new pushes"; drafts aren't reviewed | Copilot reviews every PR and every push to it (DOD-003, ADR-0064). Each review uses the owner's GitHub AI credits |
 
 ## Run the tests
 
