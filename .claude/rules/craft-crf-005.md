@@ -7,4 +7,4 @@ paths:
 # Craft
 
 - CRF-005: Classes follow SOLID: one reason to change (single responsibility), extended without being edited (open-closed), usable wherever their base type is (Liskov substitution), small interfaces shaped by their clients (interface segregation), and every dependency explicit, passed in as a constructor or method parameter, and pointing toward abstractions, never from business code to infrastructure details (dependency inversion, explicit dependencies).
-- CRF-006: Keep concerns apart: business rules know nothing of UI, persistence or transport, and input is validated where it enters the system (a request, a message, a file, configuration), so the code inside can trust it.
+- CRF-006: Keep concerns apart: business rules know nothing of UI, persistence or transport, and input is validated where it enters the system (a request, a message, a file, configuration), so the code inside can trust it; SEC-010 (proposed) says how an API validates a request.

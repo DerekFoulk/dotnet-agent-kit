@@ -15,7 +15,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: GIT-002
-    statement: "Work on short-lived branches from main (GitHub Flow) and merge through a pull request."
+    statement: "Work on short-lived branches from main (GitHub Flow); every change reaches main through a pull request, never a direct push."
     why: "The owner accepted GitHub Flow; it fits continuously delivered software."
     layer: owner
     basis: preference
@@ -28,7 +28,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: GIT-003
-    statement: "Nobody pushes directly to main or force-pushes it; agents merge a PR only as the working mode allows (in review mode, when the owner says so for that PR), never a release PR, and a change to the guardrails only on the owner's yes for that PR at its head commit."
+    statement: "Nobody force-pushes main or deletes it (GIT-002 keeps direct pushes out); agents merge a PR only as the working mode allows (in review mode, when the owner says so for that PR), never a release PR, and a change to the guardrails only on the owner's yes for that PR at its head commit."
     why: "Branch protection was approved in one project; the owner then chose auto mode by default, where the agent merges its own PRs once they're green and reviewed, and kept releases his (ADR-0035)."
     layer: owner
     basis: preference
@@ -37,7 +37,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ruleset: main protection blocks force-pushes and deletion and requires a pull request"
+        how: "ruleset: main protection blocks force-pushes and deletion"
       - kind: advisory
         in: [kit, app]
         how: "merging by mode, backed in review mode by the gh pr merge ask rule Set-AgentMode.ps1 adds to .claude/settings.local.json"

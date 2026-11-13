@@ -70,12 +70,12 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-006
-    statement: "Keep concerns apart: business rules know nothing of UI, persistence or transport, and input is validated where it enters the system (a request, a message, a file, configuration), so the code inside can trust it."
-    why: "Business logic that doesn't depend on details is easy to test and change; validating at the boundary stops bad input before it spreads (garbage in, garbage out)."
+    statement: "Keep concerns apart: business rules know nothing of UI, persistence or transport, and input is validated where it enters the system (a request, a message, a file, configuration), so the code inside can trust it; SEC-010 (proposed) says how an API validates a request."
+    why: "Business logic that doesn't depend on details is easy to test and change; validating at the boundary stops bad input before it spreads (garbage in, garbage out), and OWASP asks for it as early as possible in the data flow."
     layer: owner
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-08", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"]
+    sources: ["owner, 2026-11-08", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10", "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html, retrieved 2026-11-13"]
     enforcement:
       - kind: gate
         in: [kit]
@@ -85,7 +85,7 @@ rules:
         how: "until the app's Architecture.Tests carries the same tests, following the sample"
       - kind: advisory
         in: [kit, app]
-        how: "validation at the boundary, checked by code review"
+        how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests once it's accepted"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-007
@@ -108,8 +108,8 @@ rules:
     scope: core
     paths: ["**/*.cs", "**/*.csproj"]
   - id: CRF-008
-    statement: "Stay within the metric limits: cyclomatic complexity 15 per method, class coupling 40 types per member and 95 per type, inheritance 5 levels deep, and a maintainability index of at least 10; raising a limit, or suppressing a metric rule for a whole project, needs an ADR. Also aim for nesting 4 levels deep at most, about 100 statements per method, about 800 lines per file, and classes whose members all work together (LCOM4 of 1)."
-    why: "Complex, tightly coupled or deeply inherited code is where defects collect; a few limits a tool enforces beat many that people ignore."
+    statement: "Stay within the metric limits: cyclomatic complexity 15 per method, class coupling 40 types per member and 95 per type, inheritance 5 levels deep, and a maintainability index of at least 10; raising a limit, or suppressing a metric rule for a whole project, needs an ADR."
+    why: "Complex, tightly coupled or deeply inherited code is where defects collect; a few limits a tool enforces beat many that people ignore. NIST, as Microsoft's complexity page quotes it, accepts a limit of 15 instead of McCabe's 10 for projects with advantages such as structured programming, code walkthroughs and a comprehensive test plan, which the kit's test-first rules and gates provide. Nesting, statement and file-size limits are CRF-011's."
     layer: owner
     basis: authority
     status: accepted
@@ -118,9 +118,6 @@ rules:
       - kind: gate
         in: [kit, app]
         how: "build: .globalconfig turns on CA1501, CA1502, CA1505, CA1506 and CA1509 at warning, and CodeMetricsConfig.txt sets the limits, so a breach or a malformed limit fails the build (tools/tests/BuildConfig.Tests.ps1, which also checks this statement's numbers against the file)"
-      - kind: advisory
-        in: [kit, app]
-        how: "nesting, statements per method, file length and LCOM4 are aims, checked by code review; CRF-011 (proposed, ADR-0050) states them as limits, which a CI check enforces"
     scope: core
     paths: ["**/*.cs", ".globalconfig", "CodeMetricsConfig.txt"]
   - id: CRF-009
@@ -129,7 +126,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
-    sources: ["owner, 2026-11-08", "ADR-0008", "https://williamdurand.fr/2013/07/30/from-stupid-to-solid-code/, retrieved 2026-11-10", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"]
+    sources: ["owner, 2026-11-08", "ADR-0008", "https://williamdurand.fr/2013/07/30/from-stupid-to-solid-code/, retrieved 2026-11-10", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10", "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines, retrieved 2026-11-13"]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -154,7 +151,7 @@ rules:
     paths: ["**"]
   - id: CRF-011
     statement: "Keep nesting to 4 levels deep at most, 100 statements per member, 800 lines per file, and classes whose methods all share state (LCOM4 of 1); a member, type or file that needs more carries the comment // CRF-011 exception: <reason>, where it lives."
-    why: "CRF-008 aims for these numbers; a tool that enforces them keeps them from drifting, and an exception that carries its reason keeps a rare real case possible without hiding it (CRF-001)."
+    why: "Deep nesting, long members and files, and classes whose members don't work together are where code gets hard to read and change (CRF-008's metrics don't measure them); a tool that enforces them keeps them from drifting, and an exception that carries its reason keeps a rare real case possible without hiding it (CRF-001)."
     layer: owner
     basis: preference
     status: proposed

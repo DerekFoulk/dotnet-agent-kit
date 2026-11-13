@@ -2,7 +2,7 @@
 topic: code-style
 rules:
   - id: STY-001
-    statement: "Follow the Microsoft .editorconfig baseline at the repo root; every rule it adopts is a warning, and warnings fail the build."
+    statement: "Follow the Microsoft .editorconfig baseline at the repo root; every rule it adopts is a warning (STY-004 makes warnings fail the build)."
     why: "The owner follows Microsoft Learn guidance; when severities weren't enforced, about 185 violations were found late."
     layer: owner
     basis: authority
@@ -11,7 +11,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: EnforceCodeStyleInBuild and TreatWarningsAsErrors; tools/tests/BuildConfig.Tests.ps1"
+        how: "build: EnforceCodeStyleInBuild runs the style rules in every build, and STY-004's TreatWarningsAsErrors fails it on any of them; tools/tests/BuildConfig.Tests.ps1"
     scope: core
     paths: ["**/*.cs", ".editorconfig"]
   - id: STY-002
@@ -29,11 +29,11 @@ rules:
     paths: ["**/*.cs"]
   - id: STY-003
     statement: "Turn on every analyzer rule (AnalysisLevel latest-all, plus the root .globalconfig for the rules it leaves off); an opt-out needs an ADR."
-    why: "Analyzer rules catch real defects; all of them on is the Microsoft baseline the owner asked for."
+    why: "Analyzer rules catch real defects. Microsoft's default AnalysisLevel turns on only some of them; turning on all of them is the owner's choice of full rigor (brief §2), not Microsoft's default."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["ADR-0009", "ADR-0043", "ADR-0049"]
+    sources: ["ADR-0009", "ADR-0043", "ADR-0049", "https://learn.microsoft.com/dotnet/core/project-sdk/msbuild-props#analysislevel, retrieved 2026-11-13"]
     enforcement:
       - kind: gate
         in: [kit, app]

@@ -45,7 +45,7 @@ A script in app CI that fails when a production project lacks a test project of 
 
 ### Option 5: Propose the check now, build it once ARC-009 is accepted
 
-TST-008 (proposed) says a check enforces the matrix; scorecard GAP-027 tracks building it once ARC-009, which decides an app's projects, is accepted.
+TST-008 (proposed) says a check enforces the matrix; scorecard GAP-027 tracks building it once ARC-009, which decides an app's projects, is accepted. **Update (2026-11-13):** TST-008 is retired; the planned check is part of TST-003's enforcement (rules audit, D6).
 
 - **Trade-offs:** No check until then, so the reviewer agent carries TST-003 for the first app. The check, when built, fits the structure apps actually get.
 - **Reversibility:** Easy.
