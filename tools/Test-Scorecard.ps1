@@ -107,16 +107,16 @@ function Get-KitRule {
             $rules["$($rule['id'])"] = [pscustomobject]@{
                 Id       = "$($rule['id'])"
                 Status   = "$($rule['status'])"
-                Advisory = "$($rule['enforcement'])" -match '^advisory\b'
+                Advisory = -not @(@($rule['enforcement']) | Where-Object { $_ -is [System.Collections.IDictionary] -and "$($_['kind'])" -eq 'gate' })
             }
         }
     }
     $rules
 }
 
-# One row per area, counted from the standards, so the scores can't drift from the rules. A rule whose
-# enforcement starts with "advisory" is advisory; any other start (build, ci, ruleset, check, restore, settings)
-# counts as checked by a tool, even when the text adds that part is advisory, so it's an upper bound.
+# One row per area, counted from the standards, so the scores can't drift from the rules. A rule with any gate
+# part counts as checked by a tool, even when another part is advisory, so it's an upper bound; a rule whose
+# parts are all advisory is advisory (ADR-0063).
 # Proposed rules aren't in force, so they're counted apart. Unknown rule ids are skipped here;
 # Get-ScorecardProblem reports them.
 function Get-ScorecardRow {

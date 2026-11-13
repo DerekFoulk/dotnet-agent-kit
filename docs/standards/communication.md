@@ -5,63 +5,91 @@ rules:
     statement: "Lead every question or proposal with one recommendation and a one-line reason; list options only when the answer depends on the owner's personal preference."
     why: "Options without a recommendation left the owner to research and decide alone, three times in one project."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: conversation can't be checked by a tool; scored on every practice task (practice/)"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
     scope: core
     paths: ["**"]
   - id: COM-002
     statement: "On first use, explain any term, tool or document the owner hasn't used himself, in plain words with an example; refer to documents by path, never by a nickname."
     why: "Unexplained terms and made-up names were corrected more than five times across three projects."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: conversation can't be checked by a tool; scored on every practice task (practice/)"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
     scope: core
     paths: ["**"]
   - id: COM-003
     statement: "When the owner answers a batch of questions, restate them with his answers as a table."
     why: "It confirms each answer was understood before work depends on it."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: conversation can't be checked by a tool; scored on every practice task (practice/)"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
     scope: core
     paths: ["**"]
   - id: COM-004
     statement: "Say in one line what a command or script does before running it, and run it yourself whenever you can instead of handing it to the owner."
     why: "Commands were handed over instead of run many times in two projects; the owner asked agents to run things for him."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-10-31", "ADR-0011"]
-    enforcement: "advisory: conversation can't be checked by a tool; scored on every practice task (practice/)"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
     scope: core
     paths: ["**"]
   - id: COM-005
     statement: "Point to a button, setting or screen only after confirming it exists (current docs or a screenshot); otherwise say you're not sure, do the step yourself, or say how to check."
     why: "The owner couldn't find UI that agents described, four times across two projects."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-01"]
-    enforcement: "advisory: conversation can't be checked by a tool; scored on every practice task (practice/)"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
     scope: core
     paths: ["**"]
   - id: COM-006
     statement: "Make an improvement now when it is cheap, instead of deferring it."
     why: "The owner asks \"Can we do that now?\" when a cheap fix is postponed."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-10-26"]
-    enforcement: "advisory: a judgment call; the reviewer agent flags deferred cheap fixes"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "a judgment call; the reviewer agent flags deferred cheap fixes"
     scope: core
     paths: ["**"]
   - id: COM-007
     statement: "Ask the owner every question that needs his answer in the chat where he works, never only in a pull request or another document; never merge past an unanswered question the pull request depends on."
     why: "Questions asked only in pull request descriptions went unseen, and one pull request merged before the owner could answer them (owner, 2026-11-09)."
     layer: owner
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-09"]
-    enforcement: "advisory: conversation can't be checked by a tool; finish-work steps 4 and 5 ask in the chat and hold the merge until the question is answered"
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "conversation can't be checked by a tool; finish-work steps 4 and 5 ask in the chat and hold the merge until the question is answered"
     scope: core
     paths: ["**"]
 ---

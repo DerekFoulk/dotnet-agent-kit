@@ -136,7 +136,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS (ADR-0040). Eve
 
 | Path | What |
 |---|---|
-| `docs/standards/` | One file per topic. Rules sit in YAML front matter with `id`, `statement`, `layer`, `status`, `sources` and `enforcement` |
+| `docs/standards/` | One file per topic. Rules sit in YAML front matter with `id`, `statement`, `layer`, `basis` (authority or preference), `status`, `sources` and `enforcement` (parts, each a gate or advisory, in the kit, apps or both; ADR-0063) |
 | `docs/adr/` | Decisions. ADR numbers match the brief's decision numbers (D8 is ADR-0008) |
 | `docs/quality/scorecard.md` | What a "perfect" .NET app is, area by area; the rules that cover each area and its open gaps (ADR-0034). A new rule names its area here |
 | `docs/corrections-log.md` | Every owner correction and what it became |
