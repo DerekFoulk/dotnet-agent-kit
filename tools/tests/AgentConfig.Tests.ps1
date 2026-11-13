@@ -345,6 +345,27 @@ Describe 'Agent configuration' {
     }
 
     # ADR-0064: Copilot code review reviews every pull request, against these instructions and the generated rule files.
+    # The owner's yes for a guardrail PR is given in chat, which neither GitHub nor Copilot can see; a PR comment
+    # records it, so each guardrail merge can be checked from the PR alone (owner, 2026-11-13; Copilot's review of PR 66).
+    Context 'guardrail merges' {
+        It 'finish-work records the owner''s yes on the PR, with his words and the head commit, before merging' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
+            $step = [regex]::Match($skill, '(?s)A PR that changes any of them(.*?)(?=\r?\n- \*\*|\r?\n## )').Groups[1].Value
+
+            $step | Should -Match 'PR comment'
+            $step | Should -Match 'his words'
+            $step | Should -Match 'head commit'
+            $step | Should -Match 'before (you )?merg'
+        }
+
+        It 'AGENTS.md "Working modes" says the yes is recorded on the PR' {
+            $agents = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'AGENTS.md')
+            $modes = [regex]::Match($agents, '(?s)## Working modes(.*?)(?=\r?\n## )').Groups[1].Value
+
+            $modes | Should -Match 'record (it|his yes) on the PR'
+        }
+    }
+
     Context 'code review instructions' {
         BeforeAll {
             $script:reviewPath = Join-Path $repoRoot '.github' 'instructions' 'code-review.instructions.md'
