@@ -187,6 +187,11 @@ function Invoke-AgentRuleBuild {
         $standardsPath = Join-Path $RepoRoot 'docs' 'standards'
         $expected = @(Get-AgentRuleFile -StandardsPath $standardsPath)
         # AGENTS.md, and the kit's template for an app's AGENTS.md, keep their text; only their rule blocks are filled.
+        # Every repo has AGENTS.md, and Copilot's instructions are copied from it, so a missing one stops the build;
+        # only the kit has the template.
+        if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot 'AGENTS.md'))) {
+            throw "AGENTS.md is missing from $RepoRoot; .github/copilot-instructions.md is generated from it."
+        }
         $agentsText = $null
         foreach ($relative in 'AGENTS.md', 'templates/app/AGENTS.md') {
             $path = Join-Path $RepoRoot $relative
