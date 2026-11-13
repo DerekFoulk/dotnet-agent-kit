@@ -381,6 +381,21 @@ Describe 'Agent configuration' {
             @($requestParts | Where-Object { "$($_['kind'])" -ne 'advisory' }).Count | Should -Be 0
         }
 
+        # Copilot reviews the PR's diff, and a plan is posted in chat, so it can't check one; the start-work self-check
+        # against plan-checklist replaced the reviewer agent's plan review (ADR-0064; Copilot's review of PR 64).
+        It 'aren''t said to check the plan in <Id>' -ForEach @(
+            @{ Id = 'ARC-006'; File = 'architecture.md' }
+            @{ Id = 'TST-002'; File = 'testing.md' }
+            @{ Id = 'DAT-001'; File = 'data.md' }
+        ) {
+            $frontMatter = Read-FrontMatter -Path (Join-Path $repoRoot 'docs' 'standards' $File)
+            $rule = @($frontMatter['rules'] | Where-Object { $_['id'] -eq $Id })[0]
+            $how = @(@($rule['enforcement']) | ForEach-Object { "$($_['how'])" }) -join ' '
+
+            $how | Should -Match 'start-work'
+            $how | Should -Not -Match 'code review'
+        }
+
         It 'replace the reviewer agent' {
             Join-Path $repoRoot '.claude' 'agents' 'reviewer.md' | Should -Not -Exist
         }
