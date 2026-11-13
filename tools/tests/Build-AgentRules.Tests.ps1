@@ -214,6 +214,45 @@ Describe 'Build-AgentRules.ps1' {
             $review | Should -Exist
         }
 
+        It 'fills the rule blocks in AGENTS.md and the app template, and copies the filled AGENTS.md for Copilot' {
+            $root = New-Repo
+            $block = "<!-- rules from docs/standards/git.md: generated -->`n- GIT-001: an old copy.`n<!-- end rules -->"
+            Set-Content -Path (Join-Path $root 'AGENTS.md') -Value "# Agent instructions`n`n## Git`n`n$block`n" -NoNewline
+            New-Item -ItemType Directory -Path (Join-Path $root 'templates' 'app') | Out-Null
+            Set-Content -Path (Join-Path $root 'templates' 'app' 'AGENTS.md') -Value "# {{Name}}`n`n$block`n" -NoNewline
+
+            Invoke-AgentRuleBuild -RepoRoot $root | Should -Be 0
+
+            Get-Content -Raw (Join-Path $root 'AGENTS.md') | Should -Match '(?m)^- GIT-001: Merge\.$'
+            Get-Content -Raw (Join-Path $root 'templates' 'app' 'AGENTS.md') | Should -Match '(?m)^- GIT-001: Merge\.$'
+            Get-Content -Raw (Join-Path $root '.github' 'copilot-instructions.md') | Should -Match '(?m)^- GIT-001: Merge\.$'
+            Get-Content -Raw (Join-Path $root 'AGENTS.md') | Should -Not -Match 'an old copy'
+        }
+
+        It 'with -Check, returns 1 and names AGENTS.md when a rule block is stale, without writing' {
+            $root = New-Repo
+            $agents = Join-Path $root 'AGENTS.md'
+            Set-Content -Path $agents -Value "# Agent instructions`n`n<!-- rules from docs/standards/git.md: generated -->`n- GIT-001: Merge.`n<!-- end rules -->`n" -NoNewline
+            Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
+            $stale = (Get-Content -Raw $agents) -replace 'GIT-001: Merge\.', 'GIT-001: An edit by hand.'
+            Set-Content -Path $agents -Value $stale -NoNewline
+
+            Invoke-AgentRuleBuild -RepoRoot $root -Check | Should -Be 1
+
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match 'out of date: AGENTS\.md' }
+            Get-Content -Raw $agents | Should -Match 'An edit by hand'
+        }
+
+        It 'fails before writing anything when a rule block names a standard that doesn''t exist' {
+            $root = New-Repo
+            Set-Content -Path (Join-Path $root 'AGENTS.md') -Value "<!-- rules from docs/standards/nope.md: generated -->`n<!-- end rules -->`n" -NoNewline
+
+            Invoke-AgentRuleBuild -RepoRoot $root | Should -Be 1
+
+            Join-Path $root '.github' 'copilot-instructions.md' | Should -Not -Exist
+            Join-Path $root '.claude' 'rules' 'git.md' | Should -Not -Exist
+        }
+
         It 'with -Check, returns 0 when every generated file is current, even with CRLF line endings' {
             $root = New-Repo
             Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
