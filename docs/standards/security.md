@@ -34,8 +34,8 @@ rules:
     scope: core
     paths: ["**"]
   - id: SEC-003
-    statement: "Agents ask the owner before spending money or touching cloud resources, deleting or rewriting anything on GitHub or unmerged work, creating an app repo or making anything public, merging a release PR or publishing a release, changing a ruleset, branch protection or merge settings, turning off Dependabot alerts or security updates, removing or weakening a CI check, adding a connector, installing software, switching the working mode or merging a change to the guardrails, or doing anything else that can't be undone; in review mode, also before adding a dependency, changing CI or other repo settings, or acting outside the repo."
-    why: "These are the changes that cost money, reach outside the repo, or can't be undone; in auto mode, the owner's default, the rest goes ahead without him (ADR-0035)."
+    statement: "Agents ask the owner before spending money or touching cloud resources, deleting or rewriting anything on GitHub or unmerged work, creating an app repo or making anything public, changing a ruleset, branch protection or merge settings, turning off Dependabot alerts or security updates, removing or weakening a CI check, adding a connector, installing software, switching the working mode or merging a change to the guardrails, or doing anything else that can't be undone; in review mode, also before adding a dependency, changing CI or other repo settings, or acting outside the repo; and agents never merge a release PR or publish a release, which are the owner's."
+    why: "These are the changes that cost money, reach outside the repo, or can't be undone; in auto mode, the owner's default, the rest goes ahead without him (ADR-0035). Releases are his alone, so there's nothing to ask (owner, 2026-11-07; rules audit C1)."
     layer: owner
     basis: preference
     status: accepted
@@ -46,7 +46,7 @@ rules:
         how: "claude settings: .claude/settings.json asks in both modes before installs, New-KitApp (in the kit only: an app's copy leaves out rules for kit scripts the app doesn't get), switching with Set-AgentMode, git reset --hard, git clean, deleting or force-pushing, changing visibility, rulesets, branch protection or merge settings, deleting a repo, releases, DELETE API calls, and edits to agent config, connectors and the mode files; review mode adds asks before merging, repo-settings edits, packages and build or CI edits, in .claude/settings.local.json through Set-AgentMode.ps1"
       - kind: advisory
         in: [kit, app]
-        how: "the rest, release PRs included (ADR-0026, ADR-0035)"
+        how: "the rest (ADR-0026, ADR-0035); finish-work refuses to merge a PR on a release-please-- branch, and the settings' ask rule for releases backs the ban on publishing one"
     scope: core
     paths: ["**"]
   - id: SEC-004

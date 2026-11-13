@@ -75,7 +75,6 @@ In both modes, ask the owner first before you:
 - use anything that costs money, or touch cloud resources;
 - delete anything on GitHub, or work that isn't merged; force-push or rewrite history;
 - create a new app repo (`New-KitApp`), or make anything public;
-- merge a release PR, or publish a release;
 - change a ruleset, branch protection or the repo's merge settings, turn off Dependabot alerts or security updates, or remove or weaken a CI check;
 - add a connector (MCP server);
 - install software on the owner's machine;
@@ -83,6 +82,8 @@ In both modes, ask the owner first before you:
 - do anything else that can't be undone.
 
 Claude Code prompts for the common forms of these (`.claude/settings.json`). The rest rests on this list.
+
+Never merge a release PR or publish a release, in either mode: releases are the owner's (see "Working modes").
 
 Never read, print or store secrets. Sign-in is always the owner's step.
 
