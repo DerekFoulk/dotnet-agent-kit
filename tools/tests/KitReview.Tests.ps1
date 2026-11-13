@@ -56,6 +56,37 @@ Two issues.
 - Follows the [GitHub docs](https://docs.github.com/x) for rulesets.
 </details>
 '@
+    # A real summary from PR 64 (2026-11-13), shortened: a third verdict, no open issues, and one issue Copilot missed
+    # in an earlier review, which it lists in its own block with no thread.
+    $script:missedBody = @'
+<!-- ccr-overview-v2 -->
+
+### 🔵 Needs a closer look
+
+The enforcement docs still assign plan review to Copilot.
+
+**No open issues** 🎉
+
+<details>
+<summary><strong>1 previously missed issue</strong></summary>
+
+In code that hasn't changed since last review
+
+<details>
+<summary><picture><img src="https://github.githubassets.com/static/images/icons/copilot-code-review/low-v2-light.png" alt="Low severity" width="62" height="18" align="texttop"></picture> Update enforcement docs to assign plan checks to local checklist</summary>
+
+`docs/​standards/​architecture.md:91`
+
+**Should fix**: This assigns plan review to Copilot. Same issue in `docs/standards/testing.md:33`.
+</details>
+</details>
+
+<details>
+<summary><strong>2 resolved since last review</strong></summary>
+
+- <picture><img alt="Low severity"></picture> [Restore upstream release-tag verification](https://github.com/o/r/pull/64#discussion_r4565819871)
+</details>
+'@
 }
 
 Describe 'KitReview.psm1' {
@@ -64,6 +95,7 @@ Describe 'KitReview.psm1' {
         $script:changesBody = $changesBody
         $script:approvalBody = $approvalBody
         $script:edgeBody = $edgeBody
+        $script:missedBody = $missedBody
     }
 
     Context 'ConvertFrom-CopilotReviewBody' {
@@ -111,6 +143,10 @@ Describe 'KitReview.psm1' {
 
             $issue.Title | Should -Be 'Title'
             $issue.CommentId | Should -Be 111
+        }
+
+        It 'reads a "Needs a closer look" verdict' {
+            (ConvertFrom-CopilotReviewBody -Body $script:missedBody).Verdict | Should -Be 'Needs a closer look'
         }
 
         It 'reports an unknown verdict as Unknown rather than guessing' {
