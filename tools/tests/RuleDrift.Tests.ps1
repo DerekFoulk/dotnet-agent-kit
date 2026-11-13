@@ -78,6 +78,16 @@ Describe 'Rules stated in several places agree' {
         Get-Between (Read-Text $Path) $Start $End | Should -Match 'never merge\w* a release PR or publish\w* a release' -Because "$Name should ban publishing too"
     }
 
+    # SEC-003 is one sentence, so this list is checked against it rather than generated (ADR-0065).
+    It 'AGENTS.md "Also ask in review mode" and SEC-003''s review part both name <Item>' -ForEach @(
+        @{ Item = 'dependenc' }, @{ Item = '\bCI\b' }, @{ Item = 'repo settings' }, @{ Item = 'outside (this|the) repo' }
+    ) {
+        $agentsReview = Get-Between $agents 'In review mode, also ask the owner first before you:' '\r?\n\r?\n'
+        $secReview = Get-Between (Read-Text 'docs/standards/security.md') 'in review mode, also before' ';'
+        $agentsReview | Should -Match $Item -Because "AGENTS.md's review-mode list should name '$Item'"
+        $secReview | Should -Match $Item -Because "SEC-003's review part should name '$Item'"
+    }
+
     It 'every copy of the guardrail list names <Item>' -ForEach @(
         @{ Item = '"Working modes"' }, @{ Item = '"Always ask"' }, @{ Item = 'SEC-003' }, @{ Item = '\.claude/settings\.json' }
         @{ Item = 'Set-AgentMode\.ps1' }, @{ Item = 'code-review\.instructions\.md' }, @{ Item = 'ruleset' }, @{ Item = 'branch protection' }
