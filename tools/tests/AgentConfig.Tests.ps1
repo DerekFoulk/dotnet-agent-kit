@@ -363,6 +363,13 @@ Describe 'Agent configuration' {
             foreach ($rank in 'Blocking', 'Should fix', 'Consider') { $text | Should -Match "\*\*$rank\*\*" }
         }
 
+        # In a public repo a pin by SHA can resolve to a fork's commit, so a full SHA alone isn't enough (ADR-0031).
+        It 'require a kit release tag to point to a changed kit pin' {
+            $text = if (Test-Path -LiteralPath $script:reviewPath) { Get-Content -Raw -LiteralPath $script:reviewPath } else { '' }
+            $text | Should -Match 'release tag'
+            $text | Should -Match ([regex]::Escape('gh api repos/DerekFoulk/dotnet-agent-kit/commits/<tag> --jq .sha'))
+        }
+
         It 'replace the reviewer agent' {
             Join-Path $repoRoot '.claude' 'agents' 'reviewer.md' | Should -Not -Exist
         }
