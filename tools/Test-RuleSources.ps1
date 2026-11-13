@@ -44,7 +44,9 @@ $script:PartPlaces = 'kit', 'app'
 function Get-EnforcementProblem {
     param([Parameter(Mandatory)] [AllowNull()] [object] $Enforcement)
 
-    if ($Enforcement -is [string] -or $Enforcement -isnot [System.Collections.IEnumerable]) {
+    # A dictionary is enumerable too, so a single part written without its list must be caught first.
+    if ($Enforcement -is [string] -or $Enforcement -is [System.Collections.IDictionary] -or
+        $Enforcement -isnot [System.Collections.IEnumerable]) {
         return "enforcement must be a list of parts, each with kind, in and how (ADR-0063)"
     }
     foreach ($part in @($Enforcement)) {
@@ -58,9 +60,13 @@ function Get-EnforcementProblem {
         elseif ("$($part['kind'])" -notin $script:PartKinds) {
             "enforcement part kind '$($part['kind'])' must be one of: $($script:PartKinds -join ', ')"
         }
-        $places = if ($part.Contains('in')) { @($part['in'] | Where-Object { Test-Present $_ }) } else { @() }
-        if (-not $places) {
-            "an enforcement part has no 'in' (kit, app or both)"
+        $places = @()
+        if ($part.Contains('in') -and $part['in'] -is [string]) {
+            "enforcement part in '$($part['in'])' must be a list, such as [kit] or [kit, app]"
+        }
+        else {
+            if ($part.Contains('in')) { $places = @($part['in'] | Where-Object { Test-Present $_ }) }
+            if (-not $places) { "an enforcement part has no 'in' (kit, app or both)" }
         }
         foreach ($place in $places) {
             if ("$place" -notin $script:PartPlaces) {
