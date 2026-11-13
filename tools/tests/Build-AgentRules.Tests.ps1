@@ -127,6 +127,15 @@ Describe 'Build-AgentRules.ps1' {
             $filled | Should -BeExactly "## Git`n`n$script:open`n- GIT-001: Merge with a merge commit.`n- GIT-003: Never force-push.`n<!-- end rules -->`n`nHand-written note.`n"
         }
 
+        # AGENTS.md's "Generated files" note quotes the marker in a sentence; only a marker that starts a line opens a block.
+        It 'leaves the marker alone where text quotes it mid-line' {
+            Get-Command Update-RuleBlock -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the script fills the blocks'
+            $text = "The blocks between ``<!-- rules from docs/standards/... -->`` and ``<!-- end rules -->`` are generated.`n"
+
+            { $script:quoted = Update-RuleBlock -Text $text -StandardsPath $script:standards } | Should -Not -Throw
+            $script:quoted | Should -BeExactly $text
+        }
+
         It 'leaves text with no block as it is' {
             Get-Command Update-RuleBlock -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the script fills the blocks'
             Update-RuleBlock -Text "# Agent instructions`n" -StandardsPath $script:standards | Should -BeExactly "# Agent instructions`n"
