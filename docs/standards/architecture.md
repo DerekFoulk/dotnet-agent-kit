@@ -88,7 +88,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the plan-checklist skill lists the pillars and code review checks plans; no tool can judge a plan"
+        how: "the plan-checklist skill lists the pillars, and start-work's plan review holds each plan against it before any code; no tool can judge a plan"
     scope: core
     paths: ["**"]
   - id: ARC-007

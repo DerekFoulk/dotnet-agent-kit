@@ -11,7 +11,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [app]
-        how: "the plan-checklist skill's Data heading asks for the choice and its price label, and code review checks the plan names them"
+        how: "the plan-checklist skill's Data heading asks for the choice and its price label, and start-work's plan review checks the plan names them"
     scope: core
     paths: ["**/*Infrastructure*/**", "**/Directory.Packages.props"]
   - id: DAT-002

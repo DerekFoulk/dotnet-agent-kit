@@ -30,7 +30,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the start-work and plan-checklist skills require a test list and code review checks for it; no tool can judge a plan"
+        how: "the start-work and plan-checklist skills require a test list, and start-work's plan review checks the plan has one before any code; no tool can judge a plan"
     scope: core
     paths: ["**"]
   - id: TST-003
