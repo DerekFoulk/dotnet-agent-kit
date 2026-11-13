@@ -209,6 +209,7 @@ Describe 'Test-RuleSources.ps1' {
             @{ In = 'kit'; Reason = 'a word, not a list'; Expected = "*in*list*" }
             @{ In = $null; Reason = 'no in key'; Expected = "*part*no 'in'*" }
             @{ In = @('kit', 'cloud'); Reason = 'one known place, one not'; Expected = "*in 'cloud'*kit, app*" }
+            @{ In = @(''); Reason = 'a list holding only an empty value'; Expected = "*part*no 'in'*" }
         ) {
             $part = [ordered]@{ kind = 'gate'; in = $In; how = 'ci: a check' }
             if ($null -eq $In) { $part.Remove('in') }

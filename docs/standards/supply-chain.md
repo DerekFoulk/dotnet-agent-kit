@@ -13,7 +13,7 @@ rules:
         in: [kit, app]
         how: "build: RestorePackagesWithLockFile, RestoreLockedMode when CI=true; tools/tests/BuildConfig.Tests.ps1"
       - kind: gate
-        in: [kit, app]
+        in: [app]
         how: "ci: on macOS, where a MAUI project builds a subset of its frameworks, dotnet-ci.reusable.yml restores unlocked and tools/Test-LockFileSubset.ps1 holds each lock file to the committed one (ADR-0059)"
       - kind: advisory
         in: [kit]
