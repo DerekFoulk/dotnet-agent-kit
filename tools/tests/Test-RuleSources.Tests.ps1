@@ -13,9 +13,12 @@ Describe 'Test-RuleSources.ps1' {
                 statement   = 'Pull requests merge into main with a merge commit.'
                 why         = 'Keeps each red and green commit in history.'
                 layer       = 'owner'
+                basis       = 'preference'
                 status      = 'accepted'
                 sources     = @('owner, 2026-10-26', 'ADR-0007')
-                enforcement = 'ruleset: merge-method rule (merge commit only)'
+                enforcement = @(
+                    [ordered]@{ kind = 'gate'; in = @('kit', 'app'); how = 'ruleset: merge-method rule (merge commit only)' }
+                )
                 scope       = 'core'
                 paths       = @('**')
             }
@@ -51,7 +54,7 @@ Describe 'Test-RuleSources.ps1' {
         }
 
         It 'reports a rule missing <Field>' -ForEach @(
-            @{ Field = 'id' }, @{ Field = 'statement' }, @{ Field = 'layer' },
+            @{ Field = 'id' }, @{ Field = 'statement' }, @{ Field = 'layer' }, @{ Field = 'basis' },
             @{ Field = 'status' }, @{ Field = 'sources' }, @{ Field = 'enforcement' }
         ) {
             New-StandardsFile -Rules @(New-Rule -Remove $Field)
@@ -126,27 +129,77 @@ Describe 'Test-RuleSources.ps1' {
 
         It 'reports <Field> <Value>' -ForEach @(
             @{ Field = 'layer'; Value = 'team' }
+            @{ Field = 'basis'; Value = 'taste' }
             @{ Field = 'status'; Value = 'draft' }
         ) {
             New-StandardsFile -Rules @(New-Rule -Override @{ $Field = $Value })
 
             (Get-Problem | ForEach-Object Message) | Should -BeLike "*$Field*$Value*"
         }
+    }
 
-        It 'accepts advisory enforcement with a reason' {
-            New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = 'advisory: no tool can check this' })
+    # ADR-0063: basis says where a rule's substance comes from. An authority's rule cites the authority by URL;
+    # the owner's preference cites him or the ADR he accepted.
+    Context 'basis' {
+        It 'accepts an authority rule that cites a URL' {
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; sources = @('https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01')
+                })
 
             Get-Problem | Should -BeNullOrEmpty
         }
 
-        It 'reports advisory enforcement with no reason (<Enforcement>)' -ForEach @(
-            @{ Enforcement = 'advisory' }
-            @{ Enforcement = 'advisory:' }
-            @{ Enforcement = 'advisory:   ' }
-        ) {
-            New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = $Enforcement })
+        It 'reports an authority rule that cites no URL' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ basis = 'authority'; sources = @('owner, 2026-10-26', 'ADR-0007') })
 
-            (Get-Problem | ForEach-Object Message) | Should -BeLike '*advisory*reason*'
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*authority*URL*'
+        }
+
+        It 'reports a preference that cites neither the owner nor an ADR' {
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    sources = @('https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01')
+                })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*preference*owner*ADR*'
+        }
+    }
+
+    # ADR-0063: enforcement is a list of parts, each a gate (a tool fails the change) or advisory (a person or the
+    # reviewer agent checks it), in the kit, in apps or both.
+    Context 'enforcement parts' {
+        It 'accepts a gate and an advisory part with a reason' {
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    enforcement = @(
+                        [ordered]@{ kind = 'gate'; in = @('kit'); how = 'ci: the sample''s tests' }
+                        [ordered]@{ kind = 'advisory'; in = @('app'); how = 'until the app copies the sample''s tests' }
+                    )
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports enforcement written as one string' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = 'ci: a check' })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*enforcement*list of parts*'
+        }
+
+        It 'reports a part whose <Field> is <Value>' -ForEach @(
+            @{ Field = 'kind'; Value = 'maybe'; Expected = '*kind*maybe*gate, advisory*' }
+            @{ Field = 'kind'; Value = $null; Expected = '*part*kind*' }
+            @{ Field = 'in'; Value = @('cloud'); Expected = '*in*cloud*kit, app*' }
+            @{ Field = 'in'; Value = @(); Expected = '*part*in*' }
+            @{ Field = 'how'; Value = '  '; Expected = '*part*how*' }
+        ) {
+            $part = [ordered]@{ kind = 'gate'; in = @('kit'); how = 'ci: a check' }
+            if ($null -eq $Value) { $part.Remove($Field) } else { $part[$Field] = $Value }
+            New-StandardsFile -Rules @(New-Rule -Override @{ enforcement = @($part) })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].RuleId | Should -Be 'GIT-001'
+            $problems[0].Message | Should -BeLike $Expected
         }
 
         It 'reports a rule id used twice, across files' {

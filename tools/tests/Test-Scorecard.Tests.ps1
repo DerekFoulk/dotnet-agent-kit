@@ -11,10 +11,12 @@ Describe 'Test-Scorecard.ps1' {
         if (Test-Path -LiteralPath $script) { . $script }
 
         function New-Rule {
-            param([string] $Id, [string] $Status = 'accepted', [string] $Enforcement = 'ci: a check')
+            # One enforcement part per kind (ADR-0063).
+            param([string] $Id, [string] $Status = 'accepted', [string[]] $Kinds = @('gate'))
             [ordered]@{
-                id = $Id; statement = "Rule $Id."; layer = 'owner'; status = $Status
-                sources = @('owner, 2026-11-07'); enforcement = $Enforcement
+                id = $Id; statement = "Rule $Id."; layer = 'owner'; basis = 'preference'; status = $Status
+                sources = @('owner, 2026-11-07')
+                enforcement = @($Kinds | ForEach-Object { [ordered]@{ kind = $_; in = @('kit', 'app'); how = "a $_ part" } })
             }
         }
 
@@ -299,13 +301,12 @@ Describe 'Test-Scorecard.ps1' {
     }
 
     It 'counts each area''s rules from the standards: in force, checked by a tool, advisory, proposed, open gaps' {
-        # Only the start of 'enforcement' decides: "advisory: ..." is advisory; "build:", "ci:", "ruleset:" and the
-        # rest are checked by a tool, even when they add that some part is advisory.
+        # A rule with any gate part is checked by a tool, even when another part is advisory (ADR-0063).
         $paths = New-Fixture -Rules @(
-            (New-Rule -Id 'STY-001' -Enforcement 'ci: a check'),
-            (New-Rule -Id 'STY-002' -Enforcement 'advisory: no tool can judge it'),
-            (New-Rule -Id 'STY-003' -Enforcement 'claude settings: asks first; the rest is advisory'),
-            (New-Rule -Id 'STY-004' -Status 'proposed' -Enforcement 'ci: not yet')
+            (New-Rule -Id 'STY-001' -Kinds 'gate'),
+            (New-Rule -Id 'STY-002' -Kinds 'advisory'),
+            (New-Rule -Id 'STY-003' -Kinds 'advisory', 'gate'),
+            (New-Rule -Id 'STY-004' -Status 'proposed' -Kinds 'gate')
         ) -Areas @(New-Area -Override @{
                 rules = @('STY-001', 'STY-002', 'STY-003', 'STY-004')
                 gaps  = @([ordered]@{ id = 'GAP-001'; gap = 'Open.'; status = 'planned' }, [ordered]@{ id = 'GAP-002'; gap = 'Done.'; status = 'closed' })
@@ -323,11 +324,10 @@ Describe 'Test-Scorecard.ps1' {
         $rows[0].OpenGaps | Should -Be 1
     }
 
-    It 'counts "Advisory:" as advisory in any case, but not a word that only starts with it' {
-        # Review 1 of the scorecard PR: case and the word boundary weren't pinned by any test.
+    It 'counts a rule whose parts are all advisory as advisory, whatever their text says' {
         $paths = New-Fixture -Rules @(
-            (New-Rule -Id 'STY-001' -Enforcement 'Advisory: capitalized'),
-            (New-Rule -Id 'STY-002' -Enforcement 'advisoryboard: a made-up tool name')
+            (New-Rule -Id 'STY-001' -Kinds 'advisory', 'advisory'),
+            (New-Rule -Id 'STY-002' -Kinds 'gate', 'gate')
         ) -Areas @(New-Area -Override @{ rules = @('STY-001', 'STY-002') })
 
         $row = @(Get-ScorecardRow -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards)[0]
@@ -346,7 +346,7 @@ Describe 'Test-Scorecard.ps1' {
 
         It 'is reported as out of date until -Update rewrites it, which keeps the rest of the file' {
             Get-Command Update-ScorecardTable -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because '-Update writes the table'
-            $paths = New-Fixture -Rules @((New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002' -Enforcement 'advisory: judgment')) -Areas @(
+            $paths = New-Fixture -Rules @((New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002' -Kinds 'advisory')) -Areas @(
                 New-Area -Override @{ rules = @('STY-001', 'STY-002') }) -Body "`n# Quality scorecard`n`nBefore.`n`n$start`nold table`n$end`n`nAfter.`n"
             $frontMatter = (Get-Content -Raw -LiteralPath $paths.Scorecard) -replace '(?s)^(---.*?---).*$', '$1'
 
@@ -362,7 +362,7 @@ Describe 'Test-Scorecard.ps1' {
         }
 
         It 'shows a row per area and a summary over every rule, each rule counted once' {
-            $paths = New-Fixture -Rules @((New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002' -Enforcement 'advisory: judgment'),
+            $paths = New-Fixture -Rules @((New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002' -Kinds 'advisory'),
                 (New-Rule -Id 'STY-003' -Status 'proposed')) -Areas @(
                 (New-Area -Override @{ rules = @('STY-001', 'STY-002', 'STY-003') }),
                 (New-Area -Override @{ id = 'tests'; name = 'Tests'; rules = @('STY-001'); gaps = @([ordered]@{ id = 'GAP-001'; gap = 'Mutation.'; status = 'proposed' }) })
