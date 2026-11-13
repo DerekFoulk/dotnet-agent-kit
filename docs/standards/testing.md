@@ -39,7 +39,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
-    sources: ["owner, 2026-10-25", "owner, 2026-10-26"]
+    sources: ["owner, 2026-10-25", "owner, 2026-10-26", "owner, 2026-11-11", "ADR-0058"]
     enforcement:
       - kind: gate
         in: [kit]
@@ -49,16 +49,16 @@ rules:
         how: "the rest: UI tests apply only to apps with a UI, and a production project without its own test project (the sample's Contracts, Infrastructure, Api) is covered by the shared IntegrationTests and FunctionalTests"
       - kind: advisory
         in: [app]
-        how: "the matrix itself, until TST-008's check exists (GAP-027): the shared .NET CI runs the test projects an app has, but nothing notices one it lacks"
+        how: "the matrix itself: the shared .NET CI runs the test projects an app has, but nothing notices one it lacks. A check that fails the build when a production project lacks the test projects the matrix requires is planned (GAP-027); it waits for ARC-009, which settles which projects an app has"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
     statement: "Coverage gates: 100% line coverage for pure domain assemblies, 95% for application assemblies, 90% overall; mutation score 85% (nightly)."
-    why: "Thresholds approved in one project's plan, then ratified as kit defaults."
+    why: "Thresholds approved in one project's plan, then ratified as kit defaults. Microsoft warns that a high coverage goal can be counterproductive; the kit keeps these on purpose, as the owner's full rigor (brief §2), and the mutation score checks that the tests catch wrong code, not just run it."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039"]
+    sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-13"]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -69,12 +69,12 @@ rules:
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
-    statement: "Use the kit test toolset (xUnit v3, Moq, FluentAssertions 8, Bogus, bUnit, Playwright, Testcontainers, ArchUnitNET, FsCheck, Stryker, Locust and the ADR-0003 additions); a different tool needs an ADR."
-    why: "One toolset the owner chose; FluentAssertions is swapped for AwesomeAssertions in commercial repos (ADR-0004), and Locust is the free default for load tests (ADR-0057)."
+    statement: "Use the kit's test toolset: in the kit, the tools templates/app-intake.json lists for each test type (TST-007 keeps that list); in an app, the ones its docs/app-profile.md chose from it. A different tool needs an ADR."
+    why: "One toolset the owner chose, listed in one place; FluentAssertions is swapped for AwesomeAssertions in commercial repos (ADR-0004), and Locust is the free default for load tests (ADR-0057)."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["ADR-0003", "ADR-0057"]
+    sources: ["ADR-0003", "ADR-0057", "ADR-0058"]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -109,10 +109,10 @@ rules:
     paths: ["templates/app-intake.json", "docs/standards/testing.md"]
   - id: TST-008
     statement: "A check fails an app's build when a production project lacks the test projects TST-003's matrix requires for it."
-    why: "TST-003 is advisory for apps: nothing notices a project without its tests until code review does."
+    why: "TST-003 is advisory for apps: nothing notices a project without its tests until code review does. Retired 2026-11-13: the planned check is TST-003's enforcement, not a rule of its own (rules audit, D6)."
     layer: owner
     basis: preference
-    status: proposed
+    status: retired
     sources: ["owner, 2026-11-11", "ADR-0058"]
     enforcement:
       - kind: advisory

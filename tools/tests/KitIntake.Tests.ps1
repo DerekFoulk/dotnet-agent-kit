@@ -53,9 +53,9 @@ Describe 'the intake data' {
         }
     }
 
-    # One list of test tools (TST-007, CRF-003): the testing standard and ADR-0003 name tools, and each one they
-    # name has to be in this list, so the two can't drift apart.
-    It 'lists every kind of test TST-003 names, and every tool TST-005 and ADR-0003 name' {
+    # One list of test tools (TST-007, CRF-003): TST-005 points to this list and keeps none of its own, and each tool
+    # ADR-0003 adds has to be in it, so they can't drift apart (rules audit, D2).
+    It 'lists every kind of test TST-003 names, and every tool ADR-0003 adds; TST-005 points here' {
         Import-Module powershell-yaml
         Import-Module (Join-Path $root 'tools' 'KitFrontMatter.psm1') -Force
         $rules = (Read-FrontMatter -Path (Join-Path $root 'docs' 'standards' 'testing.md'))['rules']
@@ -68,9 +68,10 @@ Describe 'the intake data' {
             @($kinds.id) | Should -Contain $kind.ToLowerInvariant() -Because "TST-003's matrix has $kind tests"
         }
 
-        $named = [regex]::Match(($rules | Where-Object id -EQ 'TST-005')['statement'], '\(([^)]+)\)').Groups[1].Value -replace '\s+and the ADR-0003 additions$', ''
-        foreach ($name in $named -split ',\s*') {
-            @($tools | Where-Object { $_['name'] -like "$name*" }) | Should -Not -BeNullOrEmpty -Because "TST-005 names $name"
+        $toolset = ($rules | Where-Object id -EQ 'TST-005')['statement']
+        $toolset | Should -Match ([regex]::Escape('templates/app-intake.json')) -Because 'TST-005 points to the one list'
+        foreach ($tool in @($tools | ForEach-Object { $_['name'] })) {
+            $toolset | Should -Not -Match "\b$([regex]::Escape($tool))\b" -Because "TST-005 keeps no copy of the list, such as $tool"
         }
 
         # ADR-0003's "Added:" line names each tool by its package, in backticks, or by its name.
@@ -277,6 +278,18 @@ Describe 'ConvertTo-KitAppProfile' {
             testTools = @{ load = @('azure-load-testing') } }
         $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers $answers
         $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name 'Contoso.Orders' -KitCommit 'abc1234'
+    }
+
+    # An app doesn't get templates/app-intake.json (Export-KitApp leaves it out), so TST-005, which its agents read,
+    # points it to the tools its profile chose (Copilot's review of PR 65).
+    It 'lists the app''s test tools under the heading TST-005 points an app to' {
+        Import-Module powershell-yaml
+        Import-Module (Join-Path $root 'tools' 'KitFrontMatter.psm1') -Force
+        $rules = (Read-FrontMatter -Path (Join-Path $root 'docs' 'standards' 'testing.md'))['rules']
+        $toolset = ($rules | Where-Object id -EQ 'TST-005')['statement']
+
+        $toolset | Should -Match ([regex]::Escape('docs/app-profile.md'))
+        $profileText | Should -Match '(?m)^## Test tools$'
     }
 
     It 'names the app and the kit commit it was chosen from' {

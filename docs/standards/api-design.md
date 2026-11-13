@@ -48,7 +48,7 @@ rules:
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/Contract/**"]
   - id: API-004
     statement: "Every HTTP endpoint that lists a collection pages it in the data store, in a deterministic order, with limit (default 25, at most 100) and offset (at most 10,000) query parameters, and answers an object with the page's items and a nextLink to the next page, null on the last page or the last one the offset cap allows."
-    why: "A list without a cap returns the whole table, which is slow and an easy denial of service; Azure's API design guidance asks for limit and offset with meaningful defaults, an upper limit, and a next-page link (GAP-011)."
+    why: "A list without a cap returns the whole table, which is slow and an easy denial of service. Azure's API design guidance asks for limit and offset with meaningful defaults (it suggests 25), an upper limit, and a next-page link; the cap of 100 and the offset ceiling of 10,000 are the kit's (ADR-0038, GAP-011)."
     layer: outside
     basis: authority
     status: accepted

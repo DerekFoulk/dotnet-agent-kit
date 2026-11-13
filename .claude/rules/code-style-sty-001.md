@@ -7,4 +7,4 @@ paths:
 
 # Code style
 
-- STY-001: Follow the Microsoft .editorconfig baseline at the repo root; every rule it adopts is a warning, and warnings fail the build.
+- STY-001: Follow the Microsoft .editorconfig baseline at the repo root; every rule it adopts is a warning (STY-004 makes warnings fail the build).

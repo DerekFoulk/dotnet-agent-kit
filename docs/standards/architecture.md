@@ -3,11 +3,11 @@ topic: architecture
 rules:
   - id: ARC-001
     statement: "Web apps use Clean Architecture in one deployable app; each distinct business area is a module with Domain, Application, Infrastructure, Presentation and Contracts projects, and Application code is grouped by feature; a project can deviate by ADR."
-    why: "Compiler-enforced boundaries keep change local, and a well-bounded module can later become its own service."
+    why: "Compiler-enforced boundaries keep change local, and a well-bounded module can later become its own service. Microsoft's reference is Clean Architecture in three projects (ApplicationCore, Infrastructure, Web); the five projects per module and grouping by feature are the kit's refinement (ADR-0008)."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["ADR-0008"]
+    sources: ["ADR-0008", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-13"]
     enforcement:
       - kind: gate
         in: [kit]
@@ -51,11 +51,11 @@ rules:
     paths: ["src/**", "sample/**"]
   - id: ARC-004
     statement: "Microservices, Blazor Hybrid for MAUI, and a non-LTS .NET target each need an ADR."
-    why: "Each is a deliberate exception to the defaults in ADR-0005 and ADR-0008."
+    why: "Each is a deliberate exception to the defaults in ADR-0005 and ADR-0008; Well-Architected warns that microservices add complexity and aren't the best option for every application."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["ADR-0005", "ADR-0008"]
+    sources: ["ADR-0005", "ADR-0008", "https://learn.microsoft.com/azure/well-architected/reliability/simplify, retrieved 2026-11-13"]
     enforcement:
       - kind: advisory
         in: [kit, app]

@@ -75,6 +75,7 @@ Option 1, built in auto mode (ADR-0035) on 2026-11-11, at the owner's request to
 - CRF-008 keeps its accepted wording, "aim for", in the meantime.
 - If he accepts, CRF-008's "aim for" sentence goes, so the numbers are stated once.
 - If he'd rather keep them advisory, the CI step reports without failing instead.
+- **Update (2026-11-13):** the rules audit (owner, 2026-11-12) dropped CRF-008's "aim for" sentence without waiting for CRF-011, so the numbers live only in CRF-011 and `Limits.cs` (CRF-003). Until CRF-011 is accepted, they're a proposed rule; the CI check runs them either way.
 
 How each limit is measured (the kit's own choices, each with tests in `tools/CodeShape/tests`):
 
@@ -114,7 +115,7 @@ How each limit is measured (the kit's own choices, each with tests in `tools/Cod
   - An app never needs them: CI builds the tool with the kit's own props. Transitive pinning would otherwise force them on an app's own Roslyn packages.
 - **An app can't yet run the check on its own machine:** the tool's source isn't in `.kit/tools`. It runs only in the app's CI (GAP-022). This waits for the kit's move to a .NET tool (v0.2.0), so it isn't solved twice.
 - **EF Core migrations:** EF Core marks the model snapshot and `.Designer.cs` files as generated, so they're skipped. A migration file itself may not be, and a very large one may need the exception comment. Not measured: the sample has no migrations.
-- GAP-019 is closed. CRF-008's enforcement points to CRF-011. `tools/CodeShape/src/Kit.CodeShape/Limits.cs` is the one source of the numbers, and `tools/tests/Test-CodeShape.Tests.ps1` fails if CRF-011's statement and `Limits.cs` disagree.
+- GAP-019 is closed. CRF-008's enforcement points to CRF-011 (update, 2026-11-13: no longer; CRF-008 leaves these numbers to CRF-011 entirely, as the Decision's update says). `tools/CodeShape/src/Kit.CodeShape/Limits.cs` is the one source of the numbers, and `tools/tests/Test-CodeShape.Tests.ps1` fails if CRF-011's statement and `Limits.cs` disagree.
 - **Update (2026-11-12):** Test-CodeShape no longer lists projects with `dotnet sln list`. It reads the solution, and picks a multi-target project's first framework, through `tools/KitSolution.psm1`, as every kit script and shared workflow does (CRF-003). That reads `.slnx` only, so the check now refuses a `.sln` and names `dotnet sln migrate`, which converts one. It read a `.sln` before only because `dotnet sln list` does; nothing in the kit passes one, and CI runs Get-UiProject, which needs a `.slnx`, on the same solution first.
 
 ## Pillars affected

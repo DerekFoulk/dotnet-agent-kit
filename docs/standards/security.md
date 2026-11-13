@@ -7,11 +7,14 @@ rules:
     layer: floor
     basis: authority
     status: accepted
-    sources: ["ADR-0024", "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html, retrieved 2026-11-12"]
+    sources: ["ADR-0024", "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html, retrieved 2026-11-12", "https://docs.github.com/en/code-security/concepts/secret-security/secret-scanning, retrieved 2026-11-13", "https://docs.github.com/en/code-security/concepts/secret-security/push-protection, retrieved 2026-11-13"]
     enforcement:
       - kind: gate
         in: [kit, app]
         how: "ci: dotnet-ci.reusable.yml scans the full git history with gitleaks on every pull request and push to main"
+      - kind: gate
+        in: [kit, app]
+        how: "github: secret scanning and push protection, on in the kit and turned on by New-KitApp in a public app (tools/tests/New-KitApp.Tests.ps1), block a push that holds a known provider's secret; non-provider patterns are off, a repo setting that is the owner's call"
     scope: core
     paths: ["**"]
   - id: SEC-002
