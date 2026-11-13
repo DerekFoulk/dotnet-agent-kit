@@ -149,6 +149,17 @@ Describe 'KitReview.psm1' {
             (ConvertFrom-CopilotReviewBody -Body $script:missedBody).Verdict | Should -Be 'Needs a closer look'
         }
 
+        It 'lists a previously missed issue, with its text and no thread, and no issue resolved since the last review' {
+            $summary = ConvertFrom-CopilotReviewBody -Body $script:missedBody
+
+            @($summary.Issues).Count | Should -Be 1
+            $summary.Issues[0].Severity | Should -Be 'Low'
+            $summary.Issues[0].Title | Should -Be 'Update enforcement docs to assign plan checks to local checklist'
+            $summary.Issues[0].CommentId | Should -BeNullOrEmpty
+            $summary.Issues[0].Body | Should -Match '\*\*Should fix\*\*: This assigns plan review to Copilot'
+            $summary.Issues[0].Body | Should -Match 'architecture\.md:91'
+        }
+
         It 'reports an unknown verdict as Unknown rather than guessing' {
             (ConvertFrom-CopilotReviewBody -Body 'Some other review text.').Verdict | Should -Be 'Unknown'
         }
@@ -381,6 +392,21 @@ Describe 'KitReview.psm1' {
                 Mock Get-SignedInLogin { 'DerekFoulk' }
                 Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'mallory'; Body = 'Looks good to me.' } }
                 Mock Get-PullRequestReview { }
+            }
+        }
+
+        It 'gives a summary issue with no thread the text Copilot wrote for it' {
+            InModuleScope KitReview {
+                Mock Get-CopilotReview {
+                    [pscustomobject]@{
+                        ReviewId = 51; Verdict = 'Needs a closer look'; OpenIssueCount = 0; Body = 'summary'
+                        Issues  = @([pscustomobject]@{ Severity = 'Low'; Title = 'D'; CommentId = $null; Link = $null; Body = '**Should fix**: missed.' })
+                    }
+                }
+
+                $finding = @(Get-OpenFinding -Repository 'o/r' -Number 5) | Where-Object { $_.Title -eq 'D' }
+
+                $finding.Body | Should -Be '**Should fix**: missed.'
             }
         }
 
