@@ -10,7 +10,9 @@
       .github/instructions/<topic>[-<rule-id>].instructions.md   Copilot, the same split with applyTo:
     Also writes .github/instructions/code-review.instructions.md from docs/code-review.md, for Copilot code
     review (ADR-0064), and .github/copilot-instructions.md as a copy of AGENTS.md, because Visual Studio reads that
-    file but doesn't document reading AGENTS.md. Proposed and retired rules aren't in force, so they're
+    file but doesn't document reading AGENTS.md. It also fills each "rules from docs/standards/<file>.md" block in
+    AGENTS.md and templates/app/AGENTS.md with that standard's rules, leaving the rest of those files alone
+    (ADR-0065). Proposed and retired rules aren't in force, so they're
     left out. Generated files carry a marker; generated files no standard produces any more are removed.
 
     -Check writes nothing and exits 1 when any generated file is missing, hand-edited or stale (S3).
@@ -136,10 +138,11 @@ function Update-RuleBlock {
 
 # Visual Studio reads .github/copilot-instructions.md but doesn't document reading AGENTS.md, so the
 # repository instructions are a generated copy of AGENTS.md: one source, no drift.
+# -Text is AGENTS.md with its rule blocks already filled, so the copy matches what the build writes.
 function Get-CopilotInstructionsFile {
-    param([Parameter(Mandatory)] [string] $AgentsPath)
+    param([string] $AgentsPath, [string] $Text)
 
-    $agents = (Get-Content -Path $AgentsPath -Raw) -replace "`r`n", "`n"
+    $agents = if ($PSBoundParameters.ContainsKey('Text')) { $Text } else { (Get-Content -Path $AgentsPath -Raw) -replace "`r`n", "`n" }
     $content = ($script:GeneratedMarker -f 'AGENTS.md') + "`n`n" + $agents.TrimEnd("`n") + "`n"
     [pscustomobject]@{ Path = '.github/copilot-instructions.md'; Content = $content }
 }
@@ -171,8 +174,18 @@ function Invoke-AgentRuleBuild {
 
     # Everything is built in memory first, so an invalid source stops the run before any write or delete.
     try {
-        $expected = @(Get-AgentRuleFile -StandardsPath (Join-Path $RepoRoot 'docs' 'standards'))
-        $expected += Get-CopilotInstructionsFile -AgentsPath (Join-Path $RepoRoot 'AGENTS.md')
+        $standardsPath = Join-Path $RepoRoot 'docs' 'standards'
+        $expected = @(Get-AgentRuleFile -StandardsPath $standardsPath)
+        # AGENTS.md, and the kit's template for an app's AGENTS.md, keep their text; only their rule blocks are filled.
+        $agentsText = $null
+        foreach ($relative in 'AGENTS.md', 'templates/app/AGENTS.md') {
+            $path = Join-Path $RepoRoot $relative
+            if (-not (Test-Path -LiteralPath $path)) { continue }
+            $filled = Update-RuleBlock -Text ((Get-Content -Path $path -Raw) -replace "`r`n", "`n") -StandardsPath $standardsPath
+            $expected += [pscustomobject]@{ Path = $relative; Content = $filled }
+            if ($relative -eq 'AGENTS.md') { $agentsText = $filled }
+        }
+        $expected += Get-CopilotInstructionsFile -Text $agentsText
         # An app made before ADR-0064 has no docs/code-review.md until the kit sync brings it.
         $codeReview = Join-Path $RepoRoot 'docs' 'code-review.md'
         if (Test-Path -LiteralPath $codeReview) { $expected += Get-CodeReviewInstructionsFile -SourcePath $codeReview }
