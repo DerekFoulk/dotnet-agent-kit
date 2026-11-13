@@ -138,9 +138,9 @@ rules:
     paths: ["**"]
   - id: CRF-010
     statement: "Use every library, tool and service as its authors document for the version in use, through its public API and documented extension points; never reach into non-public members or rely on undocumented behavior; lifting a ban in BannedSymbols.txt, even for one member, needs an ADR."
-    why: "Internals and undocumented behavior change without notice in any release; the documented surface is what the authors promise to keep working."
+    why: "Internals and undocumented behavior change without notice in any release; the documented surface is what the authors promise to keep working. Microsoft's unsafe-code guidance says relying on .NET's internals isn't supported and that non-public BCL members change even in servicing releases; it covers BCL types and still allows UnsafeAccessor for serialization, so extending the ban to every library and to UnsafeAccessor is the owner's choice (ADR-0043)."
     layer: owner
-    basis: authority
+    basis: preference
     status: accepted
     sources: ["owner, 2026-11-08", "ADR-0043", "https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices, retrieved 2026-11-12"]
     enforcement:

@@ -11,7 +11,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ruleset: main protection requires the dotnet and kit CI checks to pass before merging"
+        how: "ruleset: main protection requires the CI checks to pass before merging: in the kit, the dotnet and kit checks; in an app, the .NET CI's build and secret scan and the app checks (templates/github/main-protection.json)"
       - kind: advisory
         in: [kit, app]
         how: "updating docs and ADRs in the same PR, which no tool can judge"

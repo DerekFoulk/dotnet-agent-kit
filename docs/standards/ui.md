@@ -10,8 +10,11 @@ rules:
     sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-11", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/routing#focus-an-element-on-navigation, retrieved 2026-11-11"]
     enforcement:
       - kind: gate
-        in: [kit, app]
-        how: "ci: for web UI, the axe tests UI-002 asks for run in the shared .NET CI (ADR-0061) and catch the part of WCAG axe can test"
+        in: [kit]
+        how: "ci: the web UI fixture's axe tests run in the kit's CI (ADR-0061) and catch the part of WCAG axe can test"
+      - kind: advisory
+        in: [app]
+        how: "an app's axe tests run in the shared .NET CI only once the app writes them (UI-002)"
       - kind: advisory
         in: [kit, app]
         how: "the rest stays with the person building and the reviewer agent, which reviews UI changes against this rule once it's accepted, and the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing); native UI stays a manual check with each platform's tools (GAP-032)"

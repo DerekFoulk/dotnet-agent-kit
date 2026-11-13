@@ -65,7 +65,7 @@ Accepted (owner, 2026-11-07: approved the scorecard plan, including the CI step)
   - Docs and decisions
   - UI and accessibility
   - Process, so that the git, communication and done rules have an area too
-- **How a rule is counted:** a rule counts as "checked by a tool" when its `enforcement` starts with anything other than `advisory`. That holds even when the text adds that part of the rule is advisory, so the counts are an upper bound on what tools check.
+- **How a rule is counted:** a rule counts as "checked by a tool" when its `enforcement` starts with anything other than `advisory`. That holds even when the text adds that part of the rule is advisory, so the counts are an upper bound on what tools check. **Updated by ADR-0063 (2026-11-12):** enforcement is now a list of parts, and a rule counts as checked by a tool when any part is a gate.
 - **The first score:** 40 rules in force; 21 checked by a tool and 19 advisory; 9 proposed; 18 open gaps. The table is in `docs/quality/scorecard.md`.
 - **Areas with no rules:** Proportion and API design have none yet, only gaps.
 - **Closing a gap:** each gap is closed by its own PR. That PR adds or changes rules and marks the gap `closed`. A gap that needs a package, a CI change or cost waits for the owner's OK. This PR closes none.

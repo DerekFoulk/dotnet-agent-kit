@@ -14,7 +14,10 @@ rules:
         how: "build: RestorePackagesWithLockFile, RestoreLockedMode when CI=true; tools/tests/BuildConfig.Tests.ps1"
       - kind: gate
         in: [kit, app]
-        how: "ci: dependabot-lockfiles.yml refreshes the lock files Dependabot misses on its NuGet PRs (tools/tests/DependabotLockfiles.Tests.ps1); on macOS, where a MAUI project builds a subset of its frameworks, CI restores unlocked and tools/Test-LockFileSubset.ps1 holds each lock file to the committed one (ADR-0059)"
+        how: "ci: on macOS, where a MAUI project builds a subset of its frameworks, dotnet-ci.reusable.yml restores unlocked and tools/Test-LockFileSubset.ps1 holds each lock file to the committed one (ADR-0059)"
+      - kind: advisory
+        in: [kit]
+        how: "not a gate, a helper: dependabot-lockfiles.yml refreshes the lock files Dependabot misses on its NuGet PRs (tools/tests/DependabotLockfiles.Tests.ps1); a stale lock file still fails the locked restore above"
     scope: core
     paths: ["**/*.csproj", "**/packages.lock.json", "Directory.Build.props"]
   - id: SUP-002
@@ -66,10 +69,10 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: global.json makes every dotnet command fail on an SDK that doesn't satisfy the pin"
+        how: "build: global.json's version makes every dotnet command fail on an SDK that doesn't satisfy it; this gates the pin, not its rollForward or prerelease settings"
       - kind: advisory
         in: [kit, app]
-        how: "tools/Initialize-DevMachine.ps1 reports the mismatch with the fix before a build does"
+        how: "rollForward latestPatch and no prereleases: no check reads global.json's settings, so the reviewer does; tools/Initialize-DevMachine.ps1 reports an SDK that doesn't satisfy the pin, with the fix"
     scope: core
     paths: ["global.json"]
   - id: SUP-006

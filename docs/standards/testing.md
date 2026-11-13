@@ -47,6 +47,9 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the rest: UI tests apply only to apps with a UI, and a production project without its own test project (the sample's Contracts, Infrastructure, Api) is covered by the shared IntegrationTests and FunctionalTests"
+      - kind: advisory
+        in: [app]
+        how: "the matrix itself, until TST-008's check exists (GAP-027): the shared .NET CI runs the test projects an app has, but nothing notices one it lacks"
     scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
@@ -73,12 +76,9 @@ rules:
     status: accepted
     sources: ["ADR-0003", "ADR-0057"]
     enforcement:
-      - kind: gate
-        in: [kit]
-        how: "check: tools/tests/KitIntake.Tests.ps1 fails when a tool this rule or ADR-0003 names is missing from templates/app-intake.json"
       - kind: advisory
         in: [kit, app]
-        how: "central package management keeps versions in one reviewed file, but no check stops a project from adding another test package"
+        how: "no check stops a project from adding another test package; central package management keeps versions in one reviewed file, where the reviewer checks for the ADR. (tools/tests/KitIntake.Tests.ps1 checks the intake list is complete, which is TST-007's gate, not this rule's)"
     scope: core
     paths: ["Directory.Packages.props", "**/*.csproj"]
   - id: TST-006

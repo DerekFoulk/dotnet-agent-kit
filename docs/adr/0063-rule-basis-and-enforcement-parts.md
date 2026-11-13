@@ -48,12 +48,21 @@ Accepted as recommended (owner, 2026-11-12: "Yes, start PR 1", after agreeing th
 
 ## Consequences
 
-- `docs/standards/*.md`: every rule has `basis`, and its `enforcement` is a list of parts. The migration keeps each part's text from the old string. It adds the URL sources the audit found missing for rules whose basis is an authority (ARC-003, ARC-005, STY-001, STY-005, SUP-001, SUP-003, SUP-004, SUP-007, SEC-001), and replaces CRF-010's source, which said nothing about non-public members.
+- `docs/standards/*.md`: every rule has `basis`, and its `enforcement` is a list of parts. Most parts keep the old string's text, split up. It adds the URL sources the audit found missing for rules whose basis is an authority (ARC-003, ARC-005, STY-001, STY-005, SUP-001, SUP-003, SUP-004, SUP-007, SEC-001), and replaces CRF-010's source, which said nothing about non-public members. CRF-010 becomes a preference: Microsoft's guidance covers .NET's own internals and still allows UnsafeAccessor, so the kit's wider ban is the owner's choice.
+- Where the split changed what a rule claims, the change is deliberate and checked against the workflows:
+  - ARC-005, GIT-004, GIT-005 and TST-001 gain gate parts in apps, because `app-checks.reusable.yml` runs the same checks there.
+  - ARC-001, ARC-003, CRF-006, TST-003 and UI-001 gain advisory app parts: their gates run only on the kit's sample or fixture.
+  - SUP-001's lock-file refresh is a helper, not a gate, and runs only in the kit; its macOS lock-file check is the gate in apps too.
+  - SUP-005's gate covers the SDK pin only; its rollForward and prerelease settings are advisory, since nothing reads them.
+  - TST-005 has no gate: the intake check belongs to TST-007.
+  - DOD-001 names the checks an app's ruleset requires.
+  - The commit-msg hook is early feedback, not a gate, because a commit can skip it; CI is the gate (GIT-004).
+- Who counts as an authority: Microsoft, standards bodies (W3C, OWASP, OpenSSF, the IETF) and the vendors of the tools the kit uses. The practitioner sources in `docs/sources.md` (Beck, Fowler, Martin, Durand and others) inform rules the owner ratifies, so a rule resting on them is a preference.
+- A floor rule (layer `floor`) is never overridden, whatever its basis: a broken floor rule is always Blocking, even when its basis is a preference.
 - `tools/Test-RuleSources.ps1` requires `basis`. An authority rule needs a URL source, and a preference needs an owner or ADR source. Each enforcement part needs a known `kind`, at least one known place in `in`, and a `how`.
-- `tools/Test-Scorecard.ps1` counts a rule as checked by a tool when any part is a gate, and as advisory when every part is. TST-005 now counts as checked by a tool, for its intake check.
-- The commit-msg hook is early feedback, not a gate, because a commit can skip it; CI is the gate (GIT-004).
-- A gate that runs only in the kit (`in: [kit]`), beside an advisory part for apps, is how the 12 sample-only rules now read. Closing that gap is its own scorecard entry and PR.
-- The policy itself (authorities gated where a tool can, preferences advisory unless the owner asks for a gate, and preferences reported by the reviewer as nits) isn't checked by a tool. The reviewer checks it when a rule changes.
+- `tools/Test-Scorecard.ps1` counts a rule as checked by a tool when any part is a gate, and as advisory when every part is.
+- A gate that runs only in the kit (`in: [kit]`), beside an advisory part for apps, is how the 17 rules gated only by the sample or fixture now read. GAP-037 records closing that.
+- The policy itself isn't checked by a tool: authorities gated where a tool can, preferences advisory unless the owner asks for a gate, and a broken advisory preference ranked Consider. The `reviewer` agent's step 4 checks it whenever a rule is added or changed.
 
 ## Pillars affected
 
