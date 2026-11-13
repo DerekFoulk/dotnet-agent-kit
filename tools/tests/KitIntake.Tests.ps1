@@ -53,9 +53,9 @@ Describe 'the intake data' {
         }
     }
 
-    # One list of test tools (TST-007, CRF-003): the testing standard and ADR-0003 name tools, and each one they
-    # name has to be in this list, so the two can't drift apart.
-    It 'lists every kind of test TST-003 names, and every tool TST-005 and ADR-0003 name' {
+    # One list of test tools (TST-007, CRF-003): TST-005 points to this list and keeps none of its own, and each tool
+    # ADR-0003 adds has to be in it, so they can't drift apart (rules audit, D2).
+    It 'lists every kind of test TST-003 names, and every tool ADR-0003 adds; TST-005 points here' {
         Import-Module powershell-yaml
         Import-Module (Join-Path $root 'tools' 'KitFrontMatter.psm1') -Force
         $rules = (Read-FrontMatter -Path (Join-Path $root 'docs' 'standards' 'testing.md'))['rules']
@@ -68,9 +68,10 @@ Describe 'the intake data' {
             @($kinds.id) | Should -Contain $kind.ToLowerInvariant() -Because "TST-003's matrix has $kind tests"
         }
 
-        $named = [regex]::Match(($rules | Where-Object id -EQ 'TST-005')['statement'], '\(([^)]+)\)').Groups[1].Value -replace '\s+and the ADR-0003 additions$', ''
-        foreach ($name in $named -split ',\s*') {
-            @($tools | Where-Object { $_['name'] -like "$name*" }) | Should -Not -BeNullOrEmpty -Because "TST-005 names $name"
+        $toolset = ($rules | Where-Object id -EQ 'TST-005')['statement']
+        $toolset | Should -Match ([regex]::Escape('templates/app-intake.json')) -Because 'TST-005 points to the one list'
+        foreach ($tool in @($tools | ForEach-Object { $_['name'] })) {
+            $toolset | Should -Not -Match "\b$([regex]::Escape($tool))\b" -Because "TST-005 keeps no copy of the list, such as $tool"
         }
 
         # ADR-0003's "Added:" line names each tool by its package, in backticks, or by its name.
