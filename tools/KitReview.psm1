@@ -54,10 +54,33 @@ function ConvertFrom-CopilotReviewBody {
                 $link = $Matches[2]
                 if ($link -match '#discussion_r(\d+)$') { $commentId = [long] $Matches[1] }
             }
-            [pscustomobject]@{ Severity = $severity; Title = $title; CommentId = $commentId; Link = $link }
+            [pscustomobject]@{ Severity = $severity; Title = $title; CommentId = $commentId; Link = $link; Body = $null }
         })
 
-    [pscustomobject]@{ Verdict = $verdict; OpenIssueCount = $count; Issues = $issues }
+    [pscustomobject]@{ Verdict = $verdict; OpenIssueCount = $count; Issues = @($issues) + @(Get-MissedIssue -Body $Body) }
+}
+
+# Copilot lists an issue it missed in an earlier review in its own block, "N previously missed issue(s)", as one
+# nested <details> each: the icon and title in <summary>, the finding's text after it, and no thread. The block
+# ends at the next section heading (a <summary> with <strong>, such as "N resolved since last review").
+function Get-MissedIssue {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Body)
+
+    $start = [regex]::Match($Body, '<strong>\d+ previously missed issues?</strong>\s*</summary>')
+    if (-not $start.Success) { return }
+
+    $rest = $Body.Substring($start.Index + $start.Length)
+    foreach ($block in [regex]::Matches($rest, '(?s)<details>\s*<summary>(.*?)</summary>(.*?)</details>')) {
+        $summary = $block.Groups[1].Value
+        if ($summary -match '<strong>') { break }
+        [pscustomobject]@{
+            Severity  = if ($summary -match 'alt="(\w+) severity"') { $Matches[1] } else { $null }
+            Title     = ($summary -replace '(?s)<picture>.*?</picture>', '').Trim()
+            CommentId = $null
+            Link      = $null
+            Body      = $block.Groups[2].Value.Trim()
+        }
+    }
 }
 
 # Copilot's latest review on the pull request, with its summary read; nothing if Copilot hasn't reviewed.
@@ -141,7 +164,8 @@ function Get-ReviewThread {
 
 # Everything on the pull request still waiting for an answer, in this order:
 # - each issue in Copilot's latest summary whose thread is unresolved;
-# - each summary issue with no thread (Thread is $null), until the signed-in account resolves it for that review;
+# - each summary issue with no thread (Thread is $null), such as a previously missed one, until the signed-in
+#   account resolves it for that review;
 # - each person's latest review that requests changes or has a body (Thread is $null), likewise;
 # - each other unresolved thread, such as a person's comment or an older Copilot finding.
 # Copilot's summary can lag behind its threads, so a summary issue whose thread is resolved is left out.
@@ -181,7 +205,7 @@ function Get-OpenFinding {
             Severity = $issue.Severity
             Title    = $issue.Title
             Author   = if ($thread) { $thread.Author } else { $script:CopilotGraphQLLogin }
-            Body     = if ($thread) { $thread.Body } else { $null }
+            Body     = if ($thread) { $thread.Body } elseif ($issue.PSObject.Properties['Body']) { $issue.Body } else { $null }
             ReviewId = $review.ReviewId
             Thread   = $thread
         }

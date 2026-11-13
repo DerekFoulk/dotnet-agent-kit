@@ -17,7 +17,7 @@ $findings = Get-OpenFinding   -Repository <owner/repo> -Number <pr>
 
 `Get-OpenFinding` combines Copilot's latest summary, people's reviews and every review thread. It returns what still needs an answer, each with `Severity`, `Title`, `Author`, `Body`, `ReviewId` and `Thread`:
 - each summary issue whose thread is unresolved;
-- each summary issue with no thread (`Thread` is empty), until it's resolved for that review (step 4);
+- each summary issue with no thread (`Thread` is empty), until it's resolved for that review (step 4). This includes an issue Copilot lists as "previously missed": one it found in code an earlier review covered. Its text is in `Body`;
 - each person's latest review that requests changes or has a body, other than your own (the GitHub account gh is signed in with), likewise;
 - each other unresolved thread, such as a person's comment or an older Copilot finding.
 
