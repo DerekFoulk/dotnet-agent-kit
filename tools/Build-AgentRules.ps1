@@ -123,8 +123,15 @@ function Update-RuleBlock {
             throw "A rules block opens with '$openLine', which isn't '$open<file>.md: ... -->' on a line of its own."
         }
         $file = $Matches['file']
-        $end = $rest.IndexOf($close, $lineEnd, [StringComparison]::Ordinal)
-        if ($end -lt 0) { throw "The rules block for docs/standards/$file has no '$close' line after it." }
+        # The block ends at the first line that is the closer and nothing else. A closer quoted in a sentence, or
+        # another block's, must not end it: everything up to the closer is replaced, hand-written text included.
+        $after = $rest.Substring($lineEnd + 1)
+        $closeLine = [regex]::Match($after, '(?m)^' + [regex]::Escape($close) + '$')
+        $nextOpen = [regex]::Match($after, $openAtLineStart)
+        if (-not $closeLine.Success -or ($nextOpen.Success -and $nextOpen.Index -lt $closeLine.Index)) {
+            throw "The rules block for docs/standards/$file has no '$close' line of its own before the next block or the end of the file."
+        }
+        $end = $lineEnd + 1 + $closeLine.Index
         $path = Join-Path $StandardsPath $file
         if (-not (Test-Path -LiteralPath $path)) { throw "A rules block names docs/standards/$file, which doesn't exist." }
 
