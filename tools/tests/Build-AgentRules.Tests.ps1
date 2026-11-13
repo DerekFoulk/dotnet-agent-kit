@@ -266,6 +266,20 @@ Describe 'Build-AgentRules.ps1' {
             Join-Path $root '.claude' 'rules' 'git.md' | Should -Not -Exist
         }
 
+        # Copilot's review of PR #68: skipping a missing AGENTS.md, as the app template may be skipped, wrote a
+        # header-only copilot-instructions.md over the real one.
+        It 'fails before writing anything when the root AGENTS.md is missing' {
+            $root = New-Repo
+            Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
+            $copilot = Join-Path $root '.github' 'copilot-instructions.md'
+            $before = Get-Content -Raw $copilot
+            Remove-Item -Path (Join-Path $root 'AGENTS.md')
+
+            Invoke-AgentRuleBuild -RepoRoot $root | Should -Be 1
+
+            Get-Content -Raw $copilot | Should -BeExactly $before
+        }
+
         It 'with -Check, returns 0 when every generated file is current, even with CRLF line endings' {
             $root = New-Repo
             Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
