@@ -1099,6 +1099,31 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # The rollup is read 100 checks to a page (gh api graphql --paginate --slurp: one array holding each page), so a
+        # failure past the first page counts; and a push between pages makes the pages disagree on the head, so that read
+        # says nothing about either commit.
+        It 'reads the rollup''s pages as one: <Case>' -ForEach @(
+            @{ Case = 'a failure on the second page counts'; Second = 'head2'; Expected = 'ChecksFailed' }
+            @{ Case = 'pages that disagree on the head aren''t trusted'; Second = 'head3'; Expected = 'TimedOut' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Second = $Second; Expected = $Expected } {
+                param($Second, $Expected)
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $first = ConvertTo-RollupJson -Checks @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; runId = 1; id = 1 })
+                $second = ConvertTo-RollupJson -Head $Second -Checks @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Lint'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 1; id = 2 })
+                $script:onePage = $first
+                $script:everyPage = "[$first,$second]"
+                Mock Invoke-Gh { if ($args -contains '--paginate' -and $args -contains '--slurp') { $script:everyPage } else { $script:onePage } } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":1,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be $Expected
+            }
+        }
+
         # Copilot's sixth review of PR #73: the head commit can be on another branch too (another pull request from the same
         # commit), and the runs listed by head_sha include that branch's. A run there never replaces a run on this one.
         It 'keeps a failed workflow run when a later run of the same workflow ran on another branch' {
