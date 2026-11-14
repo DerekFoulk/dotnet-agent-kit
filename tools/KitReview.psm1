@@ -396,47 +396,62 @@ function Get-GhList {
     }
 }
 
-# The pull request's state, its head commit and every check its rollup lists, from one gh call. gh pr view exits 0
-# while checks are pending, where gh pr checks exits 8, which Invoke-Gh would treat as a failure. Each check keeps
-# the workflow run its detailsUrl names, if any, so Select-CurrentCheck can drop a replaced run's checks.
+# The pull request's state, its head commit and every check its head commit's rollup lists, from GitHub's GraphQL API,
+# whose fields say what each check is (Copilot's tenth review of PR #73): its own id (databaseId, assigned in order),
+# the app that posted it, and for GitHub Actions the workflow run it belongs to, so Select-CurrentCheck can drop a
+# replaced run's checks. gh pr view gives none of these, and gh pr checks exits 8 while checks are pending.
 function Read-PullRequestView {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
-    $view = Invoke-Gh pr view $Number --repo $Repository --json 'state,headRefOid,statusCheckRollup' | ConvertFrom-Json -AsHashtable
+    $owner, $repoName = $Repository -split '/', 2
+    $query = 'query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { state headRefOid commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100) { pageInfo { hasNextPage endCursor } nodes { __typename ... on CheckRun { databaseId name status conclusion startedAt checkSuite { app { slug } workflowRun { databaseId workflow { name } } } } ... on StatusContext { context state } } } } } } } } } }'
+    # -f sends a string; -F would turn a repository named "2048" into a number. The PR number is an Int.
+    $response = Invoke-Gh api graphql -f "query=$query" -f "owner=$owner" -f "name=$repoName" -F "number=$Number" | ConvertFrom-Json -AsHashtable
+    $pullRequest = $response['data']['repository']['pullRequest']
+    $commit = @($pullRequest['commits']['nodes'] | Where-Object { $_ })[0]
+    $rollup = if ($commit) { $commit['commit']['statusCheckRollup'] } else { $null }
     $order = 0
-    $items = foreach ($item in @($view['statusCheckRollup'] | Where-Object { $_ })) {
-        # A CheckRun (GitHub Actions) has a status and, once completed, a conclusion; a StatusContext has a state.
+    $items = foreach ($item in @($(if ($rollup) { $rollup['contexts']['nodes'] }) | Where-Object { $_ })) {
+        # A CheckRun has a status and, once completed, a conclusion; a StatusContext has a state.
         if ("$($item['__typename'])" -eq 'StatusContext') {
             $name = "$($item['context'])"
             $key = "status:$name"
             $result = switch ("$($item['state'])") { 'SUCCESS' { 'Passed' } { $_ -in 'PENDING', 'EXPECTED' } { 'Pending' } default { 'Failed' } }
+            $id = -1
+            $runId = $null
         }
         else {
             $name = "$($item['name'])"
-            $key = "run:$($item['workflowName'])/$name"
+            $suite = $item['checkSuite']
+            $app = if ($suite -and $suite['app']) { "$($suite['app']['slug'])" } else { '' }
+            $run = if ($suite) { $suite['workflowRun'] } else { $null }
+            $workflow = if ($run -and $run['workflow']) { "$($run['workflow']['name'])" } else { '' }
+            # Two apps can post checks of the same name; they're two checks.
+            $key = "check:$app/$workflow/$name"
             $result = if ("$($item['status'])" -ne 'COMPLETED') { 'Pending' }
             elseif ("$($item['conclusion'])" -eq 'SKIPPED') { 'Skipped' }
             elseif ("$($item['conclusion'])" -in 'SUCCESS', 'NEUTRAL') { 'Passed' }
             else { 'Failed' }
+            $id = if ($null -ne $item['databaseId']) { [long] $item['databaseId'] } else { -1 }
+            $runId = if ($run -and $null -ne $run['databaseId']) { [long] $run['databaseId'] } else { $null }
         }
-        $started = if ($item['startedAt']) { [datetimeoffset] "$($item['startedAt'])" } else { [datetimeoffset]::MinValue }
-        $runId = if ("$($item['detailsUrl'])" -match '/actions/runs/(?<id>\d+)(/|$)') { [long] $Matches['id'] } else { $null }
-        $jobId = if ("$($item['detailsUrl'])" -match '/job/(?<id>\d+)(/|$)') { [long] $Matches['id'] } else { -1 }
-        [pscustomobject]@{ Key = $key; JobId = $jobId; Started = $started; Order = $order++; RunId = $runId; Name = $name; Result = $result }
+        # A check that hasn't started is the latest attempt of its name, whatever the others' start times.
+        $started = if ($item['startedAt']) { [datetimeoffset] "$($item['startedAt'])" } else { [datetimeoffset]::MaxValue }
+        [pscustomobject]@{ Key = $key; Id = $id; Started = $started; Order = $order++; RunId = $runId; Name = $name; Result = $result }
     }
-    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Items = @($items) }
+    [pscustomobject]@{ State = "$($pullRequest['state'])"; HeadSha = "$($pullRequest['headRefOid'])"; Items = @($items) }
 }
 
 # The checks that decide CI: none from a workflow run that a later run replaced, and of a check listed more than once,
 # only its latest attempt (a workflow that runs again on the same commit keeps its earlier run in the rollup). GitHub
-# numbers jobs in order, so the higher job id is the later attempt, even when the start times tie or one hasn't
-# started; a check with no job id falls back to its start time (Copilot's sixth review of PR #73). Check names are
-# case-sensitive, so Build and build are two checks (Copilot's ninth review).
+# numbers checks in order, so the higher id is the later attempt, even when the start times tie or one hasn't started;
+# a status context has no id and falls back to its start time (Copilot's sixth and tenth reviews of PR #73). Check
+# names are case-sensitive, so Build and build are two checks (Copilot's ninth review).
 function Select-CurrentCheck {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Items, [long[]] $ReplacedRuns = @())
 
     @($Items | Where-Object { $null -eq $_.RunId -or $_.RunId -notin $ReplacedRuns } | Group-Object Key -CaseSensitive | ForEach-Object {
-            $_.Group | Sort-Object JobId, Started, Order | Select-Object -Last 1 | Select-Object Name, Result
+            $_.Group | Sort-Object Id, Started, Order | Select-Object -Last 1 | Select-Object Name, Result
         })
 }
 

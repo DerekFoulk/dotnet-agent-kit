@@ -758,6 +758,29 @@ Describe 'KitReview.psm1' {
     # The kit's own watcher (owner, 2026-11-14): an agent waits for Copilot's review of the head commit and for CI
     # with this, in any tool, instead of a host's monitor that reports only failures or a script of its own.
     Context 'Wait-PullRequest' {
+        BeforeAll {
+            # The GraphQL response the rollup read gets, built from each check's fields (shape checked against PR #73,
+            # 2026-11-14): a CheckRun's app, workflow run and own id sit in checkSuite and databaseId. Global so the
+            # InModuleScope blocks below see it; removed in AfterAll.
+            function global:ConvertTo-RollupJson {
+                param([object[]] $Checks = @(), [string] $State = 'OPEN', [string] $Head = 'head2')
+                $nodes = @($Checks | ForEach-Object {
+                        if ($_['__typename'] -eq 'StatusContext') { @{ __typename = 'StatusContext'; context = $_['context']; state = $_['state'] } }
+                        else {
+                            $run = if ($_.ContainsKey('workflowName') -or $_.ContainsKey('runId')) { @{ databaseId = $_['runId']; workflow = @{ name = $_['workflowName'] } } } else { $null }
+                            @{
+                                __typename = 'CheckRun'; databaseId = $_['id']; name = $_['name']; status = $_['status']; conclusion = $_['conclusion']; startedAt = $_['startedAt']
+                                checkSuite = @{ app = @{ slug = $_['app'] ?? 'github-actions' }; workflowRun = $run }
+                            }
+                        }
+                    })
+                $rollup = @{ contexts = @{ pageInfo = @{ hasNextPage = $false; endCursor = $null }; nodes = $nodes } }
+                @{ data = @{ repository = @{ pullRequest = @{ state = $State; headRefOid = $Head; commits = @{ nodes = @(@{ commit = @{ statusCheckRollup = $rollup } }) } } } } } |
+                    ConvertTo-Json -Depth 15 -Compress
+            }
+        }
+        AfterAll { Remove-Item -Path Function:\ConvertTo-RollupJson -ErrorAction SilentlyContinue }
+
         It 'returns Reviewed once Copilot has reviewed the head commit, not an older one' {
             Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the module waits for a review'
             InModuleScope KitReview {
@@ -880,8 +903,8 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        # The shapes gh pr view --json statusCheckRollup returns: a CheckRun has status and conclusion, a
-        # StatusContext has context and state (seen on PR #72, 2026-11-14).
+        # A rollup holds CheckRuns, with status and conclusion, and StatusContexts, with context and state (seen on PR #72,
+        # 2026-11-14).
         It 'keeps waiting while there are no checks yet or one is running, then returns <Outcome> naming <What>' -ForEach @(
             # A pass waits one more poll to be confirmed (Copilot's ninth review of PR #73); a failure is final at once.
             @{ Outcome = 'ChecksPassed'; What = 'every check'; Conclusion = 'SUCCESS'; Expected = 'CI finished at head2: every check passed (2 passed, 1 skipped)'; Sleeps = 3 }
@@ -889,7 +912,7 @@ Describe 'KitReview.psm1' {
         ) {
             InModuleScope KitReview -Parameters @{ Conclusion = $Conclusion; Outcome = $Outcome; Expected = $Expected; Sleeps = $Sleeps } {
                 param($Conclusion, $Outcome, $Expected, $Sleeps)
-                function New-View([object[]] $Checks) { @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress }
+                function New-View([object[]] $Checks) { ConvertTo-RollupJson -Checks $Checks }
                 $done = @(
                     @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = $Conclusion }
                     @{ __typename = 'CheckRun'; name = 'Refresh NuGet lock files'; status = 'COMPLETED'; conclusion = 'SKIPPED' }
@@ -898,7 +921,7 @@ Describe 'KitReview.psm1' {
                 $running = @($done[1], $done[2], @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'IN_PROGRESS'; conclusion = $null })
                 $script:views = @((New-View @()), (New-View $running), (New-View $done))
                 $script:viewCalls = 0
-                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 2)] } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 2)] } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 # The run stays in progress until the last poll, as it does while a check is still running.
                 $script:runs = @('{"workflow_runs":[{"name":"ci","status":"in_progress","conclusion":null}]}', '{"workflow_runs":[{"name":"ci","status":"in_progress","conclusion":null}]}', '{"workflow_runs":[{"name":"ci","status":"completed","conclusion":"success"}]}')
                 $script:runCalls = 0
@@ -917,7 +940,7 @@ Describe 'KitReview.psm1' {
         # check done isn't CI done. The head commit's workflow runs have to be completed too.
         It 'keeps waiting while a workflow run is still going, even when every check so far has passed' {
             InModuleScope KitReview {
-                function New-View([object[]] $Checks) { @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress }
+                function New-View([object[]] $Checks) { ConvertTo-RollupJson -Checks $Checks }
                 $found = @{ __typename = 'CheckRun'; name = 'dotnet / Find UI projects'; status = 'COMPLETED'; conclusion = 'SUCCESS' }
                 $build = @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE' }
                 $script:views = @((New-View @($found)), (New-View @($found, $build)))
@@ -926,7 +949,7 @@ Describe 'KitReview.psm1' {
                     '{"workflow_runs":[{"name":"ci","status":"completed","conclusion":"failure"}]}'
                 )
                 $script:viewCalls = 0; $script:runCalls = 0
-                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { $script:runs[[Math]::Min($script:runCalls++, 1)] } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
 
@@ -947,13 +970,13 @@ Describe 'KitReview.psm1' {
         ) {
             InModuleScope KitReview -Parameters @{ Fresh = $Fresh; Expected = $Expected } {
                 param($Fresh, $Expected)
-                function New-View([object[]] $Checks) { @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress }
+                function New-View([object[]] $Checks) { ConvertTo-RollupJson -Checks $Checks }
                 $found = @{ __typename = 'CheckRun'; name = 'dotnet / Find UI projects'; status = 'COMPLETED'; conclusion = 'SUCCESS' }
                 $build = @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE' }
                 $second = if ($Fresh -eq 'build') { New-View @($found, $build) } else { New-View @($found) }
                 $script:views = @((New-View @($found)), $second)
                 $script:viewCalls = 0
-                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { '{"workflow_runs":[{"name":"ci","status":"completed","conclusion":"failure"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
 
@@ -968,16 +991,13 @@ Describe 'KitReview.psm1' {
         # description was edited) keeps its earlier run in the rollup. Only each check's latest run counts.
         It 'counts only the latest run of a check that ran twice on the head commit' {
             InModuleScope KitReview {
-                $view = @{
-                    state = 'OPEN'; headRefOid = 'head2'
-                    statusCheckRollup = @(
+                $view = ConvertTo-RollupJson -Checks @(
                         @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:06Z' }
                         @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:38Z' }
                         @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z' }
                     )
-                } | ConvertTo-Json -Depth 5 -Compress
                 $script:view = $view
-                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 # Copilot's review of PR #73: the workflow runs repeat too; the earlier failed run of PR title must not count.
                 Mock Invoke-Gh { '{"workflow_runs":[{"name":"PR title","workflow_id":11,"event":"pull_request","created_at":"2026-11-14T04:56:05Z","status":"completed","conclusion":"failure"},{"name":"PR title","workflow_id":11,"event":"pull_request","created_at":"2026-11-14T04:56:37Z","status":"completed","conclusion":"success"},{"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
@@ -990,19 +1010,16 @@ Describe 'KitReview.psm1' {
         }
 
         # Copilot's fourth review of PR #73: a replaced run's job can start after its replacement's, so start order alone
-        # can pick the old failure. A check belongs to the run its detailsUrl names; a replaced run's checks don't count.
+        # can pick the old failure. A check belongs to the workflow run GitHub names for it; a replaced run's checks don't count.
         It 'drops the checks of a replaced workflow run, even when its job started after the replacement''s' {
             InModuleScope KitReview {
-                $view = @{
-                    state = 'OPEN'; headRefOid = 'head2'
-                    statusCheckRollup = @(
-                        @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:57:00Z'; detailsUrl = 'https://github.com/o/r/actions/runs/100/job/1' }
-                        @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:40Z'; detailsUrl = 'https://github.com/o/r/actions/runs/101/job/2' }
-                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/102/job/3' }
+                $view = ConvertTo-RollupJson -Checks @(
+                        @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:57:00Z'; runId = 100; id = 1 }
+                        @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:40Z'; runId = 101; id = 2 }
+                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; runId = 102; id = 3 }
                     )
-                } | ConvertTo-Json -Depth 5 -Compress
                 $script:view = $view
-                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { '{"workflow_runs":[{"id":100,"name":"PR title","workflow_id":11,"event":"pull_request","created_at":"2026-11-14T04:56:05Z","status":"completed","conclusion":"failure"},{"id":101,"name":"PR title","workflow_id":11,"event":"pull_request","created_at":"2026-11-14T04:56:37Z","status":"completed","conclusion":"success"},{"id":102,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
 
@@ -1019,20 +1036,20 @@ Describe 'KitReview.psm1' {
         It 'picks the later of two by id, not by list order: <Case>' -ForEach @(
             @{ Case = 'two attempts of a check started in the same second'; Expected = 'ChecksFailed'
                 Checks = @(
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/400/job/2' }
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/400/job/1' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; runId = 400; id = 2 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; runId = 400; id = 1 }
                 )
                 Runs = '{"workflow_runs":[{"id":400,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' }
             @{ Case = 'a re-run of a check that hasn''t started yet'; Expected = 'TimedOut'
                 Checks = @(
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'QUEUED'; conclusion = $null; startedAt = $null; detailsUrl = 'https://github.com/o/r/actions/runs/400/job/2' }
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/400/job/1' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'QUEUED'; conclusion = $null; startedAt = $null; runId = 400; id = 2 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; runId = 400; id = 1 }
                 )
                 Runs = '{"workflow_runs":[{"id":400,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' }
             @{ Case = 'two runs of a workflow created in the same second'; Expected = 'ChecksFailed'
                 Checks = @(
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/501/job/2' }
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:11Z'; detailsUrl = 'https://github.com/o/r/actions/runs/500/job/1' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; runId = 501; id = 2 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:11Z'; runId = 500; id = 1 }
                 )
                 Runs = '{"workflow_runs":[{"id":501,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"failure"},{"id":500,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' }
         ) {
@@ -1041,9 +1058,9 @@ Describe 'KitReview.psm1' {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
-                $script:view = @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress
+                $script:view = ConvertTo-RollupJson -Checks $Checks
                 $script:runsJson = $Runs
-                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
@@ -1058,13 +1075,13 @@ Describe 'KitReview.psm1' {
         It 'reads checks from other apps right: <Case>' -ForEach @(
             @{ Case = 'two apps'' checks of the same name are two checks'; Expected = 'ChecksFailed'
                 Checks = @(
-                    @{ __typename = 'CheckRun'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://ci-a.example.com/builds/1' }
-                    @{ __typename = 'CheckRun'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:20Z'; detailsUrl = 'https://ci-b.example.com/builds/2' }
+                    @{ __typename = 'CheckRun'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; app = 'ci-a'; id = 1 }
+                    @{ __typename = 'CheckRun'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:20Z'; app = 'ci-b'; id = 2 }
                 ) }
             @{ Case = 'a re-run that hasn''t started is the latest attempt'; Expected = 'TimedOut'
                 Checks = @(
-                    @{ __typename = 'CheckRun'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://ci-a.example.com/builds/7' }
-                    @{ __typename = 'CheckRun'; name = 'build'; status = 'QUEUED'; conclusion = $null; startedAt = $null; detailsUrl = 'https://ci-a.example.com/builds/8' }
+                    @{ __typename = 'CheckRun'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; app = 'ci-a'; id = 7 }
+                    @{ __typename = 'CheckRun'; name = 'build'; status = 'QUEUED'; conclusion = $null; startedAt = $null; app = 'ci-a'; id = 8 }
                 ) }
         ) {
             InModuleScope KitReview -Parameters @{ Checks = $Checks; Expected = $Expected } {
@@ -1072,8 +1089,8 @@ Describe 'KitReview.psm1' {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
-                $script:view = @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress
-                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                $script:view = ConvertTo-RollupJson -Checks $Checks
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { '{"workflow_runs":[]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
@@ -1086,14 +1103,11 @@ Describe 'KitReview.psm1' {
         # commit), and the runs listed by head_sha include that branch's. A run there never replaces a run on this one.
         It 'keeps a failed workflow run when a later run of the same workflow ran on another branch' {
             InModuleScope KitReview {
-                $script:view = @{
-                    state = 'OPEN'; headRefOid = 'head2'
-                    statusCheckRollup = @(
-                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/300/job/1' }
-                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:57:01Z'; detailsUrl = 'https://github.com/o/r/actions/runs/301/job/2' }
+                $script:view = ConvertTo-RollupJson -Checks @(
+                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; runId = 300; id = 1 }
+                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:57:01Z'; runId = 301; id = 2 }
                     )
-                } | ConvertTo-Json -Depth 5 -Compress
-                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { '{"workflow_runs":[{"id":300,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"failure"},{"id":301,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/b","created_at":"2026-11-14T04:57:00Z","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
 
@@ -1113,15 +1127,12 @@ Describe 'KitReview.psm1' {
         ) {
             InModuleScope KitReview -Parameters @{ Later = $Later } {
                 param($Later)
-                $script:view = @{
-                    state = 'OPEN'; headRefOid = 'head2'
-                    statusCheckRollup = @(
-                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/700/job/1' }
-                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:57:01Z'; detailsUrl = 'https://github.com/o/r/actions/runs/701/job/2' }
+                $script:view = ConvertTo-RollupJson -Checks @(
+                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; runId = 700; id = 1 }
+                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:57:01Z'; runId = 701; id = 2 }
                     )
-                } | ConvertTo-Json -Depth 5 -Compress
                 $script:runsJson = '{"workflow_runs":[{"id":700,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","head_repository":{"full_name":"o/r"},"pull_requests":[{"number":5}],"created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"failure"},{"id":701,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a",' + $Later + ',"created_at":"2026-11-14T04:57:00Z","status":"completed","conclusion":"success"}]}'
-                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
 
@@ -1137,10 +1148,10 @@ Describe 'KitReview.psm1' {
         # finds it again; a failure is final at once.
         It 'reports a pass only when the next poll confirms it, so a run created just after the first read counts' {
             InModuleScope KitReview {
-                function New-View([object[]] $Checks) { @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress }
-                $build = @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; detailsUrl = 'https://github.com/o/r/actions/runs/1/job/1' }
-                $labelQueued = @{ __typename = 'CheckRun'; workflowName = 'Labeler'; name = 'label'; status = 'QUEUED'; conclusion = $null; detailsUrl = 'https://github.com/o/r/actions/runs/2/job/2' }
-                $labelFailed = @{ __typename = 'CheckRun'; workflowName = 'Labeler'; name = 'label'; status = 'COMPLETED'; conclusion = 'FAILURE'; detailsUrl = 'https://github.com/o/r/actions/runs/2/job/2' }
+                function New-View([object[]] $Checks) { ConvertTo-RollupJson -Checks $Checks }
+                $build = @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; runId = 1; id = 1 }
+                $labelQueued = @{ __typename = 'CheckRun'; workflowName = 'Labeler'; name = 'label'; status = 'QUEUED'; conclusion = $null; runId = 2; id = 2 }
+                $labelFailed = @{ __typename = 'CheckRun'; workflowName = 'Labeler'; name = 'label'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 2; id = 2 }
                 $ci = '{"id":1,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}'
                 $script:views = @((New-View @($build)), (New-View @($build, $labelQueued)), (New-View @($build, $labelFailed)))
                 $script:runs = @(
@@ -1151,7 +1162,7 @@ Describe 'KitReview.psm1' {
                 # Each poll sees the state after as many sleeps as have passed.
                 $script:polls = 0
                 Mock Start-Sleep { $script:polls++ }
-                Mock Invoke-Gh { $script:views[[Math]::Min($script:polls, 2)] } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:polls, 2)] } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { $script:runs[[Math]::Min($script:polls, 2)] } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
@@ -1184,24 +1195,24 @@ Describe 'KitReview.psm1' {
         It 'tells apart two <Case> that differ only in case' -ForEach @(
             @{ Case = 'branches'
                 Checks = @(
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/800/job/1' }
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:57:01Z'; detailsUrl = 'https://github.com/o/r/actions/runs/801/job/2' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; runId = 800; id = 1 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:57:01Z'; runId = 801; id = 2 }
                 )
                 Runs = '{"workflow_runs":[{"id":800,"name":"ci","workflow_id":12,"event":"push","head_branch":"Feat/A","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"failure"},{"id":801,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","created_at":"2026-11-14T04:57:00Z","status":"completed","conclusion":"success"}]}'
                 Expected = 'workflow runs failed: ci' }
             @{ Case = 'checks'
                 Checks = @(
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/802/job/1' }
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:11Z'; detailsUrl = 'https://github.com/o/r/actions/runs/802/job/2' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; runId = 802; id = 1 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:11Z'; runId = 802; id = 2 }
                 )
                 Runs = '{"workflow_runs":[{"id":802,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}'
                 Expected = '1 of 2 checks failed: Build' }
         ) {
             InModuleScope KitReview -Parameters @{ Checks = $Checks; Runs = $Runs; Expected = $Expected } {
                 param($Checks, $Runs, $Expected)
-                $script:view = @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress
+                $script:view = ConvertTo-RollupJson -Checks $Checks
                 $script:runsJson = $Runs
-                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
 
@@ -1216,11 +1227,8 @@ Describe 'KitReview.psm1' {
         # some on later pages. Every page is read (gh api --paginate --slurp: one array holding each page).
         It 'reads every page of the head commit''s workflow runs' {
             InModuleScope KitReview {
-                $script:view = @{
-                    state = 'OPEN'; headRefOid = 'head2'
-                    statusCheckRollup = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS' })
-                } | ConvertTo-Json -Depth 5 -Compress
-                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                $script:view = ConvertTo-RollupJson -Checks @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS' })
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 $first = '{"workflow_runs":[{"id":1,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}'
                 $second = '{"workflow_runs":[{"id":2,"name":"Labeler","workflow_id":13,"event":"pull_request_target","created_at":"2026-11-14T04:56:11Z","status":"completed","conclusion":"failure"}]}'
                 $script:onePage = $first
@@ -1242,8 +1250,8 @@ Describe 'KitReview.psm1' {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
-                $script:view = @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = @() } | ConvertTo-Json -Depth 5 -Compress
-                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                $script:view = ConvertTo-RollupJson -Checks @()
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { '{"workflow_runs":[{"id":7,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"startup_failure"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
