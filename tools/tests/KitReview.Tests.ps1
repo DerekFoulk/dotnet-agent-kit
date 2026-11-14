@@ -204,6 +204,8 @@ Describe 'KitReview.psm1' {
                 { $script:review = Get-CopilotReview -Repository 'o/r' -Number 5 } | Should -Not -Throw
                 $script:review.ReviewId | Should -Be 2
                 Should -Invoke Invoke-Gh -ParameterFilter { $args -contains '--paginate' -and $args -contains '--jq' -and $args -contains '.[]' }
+                # The fourth reviewer agent's review of PR #73: every list is read 100 to a page, GitHub's most, not its default 30.
+                Should -Invoke Invoke-Gh -ParameterFilter { $args -contains 'repos/o/r/pulls/5/reviews?per_page=100' }
             }
         }
         # The reviewer agent's review of PR #73: out of quota, Copilot posts a review whose body is a reason, not a summary
