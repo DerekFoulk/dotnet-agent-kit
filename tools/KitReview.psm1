@@ -99,8 +99,8 @@ function ConvertTo-Instant {
 
 # Every review Copilot posted on the pull request, oldest first, each with its summary read; with -Commit, only its
 # reviews of that commit. Reviews submitted in the same second are ordered by id, which GitHub assigns in order.
-# IsSummary says whether the review is a code review summary (its body carries the ccr-overview marker): when Copilot
-# can't review, out of quota for one, it still posts a review, whose body is a reason (seen on PR #73).
+# Test-CopilotSummary says which are code review summaries: when Copilot can't review, out of quota for one, it still
+# posts a review, whose body is a reason (seen on PR #73).
 function Get-CopilotReviewOf {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [string] $Commit)
 
@@ -114,7 +114,6 @@ function Get-CopilotReviewOf {
                 ReviewId       = $_['id']
                 SubmittedAt    = $_['submitted_at']
                 Commit         = $_['commit_id']
-                IsSummary      = Test-CopilotSummary -Body $body
                 Verdict        = $summary.Verdict
                 OpenIssueCount = $summary.OpenIssueCount
                 Issues         = $summary.Issues
@@ -130,7 +129,7 @@ function Get-CopilotReviewOf {
 function Get-CopilotReview {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [string] $Commit)
 
-    @(Get-CopilotReviewOf -Repository $Repository -Number $Number -Commit $Commit | Where-Object IsSummary) |
+    @(Get-CopilotReviewOf -Repository $Repository -Number $Number -Commit $Commit | Where-Object { Test-CopilotSummary -Body $_.Body }) |
         Select-Object -Last 1
 }
 
@@ -598,7 +597,7 @@ function Get-PullRequestChange {
 
 # Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
 # Reviewed (Copilot reviewed the head commit; -For Review or Either), ReviewFailed (Copilot posted a reason, such as
-# running out of quota, instead of a review of the head), ChecksPassed or ChecksFailed (no check or workflow
+# running out of quota, instead of a review of the head, and no review request came after it), ChecksPassed or ChecksFailed (no check or workflow
 # run on the head is pending, and a pass is confirmed by the next poll; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
 # still waits for. -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
 # kit's one watcher, for any agent in any tool (owner, 2026-11-14); a host's own monitor may wake the agent sooner.
