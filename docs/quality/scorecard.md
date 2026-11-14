@@ -183,7 +183,7 @@ areas:
       - "https://learn.microsoft.com/en-us/nuget/concepts/security-best-practices, retrieved 2026-11-07"
       - "https://slsa.dev/, retrieved 2026-11-07"
       - "ADR-0020"
-    rules: [SUP-001, SUP-002, SUP-003, SUP-004, SUP-005, SUP-006, SUP-007, SUP-008, SUP-009, SUP-010, SUP-011]
+    rules: [SUP-001, SUP-002, SUP-003, SUP-004, SUP-005, SUP-006, SUP-007, SUP-008, SUP-009, SUP-010, SUP-011, SUP-012]
     gaps:
       - id: GAP-013
         gap: "No SBOM is produced for an app's build. Closed by ADR-0055: the shared .NET CI writes a CycloneDX SBOM of each build's shipped projects, leaving out the projects MSBuild marks as tests, and uploads it as the 'sbom' artifact (SUP-009, proposed)."
@@ -202,6 +202,10 @@ areas:
         gap: "Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3)."
         status: proposed
         needs: "a CI change to run the browser tests in a pinned container, and an ADR"
+      - id: GAP-038
+        gap: "Nothing notices nuget.org rotating its repository certificate before a restore fails: SUP-012's trust policy lists the certificates nuget.org's service index announced on 2026-11-13, and a package signed with a new one fails NU3004 in the kit and every app until someone runs dotnet nuget trust sync nuget.org (ADR-0066). A scheduled check that compares nuget.config with the service index, and opens a PR or issue when they differ, would catch it first."
+        status: proposed
+        needs: "a scheduled workflow and a kit script"
   - id: delivery
     name: Delivery
     perfect: "Every merge builds a release candidate; deploys go to staging, then production, with a tested rollback and no downtime; infrastructure is code."
@@ -293,13 +297,13 @@ Each area in the front matter above has:
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 3 | 3 | 0 | 3 | 0 |
 | Performance | 1 | 0 | 1 | 1 | 0 |
-| Supply chain and build | 8 | 8 | 0 | 3 | 2 |
+| Supply chain and build | 9 | 9 | 0 | 3 | 3 |
 | Delivery | 1 | 1 | 0 | 2 | 3 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 68 rules in force, 42 checked by a tool and 26 advisory; 25 proposed; 15 open gaps.
+**Overall:** 69 rules in force, 43 checked by a tool and 26 advisory; 25 proposed; 16 open gaps.
 
 Open gaps:
 
@@ -313,6 +317,7 @@ Open gaps:
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
 - **GAP-029** (Supply chain and build, proposed; needs a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change): PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too.
 - **GAP-033** (Supply chain and build, proposed; needs a CI change to run the browser tests in a pinned container, and an ADR): Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3).
+- **GAP-038** (Supply chain and build, proposed; needs a scheduled workflow and a kit script): Nothing notices nuget.org rotating its repository certificate before a restore fails: SUP-012's trust policy lists the certificates nuget.org's service index announced on 2026-11-13, and a package signed with a new one fails NU3004 in the kit and every app until someone runs dotnet nuget trust sync nuget.org (ADR-0066). A scheduled check that compares nuget.config with the service index, and opens a PR or issue when they differ, would catch it first.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0054, Option 4).
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 - **GAP-024** (Delivery, proposed; needs infrastructure as code first (GAP-016)): No check that an app's cloud database keeps its free-tier guard on (DAT-006): the guard is a setting in infrastructure code, which apps don't have yet (GAP-016).

@@ -162,6 +162,25 @@ rules:
         how: "ci: dotnet-ci.reusable.yml's ui job restores workloads with --version (dotnet --version), and tools/tests/SharedCi.Tests.ps1 fails on an unpinned workload install or update"
     scope: core
     paths: [".github/workflows/**", "global.json"]
+  - id: SUP-012
+    statement: "Every package a restore extracts carries a signature from a trusted signer: nuget.config sets signatureValidationMode to require and trusts only nuget.org's repository certificates, the ones its service index announces, clearing any signer a config above the repo adds. The one exception is a restore on macOS, where .NET doesn't verify signatures and Microsoft advises leaving it off; there, the lock files' hashes hold a restore to the packages verified on Windows and Linux."
+    why: "A package altered after nuget.org published it, or one from anywhere else, fails its restore instead of reaching the build; nuget.org adds a repository signature to every package it serves, and Microsoft recommends a trust policy for it. .NET verifies during a restore on Windows always and on Linux by default from the .NET 8 SDK; on macOS it doesn't, the feature isn't supported there, and Microsoft says to leave it disabled."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "ADR-0066", "https://learn.microsoft.com/nuget/consume-packages/installing-signed-packages, retrieved 2026-11-13", "https://learn.microsoft.com/nuget/reference/nuget-config-file#trustedsigners-section, retrieved 2026-11-13", "https://learn.microsoft.com/nuget/concepts/security-best-practices, retrieved 2026-11-12", "https://learn.microsoft.com/dotnet/core/tools/nuget-signed-package-verification, retrieved 2026-11-13"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "restore, on Windows and Linux: nuget.config's signatureValidationMode require and its nuget.org trusted signer fail a restore on an unsigned or untrusted package (NU3004); tools/tests/BuildConfig.Tests.ps1 restores an unsigned package and expects that failure, restores nuget.org's packages with a cold cache, and checks that a signer trusted in a config above the repo isn't trusted in it, and that no workflow sets DOTNET_NUGET_SIGNATURE_VERIFICATION to false"
+      - kind: gate
+        in: [kit, app]
+        how: "ci, on macOS: dotnet-ci.reusable.yml's macOS restore isn't verified, but tools/Test-LockFileSubset.ps1 holds its lock files to the committed ones, hashes included, and those packages were verified by the Windows and Linux restores of the same commit (SUP-001, ADR-0059)"
+      - kind: advisory
+        in: [kit, app]
+        how: "when nuget.org rotates its repository certificate, dotnet nuget trust sync nuget.org updates the list; nothing yet notices a rotation before a restore fails (ADR-0066, a scorecard gap)"
+    scope: core
+    paths: ["nuget.config"]
 ---
 
 # Supply chain

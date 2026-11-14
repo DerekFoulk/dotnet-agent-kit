@@ -6,3 +6,4 @@ applyTo: 'nuget.config'
 # Supply chain
 
 - SUP-003: Packages come only from nuget.org, enforced by package source mapping in nuget.config.
+- SUP-012: Every package a restore extracts carries a signature from a trusted signer: nuget.config sets signatureValidationMode to require and trusts only nuget.org's repository certificates, the ones its service index announces, clearing any signer a config above the repo adds. The one exception is a restore on macOS, where .NET doesn't verify signatures and Microsoft advises leaving it off; there, the lock files' hashes hold a restore to the packages verified on Windows and Linux.
