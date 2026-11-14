@@ -391,8 +391,10 @@ function Get-GhList {
 
 # The pull request's state, its head commit and its checks, from one gh call. gh pr view exits 0 while checks are
 # pending, where gh pr checks exits 8, which Invoke-Gh would treat as a failure.
+# With -WithRuns it also lists the head commit's GitHub Actions runs that haven't completed: a job that needs another
+# isn't a check until its turn comes, so every registered check done isn't CI done (Copilot's review of PR #73).
 function Get-PullRequestStatus {
-    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $WithRuns)
 
     $view = Invoke-Gh pr view $Number --repo $Repository --json 'state,headRefOid,statusCheckRollup' | ConvertFrom-Json -AsHashtable
     $checks = foreach ($item in @($view['statusCheckRollup'] | Where-Object { $_ })) {
@@ -410,7 +412,13 @@ function Get-PullRequestStatus {
         }
         [pscustomobject]@{ Name = $name; Result = $result }
     }
-    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Checks = @($checks) }
+    $head = "$($view['headRefOid'])"
+    $pendingRuns = @()
+    if ($WithRuns -and $head) {
+        $runs = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$head&per_page=100" | ConvertFrom-Json -AsHashtable
+        $pendingRuns = @($runs['workflow_runs'] | Where-Object { $_ -and "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" })
+    }
+    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = $head; Checks = @($checks); PendingRuns = $pendingRuns }
 }
 
 # The time now: the clock Wait-PullRequest measures its limit by, which the tests replace (TST-010).
@@ -438,12 +446,12 @@ function Wait-PullRequest {
         [ValidateRange(5, 600)] [int] $IntervalSeconds = 20
     )
 
-    $polls = [Math]::Max(1, [int][Math]::Ceiling($TimeoutMinutes * 60 / $IntervalSeconds))
+    # The limit is elapsed time, and a sleep never runs past it (Copilot's review of PR #73).
+    $deadline = (Get-KitUtcNow).AddMinutes($TimeoutMinutes)
     $status = $null
     $firstHead = $null
-    for ($poll = 1; $poll -le $polls; $poll++) {
-        if ($poll -gt 1) { Start-Sleep -Seconds $IntervalSeconds }
-        $status = Get-PullRequestStatus -Repository $Repository -Number $Number
+    while ($true) {
+        $status = Get-PullRequestStatus -Repository $Repository -Number $Number -WithRuns:($For -in 'Checks', 'Either')
         $head = Get-ShortSha -Sha $status.HeadSha
 
         # A merged or closed PR gets no more reviews worth waiting for.
@@ -477,7 +485,7 @@ function Wait-PullRequest {
             # No checks yet means CI hasn't started on this commit, not that it passed.
             $checks = @($status.Checks)
             $pending = @($checks | Where-Object Result -EQ 'Pending')
-            if ($checks.Count -gt 0 -and $pending.Count -eq 0) {
+            if ($checks.Count -gt 0 -and $pending.Count -eq 0 -and @($status.PendingRuns).Count -eq 0) {
                 $failed = @($checks | Where-Object Result -EQ 'Failed' | ForEach-Object Name)
                 $outcome = if ($failed) { 'ChecksFailed' } else { 'ChecksPassed' }
                 $skipped = @($checks | Where-Object Result -EQ 'Skipped').Count
@@ -488,6 +496,10 @@ function Wait-PullRequest {
                 }
             }
         }
+
+        $remaining = ($deadline - (Get-KitUtcNow)).TotalSeconds
+        if ($remaining -le 0) { break }
+        Start-Sleep -Seconds ([int][Math]::Ceiling([Math]::Min($IntervalSeconds, $remaining)))
     }
 
     $head = Get-ShortSha -Sha $status.HeadSha
@@ -496,7 +508,9 @@ function Wait-PullRequest {
     $missing = @(
         if ($For -in 'Review', 'Either') { "no review from Copilot of $head yet" }
         if ($For -in 'Checks', 'Either') {
-            if (@($status.Checks).Count -eq 0) { 'no checks have started' } else { "$($pendingNames.Count) checks still running: $($pendingNames -join ', ')" }
+            if (@($status.Checks).Count -eq 0) { 'no checks have started' }
+            elseif ($pendingNames) { "$($pendingNames.Count) checks still running: $($pendingNames -join ', ')" }
+            else { "workflow runs still going: $(@($status.PendingRuns) -join ', ')" }
         }
     )
     [pscustomobject]@{
