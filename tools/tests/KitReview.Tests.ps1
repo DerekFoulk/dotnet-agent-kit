@@ -1124,6 +1124,25 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's eleventh review of PR #73: two runs of one workflow for different triggers both count, and so do their
+        # checks of the same name. A job with continue-on-error fails without failing its run, so only its check shows it.
+        It 'keeps the same-named checks of two independent runs apart' {
+            InModuleScope KitReview {
+                $script:view = ConvertTo-RollupJson -Checks @(
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; runId = 10; id = 1 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:12Z'; runId = 11; id = 2 }
+                )
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"},{"id":11,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:11Z","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.Message | Should -Match '1 of 2 checks failed: build'
+            }
+        }
+
         # Copilot's sixth review of PR #73: the head commit can be on another branch too (another pull request from the same
         # commit), and the runs listed by head_sha include that branch's. A run there never replaces a run on this one.
         It 'keeps a failed workflow run when a later run of the same workflow ran on another branch' {
