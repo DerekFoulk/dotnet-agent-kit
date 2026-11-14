@@ -821,8 +821,16 @@ Describe 'KitReview.psm1' {
                 @{ data = @{ repository = @{ pullRequest = @{ state = $State; headRefOid = $Head; commits = @{ nodes = @(@{ commit = @{ statusCheckRollup = $rollup } }) } } } } } |
                     ConvertTo-Json -Depth 15 -Compress
             }
+            # A fake Get-PullRequestStatus result with the fields the real one always sets: the read's starting head is the
+            # head, and no runs are pending or failed, unless the test says otherwise.
+            function global:New-StatusFake {
+                param([Parameter(Mandatory)] [hashtable] $Fields)
+                $status = @{ PendingRuns = @(); FailedRuns = @(); StartHeadSha = $Fields['HeadSha'] }
+                foreach ($key in $Fields.Keys) { $status[$key] = $Fields[$key] }
+                [pscustomobject] $status
+            }
         }
-        AfterAll { Remove-Item -Path Function:\ConvertTo-RollupJson -ErrorAction SilentlyContinue }
+        AfterAll { Remove-Item -Path Function:\ConvertTo-RollupJson, Function:\New-StatusFake -ErrorAction SilentlyContinue }
 
         # The reviewer agent's review of PR #73 found these mapped results pinned by no test (its mutants survived).
         It 'reads a <What> as <Expected>' -ForEach @(
@@ -888,7 +896,7 @@ Describe 'KitReview.psm1' {
         It 'returns Reviewed once Copilot has reviewed the head commit, not an older one' {
             Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the module waits for a review'
             InModuleScope KitReview {
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
                 $script:reviewCalls = 0
                 Mock Get-CopilotReviewOf {
                     $script:reviewCalls++
@@ -911,7 +919,7 @@ Describe 'KitReview.psm1' {
         # ReviewFailed, with Copilot's reason, not Reviewed with an Unknown verdict.
         It 'returns ReviewFailed, with Copilot''s reason, when Copilot posts a review of the head that isn''t a summary' {
             InModuleScope KitReview {
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
                 # Copilot's note lands after the wait's first poll.
                 $script:polls = 0
                 Mock Invoke-Gh {
@@ -978,7 +986,7 @@ Describe 'KitReview.psm1' {
         It 'returns HeadMoved when a push lands between reading the head and finding its review' {
             InModuleScope KitReview {
                 $script:statusCalls = 0
-                Mock Get-PullRequestStatus { $script:statusCalls++; [pscustomobject]@{ State = 'OPEN'; HeadSha = $(if ($script:statusCalls -lt 2) { 'head2' } else { 'head3' }); Checks = @() } }
+                Mock Get-PullRequestStatus { $script:statusCalls++; New-StatusFake @{ State = 'OPEN'; HeadSha = $(if ($script:statusCalls -lt 2) { 'head2' } else { 'head3' }); Checks = @() } }
                 Mock Get-CopilotReviewOf { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' } } -ParameterFilter { $Commit -eq 'head2' }
                 Mock Get-CopilotReviewOf { }
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
@@ -1007,7 +1015,7 @@ Describe 'KitReview.psm1' {
                     $script:statusCalls++
                     $state = if ($script:statusCalls -le 2) { 'OPEN' } else { $script:later.State }
                     $head = if ($script:statusCalls -le 2) { 'head2' } else { $script:later.Head }
-                    [pscustomobject]@{ State = $state; HeadSha = $head; Checks = @([pscustomobject]@{ Name = 'dotnet / Build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @() }
+                    New-StatusFake @{ State = $state; HeadSha = $head; Checks = @([pscustomobject]@{ Name = 'dotnet / Build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @() }
                 }
                 Mock Get-CopilotReviewOf { }
                 Mock Start-Sleep {}
@@ -1028,7 +1036,7 @@ Describe 'KitReview.psm1' {
                 param($State, $Outcome)
                 $script:statusCalls = 0
                 $script:later = $State
-                Mock Get-PullRequestStatus { $script:statusCalls++; [pscustomobject]@{ State = $(if ($script:statusCalls -lt 2) { 'OPEN' } else { $script:later }); HeadSha = 'head2'; Checks = @() } }
+                Mock Get-PullRequestStatus { $script:statusCalls++; New-StatusFake @{ State = $(if ($script:statusCalls -lt 2) { 'OPEN' } else { $script:later }); HeadSha = 'head2'; Checks = @() } }
                 Mock Get-CopilotReviewOf { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' } }
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
@@ -1044,7 +1052,7 @@ Describe 'KitReview.psm1' {
         # review isn't always the head's. The head commit's own review counts, wherever it falls.
         It 'returns Reviewed when Copilot reviewed the head commit, even if a review of an older commit came later' {
             InModuleScope KitReview {
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
                 Mock Invoke-Gh {
                     '[{ "id": 11, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "head2", "body": "<!-- ccr-overview-v2 -->\n\n### 🟢 Approval recommended" }, { "id": 12, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:05:00Z", "commit_id": "head1", "body": "<!-- ccr-overview-v2 -->\n\n### 🟡 Changes recommended" }]'
                 }
@@ -1067,7 +1075,7 @@ Describe 'KitReview.psm1' {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @(); PendingRuns = @() } }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @(); PendingRuns = @() } }
                 Mock Get-CopilotReviewOf { }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
@@ -1090,7 +1098,7 @@ Describe 'KitReview.psm1' {
                 $script:slept = [System.Collections.Generic.List[int]]::new()
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:slept.Add($Seconds); $script:now = $script:now.AddSeconds($Seconds) }
-                Mock Get-PullRequestStatus { $script:now = $script:now.AddSeconds($script:callSeconds); [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @(); PendingRuns = @() } }
+                Mock Get-PullRequestStatus { $script:now = $script:now.AddSeconds($script:callSeconds); New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @(); PendingRuns = @() } }
                 Mock Get-CopilotReviewOf { }
 
                 (Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds $Interval).Event | Should -Be 'TimedOut'
@@ -1162,16 +1170,17 @@ Describe 'KitReview.psm1' {
         # checks read before the runs completed say nothing about it. The checks are read again, and a failed run is a
         # failure in its own right.
         It 'reports a job that fails between its two reads as failed: <Case>' -ForEach @(
-            @{ Case = 'the checks read again show it'; Fresh = 'build'; Expected = 'dotnet / Build' }
-            @{ Case = 'only its workflow run shows it'; Fresh = 'partial'; Expected = 'ci' }
+            @{ Case = 'the checks read again show it'; Fresh = @('found', 'build'); Expected = 'dotnet / Build' }
+            @{ Case = 'only its workflow run shows it'; Fresh = @('found'); Expected = 'ci' }
         ) {
             InModuleScope KitReview -Parameters @{ Fresh = $Fresh; Expected = $Expected } {
                 param($Fresh, $Expected)
                 function New-View([object[]] $Checks) { ConvertTo-RollupJson -Checks $Checks }
-                $found = @{ __typename = 'CheckRun'; name = 'dotnet / Find UI projects'; status = 'COMPLETED'; conclusion = 'SUCCESS' }
-                $build = @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE' }
-                $second = if ($Fresh -eq 'build') { New-View @($found, $build) } else { New-View @($found) }
-                $script:views = @((New-View @($found)), $second)
+                $checks = @{
+                    found = @{ __typename = 'CheckRun'; name = 'dotnet / Find UI projects'; status = 'COMPLETED'; conclusion = 'SUCCESS' }
+                    build = @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE' }
+                }
+                $script:views = @((New-View @($checks.found)), (New-View @($Fresh | ForEach-Object { $checks[$_] })))
                 $script:viewCalls = 0
                 Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { "$args" -match 'statusCheckRollup' }
                 Mock Invoke-Gh { '{"workflow_runs":[{"name":"ci","status":"completed","conclusion":"failure"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
@@ -1482,7 +1491,7 @@ Describe 'KitReview.psm1' {
                 # The one poll takes the whole minute, so the pass it finds can't be read again before the limit.
                 Mock Get-PullRequestStatus {
                     $script:now = $script:now.AddMinutes(1)
-                    [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'dotnet / Build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @() }
+                    New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'dotnet / Build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @() }
                 }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
@@ -1567,7 +1576,7 @@ Describe 'KitReview.psm1' {
         It 'returns HeadMoved, with the new head, when someone pushes while it waits' {
             InModuleScope KitReview {
                 $script:statusCalls = 0
-                Mock Get-PullRequestStatus { $script:statusCalls++; [pscustomobject]@{ State = 'OPEN'; HeadSha = $(if ($script:statusCalls -lt 2) { 'head1' } else { 'head2' }); Checks = @() } }
+                Mock Get-PullRequestStatus { $script:statusCalls++; New-StatusFake @{ State = 'OPEN'; HeadSha = $(if ($script:statusCalls -lt 2) { 'head1' } else { 'head2' }); Checks = @() } }
                 Mock Get-CopilotReviewOf { }
                 Mock Start-Sleep {}
 
@@ -1586,7 +1595,7 @@ Describe 'KitReview.psm1' {
             InModuleScope KitReview -Parameters @{ State = $State; Outcome = $Outcome } {
                 param($State, $Outcome)
                 $script:prState = $State
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = $script:prState; HeadSha = 'head2'; Checks = @() } }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = $script:prState; HeadSha = 'head2'; Checks = @() } }
                 Mock Get-CopilotReviewOf { }
                 Mock Start-Sleep {}
 
@@ -1600,7 +1609,7 @@ Describe 'KitReview.psm1' {
 
         It 'returns the first event with -For Either: a review while CI still runs' {
             InModuleScope KitReview {
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'Build'; Result = 'Pending' }) } }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'Build'; Result = 'Pending' }) } }
                 Mock Get-CopilotReviewOf { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Changes recommended'; OpenIssueCount = 2; Issues = @(); Body = '<!-- ccr-overview-v2 -->' } }
                 Mock Start-Sleep {}
 

@@ -427,14 +427,12 @@ function Read-PullRequestView {
     $pages = Invoke-Gh api graphql -f "query=$query" -f "owner=$owner" -f "name=$repoName" -F "number=$Number" --paginate --slurp | ConvertFrom-Json -AsHashtable
     $pulls = @(@($pages) | ForEach-Object { $_['data']['repository']['pullRequest'] })
     $pullRequest = $pulls[-1]
-    # A push between pages makes them disagree on the head: that read mixes two commits' checks, so it gives none.
-    $consistent = @($pulls | ForEach-Object { "$($_['headRefOid'])" } | Select-Object -Unique).Count -eq 1
-    $nodes = if ($consistent) {
-        foreach ($pull in $pulls) {
-            $commit = @($pull['commits']['nodes'] | Where-Object { $_ })[0]
-            $rollup = if ($commit) { $commit['commit']['statusCheckRollup'] } else { $null }
-            if ($rollup) { $rollup['contexts']['nodes'] }
-        }
+    # A push between pages makes them disagree on the head: StartHeadSha (the first page's) and HeadSha (the last's)
+    # then differ, and Wait-PullRequest returns HeadMoved before it looks at any check.
+    $nodes = foreach ($pull in $pulls) {
+        $commit = @($pull['commits']['nodes'] | Where-Object { $_ })[0]
+        $rollup = if ($commit) { $commit['commit']['statusCheckRollup'] } else { $null }
+        if ($rollup) { $rollup['contexts']['nodes'] }
     }
     $order = 0
     $items = foreach ($item in @($nodes | Where-Object { $_ })) {
@@ -473,9 +471,10 @@ function Read-PullRequestView {
 
 # The checks that decide CI: none from a workflow run that a later run replaced, and of a check listed more than once,
 # only its latest attempt (a workflow that runs again on the same commit keeps its earlier run in the rollup). GitHub
-# numbers checks in order, so the higher id is the later attempt, even when the start times tie or one hasn't started;
-# a status context has no id and falls back to its start time (Copilot's sixth and tenth reviews of PR #73). Check
-# names are case-sensitive, so Build and build are two checks (Copilot's ninth review).
+# numbers checks in order, so the higher id is the later attempt, even when the start times tie or one hasn't started
+# (Copilot's sixth and tenth reviews of PR #73). A status context has neither an id nor a start time, and the rollup
+# lists each context once, so its order in the list decides. Check names are case-sensitive, so Build and build are two
+# checks (Copilot's ninth review).
 function Select-CurrentCheck {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Items, [long[]] $ReplacedRuns = @())
 
@@ -528,10 +527,9 @@ function Get-PullRequestStatus {
         $pendingRuns = @($every | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" } | Select-Object -Unique)
         $failedRuns = @($latest | Where-Object { "$($_['status'])" -eq 'completed' -and "$($_['conclusion'])" -notin 'success', 'skipped', 'neutral' } | ForEach-Object { "$($_['name'])" })
         if (-not $pendingRuns) {
-            $fresh = Read-PullRequestView -Repository $Repository -Number $Number
-            # A push between the reads: the runs read belong to the old head, so nothing about the new one is known yet.
-            if ($fresh.HeadSha -ne $view.HeadSha) { $pendingRuns = @("the runs of $(Get-ShortSha -Sha $fresh.HeadSha)"); $failedRuns = @(); $replaced = @() }
-            $view = $fresh
+            # A push between the reads moves HeadSha from StartHeadSha, and Wait-PullRequest returns HeadMoved before it
+            # looks at any check.
+            $view = Read-PullRequestView -Repository $Repository -Number $Number
         }
     }
     $checks = Select-CurrentCheck -Items $view.Items -ReplacedRuns $replaced
@@ -614,7 +612,7 @@ function Wait-PullRequest {
         if ($status.State -ne 'OPEN') { return New-EndedResult -Number $Number -State $status.State -HeadSha $status.HeadSha }
         # A push while it waits: the old head's review and checks no longer decide anything. The baseline is the head the
         # first read started from, even if a push landed during that poll.
-        if ($null -eq $firstHead) { $firstHead = if ($status.PSObject.Properties['StartHeadSha'] -and $status.StartHeadSha) { $status.StartHeadSha } else { $status.HeadSha } }
+        if ($null -eq $firstHead) { $firstHead = $status.StartHeadSha }
         if ($status.HeadSha -ne $firstHead) { return New-HeadMovedResult -From $firstHead -To $status.HeadSha }
 
         if ($For -in 'Review', 'Either') {
@@ -652,7 +650,7 @@ function Wait-PullRequest {
             $checks = @($status.Checks)
             $pending = @($checks | Where-Object Result -EQ 'Pending')
             # A failed workflow run is a failure even when the checks don't show its job (Copilot's re-review of PR #73).
-            $failedRuns = @($status.PSObject.Properties['FailedRuns'] ? $status.FailedRuns : @())
+            $failedRuns = @($status.FailedRuns)
             if (($checks.Count -gt 0 -or $failedRuns.Count -gt 0) -and $pending.Count -eq 0 -and @($status.PendingRuns).Count -eq 0) {
                 $failed = @($checks | Where-Object Result -EQ 'Failed' | ForEach-Object Name)
                 $outcome = if ($failed -or $failedRuns) { 'ChecksFailed' } else { 'ChecksPassed' }
