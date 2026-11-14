@@ -1080,6 +1080,39 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's ninth review of PR #73: Group-Object ignores case unless told not to, but branch names and check names
+        # are case-sensitive, so two that differ only in case are two different things.
+        It 'tells apart two <Case> that differ only in case' -ForEach @(
+            @{ Case = 'branches'
+                Checks = @(
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/800/job/1' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:57:01Z'; detailsUrl = 'https://github.com/o/r/actions/runs/801/job/2' }
+                )
+                Runs = '{"workflow_runs":[{"id":800,"name":"ci","workflow_id":12,"event":"push","head_branch":"Feat/A","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"failure"},{"id":801,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","created_at":"2026-11-14T04:57:00Z","status":"completed","conclusion":"success"}]}'
+                Expected = 'workflow runs failed: ci' }
+            @{ Case = 'checks'
+                Checks = @(
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/802/job/1' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:11Z'; detailsUrl = 'https://github.com/o/r/actions/runs/802/job/2' }
+                )
+                Runs = '{"workflow_runs":[{"id":802,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}'
+                Expected = '1 of 2 checks failed: Build' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Checks = $Checks; Runs = $Runs; Expected = $Expected } {
+                param($Checks, $Runs, $Expected)
+                $script:view = @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress
+                $script:runsJson = $Runs
+                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.Message | Should -Match ([regex]::Escape($Expected))
+            }
+        }
+
         # Copilot's fifth review of PR #73: GitHub lists the runs 100 to a page, so a head commit with more runs has
         # some on later pages. Every page is read (gh api --paginate --slurp: one array holding each page).
         It 'reads every page of the head commit''s workflow runs' {
