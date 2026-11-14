@@ -5,9 +5,11 @@
 
 Set-StrictMode -Version Latest
 
-# Copilot's login: REST adds [bot], GraphQL doesn't.
+# Copilot's login as a reviewer: REST adds [bot], GraphQL doesn't. Review requests on the REST timeline name it
+# Copilot, type Bot (every one of the 17 on PR #73, 2026-11-14).
 $script:CopilotLogin = 'copilot-pull-request-reviewer[bot]'
 $script:CopilotGraphQLLogin = 'copilot-pull-request-reviewer'
+$script:CopilotRequestLogin = 'Copilot'
 
 function Invoke-Gh {
     $output = gh @args
@@ -90,8 +92,8 @@ function Test-CopilotSummary {
     $Body -match '<!--\s*ccr-overview'
 }
 
-# A time GitHub gave, as an instant: ConvertFrom-Json turns an ISO time into a DateTime, and writing that into a string
-# uses the local culture and drops its UTC kind, so it's cast directly, never through a string.
+# A time GitHub gave, as an instant: ConvertFrom-Json turns an ISO time into a DateTime, and a DateTime written into a
+# string loses its UTC kind and is read back as local time, so it's cast directly, never through a string.
 function ConvertTo-Instant {
     param([Parameter(Mandatory)] $Value)
     [datetimeoffset] $Value
@@ -553,8 +555,8 @@ function Get-ShortSha {
 # Copilot (a push requests one, and so does a re-request); nothing if it never was.
 function Get-CopilotReviewRequestTime {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
-    $requests = @(Get-GhList -Endpoint "repos/$Repository/issues/$Number/timeline" | Where-Object {
-            "$($_['event'])" -eq 'review_requested' -and $_['requested_reviewer'] -and "$($_['requested_reviewer']['login'])" -eq 'Copilot'
+    $requests = @(Get-GhList -Endpoint "repos/$Repository/issues/$Number/timeline?per_page=100" | Where-Object {
+            "$($_['event'])" -eq 'review_requested' -and $_['requested_reviewer'] -and "$($_['requested_reviewer']['login'])" -eq $script:CopilotRequestLogin
         } | ForEach-Object { ConvertTo-Instant $_['created_at'] } | Sort-Object)
     if ($requests) { $requests[-1] }
 }
