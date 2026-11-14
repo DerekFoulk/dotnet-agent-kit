@@ -773,5 +773,33 @@ Describe 'KitReview.psm1' {
                 Should -Invoke Start-Sleep -Times 2 -Exactly
             }
         }
+
+        # The shapes gh pr view --json statusCheckRollup returns: a CheckRun has status and conclusion, a
+        # StatusContext has context and state (seen on PR #72, 2026-11-14).
+        It 'keeps waiting while there are no checks yet or one is running, then returns <Outcome> naming <What>' -ForEach @(
+            @{ Outcome = 'ChecksPassed'; What = 'every check'; Conclusion = 'SUCCESS'; Expected = 'CI finished at head2: all 3 checks passed' }
+            @{ Outcome = 'ChecksFailed'; What = 'the failed one'; Conclusion = 'FAILURE'; Expected = 'CI finished at head2: 1 of 3 checks failed: dotnet / Build' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Conclusion = $Conclusion; Outcome = $Outcome; Expected = $Expected } {
+                param($Conclusion, $Outcome, $Expected)
+                function New-View([object[]] $Checks) { @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress }
+                $done = @(
+                    @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = $Conclusion }
+                    @{ __typename = 'CheckRun'; name = 'Refresh NuGet lock files'; status = 'COMPLETED'; conclusion = 'SKIPPED' }
+                    @{ __typename = 'StatusContext'; context = 'PR title'; state = 'SUCCESS' }
+                )
+                $running = @($done[1], $done[2], @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'IN_PROGRESS'; conclusion = $null })
+                $script:views = @((New-View @()), (New-View $running), (New-View $done))
+                $script:viewCalls = 0
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 2)] } -ParameterFilter { $args -contains 'view' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be $Outcome
+                $result.Message | Should -Match ([regex]::Escape($Expected))
+                Should -Invoke Start-Sleep -Times 2 -Exactly
+            }
+        }
     }
 }
