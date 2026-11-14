@@ -896,7 +896,8 @@ Describe 'KitReview.psm1' {
                 } | ConvertTo-Json -Depth 5 -Compress
                 $script:view = $view
                 Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
-                Mock Invoke-Gh { '{"workflow_runs":[{"name":"PR title","status":"completed","conclusion":"success"},{"name":"ci","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                # Copilot's review of PR #73: the workflow runs repeat too; the earlier failed run of PR title must not count.
+                Mock Invoke-Gh { '{"workflow_runs":[{"name":"PR title","workflow_id":11,"event":"pull_request","created_at":"2026-11-14T04:56:05Z","status":"completed","conclusion":"failure"},{"name":"PR title","workflow_id":11,"event":"pull_request","created_at":"2026-11-14T04:56:37Z","status":"completed","conclusion":"success"},{"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
