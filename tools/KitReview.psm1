@@ -430,11 +430,12 @@ function Read-PullRequestView {
 # The checks that decide CI: none from a workflow run that a later run replaced, and of a check listed more than once,
 # only its latest attempt (a workflow that runs again on the same commit keeps its earlier run in the rollup). GitHub
 # numbers jobs in order, so the higher job id is the later attempt, even when the start times tie or one hasn't
-# started; a check with no job id falls back to its start time (Copilot's sixth review of PR #73).
+# started; a check with no job id falls back to its start time (Copilot's sixth review of PR #73). Check names are
+# case-sensitive, so Build and build are two checks (Copilot's ninth review).
 function Select-CurrentCheck {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Items, [long[]] $ReplacedRuns = @())
 
-    @($Items | Where-Object { $null -eq $_.RunId -or $_.RunId -notin $ReplacedRuns } | Group-Object Key | ForEach-Object {
+    @($Items | Where-Object { $null -eq $_.RunId -or $_.RunId -notin $ReplacedRuns } | Group-Object Key -CaseSensitive | ForEach-Object {
             $_.Group | Sort-Object JobId, Started, Order | Select-Object -Last 1 | Select-Object Name, Result
         })
 }
@@ -457,12 +458,13 @@ function Get-PullRequestStatus {
         $every = @(@($pages) | ForEach-Object { $_['workflow_runs'] } | Where-Object { $_ })
         # Runs of one workflow for different triggers (a push and a pull request), on different branches with this
         # commit, from a fork's branch of the same name, or for different pull requests from one branch are independent,
-        # so each counts (Copilot's sixth and eighth reviews of PR #73).
+        # so each counts (Copilot's sixth and eighth reviews of PR #73). Branch names are case-sensitive, and so is the
+        # grouping (Group-Object ignores case by default; Copilot's ninth review).
         $latest = @($every | Group-Object {
                 $source = if ($_['head_repository']) { "$($_['head_repository']['full_name'])" } else { '' }
                 $pulls = @($_['pull_requests'] | Where-Object { $_ } | ForEach-Object { "$($_['number'])" } | Sort-Object) -join ','
                 "$($_['workflow_id'] ?? $_['name'])|$($_['event'])|$source|$($_['head_branch'])|$pulls"
-            } | ForEach-Object {
+            } -CaseSensitive | ForEach-Object {
                 # Runs created in the same second are ordered by id, which GitHub assigns in order.
                 $_.Group | Sort-Object { if ($_['created_at']) { [datetimeoffset] "$($_['created_at'])" } else { [datetimeoffset]::MinValue } }, { [long] ($_['id'] ?? 0) } | Select-Object -Last 1
             })
