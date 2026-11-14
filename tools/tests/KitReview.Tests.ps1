@@ -883,11 +883,12 @@ Describe 'KitReview.psm1' {
         # The shapes gh pr view --json statusCheckRollup returns: a CheckRun has status and conclusion, a
         # StatusContext has context and state (seen on PR #72, 2026-11-14).
         It 'keeps waiting while there are no checks yet or one is running, then returns <Outcome> naming <What>' -ForEach @(
-            @{ Outcome = 'ChecksPassed'; What = 'every check'; Conclusion = 'SUCCESS'; Expected = 'CI finished at head2: every check passed (2 passed, 1 skipped)' }
-            @{ Outcome = 'ChecksFailed'; What = 'the failed one'; Conclusion = 'FAILURE'; Expected = 'CI finished at head2: 1 of 3 checks failed: dotnet / Build' }
+            # A pass waits one more poll to be confirmed (Copilot's ninth review of PR #73); a failure is final at once.
+            @{ Outcome = 'ChecksPassed'; What = 'every check'; Conclusion = 'SUCCESS'; Expected = 'CI finished at head2: every check passed (2 passed, 1 skipped)'; Sleeps = 3 }
+            @{ Outcome = 'ChecksFailed'; What = 'the failed one'; Conclusion = 'FAILURE'; Expected = 'CI finished at head2: 1 of 3 checks failed: dotnet / Build'; Sleeps = 2 }
         ) {
-            InModuleScope KitReview -Parameters @{ Conclusion = $Conclusion; Outcome = $Outcome; Expected = $Expected } {
-                param($Conclusion, $Outcome, $Expected)
+            InModuleScope KitReview -Parameters @{ Conclusion = $Conclusion; Outcome = $Outcome; Expected = $Expected; Sleeps = $Sleeps } {
+                param($Conclusion, $Outcome, $Expected, $Sleeps)
                 function New-View([object[]] $Checks) { @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress }
                 $done = @(
                     @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = $Conclusion }
@@ -908,7 +909,7 @@ Describe 'KitReview.psm1' {
 
                 $result.Event | Should -Be $Outcome
                 $result.Message | Should -Match ([regex]::Escape($Expected))
-                Should -Invoke Start-Sleep -Times 2 -Exactly
+                Should -Invoke Start-Sleep -Times $Sleeps -Exactly
             }
         }
 
@@ -1099,6 +1100,53 @@ Describe 'KitReview.psm1' {
 
                 $result.Event | Should -Be 'ChecksFailed'
                 $result.Message | Should -Match 'workflow runs failed: ci'
+            }
+        }
+
+        # Copilot's ninth review of PR #73: a pass rests on one read, and a workflow run created just after it (seconds
+        # after a push, or between the runs read and the checks read) isn't in it. A pass counts only once the next poll
+        # finds it again; a failure is final at once.
+        It 'reports a pass only when the next poll confirms it, so a run created just after the first read counts' {
+            InModuleScope KitReview {
+                function New-View([object[]] $Checks) { @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress }
+                $build = @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; detailsUrl = 'https://github.com/o/r/actions/runs/1/job/1' }
+                $labelQueued = @{ __typename = 'CheckRun'; workflowName = 'Labeler'; name = 'label'; status = 'QUEUED'; conclusion = $null; detailsUrl = 'https://github.com/o/r/actions/runs/2/job/2' }
+                $labelFailed = @{ __typename = 'CheckRun'; workflowName = 'Labeler'; name = 'label'; status = 'COMPLETED'; conclusion = 'FAILURE'; detailsUrl = 'https://github.com/o/r/actions/runs/2/job/2' }
+                $ci = '{"id":1,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}'
+                $script:views = @((New-View @($build)), (New-View @($build, $labelQueued)), (New-View @($build, $labelFailed)))
+                $script:runs = @(
+                    "{`"workflow_runs`":[$ci]}"
+                    "{`"workflow_runs`":[$ci,{`"id`":2,`"name`":`"Labeler`",`"workflow_id`":13,`"event`":`"pull_request`",`"created_at`":`"2026-11-14T04:56:30Z`",`"status`":`"queued`",`"conclusion`":null}]}"
+                    "{`"workflow_runs`":[$ci,{`"id`":2,`"name`":`"Labeler`",`"workflow_id`":13,`"event`":`"pull_request`",`"created_at`":`"2026-11-14T04:56:30Z`",`"status`":`"completed`",`"conclusion`":`"failure`"}]}"
+                )
+                # Each poll sees the state after as many sleeps as have passed.
+                $script:polls = 0
+                Mock Start-Sleep { $script:polls++ }
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:polls, 2)] } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:runs[[Math]::Min($script:polls, 2)] } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.Message | Should -Match '1 of 2 checks failed: label'
+            }
+        }
+
+        It 'says at the time limit that a pass seen once is waiting for its second read' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                # The one poll takes the whole minute, so the pass it finds can't be read again before the limit.
+                Mock Get-PullRequestStatus {
+                    $script:now = $script:now.AddMinutes(1)
+                    [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'dotnet / Build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @() }
+                }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'TimedOut'
+                $result.Message | Should -Be 'Timed out after 1 minute at head2: every check passed once, waiting for a second read to confirm it.'
             }
         }
 
