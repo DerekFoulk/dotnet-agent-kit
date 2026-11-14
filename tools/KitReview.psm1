@@ -389,6 +389,59 @@ function Get-GhList {
     }
 }
 
+# The pull request's state, its head commit and its checks, from one gh call. gh pr view exits 0 while checks are
+# pending, where gh pr checks exits 8, which Invoke-Gh would treat as a failure.
+function Get-PullRequestStatus {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+
+    $view = Invoke-Gh pr view $Number --repo $Repository --json 'state,headRefOid,statusCheckRollup' | ConvertFrom-Json -AsHashtable
+    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Checks = @() }
+}
+
+# A commit as messages show it.
+function Get-ShortSha {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Sha)
+    $Sha.Substring(0, [Math]::Min(7, $Sha.Length))
+}
+
+# Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
+# Reviewed (Copilot reviewed the head commit), or TimedOut, naming what it still waits for. It polls every
+# -IntervalSeconds and sleeps only between polls. The kit's one watcher, for any agent in any tool (owner, 2026-11-14).
+function Wait-PullRequest {
+    param(
+        [Parameter(Mandatory)] [string] $Repository,
+        [Parameter(Mandatory)] [int] $Number,
+        [ValidateSet('Review', 'Checks', 'Either')] [string] $For = 'Either',
+        [ValidateRange(1, 180)] [int] $TimeoutMinutes = 30,
+        [ValidateRange(5, 600)] [int] $IntervalSeconds = 20
+    )
+
+    $polls = [Math]::Max(1, [int][Math]::Ceiling($TimeoutMinutes * 60 / $IntervalSeconds))
+    $status = $null
+    for ($poll = 1; $poll -le $polls; $poll++) {
+        if ($poll -gt 1) { Start-Sleep -Seconds $IntervalSeconds }
+        $status = Get-PullRequestStatus -Repository $Repository -Number $Number
+        $head = Get-ShortSha -Sha $status.HeadSha
+
+        if ($For -in 'Review', 'Either') {
+            $review = Get-CopilotReview -Repository $Repository -Number $Number
+            if ($review -and $review.Commit -eq $status.HeadSha) {
+                return [pscustomobject]@{
+                    Event = 'Reviewed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
+                    Message = "Copilot reviewed ${head}: $($review.Verdict), $($review.OpenIssueCount) open issues."
+                }
+            }
+        }
+    }
+
+    $head = Get-ShortSha -Sha $status.HeadSha
+    $minutes = if ($TimeoutMinutes -eq 1) { '1 minute' } else { "$TimeoutMinutes minutes" }
+    [pscustomobject]@{
+        Event = 'TimedOut'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @(); PendingChecks = @()
+        Message = "Timed out after $minutes at ${head}: no review from Copilot of $head yet."
+    }
+}
+
 # Writing to a merged or closed pull request helps no one; new commits belong on a fresh branch.
 function Assert-PullRequestOpen {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
@@ -399,4 +452,4 @@ function Assert-PullRequestOpen {
     }
 }
 
-Export-ModuleMember -Function ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewFinding, Resolve-ReviewThread, Add-ReviewReply
+Export-ModuleMember -Function ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewFinding, Resolve-ReviewThread, Add-ReviewReply, Wait-PullRequest
