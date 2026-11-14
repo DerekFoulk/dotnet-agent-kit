@@ -822,18 +822,67 @@ Describe 'KitReview.psm1' {
         # Seen on PR #73 at 1a783d2 (2026-11-14): when Copilot can't review, it still posts a review on the head commit,
         # but its body is a reason, not a summary (no ccr-overview marker). That isn't a review to answer, so it's
         # ReviewFailed, with Copilot's reason, not Reviewed with an Unknown verdict.
-        It 'returns ReviewFailed, with Copilot''s reason, when Copilot posted a review of the head that isn''t a summary' {
+        It 'returns ReviewFailed, with Copilot''s reason, when Copilot posts a review of the head that isn''t a summary' {
             InModuleScope KitReview {
                 Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
+                # Copilot's note lands after the wait's first poll.
+                $script:polls = 0
                 Mock Invoke-Gh {
-                    '[{ "id": 13, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "head2", "body": "Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota. Try requesting a review at a lower effort level." }]'
+                    if ($script:polls -lt 1) { '[]' }
+                    else { '[{ "id": 13, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "head2", "body": "Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota. Try requesting a review at a lower effort level." }]' }
                 }
-                Mock Start-Sleep {}
+                Mock Start-Sleep { $script:polls++ }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 5 -IntervalSeconds 20
 
                 $result.Event | Should -Be 'ReviewFailed'
                 $result.Message | Should -Be 'Copilot couldn''t review head2: Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota. Try requesting a review at a lower effort level.'
+            }
+        }
+
+        # The reviewer agent's review of PR #73: a failed try already on the head when the wait starts is what the owner
+        # re-requests a review after (credits topped up), so it isn't news. Only a try that fails while the wait runs is
+        # ReviewFailed; otherwise the wait goes on, for a retry's summary, and its time-out says the last try failed.
+        It 'waits for Copilot to try again when its last try on the head failed before the wait: <Case>' -ForEach @(
+            @{ Case = 'the retry''s summary lands'; Retry = 'summary'; Expected = 'Reviewed 14' }
+            @{ Case = 'the retry fails too'; Retry = 'failed'; Expected = 'ReviewFailed 14' }
+            @{ Case = 'no retry comes'; Retry = 'none'; Expected = 'TimedOut ' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Retry = $Retry; Expected = $Expected } {
+                param($Retry, $Expected)
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds); $script:polls++ }
+                $script:polls = 0
+                $note = 'Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota.'
+                $old = [pscustomobject]@{ ReviewId = 13; Commit = 'head2'; Verdict = 'Unknown'; OpenIssueCount = 0; Issues = @(); Body = $note }
+                $retries = @{
+                    summary = [pscustomobject]@{ ReviewId = 14; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' }
+                    failed  = [pscustomobject]@{ ReviewId = 14; Commit = 'head2'; Verdict = 'Unknown'; OpenIssueCount = 0; Issues = @(); Body = $note }
+                    none    = $null
+                }
+                $script:before = @($old)
+                $script:after = @($old, $retries[$Retry] | Where-Object { $_ })
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @(); PendingRuns = @(); FailedRuns = @() } }
+                Mock Get-CopilotReviewOf { if ($script:polls -lt 1) { $script:before } else { $script:after } }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
+
+                "$($result.Event) $($result.Review.ReviewId)" | Should -Be $Expected
+            }
+        }
+
+        It 'says in its time-out that Copilot''s last try on the head failed, with the reason' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @(); PendingRuns = @(); FailedRuns = @() } }
+                Mock Get-CopilotReviewOf { [pscustomobject]@{ ReviewId = 13; Commit = 'head2'; Verdict = 'Unknown'; OpenIssueCount = 0; Issues = @(); Body = 'Copilot was unable to review this pull request.' } }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Message | Should -Be 'Timed out after 1 minute at head2: no review from Copilot of head2 yet (its last try failed: Copilot was unable to review this pull request.).'
             }
         }
 
