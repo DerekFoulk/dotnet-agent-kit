@@ -758,19 +758,44 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        It 'returns TimedOut after the time limit, saying what it still waits for, and sleeps only between polls' {
+        # Copilot's review of PR #73: the limit is elapsed time on a clock the tests control (TST-010), not a count of
+        # polls, so fast or slow GitHub calls, or an interval longer than the limit, can't end it early or late.
+        It 'returns TimedOut at the time limit, saying what it still waits for, and sleeps only between polls' {
             Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the module waits for a review'
             InModuleScope KitReview {
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @(); PendingRuns = @() } }
                 Mock Get-CopilotReview { }
-                Mock Start-Sleep {}
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
 
                 $result.Event | Should -Be 'TimedOut'
                 $result.Message | Should -Match "Timed out after 1 minute at head2: no review from Copilot of head2 yet"
-                Should -Invoke Get-PullRequestStatus -Times 3 -Exactly
-                Should -Invoke Start-Sleep -Times 2 -Exactly
+                Should -Invoke Get-PullRequestStatus -Times 4 -Exactly -Because 'it polls at 0, 20, 40 and 60 seconds'
+                Should -Invoke Start-Sleep -Times 3 -Exactly
+            }
+        }
+
+        It 'never sleeps past the limit: <Case>' -ForEach @(
+            @{ Case = 'an interval longer than the limit waits only the time left'; Interval = 600; CallSeconds = 0; Polls = 2; Sleeps = @(60) }
+            @{ Case = 'slow GitHub calls count toward the limit'; Interval = 20; CallSeconds = 30; Polls = 2; Sleeps = @(20) }
+        ) {
+            InModuleScope KitReview -Parameters @{ Interval = $Interval; CallSeconds = $CallSeconds; Polls = $Polls; Sleeps = $Sleeps } {
+                param($Interval, $CallSeconds, $Polls, $Sleeps)
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                $script:callSeconds = $CallSeconds
+                $script:slept = [System.Collections.Generic.List[int]]::new()
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:slept.Add($Seconds); $script:now = $script:now.AddSeconds($Seconds) }
+                Mock Get-PullRequestStatus { $script:now = $script:now.AddSeconds($script:callSeconds); [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @(); PendingRuns = @() } }
+                Mock Get-CopilotReview { }
+
+                (Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds $Interval).Event | Should -Be 'TimedOut'
+
+                Should -Invoke Get-PullRequestStatus -Times $Polls -Exactly
+                @($script:slept) | Should -Be $Sleeps
             }
         }
 
@@ -792,6 +817,7 @@ Describe 'KitReview.psm1' {
                 $script:views = @((New-View @()), (New-View $running), (New-View $done))
                 $script:viewCalls = 0
                 Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 2)] } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"name":"ci","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
@@ -799,6 +825,31 @@ Describe 'KitReview.psm1' {
                 $result.Event | Should -Be $Outcome
                 $result.Message | Should -Match ([regex]::Escape($Expected))
                 Should -Invoke Start-Sleep -Times 2 -Exactly
+            }
+        }
+
+        # Copilot's review of PR #73: a job that needs another isn't a check until its turn comes, so every registered
+        # check done isn't CI done. The head commit's workflow runs have to be completed too.
+        It 'keeps waiting while a workflow run is still going, even when every check so far has passed' {
+            InModuleScope KitReview {
+                function New-View([object[]] $Checks) { @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress }
+                $found = @{ __typename = 'CheckRun'; name = 'dotnet / Find UI projects'; status = 'COMPLETED'; conclusion = 'SUCCESS' }
+                $build = @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE' }
+                $script:views = @((New-View @($found)), (New-View @($found, $build)))
+                $script:runs = @(
+                    '{"workflow_runs":[{"name":"ci","status":"in_progress","conclusion":null}]}'
+                    '{"workflow_runs":[{"name":"ci","status":"completed","conclusion":"failure"}]}'
+                )
+                $script:viewCalls = 0; $script:runCalls = 0
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:runs[[Math]::Min($script:runCalls++, 1)] } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.Message | Should -Match 'dotnet / Build'
+                Should -Invoke Start-Sleep -Times 1 -Exactly
             }
         }
 

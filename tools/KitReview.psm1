@@ -413,6 +413,11 @@ function Get-PullRequestStatus {
     [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Checks = @($checks) }
 }
 
+# The time now: the clock Wait-PullRequest measures its limit by, which the tests replace (TST-010).
+function Get-KitUtcNow {
+    [DateTimeOffset]::UtcNow
+}
+
 # A commit as messages show it.
 function Get-ShortSha {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Sha)
