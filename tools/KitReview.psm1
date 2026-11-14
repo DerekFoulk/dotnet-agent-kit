@@ -391,10 +391,8 @@ function Get-GhList {
 
 # The pull request's state, its head commit and its checks, from one gh call. gh pr view exits 0 while checks are
 # pending, where gh pr checks exits 8, which Invoke-Gh would treat as a failure.
-# With -WithRuns it also lists the head commit's GitHub Actions runs that haven't completed: a job that needs another
-# isn't a check until its turn comes, so every registered check done isn't CI done (Copilot's review of PR #73).
-function Get-PullRequestStatus {
-    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $WithRuns)
+function Read-PullRequestView {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
     $view = Invoke-Gh pr view $Number --repo $Repository --json 'state,headRefOid,statusCheckRollup' | ConvertFrom-Json -AsHashtable
     $checks = foreach ($item in @($view['statusCheckRollup'] | Where-Object { $_ })) {
@@ -412,15 +410,33 @@ function Get-PullRequestStatus {
         }
         [pscustomobject]@{ Name = $name; Result = $result }
     }
-    $head = "$($view['headRefOid'])"
-    $pendingRuns = @()
-    if ($WithRuns -and $head) {
-        $runs = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$head&per_page=100" | ConvertFrom-Json -AsHashtable
-        $pendingRuns = @($runs['workflow_runs'] | Where-Object { $_ -and "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" })
-    }
-    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = $head; Checks = @($checks); PendingRuns = $pendingRuns }
+    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Checks = @($checks) }
 }
 
+# The pull request's state, head and checks. With -WithRuns it also lists the head commit's GitHub Actions runs that
+# haven't completed, and those that failed: a job that needs another isn't a check until its turn comes, so every
+# registered check done isn't CI done. The checks and the runs are two reads, and a job can finish between them, so
+# once every run has completed the checks are read again (Copilot's reviews of PR #73).
+function Get-PullRequestStatus {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $WithRuns)
+
+    $status = Read-PullRequestView -Repository $Repository -Number $Number
+    $pendingRuns = @()
+    $failedRuns = @()
+    if ($WithRuns -and $status.HeadSha) {
+        $runs = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$($status.HeadSha)&per_page=100" | ConvertFrom-Json -AsHashtable
+        $all = @($runs['workflow_runs'] | Where-Object { $_ })
+        $pendingRuns = @($all | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" })
+        $failedRuns = @($all | Where-Object { "$($_['status'])" -eq 'completed' -and "$($_['conclusion'])" -notin 'success', 'skipped', 'neutral' } | ForEach-Object { "$($_['name'])" })
+        if (-not $pendingRuns) {
+            $fresh = Read-PullRequestView -Repository $Repository -Number $Number
+            # A push between the reads: the runs read belong to the old head, so nothing about the new one is known yet.
+            if ($fresh.HeadSha -ne $status.HeadSha) { $pendingRuns = @("the runs of $(Get-ShortSha -Sha $fresh.HeadSha)"); $failedRuns = @() }
+            $status = $fresh
+        }
+    }
+    [pscustomobject]@{ State = $status.State; HeadSha = $status.HeadSha; Checks = $status.Checks; PendingRuns = $pendingRuns; FailedRuns = $failedRuns }
+}
 # The time now: the clock Wait-PullRequest measures its limit by, which the tests replace (TST-010).
 function Get-KitUtcNow {
     [DateTimeOffset]::UtcNow
@@ -487,11 +503,17 @@ function Wait-PullRequest {
             $pending = @($checks | Where-Object Result -EQ 'Pending')
             if ($checks.Count -gt 0 -and $pending.Count -eq 0 -and @($status.PendingRuns).Count -eq 0) {
                 $failed = @($checks | Where-Object Result -EQ 'Failed' | ForEach-Object Name)
-                $outcome = if ($failed) { 'ChecksFailed' } else { 'ChecksPassed' }
+                # A failed workflow run is a failure even when the checks don't show its job (Copilot's re-review of PR #73).
+                $failedRuns = @($status.PSObject.Properties['FailedRuns'] ? $status.FailedRuns : @())
+                $outcome = if ($failed -or $failedRuns) { 'ChecksFailed' } else { 'ChecksPassed' }
                 $skipped = @($checks | Where-Object Result -EQ 'Skipped').Count
-                $text = if ($failed) { "$($failed.Count) of $($checks.Count) checks failed: $($failed -join ', ')." } else { "every check passed ($($checks.Count - $skipped) passed, $skipped skipped)." }
+                $parts = @(
+                    if ($failed) { "$($failed.Count) of $($checks.Count) checks failed: $($failed -join ', ')" }
+                    if ($failedRuns) { "workflow runs failed: $($failedRuns -join ', ')" }
+                )
+                $text = if ($parts) { ($parts -join '; ') + '.' } else { "every check passed ($($checks.Count - $skipped) passed, $skipped skipped)." }
                 return [pscustomobject]@{
-                    Event = $outcome; HeadSha = $status.HeadSha; Review = $null; FailedChecks = $failed; PendingChecks = @()
+                    Event = $outcome; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @($failed) + @($failedRuns); PendingChecks = @()
                     Message = "CI finished at ${head}: $text"
                 }
             }
