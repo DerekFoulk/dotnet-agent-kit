@@ -950,6 +950,46 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's sixth review of PR #73: start and creation times are to the second, so two attempts of a check, or two
+        # runs of a workflow, can tie, and a job that hasn't started has no start time at all. GitHub numbers jobs and runs
+        # in order, so the higher id is the later one, wherever it falls in the list.
+        It 'picks the later of two by id, not by list order: <Case>' -ForEach @(
+            @{ Case = 'two attempts of a check started in the same second'; Expected = 'ChecksFailed'
+                Checks = @(
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/400/job/2' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/400/job/1' }
+                )
+                Runs = '{"workflow_runs":[{"id":400,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' }
+            @{ Case = 'a re-run of a check that hasn''t started yet'; Expected = 'TimedOut'
+                Checks = @(
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'QUEUED'; conclusion = $null; startedAt = $null; detailsUrl = 'https://github.com/o/r/actions/runs/400/job/2' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/400/job/1' }
+                )
+                Runs = '{"workflow_runs":[{"id":400,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' }
+            @{ Case = 'two runs of a workflow created in the same second'; Expected = 'ChecksFailed'
+                Checks = @(
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/501/job/2' }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:11Z'; detailsUrl = 'https://github.com/o/r/actions/runs/500/job/1' }
+                )
+                Runs = '{"workflow_runs":[{"id":501,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"failure"},{"id":500,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Checks = $Checks; Runs = $Runs; Expected = $Expected } {
+                param($Checks, $Runs, $Expected)
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress
+                $script:runsJson = $Runs
+                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be $Expected
+                $result.Message | Should -Match 'dotnet / Build'
+            }
+        }
+
         # Copilot's sixth review of PR #73: the head commit can be on another branch too (another pull request from the same
         # commit), and the runs listed by head_sha include that branch's. A run there never replaces a run on this one.
         It 'keeps a failed workflow run when a later run of the same workflow ran on another branch' {
