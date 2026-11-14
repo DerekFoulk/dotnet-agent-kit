@@ -450,7 +450,8 @@ function Read-PullRequestView {
         $started = if ($item['startedAt']) { [datetimeoffset] "$($item['startedAt'])" } else { [datetimeoffset]::MaxValue }
         [pscustomobject]@{ Key = $key; Id = $id; Started = $started; Order = $order++; RunId = $runId; Name = $name; Result = $result }
     }
-    [pscustomobject]@{ State = "$($pullRequest['state'])"; HeadSha = "$($pullRequest['headRefOid'])"; Items = @($items) }
+    # StartHeadSha is the first page's head: a push between pages moved the head from it (Copilot's twelfth review).
+    [pscustomobject]@{ State = "$($pullRequest['state'])"; HeadSha = "$($pullRequest['headRefOid'])"; StartHeadSha = "$($pulls[0]['headRefOid'])"; Items = @($items) }
 }
 
 # The checks that decide CI: none from a workflow run that a later run replaced, and of a check listed more than once,
@@ -477,7 +478,7 @@ function Get-PullRequestStatus {
     $view = Read-PullRequestView -Repository $Repository -Number $Number
     # The head this read started from: if a push lands before the checks are read again, the head it ends at is a
     # different commit, and a watcher's baseline is the first (Copilot's eleventh review of PR #73).
-    $startHead = $view.HeadSha
+    $startHead = $view.StartHeadSha
     $pendingRuns = @()
     $failedRuns = @()
     $replaced = @()
