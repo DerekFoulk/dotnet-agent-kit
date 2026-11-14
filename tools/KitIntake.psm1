@@ -39,6 +39,8 @@ function Resolve-KitIntakeAnswer {
         $ids = @($card['options'] | ForEach-Object { $_['id'] })
         $accepts = "$($ids -join ', '), or 'Other: <text>'"
         $value = $Answers[$id]
+        # A card with a default, such as the budget ($0, ARC-012), takes it when the answers leave the card out.
+        if (-not $Answers.Contains($id) -and $card.Contains('default')) { $value = $card['default'] }
         if ($value -isnot [string] -or -not $value.Trim()) { throw "The answers have no answer for '$id'. It takes one of: $accepts." }
         # AskUserQuestion always offers Other: the owner's own answer, which the profile says needs an ADR.
         if ($value -match '(?s)^Other:\s*(?<text>\S.*)$') {
