@@ -435,14 +435,16 @@ function Read-PullRequestView {
             $app = if ($suite -and $suite['app']) { "$($suite['app']['slug'])" } else { '' }
             $run = if ($suite) { $suite['workflowRun'] } else { $null }
             $workflow = if ($run -and $run['workflow']) { "$($run['workflow']['name'])" } else { '' }
-            # Two apps can post checks of the same name; they're two checks.
-            $key = "check:$app/$workflow/$name"
+            $id = if ($null -ne $item['databaseId']) { [long] $item['databaseId'] } else { -1 }
+            $runId = if ($run -and $null -ne $run['databaseId']) { [long] $run['databaseId'] } else { $null }
+            # Two apps can post checks of the same name, and two independent runs of one workflow can too (a push and
+            # a pull request); each is its own check (Copilot's tenth and eleventh reviews of PR #73). A run that
+            # replaced another has a new id, and Select-CurrentCheck drops the replaced run's checks.
+            $key = "check:$app/$workflow/$runId/$name"
             $result = if ("$($item['status'])" -ne 'COMPLETED') { 'Pending' }
             elseif ("$($item['conclusion'])" -eq 'SKIPPED') { 'Skipped' }
             elseif ("$($item['conclusion'])" -in 'SUCCESS', 'NEUTRAL') { 'Passed' }
             else { 'Failed' }
-            $id = if ($null -ne $item['databaseId']) { [long] $item['databaseId'] } else { -1 }
-            $runId = if ($run -and $null -ne $run['databaseId']) { [long] $run['databaseId'] } else { $null }
         }
         # A check that hasn't started is the latest attempt of its name, whatever the others' start times.
         $started = if ($item['startedAt']) { [datetimeoffset] "$($item['startedAt'])" } else { [datetimeoffset]::MaxValue }
