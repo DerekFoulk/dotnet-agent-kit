@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -58,6 +59,21 @@ public sealed class AppFactoryTests
         home.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    // An app may configure an endpoint of its own on a fixed port, in appsettings.json or code. The factory's address
+    // must still be the only one, or two factories would clash on that port, and the browser might be sent to it.
+    [Fact]
+    public async Task StartServerListensOnlyOnTheSystemPickedPortWhenTheAppConfiguresItsOwnEndpoint()
+    {
+        await using OwnEndpointFactory factory = new();
+
+        Action start = factory.StartServer;
+
+        start.Should().NotThrow();
+        factory.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>().Addresses
+            .Should().ContainSingle();
+        factory.ClientOptions.BaseAddress.Port.Should().NotBe(OwnEndpointFactory.FixedPort);
+    }
+
     /// <summary>Points the content root at a missing folder first, as the factory's fallback does under Stryker.</summary>
     private sealed class MisledFactory : AppFactory
     {
@@ -65,6 +81,18 @@ public sealed class AppFactoryTests
         {
             builder.UseContentRoot(Path.Combine(Path.GetTempPath(), "no-such-folder-" + Guid.NewGuid().ToString("N")));
             base.ConfigureWebHost(builder);
+        }
+    }
+
+    /// <summary>Gives the app an endpoint of its own on a fixed port, as an appsettings.json Kestrel section would.</summary>
+    private sealed class OwnEndpointFactory : AppFactory
+    {
+        public const int FixedPort = 5000;
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.UseSetting("Kestrel:Endpoints:Own:Url", $"http://127.0.0.1:{FixedPort}");
         }
     }
 
