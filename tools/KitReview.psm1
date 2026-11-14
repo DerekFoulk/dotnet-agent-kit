@@ -413,7 +413,8 @@ function Get-GhList {
     }
 }
 
-# The pull request's state, its head commit and every check its head commit's rollup lists, from GitHub's GraphQL API,
+# The pull request's state, its head commit and every check in its statusCheckRollup ("Check and Status rollup
+# information for the PR's head ref", GitHub's GraphQL reference; the reviewer agent's review of PR #73), from that API,
 # whose fields say what each check is (Copilot's tenth review of PR #73): its own id (databaseId, assigned in order),
 # the app that posted it, and for GitHub Actions the workflow run it belongs to, so Select-CurrentCheck can drop a
 # replaced run's checks. gh pr view gives none of these, and gh pr checks exits 8 while checks are pending.
@@ -421,7 +422,7 @@ function Read-PullRequestView {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
     $owner, $repoName = $Repository -split '/', 2
-    $query = 'query($owner: String!, $name: String!, $number: Int!, $endCursor: String) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { state headRefOid commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { __typename ... on CheckRun { databaseId name status conclusion startedAt checkSuite { app { slug } workflowRun { databaseId workflow { name } } } } ... on StatusContext { context state } } } } } } } } } }'
+    $query = 'query($owner: String!, $name: String!, $number: Int!, $endCursor: String) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { state headRefOid statusCheckRollup { contexts(first: 100, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { __typename ... on CheckRun { databaseId name status conclusion startedAt checkSuite { app { slug } workflowRun { databaseId workflow { name } } } } ... on StatusContext { context state } } } } } } }'
     # -f sends a string; -F would turn a repository named "2048" into a number. The PR number is an Int. The rollup comes
     # 100 checks to a page; --paginate --slurp reads every page into one array, one item per page.
     $pages = Invoke-Gh api graphql -f "query=$query" -f "owner=$owner" -f "name=$repoName" -F "number=$Number" --paginate --slurp | ConvertFrom-Json -AsHashtable
@@ -429,11 +430,7 @@ function Read-PullRequestView {
     $pullRequest = $pulls[-1]
     # A push between pages makes them disagree on the head: StartHeadSha (the first page's) and HeadSha (the last's)
     # then differ, and Wait-PullRequest returns HeadMoved before it looks at any check.
-    $nodes = foreach ($pull in $pulls) {
-        $commit = @($pull['commits']['nodes'] | Where-Object { $_ })[0]
-        $rollup = if ($commit) { $commit['commit']['statusCheckRollup'] } else { $null }
-        if ($rollup) { $rollup['contexts']['nodes'] }
-    }
+    $nodes = foreach ($pull in $pulls) { if ($pull['statusCheckRollup']) { $pull['statusCheckRollup']['contexts']['nodes'] } }
     $order = 0
     $items = foreach ($item in @($nodes | Where-Object { $_ })) {
         # A CheckRun has a status and, once completed, a conclusion; a StatusContext has a state.

@@ -818,7 +818,7 @@ Describe 'KitReview.psm1' {
                         }
                     })
                 $rollup = @{ contexts = @{ pageInfo = @{ hasNextPage = $false; endCursor = $null }; nodes = $nodes } }
-                @{ data = @{ repository = @{ pullRequest = @{ state = $State; headRefOid = $Head; commits = @{ nodes = @(@{ commit = @{ statusCheckRollup = $rollup } }) } } } } } |
+                @{ data = @{ repository = @{ pullRequest = @{ state = $State; headRefOid = $Head; statusCheckRollup = $rollup } } } } |
                     ConvertTo-Json -Depth 15 -Compress
             }
             # A fake Get-PullRequestStatus result with the fields the real one always sets: the read's starting head is the
