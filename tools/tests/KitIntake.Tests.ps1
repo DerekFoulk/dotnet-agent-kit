@@ -332,6 +332,18 @@ Describe 'ConvertTo-KitAppProfile' {
         $profileText | Should -Match 'checked 2026-11-11'
     }
 
+    # Copilot's review of PR #70: a budget's Other is an amount, not an unlisted technology, so it needs no ADR.
+    It 'keeps an Other budget as the amount given, with no ADR' {
+        $custom = [ordered]@{} + $answers
+        $custom['budget'] = 'Other: $50 a month'
+        $text = ConvertTo-KitAppProfile -Resolved (Resolve-KitIntakeAnswer -Intake $intake -Answers $custom) -Name 'Contoso.Orders' -KitCommit 'abc1234'
+
+        $row = @($text -split "`n" | Where-Object { $_ -like '| How much may this app cost each month?*' })
+        $row.Count | Should -Be 1
+        $row[0] | Should -Match '\| \$50 a month \|'
+        $row[0] | Should -Not -Match 'Needs an ADR'
+    }
+
     # The Other text is the owner's own words, written into a Markdown table: a | or a line break would break the row.
     It 'keeps an Other answer on its own row, escaped, and says it needs an ADR' {
         $other = [ordered]@{} + $answers
