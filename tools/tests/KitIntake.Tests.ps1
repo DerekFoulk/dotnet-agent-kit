@@ -24,12 +24,21 @@ Describe 'the intake data' {
         Test-Path -LiteralPath $intakePath | Should -BeTrue
     }
 
+    # ARC-012, the cost rule (owner, 2026-11-12): the intake asks a monthly budget, and it's $0 when unanswered, so
+    # the defaults stay free unless the owner sets a budget.
+    It 'asks for a monthly budget, $0 first and by default' {
+        $budget = @($intake['cards'] | Where-Object id -EQ 'budget')
+        $budget.Count | Should -Be 1 -Because 'the intake asks for a budget'
+        $budget[0]['options'][0]['id'] | Should -Be 'budget-0' -Because '$0 is the recommendation, listed first'
+        $budget[0]['default'] | Should -Be 'budget-0' -Because 'an unanswered budget is $0'
+    }
+
     # The agent shows each card with AskUserQuestion: a header of at most 12 characters, a question, and 2 to 4
     # options, the recommended one first (COM-001). A card that depends on another shows only the options that
     # fit that card's answer, so each such subset has to fit too, with at least one option.
     It 'has cards that AskUserQuestion can show, each with its recommended option first' {
         $intake | Should -Not -BeNullOrEmpty -Because 'templates/app-intake.json holds the cards'
-        @($intake['cards'].id) | Should -Be @('appType', 'data', 'database', 'signIn', 'hosting')
+        @($intake['cards'].id) | Should -Be @('appType', 'data', 'database', 'signIn', 'hosting', 'budget')
         foreach ($card in $intake['cards']) {
             $card['header'].Length | Should -BeLessOrEqual 12 -Because "card $($card['id'])'s header is a chip of 12 characters at most"
             $card['question'] | Should -Match '\?$' -Because "card $($card['id']) asks a question"
@@ -181,7 +190,7 @@ Describe 'Resolve-KitIntakeAnswer' {
     It 'resolves each card to its option, and each kind of test to its default tools' {
         $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers (New-Answer)
 
-        @($resolved.Cards.Id) | Should -Be @('appType', 'data', 'database', 'signIn', 'hosting')
+        @($resolved.Cards.Id) | Should -Be @('appType', 'data', 'database', 'signIn', 'hosting', 'budget')
         ($resolved.Cards | Where-Object Id -EQ 'database').Option['label'] | Should -Be 'Azure SQL Database, free offer'
         ($resolved.Cards | Where-Object Id -EQ 'hosting').Option['id'] | Should -Be 'none'
         @($resolved.TestKinds.Kind | ForEach-Object { $_['id'] }) | Should -Be @($intake['testKinds'].id)
@@ -193,13 +202,22 @@ Describe 'Resolve-KitIntakeAnswer' {
     It 'refuses <Case>, naming the card and what it accepts' -ForEach @(
         @{ Case = 'a missing card'; Change = { param($a) $a.Remove('hosting') }; Message = "*no answer for 'hosting'*none, container-apps, app-service*" }
         @{ Case = 'an answer that isn''t text'; Change = { param($a) $a['hosting'] = @('none') }; Message = "*no answer for 'hosting'*" }
-        @{ Case = 'an unknown card'; Change = { param($a) $a['colour'] = 'blue' }; Message = "*'colour', which isn't an intake card*appType, data, database, signIn, hosting, testTools*" }
+        @{ Case = 'an unknown card'; Change = { param($a) $a['colour'] = 'blue' }; Message = "*'colour', which isn't an intake card*appType, data, database, signIn, hosting, budget, testTools*" }
         @{ Case = 'an unknown option'; Change = { param($a) $a['signIn'] = 'okta' }; Message = "*'okta' isn't an option of the 'signIn' card*entra-external-id, entra-id, none*Other: <text>*" }
         @{ Case = 'an option in the wrong case'; Change = { param($a) $a['hosting'] = 'NONE' }; Message = "*'NONE' isn't an option of the 'hosting' card*" }
     ) {
         $answers = New-Answer
         & $Change $answers
         { Resolve-KitIntakeAnswer -Intake $intake -Answers $answers } | Should -Throw $Message
+    }
+
+    # The skill's example answers leave the budget out: a card with a default takes it when unanswered (ARC-012).
+    It 'gives an unanswered budget its default, $0' {
+        $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers (New-Answer)
+
+        $budget = @($resolved.Cards | Where-Object Id -EQ 'budget')
+        $budget.Count | Should -Be 1 -Because 'the budget card resolves even when unanswered'
+        $budget[0].Option['id'] | Should -Be 'budget-0'
     }
 
     # AskUserQuestion always offers "Other". An answer that isn't a kit option is kept in the owner's words, and the
