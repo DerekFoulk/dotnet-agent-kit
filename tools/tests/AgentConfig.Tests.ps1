@@ -363,6 +363,23 @@ Describe 'Agent configuration' {
         }
     }
 
+    # The kit's one watcher (owner, 2026-11-14): every place that tells an agent how to wait for a review or CI names it.
+    Context 'watching a pull request' {
+        It '<File> names Wait-PullRequest' -ForEach @(
+            @{ File = '.claude/skills/finish-work/SKILL.md' }
+            @{ File = '.claude/skills/address-review/SKILL.md' }
+            @{ File = 'AGENTS.md' }
+            @{ File = 'templates/app/AGENTS.md' }
+        ) {
+            Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File) | Should -Match '\bWait-PullRequest\b'
+        }
+
+        It 'is exported by KitReview.psm1, which apps get' {
+            Import-Module -Name (Join-Path $repoRoot 'tools' 'KitReview.psm1') -Force
+            Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        }
+    }
+
     Context 'guardrail merges' {
         It 'finish-work records the owner''s yes on the PR, with his words and the head commit, before merging' {
             $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
