@@ -206,6 +206,23 @@ Describe 'KitReview.psm1' {
                 Should -Invoke Invoke-Gh -ParameterFilter { $args -contains '--paginate' -and $args -contains '--jq' -and $args -contains '.[]' }
             }
         }
+        # The reviewer agent's review of PR #73: out of quota, Copilot posts a review whose body is a reason, not a summary
+        # (seen at 1a783d2 and 30faf5f). It isn't a review, so the latest summary still stands.
+        It 'returns Copilot''s latest summary, skipping a later review of the commit that isn''t one' {
+            InModuleScope KitReview -Parameters @{ Body = $script:changesBody } {
+                param($Body)
+                $script:reviews = @(
+                    @{ id = 5; user = @{ login = 'copilot-pull-request-reviewer[bot]' }; submitted_at = '2026-11-14T09:00:00Z'; commit_id = 'head2'; body = $Body }
+                    @{ id = 6; user = @{ login = 'copilot-pull-request-reviewer[bot]' }; submitted_at = '2026-11-14T10:00:00Z'; commit_id = 'head2'; body = 'Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota.' }
+                ) | ConvertTo-Json -Depth 5 -Compress
+                Mock Invoke-Gh { $script:reviews }
+
+                $review = Get-CopilotReview -Repository 'o/r' -Number 5 -Commit 'head2'
+
+                $review.ReviewId | Should -Be 5
+            }
+        }
+
         It 'returns nothing when Copilot has not reviewed (and never calls GitHub twice)' {
             InModuleScope KitReview {
                 Mock Invoke-Gh { '[{ "id": 3, "user": { "login": "DerekFoulk" }, "state": "COMMENTED", "submitted_at": "2026-11-03T10:00:00Z", "commit_id": "c", "body": "" }]' }
