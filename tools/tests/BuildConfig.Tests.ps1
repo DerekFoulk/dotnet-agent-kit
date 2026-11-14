@@ -142,7 +142,9 @@ Describe 'Repo build configuration' -Tag 'Build' {
             finally { $env:NUGET_PACKAGES = $savedPackages }
         }
 
-        It 'refuses a package that no trusted signer signed (NU3004)' {
+        # .NET doesn't verify signatures during a restore on macOS (SUP-012's exception), so there the unsigned package
+        # restores and this would fail with the configuration right (Copilot's review of PR #69).
+        It 'refuses a package that no trusted signer signed (NU3004)' -Skip:$IsMacOS {
             $build.ExitCode | Should -Not -Be 0 -Because 'the policy refuses unsigned packages'
             $build.Output | Should -Match 'NU3004' -Because $build.Output
         }
