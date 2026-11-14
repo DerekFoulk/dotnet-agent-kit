@@ -821,6 +821,32 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's eleventh review of PR #73: with -For Either, the review read comes between the status read and the CI
+        # result, and a push or close can land during it. The state and head are read again before any CI result.
+        It 'returns <Outcome> when the pull request is <Change> during an empty review read, before a CI result' -ForEach @(
+            @{ Change = 'pushed to'; State = 'OPEN'; Head = 'head3'; Outcome = 'HeadMoved' }
+            @{ Change = 'closed'; State = 'CLOSED'; Head = 'head2'; Outcome = 'Closed' }
+        ) {
+            InModuleScope KitReview -Parameters @{ State = $State; Head = $Head; Outcome = $Outcome } {
+                param($State, $Head, $Outcome)
+                $script:later = [pscustomobject]@{ State = $State; Head = $Head }
+                $script:statusCalls = 0
+                # The first two polls find CI passed at head2 (a pass and its confirmation); the read after that sees the change.
+                Mock Get-PullRequestStatus {
+                    $script:statusCalls++
+                    $state = if ($script:statusCalls -le 2) { 'OPEN' } else { $script:later.State }
+                    $head = if ($script:statusCalls -le 2) { 'head2' } else { $script:later.Head }
+                    [pscustomobject]@{ State = $state; HeadSha = $head; Checks = @([pscustomobject]@{ Name = 'dotnet / Build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @() }
+                }
+                Mock Get-CopilotReview { }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Either -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be $Outcome
+            }
+        }
+
         # Copilot's ninth review of PR #73: the second read can find the pull request merged or closed, not only moved; a
         # merged PR's review is nothing to answer.
         It 'returns <Outcome> when the pull request is <State> between reading the head and finding its review' -ForEach @(
