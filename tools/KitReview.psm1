@@ -548,6 +548,12 @@ function Get-ShortSha {
     $Sha.Substring(0, [Math]::Min(7, $Sha.Length))
 }
 
+# The reason Copilot gave in a review that isn't a summary: its first line.
+function Get-ReviewReason {
+    param([Parameter(Mandatory)] $Review)
+    ("$($Review.Body)".Trim() -split '\r?\n')[0]
+}
+
 # Wait-PullRequest's result when a push moved the head while it waited.
 function New-HeadMovedResult {
     param([Parameter(Mandatory)] [string] $From, [Parameter(Mandatory)] [string] $To)
@@ -598,6 +604,8 @@ function Wait-PullRequest {
     $status = $null
     $firstHead = $null
     $passSeenAt = $null
+    $failedBefore = $null
+    $lastFailure = $null
     while ($true) {
         $status = Get-PullRequestStatus -Repository $Repository -Number $Number -WithRuns:($For -in 'Checks', 'Either')
         $head = Get-ShortSha -Sha $status.HeadSha
@@ -613,9 +621,13 @@ function Wait-PullRequest {
             $reviews = @(Get-CopilotReviewOf -Repository $Repository -Number $Number -Commit $status.HeadSha | Where-Object { $_.Commit -eq $status.HeadSha })
             $review = @($reviews | Where-Object { Test-CopilotSummary -Body $_.Body }) | Select-Object -Last 1
             # When Copilot can't review (out of quota, seen on PR #73), it still posts a review, whose body is a reason,
-            # not a summary: that isn't a review to answer.
+            # not a summary: that isn't a review to answer. A failed try already there when the wait started is old news,
+            # the one a re-requested review follows, so only a try that fails while the wait runs is ReviewFailed (the
+            # reviewer agent's review of PR #73).
             $latest = $reviews | Select-Object -Last 1
-            $failure = if (-not $review -and $latest) { $latest }
+            $lastFailure = if (-not $review -and $latest) { $latest }
+            if ($null -eq $failedBefore) { $failedBefore = @($reviews | Where-Object { -not (Test-CopilotSummary -Body $_.Body) } | ForEach-Object ReviewId) }
+            $failure = if ($lastFailure -and $lastFailure.ReviewId -notin $failedBefore) { $lastFailure }
             if ($review -or $failure) {
                 $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
                 if ($changed) { return $changed }
@@ -627,10 +639,9 @@ function Wait-PullRequest {
                 }
             }
             if ($failure) {
-                $reason = ("$($failure.Body)".Trim() -split '\r?\n')[0]
                 return [pscustomobject]@{
                     Event = 'ReviewFailed'; HeadSha = $status.HeadSha; Review = $failure; FailedChecks = @(); PendingChecks = @()
-                    Message = "Copilot couldn't review ${head}: $reason"
+                    Message = "Copilot couldn't review ${head}: $(Get-ReviewReason -Review $failure)"
                 }
             }
         }
@@ -675,7 +686,10 @@ function Wait-PullRequest {
     $minutes = if ($TimeoutMinutes -eq 1) { '1 minute' } else { "$TimeoutMinutes minutes" }
     $pendingNames = @($status.Checks | Where-Object Result -EQ 'Pending' | ForEach-Object Name)
     $missing = @(
-        if ($For -in 'Review', 'Either') { "no review from Copilot of $head yet" }
+        if ($For -in 'Review', 'Either') {
+            if ($lastFailure) { "no review from Copilot of $head yet (its last try failed: $(Get-ReviewReason -Review $lastFailure))" }
+            else { "no review from Copilot of $head yet" }
+        }
         if ($For -in 'Checks', 'Either') {
             if ($passSeenAt) { 'every check passed once, waiting for a second read to confirm it' }
             elseif (@($status.Checks).Count -eq 0) { 'no checks have started' }

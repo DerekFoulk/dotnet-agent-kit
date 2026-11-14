@@ -868,7 +868,7 @@ Describe 'KitReview.psm1' {
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
 
-                "$($result.Event) $($result.Review.ReviewId)" | Should -Be $Expected
+                "$($result.Event) $(@($result.Review | Where-Object { $_ } | ForEach-Object ReviewId))" | Should -Be $Expected
             }
         }
 
