@@ -433,7 +433,11 @@ function Get-PullRequestStatus {
     $failedRuns = @()
     if ($WithRuns -and $status.HeadSha) {
         $runs = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$($status.HeadSha)&per_page=100" | ConvertFrom-Json -AsHashtable
-        $all = @($runs['workflow_runs'] | Where-Object { $_ })
+        # A workflow that runs again on the same commit and trigger keeps its earlier run: only its latest counts. Runs of
+        # one workflow for different triggers (a push and a pull request) are independent, so both count.
+        $all = @($runs['workflow_runs'] | Where-Object { $_ } | Group-Object { "$($_['workflow_id'] ?? $_['name'])|$($_['event'])" } | ForEach-Object {
+                $_.Group | Sort-Object { if ($_['created_at']) { [datetimeoffset] "$($_['created_at'])" } else { [datetimeoffset]::MinValue } } | Select-Object -Last 1
+            })
         $pendingRuns = @($all | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" })
         $failedRuns = @($all | Where-Object { "$($_['status'])" -eq 'completed' -and "$($_['conclusion'])" -notin 'success', 'skipped', 'neutral' } | ForEach-Object { "$($_['name'])" })
         if (-not $pendingRuns) {
