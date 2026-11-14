@@ -147,6 +147,22 @@ Describe 'Repo build configuration' -Tag 'Build' {
             $build.Output | Should -Match 'NU3004' -Because $build.Output
         }
 
+        # Copilot's review of PR #69: .NET doesn't verify signatures during a restore on macOS, and Microsoft advises
+        # leaving it so (https://learn.microsoft.com/dotnet/core/tools/nuget-signed-package-verification). SUP-012 says
+        # so plainly, and no workflow may turn verification off where it does run (Windows always, Linux by default).
+        It 'SUP-012 states its macOS exception' {
+            $text = Get-Content -Raw -Path (Join-Path $repoRoot 'docs' 'standards' 'supply-chain.md')
+            $statement = [regex]::Match($text, '(?m)^  - id: SUP-012\r?\n    statement: "(?<s>[^"]+)"').Groups['s'].Value
+            $statement | Should -Not -BeNullOrEmpty
+            $statement | Should -Match 'macOS'
+        }
+
+        It 'no workflow turns NuGet signature verification off' {
+            foreach ($workflow in Get-ChildItem -Path (Join-Path $repoRoot '.github' 'workflows') -Filter '*.yml') {
+                Get-Content -Raw -Path $workflow.FullName | Should -Not -Match 'DOTNET_NUGET_SIGNATURE_VERIFICATION\s*:\s*["'']?false' -Because $workflow.Name
+            }
+        }
+
         # Copilot's review of PR #69: with every package already extracted on the machine, a wrong certificate list
         # passed every test. A cold cache extracts, and so checks, each of nuget.org's packages the fixture uses.
         It 'restores nuget.org''s packages under the policy with a cold cache' {
