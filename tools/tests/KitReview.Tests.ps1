@@ -789,7 +789,7 @@ Describe 'KitReview.psm1' {
                 Mock Get-CopilotReview {
                     $script:reviewCalls++
                     $commit = if ($script:reviewCalls -lt 2) { 'head1' } else { 'head2' }
-                    [pscustomobject]@{ ReviewId = 9; Commit = $commit; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @() }
+                    [pscustomobject]@{ ReviewId = 9; Commit = $commit; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' }
                 }
                 Mock Start-Sleep {}
 
@@ -826,7 +826,7 @@ Describe 'KitReview.psm1' {
             InModuleScope KitReview {
                 $script:statusCalls = 0
                 Mock Get-PullRequestStatus { $script:statusCalls++; [pscustomobject]@{ State = 'OPEN'; HeadSha = $(if ($script:statusCalls -lt 2) { 'head2' } else { 'head3' }); Checks = @() } }
-                Mock Get-CopilotReview { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @() } } -ParameterFilter { $Commit -eq 'head2' }
+                Mock Get-CopilotReview { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' } } -ParameterFilter { $Commit -eq 'head2' }
                 Mock Get-CopilotReview { }
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
@@ -876,7 +876,7 @@ Describe 'KitReview.psm1' {
                 $script:statusCalls = 0
                 $script:later = $State
                 Mock Get-PullRequestStatus { $script:statusCalls++; [pscustomobject]@{ State = $(if ($script:statusCalls -lt 2) { 'OPEN' } else { $script:later }); HeadSha = 'head2'; Checks = @() } }
-                Mock Get-CopilotReview { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @() } }
+                Mock Get-CopilotReview { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' } }
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
@@ -893,7 +893,7 @@ Describe 'KitReview.psm1' {
             InModuleScope KitReview {
                 Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
                 Mock Invoke-Gh {
-                    '[{ "id": 11, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "head2", "body": "### 🟢 Approval recommended" }, { "id": 12, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:05:00Z", "commit_id": "head1", "body": "### 🟡 Changes recommended" }]'
+                    '[{ "id": 11, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "head2", "body": "<!-- ccr-overview-v2 -->\n\n### 🟢 Approval recommended" }, { "id": 12, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:05:00Z", "commit_id": "head1", "body": "<!-- ccr-overview-v2 -->\n\n### 🟡 Changes recommended" }]'
                 }
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
@@ -1448,7 +1448,7 @@ Describe 'KitReview.psm1' {
         It 'returns the first event with -For Either: a review while CI still runs' {
             InModuleScope KitReview {
                 Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'Build'; Result = 'Pending' }) } }
-                Mock Get-CopilotReview { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Changes recommended'; OpenIssueCount = 2; Issues = @() } }
+                Mock Get-CopilotReview { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Changes recommended'; OpenIssueCount = 2; Issues = @(); Body = '<!-- ccr-overview-v2 -->' } }
                 Mock Start-Sleep {}
 
                 (Wait-PullRequest -Repository 'o/r' -Number 5 -For Either -TimeoutMinutes 5 -IntervalSeconds 20).Event | Should -Be 'Reviewed'

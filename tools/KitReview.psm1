@@ -562,7 +562,8 @@ function Get-PullRequestChange {
 }
 
 # Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
-# Reviewed (Copilot reviewed the head commit; -For Review or Either), ChecksPassed or ChecksFailed (no check or workflow
+# Reviewed (Copilot reviewed the head commit; -For Review or Either), ReviewFailed (Copilot posted a reason, such as
+# running out of quota, instead of a review of the head), ChecksPassed or ChecksFailed (no check or workflow
 # run on the head is pending, and a pass is confirmed by the next poll; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
 # still waits for. -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
 # kit's one watcher, for any agent in any tool (owner, 2026-11-14); a host's own monitor may wake the agent sooner.
@@ -596,6 +597,15 @@ function Wait-PullRequest {
             if ($review -and $review.Commit -eq $status.HeadSha) {
                 $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
                 if ($changed) { return $changed }
+                # When Copilot can't review (out of quota, seen on PR #73), it still posts a review, whose body is a
+                # reason, not a summary: that isn't a review to answer.
+                if ("$($review.Body)" -notmatch '<!--\s*ccr-overview') {
+                    $reason = ("$($review.Body)".Trim() -split '\r?\n')[0]
+                    return [pscustomobject]@{
+                        Event = 'ReviewFailed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
+                        Message = "Copilot couldn't review ${head}: $reason"
+                    }
+                }
                 return [pscustomobject]@{
                     Event = 'Reviewed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
                     Message = "Copilot reviewed ${head}: $($review.Verdict), $($review.OpenIssueCount) open issues."
