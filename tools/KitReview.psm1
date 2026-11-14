@@ -524,13 +524,14 @@ function Wait-PullRequest {
         }
 
         if ($For -in 'Checks', 'Either') {
-            # No checks yet means CI hasn't started on this commit, not that it passed.
+            # No checks yet means CI hasn't started on this commit, not that it passed, unless a workflow run already
+            # failed: a startup failure starts no job, so it adds no check (Copilot's fifth review of PR #73).
             $checks = @($status.Checks)
             $pending = @($checks | Where-Object Result -EQ 'Pending')
-            if ($checks.Count -gt 0 -and $pending.Count -eq 0 -and @($status.PendingRuns).Count -eq 0) {
+            # A failed workflow run is a failure even when the checks don't show its job (Copilot's re-review of PR #73).
+            $failedRuns = @($status.PSObject.Properties['FailedRuns'] ? $status.FailedRuns : @())
+            if (($checks.Count -gt 0 -or $failedRuns.Count -gt 0) -and $pending.Count -eq 0 -and @($status.PendingRuns).Count -eq 0) {
                 $failed = @($checks | Where-Object Result -EQ 'Failed' | ForEach-Object Name)
-                # A failed workflow run is a failure even when the checks don't show its job (Copilot's re-review of PR #73).
-                $failedRuns = @($status.PSObject.Properties['FailedRuns'] ? $status.FailedRuns : @())
                 $outcome = if ($failed -or $failedRuns) { 'ChecksFailed' } else { 'ChecksPassed' }
                 $skipped = @($checks | Where-Object Result -EQ 'Skipped').Count
                 $parts = @(
