@@ -177,6 +177,30 @@
           }
         }
       ]
+    },
+    {
+      "id": "budget",
+      "header": "Budget",
+      "question": "How much may this app cost each month?",
+      "default": "budget-0",
+      "otherIsAmount": true,
+      "options": [
+        {
+          "id": "budget-0",
+          "label": "$0: free options only",
+          "description": "Every tool and service starts on its free option. A paid one is still listed with its price, and spending needs your OK (ARC-012)."
+        },
+        {
+          "id": "budget-20",
+          "label": "Up to $20 a month",
+          "description": "Plans may pick a paid option when it fits better and its estimated price stays within $20 a month. Spending still needs your OK."
+        },
+        {
+          "id": "budget-100",
+          "label": "Up to $100 a month",
+          "description": "Plans may pick paid options that fit better, within $100 a month in all. Spending still needs your OK."
+        }
+      ]
     }
   ],
   "testKinds": [

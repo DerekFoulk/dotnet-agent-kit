@@ -7,3 +7,4 @@ applyTo: '**'
 
 - ARC-004: Microservices, Blazor Hybrid for MAUI, and a non-LTS .NET target each need an ADR.
 - ARC-006: Plans cover the five Well-Architected pillars (reliability, security with a short threat model where data or sign-in is touched, cost, operational excellence including observability, performance), plus accessibility, data and docs.
+- ARC-012: Every tool, service and tier an app uses starts on the industry-standard option while it's free for the app's use; the new-app intake asks for a monthly budget, $0 when unanswered, and within that budget a plan picks the option that fits best; a paid option is always listed with its estimated price, the price's source and the date checked, never dropped; and spending money still needs the owner's OK (SEC-003).

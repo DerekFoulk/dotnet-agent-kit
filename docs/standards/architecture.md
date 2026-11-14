@@ -162,6 +162,22 @@ rules:
         how: "an architecture choice; code review checks for the ADR"
     scope: core
     paths: ["**/*.csproj"]
+  - id: ARC-012
+    statement: "Every tool, service and tier an app uses starts on the industry-standard option while it's free for the app's use; the new-app intake asks for a monthly budget, $0 when unanswered, and within that budget a plan picks the option that fits best; a paid option is always listed with its estimated price, the price's source and the date checked, never dropped; and spending money still needs the owner's OK (SEC-003)."
+    why: "One cost policy in place of the parts TST-007, DAT-001 and DAT-006 each stated (rules audit C3, CRF-003). The owner's default is full rigor with free industry-standard tools, wants paid options shown with their price rather than dropped (owner, 2026-11-11), and sets the budget; Well-Architected asks for a realistic budget that the design is held to."
+    layer: owner
+    basis: preference
+    status: accepted
+    sources: ["owner, 2026-11-11", "owner, 2026-11-12", "ADR-0058", "https://learn.microsoft.com/azure/well-architected/cost-optimization/principles, retrieved 2026-11-13"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "check: tools/tests/KitIntake.Tests.ps1 fails when templates/app-intake.json has no budget card with $0 first and as its default, when an unanswered budget doesn't resolve to $0, and (TST-007) when a priced option has no label, price, source or date"
+      - kind: advisory
+        in: [kit, app]
+        how: "picking the best option within the budget is the plan's: the plan-checklist skill's Cost heading points here and to the app profile's budget, and start-work's plan review checks it; spending stays the owner's call (SEC-003)"
+    scope: core
+    paths: ["**"]
 ---
 
 # Architecture

@@ -17,6 +17,7 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 - Does a new endpoint need a signed-in user (the fallback policy, SEC-007), and does it reach only the caller's own data (SEC-009)? If it must be public, say why.
 
 ## Cost optimization
+- Does it pick a tool, service or tier? Start on the industry-standard option while it's free; within the app's budget (`docs/app-profile.md`, $0 unless the owner set one), pick the option that fits best, and list any paid one with its estimated price, source and date (ARC-012).
 - Does it add a paid service or cloud resources? Each needs the owner's OK, in both modes. A new dependency needs it in review mode; in auto mode, name the source that recommends it (`AGENTS.md`, "Working modes").
 
 ## Operational excellence

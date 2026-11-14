@@ -9,7 +9,7 @@ areas:
     sources:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-07"
       - "ADR-0008"
-    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, ARC-010, ARC-011, CRF-006, CRF-007, DAT-001, DAT-002]
+    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, ARC-010, ARC-011, ARC-012, CRF-006, CRF-007, DAT-001, DAT-002]
     gaps:
       - id: GAP-001
         gap: "No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only. Closed by ADR-0059: ARC-010 and ARC-011 (proposed), a UI build job on Windows and macOS in the shared .NET CI, and the coverage gate's exemption for UI projects."
@@ -79,7 +79,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-07"
       - "ADR-0003"
       - "ADR-0018"
-    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, TST-007, GIT-005, DAT-005]
+    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, TST-007, TST-010, GIT-005, DAT-005]
     gaps:
       - id: GAP-003
         gap: "Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1. Closed by ADR-0039: a shared nightly Stryker.NET workflow for the kit and every app, failing below 85%."
@@ -287,11 +287,11 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 8 | 4 | 4 | 4 | 3 |
+| Architecture | 9 | 5 | 4 | 4 | 3 |
 | Craft | 10 | 5 | 5 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 8 | 7 | 1 | 0 | 0 |
-| Tests | 7 | 4 | 3 | 2 | 3 |
+| Tests | 8 | 4 | 4 | 2 | 3 |
 | Security | 7 | 5 | 2 | 4 | 0 |
 | Reliability | 3 | 2 | 1 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
@@ -303,7 +303,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 69 rules in force, 43 checked by a tool and 26 advisory; 25 proposed; 16 open gaps.
+**Overall:** 71 rules in force, 44 checked by a tool and 27 advisory; 25 proposed; 16 open gaps.
 
 Open gaps:
 

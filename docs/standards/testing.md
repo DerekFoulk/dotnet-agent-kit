@@ -95,7 +95,7 @@ rules:
     scope: core
     paths: ["tools/**"]
   - id: TST-007
-    statement: "The kit's list of test tools lives only in templates/app-intake.json: each kind of test, its tools, each tool's license and its cost label (Free, Free tier or Paid, with the price, its source and the date checked unless Free); every default is Free, or free for a non-commercial app (FluentAssertions 8, ADR-0004), and anything else that names test tools is checked against it or points to it."
+    statement: "The kit's list of test tools lives only in templates/app-intake.json: each kind of test, its tools, each tool's license and its cost label (Free, Free tier or Paid, with the price, its source and the date checked unless Free); every default is Free, or free for a non-commercial app (FluentAssertions 8, ADR-0004; ARC-012, the cost rule), and anything else that names test tools is checked against it or points to it."
     why: "One source for the tools the new-app intake offers and the standard names (CRF-003); the owner wants paid options listed with their price beside a free default."
     layer: owner
     basis: preference
@@ -136,6 +136,19 @@ rules:
         how: "which paths are hot and whether an app has its load test"
     scope: core
     paths: ["**/*.Benchmarks/**", "**/tests/load/**", "**/benchmark-budget.json", "**/load-budget.json"]
+  - id: TST-010
+    statement: "Unit tests follow Microsoft's unit-testing best practices: each name says the method, the scenario and the expected behavior, written without underscores (AddRejectsAMissingRequestByName); each test arranges, acts once and asserts; a test holds no logic (no if, loop or try) and no magic strings; shared setup is a helper method, not a constructor every test runs; private code is tested through the public method that uses it; and time, randomness and other outside state come in through seams such as TimeProvider."
+    why: "Microsoft lists these as what makes a unit test fast, isolated, repeatable, self-checking and readable. The kit keeps its names without underscores, the owner's choice (owner, 2026-11-09) and what CA1707 asks of every name, in place of Microsoft's Method_Scenario_ExpectedBehavior."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-09", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-13"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "no analyzer checks a test's shape; code review checks, the nightly mutation score (TST-004) exposes tests that assert too little, and the tdd-cycle skill names these practices"
+    scope: core
+    paths: ["**/*Tests*/**"]
 ---
 
 # Testing
