@@ -15,16 +15,16 @@ rules:
     scope: core
     paths: ["**/*.cs", ".editorconfig"]
   - id: STY-002
-    statement: "Never use var; write the type."
-    why: "The owner corrected var usage as a Microsoft-convention violation."
+    statement: "Use var only where the type is named on the right side of the assignment (a new or a cast), as dotnet/runtime does, and never for a built-in type such as int or string; everywhere else, write the type."
+    why: "The owner first ruled var out entirely as a Microsoft-convention violation (owner, 2026-10-27). The rules audit found that stricter than Microsoft's own repos: dotnet/runtime leaves var to the author when the type is apparent, and asks for the type elsewhere; the owner chose to follow it (owner, 2026-11-12)."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["owner, 2026-10-27", "ADR-0009"]
+    sources: ["owner, 2026-10-27", "owner, 2026-11-12", "ADR-0009", "https://github.com/dotnet/runtime/blob/860eddba936f4a7e8a04cb12ee3bc54385216cab/.editorconfig, retrieved 2026-11-13"]
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: IDE0008 at warning; tools/tests/BuildConfig.Tests.ps1 (UsesVar fixture)"
+        how: "build: IDE0008 at warning wherever the type isn't apparent (csharp_style_var_for_built_in_types and csharp_style_var_elsewhere false:warning, csharp_style_var_when_type_is_apparent false:none); tools/tests/BuildConfig.Tests.ps1 (the UsesVar and VarForBuiltInType fixtures fail, the VarWhenApparent fixture builds)"
     scope: core
     paths: ["**/*.cs"]
   - id: STY-003

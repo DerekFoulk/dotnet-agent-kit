@@ -18,6 +18,7 @@ BeforeDiscovery {
     # marked rules are exactly the ones it turns on.
     $violations = @(
         @{ Fixture = 'UsesVar'; Diagnostic = 'IDE0008'; Description = 'var, because code style is enforced on build' }
+        @{ Fixture = 'VarForBuiltInType'; Diagnostic = 'IDE0008'; Description = 'var for a built-in type, even after a cast that names it (STY-002)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
@@ -198,6 +199,17 @@ Describe 'Repo build configuration' -Tag 'Build' {
 
             $list | Should -Match 'nuget\.org' -Because $list
             $list | Should -Not -Match 'kit-test-extra-signer' -Because $list
+        }
+    }
+
+    # STY-002 (rules audit, owner 2026-11-12): var is allowed where the type is named on the right side (a new, a cast),
+    # as in dotnet/runtime's .editorconfig; everywhere else the type is written (the UsesVar fixture).
+    Context 'var where the type is named on the right' {
+        It 'builds with no warnings or errors' {
+            $workspace = New-FixtureWorkspace -Fixture 'VarWhenApparent'
+            $build = Invoke-FixtureBuild -Workspace $workspace
+
+            $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
 
