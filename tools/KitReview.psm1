@@ -395,22 +395,30 @@ function Read-PullRequestView {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
     $view = Invoke-Gh pr view $Number --repo $Repository --json 'state,headRefOid,statusCheckRollup' | ConvertFrom-Json -AsHashtable
-    $checks = foreach ($item in @($view['statusCheckRollup'] | Where-Object { $_ })) {
+    $order = 0
+    $runs = foreach ($item in @($view['statusCheckRollup'] | Where-Object { $_ })) {
         # A CheckRun (GitHub Actions) has a status and, once completed, a conclusion; a StatusContext has a state.
         if ("$($item['__typename'])" -eq 'StatusContext') {
             $name = "$($item['context'])"
+            $key = "status:$name"
             $result = switch ("$($item['state'])") { 'SUCCESS' { 'Passed' } { $_ -in 'PENDING', 'EXPECTED' } { 'Pending' } default { 'Failed' } }
         }
         else {
             $name = "$($item['name'])"
+            $key = "run:$($item['workflowName'])/$name"
             $result = if ("$($item['status'])" -ne 'COMPLETED') { 'Pending' }
             elseif ("$($item['conclusion'])" -eq 'SKIPPED') { 'Skipped' }
             elseif ("$($item['conclusion'])" -in 'SUCCESS', 'NEUTRAL') { 'Passed' }
             else { 'Failed' }
         }
-        [pscustomobject]@{ Name = $name; Result = $result }
+        $started = if ($item['startedAt']) { [datetimeoffset] "$($item['startedAt'])" } else { [datetimeoffset]::MinValue }
+        [pscustomobject]@{ Key = $key; Started = $started; Order = $order++; Name = $name; Result = $result }
     }
-    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Checks = @($checks) }
+    # A workflow that runs again on the same commit keeps its earlier run in the rollup: only each check's latest counts.
+    $checks = @($runs | Group-Object Key | ForEach-Object {
+            $_.Group | Sort-Object Started, Order | Select-Object -Last 1 | Select-Object Name, Result
+        })
+    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Checks = $checks }
 }
 
 # The pull request's state, head and checks. With -WithRuns it also lists the head commit's GitHub Actions runs that
