@@ -165,7 +165,8 @@ function Get-ReviewThread {
 }
 
 # Everything on the pull request still waiting for an answer, in this order:
-# - each issue in Copilot's latest summary whose thread is unresolved;
+# - each issue in Copilot's summary of the head commit (its latest summary, until it reviews the head) whose thread
+#   is unresolved;
 # - each summary issue with no thread (Thread is $null), such as a previously missed one, until the signed-in
 #   account resolves it for that review;
 # - each person's latest review that requests changes or has a body (Thread is $null), likewise;
@@ -194,7 +195,11 @@ function Get-OpenFinding {
         [bool] @($cache.Answers | Where-Object { $_.StartsWith($prefix, [StringComparison]::Ordinal) }).Count
     }
 
-    $review = Get-CopilotReview -Repository $Repository -Number $Number
+    # Copilot's review of the head commit, the one Wait-PullRequest reports, even if a review of an older commit landed
+    # later; until Copilot reviews the head, its latest review still stands (Copilot's seventh review of PR #73).
+    $head = "$((Invoke-Gh pr view $Number --repo $Repository --json headRefOid | ConvertFrom-Json -AsHashtable)['headRefOid'])"
+    $review = if ($head) { Get-CopilotReview -Repository $Repository -Number $Number -Commit $head }
+    if (-not $review) { $review = Get-CopilotReview -Repository $Repository -Number $Number }
     $issues = if ($review) { @($review.Issues) } else { @() }
     foreach ($issue in $issues) {
         $thread = if ($null -ne $issue.CommentId) { $byComment[[long] $issue.CommentId] } else { $null }
