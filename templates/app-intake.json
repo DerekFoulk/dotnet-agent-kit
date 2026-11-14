@@ -183,6 +183,7 @@
       "header": "Budget",
       "question": "How much may this app cost each month?",
       "default": "budget-0",
+      "otherIsAmount": true,
       "options": [
         {
           "id": "budget-0",

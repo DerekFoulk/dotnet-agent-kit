@@ -23,7 +23,7 @@ With AskUserQuestion (Claude Code), at most four cards per call. Each card's fir
    Ask the `budget` card in the same call too: $0 first, as the recommendation. "Other" takes an exact monthly amount. If he skips it, leave it out of the answers: it's $0 by default (ARC-012).
 3. **Only if he chose per kind:** one card per kind that has a tool besides its defaults (`default: false`), up to four per call, with `multiSelect` on. List the defaults first, then each alternative with its license, label and price.
 
-"Other" is always on offer. Record an Other answer as `Other: <his words>`; the profile marks it as needing an ADR. For test tools there's no Other: a tool that isn't listed needs an ADR (TST-005), so say that and add it to the kit's list first if he wants it.
+"Other" is always on offer. Record an Other answer as `Other: <his words>`; the profile marks it as needing an ADR, except on a card with `otherIsAmount`, such as the budget, where it records the amount as he gave it. For test tools there's no Other: a tool that isn't listed needs an ADR (TST-005), so say that and add it to the kit's list first if he wants it.
 
 Without AskUserQuestion (VS Code, Visual Studio), ask the same cards as numbered questions in the chat, each option with its label and cost, and the recommendation first with its reason.
 

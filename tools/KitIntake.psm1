@@ -101,7 +101,13 @@ function ConvertTo-KitAppProfile {
 
     $cardRows = foreach ($answer in $Resolved.Cards) {
         $card = $answer.Card
-        if ($answer.Other) {
+        # A card whose Other is an amount, such as the budget, keeps the owner's amount as the answer: it isn't an
+        # unlisted technology, so it needs no ADR (ARC-012).
+        if ($answer.Other -and $card.Contains('otherIsAmount') -and $card['otherIsAmount']) {
+            $value = $answer.Other
+            $cost = 'No cost of its own'
+        }
+        elseif ($answer.Other) {
             $value = "Other: $($answer.Other)"
             $cost = "Needs an ADR: it isn't a kit option, so its cost isn't known yet"
         }
