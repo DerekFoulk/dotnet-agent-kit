@@ -513,8 +513,8 @@ function New-EndedResult {
 }
 
 # Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
-# Reviewed (Copilot reviewed the head commit; -For Review or Either), ChecksPassed or ChecksFailed (no check on the head
-# is pending; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
+# Reviewed (Copilot reviewed the head commit; -For Review or Either), ChecksPassed or ChecksFailed (no check or workflow
+# run on the head is pending, and a pass is confirmed by the next poll; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
 # still waits for. -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
 # kit's one watcher, for any agent in any tool (owner, 2026-11-14); a host's own monitor may wake the agent sooner.
 function Wait-PullRequest {
@@ -530,6 +530,7 @@ function Wait-PullRequest {
     $deadline = (Get-KitUtcNow).AddMinutes($TimeoutMinutes)
     $status = $null
     $firstHead = $null
+    $passSeenAt = $null
     while ($true) {
         $status = Get-PullRequestStatus -Repository $Repository -Number $Number -WithRuns:($For -in 'Checks', 'Either')
         $head = Get-ShortSha -Sha $status.HeadSha
@@ -571,11 +572,17 @@ function Wait-PullRequest {
                     if ($failedRuns) { "workflow runs failed: $($failedRuns -join ', ')" }
                 )
                 $text = if ($parts) { ($parts -join '; ') + '.' } else { "every check passed ($($checks.Count - $skipped) passed, $skipped skipped)." }
-                return [pscustomobject]@{
-                    Event = $outcome; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @($failed) + @($failedRuns); PendingChecks = @()
-                    Message = "CI finished at ${head}: $text"
+                # A pass rests on one read, and a workflow run created just after it isn't in it, so a pass counts only
+                # once the next poll finds it again; a failure is final at once (Copilot's ninth review of PR #73).
+                if ($outcome -eq 'ChecksPassed' -and $passSeenAt -ne $status.HeadSha) { $passSeenAt = $status.HeadSha }
+                else {
+                    return [pscustomobject]@{
+                        Event = $outcome; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @($failed) + @($failedRuns); PendingChecks = @()
+                        Message = "CI finished at ${head}: $text"
+                    }
                 }
             }
+            else { $passSeenAt = $null }
         }
 
         $remaining = ($deadline - (Get-KitUtcNow)).TotalSeconds
@@ -589,7 +596,8 @@ function Wait-PullRequest {
     $missing = @(
         if ($For -in 'Review', 'Either') { "no review from Copilot of $head yet" }
         if ($For -in 'Checks', 'Either') {
-            if (@($status.Checks).Count -eq 0) { 'no checks have started' }
+            if ($passSeenAt) { 'every check passed once, waiting for a second read to confirm it' }
+            elseif (@($status.Checks).Count -eq 0) { 'no checks have started' }
             elseif ($pendingNames) { "$($pendingNames.Count) checks still running: $($pendingNames -join ', ')" }
             else { "workflow runs still going: $(@($status.PendingRuns) -join ', ')" }
         }
