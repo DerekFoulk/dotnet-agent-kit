@@ -798,6 +798,28 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's ninth review of PR #73: the second read can find the pull request merged or closed, not only moved; a
+        # merged PR's review is nothing to answer.
+        It 'returns <Outcome> when the pull request is <State> between reading the head and finding its review' -ForEach @(
+            @{ State = 'MERGED'; Outcome = 'Merged' }
+            @{ State = 'CLOSED'; Outcome = 'Closed' }
+        ) {
+            InModuleScope KitReview -Parameters @{ State = $State; Outcome = $Outcome } {
+                param($State, $Outcome)
+                $script:statusCalls = 0
+                $script:later = $State
+                Mock Get-PullRequestStatus { $script:statusCalls++; [pscustomobject]@{ State = $(if ($script:statusCalls -lt 2) { 'OPEN' } else { $script:later }); HeadSha = 'head2'; Checks = @() } }
+                Mock Get-CopilotReview { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @() } }
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be $Outcome
+            }
+        }
+
         # Copilot's sixth review of PR #73: a review of an older commit can land after the head's review, so the latest
         # review isn't always the head's. The head commit's own review counts, wherever it falls.
         It 'returns Reviewed when Copilot reviewed the head commit, even if a review of an older commit came later' {
