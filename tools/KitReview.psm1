@@ -502,6 +502,16 @@ function New-HeadMovedResult {
     }
 }
 
+# Wait-PullRequest's result when the pull request was merged or closed.
+function New-EndedResult {
+    param([Parameter(Mandatory)] [int] $Number, [Parameter(Mandatory)] [string] $State, [Parameter(Mandatory)] [AllowEmptyString()] [string] $HeadSha)
+    $outcome = if ($State -eq 'MERGED') { 'Merged' } else { 'Closed' }
+    [pscustomobject]@{
+        Event = $outcome; HeadSha = $HeadSha; Review = $null; FailedChecks = @(); PendingChecks = @()
+        Message = "Pull request #$Number is $($outcome.ToLowerInvariant()), at $(Get-ShortSha -Sha $HeadSha)."
+    }
+}
+
 # Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
 # Reviewed (Copilot reviewed the head commit; -For Review or Either), ChecksPassed or ChecksFailed (no check on the head
 # is pending; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
@@ -525,13 +535,7 @@ function Wait-PullRequest {
         $head = Get-ShortSha -Sha $status.HeadSha
 
         # A merged or closed PR gets no more reviews worth waiting for.
-        if ($status.State -ne 'OPEN') {
-            $outcome = if ($status.State -eq 'MERGED') { 'Merged' } else { 'Closed' }
-            return [pscustomobject]@{
-                Event = $outcome; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @(); PendingChecks = @()
-                Message = "Pull request #$Number is $($outcome.ToLowerInvariant()), at $head."
-            }
-        }
+        if ($status.State -ne 'OPEN') { return New-EndedResult -Number $Number -State $status.State -HeadSha $status.HeadSha }
         # A push while it waits: the old head's review and checks no longer decide anything.
         if ($null -eq $firstHead) { $firstHead = $status.HeadSha }
         elseif ($status.HeadSha -ne $firstHead) { return New-HeadMovedResult -From $firstHead -To $status.HeadSha }
@@ -539,9 +543,10 @@ function Wait-PullRequest {
         if ($For -in 'Review', 'Either') {
             $review = Get-CopilotReview -Repository $Repository -Number $Number -Commit $status.HeadSha
             if ($review -and $review.Commit -eq $status.HeadSha) {
-                # The head and the review are two reads; a push between them makes this an older commit's review
-                # (Copilot's eighth review of PR #73).
+                # The head and the review are two reads; a push between them makes this an older commit's review, and a
+                # merge or close leaves nothing to answer (Copilot's eighth and ninth reviews of PR #73).
                 $now = Get-PullRequestStatus -Repository $Repository -Number $Number
+                if ($now.State -ne 'OPEN') { return New-EndedResult -Number $Number -State $now.State -HeadSha $now.HeadSha }
                 if ($now.HeadSha -ne $status.HeadSha) { return New-HeadMovedResult -From $status.HeadSha -To $now.HeadSha }
                 return [pscustomobject]@{
                     Event = 'Reviewed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
