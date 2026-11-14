@@ -541,6 +541,17 @@ function New-EndedResult {
     }
 }
 
+# Wait-PullRequest's result if the pull request changed since a poll read it at HeadSha: Merged or Closed, or HeadMoved;
+# nothing if it's still open at that head. Each poll's reads (the status, then the review) take time, and a push or a
+# close can land during them, so this runs before any result about that head (Copilot's eighth, ninth and eleventh
+# reviews of PR #73).
+function Get-PullRequestChange {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [Parameter(Mandatory)] [string] $HeadSha)
+    $now = Get-PullRequestStatus -Repository $Repository -Number $Number
+    if ($now.State -ne 'OPEN') { return New-EndedResult -Number $Number -State $now.State -HeadSha $now.HeadSha }
+    if ($now.HeadSha -ne $HeadSha) { return New-HeadMovedResult -From $HeadSha -To $now.HeadSha }
+}
+
 # Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
 # Reviewed (Copilot reviewed the head commit; -For Review or Either), ChecksPassed or ChecksFailed (no check or workflow
 # run on the head is pending, and a pass is confirmed by the next poll; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
@@ -574,11 +585,8 @@ function Wait-PullRequest {
         if ($For -in 'Review', 'Either') {
             $review = Get-CopilotReview -Repository $Repository -Number $Number -Commit $status.HeadSha
             if ($review -and $review.Commit -eq $status.HeadSha) {
-                # The head and the review are two reads; a push between them makes this an older commit's review, and a
-                # merge or close leaves nothing to answer (Copilot's eighth and ninth reviews of PR #73).
-                $now = Get-PullRequestStatus -Repository $Repository -Number $Number
-                if ($now.State -ne 'OPEN') { return New-EndedResult -Number $Number -State $now.State -HeadSha $now.HeadSha }
-                if ($now.HeadSha -ne $status.HeadSha) { return New-HeadMovedResult -From $status.HeadSha -To $now.HeadSha }
+                $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
+                if ($changed) { return $changed }
                 return [pscustomobject]@{
                     Event = 'Reviewed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
                     Message = "Copilot reviewed ${head}: $($review.Verdict), $($review.OpenIssueCount) open issues."
@@ -606,6 +614,8 @@ function Wait-PullRequest {
                 # once the next poll finds it again; a failure is final at once (Copilot's ninth review of PR #73).
                 if ($outcome -eq 'ChecksPassed' -and $passSeenAt -ne $status.HeadSha) { $passSeenAt = $status.HeadSha }
                 else {
+                    $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
+                    if ($changed) { return $changed }
                     return [pscustomobject]@{
                         Event = $outcome; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @($failed) + @($failedRuns); PendingChecks = @()
                         Message = "CI finished at ${head}: $text"
