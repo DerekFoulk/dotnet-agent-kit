@@ -416,18 +416,21 @@ function Read-PullRequestView {
         }
         $started = if ($item['startedAt']) { [datetimeoffset] "$($item['startedAt'])" } else { [datetimeoffset]::MinValue }
         $runId = if ("$($item['detailsUrl'])" -match '/actions/runs/(?<id>\d+)(/|$)') { [long] $Matches['id'] } else { $null }
-        [pscustomobject]@{ Key = $key; Started = $started; Order = $order++; RunId = $runId; Name = $name; Result = $result }
+        $jobId = if ("$($item['detailsUrl'])" -match '/job/(?<id>\d+)(/|$)') { [long] $Matches['id'] } else { -1 }
+        [pscustomobject]@{ Key = $key; JobId = $jobId; Started = $started; Order = $order++; RunId = $runId; Name = $name; Result = $result }
     }
     [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Items = @($items) }
 }
 
 # The checks that decide CI: none from a workflow run that a later run replaced, and of a check listed more than once,
-# only its latest start (a workflow that runs again on the same commit keeps its earlier run in the rollup).
+# only its latest attempt (a workflow that runs again on the same commit keeps its earlier run in the rollup). GitHub
+# numbers jobs in order, so the higher job id is the later attempt, even when the start times tie or one hasn't
+# started; a check with no job id falls back to its start time (Copilot's sixth review of PR #73).
 function Select-CurrentCheck {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Items, [long[]] $ReplacedRuns = @())
 
     @($Items | Where-Object { $null -eq $_.RunId -or $_.RunId -notin $ReplacedRuns } | Group-Object Key | ForEach-Object {
-            $_.Group | Sort-Object Started, Order | Select-Object -Last 1 | Select-Object Name, Result
+            $_.Group | Sort-Object JobId, Started, Order | Select-Object -Last 1 | Select-Object Name, Result
         })
 }
 
@@ -450,7 +453,8 @@ function Get-PullRequestStatus {
         # Runs of one workflow for different triggers (a push and a pull request), or on different branches with this
         # commit (another pull request), are independent, so each counts (Copilot's sixth review of PR #73).
         $latest = @($every | Group-Object { "$($_['workflow_id'] ?? $_['name'])|$($_['event'])|$($_['head_branch'])" } | ForEach-Object {
-                $_.Group | Sort-Object { if ($_['created_at']) { [datetimeoffset] "$($_['created_at'])" } else { [datetimeoffset]::MinValue } } | Select-Object -Last 1
+                # Runs created in the same second are ordered by id, which GitHub assigns in order.
+                $_.Group | Sort-Object { if ($_['created_at']) { [datetimeoffset] "$($_['created_at'])" } else { [datetimeoffset]::MinValue } }, { [long] ($_['id'] ?? 0) } | Select-Object -Last 1
             })
         $kept = @($latest | Where-Object { $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
         $replaced = @($every | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -notin $kept } | ForEach-Object { [long] $_['id'] })
