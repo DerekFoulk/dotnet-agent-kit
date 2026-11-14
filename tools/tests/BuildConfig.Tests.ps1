@@ -92,6 +92,57 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 
+    # SUP-012: nuget.config requires every package to carry a signature from a trusted signer, nuget.org's repository
+    # signature. The clean fixture restores nuget.org's packages under that policy; this one restores an unsigned
+    # package from a local folder, which the policy must refuse.
+    Context 'package signatures' {
+        BeforeAll {
+            $workspace = New-FixtureWorkspace -Fixture 'UnsignedPackage'
+
+            # A package with no signature: a .nupkg is a zip with a .nuspec and a file for the target framework.
+            $local = Join-Path $workspace 'local-packages'
+            New-Item -ItemType Directory -Path $local | Out-Null
+            $staging = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName())
+            New-Item -ItemType Directory -Path (Join-Path $staging 'lib' 'net10.0') | Out-Null
+            Set-Content -Path (Join-Path $staging 'lib' 'net10.0' '_._') -Value ''
+            Set-Content -Path (Join-Path $staging 'Kit.Unsigned.nuspec') -Value @'
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Kit.Unsigned</id>
+    <version>1.0.0</version>
+    <authors>kit-tests</authors>
+    <description>An unsigned package for the signature policy test.</description>
+  </metadata>
+</package>
+'@
+            Compress-Archive -Path (Join-Path $staging '*') -DestinationPath (Join-Path $local 'kit.unsigned.1.0.0.zip')
+            Rename-Item -Path (Join-Path $local 'kit.unsigned.1.0.0.zip') -NewName 'kit.unsigned.1.0.0.nupkg'
+
+            # The kit's config, plus that folder as a source for this one package only.
+            $config = Join-Path $workspace 'nuget.config'
+            [xml] $xml = Get-Content -Raw -Path $config
+            $source = $xml.CreateElement('add'); $source.SetAttribute('key', 'local'); $source.SetAttribute('value', 'local-packages')
+            [void] $xml.configuration.packageSources.AppendChild($source)
+            $mapping = $xml.CreateElement('packageSource'); $mapping.SetAttribute('key', 'local')
+            $pattern = $xml.CreateElement('package'); $pattern.SetAttribute('pattern', 'Kit.Unsigned')
+            [void] $mapping.AppendChild($pattern)
+            [void] $xml.configuration.packageSourceMapping.AppendChild($mapping)
+            $xml.Save($config)
+
+            $props = Join-Path $workspace 'Directory.Packages.props'
+            (Get-Content -Raw -Path $props) -replace '</Project>', "  <ItemGroup>`n    <PackageVersion Include=`"Kit.Unsigned`" Version=`"1.0.0`" />`n  </ItemGroup>`n</Project>" |
+                Set-Content -Path $props -NoNewline
+
+            $build = Invoke-FixtureBuild -Workspace $workspace
+        }
+
+        It 'refuses a package that no trusted signer signed (NU3004)' {
+            $build.ExitCode | Should -Not -Be 0 -Because 'the policy refuses unsigned packages'
+            $build.Output | Should -Match 'NU3004' -Because $build.Output
+        }
+    }
+
     Context 'clean code' {
         BeforeAll {
             $workspace = New-FixtureWorkspace -Fixture 'Clean'

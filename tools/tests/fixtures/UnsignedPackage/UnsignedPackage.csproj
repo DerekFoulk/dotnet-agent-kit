@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The test builds this package unsigned into local-packages and maps it to that folder (SUP-012). -->
+    <PackageReference Include="Kit.Unsigned" />
+  </ItemGroup>
+
+</Project>
