@@ -6,3 +6,4 @@ applyTo: '**/*Tests*/**'
 # Testing
 
 - TST-004: Coverage gates: 100% line coverage for pure domain assemblies, 95% for application assemblies, 90% overall; mutation score 85% (nightly).
+- TST-010: Unit tests follow Microsoft's unit-testing best practices: each name says the method, the scenario and the expected behavior, written without underscores (AddRejectsAMissingRequestByName); each test arranges, acts once and asserts; a test holds no logic (no if, loop or try) and no magic strings; shared setup is a helper method, not a constructor every test runs; private code is tested through the public method that uses it; and time, randomness and other outside state come in through seams such as TimeProvider.
