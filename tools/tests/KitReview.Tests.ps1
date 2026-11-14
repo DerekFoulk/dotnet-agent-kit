@@ -907,6 +907,30 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's fourth review of PR #73: a replaced run's job can start after its replacement's, so start order alone
+        # can pick the old failure. A check belongs to the run its detailsUrl names; a replaced run's checks don't count.
+        It 'drops the checks of a replaced workflow run, even when its job started after the replacement''s' {
+            InModuleScope KitReview {
+                $view = @{
+                    state = 'OPEN'; headRefOid = 'head2'
+                    statusCheckRollup = @(
+                        @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:57:00Z'; detailsUrl = 'https://github.com/o/r/actions/runs/100/job/1' }
+                        @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:40Z'; detailsUrl = 'https://github.com/o/r/actions/runs/101/job/2' }
+                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/102/job/3' }
+                    )
+                } | ConvertTo-Json -Depth 5 -Compress
+                $script:view = $view
+                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":100,"name":"PR title","workflow_id":11,"event":"pull_request","created_at":"2026-11-14T04:56:05Z","status":"completed","conclusion":"failure"},{"id":101,"name":"PR title","workflow_id":11,"event":"pull_request","created_at":"2026-11-14T04:56:37Z","status":"completed","conclusion":"success"},{"id":102,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksPassed'
+                $result.Message | Should -Match 'every check passed \(2 passed, 0 skipped\)'
+            }
+        }
+
         # A push while it waits makes the old head's review and checks beside the point.
         It 'returns HeadMoved, with the new head, when someone pushes while it waits' {
             InModuleScope KitReview {
