@@ -486,6 +486,15 @@ function Get-ShortSha {
     $Sha.Substring(0, [Math]::Min(7, $Sha.Length))
 }
 
+# Wait-PullRequest's result when a push moved the head while it waited.
+function New-HeadMovedResult {
+    param([Parameter(Mandatory)] [string] $From, [Parameter(Mandatory)] [string] $To)
+    [pscustomobject]@{
+        Event = 'HeadMoved'; HeadSha = $To; Review = $null; FailedChecks = @(); PendingChecks = @()
+        Message = "The head moved from $(Get-ShortSha -Sha $From) to $(Get-ShortSha -Sha $To): wait again for the new commit."
+    }
+}
+
 # Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
 # Reviewed (Copilot reviewed the head commit; -For Review or Either), ChecksPassed or ChecksFailed (no check on the head
 # is pending; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
@@ -518,16 +527,15 @@ function Wait-PullRequest {
         }
         # A push while it waits: the old head's review and checks no longer decide anything.
         if ($null -eq $firstHead) { $firstHead = $status.HeadSha }
-        elseif ($status.HeadSha -ne $firstHead) {
-            return [pscustomobject]@{
-                Event = 'HeadMoved'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @(); PendingChecks = @()
-                Message = "The head moved from $(Get-ShortSha -Sha $firstHead) to ${head}: wait again for the new commit."
-            }
-        }
+        elseif ($status.HeadSha -ne $firstHead) { return New-HeadMovedResult -From $firstHead -To $status.HeadSha }
 
         if ($For -in 'Review', 'Either') {
             $review = Get-CopilotReview -Repository $Repository -Number $Number -Commit $status.HeadSha
             if ($review -and $review.Commit -eq $status.HeadSha) {
+                # The head and the review are two reads; a push between them makes this an older commit's review
+                # (Copilot's eighth review of PR #73).
+                $now = Get-PullRequestStatus -Repository $Repository -Number $Number
+                if ($now.HeadSha -ne $status.HeadSha) { return New-HeadMovedResult -From $status.HeadSha -To $now.HeadSha }
                 return [pscustomobject]@{
                     Event = 'Reviewed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
                     Message = "Copilot reviewed ${head}: $($review.Verdict), $($review.OpenIssueCount) open issues."
