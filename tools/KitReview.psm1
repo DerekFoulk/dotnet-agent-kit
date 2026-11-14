@@ -495,8 +495,13 @@ function Get-PullRequestStatus {
                 $pulls = @($_['pull_requests'] | Where-Object { $_ } | ForEach-Object { "$($_['number'])" } | Sort-Object) -join ','
                 "$($_['workflow_id'] ?? $_['name'])|$($_['event'])|$source|$($_['head_branch'])|$pulls"
             } -CaseSensitive | ForEach-Object {
-                # Runs created in the same second are ordered by id, which GitHub assigns in order.
-                $_.Group | Sort-Object { if ($_['created_at']) { [datetimeoffset] "$($_['created_at'])" } else { [datetimeoffset]::MinValue } }, { [long] ($_['id'] ?? 0) } | Select-Object -Last 1
+                # The run started last counts: run_started_at is its latest attempt's start, so re-running an older run
+                # makes it the current one, though it keeps its creation time (Copilot's twelfth review of PR #73). Runs
+                # started in the same second are ordered by id, which GitHub assigns in order.
+                $_.Group | Sort-Object {
+                    $at = $_['run_started_at'] ?? $_['created_at']
+                    if ($at) { [datetimeoffset] "$at" } else { [datetimeoffset]::MinValue }
+                }, { [long] ($_['id'] ?? 0) } | Select-Object -Last 1
             })
         $kept = @($latest | Where-Object { $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
         $replaced = @($every | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -notin $kept } | ForEach-Object { [long] $_['id'] })
