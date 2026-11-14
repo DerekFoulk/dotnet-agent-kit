@@ -61,6 +61,7 @@ Accepted (owner, 2026-11-12: "Yes, replace it").
   - CLAUDE.md, AGENTS.md, README and the app template say the same.
 - **Advisory parts** of rules that said "checked by the reviewer agent" now say code review checks them.
 - **If Copilot can't review,** for example when the owner's AI credits run out, the agent tells the owner and the PR waits.
+- **Update (2026-11-14):** the agent learns that Copilot has reviewed, or that CI has finished, through `Wait-PullRequest` in `KitReview.psm1`, the kit's own watcher, so it works the same in any tool. A host's monitor, such as the Claude Code desktop app's, reports review comments and CI failures but not a passing CI, and the ad hoc waits used before it missed finished CI on PRs #64 to #72 (owner, 2026-11-14).
 - **Apps made before this change** get the instructions through the kit sync. Their ruleset gains the rule only when the owner adds it, because `New-KitApp` sets rulesets once.
 
 ## Pillars affected

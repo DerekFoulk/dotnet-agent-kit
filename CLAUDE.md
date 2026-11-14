@@ -3,7 +3,7 @@
 ## Claude Code notes
 
 - **Rules:** `.claude/rules/` holds generated, path-scoped rule summaries. Each rule's full text, reason and sources are in `docs/standards/`.
-- **Code review:** GitHub Copilot reviews every PR and every push to it (DOD-003, ADR-0064). When its review lands, answer it with the `address-review` skill.
+- **Code review:** GitHub Copilot reviews every PR and every push to it (DOD-003, ADR-0064). When its review lands, answer it with the `address-review` skill. Wait for the review and for CI with `Wait-PullRequest` (`KitReview.psm1`, `finish-work` step 4), run in the background.
 - **Permissions:** `.claude/settings.json` keeps only precise rules (ADR-0026). It denies reading secret files. In both modes it asks before installing tools, running `New-KitApp` (in the kit only: an app's copy leaves out rules for kit scripts the app doesn't get), switching with `Set-AgentMode -Mode`, `git reset --hard`, `git clean`, deleting or force-pushing a branch, changing visibility, rulesets, branch protection or merge settings, deleting a repo, releases, DELETE API calls, and editing agent config, connectors or the mode files. Review mode adds asks before merging a PR, editing repo settings, adding packages and editing build or CI files, in your own `.claude/settings.local.json` (ADR-0035). Pushes aren't matched by text: GitHub's "main protection" ruleset guards `main`. If a rule blocks something legitimate, stop and ask the owner; don't rephrase around it.
 - **Shell:** on Windows, run the kit's scripts with the PowerShell tool (`pwsh`).
 - **Microsoft Learn MCP server:** `.mcp.json` configures it. Claude Code asks once per user before it connects a project server. Use it to check current Microsoft guidance before writing .NET code.

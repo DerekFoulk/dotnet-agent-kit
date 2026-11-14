@@ -71,5 +71,6 @@ Tell the owner, as a table: each finding, what you found, and its resolution, wi
 
 ## Being woken when a review lands
 
-- **Claude Code desktop app:** after opening the PR, turn on the app's PR monitor with auto-fix for it (`finish-work` step 4). The owner approves turning it on. The source is the app's own PR-monitor tool description, read 2026-11-03. It says the app then wakes the session when CI fails, a merge conflict appears, or review comments arrive. Not yet observed on a kit PR.
-- **Any other tool, or no running session:** run this skill when the owner points you at a review. Also run `Get-OpenFinding` before reporting on any open PR.
+- **In any tool:** after each push, `Wait-PullRequest -Repository <owner/repo> -Number <pr> -For Review` (from `KitReview.psm1`) returns `Reviewed` as soon as Copilot has reviewed the head commit; then start again from step 1 (`finish-work` step 4).
+- **Claude Code desktop app:** the PR monitor with auto-fix also wakes the session when review comments arrive (`finish-work` step 4). Observed on kit PRs #68 to #72. It relays every review on the PR, old ones included, so check `Get-OpenFinding` before acting on one.
+- **No running session:** run this skill when the owner points you at a review. Also run `Get-OpenFinding` before reporting on any open PR.

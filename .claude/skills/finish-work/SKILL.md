@@ -42,7 +42,8 @@ If a PR already exists for this branch, run `gh pr view <n> --json state,mergedA
 - Use `.github/pull_request_template.md` and fill in the red→green table from `git log`. A PR whose description a bot writes, such as Dependabot's, keeps it: post the template's sections as a PR comment instead, naming the head commit (DOD-006), and a new one whenever the head moves.
 - List the decisions the owner must make and any `proposed` rules he must ratify. **Ask each one in the chat too, with its recommendation** (COM-007): he may not read the PR before it merges.
 - In review mode, don't merge: the owner merges, or tells you to for that PR.
-- **Watch for reviews.** In the Claude Code desktop app, turn on the PR monitor with auto-fix for the new PR; the owner approves it. Per the app's tool description, the app then wakes the session when a review, a CI failure or a merge conflict arrives. When a review lands, from Copilot or a person, run `address-review`. In other tools, run `Get-OpenFinding` (from `KitReview.psm1`) before reporting on the PR.
+- **Watch for the review and for CI, in any tool, with `Wait-PullRequest`** (from `KitReview.psm1`). After each push, run one wait with `-For Review` and one with `-For Checks`, in the background where the tool allows. Each returns as soon as its event happens: `Reviewed`, `ChecksPassed` or `ChecksFailed`, `HeadMoved`, `Merged` or `Closed`. If it returns `TimedOut`, its message says what's still missing; look at once, and don't assume CI is still running. When a review lands, from Copilot or a person, run `address-review`; when CI finishes, check the merge conditions below.
+  - In the Claude Code desktop app, also turn on the PR monitor with auto-fix for the new PR (the owner said it needs no ask, 2026-11-14). It wakes the session on review comments, CI failures and merge conflicts, but not on a passing CI, so `Wait-PullRequest` still tells you when the PR is ready.
 
 ## 5. Merge, in auto mode
 
