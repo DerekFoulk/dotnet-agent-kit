@@ -111,14 +111,20 @@ public sealed class AppFactoryTests
             builder.ConfigureServices(services =>
             {
                 ServiceDescriptor kestrel = services.Last(descriptor => descriptor.ServiceType == typeof(IServer));
-                services.Add(new ServiceDescriptor(typeof(IServer), KestrelKey, kestrel.ImplementationType!, ServiceLifetime.Singleton));
+                Type kestrelType = kestrel.ImplementationType
+                    ?? throw new InvalidOperationException("UseKestrel no longer registers its server by type; wrap it the way it's registered now.");
+                services.Remove(kestrel);
+                services.Add(new ServiceDescriptor(typeof(IServer), KestrelKey, kestrelType, ServiceLifetime.Singleton));
                 services.AddSingleton<IServer>(provider => new BindsFirstServer(provider.GetRequiredKeyedService<IServer>(KestrelKey), factoryThread));
             });
             return base.CreateHost(builder);
         }
     }
 
-    /// <summary>Kestrel, except that the factory's thread waits for it to bind before it can read its features.</summary>
+    /// <summary>
+    /// Kestrel, except that the factory's thread waits for it to bind before it can read its features. The container
+    /// owns and disposes Kestrel itself.
+    /// </summary>
     private sealed class BindsFirstServer(IServer kestrel, int factoryThread) : IServer
     {
         // A bounded wait, so a server that never starts fails the test instead of hanging it.
@@ -130,9 +136,9 @@ public sealed class AppFactoryTests
         {
             get
             {
-                if (Environment.CurrentManagedThreadId == factoryThread)
+                if (Environment.CurrentManagedThreadId == factoryThread && !_bound.Wait(s_bindTimeout))
                 {
-                    _bound.Wait(s_bindTimeout);
+                    throw new InvalidOperationException($"Kestrel didn't bind within {s_bindTimeout}, so the order this test needs never happened.");
                 }
 
                 return kestrel.Features;
@@ -148,10 +154,6 @@ public sealed class AppFactoryTests
 
         public Task StopAsync(CancellationToken cancellationToken) => kestrel.StopAsync(cancellationToken);
 
-        public void Dispose()
-        {
-            kestrel.Dispose();
-            _bound.Dispose();
-        }
+        public void Dispose() => _bound.Dispose();
     }
 }
