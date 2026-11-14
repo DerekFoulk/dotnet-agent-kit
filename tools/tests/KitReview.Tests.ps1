@@ -802,6 +802,24 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Seen on PR #73 at 1a783d2 (2026-11-14): when Copilot can't review, it still posts a review on the head commit,
+        # but its body is a reason, not a summary (no ccr-overview marker). That isn't a review to answer, so it's
+        # ReviewFailed, with Copilot's reason, not Reviewed with an Unknown verdict.
+        It 'returns ReviewFailed, with Copilot''s reason, when Copilot posted a review of the head that isn''t a summary' {
+            InModuleScope KitReview {
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
+                Mock Invoke-Gh {
+                    '[{ "id": 13, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "head2", "body": "Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota. Try requesting a review at a lower effort level." }]'
+                }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ReviewFailed'
+                $result.Message | Should -Be 'Copilot couldn''t review head2: Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota. Try requesting a review at a lower effort level.'
+            }
+        }
+
         # Copilot's eighth review of PR #73: the head and the review are two reads, and a push can land between them, so
         # a review of the commit that was the head isn't a review of the head. The head is read again before Reviewed.
         It 'returns HeadMoved when a push lands between reading the head and finding its review' {
