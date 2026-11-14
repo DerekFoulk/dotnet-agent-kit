@@ -455,9 +455,14 @@ function Get-PullRequestStatus {
         # GitHub lists the runs 100 to a page; --paginate --slurp reads every page into one array, one item per page.
         $pages = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$($view.HeadSha)&per_page=100" --paginate --slurp | ConvertFrom-Json -AsHashtable
         $every = @(@($pages) | ForEach-Object { $_['workflow_runs'] } | Where-Object { $_ })
-        # Runs of one workflow for different triggers (a push and a pull request), or on different branches with this
-        # commit (another pull request), are independent, so each counts (Copilot's sixth review of PR #73).
-        $latest = @($every | Group-Object { "$($_['workflow_id'] ?? $_['name'])|$($_['event'])|$($_['head_branch'])" } | ForEach-Object {
+        # Runs of one workflow for different triggers (a push and a pull request), on different branches with this
+        # commit, from a fork's branch of the same name, or for different pull requests from one branch are independent,
+        # so each counts (Copilot's sixth and eighth reviews of PR #73).
+        $latest = @($every | Group-Object {
+                $source = if ($_['head_repository']) { "$($_['head_repository']['full_name'])" } else { '' }
+                $pulls = @($_['pull_requests'] | Where-Object { $_ } | ForEach-Object { "$($_['number'])" } | Sort-Object) -join ','
+                "$($_['workflow_id'] ?? $_['name'])|$($_['event'])|$source|$($_['head_branch'])|$pulls"
+            } | ForEach-Object {
                 # Runs created in the same second are ordered by id, which GitHub assigns in order.
                 $_.Group | Sort-Object { if ($_['created_at']) { [datetimeoffset] "$($_['created_at'])" } else { [datetimeoffset]::MinValue } }, { [long] ($_['id'] ?? 0) } | Select-Object -Last 1
             })
