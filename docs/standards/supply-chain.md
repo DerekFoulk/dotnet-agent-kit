@@ -162,6 +162,22 @@ rules:
         how: "ci: dotnet-ci.reusable.yml's ui job restores workloads with --version (dotnet --version), and tools/tests/SharedCi.Tests.ps1 fails on an unpinned workload install or update"
     scope: core
     paths: [".github/workflows/**", "global.json"]
+  - id: SUP-012
+    statement: "Every package a restore extracts carries a signature from a trusted signer: nuget.config sets signatureValidationMode to require and trusts nuget.org's repository certificates, the ones its service index announces."
+    why: "A package altered after nuget.org published it, or one from anywhere else, fails its restore instead of reaching the build; nuget.org adds a repository signature to every package it serves, and Microsoft recommends a trust policy for it."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "ADR-0066", "https://learn.microsoft.com/nuget/consume-packages/installing-signed-packages, retrieved 2026-11-13", "https://learn.microsoft.com/nuget/reference/nuget-config-file#trustedsigners-section, retrieved 2026-11-13", "https://learn.microsoft.com/nuget/concepts/security-best-practices, retrieved 2026-11-12"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "restore: nuget.config's signatureValidationMode require and its nuget.org trusted signer fail a restore on an unsigned or untrusted package (NU3004); tools/tests/BuildConfig.Tests.ps1 restores an unsigned package and expects that failure, and its other fixtures restore nuget.org's packages under the policy"
+      - kind: advisory
+        in: [kit, app]
+        how: "when nuget.org rotates its repository certificate, dotnet nuget trust sync nuget.org updates the list; nothing yet notices a rotation before a restore fails (ADR-0066, a scorecard gap)"
+    scope: core
+    paths: ["nuget.config"]
 ---
 
 # Supply chain

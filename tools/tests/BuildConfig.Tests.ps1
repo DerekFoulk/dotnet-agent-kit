@@ -134,7 +134,12 @@ Describe 'Repo build configuration' -Tag 'Build' {
             (Get-Content -Raw -Path $props) -replace '</Project>', "  <ItemGroup>`n    <PackageVersion Include=`"Kit.Unsigned`" Version=`"1.0.0`" />`n  </ItemGroup>`n</Project>" |
                 Set-Content -Path $props -NoNewline
 
-            $build = Invoke-FixtureBuild -Workspace $workspace
+            # NuGet checks a signature when it extracts a package, so this build gets an empty global packages folder
+            # of its own: a copy already extracted on the machine would skip the check, and this one stays out of it.
+            $savedPackages = $env:NUGET_PACKAGES
+            $env:NUGET_PACKAGES = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName())
+            try { $build = Invoke-FixtureBuild -Workspace $workspace }
+            finally { $env:NUGET_PACKAGES = $savedPackages }
         }
 
         It 'refuses a package that no trusted signer signed (NU3004)' {
