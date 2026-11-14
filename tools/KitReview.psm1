@@ -420,8 +420,10 @@ function Get-ShortSha {
 }
 
 # Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
-# Reviewed (Copilot reviewed the head commit), or TimedOut, naming what it still waits for. It polls every
-# -IntervalSeconds and sleeps only between polls. The kit's one watcher, for any agent in any tool (owner, 2026-11-14).
+# Reviewed (Copilot reviewed the head commit; -For Review or Either), ChecksPassed or ChecksFailed (no check on the head
+# is pending; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
+# still waits for. -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
+# kit's one watcher, for any agent in any tool (owner, 2026-11-14); a host's own monitor may wake the agent sooner.
 function Wait-PullRequest {
     param(
         [Parameter(Mandatory)] [string] $Repository,
@@ -433,10 +435,28 @@ function Wait-PullRequest {
 
     $polls = [Math]::Max(1, [int][Math]::Ceiling($TimeoutMinutes * 60 / $IntervalSeconds))
     $status = $null
+    $firstHead = $null
     for ($poll = 1; $poll -le $polls; $poll++) {
         if ($poll -gt 1) { Start-Sleep -Seconds $IntervalSeconds }
         $status = Get-PullRequestStatus -Repository $Repository -Number $Number
         $head = Get-ShortSha -Sha $status.HeadSha
+
+        # A merged or closed PR gets no more reviews worth waiting for.
+        if ($status.State -ne 'OPEN') {
+            $outcome = if ($status.State -eq 'MERGED') { 'Merged' } else { 'Closed' }
+            return [pscustomobject]@{
+                Event = $outcome; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @(); PendingChecks = @()
+                Message = "Pull request #$Number is $($outcome.ToLowerInvariant()), at $head."
+            }
+        }
+        # A push while it waits: the old head's review and checks no longer decide anything.
+        if ($null -eq $firstHead) { $firstHead = $status.HeadSha }
+        elseif ($status.HeadSha -ne $firstHead) {
+            return [pscustomobject]@{
+                Event = 'HeadMoved'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @(); PendingChecks = @()
+                Message = "The head moved from $(Get-ShortSha -Sha $firstHead) to ${head}: wait again for the new commit."
+            }
+        }
 
         if ($For -in 'Review', 'Either') {
             $review = Get-CopilotReview -Repository $Repository -Number $Number
