@@ -201,6 +201,17 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 
+    # STY-002 (rules audit, owner 2026-11-12): var is allowed where the type is named on the right side (a new, a cast),
+    # as in dotnet/runtime's .editorconfig; everywhere else the type is written (the UsesVar fixture).
+    Context 'var where the type is named on the right' {
+        It 'builds with no warnings or errors' {
+            $workspace = New-FixtureWorkspace -Fixture 'VarWhenApparent'
+            $build = Invoke-FixtureBuild -Workspace $workspace
+
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
     Context 'clean code' {
         BeforeAll {
             $workspace = New-FixtureWorkspace -Fixture 'Clean'
