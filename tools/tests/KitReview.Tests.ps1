@@ -800,6 +800,33 @@ Describe 'KitReview.psm1' {
 
     # The kit's own watcher (owner, 2026-11-14): an agent waits for Copilot's review of the head commit and for CI
     # with this, in any tool, instead of a host's monitor that reports only failures or a script of its own.
+    # The third reviewer agent's review of PR #73: PR #73's timeline holds 17 review_requests for Copilot among 127
+    # items, with requests to people and other events between them, out of order with nothing to rely on.
+    Context 'Get-CopilotReviewRequestTime' {
+        It 'returns the latest review request naming Copilot, ignoring requests to others and other events' {
+            InModuleScope KitReview {
+                Mock Invoke-Gh {
+                    @(
+                        '{ "event": "review_requested", "created_at": "2026-11-14T14:40:39Z", "requested_reviewer": { "login": "Copilot", "type": "Bot" } }'
+                        '{ "event": "review_requested", "created_at": "2026-11-14T08:28:18Z", "requested_reviewer": { "login": "Copilot", "type": "Bot" } }'
+                        '{ "event": "review_requested", "created_at": "2026-11-14T15:00:00Z", "requested_reviewer": { "login": "alice", "type": "User" } }'
+                        '{ "event": "review_request_removed", "created_at": "2026-11-14T15:05:00Z", "requested_reviewer": { "login": "Copilot", "type": "Bot" } }'
+                        '{ "event": "committed", "created_at": "2026-11-14T15:10:00Z" }'
+                    ) -join "`n"
+                } -ParameterFilter { "$args" -match '/timeline' }
+
+                Get-CopilotReviewRequestTime -Repository 'o/r' -Number 5 | Should -Be ([datetimeoffset] '2026-11-14T14:40:39Z')
+            }
+        }
+
+        It 'returns nothing when Copilot''s review was never requested' {
+            InModuleScope KitReview {
+                Mock Invoke-Gh { '{ "event": "commented", "created_at": "2026-11-14T15:10:00Z" }' } -ParameterFilter { "$args" -match '/timeline' }
+
+                Get-CopilotReviewRequestTime -Repository 'o/r' -Number 5 | Should -BeNullOrEmpty
+            }
+        }
+    }
     Context 'Wait-PullRequest' {
         BeforeAll {
             # The GraphQL response the rollup read gets, built from each check's fields (shape checked against PR #73,
@@ -928,6 +955,8 @@ Describe 'KitReview.psm1' {
                     else { '[{ "id": 13, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "head2", "body": "Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota. Try requesting a review at a lower effort level." }]' }
                 }
                 Mock Start-Sleep { $script:polls++ }
+                # No review request on the timeline: the failed try is news.
+                Mock Invoke-Gh { '' } -ParameterFilter { "$args" -match '/timeline' }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 5 -IntervalSeconds 20
 
@@ -942,6 +971,7 @@ Describe 'KitReview.psm1' {
         # when the owner re-requests a review once his credits are topped up); then the wait goes on for the new try.
         It 'reports a failed try at once, unless Copilot''s review was requested again after it: <Case>' -ForEach @(
             @{ Case = 'no request after the failure'; Requested = '2026-11-14T14:04:07Z'; Retry = 'none'; Expected = 'ReviewFailed 13' }
+            @{ Case = 'a request in the same second as the failure'; Requested = '2026-11-14T14:04:14Z'; Retry = 'none'; Expected = 'ReviewFailed 13' }
             @{ Case = 'requested again, and the retry''s summary lands'; Requested = '2026-11-14T15:00:00Z'; Retry = 'summary'; Expected = 'Reviewed 14' }
             @{ Case = 'requested again, and the retry fails too'; Requested = '2026-11-14T15:00:00Z'; Retry = 'failed'; Expected = 'ReviewFailed 14' }
             @{ Case = 'requested again, and no retry comes'; Requested = '2026-11-14T15:00:00Z'; Retry = 'none'; Expected = 'TimedOut ' }
