@@ -817,7 +817,10 @@ Describe 'KitReview.psm1' {
                 $script:views = @((New-View @()), (New-View $running), (New-View $done))
                 $script:viewCalls = 0
                 Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 2)] } -ParameterFilter { $args -contains 'view' }
-                Mock Invoke-Gh { '{"workflow_runs":[{"name":"ci","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                # The run stays in progress until the last poll, as it does while a check is still running.
+                $script:runs = @('{"workflow_runs":[{"name":"ci","status":"in_progress","conclusion":null}]}', '{"workflow_runs":[{"name":"ci","status":"in_progress","conclusion":null}]}', '{"workflow_runs":[{"name":"ci","status":"completed","conclusion":"success"}]}')
+                $script:runCalls = 0
+                Mock Invoke-Gh { $script:runs[[Math]::Min($script:runCalls++, 2)] } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
                 Mock Start-Sleep {}
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
@@ -850,6 +853,32 @@ Describe 'KitReview.psm1' {
                 $result.Event | Should -Be 'ChecksFailed'
                 $result.Message | Should -Match 'dotnet / Build'
                 Should -Invoke Start-Sleep -Times 1 -Exactly
+            }
+        }
+
+        # Copilot's re-review of PR #73: the checks and the runs are two reads, and a job can fail between them, so the
+        # checks read before the runs completed say nothing about it. The checks are read again, and a failed run is a
+        # failure in its own right.
+        It 'reports a job that fails between its two reads as failed: <Case>' -ForEach @(
+            @{ Case = 'the checks read again show it'; Fresh = 'build'; Expected = 'dotnet / Build' }
+            @{ Case = 'only its workflow run shows it'; Fresh = 'partial'; Expected = 'ci' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Fresh = $Fresh; Expected = $Expected } {
+                param($Fresh, $Expected)
+                function New-View([object[]] $Checks) { @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress }
+                $found = @{ __typename = 'CheckRun'; name = 'dotnet / Find UI projects'; status = 'COMPLETED'; conclusion = 'SUCCESS' }
+                $build = @{ __typename = 'CheckRun'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE' }
+                $second = if ($Fresh -eq 'build') { New-View @($found, $build) } else { New-View @($found) }
+                $script:views = @((New-View @($found)), $second)
+                $script:viewCalls = 0
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"name":"ci","status":"completed","conclusion":"failure"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.Message | Should -Match ([regex]::Escape($Expected))
             }
         }
 
