@@ -395,7 +395,22 @@ function Get-PullRequestStatus {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
     $view = Invoke-Gh pr view $Number --repo $Repository --json 'state,headRefOid,statusCheckRollup' | ConvertFrom-Json -AsHashtable
-    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Checks = @() }
+    $checks = foreach ($item in @($view['statusCheckRollup'] | Where-Object { $_ })) {
+        # A CheckRun (GitHub Actions) has a status and, once completed, a conclusion; a StatusContext has a state.
+        if ("$($item['__typename'])" -eq 'StatusContext') {
+            $name = "$($item['context'])"
+            $result = switch ("$($item['state'])") { 'SUCCESS' { 'Passed' } { $_ -in 'PENDING', 'EXPECTED' } { 'Pending' } default { 'Failed' } }
+        }
+        else {
+            $name = "$($item['name'])"
+            $result = if ("$($item['status'])" -ne 'COMPLETED') { 'Pending' }
+            elseif ("$($item['conclusion'])" -eq 'SKIPPED') { 'Skipped' }
+            elseif ("$($item['conclusion'])" -in 'SUCCESS', 'NEUTRAL') { 'Passed' }
+            else { 'Failed' }
+        }
+        [pscustomobject]@{ Name = $name; Result = $result }
+    }
+    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Checks = @($checks) }
 }
 
 # A commit as messages show it.
@@ -432,13 +447,36 @@ function Wait-PullRequest {
                 }
             }
         }
+
+        if ($For -in 'Checks', 'Either') {
+            # No checks yet means CI hasn't started on this commit, not that it passed.
+            $checks = @($status.Checks)
+            $pending = @($checks | Where-Object Result -EQ 'Pending')
+            if ($checks.Count -gt 0 -and $pending.Count -eq 0) {
+                $failed = @($checks | Where-Object Result -EQ 'Failed' | ForEach-Object Name)
+                $outcome = if ($failed) { 'ChecksFailed' } else { 'ChecksPassed' }
+                $skipped = @($checks | Where-Object Result -EQ 'Skipped').Count
+                $text = if ($failed) { "$($failed.Count) of $($checks.Count) checks failed: $($failed -join ', ')." } else { "every check passed ($($checks.Count - $skipped) passed, $skipped skipped)." }
+                return [pscustomobject]@{
+                    Event = $outcome; HeadSha = $status.HeadSha; Review = $null; FailedChecks = $failed; PendingChecks = @()
+                    Message = "CI finished at ${head}: $text"
+                }
+            }
+        }
     }
 
     $head = Get-ShortSha -Sha $status.HeadSha
     $minutes = if ($TimeoutMinutes -eq 1) { '1 minute' } else { "$TimeoutMinutes minutes" }
+    $pendingNames = @($status.Checks | Where-Object Result -EQ 'Pending' | ForEach-Object Name)
+    $missing = @(
+        if ($For -in 'Review', 'Either') { "no review from Copilot of $head yet" }
+        if ($For -in 'Checks', 'Either') {
+            if (@($status.Checks).Count -eq 0) { 'no checks have started' } else { "$($pendingNames.Count) checks still running: $($pendingNames -join ', ')" }
+        }
+    )
     [pscustomobject]@{
-        Event = 'TimedOut'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @(); PendingChecks = @()
-        Message = "Timed out after $minutes at ${head}: no review from Copilot of $head yet."
+        Event = 'TimedOut'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @(); PendingChecks = $pendingNames
+        Message = "Timed out after $minutes at ${head}: $($missing -join '; ')."
     }
 }
 

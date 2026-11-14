@@ -777,7 +777,7 @@ Describe 'KitReview.psm1' {
         # The shapes gh pr view --json statusCheckRollup returns: a CheckRun has status and conclusion, a
         # StatusContext has context and state (seen on PR #72, 2026-11-14).
         It 'keeps waiting while there are no checks yet or one is running, then returns <Outcome> naming <What>' -ForEach @(
-            @{ Outcome = 'ChecksPassed'; What = 'every check'; Conclusion = 'SUCCESS'; Expected = 'CI finished at head2: all 3 checks passed' }
+            @{ Outcome = 'ChecksPassed'; What = 'every check'; Conclusion = 'SUCCESS'; Expected = 'CI finished at head2: every check passed (2 passed, 1 skipped)' }
             @{ Outcome = 'ChecksFailed'; What = 'the failed one'; Conclusion = 'FAILURE'; Expected = 'CI finished at head2: 1 of 3 checks failed: dotnet / Build' }
         ) {
             InModuleScope KitReview -Parameters @{ Conclusion = $Conclusion; Outcome = $Outcome; Expected = $Expected } {
