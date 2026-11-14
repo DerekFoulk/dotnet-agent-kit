@@ -801,5 +801,50 @@ Describe 'KitReview.psm1' {
                 Should -Invoke Start-Sleep -Times 2 -Exactly
             }
         }
+
+        # A push while it waits makes the old head's review and checks beside the point.
+        It 'returns HeadMoved, with the new head, when someone pushes while it waits' {
+            InModuleScope KitReview {
+                $script:statusCalls = 0
+                Mock Get-PullRequestStatus { $script:statusCalls++; [pscustomobject]@{ State = 'OPEN'; HeadSha = $(if ($script:statusCalls -lt 2) { 'head1' } else { 'head2' }); Checks = @() } }
+                Mock Get-CopilotReview { }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Either -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'HeadMoved'
+                $result.HeadSha | Should -Be 'head2'
+                $result.Message | Should -Match 'The head moved from head1 to head2'
+            }
+        }
+
+        It 'returns <Outcome> at once when the pull request is <State>' -ForEach @(
+            @{ State = 'MERGED'; Outcome = 'Merged' }
+            @{ State = 'CLOSED'; Outcome = 'Closed' }
+        ) {
+            InModuleScope KitReview -Parameters @{ State = $State; Outcome = $Outcome } {
+                param($State, $Outcome)
+                $script:prState = $State
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = $script:prState; HeadSha = 'head2'; Checks = @() } }
+                Mock Get-CopilotReview { }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Either -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be $Outcome
+                $result.Message | Should -Match "Pull request #5 is $($Outcome.ToLowerInvariant())"
+                Should -Invoke Start-Sleep -Times 0 -Exactly
+            }
+        }
+
+        It 'returns the first event with -For Either: a review while CI still runs' {
+            InModuleScope KitReview {
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'Build'; Result = 'Pending' }) } }
+                Mock Get-CopilotReview { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Changes recommended'; OpenIssueCount = 2; Issues = @() } }
+                Mock Start-Sleep {}
+
+                (Wait-PullRequest -Repository 'o/r' -Number 5 -For Either -TimeoutMinutes 5 -IntervalSeconds 20).Event | Should -Be 'Reviewed'
+            }
+        }
     }
 }
