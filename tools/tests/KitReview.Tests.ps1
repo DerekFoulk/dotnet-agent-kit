@@ -1124,6 +1124,24 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's eleventh review of PR #73: the first poll reads the rollup twice, and a push between the reads changes
+        # the head. The head it started from is the one the wait is for, so the push is HeadMoved, not a new baseline.
+        It 'returns HeadMoved when the head changes between the two rollup reads of the first poll' {
+            InModuleScope KitReview {
+                $passing = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; runId = 1; id = 1 })
+                $script:views = @((ConvertTo-RollupJson -Head 'head2' -Checks $passing), (ConvertTo-RollupJson -Head 'head3' -Checks $passing))
+                $script:viewCalls = 0
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":1,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'HeadMoved'
+                $result.Message | Should -Be 'The head moved from head2 to head3: wait again for the new commit.'
+            }
+        }
+
         # Copilot's eleventh review of PR #73: two runs of one workflow for different triggers both count, and so do their
         # checks of the same name. A job with continue-on-error fails without failing its run, so only its check shows it.
         It 'keeps the same-named checks of two independent runs apart' {
