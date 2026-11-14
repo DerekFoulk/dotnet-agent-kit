@@ -16,7 +16,7 @@ What had to be settled:
 
 Checked for this decision:
 - **Microsoft's "Test Razor components" page:** unit-test a component with bUnit; use E2E tests, with Playwright for .NET, where a real browser matters. Accessibility needs the rendered page, so it's an E2E concern.
-- **Hosting:** `WebApplicationFactory.UseKestrel(int port)` (.NET 10) hosts the app on a real server; port 0 lets the system pick one.
+- **Hosting:** `WebApplicationFactory.UseKestrel(int port)` (.NET 10) hosts the app on a real server; port 0 lets the system pick one. (Replaced on 2026-11-14: it races the app's own start; see the update under Consequences.)
 - **Installing the browser:** Playwright's CI guide installs browsers with the `playwright.ps1` the build puts beside the test assembly: `pwsh bin/<config>/<tfm>/playwright.ps1 install --with-deps`.
 - **axe's tags:** WCAG 2.2 level A and AA is the tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa`. axe has no `wcag22a` tag.
 - **A spike on this machine:** under the factory on Kestrel, static assets and `blazor.web.js` are served. After a link click, FocusOnNavigate leaves focus on the new page's `h1`. The tag set flags `target-size` on two 10-pixel buttons. Without `UseAntiforgery` the page answers 500, yet axe finds nothing wrong, so a test must check the page loaded.
