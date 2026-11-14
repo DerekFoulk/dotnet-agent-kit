@@ -475,6 +475,9 @@ function Get-PullRequestStatus {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $WithRuns)
 
     $view = Read-PullRequestView -Repository $Repository -Number $Number
+    # The head this read started from: if a push lands before the checks are read again, the head it ends at is a
+    # different commit, and a watcher's baseline is the first (Copilot's eleventh review of PR #73).
+    $startHead = $view.HeadSha
     $pendingRuns = @()
     $failedRuns = @()
     $replaced = @()
@@ -506,7 +509,7 @@ function Get-PullRequestStatus {
         }
     }
     $checks = Select-CurrentCheck -Items $view.Items -ReplacedRuns $replaced
-    [pscustomobject]@{ State = $view.State; HeadSha = $view.HeadSha; Checks = $checks; PendingRuns = $pendingRuns; FailedRuns = $failedRuns }
+    [pscustomobject]@{ State = $view.State; HeadSha = $view.HeadSha; StartHeadSha = $startHead; Checks = $checks; PendingRuns = $pendingRuns; FailedRuns = $failedRuns }
 }
 # The time now: the clock Wait-PullRequest measures its limit by, which the tests replace (TST-010).
 function Get-KitUtcNow {
@@ -563,9 +566,10 @@ function Wait-PullRequest {
 
         # A merged or closed PR gets no more reviews worth waiting for.
         if ($status.State -ne 'OPEN') { return New-EndedResult -Number $Number -State $status.State -HeadSha $status.HeadSha }
-        # A push while it waits: the old head's review and checks no longer decide anything.
-        if ($null -eq $firstHead) { $firstHead = $status.HeadSha }
-        elseif ($status.HeadSha -ne $firstHead) { return New-HeadMovedResult -From $firstHead -To $status.HeadSha }
+        # A push while it waits: the old head's review and checks no longer decide anything. The baseline is the head the
+        # first read started from, even if a push landed during that poll.
+        if ($null -eq $firstHead) { $firstHead = if ($status.PSObject.Properties['StartHeadSha'] -and $status.StartHeadSha) { $status.StartHeadSha } else { $status.HeadSha } }
+        if ($status.HeadSha -ne $firstHead) { return New-HeadMovedResult -From $firstHead -To $status.HeadSha }
 
         if ($For -in 'Review', 'Either') {
             $review = Get-CopilotReview -Repository $Repository -Number $Number -Commit $status.HeadSha
