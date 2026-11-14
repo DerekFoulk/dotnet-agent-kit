@@ -758,6 +758,25 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's sixth review of PR #73: a review of an older commit can land after the head's review, so the latest
+        # review isn't always the head's. The head commit's own review counts, wherever it falls.
+        It 'returns Reviewed when Copilot reviewed the head commit, even if a review of an older commit came later' {
+            InModuleScope KitReview {
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
+                Mock Invoke-Gh {
+                    '[{ "id": 11, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "head2", "body": "### 🟢 Approval recommended" }, { "id": 12, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:05:00Z", "commit_id": "head1", "body": "### 🟡 Changes recommended" }]'
+                }
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'Reviewed'
+                $result.Message | Should -Be 'Copilot reviewed head2: Approval recommended, 0 open issues.'
+            }
+        }
+
         # Copilot's review of PR #73: the limit is elapsed time on a clock the tests control (TST-010), not a count of
         # polls, so fast or slow GitHub calls, or an interval longer than the limit, can't end it early or late.
         It 'returns TimedOut at the time limit, saying what it still waits for, and sleeps only between polls' {
