@@ -411,13 +411,12 @@ function Get-AnswerPrefix {
     "Answer to review $ReviewId, `"$Title`": Resolution: "
 }
 
-# Every item of a paginated REST list, read 100 to a page, GitHub's most (its default is 30). --jq '.[]' prints one item
+# Every item of a paginated REST list (an endpoint without a query string), read 100 to a page, GitHub's most (its default is 30). --jq '.[]' prints one item
 # per line whatever the gh version; older versions print one JSON array per page, which doesn't parse as a whole.
 function Get-GhList {
     param([Parameter(Mandatory)] [string] $Endpoint)
 
-    $separator = if ($Endpoint.Contains('?')) { '&' } else { '?' }
-    foreach ($line in ((Invoke-Gh api --paginate "$Endpoint${separator}per_page=100" --jq '.[]') -split "`r?`n")) {
+    foreach ($line in ((Invoke-Gh api --paginate "${Endpoint}?per_page=100" --jq '.[]') -split "`r?`n")) {
         if ($line.Trim()) { $line | ConvertFrom-Json -AsHashtable }
     }
 }
