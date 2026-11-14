@@ -83,31 +83,48 @@ function Get-MissedIssue {
     }
 }
 
-# Copilot's latest review on the pull request, with its summary read; nothing if Copilot hasn't reviewed.
-# Commit is the commit Copilot reviewed, which can be behind the branch head. With -Commit, its latest review of
-# that commit: a review of an older commit can land after the head's (Copilot's sixth review of PR #73).
-# Reviews submitted in the same second are ordered by id, which GitHub assigns in order.
-function Get-CopilotReview {
+# Whether a Copilot review's body is a code review summary: every summary carries the ccr-overview marker (seen on
+# every Copilot summary on PRs #64 to #73); a note that it couldn't review doesn't.
+function Test-CopilotSummary {
+    param([AllowEmptyString()] [string] $Body)
+    $Body -match '<!--\s*ccr-overview'
+}
+
+# Every review Copilot posted on the pull request, oldest first, each with its summary read; with -Commit, only its
+# reviews of that commit. Reviews submitted in the same second are ordered by id, which GitHub assigns in order.
+# IsSummary says whether the review is a code review summary (its body carries the ccr-overview marker): when Copilot
+# can't review, out of quota for one, it still posts a review, whose body is a reason (seen on PR #73).
+function Get-CopilotReviewOf {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [string] $Commit)
 
     $reviews = @(Get-PullRequestReview -Repository $Repository -Number $Number)
-    $latest = @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin -and (-not $Commit -or $_['commit_id'] -eq $Commit) }) |
+    @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin -and (-not $Commit -or $_['commit_id'] -eq $Commit) }) |
         Sort-Object { [datetimeoffset] $_['submitted_at'] }, { [long] $_['id'] } |
-        Select-Object -Last 1
-    if (-not $latest) {
-        return
-    }
+        ForEach-Object {
+            $body = "$($_['body'])"
+            $summary = ConvertFrom-CopilotReviewBody -Body $body
+            [pscustomobject]@{
+                ReviewId       = $_['id']
+                SubmittedAt    = $_['submitted_at']
+                Commit         = $_['commit_id']
+                IsSummary      = Test-CopilotSummary -Body $body
+                Verdict        = $summary.Verdict
+                OpenIssueCount = $summary.OpenIssueCount
+                Issues         = $summary.Issues
+                Body           = $body
+            }
+        }
+}
 
-    $summary = ConvertFrom-CopilotReviewBody -Body "$($latest['body'])"
-    [pscustomobject]@{
-        ReviewId       = $latest['id']
-        SubmittedAt    = $latest['submitted_at']
-        Commit         = $latest['commit_id']
-        Verdict        = $summary.Verdict
-        OpenIssueCount = $summary.OpenIssueCount
-        Issues         = $summary.Issues
-        Body           = "$($latest['body'])"
-    }
+# Copilot's latest review summary on the pull request; nothing if Copilot hasn't reviewed. Commit is the commit Copilot
+# reviewed, which can be behind the branch head. With -Commit, its latest summary of that commit: a review of an older
+# commit can land after the head's (Copilot's sixth review of PR #73). A review that isn't a summary, such as Copilot's
+# note that it couldn't review, doesn't replace the last summary (the reviewer agent's review of PR #73).
+function Get-CopilotReview {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [string] $Commit)
+
+    @(Get-CopilotReviewOf -Repository $Repository -Number $Number -Commit $Commit | Where-Object IsSummary) |
+        Select-Object -Last 1
 }
 
 # GitHub returns a null author for a deleted account.
@@ -593,22 +610,27 @@ function Wait-PullRequest {
         if ($status.HeadSha -ne $firstHead) { return New-HeadMovedResult -From $firstHead -To $status.HeadSha }
 
         if ($For -in 'Review', 'Either') {
-            $review = Get-CopilotReview -Repository $Repository -Number $Number -Commit $status.HeadSha
-            if ($review -and $review.Commit -eq $status.HeadSha) {
+            $reviews = @(Get-CopilotReviewOf -Repository $Repository -Number $Number -Commit $status.HeadSha | Where-Object { $_.Commit -eq $status.HeadSha })
+            $review = @($reviews | Where-Object { Test-CopilotSummary -Body $_.Body }) | Select-Object -Last 1
+            # When Copilot can't review (out of quota, seen on PR #73), it still posts a review, whose body is a reason,
+            # not a summary: that isn't a review to answer.
+            $latest = $reviews | Select-Object -Last 1
+            $failure = if (-not $review -and $latest) { $latest }
+            if ($review -or $failure) {
                 $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
                 if ($changed) { return $changed }
-                # When Copilot can't review (out of quota, seen on PR #73), it still posts a review, whose body is a
-                # reason, not a summary: that isn't a review to answer.
-                if ("$($review.Body)" -notmatch '<!--\s*ccr-overview') {
-                    $reason = ("$($review.Body)".Trim() -split '\r?\n')[0]
-                    return [pscustomobject]@{
-                        Event = 'ReviewFailed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
-                        Message = "Copilot couldn't review ${head}: $reason"
-                    }
-                }
+            }
+            if ($review) {
                 return [pscustomobject]@{
                     Event = 'Reviewed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
                     Message = "Copilot reviewed ${head}: $($review.Verdict), $($review.OpenIssueCount) open issues."
+                }
+            }
+            if ($failure) {
+                $reason = ("$($failure.Body)".Trim() -split '\r?\n')[0]
+                return [pscustomobject]@{
+                    Event = 'ReviewFailed'; HeadSha = $status.HeadSha; Review = $failure; FailedChecks = @(); PendingChecks = @()
+                    Message = "Copilot couldn't review ${head}: $reason"
                 }
             }
         }
