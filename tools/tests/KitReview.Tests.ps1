@@ -1053,6 +1053,35 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's tenth review of PR #73: checks come from any app, not only GitHub Actions. Two apps can post checks of the
+        # same name, and an app's re-run of a check is a new check with a higher id that hasn't started yet.
+        It 'reads checks from other apps right: <Case>' -ForEach @(
+            @{ Case = 'two apps'' checks of the same name are two checks'; Expected = 'ChecksFailed'
+                Checks = @(
+                    @{ __typename = 'CheckRun'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://ci-a.example.com/builds/1' }
+                    @{ __typename = 'CheckRun'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:20Z'; detailsUrl = 'https://ci-b.example.com/builds/2' }
+                ) }
+            @{ Case = 'a re-run that hasn''t started is the latest attempt'; Expected = 'TimedOut'
+                Checks = @(
+                    @{ __typename = 'CheckRun'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://ci-a.example.com/builds/7' }
+                    @{ __typename = 'CheckRun'; name = 'build'; status = 'QUEUED'; conclusion = $null; startedAt = $null; detailsUrl = 'https://ci-a.example.com/builds/8' }
+                ) }
+        ) {
+            InModuleScope KitReview -Parameters @{ Checks = $Checks; Expected = $Expected } {
+                param($Checks, $Expected)
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = $Checks } | ConvertTo-Json -Depth 5 -Compress
+                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { '{"workflow_runs":[]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be $Expected
+            }
+        }
+
         # Copilot's sixth review of PR #73: the head commit can be on another branch too (another pull request from the same
         # commit), and the runs listed by head_sha include that branch's. A run there never replaces a run on this one.
         It 'keeps a failed workflow run when a later run of the same workflow ran on another branch' {
