@@ -17,6 +17,7 @@ What had to be settled:
 Checked for this decision:
 - **Microsoft's "Test Razor components" page:** unit-test a component with bUnit; use E2E tests, with Playwright for .NET, where a real browser matters. Accessibility needs the rendered page, so it's an E2E concern.
 - **Hosting:** `WebApplicationFactory.UseKestrel(int port)` (.NET 10) hosts the app on a real server; port 0 lets the system pick one.
+  - **Update (2026-11-14):** the fixture uses the `UseKestrel(Action<KestrelServerOptions>)` overload instead, with `options.Listen(IPAddress.Loopback, 0)`. In .NET 10, `UseKestrel(int port)` clears and re-adds the server's addresses after the app has built its host, while the app's own `Program` starts Kestrel on another thread. When Kestrel binds first, the addresses are read-only and `StartServer()` throws, as it did in CI run 43602912316 and in ASP.NET Core's own tests (dotnet/aspnetcore#67340). ASP.NET Core fixed it after .NET 10, with no 10.0 backport, by making `UseKestrel(port)` call this same `Listen` (dotnet/aspnetcore#67714). Kestrel reads its options before it binds, so the overload has no race. `AppFactoryTests` holds the factory's thread back until Kestrel has bound, which failed every time before the change.
 - **Installing the browser:** Playwright's CI guide installs browsers with the `playwright.ps1` the build puts beside the test assembly: `pwsh bin/<config>/<tfm>/playwright.ps1 install --with-deps`.
 - **axe's tags:** WCAG 2.2 level A and AA is the tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa`. axe has no `wcag22a` tag.
 - **A spike on this machine:** under the factory on Kestrel, static assets and `blazor.web.js` are served. After a link click, FocusOnNavigate leaves focus on the new page's `h1`. The tag set flags `target-size` on two 10-pixel buttons. Without `UseAntiforgery` the page answers 500, yet axe finds nothing wrong, so a test must check the page loaded.
@@ -136,6 +137,9 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 - https://learn.microsoft.com/aspnet/core/blazor/test?view=aspnetcore-10.0, retrieved 2026-11-12
 - https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1.usekestrel?view=aspnetcore-10.0, retrieved 2026-11-12
 - https://learn.microsoft.com/aspnet/core/test/integration-tests?view=aspnetcore-10.0, retrieved 2026-11-12
+- https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/endpoints?view=aspnetcore-10.0, retrieved 2026-11-14 (port 0 binds dynamically; the bound address is in IServerAddressesFeature)
+- https://github.com/dotnet/aspnetcore/issues/67340 and https://github.com/dotnet/aspnetcore/pull/67714, retrieved 2026-11-14 (the UseKestrel(port) race and its fix after .NET 10)
+- https://github.com/dotnet/aspnetcore/blob/v10.0.0/src/Mvc/Mvc.Testing/src/WebApplicationFactory.cs and https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/Microsoft.Extensions.HostFactoryResolver/src/HostFactoryResolver.cs, retrieved 2026-11-14 (TryConfigureServerPort; the entry point running on its own thread)
 - https://playwright.dev/dotnet/docs/ci, retrieved 2026-11-12
 - https://github.com/dequelabs/axe-core/blob/develop/doc/API.md, retrieved 2026-11-12 (the WCAG tags; no wcag22a)
 - https://github.com/dequelabs/axe-core-nuget/blob/develop/packages/playwright/README.md, retrieved 2026-11-12 (RunAxe, RunOnly, the MIT and MPL licenses)
