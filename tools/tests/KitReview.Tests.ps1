@@ -1168,6 +1168,27 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's twelfth review of PR #73: re-running an older run of a workflow starts a new attempt of it, and it keeps
+        # its creation time. The run started last (run_started_at, its latest attempt's start) is the one that counts.
+        It 'counts a re-run of an older workflow run as the latest, so its pending checks keep it waiting' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = ConvertTo-RollupJson -Checks @(
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'QUEUED'; conclusion = $null; startedAt = $null; runId = 100; id = 5 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:40Z'; runId = 101; id = 2 }
+                )
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":100,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:05Z","run_started_at":"2026-11-14T05:10:00Z","run_attempt":2,"status":"queued","conclusion":null},{"id":101,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","created_at":"2026-11-14T04:56:37Z","run_started_at":"2026-11-14T04:56:37Z","run_attempt":1,"status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'TimedOut'
+                $result.Message | Should -Match '1 checks still running: build'
+            }
+        }
+
         # Copilot's eleventh review of PR #73: two runs of one workflow for different triggers both count, and so do their
         # checks of the same name. A job with continue-on-error fails without failing its run, so only its check shows it.
         It 'keeps the same-named checks of two independent runs apart' {
