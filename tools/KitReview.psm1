@@ -90,6 +90,13 @@ function Test-CopilotSummary {
     $Body -match '<!--\s*ccr-overview'
 }
 
+# A time GitHub gave, as an instant: ConvertFrom-Json turns an ISO time into a DateTime, and writing that into a string
+# uses the local culture and drops its UTC kind, so it's cast directly, never through a string.
+function ConvertTo-Instant {
+    param([Parameter(Mandatory)] $Value)
+    [datetimeoffset] $Value
+}
+
 # Every review Copilot posted on the pull request, oldest first, each with its summary read; with -Commit, only its
 # reviews of that commit. Reviews submitted in the same second are ordered by id, which GitHub assigns in order.
 # IsSummary says whether the review is a code review summary (its body carries the ccr-overview marker): when Copilot
@@ -99,7 +106,7 @@ function Get-CopilotReviewOf {
 
     $reviews = @(Get-PullRequestReview -Repository $Repository -Number $Number)
     @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin -and (-not $Commit -or $_['commit_id'] -eq $Commit) }) |
-        Sort-Object { [datetimeoffset] $_['submitted_at'] }, { [long] $_['id'] } |
+        Sort-Object { ConvertTo-Instant $_['submitted_at'] }, { [long] $_['id'] } |
         ForEach-Object {
             $body = "$($_['body'])"
             $summary = ConvertFrom-CopilotReviewBody -Body $body
@@ -241,7 +248,7 @@ function Get-OpenFinding {
     $latest = @(Get-PullRequestReview -Repository $Repository -Number $Number) |
         Where-Object { $_['user'] -and $_['user']['login'] -ne $script:CopilotLogin } |
         Group-Object { $_['user']['login'] } |
-        ForEach-Object { $_.Group | Sort-Object { [datetimeoffset] $_['submitted_at'] } | Select-Object -Last 1 }
+        ForEach-Object { $_.Group | Sort-Object { ConvertTo-Instant $_['submitted_at'] } | Select-Object -Last 1 }
     foreach ($personReview in @($latest)) {
         $login = $personReview['user']['login']
         $body = "$($personReview['body'])".Trim()
@@ -459,7 +466,7 @@ function Read-PullRequestView {
             else { 'Failed' }
         }
         # A check that hasn't started is the latest attempt of its name, whatever the others' start times.
-        $started = if ($item['startedAt']) { [datetimeoffset] "$($item['startedAt'])" } else { [datetimeoffset]::MaxValue }
+        $started = if ($item['startedAt']) { ConvertTo-Instant $item['startedAt'] } else { [datetimeoffset]::MaxValue }
         [pscustomobject]@{ Key = $key; Id = $id; Started = $started; Order = $order++; RunId = $runId; Name = $name; Result = $result }
     }
     # StartHeadSha is the first page's head: a push between pages moved the head from it (Copilot's twelfth review).
@@ -513,7 +520,7 @@ function Get-PullRequestStatus {
                 # started in the same second are ordered by id, which GitHub assigns in order.
                 $_.Group | Sort-Object {
                     $at = $_['run_started_at'] ?? $_['created_at']
-                    if ($at) { [datetimeoffset] "$at" } else { [datetimeoffset]::MinValue }
+                    if ($at) { ConvertTo-Instant $at } else { [datetimeoffset]::MinValue }
                 }, { [long] ($_['id'] ?? 0) } | Select-Object -Last 1
             })
         # No ordering of runs is safe to rely on while one is going (a queued re-run can keep its first attempt's start
@@ -541,6 +548,16 @@ function Get-KitUtcNow {
 function Get-ShortSha {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Sha)
     $Sha.Substring(0, [Math]::Min(7, $Sha.Length))
+}
+
+# When Copilot's review was last requested on the pull request: the timeline's latest review_requested event naming
+# Copilot (a push requests one, and so does a re-request); nothing if it never was.
+function Get-CopilotReviewRequestTime {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+    $requests = @(Get-GhList -Endpoint "repos/$Repository/issues/$Number/timeline" | Where-Object {
+            "$($_['event'])" -eq 'review_requested' -and $_['requested_reviewer'] -and "$($_['requested_reviewer']['login'])" -eq 'Copilot'
+        } | ForEach-Object { ConvertTo-Instant $_['created_at'] } | Sort-Object)
+    if ($requests) { $requests[-1] }
 }
 
 # The reason Copilot gave in a review that isn't a summary: its first line.
@@ -599,7 +616,6 @@ function Wait-PullRequest {
     $status = $null
     $firstHead = $null
     $passSeenAt = $null
-    $failedBefore = $null
     $lastFailure = $null
     while ($true) {
         $status = Get-PullRequestStatus -Repository $Repository -Number $Number -WithRuns:($For -in 'Checks', 'Either')
@@ -613,16 +629,18 @@ function Wait-PullRequest {
         if ($status.HeadSha -ne $firstHead) { return New-HeadMovedResult -From $firstHead -To $status.HeadSha }
 
         if ($For -in 'Review', 'Either') {
-            $reviews = @(Get-CopilotReviewOf -Repository $Repository -Number $Number -Commit $status.HeadSha | Where-Object { $_.Commit -eq $status.HeadSha })
+            $reviews = @(Get-CopilotReviewOf -Repository $Repository -Number $Number -Commit $status.HeadSha)
             $review = @($reviews | Where-Object { Test-CopilotSummary -Body $_.Body }) | Select-Object -Last 1
             # When Copilot can't review (out of quota, seen on PR #73), it still posts a review, whose body is a reason,
-            # not a summary: that isn't a review to answer. A failed try already there when the wait started is old news,
-            # the one a re-requested review follows, so only a try that fails while the wait runs is ReviewFailed (the
-            # reviewer agent's review of PR #73).
-            $latest = $reviews | Select-Object -Last 1
-            $lastFailure = if (-not $review -and $latest) { $latest }
-            if ($null -eq $failedBefore) { $failedBefore = @($reviews | Where-Object { -not (Test-CopilotSummary -Body $_.Body) } | ForEach-Object ReviewId) }
-            $failure = if ($lastFailure -and $lastFailure.ReviewId -notin $failedBefore) { $lastFailure }
+            # not a summary: that isn't a review to answer. The failed try answers the latest review request unless
+            # Copilot's review was requested again after it (a re-request once credits are topped up); then the wait
+            # goes on for the new try (the reviewer agents' reviews of PR #73).
+            $lastFailure = $reviews | Select-Object -Last 1
+            $failure = $null
+            if ($lastFailure -and -not $review) {
+                $requested = Get-CopilotReviewRequestTime -Repository $Repository -Number $Number
+                if ($null -eq $requested -or (ConvertTo-Instant $lastFailure.SubmittedAt) -ge $requested) { $failure = $lastFailure }
+            }
             if ($review -or $failure) {
                 $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
                 if ($changed) { return $changed }

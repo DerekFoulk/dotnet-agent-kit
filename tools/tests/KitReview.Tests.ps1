@@ -897,13 +897,14 @@ Describe 'KitReview.psm1' {
             Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the module waits for a review'
             InModuleScope KitReview {
                 Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
-                $script:reviewCalls = 0
-                Mock Get-CopilotReviewOf {
-                    $script:reviewCalls++
-                    $commit = if ($script:reviewCalls -lt 2) { 'head1' } else { 'head2' }
-                    [pscustomobject]@{ ReviewId = 9; Commit = $commit; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' }
-                }
-                Mock Start-Sleep {}
+                # Copilot reviewed head1 before the wait, and head2 after its first poll; like the real function, the fake
+                # returns only the reviews of the commit asked for.
+                $older = [pscustomobject]@{ ReviewId = 8; Commit = 'head1'; Verdict = 'Changes recommended'; OpenIssueCount = 1; Issues = @(); Body = '<!-- ccr-overview-v2 -->' }
+                $head = [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' }
+                $script:reviewsByPoll = @(@($older), @($older, $head))
+                $script:polls = 0
+                Mock Get-CopilotReviewOf { @($script:reviewsByPoll[[Math]::Min($script:polls, 1)] | Where-Object Commit -EQ $Commit) }
+                Mock Start-Sleep { $script:polls++ }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 5 -IntervalSeconds 20
 
