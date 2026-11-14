@@ -19,6 +19,13 @@ BeforeDiscovery {
     $violations = @(
         @{ Fixture = 'UsesVar'; Diagnostic = 'IDE0008'; Description = 'var, because code style is enforced on build' }
         @{ Fixture = 'VarForBuiltInType'; Diagnostic = 'IDE0008'; Description = 'var for a built-in type, even after a cast that names it (STY-002)' }
+        # STY-007 (rules audit, owner 2026-11-12): Microsoft's C# coding conventions and identifier names pages, as gates.
+        @{ Fixture = 'ParameterInPascalCase'; Diagnostic = 'IDE1006'; Description = 'a parameter in PascalCase, where the naming rules ask for camelCase (STY-007)' }
+        @{ Fixture = 'UsingBlock'; Diagnostic = 'IDE0063'; Description = 'a using block where a simple using declaration does (STY-007)' }
+        @{ Fixture = 'ArrayInitializer'; Diagnostic = 'IDE0300'; Description = 'an array creation where a collection expression does (STY-007)' }
+        @{ Fixture = 'ExplicitNew'; Diagnostic = 'IDE0090'; Description = 'new with the type repeated where a target-typed new() does (STY-007)' }
+        @{ Fixture = 'ConstructorOnlyAssigns'; Diagnostic = 'IDE0290'; Description = 'a constructor that only assigns its parameters, where a primary constructor does (STY-007)' }
+        @{ Fixture = 'MixedOperators'; Diagnostic = 'IDE0048'; Description = 'operators of different precedence with no parentheses to show the order (STY-007)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }

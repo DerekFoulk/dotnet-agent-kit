@@ -17,12 +17,12 @@ public sealed class SharedLibraryTests
         "System.Windows",
     ];
 
-    public static TheoryData<string> SharedLibraries => new()
-    {
+    public static TheoryData<string> SharedLibraries =>
+    [
         typeof(Bookmark).Assembly.GetName().Name!,
         typeof(BookmarkResponse).Assembly.GetName().Name!,
         typeof(BookmarkService).Assembly.GetName().Name!,
-    };
+    ];
 
     [Theory]
     [MemberData(nameof(SharedLibraries))]

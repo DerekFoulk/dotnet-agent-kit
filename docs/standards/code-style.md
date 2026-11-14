@@ -79,6 +79,22 @@ rules:
         how: "until the sync step's check for local overrides (after v0.1)"
     scope: core
     paths: [".editorconfig"]
+  - id: STY-007
+    statement: "Code follows Microsoft's C# coding conventions and identifier names: PascalCase for types, namespaces, members, local functions and local constants, camelCase for parameters and locals; simple using declarations; collection expressions; a target-typed new() where the type is apparent; a primary constructor where a constructor only assigns its parameters; and parentheses wherever operators of different precedence meet."
+    why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12: \"adhere to all of the guidance provided by Microsoft Learn\"); the rules audit mapped both pages recommendation by recommendation and made every one an analyzer can check a gate."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/identifier-names, retrieved 2026-11-12"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: .editorconfig's naming rules with IDE1006 at warning (the build reports a naming rule only at IDE1006's own severity), and IDE0063, IDE0300 to IDE0305, IDE0090, IDE0290, IDE0047 and IDE0048 at warning; tools/tests/BuildConfig.Tests.ps1 has a failing fixture for each"
+      - kind: advisory
+        in: [kit, app]
+        how: "the recommendations no analyzer checks, checked by code review: meaningful names without abbreviations or single letters, no double underscore, t_ for thread-static fields, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
+    scope: core
+    paths: ["**/*.cs", ".editorconfig"]
 ---
 
 # Code style
