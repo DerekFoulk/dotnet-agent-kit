@@ -404,14 +404,23 @@ function Read-PullRequestView {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
     $owner, $repoName = $Repository -split '/', 2
-    $query = 'query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { state headRefOid commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100) { pageInfo { hasNextPage endCursor } nodes { __typename ... on CheckRun { databaseId name status conclusion startedAt checkSuite { app { slug } workflowRun { databaseId workflow { name } } } } ... on StatusContext { context state } } } } } } } } } }'
-    # -f sends a string; -F would turn a repository named "2048" into a number. The PR number is an Int.
-    $response = Invoke-Gh api graphql -f "query=$query" -f "owner=$owner" -f "name=$repoName" -F "number=$Number" | ConvertFrom-Json -AsHashtable
-    $pullRequest = $response['data']['repository']['pullRequest']
-    $commit = @($pullRequest['commits']['nodes'] | Where-Object { $_ })[0]
-    $rollup = if ($commit) { $commit['commit']['statusCheckRollup'] } else { $null }
+    $query = 'query($owner: String!, $name: String!, $number: Int!, $endCursor: String) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { state headRefOid commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { __typename ... on CheckRun { databaseId name status conclusion startedAt checkSuite { app { slug } workflowRun { databaseId workflow { name } } } } ... on StatusContext { context state } } } } } } } } } }'
+    # -f sends a string; -F would turn a repository named "2048" into a number. The PR number is an Int. The rollup comes
+    # 100 checks to a page; --paginate --slurp reads every page into one array, one item per page.
+    $pages = Invoke-Gh api graphql -f "query=$query" -f "owner=$owner" -f "name=$repoName" -F "number=$Number" --paginate --slurp | ConvertFrom-Json -AsHashtable
+    $pulls = @(@($pages) | ForEach-Object { $_['data']['repository']['pullRequest'] })
+    $pullRequest = $pulls[-1]
+    # A push between pages makes them disagree on the head: that read mixes two commits' checks, so it gives none.
+    $consistent = @($pulls | ForEach-Object { "$($_['headRefOid'])" } | Select-Object -Unique).Count -eq 1
+    $nodes = if ($consistent) {
+        foreach ($pull in $pulls) {
+            $commit = @($pull['commits']['nodes'] | Where-Object { $_ })[0]
+            $rollup = if ($commit) { $commit['commit']['statusCheckRollup'] } else { $null }
+            if ($rollup) { $rollup['contexts']['nodes'] }
+        }
+    }
     $order = 0
-    $items = foreach ($item in @($(if ($rollup) { $rollup['contexts']['nodes'] }) | Where-Object { $_ })) {
+    $items = foreach ($item in @($nodes | Where-Object { $_ })) {
         # A CheckRun has a status and, once completed, a conclusion; a StatusContext has a state.
         if ("$($item['__typename'])" -eq 'StatusContext') {
             $name = "$($item['context'])"
