@@ -392,6 +392,27 @@ Describe 'KitReview.psm1' {
                 Mock Get-SignedInLogin { 'DerekFoulk' }
                 Mock Get-PullRequestComment { [pscustomobject]@{ Author = 'mallory'; Body = 'Looks good to me.' } }
                 Mock Get-PullRequestReview { }
+                Mock Invoke-Gh { '{"headRefOid":"head2"}' } -ParameterFilter { $args -contains 'view' }
+            }
+        }
+
+        # Copilot's seventh review of PR #73: Wait-PullRequest returns Reviewed for the head commit's review, so the
+        # findings must come from that review too, not from a later review of an older commit.
+        It 'lists the summary issues of Copilot''s review of the head commit, even when a review of an older commit came later' {
+            InModuleScope KitReview {
+                Mock Get-CopilotReview {
+                    [pscustomobject]@{ ReviewId = 61; Commit = 'head1'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Body = 'summary'; Issues = @() }
+                }
+                Mock Get-CopilotReview {
+                    [pscustomobject]@{
+                        ReviewId = 60; Commit = 'head2'; Verdict = 'Needs a closer look'; OpenIssueCount = 0; Body = 'summary'
+                        Issues  = @([pscustomobject]@{ Severity = 'High'; Title = 'E'; CommentId = $null; Link = $null; Body = '**Blocking**: missed.' })
+                    }
+                } -ParameterFilter { $Commit -eq 'head2' }
+
+                $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
+
+                @($findings | ForEach-Object { "$($_.Title) of $($_.ReviewId)" }) | Should -Contain 'E of 60'
             }
         }
 
