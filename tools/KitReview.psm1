@@ -442,8 +442,9 @@ function Get-PullRequestStatus {
     $failedRuns = @()
     $replaced = @()
     if ($WithRuns -and $view.HeadSha) {
-        $runs = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$($view.HeadSha)&per_page=100" | ConvertFrom-Json -AsHashtable
-        $every = @($runs['workflow_runs'] | Where-Object { $_ })
+        # GitHub lists the runs 100 to a page; --paginate --slurp reads every page into one array, one item per page.
+        $pages = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$($view.HeadSha)&per_page=100" --paginate --slurp | ConvertFrom-Json -AsHashtable
+        $every = @(@($pages) | ForEach-Object { $_['workflow_runs'] } | Where-Object { $_ })
         # Runs of one workflow for different triggers (a push and a pull request) are independent, so both count.
         $latest = @($every | Group-Object { "$($_['workflow_id'] ?? $_['name'])|$($_['event'])" } | ForEach-Object {
                 $_.Group | Sort-Object { if ($_['created_at']) { [datetimeoffset] "$($_['created_at'])" } else { [datetimeoffset]::MinValue } } | Select-Object -Last 1
