@@ -733,4 +733,45 @@ Describe 'KitReview.psm1' {
             }
         }
     }
+
+    # The kit's own watcher (owner, 2026-11-14): an agent waits for Copilot's review of the head commit and for CI
+    # with this, in any tool, instead of a host's monitor that reports only failures or a script of its own.
+    Context 'Wait-PullRequest' {
+        It 'returns Reviewed once Copilot has reviewed the head commit, not an older one' {
+            Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the module waits for a review'
+            InModuleScope KitReview {
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
+                $script:reviewCalls = 0
+                Mock Get-CopilotReview {
+                    $script:reviewCalls++
+                    $commit = if ($script:reviewCalls -lt 2) { 'head1' } else { 'head2' }
+                    [pscustomobject]@{ ReviewId = 9; Commit = $commit; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @() }
+                }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'Reviewed'
+                $result.Review.Commit | Should -Be 'head2'
+                $result.Message | Should -Match 'Copilot reviewed head2: Approval recommended, 0 open issues'
+                Should -Invoke Start-Sleep -Times 1 -Exactly -ParameterFilter { $Seconds -eq 20 }
+            }
+        }
+
+        It 'returns TimedOut after the time limit, saying what it still waits for, and sleeps only between polls' {
+            Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the module waits for a review'
+            InModuleScope KitReview {
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; Checks = @() } }
+                Mock Get-CopilotReview { }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'TimedOut'
+                $result.Message | Should -Match "Timed out after 1 minute at head2: no review from Copilot of head2 yet"
+                Should -Invoke Get-PullRequestStatus -Times 3 -Exactly
+                Should -Invoke Start-Sleep -Times 2 -Exactly
+            }
+        }
+    }
 }
