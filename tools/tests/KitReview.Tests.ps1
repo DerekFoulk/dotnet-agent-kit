@@ -882,6 +882,30 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # PR #73's own rollup listed "PR title" twice: a workflow that runs again on the same commit (here, when the
+        # description was edited) keeps its earlier run in the rollup. Only each check's latest run counts.
+        It 'counts only the latest run of a check that ran twice on the head commit' {
+            InModuleScope KitReview {
+                $view = @{
+                    state = 'OPEN'; headRefOid = 'head2'
+                    statusCheckRollup = @(
+                        @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:06Z' }
+                        @{ __typename = 'CheckRun'; workflowName = 'PR title'; name = 'PR title'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:38Z' }
+                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:56:10Z' }
+                    )
+                } | ConvertTo-Json -Depth 5 -Compress
+                $script:view = $view
+                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"name":"PR title","status":"completed","conclusion":"success"},{"name":"ci","status":"completed","conclusion":"success"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksPassed'
+                $result.Message | Should -Match 'every check passed \(2 passed, 0 skipped\)'
+            }
+        }
+
         # A push while it waits makes the old head's review and checks beside the point.
         It 'returns HeadMoved, with the new head, when someone pushes while it waits' {
             InModuleScope KitReview {
