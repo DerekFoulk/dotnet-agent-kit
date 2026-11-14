@@ -931,6 +931,29 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's fifth review of PR #73: GitHub lists the runs 100 to a page, so a head commit with more runs has
+        # some on later pages. Every page is read (gh api --paginate --slurp: one array holding each page).
+        It 'reads every page of the head commit''s workflow runs' {
+            InModuleScope KitReview {
+                $script:view = @{
+                    state = 'OPEN'; headRefOid = 'head2'
+                    statusCheckRollup = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS' })
+                } | ConvertTo-Json -Depth 5 -Compress
+                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                $first = '{"workflow_runs":[{"id":1,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"success"}]}'
+                $second = '{"workflow_runs":[{"id":2,"name":"Labeler","workflow_id":13,"event":"pull_request_target","created_at":"2026-11-14T04:56:11Z","status":"completed","conclusion":"failure"}]}'
+                $script:onePage = $first
+                $script:everyPage = "[$first,$second]"
+                Mock Invoke-Gh { if ($args -contains '--paginate' -and $args -contains '--slurp') { $script:everyPage } else { $script:onePage } } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.Message | Should -Match 'workflow runs failed: Labeler'
+            }
+        }
+
         # A push while it waits makes the old head's review and checks beside the point.
         It 'returns HeadMoved, with the new head, when someone pushes while it waits' {
             InModuleScope KitReview {
