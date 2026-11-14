@@ -223,6 +223,14 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        It 'orders two summaries submitted in the same second by id, the higher being the later' {
+            InModuleScope KitReview {
+                Mock Invoke-Gh { '[{ "id": 21, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "b", "body": "<!-- ccr-overview-v2 -->" }, { "id": 20, "user": { "login": "copilot-pull-request-reviewer[bot]" }, "submitted_at": "2026-11-14T09:00:00Z", "commit_id": "a", "body": "<!-- ccr-overview-v2 -->" }]' }
+
+                (Get-CopilotReview -Repository 'o/r' -Number 5).ReviewId | Should -Be 21
+            }
+        }
+
         It 'returns nothing when Copilot has not reviewed (and never calls GitHub twice)' {
             InModuleScope KitReview {
                 Mock Invoke-Gh { '[{ "id": 3, "user": { "login": "DerekFoulk" }, "state": "COMMENTED", "submitted_at": "2026-11-03T10:00:00Z", "commit_id": "c", "body": "" }]' }
@@ -430,6 +438,24 @@ Describe 'KitReview.psm1' {
                 $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
 
                 @($findings | ForEach-Object { "$($_.Title) of $($_.ReviewId)" }) | Should -Contain 'E of 60'
+            }
+        }
+
+        # Until Copilot has a summary of the head, its latest summary still stands (the reviewer agent's review of PR #73:
+        # no test pinned it).
+        It 'lists the summary issues of Copilot''s latest summary while it has none of the head commit' {
+            InModuleScope KitReview {
+                Mock Get-CopilotReview { } -ParameterFilter { $Commit -eq 'head2' }
+                Mock Get-CopilotReview {
+                    [pscustomobject]@{
+                        ReviewId = 59; Commit = 'head1'; Verdict = 'Needs a closer look'; OpenIssueCount = 0; Body = 'summary'
+                        Issues  = @([pscustomobject]@{ Severity = 'High'; Title = 'F'; CommentId = $null; Link = $null; Body = '**Blocking**: missed.' })
+                    }
+                }
+
+                $findings = @(Get-OpenFinding -Repository 'o/r' -Number 5)
+
+                @($findings | ForEach-Object { "$($_.Title) of $($_.ReviewId)" }) | Should -Contain 'F of 59'
             }
         }
 
@@ -797,6 +823,67 @@ Describe 'KitReview.psm1' {
             }
         }
         AfterAll { Remove-Item -Path Function:\ConvertTo-RollupJson -ErrorAction SilentlyContinue }
+
+        # The reviewer agent's review of PR #73 found these mapped results pinned by no test (its mutants survived).
+        It 'reads a <What> as <Expected>' -ForEach @(
+            @{ What = 'check concluded NEUTRAL'; Check = 'NEUTRAL'; Run = 'success'; Expected = 'ChecksPassed' }
+            @{ What = 'check concluded CANCELLED'; Check = 'CANCELLED'; Run = 'success'; Expected = 'ChecksFailed' }
+            @{ What = 'workflow run concluded neutral'; Check = 'SUCCESS'; Run = 'neutral'; Expected = 'ChecksPassed' }
+            @{ What = 'workflow run concluded skipped'; Check = 'SUCCESS'; Run = 'skipped'; Expected = 'ChecksPassed' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Check = $Check; Run = $Run; Expected = $Expected } {
+                param($Check, $Run, $Expected)
+                $script:view = ConvertTo-RollupJson -Checks @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = $Check; runId = 1; id = 1 })
+                $script:runsJson = '{"workflow_runs":[{"id":1,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"' + $Run + '"}]}'
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                (Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20).Event | Should -Be $Expected
+            }
+        }
+
+        # GitHub's StatusState EXPECTED is a required status that hasn't been posted yet: still to come, not a failure.
+        It 'keeps waiting for a status context that is EXPECTED' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = ConvertTo-RollupJson -Checks @(@{ __typename = 'StatusContext'; context = 'deploy'; state = 'EXPECTED' })
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { '{"workflow_runs":[]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                (Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20).Message | Should -Match '1 checks still running: deploy'
+            }
+        }
+
+        # A pass needs the next poll to find it again; a poll in between that finds CI not done starts that over.
+        It 'confirms a pass again after a poll finds CI not done' {
+            InModuleScope KitReview {
+                $passed = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @() }
+                $going = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @() }
+                $script:polls = @($passed, $going, $passed, $passed)
+                $script:sleeps = 0
+                Mock Start-Sleep { $script:sleeps++ }
+                Mock Get-PullRequestStatus { $script:polls[[Math]::Min($script:sleeps, 3)] } -ParameterFilter { $WithRuns }
+                Mock Get-PullRequestStatus { $passed }
+
+                (Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20).Event | Should -Be 'ChecksPassed'
+
+                Should -Invoke Start-Sleep -Times 3 -Exactly
+            }
+        }
+
+        It 'says in its time-out which workflow runs are still going when every check so far is done' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @() } }
+
+                (Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20).Message | Should -Be 'Timed out after 1 minute at head2: workflow runs still going: ci.'
+            }
+        }
 
         It 'returns Reviewed once Copilot has reviewed the head commit, not an older one' {
             Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the module waits for a review'
