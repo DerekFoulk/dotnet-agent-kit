@@ -15,7 +15,7 @@ $review   = Get-CopilotReview -Repository <owner/repo> -Number <pr> -Commit <hea
 $findings = Get-OpenFinding   -Repository <owner/repo> -Number <pr>
 ```
 
-The head sha is `Wait-PullRequest`'s `HeadSha`, or `gh pr view <pr> --json headRefOid`. Without `-Commit`, `Get-CopilotReview` returns Copilot's latest review, which can be of an older commit: a review of an older commit can land after the head's.
+The head sha is `Wait-PullRequest`'s `HeadSha`, or `gh pr view <pr> --json headRefOid`. Without `-Commit`, `Get-CopilotReview` returns Copilot's latest summary, which can be of an older commit: a review of an older commit can land after the head's. A note that Copilot couldn't review isn't a summary, so it never replaces one, and with `-Commit` a head whose only review is such a note returns nothing.
 
 `Get-OpenFinding` combines Copilot's summary of the head commit (its latest summary, until it reviews the head), people's reviews and every review thread. It returns what still needs an answer, each with `Severity`, `Title`, `Author`, `Body`, `ReviewId` and `Thread`:
 - each summary issue whose thread is unresolved;
