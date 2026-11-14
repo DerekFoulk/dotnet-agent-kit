@@ -389,14 +389,15 @@ function Get-GhList {
     }
 }
 
-# The pull request's state, its head commit and its checks, from one gh call. gh pr view exits 0 while checks are
-# pending, where gh pr checks exits 8, which Invoke-Gh would treat as a failure.
+# The pull request's state, its head commit and every check its rollup lists, from one gh call. gh pr view exits 0
+# while checks are pending, where gh pr checks exits 8, which Invoke-Gh would treat as a failure. Each check keeps
+# the workflow run its detailsUrl names, if any, so Select-CurrentCheck can drop a replaced run's checks.
 function Read-PullRequestView {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
 
     $view = Invoke-Gh pr view $Number --repo $Repository --json 'state,headRefOid,statusCheckRollup' | ConvertFrom-Json -AsHashtable
     $order = 0
-    $runs = foreach ($item in @($view['statusCheckRollup'] | Where-Object { $_ })) {
+    $items = foreach ($item in @($view['statusCheckRollup'] | Where-Object { $_ })) {
         # A CheckRun (GitHub Actions) has a status and, once completed, a conclusion; a StatusContext has a state.
         if ("$($item['__typename'])" -eq 'StatusContext') {
             $name = "$($item['context'])"
@@ -412,42 +413,54 @@ function Read-PullRequestView {
             else { 'Failed' }
         }
         $started = if ($item['startedAt']) { [datetimeoffset] "$($item['startedAt'])" } else { [datetimeoffset]::MinValue }
-        [pscustomobject]@{ Key = $key; Started = $started; Order = $order++; Name = $name; Result = $result }
+        $runId = if ("$($item['detailsUrl'])" -match '/actions/runs/(?<id>\d+)(/|$)') { [long] $Matches['id'] } else { $null }
+        [pscustomobject]@{ Key = $key; Started = $started; Order = $order++; RunId = $runId; Name = $name; Result = $result }
     }
-    # A workflow that runs again on the same commit keeps its earlier run in the rollup: only each check's latest counts.
-    $checks = @($runs | Group-Object Key | ForEach-Object {
+    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Items = @($items) }
+}
+
+# The checks that decide CI: none from a workflow run that a later run replaced, and of a check listed more than once,
+# only its latest start (a workflow that runs again on the same commit keeps its earlier run in the rollup).
+function Select-CurrentCheck {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Items, [long[]] $ReplacedRuns = @())
+
+    @($Items | Where-Object { $null -eq $_.RunId -or $_.RunId -notin $ReplacedRuns } | Group-Object Key | ForEach-Object {
             $_.Group | Sort-Object Started, Order | Select-Object -Last 1 | Select-Object Name, Result
         })
-    [pscustomobject]@{ State = "$($view['state'])"; HeadSha = "$($view['headRefOid'])"; Checks = $checks }
 }
 
 # The pull request's state, head and checks. With -WithRuns it also lists the head commit's GitHub Actions runs that
 # haven't completed, and those that failed: a job that needs another isn't a check until its turn comes, so every
-# registered check done isn't CI done. The checks and the runs are two reads, and a job can finish between them, so
-# once every run has completed the checks are read again (Copilot's reviews of PR #73).
+# registered check done isn't CI done. Of a workflow that ran more than once for one trigger, only its latest run
+# counts, and the replaced runs' checks are dropped. The checks and the runs are two reads, and a job can finish
+# between them, so once every run has completed the checks are read again (Copilot's reviews of PR #73).
 function Get-PullRequestStatus {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $WithRuns)
 
-    $status = Read-PullRequestView -Repository $Repository -Number $Number
+    $view = Read-PullRequestView -Repository $Repository -Number $Number
     $pendingRuns = @()
     $failedRuns = @()
-    if ($WithRuns -and $status.HeadSha) {
-        $runs = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$($status.HeadSha)&per_page=100" | ConvertFrom-Json -AsHashtable
-        # A workflow that runs again on the same commit and trigger keeps its earlier run: only its latest counts. Runs of
-        # one workflow for different triggers (a push and a pull request) are independent, so both count.
-        $all = @($runs['workflow_runs'] | Where-Object { $_ } | Group-Object { "$($_['workflow_id'] ?? $_['name'])|$($_['event'])" } | ForEach-Object {
+    $replaced = @()
+    if ($WithRuns -and $view.HeadSha) {
+        $runs = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$($view.HeadSha)&per_page=100" | ConvertFrom-Json -AsHashtable
+        $every = @($runs['workflow_runs'] | Where-Object { $_ })
+        # Runs of one workflow for different triggers (a push and a pull request) are independent, so both count.
+        $latest = @($every | Group-Object { "$($_['workflow_id'] ?? $_['name'])|$($_['event'])" } | ForEach-Object {
                 $_.Group | Sort-Object { if ($_['created_at']) { [datetimeoffset] "$($_['created_at'])" } else { [datetimeoffset]::MinValue } } | Select-Object -Last 1
             })
-        $pendingRuns = @($all | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" })
-        $failedRuns = @($all | Where-Object { "$($_['status'])" -eq 'completed' -and "$($_['conclusion'])" -notin 'success', 'skipped', 'neutral' } | ForEach-Object { "$($_['name'])" })
+        $kept = @($latest | Where-Object { $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
+        $replaced = @($every | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -notin $kept } | ForEach-Object { [long] $_['id'] })
+        $pendingRuns = @($latest | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" })
+        $failedRuns = @($latest | Where-Object { "$($_['status'])" -eq 'completed' -and "$($_['conclusion'])" -notin 'success', 'skipped', 'neutral' } | ForEach-Object { "$($_['name'])" })
         if (-not $pendingRuns) {
             $fresh = Read-PullRequestView -Repository $Repository -Number $Number
             # A push between the reads: the runs read belong to the old head, so nothing about the new one is known yet.
-            if ($fresh.HeadSha -ne $status.HeadSha) { $pendingRuns = @("the runs of $(Get-ShortSha -Sha $fresh.HeadSha)"); $failedRuns = @() }
-            $status = $fresh
+            if ($fresh.HeadSha -ne $view.HeadSha) { $pendingRuns = @("the runs of $(Get-ShortSha -Sha $fresh.HeadSha)"); $failedRuns = @(); $replaced = @() }
+            $view = $fresh
         }
     }
-    [pscustomobject]@{ State = $status.State; HeadSha = $status.HeadSha; Checks = $status.Checks; PendingRuns = $pendingRuns; FailedRuns = $failedRuns }
+    $checks = Select-CurrentCheck -Items $view.Items -ReplacedRuns $replaced
+    [pscustomobject]@{ State = $view.State; HeadSha = $view.HeadSha; Checks = $checks; PendingRuns = $pendingRuns; FailedRuns = $failedRuns }
 }
 # The time now: the clock Wait-PullRequest measures its limit by, which the tests replace (TST-010).
 function Get-KitUtcNow {
