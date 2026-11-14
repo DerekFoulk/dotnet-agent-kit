@@ -779,6 +779,25 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's eighth review of PR #73: the head and the review are two reads, and a push can land between them, so
+        # a review of the commit that was the head isn't a review of the head. The head is read again before Reviewed.
+        It 'returns HeadMoved when a push lands between reading the head and finding its review' {
+            InModuleScope KitReview {
+                $script:statusCalls = 0
+                Mock Get-PullRequestStatus { $script:statusCalls++; [pscustomobject]@{ State = 'OPEN'; HeadSha = $(if ($script:statusCalls -lt 2) { 'head2' } else { 'head3' }); Checks = @() } }
+                Mock Get-CopilotReview { [pscustomobject]@{ ReviewId = 9; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @() } } -ParameterFilter { $Commit -eq 'head2' }
+                Mock Get-CopilotReview { }
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'HeadMoved'
+                $result.HeadSha | Should -Be 'head3'
+            }
+        }
+
         # Copilot's sixth review of PR #73: a review of an older commit can land after the head's review, so the latest
         # review isn't always the head's. The head commit's own review counts, wherever it falls.
         It 'returns Reviewed when Copilot reviewed the head commit, even if a review of an older commit came later' {
