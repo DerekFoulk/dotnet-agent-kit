@@ -146,6 +146,41 @@ Describe 'Repo build configuration' -Tag 'Build' {
             $build.ExitCode | Should -Not -Be 0 -Because 'the policy refuses unsigned packages'
             $build.Output | Should -Match 'NU3004' -Because $build.Output
         }
+
+        # Copilot's review of PR #69: with every package already extracted on the machine, a wrong certificate list
+        # passed every test. A cold cache extracts, and so checks, each of nuget.org's packages the fixture uses.
+        It 'restores nuget.org''s packages under the policy with a cold cache' {
+            $clean = New-FixtureWorkspace -Fixture 'Clean'
+            $savedPackages = $env:NUGET_PACKAGES
+            $env:NUGET_PACKAGES = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName())
+            try { $cold = Invoke-FixtureBuild -Workspace $clean }
+            finally { $env:NUGET_PACKAGES = $savedPackages }
+
+            $cold.ExitCode | Should -Be 0 -Because $cold.Output
+        }
+
+        # Copilot's review of PR #69: NuGet merges trustedSigners from every config above the repo, the user's and the
+        # machine's, so a signer trusted there would be trusted here too unless the repo's config clears them.
+        It 'trusts only nuget.org''s repository, whatever a config above the repo adds' {
+            $isolated = New-FixtureWorkspace -Fixture 'Clean'
+            Set-Content -Path (Join-Path (Split-Path -Path $isolated -Parent) 'nuget.config') -Value @'
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <trustedSigners>
+    <author name="kit-test-extra-signer">
+      <certificate fingerprint="AA12DA22A49BCE7D5C1AE64CC1F3D892F150DA76140F210ABD2CBFFCA2C18A27" hashAlgorithm="SHA256" allowUntrustedRoot="false" />
+    </author>
+  </trustedSigners>
+</configuration>
+'@
+            $PSNativeCommandUseErrorActionPreference = $false
+            Push-Location $isolated
+            try { $list = dotnet nuget trust list 2>&1 | Out-String }
+            finally { Pop-Location }
+
+            $list | Should -Match 'nuget\.org' -Because $list
+            $list | Should -Not -Match 'kit-test-extra-signer' -Because $list
+        }
     }
 
     Context 'clean code' {
