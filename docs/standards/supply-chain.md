@@ -163,7 +163,7 @@ rules:
     scope: core
     paths: [".github/workflows/**", "global.json"]
   - id: SUP-012
-    statement: "Every package a restore extracts carries a signature from a trusted signer: nuget.config sets signatureValidationMode to require and trusts nuget.org's repository certificates, the ones its service index announces."
+    statement: "Every package a restore extracts carries a signature from a trusted signer: nuget.config sets signatureValidationMode to require and trusts only nuget.org's repository certificates, the ones its service index announces, clearing any signer a config above the repo adds."
     why: "A package altered after nuget.org published it, or one from anywhere else, fails its restore instead of reaching the build; nuget.org adds a repository signature to every package it serves, and Microsoft recommends a trust policy for it."
     layer: outside
     basis: authority
@@ -172,7 +172,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "restore: nuget.config's signatureValidationMode require and its nuget.org trusted signer fail a restore on an unsigned or untrusted package (NU3004); tools/tests/BuildConfig.Tests.ps1 restores an unsigned package and expects that failure, and its other fixtures restore nuget.org's packages under the policy"
+        how: "restore: nuget.config's signatureValidationMode require and its nuget.org trusted signer fail a restore on an unsigned or untrusted package (NU3004); tools/tests/BuildConfig.Tests.ps1 restores an unsigned package and expects that failure, restores nuget.org's packages with a cold cache, and checks that a signer trusted in a config above the repo isn't trusted in it"
       - kind: advisory
         in: [kit, app]
         how: "when nuget.org rotates its repository certificate, dotnet nuget trust sync nuget.org updates the list; nothing yet notices a rotation before a restore fails (ADR-0066, a scorecard gap)"

@@ -46,7 +46,8 @@ Accepted as recommended, as part of the rules audit (owner, 2026-11-12).
 ## Consequences
 
 - SUP-012 (accepted). `nuget.config` in the kit, and in every app through the export and the kit sync, requires a trusted signature.
-- `tools/tests/BuildConfig.Tests.ps1` restores a hand-built unsigned package and expects NU3004, in an empty global packages folder of its own: NuGet checks a signature when it extracts a package, so a copy already on the machine would skip the check.
+- NuGet merges `trustedSigners` from every config above the repo, the user's and the machine's included, so the section starts with `<clear />`: only nuget.org's repository is trusted in the repo, whatever a developer's own config trusts (Copilot's review of PR #69).
+- `tools/tests/BuildConfig.Tests.ps1` restores a hand-built unsigned package and expects NU3004, and restores nuget.org's packages successfully, each in an empty global packages folder of its own: NuGet checks a signature when it extracts a package, so a copy already on the machine would skip the check. It also checks, with `dotnet nuget trust list`, that a signer trusted in a config above the repo isn't trusted in it.
 - A package already in a machine's global packages folder isn't checked again; CI's fresh runners extract every package.
 - **Not yet handled:** nothing notices a certificate rotation before a restore fails. Scorecard GAP-038 tracks a scheduled check that compares `nuget.config` with nuget.org's service index.
 

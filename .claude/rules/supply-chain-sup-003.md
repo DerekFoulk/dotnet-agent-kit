@@ -7,4 +7,4 @@ paths:
 # Supply chain
 
 - SUP-003: Packages come only from nuget.org, enforced by package source mapping in nuget.config.
-- SUP-012: Every package a restore extracts carries a signature from a trusted signer: nuget.config sets signatureValidationMode to require and trusts nuget.org's repository certificates, the ones its service index announces.
+- SUP-012: Every package a restore extracts carries a signature from a trusted signer: nuget.config sets signatureValidationMode to require and trusts only nuget.org's repository certificates, the ones its service index announces, clearing any signer a config above the repo adds.
