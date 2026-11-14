@@ -84,13 +84,15 @@ function Get-MissedIssue {
 }
 
 # Copilot's latest review on the pull request, with its summary read; nothing if Copilot hasn't reviewed.
-# Commit is the commit Copilot reviewed, which can be behind the branch head.
+# Commit is the commit Copilot reviewed, which can be behind the branch head. With -Commit, its latest review of
+# that commit: a review of an older commit can land after the head's (Copilot's sixth review of PR #73).
+# Reviews submitted in the same second are ordered by id, which GitHub assigns in order.
 function Get-CopilotReview {
-    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [string] $Commit)
 
     $reviews = @(Get-PullRequestReview -Repository $Repository -Number $Number)
-    $latest = @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin }) |
-        Sort-Object { [datetimeoffset] $_['submitted_at'] } |
+    $latest = @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin -and (-not $Commit -or $_['commit_id'] -eq $Commit) }) |
+        Sort-Object { [datetimeoffset] $_['submitted_at'] }, { [long] $_['id'] } |
         Select-Object -Last 1
     if (-not $latest) {
         return
@@ -514,7 +516,7 @@ function Wait-PullRequest {
         }
 
         if ($For -in 'Review', 'Either') {
-            $review = Get-CopilotReview -Repository $Repository -Number $Number
+            $review = Get-CopilotReview -Repository $Repository -Number $Number -Commit $status.HeadSha
             if ($review -and $review.Commit -eq $status.HeadSha) {
                 return [pscustomobject]@{
                     Event = 'Reviewed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
