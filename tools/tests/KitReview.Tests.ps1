@@ -798,24 +798,29 @@ Describe 'KitReview.psm1' {
         }
     }
 
-    # The kit's own watcher (owner, 2026-11-14): an agent waits for Copilot's review of the head commit and for CI
-    # with this, in any tool, instead of a host's monitor that reports only failures or a script of its own.
-    # The third reviewer agent's review of PR #73: PR #73's timeline holds 17 review_requests for Copilot among 127
-    # items, with requests to people and other events between them, out of order with nothing to rely on.
+    # The third and fourth reviewer agents' reviews of PR #73: GitHub's timeline reference doesn't promise an order or
+    # who a request names, so the fake has on purpose what PR #73's own timeline (oldest first, every request naming
+    # Copilot) doesn't: the latest Copilot request in the middle of three, a request to a person, one to a team (it
+    # names requested_team, not requested_reviewer), a removed request, and another event.
     Context 'Get-CopilotReviewRequestTime' {
         It 'returns the latest review request naming Copilot, ignoring requests to others and other events' {
             InModuleScope KitReview {
                 Mock Invoke-Gh {
                     @(
-                        '{ "event": "review_requested", "created_at": "2026-11-14T14:40:39Z", "requested_reviewer": { "login": "Copilot", "type": "Bot" } }'
                         '{ "event": "review_requested", "created_at": "2026-11-14T08:28:18Z", "requested_reviewer": { "login": "Copilot", "type": "Bot" } }'
+                        '{ "event": "review_requested", "created_at": "2026-11-14T14:40:39Z", "requested_reviewer": { "login": "Copilot", "type": "Bot" } }'
+                        '{ "event": "review_requested", "created_at": "2026-11-14T11:00:00Z", "requested_reviewer": { "login": "Copilot", "type": "Bot" } }'
                         '{ "event": "review_requested", "created_at": "2026-11-14T15:00:00Z", "requested_reviewer": { "login": "alice", "type": "User" } }'
+                        '{ "event": "review_requested", "created_at": "2026-11-14T15:02:00Z", "requested_team": { "slug": "reviewers" } }'
                         '{ "event": "review_request_removed", "created_at": "2026-11-14T15:05:00Z", "requested_reviewer": { "login": "Copilot", "type": "Bot" } }'
                         '{ "event": "committed", "created_at": "2026-11-14T15:10:00Z" }'
                     ) -join "`n"
                 } -ParameterFilter { "$args" -match '/timeline' }
 
                 Get-CopilotReviewRequestTime -Repository 'o/r' -Number 5 | Should -Be ([datetimeoffset] '2026-11-14T14:40:39Z')
+
+                # A timeline can run to hundreds of items: it's read 100 to a page, GitHub's most, not its default 30.
+                Should -Invoke Invoke-Gh -Times 1 -Exactly -ParameterFilter { "$args" -match '/timeline\?per_page=100' }
             }
         }
 
@@ -827,6 +832,9 @@ Describe 'KitReview.psm1' {
             }
         }
     }
+
+    # The kit's own watcher (owner, 2026-11-14): an agent waits for Copilot's review of the head commit and for CI
+    # with this, in any tool, instead of a host's monitor that reports only failures or a script of its own.
     Context 'Wait-PullRequest' {
         BeforeAll {
             # The GraphQL response the rollup read gets, built from each check's fields (shape checked against PR #73,
