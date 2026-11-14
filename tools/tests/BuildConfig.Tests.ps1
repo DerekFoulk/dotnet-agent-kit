@@ -18,6 +18,7 @@ BeforeDiscovery {
     # marked rules are exactly the ones it turns on.
     $violations = @(
         @{ Fixture = 'UsesVar'; Diagnostic = 'IDE0008'; Description = 'var, because code style is enforced on build' }
+        @{ Fixture = 'VarForBuiltInType'; Diagnostic = 'IDE0008'; Description = 'var for a built-in type, even after a cast that names it (STY-002)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }

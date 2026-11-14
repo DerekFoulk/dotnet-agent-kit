@@ -5,4 +5,4 @@ applyTo: '**/*.cs'
 
 # Code style
 
-- STY-002: Never use var; write the type.
+- STY-002: Use var only where the type is named on the right side of the assignment (a new or a cast), as dotnet/runtime does, and never for a built-in type such as int or string; everywhere else, write the type.

@@ -39,6 +39,7 @@ Accepted as recommended (owner, 2026-11-01).
 - **Update (2026-11-10, ADR-0043):** `latest-all` leaves some rules off: the code metric rules and legacy rules Microsoft lists, and CA1516, which the SDK's all-mode file sets to none. A root `.globalconfig` turns them on, all but the one GAP-021 holds back, and lists them.
 - **Update (2026-11-11, ADR-0049):** CA1014 is on too, so `.globalconfig` turns on every rule `latest-all` leaves off. `Directory.Build.props` declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be.
 - A repo's `.editorconfig` overrides settings shipped in a package, so the sync step owns it and CI flags local changes.
+- **Update (2026-11-13, rules audit):** "`var` is never used" was stricter than Microsoft's own repos. STY-002 now follows dotnet/runtime: `var` is allowed where the type is named on the right side (`csharp_style_var_when_type_is_apparent = false:none`), and the type is written everywhere else, at warning (owner, 2026-11-12).
 
 ## Pillars affected
 
