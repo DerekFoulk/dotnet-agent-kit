@@ -1127,10 +1127,10 @@ Describe 'KitReview.psm1' {
 
         # The rollup is read 100 checks to a page (gh api graphql --paginate --slurp: one array holding each page), so a
         # failure past the first page counts; and a push between pages makes the pages disagree on the head, so that read
-        # says nothing about either commit.
+        # gives no checks, and the push from the first page's head is HeadMoved (Copilot's twelfth review of PR #73).
         It 'reads the rollup''s pages as one: <Case>' -ForEach @(
             @{ Case = 'a failure on the second page counts'; Second = 'head2'; Expected = 'ChecksFailed' }
-            @{ Case = 'pages that disagree on the head aren''t trusted'; Second = 'head3'; Expected = 'TimedOut' }
+            @{ Case = 'pages that disagree on the head are a push from the first page''s head'; Second = 'head3'; Expected = 'HeadMoved' }
         ) {
             InModuleScope KitReview -Parameters @{ Second = $Second; Expected = $Expected } {
                 param($Second, $Expected)
