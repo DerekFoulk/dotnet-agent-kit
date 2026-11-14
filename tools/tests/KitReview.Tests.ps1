@@ -825,7 +825,7 @@ Describe 'KitReview.psm1' {
             # head, and no runs are pending or failed, unless the test says otherwise.
             function global:New-StatusFake {
                 param([Parameter(Mandatory)] [hashtable] $Fields)
-                $status = @{ PendingRuns = @(); FailedRuns = @(); StartHeadSha = $Fields['HeadSha'] }
+                $status = @{ Checks = @(); PendingRuns = @(); FailedRuns = @(); StartHeadSha = $Fields['HeadSha'] }
                 foreach ($key in $Fields.Keys) { $status[$key] = $Fields[$key] }
                 [pscustomobject] $status
             }
@@ -935,31 +935,35 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        # The reviewer agent's review of PR #73: a failed try already on the head when the wait starts is what the owner
-        # re-requests a review after (credits topped up), so it isn't news. Only a try that fails while the wait runs is
-        # ReviewFailed; otherwise the wait goes on, for a retry's summary, and its time-out says the last try failed.
-        It 'waits for Copilot to try again when its last try on the head failed before the wait: <Case>' -ForEach @(
-            @{ Case = 'the retry''s summary lands'; Retry = 'summary'; Expected = 'Reviewed 14' }
-            @{ Case = 'the retry fails too'; Retry = 'failed'; Expected = 'ReviewFailed 14' }
-            @{ Case = 'no retry comes'; Retry = 'none'; Expected = 'TimedOut ' }
+        # The second reviewer agent's review of PR #73: Copilot's failed try lands seconds after the push that requested
+        # it (14:04:07 then 14:04:14 at 95112cb), before an agent's wait starts, so it's news to that wait. A failed try is
+        # old news only when Copilot's review was requested again after it (the timeline's review_requested event, as
+        # when the owner re-requests a review once his credits are topped up); then the wait goes on for the new try.
+        It 'reports a failed try at once, unless Copilot''s review was requested again after it: <Case>' -ForEach @(
+            @{ Case = 'no request after the failure'; Requested = '2026-11-14T14:04:07Z'; Retry = 'none'; Expected = 'ReviewFailed 13' }
+            @{ Case = 'requested again, and the retry''s summary lands'; Requested = '2026-11-14T15:00:00Z'; Retry = 'summary'; Expected = 'Reviewed 14' }
+            @{ Case = 'requested again, and the retry fails too'; Requested = '2026-11-14T15:00:00Z'; Retry = 'failed'; Expected = 'ReviewFailed 14' }
+            @{ Case = 'requested again, and no retry comes'; Requested = '2026-11-14T15:00:00Z'; Retry = 'none'; Expected = 'TimedOut ' }
         ) {
-            InModuleScope KitReview -Parameters @{ Retry = $Retry; Expected = $Expected } {
-                param($Retry, $Expected)
+            InModuleScope KitReview -Parameters @{ Requested = $Requested; Retry = $Retry; Expected = $Expected } {
+                param($Requested, $Retry, $Expected)
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds); $script:polls++ }
                 $script:polls = 0
                 $note = 'Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota.'
-                $old = [pscustomobject]@{ ReviewId = 13; Commit = 'head2'; Verdict = 'Unknown'; OpenIssueCount = 0; Issues = @(); Body = $note }
+                $old = [pscustomobject]@{ ReviewId = 13; SubmittedAt = '2026-11-14T14:04:14Z'; Commit = 'head2'; Verdict = 'Unknown'; OpenIssueCount = 0; Issues = @(); Body = $note }
                 $retries = @{
-                    summary = [pscustomobject]@{ ReviewId = 14; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' }
-                    failed  = [pscustomobject]@{ ReviewId = 14; Commit = 'head2'; Verdict = 'Unknown'; OpenIssueCount = 0; Issues = @(); Body = $note }
+                    summary = [pscustomobject]@{ ReviewId = 14; SubmittedAt = '2026-11-14T15:00:20Z'; Commit = 'head2'; Verdict = 'Approval recommended'; OpenIssueCount = 0; Issues = @(); Body = '<!-- ccr-overview-v2 -->' }
+                    failed  = [pscustomobject]@{ ReviewId = 14; SubmittedAt = '2026-11-14T15:00:07Z'; Commit = 'head2'; Verdict = 'Unknown'; OpenIssueCount = 0; Issues = @(); Body = $note }
                     none    = $null
                 }
                 $script:before = @($old)
                 $script:after = @($old, $retries[$Retry] | Where-Object { $_ })
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @(); PendingRuns = @(); FailedRuns = @() } }
+                $script:timeline = "{ `"event`": `"review_requested`", `"created_at`": `"$Requested`", `"requested_reviewer`": { `"login`": `"Copilot`", `"type`": `"Bot`" } }"
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2' } }
                 Mock Get-CopilotReviewOf { if ($script:polls -lt 1) { $script:before } else { $script:after } }
+                Mock Invoke-Gh { $script:timeline } -ParameterFilter { "$args" -match '/timeline' }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
 
@@ -967,20 +971,20 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        It 'says in its time-out that Copilot''s last try on the head failed, with the reason' {
+        It 'says in its time-out that Copilot''s last try on the head failed, with the reason, when a retry was requested' {
             InModuleScope KitReview {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @(); PendingRuns = @(); FailedRuns = @() } }
-                Mock Get-CopilotReviewOf { [pscustomobject]@{ ReviewId = 13; Commit = 'head2'; Verdict = 'Unknown'; OpenIssueCount = 0; Issues = @(); Body = 'Copilot was unable to review this pull request.' } }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2' } }
+                Mock Get-CopilotReviewOf { [pscustomobject]@{ ReviewId = 13; SubmittedAt = '2026-11-14T14:04:14Z'; Commit = 'head2'; Verdict = 'Unknown'; OpenIssueCount = 0; Issues = @(); Body = "Copilot was unable to review this pull request.`nTry requesting a review at a lower effort level." } }
+                Mock Invoke-Gh { '{ "event": "review_requested", "created_at": "2026-11-14T15:00:00Z", "requested_reviewer": { "login": "Copilot", "type": "Bot" } }' } -ParameterFilter { "$args" -match '/timeline' }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
 
                 $result.Message | Should -Be 'Timed out after 1 minute at head2: no review from Copilot of head2 yet (its last try failed: Copilot was unable to review this pull request.).'
             }
         }
-
         # Copilot's eighth review of PR #73: the head and the review are two reads, and a push can land between them, so
         # a review of the commit that was the head isn't a review of the head. The head is read again before Reviewed.
         It 'returns HeadMoved when a push lands between reading the head and finding its review' {
