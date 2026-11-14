@@ -1052,6 +1052,34 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's eighth review of PR #73: a branch name doesn't pick out one pull request. Two pull requests can come
+        # from the same branch (into different bases), and a fork can have a branch of the same name; their runs of one
+        # workflow are separate runs, and neither replaces the other.
+        It 'keeps a failed workflow run when a later run of the same workflow was for <Case>' -ForEach @(
+            @{ Case = 'another pull request from the same branch'; Later = '"head_repository":{"full_name":"o/r"},"pull_requests":[{"number":6}]' }
+            @{ Case = 'a fork''s branch of the same name'; Later = '"head_repository":{"full_name":"fork/r"},"pull_requests":[]' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Later = $Later } {
+                param($Later)
+                $script:view = @{
+                    state = 'OPEN'; headRefOid = 'head2'
+                    statusCheckRollup = @(
+                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'FAILURE'; startedAt = '2026-11-14T04:56:10Z'; detailsUrl = 'https://github.com/o/r/actions/runs/700/job/1' }
+                        @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; startedAt = '2026-11-14T04:57:01Z'; detailsUrl = 'https://github.com/o/r/actions/runs/701/job/2' }
+                    )
+                } | ConvertTo-Json -Depth 5 -Compress
+                $script:runsJson = '{"workflow_runs":[{"id":700,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","head_repository":{"full_name":"o/r"},"pull_requests":[{"number":5}],"created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"failure"},{"id":701,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a",' + $Later + ',"created_at":"2026-11-14T04:57:00Z","status":"completed","conclusion":"success"}]}'
+                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.Message | Should -Match 'workflow runs failed: ci'
+            }
+        }
+
         # Copilot's fifth review of PR #73: GitHub lists the runs 100 to a page, so a head commit with more runs has
         # some on later pages. Every page is read (gh api --paginate --slurp: one array holding each page).
         It 'reads every page of the head commit''s workflow runs' {
