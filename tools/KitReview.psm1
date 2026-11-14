@@ -503,9 +503,12 @@ function Get-PullRequestStatus {
                     if ($at) { [datetimeoffset] "$at" } else { [datetimeoffset]::MinValue }
                 }, { [long] ($_['id'] ?? 0) } | Select-Object -Last 1
             })
+        # No ordering of runs is safe to rely on while one is going (a queued re-run can keep its first attempt's start
+        # time), so any run on the head that hasn't completed means CI isn't done, and only a completed run's checks are
+        # dropped as replaced (Copilot's thirteenth review of PR #73). The ordering decides only whose failure counts.
         $kept = @($latest | Where-Object { $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
-        $replaced = @($every | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -notin $kept } | ForEach-Object { [long] $_['id'] })
-        $pendingRuns = @($latest | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" })
+        $replaced = @($every | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -notin $kept -and "$($_['status'])" -eq 'completed' } | ForEach-Object { [long] $_['id'] })
+        $pendingRuns = @($every | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" } | Select-Object -Unique)
         $failedRuns = @($latest | Where-Object { "$($_['status'])" -eq 'completed' -and "$($_['conclusion'])" -notin 'success', 'skipped', 'neutral' } | ForEach-Object { "$($_['name'])" })
         if (-not $pendingRuns) {
             $fresh = Read-PullRequestView -Repository $Repository -Number $Number
