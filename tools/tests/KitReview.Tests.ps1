@@ -954,6 +954,24 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # Copilot's fifth review of PR #73: a workflow that fails before it starts a job (a startup failure, such as an
+        # invalid workflow file) adds no check to the rollup, so "no checks yet" can be CI that already failed.
+        It 'returns ChecksFailed when a workflow run failed without adding a check' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = @{ state = 'OPEN'; headRefOid = 'head2'; statusCheckRollup = @() } | ConvertTo-Json -Depth 5 -Compress
+                Mock Invoke-Gh { $script:view } -ParameterFilter { $args -contains 'view' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":7,"name":"ci","workflow_id":12,"event":"pull_request","created_at":"2026-11-14T04:56:09Z","status":"completed","conclusion":"startup_failure"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.Message | Should -Be 'CI finished at head2: workflow runs failed: ci.'
+            }
+        }
+
         # A push while it waits makes the old head's review and checks beside the point.
         It 'returns HeadMoved, with the new head, when someone pushes while it waits' {
             InModuleScope KitReview {
