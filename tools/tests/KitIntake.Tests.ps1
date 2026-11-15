@@ -532,3 +532,72 @@ Describe 'Read-KitPreference' {
         { Read-KitPreference -Path $path } | Should -Throw $Message
     }
 }
+
+# ADR-0070: the new-app skill shows, for each question and each test tool role, the default and where it came from,
+# with all three sources side by side: the developer's preference first, then the authority's pick, then the agent's.
+Describe 'Get-KitIntakeDefault' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        # A preference as Read-KitPreference returns it.
+        function New-Preference {
+            param([string] $Choice, [string] $Pick, [string] $When)
+            [pscustomobject]@{ Choice = $Choice; When = $When; Pick = $Pick; Stated = "I want $Pick"; Date = '2026-11-15'; Source = 'said in chat' }
+        }
+        # The row for one question, or for one answer of a card that depends on another.
+        function Get-Row {
+            param([object[]] $Rows, [string] $Choice, [string] $When)
+            @($Rows | Where-Object { $_.Choice -eq $Choice -and "$($_.When)" -eq $When })[0]
+        }
+        $kitDefaults = @(Get-KitIntakeDefault -Intake $intake)
+    }
+
+    It 'gives the agent''s pick, labeled, where the authority names none' {
+        $row = Get-Row $kitDefaults 'appType'
+
+        $row.Pick | Should -Be 'web-api-blazor'
+        $row.From | Should -Be 'agent'
+        $row.Agent['reason'] | Should -Not -BeNullOrEmpty
+        $row.Authority['pick'] | Should -BeNullOrEmpty -Because 'Microsoft names no app type'
+        $row.Developer | Should -BeNullOrEmpty
+    }
+
+    It 'gives the authority''s pick where it names one' {
+        $row = Get-Row $kitDefaults 'unit/time'
+
+        $row.Pick | Should -Be 'faketimeprovider'
+        $row.From | Should -Be 'authority'
+        $row.Authority['source'] | Should -Match '^https://learn\.microsoft\.com/'
+    }
+
+    It 'gives a row for each data answer, and says when only one database fits' {
+        (Get-Row $kitDefaults 'database' 'relational').From | Should -Be 'agent'
+        $documents = Get-Row $kitDefaults 'database' 'documents'
+        $documents.Pick | Should -Be 'cosmos-free'
+        $documents.From | Should -Be 'only option'
+    }
+
+    It 'puts the developer''s preference first, with their words and date' {
+        $rows = @(Get-KitIntakeDefault -Intake $intake -Preference (New-Preference 'unit/time' 'faketimeprovider'), (New-Preference 'database' 'postgresql' 'relational'))
+
+        $time = Get-Row $rows 'unit/time'
+        $time.From | Should -Be 'developer'
+        $time.Developer.Stated | Should -Be 'I want faketimeprovider'
+        $relational = Get-Row $rows 'database' 'relational'
+        $relational.Pick | Should -Be 'postgresql'
+        $relational.From | Should -Be 'developer'
+    }
+
+    It 'skips a preference that isn''t an option any more, and says so' {
+        $row = Get-Row @(Get-KitIntakeDefault -Intake $intake -Preference (New-Preference 'load/load' 'k6')) 'load/load'
+
+        $row.Pick | Should -Be 'locust'
+        $row.From | Should -Be 'agent'
+        ($row.Notes -join ' ') | Should -Match "'k6'.*isn't an option"
+    }
+
+    It 'leaves out a preference that answers no intake question' {
+        $plan = [pscustomobject]@{ Choice = $null; When = $null; Pick = $null; Stated = 'EF Core'; Date = '2026-11-10'; Source = 'ADR-0053' }
+
+        @(Get-KitIntakeDefault -Intake $intake -Preference $plan).Count | Should -Be $kitDefaults.Count
+    }
+}

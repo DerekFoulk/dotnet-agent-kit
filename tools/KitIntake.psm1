@@ -347,4 +347,15 @@ function Read-KitPreference {
     }
 }
 
-Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference
+# The default for each intake question and each test tool role, with where it came from and all three sources side
+# by side (ADR-0070), for the new-app skill to show.
+function Get-KitIntakeDefault {
+    param(
+        [Parameter(Mandatory)] [Collections.IDictionary] $Intake,
+        [object[]] $Preference = @()
+    )
+
+    @()
+}
+
+Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference, Get-KitIntakeDefault
