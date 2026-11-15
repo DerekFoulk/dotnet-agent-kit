@@ -81,6 +81,16 @@ public sealed class ExceptionTests
         }
         """)).Should().BeEmpty();
 
+    // A type's marker covers its member count too; on any part of a partial type, it covers the whole type.
+    [Fact]
+    public void AnExceptionBeforeATypeExemptsItsMemberCount() => MemberCountRule.Check([
+        new SourceFile("Wide.A.cs", $"partial class Wide {{ {string.Concat(Enumerable.Range(0, 11).Select(i => $"void A{i}() {{ }} "))}}}"),
+        new SourceFile("Wide.B.cs", $$"""
+            // CRF-011 exception: the generated client's facade mirrors the service's 21 operations.
+            partial class Wide { {{string.Concat(Enumerable.Range(0, 10).Select(i => $"void B{i}() {{ }} "))}} }
+            """),
+    ]).Should().BeEmpty();
+
     [Fact]
     public void AnExceptionBeforeATypeExemptsItsCohesion() => CohesionRule.Check([new SourceFile("Ledger.cs", """
         // CRF-011 exception: a facade over two stores that callers use together.
