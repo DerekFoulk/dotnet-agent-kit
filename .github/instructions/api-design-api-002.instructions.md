@@ -6,4 +6,4 @@ applyTo: '**/Program.cs,**/*Endpoints*.cs'
 # API design
 
 - API-002: Every HTTP API error response is Problem Details (RFC 9457): AddProblemDetails, UseExceptionHandler and UseStatusCodePages; a client error such as malformed input stays a 400 in every environment, and outside Development a 500 never carries the exception's message or stack.
-- API-007: An HTTP API follows HTTP's semantics as Azure's API design guidance sets them out: URIs name resources with nouns (plural for collections), never verbs; a POST that creates a resource answers 201 Created with its URI in the Location header; PUT and DELETE are idempotent; and work that outlasts a request answers 202 Accepted with a Location header pointing at a status endpoint.
+- API-007: An HTTP API follows HTTP's semantics as Azure's API design guidance sets them out: URIs name resources with nouns (plural for collections), not verbs, apart from the rare operation that isn't a resource; a POST that creates a resource answers 201 Created with its URI in the Location header; PUT and DELETE are idempotent; and work that outlasts a request answers 202 Accepted with a Location header pointing at a status endpoint.
