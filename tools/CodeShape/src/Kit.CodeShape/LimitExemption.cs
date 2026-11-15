@@ -11,14 +11,15 @@ namespace Kit.CodeShape;
 /// Where it sits says what it covers:
 /// <list type="bullet">
 /// <item>a member's or type's is the last comment right before it (before its attributes), with no blank line
-/// between; a property's covers its accessors, and a type's covers its cohesion, not its members;</item>
+/// between; a property's covers its accessors, and a type's covers its cohesion and its member count, not its
+/// members (on any part of a partial type, the whole type);</item>
 /// <item>a file's is the file's first comment, with a blank line below it, and covers the file's length and its
 /// top-level statements.</item>
 /// </list>
 /// A marker without a reason covers nothing.</summary>
 internal static partial class LimitExemption
 {
-    /// <summary>Whether a member, or a type's cohesion, has an exception.</summary>
+    /// <summary>Whether a member, a type's cohesion and member count, or a file, has an exception.</summary>
     public static bool Covers(SyntaxNode node)
     {
         ArgumentNullException.ThrowIfNull(node);

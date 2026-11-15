@@ -9,7 +9,8 @@ namespace Kit.CodeShape;
 /// event declaration counting once for each name it lists, and a record's positional parameters, which the compiler
 /// makes properties. A nested type isn't a member: it's measured on its own. A partial type is measured whole, across
 /// its project's hand-written files, with a partial member counted once, and reported once, at its first part. What a
-/// generator writes isn't counted, since nobody maintains it by hand.</summary>
+/// generator writes isn't counted, since nobody maintains it by hand. A type's exception marker covers its member
+/// count (<see cref="LimitExemption"/>).</summary>
 internal static class MemberCountRule
 {
     /// <summary>Checks the types of one project, whose hand-written files are read together so a partial type is
@@ -23,6 +24,7 @@ internal static class MemberCountRule
             .OrderBy(file => file.Path, StringComparer.Ordinal)
             .SelectMany(file => file.Parse().GetCompilationUnitRoot().DescendantNodes().OfType<TypeDeclarationSyntax>())
             .GroupBy(Identity, StringComparer.Ordinal)
+            .Where(parts => !parts.Any(LimitExemption.Covers)) // a marker on any part covers the whole type
             .Select(parts => (First: parts.First(), Count: MembersOf([.. parts])))
             .Where(type => type.Count > Limits.MembersPerType)
             .Select(type => Finding.At(
