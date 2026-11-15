@@ -433,8 +433,15 @@ Describe 'Agent configuration' {
             $how | Should -Not -Match 'code review'
         }
 
-        It 'replace the reviewer agent' {
-            Join-Path $repoRoot '.claude' 'agents' 'reviewer.md' | Should -Not -Exist
+        # ADR-0067: Copilot code review is off, so the read-only reviewer agent is back, and it works from the same
+        # checklist Copilot would read (CRF-003: one source for what a review looks for).
+        It 'are what the read-only reviewer agent reviews against' {
+            $agentPath = Join-Path $repoRoot '.claude' 'agents' 'reviewer.md'
+            $agentPath | Should -Exist
+            $frontMatter = Read-FrontMatter -Path $agentPath
+
+            foreach ($tool in 'Edit', 'Write', 'NotebookEdit') { "$($frontMatter['disallowedTools'])" | Should -Match "\b$tool\b" }
+            Get-Content -Raw -LiteralPath $agentPath | Should -Match ([regex]::Escape('docs/code-review.md'))
         }
     }
 
