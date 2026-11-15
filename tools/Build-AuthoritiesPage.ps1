@@ -126,6 +126,18 @@ function Get-AuthoritiesProblem {
     foreach ($entry in $Entries) {
         if (-not $used.Contains($entry)) { "entry '$($entry['name'])' matches no URL the rules cite; remove it" }
     }
+
+    # ADR-0063: a rule resting on practitioners alone is a preference. A URL with no entry, or an entry with no valid
+    # class, is reported above, so its rule isn't judged until that's fixed.
+    foreach ($rule in $Cited | Where-Object Basis -EQ 'authority' | Group-Object RuleId) {
+        $classes = @($rule.Group | ForEach-Object {
+                $entry = Find-SourceEntry -Url $_.Url -Entries $Entries
+                if ($entry -and $entry.Contains('class') -and "$($entry['class'])" -in $script:Classes) { "$($entry['class'])" } else { 'unknown' }
+            })
+        if ($classes -notcontains 'unknown' -and $classes -notcontains 'authority' -and $classes -notcontains 'project') {
+            "$($rule.Name) has basis 'authority' but cites no page classed authority or project; cite one, or make it a preference (ADR-0063)"
+        }
+    }
 }
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
