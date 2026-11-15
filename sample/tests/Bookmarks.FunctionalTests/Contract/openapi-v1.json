@@ -262,7 +262,7 @@
             "format": "uri"
           }
         },
-        "description": "One page of bookmarks, oldest first."
+        "description": "One page of bookmarks, in an order that stays the same from page to page."
       },
       "BookmarkResponse": {
         "required": [

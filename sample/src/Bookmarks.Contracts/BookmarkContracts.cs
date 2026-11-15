@@ -30,7 +30,7 @@ public sealed record CreateBookmarkRequest(
 /// <param name="CreatedAt">When it was saved.</param>
 public sealed record BookmarkResponse(Guid Id, Uri Url, string Title, DateTimeOffset CreatedAt);
 
-/// <summary>One page of bookmarks, oldest first.</summary>
+/// <summary>One page of bookmarks, in an order that stays the same from page to page.</summary>
 /// <param name="Items">The bookmarks on this page.</param>
 /// <param name="NextLink">The next page, or null where paging ends: on the last page, or at the offset cap, even when more bookmarks exist.</param>
 public sealed record BookmarkPage(IReadOnlyList<BookmarkResponse> Items, Uri? NextLink);

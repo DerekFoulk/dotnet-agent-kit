@@ -27,7 +27,7 @@ public sealed class Bookmark
     /// </summary>
     public const int MaxUrlLength = 2048;
 
-    /// <summary>The bookmark's id, a UUID version 7, so it sorts by creation time.</summary>
+    /// <summary>The bookmark's id, a UUID version 7, which starts with its creation time to the millisecond.</summary>
     public Guid Id { get; }
 
     /// <summary>The user who saved it: their id from the identity provider (the token's sub claim, SEC-009).</summary>
@@ -49,6 +49,7 @@ public sealed class Bookmark
     /// <param name="createdAt">When it's saved, from <see cref="TimeProvider"/>.</param>
     /// <returns>The new bookmark.</returns>
     /// <exception cref="ArgumentException">A part is missing, too long, or not an absolute http or https URL.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="createdAt"/> is before 1970.</exception>
     public static Bookmark Create(string ownerId, Uri url, string title, DateTimeOffset createdAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
