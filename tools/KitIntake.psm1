@@ -402,7 +402,14 @@ function New-KitDefaultRow {
 function Get-KitTestToolAnswer {
     param([Parameter(Mandatory)] [object[]] $Default)
 
-    [ordered]@{}
+    $answer = [ordered]@{}
+    foreach ($row in $Default | Where-Object { $_.Choice -like '*/*' }) {
+        $kind = $row.Choice.Split('/')[0]
+        if (-not $answer.Contains($kind)) { $answer[$kind] = [Collections.Generic.List[string]]::new() }
+        $answer[$kind].Add($row.Pick)
+    }
+    foreach ($kind in @($answer.Keys)) { $answer[$kind] = @($answer[$kind]) }
+    $answer
 }
 
 Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference, Get-KitIntakeDefault, Get-KitTestToolAnswer
