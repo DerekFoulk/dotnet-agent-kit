@@ -5,9 +5,11 @@
 
 Set-StrictMode -Version Latest
 
-# Copilot's login: REST adds [bot], GraphQL doesn't.
+# Copilot's login as a reviewer: REST adds [bot], GraphQL doesn't. Review requests on the REST timeline name it
+# Copilot, type Bot (every one of the 17 on PR #73, 2026-11-14).
 $script:CopilotLogin = 'copilot-pull-request-reviewer[bot]'
 $script:CopilotGraphQLLogin = 'copilot-pull-request-reviewer'
+$script:CopilotRequestLogin = 'Copilot'
 
 function Invoke-Gh {
     $output = gh @args
@@ -83,29 +85,54 @@ function Get-MissedIssue {
     }
 }
 
-# Copilot's latest review on the pull request, with its summary read; nothing if Copilot hasn't reviewed.
-# Commit is the commit Copilot reviewed, which can be behind the branch head.
-function Get-CopilotReview {
-    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+# Whether a Copilot review's body is a code review summary: every summary carries the ccr-overview marker (seen on
+# every Copilot summary on PRs #64 to #73); a note that it couldn't review doesn't.
+function Test-CopilotSummary {
+    param([AllowEmptyString()] [string] $Body)
+    $Body -match '<!--\s*ccr-overview'
+}
+
+# A time GitHub gave, as an instant: ConvertFrom-Json turns an ISO time into a DateTime, and a DateTime written into a
+# string loses its UTC kind and is read back as local time, so it's cast directly, never through a string.
+function ConvertTo-Instant {
+    param([Parameter(Mandatory)] $Value)
+    [datetimeoffset] $Value
+}
+
+# Every review Copilot posted on the pull request, oldest first, each with its summary read; with -Commit, only its
+# reviews of that commit. Reviews submitted in the same second are ordered by id, which GitHub assigns in order.
+# Test-CopilotSummary says which are code review summaries: when Copilot can't review, out of quota for one, it still
+# posts a review, whose body is a reason (seen on PR #73).
+function Get-CopilotReviewOf {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [string] $Commit)
 
     $reviews = @(Get-PullRequestReview -Repository $Repository -Number $Number)
-    $latest = @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin }) |
-        Sort-Object { [datetimeoffset] $_['submitted_at'] } |
-        Select-Object -Last 1
-    if (-not $latest) {
-        return
-    }
+    @($reviews | Where-Object { $_['user'] -and $_['user']['login'] -eq $script:CopilotLogin -and (-not $Commit -or $_['commit_id'] -eq $Commit) }) |
+        Sort-Object { ConvertTo-Instant $_['submitted_at'] }, { [long] $_['id'] } |
+        ForEach-Object {
+            $body = "$($_['body'])"
+            $summary = ConvertFrom-CopilotReviewBody -Body $body
+            [pscustomobject]@{
+                ReviewId       = $_['id']
+                SubmittedAt    = $_['submitted_at']
+                Commit         = $_['commit_id']
+                Verdict        = $summary.Verdict
+                OpenIssueCount = $summary.OpenIssueCount
+                Issues         = $summary.Issues
+                Body           = $body
+            }
+        }
+}
 
-    $summary = ConvertFrom-CopilotReviewBody -Body "$($latest['body'])"
-    [pscustomobject]@{
-        ReviewId       = $latest['id']
-        SubmittedAt    = $latest['submitted_at']
-        Commit         = $latest['commit_id']
-        Verdict        = $summary.Verdict
-        OpenIssueCount = $summary.OpenIssueCount
-        Issues         = $summary.Issues
-        Body           = "$($latest['body'])"
-    }
+# Copilot's latest review summary on the pull request; nothing if Copilot hasn't reviewed. Commit is the commit Copilot
+# reviewed, which can be behind the branch head. With -Commit, its latest summary of that commit: a review of an older
+# commit can land after the head's (Copilot's sixth review of PR #73). A review that isn't a summary, such as Copilot's
+# note that it couldn't review, doesn't replace the last summary (the reviewer agent's review of PR #73).
+function Get-CopilotReview {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [string] $Commit)
+
+    @(Get-CopilotReviewOf -Repository $Repository -Number $Number -Commit $Commit | Where-Object { Test-CopilotSummary -Body $_.Body }) |
+        Select-Object -Last 1
 }
 
 # GitHub returns a null author for a deleted account.
@@ -163,7 +190,8 @@ function Get-ReviewThread {
 }
 
 # Everything on the pull request still waiting for an answer, in this order:
-# - each issue in Copilot's latest summary whose thread is unresolved;
+# - each issue in Copilot's summary of the head commit (its latest summary, until it reviews the head) whose thread
+#   is unresolved;
 # - each summary issue with no thread (Thread is $null), such as a previously missed one, until the signed-in
 #   account resolves it for that review;
 # - each person's latest review that requests changes or has a body (Thread is $null), likewise;
@@ -192,7 +220,11 @@ function Get-OpenFinding {
         [bool] @($cache.Answers | Where-Object { $_.StartsWith($prefix, [StringComparison]::Ordinal) }).Count
     }
 
-    $review = Get-CopilotReview -Repository $Repository -Number $Number
+    # Copilot's review of the head commit, the one Wait-PullRequest reports, even if a review of an older commit landed
+    # later; until Copilot reviews the head, its latest review still stands (Copilot's seventh review of PR #73).
+    $head = "$((Invoke-Gh pr view $Number --repo $Repository --json headRefOid | ConvertFrom-Json -AsHashtable)['headRefOid'])"
+    $review = if ($head) { Get-CopilotReview -Repository $Repository -Number $Number -Commit $head }
+    if (-not $review) { $review = Get-CopilotReview -Repository $Repository -Number $Number }
     $issues = if ($review) { @($review.Issues) } else { @() }
     foreach ($issue in $issues) {
         $thread = if ($null -ne $issue.CommentId) { $byComment[[long] $issue.CommentId] } else { $null }
@@ -217,7 +249,7 @@ function Get-OpenFinding {
     $latest = @(Get-PullRequestReview -Repository $Repository -Number $Number) |
         Where-Object { $_['user'] -and $_['user']['login'] -ne $script:CopilotLogin } |
         Group-Object { $_['user']['login'] } |
-        ForEach-Object { $_.Group | Sort-Object { [datetimeoffset] $_['submitted_at'] } | Select-Object -Last 1 }
+        ForEach-Object { $_.Group | Sort-Object { ConvertTo-Instant $_['submitted_at'] } | Select-Object -Last 1 }
     foreach ($personReview in @($latest)) {
         $login = $personReview['user']['login']
         $body = "$($personReview['body'])".Trim()
@@ -379,13 +411,309 @@ function Get-AnswerPrefix {
     "Answer to review $ReviewId, `"$Title`": Resolution: "
 }
 
-# Every item of a paginated REST list. --jq '.[]' prints one item per line whatever the gh version;
-# older versions print one JSON array per page, which doesn't parse as a whole.
+# Every item of a paginated REST list (an endpoint without a query string), read 100 to a page, GitHub's most (its default is 30). --jq '.[]' prints one item
+# per line whatever the gh version; older versions print one JSON array per page, which doesn't parse as a whole.
 function Get-GhList {
     param([Parameter(Mandatory)] [string] $Endpoint)
 
-    foreach ($line in ((Invoke-Gh api --paginate $Endpoint --jq '.[]') -split "`r?`n")) {
+    foreach ($line in ((Invoke-Gh api --paginate "${Endpoint}?per_page=100" --jq '.[]') -split "`r?`n")) {
         if ($line.Trim()) { $line | ConvertFrom-Json -AsHashtable }
+    }
+}
+
+# The pull request's state, its head commit and every check in its statusCheckRollup ("Check and Status rollup
+# information for the PR's head ref", GitHub's GraphQL reference; the reviewer agent's review of PR #73), from that API,
+# whose fields say what each check is (Copilot's tenth review of PR #73): its own id (databaseId, assigned in order),
+# the app that posted it, and for GitHub Actions the workflow run it belongs to, so Select-CurrentCheck can drop a
+# replaced run's checks. gh pr view gives none of these, and gh pr checks exits 8 while checks are pending.
+function Read-PullRequestView {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+
+    $owner, $repoName = $Repository -split '/', 2
+    $query = 'query($owner: String!, $name: String!, $number: Int!, $endCursor: String) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { state headRefOid statusCheckRollup { contexts(first: 100, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { __typename ... on CheckRun { databaseId name status conclusion startedAt checkSuite { app { slug } workflowRun { databaseId workflow { name } } } } ... on StatusContext { context state } } } } } } }'
+    # -f sends a string; -F would turn a repository named "2048" into a number. The PR number is an Int. The rollup comes
+    # 100 checks to a page; --paginate --slurp reads every page into one array, one item per page.
+    $pages = Invoke-Gh api graphql -f "query=$query" -f "owner=$owner" -f "name=$repoName" -F "number=$Number" --paginate --slurp | ConvertFrom-Json -AsHashtable
+    $pulls = @(@($pages) | ForEach-Object { $_['data']['repository']['pullRequest'] })
+    $pullRequest = $pulls[-1]
+    # A push between pages makes them disagree on the head: StartHeadSha (the first page's) and HeadSha (the last's)
+    # then differ, and Wait-PullRequest returns HeadMoved before it looks at any check.
+    $nodes = foreach ($pull in $pulls) { if ($pull['statusCheckRollup']) { $pull['statusCheckRollup']['contexts']['nodes'] } }
+    $order = 0
+    $items = foreach ($item in @($nodes | Where-Object { $_ })) {
+        # A CheckRun has a status and, once completed, a conclusion; a StatusContext has a state.
+        if ("$($item['__typename'])" -eq 'StatusContext') {
+            $name = "$($item['context'])"
+            $key = "status:$name"
+            $result = switch ("$($item['state'])") { 'SUCCESS' { 'Passed' } { $_ -in 'PENDING', 'EXPECTED' } { 'Pending' } default { 'Failed' } }
+            $id = -1
+            $runId = $null
+        }
+        else {
+            $name = "$($item['name'])"
+            $suite = $item['checkSuite']
+            $app = if ($suite -and $suite['app']) { "$($suite['app']['slug'])" } else { '' }
+            $run = if ($suite) { $suite['workflowRun'] } else { $null }
+            $workflow = if ($run -and $run['workflow']) { "$($run['workflow']['name'])" } else { '' }
+            $id = if ($null -ne $item['databaseId']) { [long] $item['databaseId'] } else { -1 }
+            $runId = if ($run -and $null -ne $run['databaseId']) { [long] $run['databaseId'] } else { $null }
+            # Two apps can post checks of the same name, and two independent runs of one workflow can too (a push and
+            # a pull request); each is its own check (Copilot's tenth and eleventh reviews of PR #73). A run that
+            # replaced another has a new id, and Select-CurrentCheck drops the replaced run's checks.
+            $key = "check:$app/$workflow/$runId/$name"
+            $result = if ("$($item['status'])" -ne 'COMPLETED') { 'Pending' }
+            elseif ("$($item['conclusion'])" -eq 'SKIPPED') { 'Skipped' }
+            elseif ("$($item['conclusion'])" -in 'SUCCESS', 'NEUTRAL') { 'Passed' }
+            else { 'Failed' }
+        }
+        # A check that hasn't started is the latest attempt of its name, whatever the others' start times.
+        $started = if ($item['startedAt']) { ConvertTo-Instant $item['startedAt'] } else { [datetimeoffset]::MaxValue }
+        [pscustomobject]@{ Key = $key; Id = $id; Started = $started; Order = $order++; RunId = $runId; Name = $name; Result = $result }
+    }
+    # StartHeadSha is the first page's head: a push between pages moved the head from it (Copilot's twelfth review).
+    [pscustomobject]@{ State = "$($pullRequest['state'])"; HeadSha = "$($pullRequest['headRefOid'])"; StartHeadSha = "$($pulls[0]['headRefOid'])"; Items = @($items) }
+}
+
+# The checks that decide CI: none from a workflow run that a later run replaced, and of a check listed more than once,
+# only its latest attempt (a workflow that runs again on the same commit keeps its earlier run in the rollup). GitHub
+# numbers checks in order, so the higher id is the later attempt, even when the start times tie or one hasn't started
+# (Copilot's sixth and tenth reviews of PR #73). A status context has neither an id nor a start time, and the rollup
+# lists each context once, so its order in the list decides. Check names are case-sensitive, so Build and build are two
+# checks (Copilot's ninth review).
+function Select-CurrentCheck {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Items, [long[]] $ReplacedRuns = @())
+
+    @($Items | Where-Object { $null -eq $_.RunId -or $_.RunId -notin $ReplacedRuns } | Group-Object Key -CaseSensitive | ForEach-Object {
+            $_.Group | Sort-Object Id, Started, Order | Select-Object -Last 1 | Select-Object Name, Result
+        })
+}
+
+# The pull request's state, head and checks. With -WithRuns it also lists the head commit's GitHub Actions runs that
+# haven't completed, and those that failed: a job that needs another isn't a check until its turn comes, so every
+# registered check done isn't CI done. Of a workflow that ran more than once for one trigger, only its latest run
+# counts, and the replaced runs' checks are dropped. The checks and the runs are two reads, and a job can finish
+# between them, so once every run has completed the checks are read again (Copilot's reviews of PR #73).
+function Get-PullRequestStatus {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $WithRuns)
+
+    $view = Read-PullRequestView -Repository $Repository -Number $Number
+    # The head this read started from: if a push lands before the checks are read again, the head it ends at is a
+    # different commit, and a watcher's baseline is the first (Copilot's eleventh review of PR #73).
+    $startHead = $view.StartHeadSha
+    $pendingRuns = @()
+    $failedRuns = @()
+    $replaced = @()
+    if ($WithRuns -and $view.HeadSha) {
+        # GitHub lists the runs 100 to a page; --paginate --slurp reads every page into one array, one item per page.
+        $pages = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$($view.HeadSha)&per_page=100" --paginate --slurp | ConvertFrom-Json -AsHashtable
+        $every = @(@($pages) | ForEach-Object { $_['workflow_runs'] } | Where-Object { $_ })
+        # Runs of one workflow for different triggers (a push and a pull request), on different branches with this
+        # commit, from a fork's branch of the same name, or for different pull requests from one branch are independent,
+        # so each counts (Copilot's sixth and eighth reviews of PR #73). Branch names are case-sensitive, and so is the
+        # grouping (Group-Object ignores case by default; Copilot's ninth review).
+        $latest = @($every | Group-Object {
+                $source = if ($_['head_repository']) { "$($_['head_repository']['full_name'])" } else { '' }
+                $pulls = @($_['pull_requests'] | Where-Object { $_ } | ForEach-Object { "$($_['number'])" } | Sort-Object) -join ','
+                "$($_['workflow_id'] ?? $_['name'])|$($_['event'])|$source|$($_['head_branch'])|$pulls"
+            } -CaseSensitive | ForEach-Object {
+                # The run started last counts: run_started_at is its latest attempt's start, so re-running an older run
+                # makes it the current one, though it keeps its creation time (Copilot's twelfth review of PR #73). Runs
+                # started in the same second are ordered by id, which GitHub assigns in order.
+                $_.Group | Sort-Object {
+                    $at = $_['run_started_at'] ?? $_['created_at']
+                    if ($at) { ConvertTo-Instant $at } else { [datetimeoffset]::MinValue }
+                }, { [long] ($_['id'] ?? 0) } | Select-Object -Last 1
+            })
+        # No ordering of runs is safe to rely on while one is going (a queued re-run can keep its first attempt's start
+        # time), so any run on the head that hasn't completed means CI isn't done, and only a completed run's checks are
+        # dropped as replaced (Copilot's thirteenth review of PR #73). The ordering decides only whose failure counts.
+        $kept = @($latest | Where-Object { $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
+        $replaced = @($every | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -notin $kept -and "$($_['status'])" -eq 'completed' } | ForEach-Object { [long] $_['id'] })
+        $pendingRuns = @($every | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" } | Select-Object -Unique)
+        $failedRuns = @($latest | Where-Object { "$($_['status'])" -eq 'completed' -and "$($_['conclusion'])" -notin 'success', 'skipped', 'neutral' } | ForEach-Object { "$($_['name'])" })
+        if (-not $pendingRuns) {
+            # A push between the reads moves HeadSha from StartHeadSha, and Wait-PullRequest returns HeadMoved before it
+            # looks at any check.
+            $view = Read-PullRequestView -Repository $Repository -Number $Number
+        }
+    }
+    $checks = Select-CurrentCheck -Items $view.Items -ReplacedRuns $replaced
+    [pscustomobject]@{ State = $view.State; HeadSha = $view.HeadSha; StartHeadSha = $startHead; Checks = $checks; PendingRuns = $pendingRuns; FailedRuns = $failedRuns }
+}
+# The time now: the clock Wait-PullRequest measures its limit by, which the tests replace (TST-010).
+function Get-KitUtcNow {
+    [DateTimeOffset]::UtcNow
+}
+
+# A commit as messages show it.
+function Get-ShortSha {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Sha)
+    $Sha.Substring(0, [Math]::Min(7, $Sha.Length))
+}
+
+# When Copilot's review was last requested on the pull request: the timeline's latest review_requested event naming
+# Copilot (a push requests one, and so does a re-request); nothing if it never was.
+function Get-CopilotReviewRequestTime {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number)
+    $requests = @(Get-GhList -Endpoint "repos/$Repository/issues/$Number/timeline" | Where-Object {
+            "$($_['event'])" -eq 'review_requested' -and $_['requested_reviewer'] -and "$($_['requested_reviewer']['login'])" -eq $script:CopilotRequestLogin
+        } | ForEach-Object { ConvertTo-Instant $_['created_at'] } | Sort-Object)
+    if ($requests) { $requests[-1] }
+}
+
+# The reason Copilot gave in a review that isn't a summary: its first line.
+function Get-ReviewReason {
+    param([Parameter(Mandatory)] $Review)
+    ("$($Review.Body)".Trim() -split '\r?\n')[0]
+}
+
+# Wait-PullRequest's result when a push moved the head while it waited.
+function New-HeadMovedResult {
+    param([Parameter(Mandatory)] [string] $From, [Parameter(Mandatory)] [string] $To)
+    [pscustomobject]@{
+        Event = 'HeadMoved'; HeadSha = $To; Review = $null; FailedChecks = @(); PendingChecks = @()
+        Message = "The head moved from $(Get-ShortSha -Sha $From) to $(Get-ShortSha -Sha $To): wait again for the new commit."
+    }
+}
+
+# Wait-PullRequest's result when the pull request was merged or closed.
+function New-EndedResult {
+    param([Parameter(Mandatory)] [int] $Number, [Parameter(Mandatory)] [string] $State, [Parameter(Mandatory)] [AllowEmptyString()] [string] $HeadSha)
+    $outcome = if ($State -eq 'MERGED') { 'Merged' } else { 'Closed' }
+    [pscustomobject]@{
+        Event = $outcome; HeadSha = $HeadSha; Review = $null; FailedChecks = @(); PendingChecks = @()
+        Message = "Pull request #$Number is $($outcome.ToLowerInvariant()), at $(Get-ShortSha -Sha $HeadSha)."
+    }
+}
+
+# Wait-PullRequest's result if the pull request changed since a poll read it at HeadSha: Merged or Closed, or HeadMoved;
+# nothing if it's still open at that head. Each poll's reads (the status, then the review) take time, and a push or a
+# close can land during them, so this runs before any result about that head (Copilot's eighth, ninth and eleventh
+# reviews of PR #73).
+function Get-PullRequestChange {
+    param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [Parameter(Mandatory)] [string] $HeadSha)
+    $now = Get-PullRequestStatus -Repository $Repository -Number $Number
+    if ($now.State -ne 'OPEN') { return New-EndedResult -Number $Number -State $now.State -HeadSha $now.HeadSha }
+    if ($now.HeadSha -ne $HeadSha) { return New-HeadMovedResult -From $HeadSha -To $now.HeadSha }
+}
+
+# Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
+# Reviewed (Copilot reviewed the head commit; -For Review or Either), ReviewFailed (Copilot posted a reason, such as
+# running out of quota, instead of a review of the head, and no review request came after it), ChecksPassed or ChecksFailed (no check or workflow
+# run on the head is pending, and a pass is confirmed by the next poll; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
+# still waits for. -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
+# kit's one watcher, for any agent in any tool (owner, 2026-11-14); a host's own monitor may wake the agent sooner.
+function Wait-PullRequest {
+    param(
+        [Parameter(Mandatory)] [string] $Repository,
+        [Parameter(Mandatory)] [int] $Number,
+        [ValidateSet('Review', 'Checks', 'Either')] [string] $For = 'Either',
+        [ValidateRange(1, 180)] [int] $TimeoutMinutes = 30,
+        [ValidateRange(5, 600)] [int] $IntervalSeconds = 20
+    )
+
+    # The limit is elapsed time, and a sleep never runs past it (Copilot's review of PR #73).
+    $deadline = (Get-KitUtcNow).AddMinutes($TimeoutMinutes)
+    $status = $null
+    $firstHead = $null
+    $passSeenAt = $null
+    $lastFailure = $null
+    while ($true) {
+        $status = Get-PullRequestStatus -Repository $Repository -Number $Number -WithRuns:($For -in 'Checks', 'Either')
+        $head = Get-ShortSha -Sha $status.HeadSha
+
+        # A merged or closed PR gets no more reviews worth waiting for.
+        if ($status.State -ne 'OPEN') { return New-EndedResult -Number $Number -State $status.State -HeadSha $status.HeadSha }
+        # A push while it waits: the old head's review and checks no longer decide anything. The baseline is the head the
+        # first read started from, even if a push landed during that poll.
+        if ($null -eq $firstHead) { $firstHead = $status.StartHeadSha }
+        if ($status.HeadSha -ne $firstHead) { return New-HeadMovedResult -From $firstHead -To $status.HeadSha }
+
+        if ($For -in 'Review', 'Either') {
+            $reviews = @(Get-CopilotReviewOf -Repository $Repository -Number $Number -Commit $status.HeadSha)
+            $review = @($reviews | Where-Object { Test-CopilotSummary -Body $_.Body }) | Select-Object -Last 1
+            # When Copilot can't review (out of quota, seen on PR #73), it still posts a review, whose body is a reason,
+            # not a summary: that isn't a review to answer. The failed try answers the latest review request unless
+            # Copilot's review was requested again after it (a re-request once credits are topped up); then the wait
+            # goes on for the new try (the reviewer agents' reviews of PR #73).
+            $lastFailure = $reviews | Select-Object -Last 1
+            $failure = $null
+            if ($lastFailure -and -not $review) {
+                $requested = Get-CopilotReviewRequestTime -Repository $Repository -Number $Number
+                if ($null -eq $requested -or (ConvertTo-Instant $lastFailure.SubmittedAt) -ge $requested) { $failure = $lastFailure }
+            }
+            if ($review -or $failure) {
+                $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
+                if ($changed) { return $changed }
+            }
+            if ($review) {
+                return [pscustomobject]@{
+                    Event = 'Reviewed'; HeadSha = $status.HeadSha; Review = $review; FailedChecks = @(); PendingChecks = @()
+                    Message = "Copilot reviewed ${head}: $($review.Verdict), $($review.OpenIssueCount) open issues."
+                }
+            }
+            if ($failure) {
+                return [pscustomobject]@{
+                    Event = 'ReviewFailed'; HeadSha = $status.HeadSha; Review = $failure; FailedChecks = @(); PendingChecks = @()
+                    Message = "Copilot couldn't review ${head}: $(Get-ReviewReason -Review $failure)"
+                }
+            }
+        }
+
+        if ($For -in 'Checks', 'Either') {
+            # No checks yet means CI hasn't started on this commit, not that it passed, unless a workflow run already
+            # failed: a startup failure starts no job, so it adds no check (Copilot's fifth review of PR #73).
+            $checks = @($status.Checks)
+            $pending = @($checks | Where-Object Result -EQ 'Pending')
+            # A failed workflow run is a failure even when the checks don't show its job (Copilot's re-review of PR #73).
+            $failedRuns = @($status.FailedRuns)
+            if (($checks.Count -gt 0 -or $failedRuns.Count -gt 0) -and $pending.Count -eq 0 -and @($status.PendingRuns).Count -eq 0) {
+                $failed = @($checks | Where-Object Result -EQ 'Failed' | ForEach-Object Name)
+                $outcome = if ($failed -or $failedRuns) { 'ChecksFailed' } else { 'ChecksPassed' }
+                $skipped = @($checks | Where-Object Result -EQ 'Skipped').Count
+                $parts = @(
+                    if ($failed) { "$($failed.Count) of $($checks.Count) checks failed: $($failed -join ', ')" }
+                    if ($failedRuns) { "workflow runs failed: $($failedRuns -join ', ')" }
+                )
+                $text = if ($parts) { ($parts -join '; ') + '.' } else { "every check passed ($($checks.Count - $skipped) passed, $skipped skipped)." }
+                # A pass rests on one read, and a workflow run created just after it isn't in it, so a pass counts only
+                # once the next poll finds it again; a failure is final at once (Copilot's ninth review of PR #73).
+                if ($outcome -eq 'ChecksPassed' -and $passSeenAt -ne $status.HeadSha) { $passSeenAt = $status.HeadSha }
+                else {
+                    $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
+                    if ($changed) { return $changed }
+                    return [pscustomobject]@{
+                        Event = $outcome; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @($failed) + @($failedRuns); PendingChecks = @()
+                        Message = "CI finished at ${head}: $text"
+                    }
+                }
+            }
+            else { $passSeenAt = $null }
+        }
+
+        $remaining = ($deadline - (Get-KitUtcNow)).TotalSeconds
+        if ($remaining -le 0) { break }
+        Start-Sleep -Seconds ([int][Math]::Ceiling([Math]::Min($IntervalSeconds, $remaining)))
+    }
+
+    $head = Get-ShortSha -Sha $status.HeadSha
+    $minutes = if ($TimeoutMinutes -eq 1) { '1 minute' } else { "$TimeoutMinutes minutes" }
+    $pendingNames = @($status.Checks | Where-Object Result -EQ 'Pending' | ForEach-Object Name)
+    $missing = @(
+        if ($For -in 'Review', 'Either') {
+            if ($lastFailure) { "no review from Copilot of $head yet (its last try failed: $(Get-ReviewReason -Review $lastFailure))" }
+            else { "no review from Copilot of $head yet" }
+        }
+        if ($For -in 'Checks', 'Either') {
+            if ($passSeenAt) { 'every check passed once, waiting for a second read to confirm it' }
+            elseif (@($status.Checks).Count -eq 0) { 'no checks have started' }
+            elseif ($pendingNames) { "$($pendingNames.Count) checks still running: $($pendingNames -join ', ')" }
+            else { "workflow runs still going: $(@($status.PendingRuns) -join ', ')" }
+        }
+    )
+    [pscustomobject]@{
+        Event = 'TimedOut'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @(); PendingChecks = $pendingNames
+        Message = "Timed out after $minutes at ${head}: $($missing -join '; ')."
     }
 }
 
@@ -399,4 +727,4 @@ function Assert-PullRequestOpen {
     }
 }
 
-Export-ModuleMember -Function ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewFinding, Resolve-ReviewThread, Add-ReviewReply
+Export-ModuleMember -Function ConvertFrom-CopilotReviewBody, Get-CopilotReview, Get-ReviewThread, Get-OpenFinding, Resolve-ReviewFinding, Resolve-ReviewThread, Add-ReviewReply, Wait-PullRequest

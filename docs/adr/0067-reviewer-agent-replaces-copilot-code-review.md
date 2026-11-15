@@ -65,6 +65,7 @@ Accepted (owner, 2026-11-14), with these answers:
   - `finish-work` step 2 is the reviewer agent's rounds again, before the PR opens, with each report posted on the PR. Its merge condition is a clean round on the head commit, or on the commit before the final round's nit fixes, when those change no behavior and are listed in its PR comment.
   - `start-work` step 5 runs the reviewer on a non-trivial plan again (owner, 2026-11-10).
   - The guardrail list (AGENTS.md "Working modes", `finish-work` step 5) names the `reviewer` agent again, beside the code-review instructions: it enforces DOD-003, so a change to it needs the owner's yes.
+  - `finish-work` step 4 waits for CI with `Wait-PullRequest -For Checks` after each push. It waits with `-For Review` only when the owner has asked for a Copilot review, because otherwise none comes (`Wait-PullRequest` came in PR 73, while this ADR was being written).
   - `address-review` stays for a review that lands on the PR, from a person or from a Copilot review requested by hand; `KitReview.psm1` still reads Copilot's.
   - AGENTS.md, CLAUDE.md, README, the PR template and the app template say the same.
 - **Cost:** each round runs in the owner's Claude usage, not GitHub AI credits.
