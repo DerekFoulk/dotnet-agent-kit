@@ -374,6 +374,29 @@ Describe 'Agent configuration' {
             Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File) | Should -Match '\bWait-PullRequest\b'
         }
 
+        # A foreground wait costs no model call while it runs; a background one's notice arrived 6.5 hours late on PR #73
+        # (ADR-0068).
+        It '<File> waits in the foreground, never in the background' -ForEach @(
+            @{ File = '.claude/skills/finish-work/SKILL.md' }
+            @{ File = '.claude/skills/address-review/SKILL.md' }
+            @{ File = 'CLAUDE.md' }
+            @{ File = 'AGENTS.md' }
+            @{ File = 'templates/app/AGENTS.md' }
+        ) {
+            $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File)
+
+            $text | Should -Match '(?i)\bforeground\b'
+            $text | Should -Not -Match '(?i)\b(run|wait)\b[^.\n]{0,60}\bin the background\b'
+        }
+
+        # Wait-PullRequest covers what the desktop app's PR monitor did, which woke the session about 20 times on PR #73
+        # (ADR-0068).
+        It 'finish-work leaves the desktop app''s PR monitor off by default' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
+
+            $skill | Should -Match '(?i)PR monitor[^.\n]*\boff by default\b'
+        }
+
         It 'is exported by KitReview.psm1, which apps get' {
             Import-Module -Name (Join-Path $repoRoot 'tools' 'KitReview.psm1') -Force
             Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
