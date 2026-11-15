@@ -7,7 +7,7 @@
     Reads the URL sources of every rule in docs/standards that isn't retired, gives each URL to the entry in
     docs/authorities.yml with the longest matching prefix (an archived web.archive.org copy is matched by its
     original URL), and writes the block between '<!-- sources from docs/standards' and '<!-- end sources -->'
-    in docs/authorities.md. The text outside the block is hand-written and left alone (ADR-0070).
+    in docs/authorities.md. The text outside the block is hand-written and left alone (ADR-0073).
 
     -Check writes nothing and exits 1 when a cited URL matches no entry, an entry matches no cited URL, an entry
     is incomplete, the block's markers are missing, or the block is stale.
@@ -33,7 +33,7 @@ $ErrorActionPreference = 'Stop'
 Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 
-# What docs/authorities.yml says about each publisher, and its classes (ADR-0070).
+# What docs/authorities.yml says about each publisher, and its classes (ADR-0073).
 $script:EntryFields = 'name', 'publisher', 'class', 'covers', 'match'
 $script:Classes = 'authority', 'practitioner', 'project'
 # The page lists authorities first, then the tool pages ADR-0063 also counts as authorities, then practitioners.
@@ -132,7 +132,7 @@ function Get-AuthoritiesProblem {
     foreach ($citation in $Cited) {
         $entry = Find-SourceEntry -Url $citation.Url -Entries $Entries
         if ($entry) { [void] $used.Add($entry) }
-        else { "$($citation.Url) ($($citation.RuleId)) matches no entry in docs/authorities.yml; add its publisher there (ADR-0070)" }
+        else { "$($citation.Url) ($($citation.RuleId)) matches no entry in docs/authorities.yml; add its publisher there (ADR-0073)" }
     }
     foreach ($entry in $Entries) {
         if (-not $used.Contains($entry)) { "entry '$($entry['name'])' matches no URL the rules cite; remove it" }
@@ -263,7 +263,7 @@ function Invoke-AuthoritiesPageBuild {
 function Read-SourceEntry {
     param([Parameter(Mandatory)] [string] $Path)
 
-    if (-not (Test-Path -LiteralPath $Path)) { throw 'docs/authorities.yml is missing; it classes every source the rules cite (ADR-0070).' }
+    if (-not (Test-Path -LiteralPath $Path)) { throw 'docs/authorities.yml is missing; it classes every source the rules cite (ADR-0073).' }
     $data = ConvertFrom-Yaml -Yaml (Get-Content -Raw -LiteralPath $Path)
     if ($data -isnot [System.Collections.IDictionary] -or -not $data.Contains('sources') -or
         $data['sources'] -is [string] -or $data['sources'] -isnot [System.Collections.IEnumerable]) {

@@ -115,7 +115,7 @@ In review mode, also ask the owner first before you:
 | List the solution's MAUI and desktop (UI) projects, which CI builds on Windows and macOS and the coverage gate exempts (ARC-010) | `./tools/Get-UiProject.ps1 -Solution dotnet-agent-kit.slnx` |
 | Regenerate agent rule files after editing a standard or this file | `./tools/Build-AgentRules.ps1` |
 | Check generated files are current | `./tools/Build-AgentRules.ps1 -Check` |
-| Every source the rules cite is classed by its publisher in `docs/authorities.yml`, every `authority` rule cites a page from an authority or a tool's own vendor, and `docs/authorities.md` is current; without `-Check` it rewrites the page (ADR-0070) | `./tools/Build-AuthoritiesPage.ps1 -Check` |
+| Every source the rules cite is classed by its publisher in `docs/authorities.yml`, every `authority` rule cites a page from an authority or a tool's own vendor, and `docs/authorities.md` is current; without `-Check` it rewrites the page (ADR-0073) | `./tools/Build-AuthoritiesPage.ps1 -Check` |
 | PR title and commit subjects are Conventional Commits | `./tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD` |
 | Every red commit is made green | `./tools/Test-RedGreenOrder.ps1 -Range origin/main..HEAD` |
 | No deprecated NuGet packages | `./tools/Test-DeprecatedPackages.ps1 -Path dotnet-agent-kit.slnx` |
@@ -147,7 +147,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS (ADR-0040). Eve
 |---|---|
 | `docs/standards/` | One file per topic. Rules sit in YAML front matter with `id`, `statement`, `layer`, `basis` (authority or preference), `status`, `sources` and `enforcement` (parts, each a gate or advisory, in the kit, apps or both; ADR-0063) |
 | `docs/adr/` | Decisions. ADR numbers match the brief's decision numbers (D8 is ADR-0008) |
-| `docs/authorities.md` | Every source the rules cite, by publisher and kind (authority, tool or project page, practitioner), generated from the rules' sources and `docs/authorities.yml` (ADR-0070) |
+| `docs/authorities.md` | Every source the rules cite, by publisher and kind (authority, tool or project page, practitioner), generated from the rules' sources and `docs/authorities.yml` (ADR-0073) |
 | `docs/quality/scorecard.md` | What a "perfect" .NET app is, area by area; the rules that cover each area and its open gaps (ADR-0034). A new rule names its area here |
 | `docs/corrections-log.md` | Every owner correction and what it became |
 | `.claude/skills/` | The workflow skills, read by Claude Code, Visual Studio and VS Code. Some are curated .NET skills, copied unchanged from Microsoft's dotnet/skills at one pinned commit (`docs/dotnet-skills.md`, ADR-0042): never edit those copies, and where one disagrees with a kit rule, the kit rule wins |

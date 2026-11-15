@@ -1,4 +1,4 @@
-# Who publishes each source the rules in docs/standards cite, and what kind of source it is (ADR-0070).
+# Who publishes each source the rules in docs/standards cite, and what kind of source it is (ADR-0073).
 # tools/Build-AuthoritiesPage.ps1 reads this file and the rules' sources, and fills the generated block in
 # docs/authorities.md. Its -Check fails when a cited URL matches no entry here, or an entry matches no cited URL.
 #

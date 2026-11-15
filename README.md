@@ -149,7 +149,7 @@ A rule's `basis` says why it exists, which is a separate question from its layer
 Who counts as an authority is ADR-0063's call: Microsoft, standards bodies (the W3C, OWASP, OpenSSF, the IETF) and the vendors of the tools the kit uses. A person's book or blog (Martin Fowler, Robert C. Martin) can back the owner's choice, but a rule resting on one alone is a preference. Two checks hold the form of this in CI:
 
 - `tools/Test-RuleSources.ps1` fails a rule with no source, an `authority` rule that cites no URL, and a `preference` rule that cites neither the owner nor an ADR (ADR-0063).
-- `tools/Build-AuthoritiesPage.ps1 -Check` fails a cited page whose publisher isn't classed, an `authority` rule that cites no page from an authority or a tool's own vendor (ADR-0070), and a stale [`docs/authorities.md`](docs/authorities.md), the generated list of every source the rules cite, by publisher.
+- `tools/Build-AuthoritiesPage.ps1 -Check` fails a cited page whose publisher isn't classed, an `authority` rule that cites no page from an authority or a tool's own vendor (ADR-0073), and a stale [`docs/authorities.md`](docs/authorities.md), the generated list of every source the rules cite, by publisher.
 
 Whether a rule says only what its source says is still a reviewer's question: no tool reads the pages.
 
@@ -248,13 +248,13 @@ The exit code is 0 when every required tool is ready and 1 otherwise, so agents 
 - **`docs/standards/`**: one file per topic. Each rule sits in the file's YAML front matter with its `id`, `statement`, `why`, `layer` (floor, owner or outside), `basis` (authority: an outside source sets it, cited by URL; or preference: the owner's own choice), `status` (proposed, accepted or retired), `sources` and `enforcement`: a list of parts, each a `gate` (a tool fails the change) or `advisory` (a person, an agent or code review checks it), in the kit, in apps or both (ADR-0063). A `proposed` rule isn't in force until the owner accepts it.
 - **`docs/adr/`**: Architecture Decision Records. ADR numbers match the brief's decision numbers (D8 is ADR-0008). New ones start from `docs/adr/0000-template.md`.
 - **`docs/quality/scorecard.md`**: the quality scorecard. It says what a "perfect" .NET app looks like, area by area (architecture, tests, security, API design and the rest), which rules cover each area, how many of them a tool checks, and the open gaps, each with an id a later PR can close (ADR-0034).
-- **`docs/authorities.md`** lists every source the rules cite, by publisher; it's generated from the rules and `docs/authorities.yml` (ADR-0070). **`docs/sources.md`** lists practitioner sources. **`docs/corrections-log.md`** records owner corrections and what each became.
+- **`docs/authorities.md`** lists every source the rules cite, by publisher; it's generated from the rules and `docs/authorities.yml` (ADR-0073). **`docs/sources.md`** lists practitioner sources. **`docs/corrections-log.md`** records owner corrections and what each became.
 
 Four checks keep these honest. Each exits 0 when clean and 1 otherwise:
 
 ```powershell
 ./tools/Test-RuleSources.ps1          # every rule has a valid source (owner + date, ADR, or URL + retrieval date) and an enforcement
-./tools/Build-AuthoritiesPage.ps1 -Check  # every cited page's publisher is classed, and docs/authorities.md is current (ADR-0070)
+./tools/Build-AuthoritiesPage.ps1 -Check  # every cited page's publisher is classed, and docs/authorities.md is current (ADR-0073)
 ./tools/Test-Scorecard.ps1            # every rule in force has a quality area, and the scorecard's table matches the rules
 ./tools/Test-AdrSections.ps1          # every ADR has its required sections and at least two options with trade-offs
 ```

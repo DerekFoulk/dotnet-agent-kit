@@ -1,4 +1,4 @@
-# ADR-0070: Class each cited source by its publisher, in a generated page
+# ADR-0073: Class each cited source by its publisher, in a generated page
 
 - **Status:** Accepted
 - **Date:** 2026-11-15

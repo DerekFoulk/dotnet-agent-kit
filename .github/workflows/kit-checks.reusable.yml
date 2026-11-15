@@ -54,7 +54,7 @@ jobs:
       - name: Generated agent files are current
         run: ./tools/Build-AgentRules.ps1 -Check
 
-      # Every source the rules cite is classed by its publisher, and docs/authorities.md is current (ADR-0070).
+      # Every source the rules cite is classed by its publisher, and docs/authorities.md is current (ADR-0073).
       - name: Authorities page is current
         run: ./tools/Build-AuthoritiesPage.ps1 -Check
 
