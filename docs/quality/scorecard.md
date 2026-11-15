@@ -33,7 +33,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"
       - "ADR-0043"
       - "ADR-0050"
-    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010, CRF-011]
+    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010, CRF-011, CRF-012, CRF-013, CRF-014]
     gaps:
       - id: GAP-019
         gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-011 (proposed) states the four as limits."
@@ -288,7 +288,7 @@ Each area in the front matter above has:
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
 | Architecture | 9 | 5 | 4 | 4 | 3 |
-| Craft | 10 | 5 | 5 | 1 | 1 |
+| Craft | 13 | 7 | 6 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 9 | 8 | 1 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
@@ -303,7 +303,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 72 rules in force, 45 checked by a tool and 27 advisory; 25 proposed; 16 open gaps.
+**Overall:** 75 rules in force, 47 checked by a tool and 28 advisory; 25 proposed; 16 open gaps.
 
 Open gaps:
 

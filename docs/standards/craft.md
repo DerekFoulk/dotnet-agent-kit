@@ -162,6 +162,57 @@ rules:
         how: "ci: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml and fails on a breach outside generated code and outside a reasoned exception; tools/CodeShape/src/Kit.CodeShape/Limits.cs is the one source of the numbers, and tools/tests/Test-CodeShape.Tests.ps1 checks this statement against it"
     scope: core
     paths: ["**/*.cs"]
+  - id: CRF-012
+    statement: "Aim for the rule of ten: at most about ten subfolders per folder, files per folder, types per file, members per type and lines per method; more is a reason to look for a split, not a defect."
+    why: "Small units are easier to read, name and change; the owner chose ten as the number to aim for (owner, 2026-11-12, the rule-of-ten discussion). It isn't a named standard: the closest are Jeff Bay's Object Calisthenics (rule 6, keep all entities small), Rhyous's 10/100 principle and the c2 wiki's discussions of short methods. CRF-011 holds the hard ceilings a tool enforces; this is the target below them."
+    layer: owner
+    basis: preference
+    status: accepted
+    sources: ["owner, 2026-11-12"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review reports a unit over ten as a Consider, with the split it suggests; CRF-011's ceilings are the gate"
+    scope: core
+    paths: ["**"]
+  - id: CRF-013
+    statement: "Follow Microsoft's dependency injection guidelines: a service gets its dependencies through its constructor, never from a service locator, a factory that resolves them at run time or static access to the container; a singleton never captures a scoped service, and no scoped service is resolved from the root; and the container validates scopes and every registration (ValidateScopes, ValidateOnBuild) wherever the tests run the app."
+    why: "A captured scoped service lives for the whole app, so one DbContext is shared across requests, and a service locator hides what a class needs. ASP.NET Core validates both only in Development, and leaves them off elsewhere for performance; running the tests with validation on in every environment they use finds a misregistration before it ships, without changing the app's own setting."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines, retrieved 2026-11-15", "https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis#validatescopes-and-validateonbuild, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's FunctionalTests host the app with ValidateScopes and ValidateOnBuild on in every environment (ApiHost), and DependencyInjectionTests prove a captured scoped service and a root-resolved one fail in Production"
+      - kind: advisory
+        in: [app]
+        how: "until it has functional tests of its own, following the sample's ApiHost"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks the rest of the guidelines: no service locator, no factory that resolves dependencies at run time, no static access to services, no BuildServiceProvider while registering, and singletons only for shared or costly state"
+    scope: core
+    paths: ["**/*.cs"]
+  - id: CRF-014
+    statement: "Types keep their state behind members that keep it valid (encapsulation), and the domain knows nothing of how it's stored: it references no persistence framework, and a type's shape isn't bent to suit the database (persistence ignorance)."
+    why: "Microsoft's architectural principles name both: a type that guards its own state can't be put into an invalid one by a caller, and a domain that ignores persistence can be tested, and its storage changed, without touching business rules."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's Architecture.Tests (LayerTests) fail if the domain assembly references EF Core or ADO.NET"
+      - kind: advisory
+        in: [app]
+        how: "until it has architecture tests of its own, following the sample"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks encapsulation (no public setters that let a caller break an invariant, collections exposed read-only) and that domain types carry no persistence attributes or constructors only the database needs"
+    scope: core
+    paths: ["**/*.cs"]
 ---
 
 # Craft
@@ -180,6 +231,9 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 - **Dependencies and cohesion (CRF-007).** Martin's package principles (*Agile Software Development, Principles, Patterns, and Practices*, 2002): the acyclic dependencies, stable dependencies and stable abstractions principles for how components depend on each other, and the reuse/release equivalence, common closure and common reuse principles (REP, CCP, CRP) for what goes in a component. The same page of Martin's lists all six. Martin states them for packages, meaning deployable binaries such as a .dll, not namespaces. In .NET the build already rejects a cycle between projects: restore fails with [MSB4006](https://learn.microsoft.com/en-us/visualstudio/msbuild/errors/msb4006), a circular dependency in its target graph (measured with SDK 10.0.404). So the kit applies the acyclic dependencies principle to namespaces, where cycles can still form unnoticed.
 - **Metric limits (CRF-008), and the limits no analyzer checks (CRF-011, proposed).** See below.
 - **STUPID (CRF-009).** William Durand's name (2013) for six habits that make code hard to change: Singleton, Tight coupling, Untestability, Premature optimization, Indescriptive naming, Duplication. Testability and deployability are design drivers: if a part can't be tested in isolation, the design changes, not the test.
+- **The rule of ten (CRF-012).** A target, not a ceiling: ten subfolders, files, types, members or lines is where to start asking whether a unit does one thing. CRF-011's ceilings, which a tool enforces, sit above it.
+- **Dependency injection (CRF-013).** Microsoft's [guidelines](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines) in short: ask for dependencies in the constructor; never resolve them yourself, from `IServiceProvider`, a factory or a static; keep singletons for state that's shared or costly to create; and let the container check the registrations. ASP.NET Core checks them only in Development, so the sample's test host turns the checks on in every environment it runs the app in, and the app keeps Microsoft's setting.
+- **Encapsulation and persistence ignorance (CRF-014).** From Microsoft's [architectural principles](https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles). The sample's `Bookmark` sets its state only through `Create`, which checks every part, and the domain project references no persistence library; Infrastructure maps it to the database.
 - **Documented use (CRF-010).** Use each library, tool and service the way its documentation describes for the version in use. Where there's no documented way to do something, ask its authors for one; don't reach into its internals. The ban covers an app's own code too, since the analyzer can't tell whose type a call reaches. In an app's own code the way forward is to register each type explicitly, as the built-in container requires: Microsoft's dependency injection guidance registers each service by its type, and its [guidelines](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines) list convention-based (scanning) registration among the features the built-in container doesn't have. Making a type public is the way forward only when it belongs to a library's public API; in an executable project (the API, a worker), CA1515 keeps types internal. Against a library, a banned member has a public alternative, which its message names: for example, a dynamic `OrderBy` over an `IQueryable` builds its expression from `type.GetProperty(name)` and a `MethodInfo` taken from `typeof(Queryable).GetMethods()`, not from the by-name `Expression` factories.
 
 ## Checks
