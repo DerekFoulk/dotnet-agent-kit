@@ -45,7 +45,7 @@ Option 1, decided in auto mode (ADR-0035) on 2026-11-15, for the owner's request
 
 ## Consequences
 
-- New: `docs/authorities.yml`, `docs/authorities.md` (prose by hand, the block between `<!-- sources from docs/standards` and `<!-- end sources -->` generated), `tools/Build-AuthoritiesPage.ps1` and its tests, a "Sources page is current" step in `kit-checks.reusable.yml`, and a row in AGENTS.md's Commands table.
+- New: `docs/authorities.yml`, `docs/authorities.md` (prose by hand, the block between `<!-- sources from docs/standards` and `<!-- end sources -->` generated), `tools/Build-AuthoritiesPage.ps1` and its tests, an "Authorities page is current" step in `kit-checks.reusable.yml`, and a row in AGENTS.md's Commands table.
 - When a rule cites a page from a new publisher, CI fails until `docs/authorities.yml` classes it; then run the script and commit the page.
 - Three classes, on ADR-0063's line: `authority` (Microsoft and other vendors documenting their own product, and standards bodies: W3C, IETF, OWASP); `project` (a tool's own repo or docs, from the vendor of a tool the kit uses: ADR-0063 counts it as an authority, for that tool only, so the page lists it apart); and `practitioner` (people, books, and reference works such as Wikipedia, whose pages the rules cite for a practitioner's principle).
 - An entry is matched by URL prefix, so one host can hold several publishers (github.com: Microsoft's `dotnet/`, OWASP's `OWASP/`, Deque's `dequelabs/`). A Microsoft Learn URL's locale segment (`/en-us/`) and any `#fragment` are dropped before pages are compared, so one page cited two ways is listed once.

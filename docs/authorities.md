@@ -11,7 +11,7 @@ Every rule in [`docs/standards/`](standards/) cites where it comes from (ADR-006
 | **Practitioner or reference** | A person, a book or a reference work: Martin Fowler, Robert C. Martin, *The Pragmatic Programmer*, Wikipedia | Ideas the owner chose to adopt. A rule resting on these alone is a `preference`, cited by the owner or an ADR |
 
 ```mermaid
-flowchart LR
+flowchart TB
     accTitle: How a rule's source decides its basis
     accDescr: A rule cites pages. Each page is classed by its publisher, as an authority, a tool or project page, or a practitioner or reference. A rule whose basis is authority must cite at least one page from an authority or a tool or project page, or the check fails. A rule resting only on practitioners is a preference, and cites the owner or an ADR.
     R["A rule in docs/standards"] --> S["Its URL sources"]
@@ -21,7 +21,7 @@ flowchart LR
     C --> PR["Practitioner or reference"]
     AU --> BA["basis: authority"]
     PJ --> BA
-    PR --> BP["basis: preference,<br/>citing the owner or an ADR"]
+    PR -- "when a rule rests on these alone" --> BP["basis: preference,<br/>citing the owner or an ADR"]
 ```
 
 A source is classed by its publisher, not by the site it's on: github.com hosts Microsoft's `dotnet/runtime`, OWASP's ASVS and Deque's axe-core alike, and an archived copy on web.archive.org is classed as the page it archives. Some pages are cited two ways (a Microsoft Learn page with and without `/en-us/`, or with a `#fragment`); each is listed once.

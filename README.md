@@ -13,13 +13,13 @@ This repo is public so its CI, and the CI of any public app that uses it, runs f
 A coding agent is fast, and it forgets. Told to write the test first, it may write the code first when the context gets long; told to run the checks, it may report "done" without them. The kit doesn't rely on the agent remembering. Each rule it gives a repo has three parts:
 
 - **A rule** with a source. Every rule in `docs/standards/` names where it comes from: a page by an outside authority such as Microsoft Learn, cited by URL and date, or a decision of the repo's owner, by date or by ADR (an Architecture Decision Record in `docs/adr/`: one page per significant choice, with the options and why one won).
-- **An enforcement.** Each rule says how it's checked: by a **gate**, a tool that fails the change, or as **advisory**, checked by a reviewer. Gates run on your machine, in CI and on GitHub, where the agent can't skip them.
-- **Instructions for the agent.** `AGENTS.md`, the generated rule files and the workflow skills tell every supported agent (Claude Code, GitHub Copilot, Visual Studio and VS Code) the same rules, generated from the one source.
+- **An enforcement.** Each rule says how it's checked: by a **gate**, a tool that fails the change, or as **advisory**, checked by a reviewer. The gates in CI and on GitHub run whether or not the agent remembers them; the same scripts run on your machine first, to catch a problem before it's pushed.
+- **Instructions for the agent.** `AGENTS.md` and the workflow skills, written by hand, plus rule files generated from the rules, tell each supported tool the same thing: Claude Code, and GitHub Copilot in Visual Studio, VS Code and on GitHub.
 
 ```mermaid
-flowchart LR
+flowchart TB
     accTitle: What the kit is made of
-    accDescr: Outside authorities and the owner's decisions are the sources. They feed the rules in docs/standards and the ADRs. The rules are generated into agent instructions and are enforced by checks on your machine, in CI and on GitHub. Both reach your app repo, which the kit creates and keeps current.
+    accDescr: Outside authorities and the owner's decisions are the sources. They feed the rules in docs/standards and the ADRs. Rule files for the agents are generated from the rules, beside the hand-written AGENTS.md and skills, and the rules are enforced by checks on your machine, in CI and on GitHub. Both reach your app repo, which the kit creates and keeps current.
     subgraph Sources
         AU["Outside authorities<br/>Microsoft Learn, W3C, OWASP, IETF, GitHub"]
         OW["The owner's decisions<br/>dated, or recorded in an ADR"]
@@ -27,20 +27,20 @@ flowchart LR
     subgraph Kit["The kit"]
         RU["Rules<br/>docs/standards"]
         AD["Decisions<br/>docs/adr"]
-        IN["Agent instructions<br/>AGENTS.md, rule files, skills"]
+        IN["Agent instructions<br/>AGENTS.md and skills, by hand;<br/>rule files, generated"]
         CH["Checks<br/>scripts, CI workflows, ruleset"]
     end
     AU --> RU
     OW --> RU
     OW --> AD
     AD --> RU
-    RU -- generated --> IN
-    RU -- enforced by --> CH
+    RU -- "rule files generated" --> IN
+    RU -- "enforced by" --> CH
     IN --> APP["Your app repo"]
     CH --> APP
 ```
 
-It also creates app repos: `New-KitApp` makes a GitHub repo with the kit's build files, agent files, checks, settings and ruleset, from the answers to a short intake (app type, data, sign-in, hosting, test tools), and each new kit release reaches the app as one pull request.
+It also creates app repos: `New-KitApp` makes a GitHub repo with the kit's build files, agent files, checks, settings and ruleset, from the answers to a short intake (app type, data, database, sign-in, hosting, test tools and a monthly budget). Each new kit release is designed to reach the app as one pull request; that isn't exercised yet, since the kit has no release ([Keep an app current](#keep-an-app-current)).
 
 ## Who it's for
 
@@ -48,15 +48,15 @@ It also creates app repos: `New-KitApp` makes a GitHub repo with the kit's build
 - **Apps built as one deployable app**: a web API, a Blazor app, a MAUI or desktop app, with modules that can become services later (ARC-001).
 - **On GitHub, with PowerShell 7.6 and the .NET SDK**: the checks are PowerShell scripts and GitHub Actions workflows, and the merge rules are a GitHub ruleset.
 
-It started as its owner's own method, and it's being made useful to others: see [Three sources of a recommendation](#three-sources-of-a-recommendation) for how a developer's own taste stays out of everyone else's rules. Until it has a license, you may read it but not reuse it.
+It started as its owner's own method, and its rules still carry his choices: see [Three sources of a recommendation](#three-sources-of-a-recommendation) for how that is changing. Until it has a license, you may read it but not reuse it.
 
 ## Why use it
 
-- **An agent can't quietly skip a step.** The commit hook rejects a commit subject that isn't a Conventional Commit; CI fails a branch whose test-first commit isn't followed by one that makes it pass, a build with one warning, a rule with no source, or a generated file someone edited by hand; and the ruleset won't merge anything until CI is green. None of that depends on the agent remembering its instructions.
+- **An agent can't quietly skip a step.** CI fails a branch whose test-first commit isn't followed by one that makes it pass, a build with one warning, a rule with no source, or a generated file someone edited by hand; and the ruleset won't merge anything until CI is green. Before that, a git hook rejects a commit subject that isn't a [Conventional Commit](https://www.conventionalcommits.org/) (a subject such as `fix: reject empty titles`). None of that depends on the agent remembering its instructions.
 - **Every rule says where it comes from.** A reader can tell a rule Microsoft's docs set from one that is the owner's choice, and [`docs/authorities.md`](docs/authorities.md) lists every source the rules cite, by publisher.
 - **Every choice is written down.** A significant choice gets an ADR with at least two options and a recommendation, and a check makes sure each has its sections.
-- **One bar for every agent.** The instructions are generated from the same rules for each agent, so changing to another agent doesn't change the rules.
-- **It's versioned.** An app pins a kit release; Dependabot and the kit sync bring each new release as one pull request, which shows what changed.
+- **One bar for every agent.** The rule files are generated from the same rules for each agent, so changing to another agent doesn't change the rules.
+- **It's versioned.** An app pins a kit release. Dependabot (GitHub's bot that proposes dependency updates) moves the pin, and the kit's sync workflow adds the release's other files to the same pull request, so each release would arrive as one reviewable change; that's designed and tested, but not yet exercised, since the kit has no release.
 
 ## How a task flows
 
@@ -65,10 +65,10 @@ Every task runs through the same steps, in order (`AGENTS.md`, "How to work"). T
 ```mermaid
 flowchart TD
     accTitle: How one task flows
-    accDescr: The agent plans the task with a test list, and the reviewer agent reviews a non-trivial plan. In review mode the owner approves it. Then for each item on the test list the agent commits a failing test, marked red, and the change that makes every test pass, marked green, and refactors. When the list is empty it runs every check, the reviewer agent reviews the branch until a round finds nothing blocking, and it opens a pull request. CI runs, and the ruleset holds the merge until CI passes. In auto mode the agent merges; in review mode the owner does. A change to the guardrails needs the owner's yes, and release pull requests are always the owner's.
+    accDescr: The agent plans the task with a test list, and the reviewer agent reviews a non-trivial plan. In review mode the owner approves a non-trivial plan. Then for each item on the test list the agent commits a failing test, marked red, and the change that makes every test pass, marked green, and refactors. When the list is empty it runs every check, the reviewer agent reviews the branch until a round finds nothing blocking or should-fix, and it opens a pull request. CI runs, and the ruleset holds the merge until CI passes. In auto mode the agent merges; in review mode the owner does. A change to the guardrails needs the owner's yes, and release pull requests are always the owner's.
     P["Plan: goal, files, test list,<br/>the five Well-Architected pillars"] --> PR{"Non-trivial?"}
     PR -- yes --> RV1["Reviewer agent reviews the plan"]
-    PR -- no --> M1
+    PR -- no --> RED
     RV1 --> M1{"Mode"}
     M1 -- review --> OK["Owner approves the plan"]
     M1 -- auto --> RED
@@ -91,31 +91,36 @@ flowchart TD
 ```
 
 - **Plan.** The goal, the files it touches and a **test list**: the behaviors to cover. The plan covers the five pillars of the [Azure Well-Architected Framework](https://learn.microsoft.com/azure/well-architected/) (reliability, security, cost, operational excellence, performance), plus accessibility, data and docs.
-- **Red, green, refactor.** One item from the test list becomes a failing test, committed with the trailer `TDD: red`; the change that makes the whole suite pass is committed with `TDD: green`. CI checks the order.
+- **Red, green, refactor.** One item from the test list becomes a failing test, committed with `TDD: red` as a trailer (a `Key: value` line at the end of the commit message, which git can read back); the change that makes the whole suite pass is committed with `TDD: green`. CI checks the order.
 - **Review.** A read-only reviewer agent (`.claude/agents/reviewer.md`, ADR-0067) that hasn't seen the work reviews the branch against `docs/code-review.md`. Reviews end at the first round with nothing blocking or should-fix.
-- **Merge.** GitHub's ruleset on `main` holds the merge until the required checks pass, and allows merge commits only. Who merges depends on the **working mode** (ADR-0035): in **auto**, the default, the agent merges its own PR once CI passes and the review is clean; in **review**, the owner approves plans and merges. A change to the guardrails (the working modes, the permission rules, the review instructions, a ruleset, a weakened check) needs the owner's yes in either mode, and releases are always the owner's. See [Working modes](#working-modes).
+- **Merge.** GitHub's ruleset on `main` holds the merge until the required checks pass, and allows merge commits only. Who merges depends on the **working mode** (ADR-0035): in **auto**, the default, the agent merges its own PR once CI passes and the review is clean; in **review**, the owner approves plans and merges. A change to the **guardrails**, the files and settings that hold these limits (such as the working modes, the permission rules, the review instructions, a ruleset or a weakened check; `AGENTS.md`, "Working modes", has the full list), needs the owner's yes in either mode, and releases are always the owner's. See [Working modes](#working-modes).
 
 ## Where mistakes are caught
 
 Each kind of mistake has a place where a tool stops it, as early as it can be seen. What no tool can check, such as a misleading doc or a weak design, is the reviewer agent's and the owner's.
 
 ```mermaid
-flowchart LR
+flowchart TB
     accTitle: Where mistakes are caught
-    accDescr: While writing, the build treats every warning as an error and runs the analyzers. At commit, the commit-msg hook rejects a subject that isn't a Conventional Commit. Before the pull request, the agent runs every check and the reviewer agent reviews the branch. On the pull request, CI runs the build, tests, coverage, secret scan, CodeQL and the kit's checks. At merge, the ruleset requires those checks, resolved review threads and clean code scanning. After merge, nightly mutation and performance runs, OpenSSF Scorecard and Dependabot keep watching.
-    W["While writing<br/>warnings are errors,<br/>analyzers, banned APIs"] --> C["At commit<br/>commit-msg hook:<br/>Conventional Commits"]
+    accDescr: While writing, the build treats every warning as an error and runs the analyzers. At commit, a git hook rejects a subject that isn't a Conventional Commit. Before the pull request, the agent runs every check and the reviewer agent reviews the branch. On the pull request, CI runs the build, tests, coverage, secret scan, CodeQL and the kit's checks as required checks, and mutation and performance runs that aren't required but are answered before merging. At merge, the ruleset requires the required checks, resolved review threads and clean code scanning. After merge, the nightly mutation and performance runs, OpenSSF Scorecard and Dependabot keep watching.
+    W["While writing<br/>warnings are errors,<br/>analyzers, banned APIs"] --> C["At commit<br/>git hook:<br/>Conventional Commits"]
     C --> B["Before the PR<br/>every check locally,<br/>reviewer agent"]
-    B --> PRC["On the PR<br/>CI: build, tests, coverage,<br/>secret scan, CodeQL, kit checks"]
+    B --> PRC["On the PR<br/>required: build, tests, coverage,<br/>secret scan, CodeQL, kit checks<br/>not required: mutation, performance"]
     PRC --> MG["At merge<br/>ruleset: required checks,<br/>threads resolved, code scanning"]
     MG --> AF["After merge<br/>nightly mutation and performance,<br/>OpenSSF Scorecard, Dependabot"]
 ```
 
+- **CodeQL** is GitHub's code scanning: it looks for security bugs in the code and the workflows.
+- **Mutation testing** breaks the code on purpose, one small change at a time, and checks that a test fails each time.
+- **OpenSSF Scorecard** scores the repo's supply-chain practices, such as pinned actions and branch protection, from 0 to 10.
+- **Push protection** is GitHub's block on a push that contains a known kind of secret.
+
 | Who | Does | Example |
 |---|---|---|
-| **The owner** (the developer who owns the repo: Derek, for the kit; you, for your app) | Decides: accepts ADRs and rules, picks the working mode, says yes to guardrail changes and spending, merges releases. Signs in; no agent handles credentials | Approves an ADR choosing the database |
+| **The owner** (the developer who owns the repo: the kit's owner, for the kit; you, for your app) | Decides: accepts ADRs and rules, picks the working mode, says yes to guardrail changes and spending, merges releases. Signs in; no agent handles credentials | Approves an ADR choosing the database |
 | **The agent** | Plans, writes each test first, runs the checks, opens the PR, answers each review finding with evidence, and merges its own PR in auto mode | Commits a failing test for "reject an empty title", then the fix |
 | **The reviewer agent** | Reviews each non-trivial plan, and each branch before its PR opens, read-only, against `docs/code-review.md`; ranks each finding Blocking, Should fix or Consider | Finds a test that would pass even if the code were wrong |
-| **Your machine** | The build (warnings as errors, analyzers), the commit-msg hook, and every check script, run before pushing | Rejects the commit subject "fixed stuff" |
+| **Your machine** | The build (warnings as errors, analyzers), the commit hook, and every check script, run before pushing | Rejects the commit subject "fixed stuff" |
 | **CI** (GitHub Actions) | Runs every gate on every pull request: build, tests, coverage, secret scan, CodeQL, rule sources, generated files, red-to-green order | Fails a branch where a rule has no source |
 | **GitHub** | The "main protection" ruleset holds the merge until CI passes, blocks direct and force pushes to `main`; push protection, Dependabot alerts and security updates | Refuses to merge a PR whose secret scan failed |
 
@@ -144,27 +149,29 @@ A rule's `basis` says why it exists, which is a separate question from its layer
 Who counts as an authority is ADR-0063's call: Microsoft, standards bodies (the W3C, OWASP, OpenSSF, the IETF) and the vendors of the tools the kit uses. A person's book or blog (Martin Fowler, Robert C. Martin) can back the owner's choice, but a rule resting on one alone is a preference. Two checks hold the form of this in CI:
 
 - `tools/Test-RuleSources.ps1` fails a rule with no source, an `authority` rule that cites no URL, and a `preference` rule that cites neither the owner nor an ADR (ADR-0063).
-- `tools/Build-AuthoritiesPage.ps1 -Check` fails a cited page whose publisher isn't classed, and an `authority` rule none of whose pages comes from an authority (ADR-0070). It also keeps [`docs/authorities.md`](docs/authorities.md) current: every source the rules cite, by publisher.
+- `tools/Build-AuthoritiesPage.ps1 -Check` fails a cited page whose publisher isn't classed, an `authority` rule that cites no page from an authority or a tool's own vendor (ADR-0070), and a stale [`docs/authorities.md`](docs/authorities.md), the generated list of every source the rules cite, by publisher.
 
 Whether a rule says only what its source says is still a reviewer's question: no tool reads the pages.
 
 ## Three sources of a recommendation
 
-The kit is for any developer now, not only its owner, so the owner decided on 2026-11-15 to keep three sources of a recommendation apart (`docs/corrections-log.md`, 2026-11-15). When an agent recommends something, such as a database, a test library or a hosting plan, it comes from one of three sources, and the agent says which:
+**Decided, not built yet.** The owner decided this on 2026-11-15 (`docs/corrections-log.md`), because the kit is meant for other developers as well as for him. No rule or file carries it yet: there's no preferences file, and agents don't yet label their recommendations this way. It's the planned design.
+
+When an agent recommends something, such as a database, a test library or a hosting plan, the recommendation will come from one of three sources, and the agent will say which:
 
 | Source | What it may say | How it's labeled |
 |---|---|---|
 | **An authority** | Only what its page says | The page's URL and the date it was read |
-| **Your own preference** | Whatever you've chosen for your own work | "Your preference", from your preferences file. It's yours alone: never written into the kit's rules, so it never reaches another developer as if it were guidance |
+| **Your own preference** | Whatever you've chosen for your own work | "Your preference", from your own preferences file. It's yours alone, kept out of the kit's rules, so it never reaches another developer as if it were guidance |
 | **The agent** | Its own judgment, when neither of the others decides | "The agent's", with its reason. It stays proposed until you accept it |
 
-The default for a choice comes from your preference first, then the authority's, then the agent's. Prices and free-tier limits are facts with a source (a URL and a date), separate from all three: a paid option is listed with its price beside the free one, never dropped (ARC-012).
+Among the options a rule allows, the default will come from your preference first, then the authority's, then the agent's. ARC-012, a rule in force today, still sets the limits: the industry-standard option while it's free for the app, within the app's monthly budget ($0 unless the intake set one), and spending money needs the owner's OK. Prices and free-tier limits will be facts with a source (a URL and a date), separate from all three; ARC-012 already lists every paid option with its price, the price's source and the date checked.
 
 ```mermaid
 flowchart TD
-    accTitle: How a default is picked
-    accDescr: For a choice, if your preferences file names an option, that is the default, labeled as your preference. If not, and an authority recommends one, that is the default, labeled with the page and its date. Otherwise the agent recommends one, labeled as its own with a reason, proposed until you accept it. Prices and free-tier limits are sourced facts shown beside every option.
-    Q["A choice to make"] --> P{"Does your preferences<br/>file name one?"}
+    accTitle: How a default will be picked
+    accDescr: Within what ARC-012 allows, free first and within the budget: if your preferences file names an option, that is the default, labeled as your preference. If not, and an authority recommends one, that is the default, labeled with the page and its date. Otherwise the agent recommends one, labeled as its own with a reason, proposed until you accept it. Prices and free-tier limits are sourced facts shown beside every option.
+    L["The options ARC-012 allows:<br/>free first, within the budget"] --> P{"Does your preferences<br/>file name one?"}
     P -- yes --> UP["Default: your preference"]
     P -- no --> AU{"Does an authority<br/>recommend one?"}
     AU -- yes --> UA["Default: the authority's,<br/>with its URL and date"]
@@ -174,7 +181,7 @@ flowchart TD
     PRICE -.- AG
 ```
 
-**What's in place, and what isn't yet.** Only the last part is a rule today: ARC-012 already lists a paid option with its price, the price's source and the date checked. The rest is decided but not yet in the rules. A pull request in progress adds the per-developer preferences file and labels each of the new-app intake's recommendations by its source; it brings the rule and its ADR, and this section will point to them. After it, another sorts the kit's own `preference` rules, row by row, into the kit's method, which stays with its ADR, and the owner's personal taste, which moves to his own preferences file.
+Planned, in order: a rule and ADR with the per-developer preferences file, and the new-app intake labeling each recommendation by its source; then a pass over the kit's own `preference` rules, row by row, to keep those that are the kit's method (with their ADRs) and move the owner's personal taste to his own preferences file. Until then, a `preference` rule is the owner's choice, as the `basis` table above says.
 
 ## Learn more
 
@@ -322,7 +329,7 @@ The mode is yours alone. Review mode writes `review` to `.agent-mode`, which eve
 |---|---|
 | `dotnet-ci.reusable.yml` | Locked restore with NuGet audit, a zero-warning build (`-warnaserror`), a format check, tests with coverage (browser and accessibility tests too: for a project that uses Playwright, its Chromium is installed first, ADR-0061), the coverage gate (TST-004), deprecated packages, empty projects (ARC-009), the code shape check (CRF-011) and the duplicate code check (CRF-003, which downloads PMD and needs the runner's Java), then uploads an SBOM (software bill of materials: every package the build ships, with its version and licence) as the `sbom` artifact, in CycloneDX JSON, with test and benchmarks projects left out and build-only packages marked `excluded` (SUP-009, ADR-0055, ADR-0062). An app with MAUI or desktop (UI) projects also builds them on Windows and macOS, and its code shape, duplicate code and SBOM steps run on the Windows leg, since Linux can't evaluate those projects; the tests stay on Linux (ARC-010, ADR-0059). Windows and macOS runners are free on a public repo; a private one pays for them, macOS at a multiple of the Linux rate. It also runs a gitleaks secret scan of the full git history |
 | `codeql.reusable.yml` | CodeQL code scanning of the GitHub Actions workflows, and of the C# once there is some, with no build (ADR-0036). Results go to the repo's Security tab. In the kit, the ruleset's code scanning rule blocks a merge on its results (see "GitHub settings on this repo"), and every public app `New-KitApp` creates gets the same rule |
-| `kit-checks.reusable.yml` | All Pester tests, rule sources, the quality scorecard, ADR sections, generated-file drift, the sources page (`docs/authorities.md`), and on pull requests the commit subjects and red→green order (the branch's own commits) |
+| `kit-checks.reusable.yml` | All Pester tests, rule sources, the quality scorecard, ADR sections, generated-file drift, the authorities page (`docs/authorities.md`), and on pull requests the commit subjects and red→green order (the branch's own commits) |
 | `pr-title.yml` | The PR title is a Conventional Commit. It also runs when the PR is edited, because the title becomes the merge commit's subject |
 
 Two more workflows act rather than check:
