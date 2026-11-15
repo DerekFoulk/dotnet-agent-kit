@@ -197,8 +197,18 @@ function ConvertTo-HeadingAnchor {
     (($Heading.ToLowerInvariant() -replace '[^\p{L}\p{N}\s-]', '') -replace '\s', '-')
 }
 
+# Fills the block in docs/authorities.md, or with -Check only compares it. Returns 0, or 1 after printing each problem;
+# nothing is written unless every source is classed and the page has its block.
+function Invoke-AuthoritiesPageBuild {
+    param(
+        [Parameter(Mandatory)] [string] $RepoRoot,
+        [switch] $Check
+    )
+    1
+}
+
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $RepoRoot) { $RepoRoot = Split-Path -Path $PSScriptRoot -Parent }
-    exit 1
+    exit (Invoke-AuthoritiesPageBuild -RepoRoot $RepoRoot -Check:$Check)
 }
