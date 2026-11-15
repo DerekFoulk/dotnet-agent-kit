@@ -91,6 +91,25 @@ rules:
         how: "until the app follows the sample"
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*Contracts*/**"]
+  - id: API-007
+    statement: "An HTTP API follows HTTP's semantics as Azure's API design guidance sets them out: URIs name resources with nouns (plural for collections) and avoid verbs, using one sparingly, only for an operation that isn't a resource; a POST that creates a resource answers 201 Created with its URI in the Location header; PUT and DELETE are idempotent; and work that outlasts a request answers 202 Accepted with a Location header pointing at a status endpoint."
+    why: "Clients, caches and retries rely on what each method and status code promises: a retried PUT must not change anything twice, and a client finds what it created at Location (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/azure/architecture/best-practices/api-design, retrieved 2026-11-15", "https://learn.microsoft.com/azure/architecture/best-practices/api-implementation, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's FunctionalTests check that POST /bookmarks answers 201 Created with Location /bookmarks/{id}, and that a GET of that Location returns the same bookmark (BookmarksApiTests)"
+      - kind: advisory
+        in: [app]
+        how: "until the app follows the sample"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks the rest: nouns for resources, idempotent PUT and DELETE, and 202 with a status endpoint for long work (whose status endpoint answers 303 See Other with the new resource's Location once the work is done), none of which an analyzer sees"
+    scope: core
+    paths: ["**/Program.cs", "**/*Endpoints*.cs"]
 ---
 
 # API design
@@ -117,6 +136,7 @@ An app can mix them, for example an HTTP API for its UI and SignalR for live upd
 - **OpenAPI (API-003):** `AddOpenApi()`, and `MapOpenApi()` inside `if (app.Environment.IsDevelopment())`. Typed results (`Results<Ok<T>, NotFound>`) describe each success; `ProducesProblem` and `ProducesValidationProblem` describe each error body. A contract test checks that every error in the document is Problem Details. A UI such as Scalar is a package; add it in Development only.
 - **Pages (API-004):** the sample's `GET /bookmarks?offset=0&limit=25` answers `{ "items": [...], "nextLink": "/bookmarks?offset=25&limit=25" }`. The service asks the repository for one row more than the page, so it knows whether another page follows without counting the table, and refuses a page outside the limits even when the endpoint's check is bypassed. Order by something that sorts in creation order, so a new row lands on the last page instead of shifting earlier ones. On SQLite, which stores Guids as text, a UUID version 7 key does that (`Guid.CreateVersion7`), as in the sample, to the millisecond. On SQL Server it doesn't: `uniqueidentifier` treats the last six bytes as the most significant, so order by a creation-time column with the key as the tie-breaker. On any other database, check how it compares Guids before relying on the key. Either way, rows with the same timestamp, or written on clocks that disagree, can come in either order; for a collection where that matters, use cursor paging. The last page reachable within the offset cap links nowhere, even when more rows exist; reading deeper needs cursor paging too. The sample's `nextLink` is a relative path; behind a proxy that adds a path prefix, or with filters or sorting, build it with `LinkGenerator` and carry those query values, as Azure's guide asks. For a large or fast-changing collection, Azure's guide suggests cursor-based paging instead, with an ADR.
 - **Versioning (API-005):** none until the first breaking change that a caller depends on. Adding a field isn't breaking; removing or renaming one is. The contract test makes every change visible, so the review decides. The likely package then is `Asp.Versioning.Http`, from the .NET Foundation's `dotnet/aspnet-api-versioning`; Microsoft Learn doesn't cover it, so its ADR checks it first.
+- **HTTP semantics (API-007):** the sample's `POST /bookmarks` answers `TypedResults.Created($"/bookmarks/{bookmark.Id}", bookmark)`, so the client finds what it created at `Location`. A `PUT` replaces the whole resource and gives the same result however often it's sent. Long work answers `202 Accepted` with a `Location` that points at a status endpoint, which answers `303 See Other` with the new resource's `Location` once the work is done (Azure's [Asynchronous Request-Reply pattern](https://learn.microsoft.com/azure/architecture/patterns/asynchronous-request-reply)).
 - **Validation (API-006):** `AddValidation()`, then `[Range]`, `[Required]` and the other DataAnnotations attributes on parameters and request records. In .NET 10, attributes on a nullable value-type parameter are ignored when the client passes no value (dotnet/aspnetcore#67033, fixed for .NET 11, retrieved 2026-11-08), so give such parameters a default instead of making them nullable. On a record, target the properties (`[property: Required, MaxLength(500)] string Title`): the validation reads them there, and so does the OpenAPI document, which then shows `maxLength`. `[MaxLength]` throws on a `Uri`, so the sample adds a `UriLength` attribute. SEC-010 says every input gets a bound.
 
 ## Calling other APIs
@@ -126,4 +146,4 @@ An app can mix them, for example an HTTP API for its UI and SignalR for live upd
 
 ## Pending ratification
 
-API-001, API-005 and API-006 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them. You accepted API-002 to API-004 on 2026-11-09, and chose to wait on these three until the first real app uses them.
+API-001, API-005 and API-006 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them. You accepted API-002 to API-004 on 2026-11-09, and chose to wait on these three until the first real app uses them. API-007 came from the rules audit, which you accepted on 2026-11-12.
