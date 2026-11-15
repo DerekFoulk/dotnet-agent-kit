@@ -5,4 +5,4 @@ applyTo: '**/*.cs,BannedSymbols.txt'
 
 # Security
 
-- SEC-014: The security analyzers stay on and fail the build: every CA2xxx, CA3xxx and CA5xxx security rule that AnalysisLevel latest-all turns on, the SYSLIB obsoletions of unsafe APIs (BinaryFormatter, obsolete cryptography and TLS types), and BannedSymbols.txt's bans of the APIs those rules miss (Aes.Create's unauthenticated CBC, algorithms named at run time, DSA, the accept-any-certificate validator, DTD parsing and the legacy XML resolver and reader); a suppression of one names its reason where it lives.
+- SEC-014: The security analyzers stay on and fail the build: every CA2xxx, CA3xxx and CA5xxx security rule that AnalysisLevel latest-all turns on, the SYSLIB obsoletions of unsafe APIs (BinaryFormatter, obsolete cryptography and TLS types), and BannedSymbols.txt's bans of the APIs those rules miss (Aes.Create, whose CBC needs an HMAC nothing checks for, algorithms named at run time, the accept-any-certificate validator, DTD parsing and the legacy XML resolver and reader); a suppression of one names its reason where it lives.

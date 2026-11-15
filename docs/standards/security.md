@@ -207,8 +207,8 @@ rules:
     scope: core
     paths: ["**/*Endpoints*.cs", "**/*Contracts*/**"]
   - id: SEC-014
-    statement: "The security analyzers stay on and fail the build: every CA2xxx, CA3xxx and CA5xxx security rule that AnalysisLevel latest-all turns on, the SYSLIB obsoletions of unsafe APIs (BinaryFormatter, obsolete cryptography and TLS types), and BannedSymbols.txt's bans of the APIs those rules miss (Aes.Create's unauthenticated CBC, algorithms named at run time, DSA, the accept-any-certificate validator, DTD parsing and the legacy XML resolver and reader); a suppression of one names its reason where it lives."
-    why: "Microsoft's Secure Coding Guidelines and its security rule pages say what to avoid; the analyzers find much of it, and the Secure Coding Guidelines pass found what they don't (an approved but unauthenticated CBC from Aes.Create, an algorithm picked by name, the accept-all certificate delegate, DTD parsing), so the kit bans those (owner O7, 2026-11-12; Secure Coding Guidelines pass, 2026-11-15)."
+    statement: "The security analyzers stay on and fail the build: every CA2xxx, CA3xxx and CA5xxx security rule that AnalysisLevel latest-all turns on, the SYSLIB obsoletions of unsafe APIs (BinaryFormatter, obsolete cryptography and TLS types), and BannedSymbols.txt's bans of the APIs those rules miss (Aes.Create, whose CBC needs an HMAC nothing checks for, algorithms named at run time, the accept-any-certificate validator, DTD parsing and the legacy XML resolver and reader); a suppression of one names its reason where it lives."
+    why: "Microsoft's Secure Coding Guidelines and its security rule pages say what to avoid; the analyzers find much of it, and the Secure Coding Guidelines pass found what they don't (CBC from Aes.Create, which is safe only with an HMAC checked before decrypting, an algorithm picked by name, the accept-all certificate delegate, DTD parsing), so the kit bans those; a documented need, such as CBC with encrypt-then-MAC or a trusted stylesheet's xsl:include, suppresses the ban with its reason (owner O7, 2026-11-12; Secure Coding Guidelines pass, 2026-11-15)."
     layer: outside
     basis: authority
     status: accepted
@@ -216,7 +216,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: AnalysisLevel latest-all turns the security rules on and STY-004 makes them errors, BannedSymbols.txt's security block bans the APIs they miss (RS0030); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA5350, CA5351, CA5358, CA5359, CA5390, CA5394, CA5397, CA2351, SYSLIB0011, SYSLIB0021 and each ban"
+        how: "build: AnalysisLevel latest-all turns the security rules on and STY-004 makes them errors, BannedSymbols.txt's security block bans the APIs they miss (RS0030); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA5350, CA5351, CA5358, CA5359, CA5390, CA5394, CA5397, CA2351, SYSLIB0011, SYSLIB0021 and each banned API (one overload each; its test that every banned ID resolves covers the other overloads)"
       - kind: advisory
         in: [kit, app]
         how: "code review checks that a suppression of a security rule names its reason; the taint rules (CA3001 to CA3012) see only some paths, such as not a request value passed through a minimal API lambda, which code review and CodeQL (SEC-006) cover"
