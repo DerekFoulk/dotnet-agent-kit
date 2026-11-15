@@ -7,6 +7,6 @@ internal static class Code
     internal static void Use(Aes aes)
     {
         ArgumentNullException.ThrowIfNull(aes);
-        aes.Mode = CipherMode.ECB;
+        aes.Mode = CipherMode.CFB;
     }
 }

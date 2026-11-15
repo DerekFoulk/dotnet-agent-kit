@@ -44,7 +44,7 @@ BeforeDiscovery {
         # the build. The first ten pin rules that are on already; the last six are BannedSymbols entries for what they miss.
         @{ Fixture = 'BrokenHash'; Diagnostic = 'CA5351'; Description = 'MD5, a broken hash (SEC-014)' }
         @{ Fixture = 'WeakHash'; Diagnostic = 'CA5350'; Description = 'SHA-1, a weak hash (SEC-014)' }
-        @{ Fixture = 'UnsafeCipherMode'; Diagnostic = 'CA5358'; Description = 'ECB, an unsafe cipher mode (SEC-014)' }
+        @{ Fixture = 'UnsafeCipherMode'; Diagnostic = 'CA5358'; Description = 'CFB, an unsafe cipher mode (SEC-014)' }
         @{ Fixture = 'HardcodedKey'; Diagnostic = 'CA5390'; Description = 'an encryption key written in the code (SEC-014)' }
         @{ Fixture = 'InsecureRandom'; Diagnostic = 'CA5394'; Description = 'Random for a value that should be unguessable (SEC-014)' }
         @{ Fixture = 'DeprecatedTls'; Diagnostic = 'CA5397'; Description = 'TLS 1.1 (SEC-014)' }
