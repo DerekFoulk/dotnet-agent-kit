@@ -25,9 +25,6 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks for EnsureCreated and for a HasPendingModelChanges test, until the sample follows (GAP-025)"
-      - kind: gate
-        in: [kit, app]
-        how: "build: EF Core's own analyzer EF1002 (raw SQL built by interpolation, a SQL injection risk) is a warning, which STY-004 makes an error; a probe of FromSqlRaw with an interpolated string in the sample's Infrastructure failed the build with error EF1002 (2026-11-15)"
     scope: core
     paths: ["**/*Infrastructure*/**", "**/Migrations/**", "**/Program.cs"]
   - id: DAT-003
@@ -71,7 +68,7 @@ rules:
         in: [kit, app]
         how: "code review checks the test projects' database setup and the app's local development setup (a container or the emulator, not SQLite or the in-memory provider), until the sample proves it (GAP-025)"
     scope: core
-    paths: ["**/*Tests*/**"]
+    paths: ["**/*Tests*/**", "**/*AppHost*/**", "**/compose*.yaml", "**/docker-compose*.yml"]
   - id: DAT-006
     statement: "A cloud database starts on its free offer where the guide names one, with the setting that keeps it inside the free amount (Azure SQL Database: the free limit with AutoPause, which stops billing; Azure Cosmos DB: the free tier with a total throughput limit of 1000 RU/s, which caps throughput but not storage past 25 GB), plus a Cost Management budget alert, the only signal for what a setting can't stop; turning a guard off or moving to a paid tier is the owner's call (ARC-012, the cost rule)."
     why: "A free offer that silently starts billing is the most common surprise cost; the guard is a setting chosen when the resource is created, and a budget only alerts, it doesn't stop spending (owner, 2026-11-10; SEC-003)."
@@ -87,7 +84,7 @@ rules:
     paths: ["**/*.bicep", "**/infra/**"]
   - id: DAT-007
     statement: "A connection to a cloud or server database retries transient failures with its provider's execution strategy (EnableRetryOnFailure for SQL Server and Azure SQL, or the provider's own), and work that a retry could repeat runs inside the strategy as one unit."
-    why: "A cloud database drops connections and throttles as a matter of course; EF Core's execution strategies retry what's transient, and Microsoft's connection resiliency guidance says a user-started transaction must run through the strategy, or a retry repeats only part of it (rules audit, owner 2026-11-12)."
+    why: "A cloud database drops connections and throttles as a matter of course; EF Core's execution strategies retry what's transient, and Microsoft's connection resiliency guidance says a user-started transaction must run through the strategy, or a retry repeats only part of it. The same page warns that a retried commit can insert a row twice where keys are store-generated, and that retries make EF Core buffer results, which costs memory (rules audit, owner 2026-11-12)."
     layer: outside
     basis: authority
     status: accepted
@@ -99,7 +96,7 @@ rules:
     scope: core
     paths: ["**/*Infrastructure*/**"]
   - id: DAT-008
-    statement: "An entity that two users or requests can change at the same time carries a concurrency token (a rowversion with IsRowVersion, or IsConcurrencyToken on a property the app changes), and a conflict is answered as a 409 or retried with fresh values, never silently overwritten."
+    statement: "An entity that two users or requests can change at the same time carries a concurrency token (a rowversion with IsRowVersion, or IsConcurrencyToken on a property the app changes), and a conflict is reported to the caller (a 409 in an HTTP API) or retried with fresh values, never silently overwritten."
     why: "Without a token, the last write wins and an earlier change is lost with no error; EF Core's optimistic concurrency detects the conflict at SaveChanges (rules audit, owner 2026-11-12)."
     layer: outside
     basis: authority
@@ -112,23 +109,39 @@ rules:
     scope: core
     paths: ["**/*Infrastructure*/**", "**/*Domain*/**"]
   - id: DAT-009
-    statement: "Data access follows Microsoft's EF Core performance guidance: queries project only what they need, read-only queries don't track, collections are paged in the database, related data loads without N+1 round trips, and nothing is materialized before it's filtered."
+    statement: "Data access follows Microsoft's EF Core efficient-querying guidance unless a measurement shows otherwise: queries project only what they need, read-only queries don't track, collections are paged in the database, related data loads without N+1 round trips and without lazy loading, and nothing is materialized before it's filtered."
     why: "EF Core's defaults are correct but not always fast, and the costly mistakes (N+1 queries, tracking what's only read, filtering in memory) don't show in a small test database (rules audit, owner 2026-11-12)."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/ef/core/performance/, retrieved 2026-11-15"]
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/ef/core/performance/efficient-querying, retrieved 2026-11-15", "https://learn.microsoft.com/ef/core/querying/tracking, retrieved 2026-11-15", "https://learn.microsoft.com/ef/core/performance/, retrieved 2026-11-15"]
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "code review checks data access with the optimizing-ef-core-queries skill; CA1849 and CA2016 already gate synchronous and uncancellable calls"
+        how: "code review checks data access with the optimizing-ef-core-queries skill, since no analyzer sees a query's shape; CA1849 already gates a synchronous SaveChanges in async code and CA2016 an unforwarded cancellation token, but a synchronous ToList isn't flagged"
+    scope: core
+    paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
+  - id: DAT-010
+    statement: "Raw SQL is parameterized: FromSql and ExecuteSql with an interpolated string, which EF Core turns into parameters, or FromSqlRaw and ExecuteSqlRaw with explicit parameters; never a string built by concatenation or interpolation into a Raw method."
+    why: "SQL built from a caller's text is SQL injection, OWASP's oldest top risk; EF Core's interpolated-string methods parameterize every value, and its own analyzer EF1002 flags the unsafe form (rules audit, owner 2026-11-12, where EF1002 was to be verified)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/ef/core/querying/sql-queries, retrieved 2026-11-15", "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: EF Core's analyzer EF1002 (an interpolated string into FromSqlRaw or ExecuteSqlRaw) is a warning, which STY-004 makes an error; a probe in the sample's Infrastructure failed the build with error EF1002 (2026-11-15)"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks a Raw call built by concatenation, which EF1002 doesn't see"
     scope: core
     paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
 ---
 
 # Data
 
-How an app stores its data: which database it picks (DAT-001, `docs/database-guide.md`, ADR-0053), how its schema changes (DAT-002 to DAT-004, ADR-0054), how its tests reach the database (DAT-005), and how a cloud database stays free until the owner decides otherwise (DAT-006).
+How an app stores its data: which database it picks (DAT-001, `docs/database-guide.md`, ADR-0053), how its schema changes (DAT-002 to DAT-004, ADR-0054), how its tests and local development reach the database (DAT-005), how a cloud database stays free until the owner decides otherwise (DAT-006), and how the code reaches the data: resilient connections (DAT-007), no lost updates (DAT-008), efficient queries (DAT-009) and parameterized SQL (DAT-010).
 
 ## Changing the schema safely
 
@@ -155,7 +168,7 @@ The deployment applies them, before the new version takes traffic (DAT-004). Bui
 
 ## Testing against the real engine
 
-Tests that touch the database run against the same engine as production (DAT-005), with the app's migrations applied:
+Tests that touch the database, and local development, run against the same engine as production (DAT-005), with the app's migrations applied. For local development that's a container (Docker Compose, or .NET Aspire's AppHost) or the official emulator:
 
 - **SQL Server or Azure SQL Database:** the `Testcontainers.MsSql` package starts `mcr.microsoft.com/mssql/server` in Docker for the test run. The container's Developer edition is licensed for development and testing only, and needs `ACCEPT_EULA=Y`.
 - **PostgreSQL:** `Testcontainers.PostgreSql`, the same way.
@@ -173,4 +186,4 @@ The sample app still uses SQLite, with `EnsureCreated` at startup. Moving it to 
 
 ## Pending ratification
 
-DAT-001 to DAT-006 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them.
+DAT-001 to DAT-006 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them. DAT-007 to DAT-010 came from the rules audit, which you accepted on 2026-11-12.

@@ -107,7 +107,7 @@ areas:
     sources:
       - "https://asvs.owasp.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/azure/well-architected/security/, retrieved 2026-11-07"
-    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, ARC-006]
+    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, ARC-006, DAT-010]
     gaps:
       - id: GAP-005
         gap: "No code scanning: CodeQL is free on public repos but isn't set up. Closed by ADR-0036: codeql.reusable.yml runs in the kit's and every public app's CI (SEC-006, accepted 2026-11-09), and the kit's ruleset requires its results before merging."
@@ -292,7 +292,7 @@ Each area in the front matter above has:
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 11 | 10 | 1 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
-| Security | 7 | 5 | 2 | 4 | 0 |
+| Security | 8 | 6 | 2 | 4 | 0 |
 | Reliability | 5 | 2 | 3 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 4 | 4 | 0 | 3 | 0 |
@@ -303,7 +303,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 81 rules in force, 50 checked by a tool and 31 advisory; 25 proposed; 16 open gaps.
+**Overall:** 82 rules in force, 51 checked by a tool and 31 advisory; 25 proposed; 16 open gaps.
 
 Open gaps:
 

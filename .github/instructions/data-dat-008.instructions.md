@@ -5,4 +5,4 @@ applyTo: '**/*Infrastructure*/**,**/*Domain*/**'
 
 # Data
 
-- DAT-008: An entity that two users or requests can change at the same time carries a concurrency token (a rowversion with IsRowVersion, or IsConcurrencyToken on a property the app changes), and a conflict is answered as a 409 or retried with fresh values, never silently overwritten.
+- DAT-008: An entity that two users or requests can change at the same time carries a concurrency token (a rowversion with IsRowVersion, or IsConcurrencyToken on a property the app changes), and a conflict is reported to the caller (a 409 in an HTTP API) or retried with fresh values, never silently overwritten.
