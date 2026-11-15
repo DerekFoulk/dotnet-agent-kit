@@ -93,6 +93,24 @@ Describe 'Build-AuthoritiesPage.ps1' {
 
             @(Get-AuthoritiesProblem -Cited @(New-Cited 'https://www.rfc-editor.org/rfc/rfc9457') -Entries @($entry)) | Should -Be @($Message)
         }
+
+        It 'reports an authority rule that cites no authority''s or project''s page, but not one that cites practitioners too' {
+            $entries = @(
+                (New-Entry -Name 'Fowler' -Class 'practitioner' -Match 'https://martinfowler.com/')
+                (New-Entry -Name 'Microsoft Learn' -Match 'https://learn.microsoft.com/')
+                (New-Entry -Name 'axe-core' -Class 'project' -Match 'https://github.com/dequelabs/')
+            )
+            $cited = @(
+                (New-Cited 'https://martinfowler.com/bliki/Yagni.html' -RuleId 'CRF-004')
+                (New-Cited 'https://martinfowler.com/bliki/Yagni.html' -RuleId 'CRF-003')
+                (New-Cited 'https://learn.microsoft.com/dotnet/architecture/x' -RuleId 'CRF-003')
+                (New-Cited 'https://github.com/dequelabs/axe-core' -RuleId 'UI-002')
+                (New-Cited 'https://martinfowler.com/articles/designDead.html' -RuleId 'CRF-009' -Basis 'preference')
+            )
+
+            @(Get-AuthoritiesProblem -Cited $cited -Entries $entries) |
+                Should -Be @("CRF-004 has basis 'authority' but cites no page classed authority or project; cite one, or make it a preference (ADR-0063)")
+        }
     }
 
     Context 'Classing a cited URL' {
