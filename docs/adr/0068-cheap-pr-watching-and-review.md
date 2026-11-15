@@ -26,8 +26,7 @@ ADR-0067 made the reviewer agent, which runs in the owner's Claude usage, review
 - The desktop app's PR monitor is optional, off by default.
 - The first review round stays full, on the session's model, with focused reviewers side by side. A fix round runs one reviewer on the fix commits only, on a cheaper model when the diff is under 100 lines and touches no guardrail.
 - In Claude Code, each new PR's work starts in a fresh session.
-- **Trade-offs:**
-  - Fewer and smaller calls, each reading the conversation from a warm cache on any plan.
+- **Trade-offs:** Fewer and smaller calls, each reading the conversation from a warm cache on any plan.
   - While a wait runs, CI and Copilot's review still reach the agent within a poll (20 seconds).
   - The full first round keeps review quality where most findings come from.
   - CI that runs past one wait needs a second call; on kit CI that is at most one more cached call.
