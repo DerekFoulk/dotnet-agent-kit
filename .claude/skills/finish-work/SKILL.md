@@ -22,7 +22,7 @@ Then confirm:
 
 ## 2. Independent review, by the reviewer agent
 
-Run the `reviewer` subagent (`.claude/agents/reviewer.md`) on the branch, before the PR opens (DOD-003, ADR-0067). It hasn't seen your work, and it reviews against the code-review instructions (`docs/code-review.md`) and the rule files. Fix each finding test-first, or answer it with a reason. Then run step 1 again.
+Run the `reviewer` subagent (`.claude/agents/reviewer.md`) on the branch, before the PR opens (DOD-003, ADR-0067). It hasn't seen your work, and it reviews against the code-review instructions (`docs/code-review.md`) and the rule files. Fix each finding test-first, or answer it with a reason; in review mode, leaving one unfixed is the owner's call (DOD-005). Then run step 1 again.
 
 **Give it what you've already run.** Pass the gate results from step 1 (each command and its count) in the reviewer's prompt, so it checks the code and the claims instead of repeating every gate. It reruns a gate only when what it reviews could change the result.
 

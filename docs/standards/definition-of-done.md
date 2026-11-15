@@ -31,7 +31,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: DOD-003
-    statement: "Before the owner reviews, an independent read-only reviewer agent that hasn't seen the work (.claude/agents/reviewer.md) reviews every branch against the kit's code-review instructions (docs/code-review.md) and rule files, before its pull request opens and again after each round of fixes; the agent ranks each finding Blocking, Should fix or Consider and answers it (DOD-005), and reviews end at the first round with nothing blocking or should-fix."
+    statement: "Before the owner reviews, an independent read-only reviewer agent that hasn't seen the work (.claude/agents/reviewer.md) reviews every branch against the kit's code-review instructions (docs/code-review.md) and rule files, before its pull request opens (for a PR a bot opens, before it merges) and again after each round of fixes; the implementing agent ranks each finding Blocking, Should fix or Consider and answers it (DOD-005), and reviews end at the first round with nothing blocking or should-fix."
     why: "A reviewer with fresh eyes caught four blocking issues in one project, and reviewing every nit fix again turned PRs 32 and 33 into hours-long loops (owner, 2026-11-09). GitHub Copilot code review stood in for the reviewer agent from 2026-11-12 (ADR-0064) until the owner's AI credits ran out; on 2026-11-14 he turned it off and brought the agent back (ADR-0067)."
     layer: owner
     basis: preference
