@@ -230,6 +230,22 @@ Describe 'Build-AuthoritiesPage.ps1' {
         }
     }
 
+    Context 'Reporting every problem at once' {
+        It 'reports a page with no block and the problems found before it, so one run shows everything to fix' {
+            $root = Join-Path $TestDrive "repo-$(New-Guid)"
+            $script:standards = Join-Path $root 'docs' 'standards'
+            New-Item -ItemType Directory -Path $script:standards | Out-Null
+            New-StandardsFile -Topic 'api-design' -Rules @(New-Rule -Id 'API-002' -Sources 'https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-01')
+            Set-Content -Path (Join-Path $root 'docs' 'authorities.yml') -Value "sources:`n  - name: Other`n    publisher: Other`n    class: authority`n    covers: x`n    match:`n      - https://example.com/`n"
+            Set-Content -Path (Join-Path $root 'docs' 'authorities.md') -Value "# Sources`n`nNo markers.`n"
+
+            $text = (@(Invoke-AuthoritiesPageBuild -RepoRoot $root 6>&1) | Where-Object { $_ -is [System.Management.Automation.InformationRecord] }) -join "`n"
+
+            $text | Should -Match 'https://www\.rfc-editor\.org/rfc/rfc9457 \(API-002\) matches no entry'
+            $text | Should -Match 'needs one block'
+        }
+    }
+
     Context 'Classing a cited URL' {
         It 'gives a URL to the entry with the longest matching prefix, whatever the order' {
             $entries = @(
