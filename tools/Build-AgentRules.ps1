@@ -10,9 +10,9 @@
       .github/instructions/<topic>[-<rule-id>].instructions.md   Copilot, the same split with applyTo:
     Also writes .github/instructions/code-review.instructions.md from docs/code-review.md, for a Copilot code
     review the owner asks for (ADR-0064, ADR-0067), and .github/copilot-instructions.md as a copy of AGENTS.md,
-    because Visual Studio reads that file but doesn't document reading AGENTS.md. It also fills each "rules from docs/standards/<file>.md" block in
-    AGENTS.md and templates/app/AGENTS.md with that standard's rules, leaving the rest of those files alone
-    (ADR-0065). Proposed and retired rules aren't in force, so they're
+    because Visual Studio reads that file but doesn't document reading AGENTS.md. It also fills each
+    "rules from docs/standards/<file>.md" block in AGENTS.md and templates/app/AGENTS.md with that standard's
+    rules, leaving the rest of those files alone (ADR-0065). Proposed and retired rules aren't in force, so they're
     left out. Generated files carry a marker; generated files no standard produces any more are removed.
 
     -Check writes nothing and exits 1 when any generated file is missing, hand-edited or stale (S3).
