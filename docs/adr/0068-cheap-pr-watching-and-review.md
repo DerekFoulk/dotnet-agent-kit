@@ -26,15 +26,15 @@ ADR-0067 made the reviewer agent, which runs in the owner's Claude usage, review
 - The desktop app's PR monitor is optional, off by default.
 - The first review round stays full, on the session's model, with focused reviewers side by side. A fix round runs one reviewer on the fix commits only, on a cheaper model when the diff is under 100 lines and touches no guardrail.
 - In Claude Code, each new PR's work starts in a fresh session.
-- **Trade-offs:** Fewer and smaller calls, each reading the conversation from a warm cache on any plan.
+- **Trade-offs:** Fewer and smaller calls, each reading the conversation from a warm cache on any plan, with about a minute to spare: the next call goes out after the reply that started the wait, the shell's start-up, the 4 minutes and one last poll. A stalled `gh` call or long thinking can still push it past five minutes.
   - While a wait runs, CI and Copilot's review still reach the agent within a poll (20 seconds).
   - The full first round keeps review quality where most findings come from.
   - CI that runs past one wait needs a second call; on kit CI that is at most one more cached call.
-  - With the monitor off, a person's comment or a merge conflict that lands between turns waits until the owner points at it, or until `finish-work` step 5 checks the PR (`mergeStateStatus`, `Get-OpenFinding`) before a merge.
+  - With the monitor off, a person's review or a merge conflict that lands between turns waits until `finish-work` step 5 checks the PR (`mergeStateStatus`, `Get-OpenFinding`) before a merge, or until the owner points at it. A person's plain PR comment, outside a review, is in no check, so it waits for the owner.
 - **Reversibility:** Easy: one default value and some skill text.
 - **Risk:** Low.
   - A small fix reviewed on a cheaper model could miss something the strong model would catch. The guardrail exclusion and the 100-line limit keep that to small, ordinary fixes, and CI still runs every gate.
-  - A missed between-turn event can't merge unseen: step 5's checks run first.
+  - A between-turn review or conflict can't merge unseen: step 5's checks run first. A plain PR comment can: on a kit PR only the owner and agents comment, and the owner speaks in the chat (COM-007), so that gap is small. Reading plain comments in step 5 would close it, and waits for its own PR.
 
 ### Option 2: The same, with a 9-minute default
 

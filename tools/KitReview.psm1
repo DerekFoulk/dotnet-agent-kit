@@ -603,8 +603,8 @@ function Get-PullRequestChange {
 # run on the head is pending, and a pass is confirmed by the next poll; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
 # still waits for. -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
 # kit's one watcher, for any agent in any tool (owner, 2026-11-14). Polling costs no model call, so an agent runs it in
-# the foreground. The default time-out stays under 5 minutes, the prompt cache's shortest lifetime, so the call after a
-# wait reads the conversation from the cache on any plan (ADR-0068).
+# the foreground. The default time-out stays under 5 minutes, the prompt cache's shortest lifetime, by about a minute, so
+# the call after a wait usually reads the conversation from the cache on any plan (ADR-0068).
 function Wait-PullRequest {
     param(
         [Parameter(Mandatory)] [string] $Repository,
