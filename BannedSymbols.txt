@@ -78,3 +78,20 @@ M:System.Linq.Expressions.Expression.Property(System.Linq.Expressions.Expression
 M:System.Linq.Expressions.Expression.Property(System.Linq.Expressions.Expression,System.String,System.Linq.Expressions.Expression[]);Finds non-public indexers by name; pass a public PropertyInfo (CRF-010)
 M:System.Linq.Expressions.Expression.New(System.Type);Binds a non-public parameterless constructor; pass type.GetConstructor(Type.EmptyTypes), or use Expression.Default(type) for a struct without one (CRF-010)
 M:System.Linq.Expressions.Expression.PropertyOrField(System.Linq.Expressions.Expression,System.String);Finds non-public members by name; pass a public FieldInfo or PropertyInfo (CRF-010)
+
+// Cryptography, certificates and XML (SEC-014, the Secure Coding Guidelines pass): APIs the security analyzers that
+// latest-all turns on don't see. Aes.Create gives AES in CBC mode with no integrity check, which CA5358 approves;
+// Microsoft says CBC decryption without a checked HMAC or signature is no longer safe
+// (https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode).
+M:System.Security.Cryptography.Aes.Create;AES from Aes.Create is CBC with no integrity check; use AesGcm, ChaCha20Poly1305 or ASP.NET Core Data Protection (SEC-014)
+M:System.Security.Cryptography.Aes.Create(System.String);AES from Aes.Create is CBC with no integrity check; use AesGcm, ChaCha20Poly1305 or ASP.NET Core Data Protection (SEC-014)
+M:System.Security.Cryptography.CryptoConfig.CreateFromName(System.String);Names the algorithm at run time, which CA5350 and CA5351 can't check; create the one you mean (SEC-014)
+M:System.Security.Cryptography.CryptoConfig.CreateFromName(System.String,System.Object[]);Names the algorithm at run time, which CA5350 and CA5351 can't check; create the one you mean (SEC-014)
+M:System.Security.Cryptography.DSA.Create;DSA is a weak signature algorithm; use ECDsa or RSA (CA5384, SEC-014)
+M:System.Security.Cryptography.DSA.Create(System.Int32);DSA is a weak signature algorithm; use ECDsa or RSA (CA5384, SEC-014)
+M:System.Security.Cryptography.DSA.Create(System.Security.Cryptography.DSAParameters);DSA is a weak signature algorithm; use ECDsa or RSA (CA5384, SEC-014)
+M:System.Security.Cryptography.DSA.Create(System.String);DSA is a weak signature algorithm; use ECDsa or RSA (CA5384, SEC-014)
+P:System.Net.Http.HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;Accepts every certificate; trust the CA that signed the certificate instead (CA5359, SEC-014)
+F:System.Xml.DtdProcessing.Parse;Parsing DTDs lets the input pull in files and URLs; leave DtdProcessing at Prohibit or Ignore (CA3075, SEC-014)
+T:System.Xml.XmlUrlResolver;Resolves external references named in the input; set XmlResolver to null (CA3075, SEC-014)
+T:System.Xml.XmlTextReader;A legacy reader with no safe default; use XmlReader.Create with XmlReaderSettings (CA3075, CA3077, SEC-014)
