@@ -150,7 +150,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: CRF-011
-    statement: "Keep nesting to 4 levels deep at most, 100 statements per member, 800 lines per file, and classes whose methods all share state (LCOM4 of 1); a member, type or file that needs more carries the comment // CRF-011 exception: <reason>, where it lives."
+    statement: "Keep nesting to 3 levels deep at most, 30 statements per member, 400 lines per file, and classes whose methods all share state (LCOM4 of 1); a member, type or file that needs more carries the comment // CRF-011 exception: <reason>, where it lives."
     why: "Deep nesting, long members and files, and classes whose members don't work together are where code gets hard to read and change (CRF-008's metrics don't measure them); a tool that enforces them keeps them from drifting, and an exception that carries its reason keeps a rare real case possible without hiding it (CRF-001)."
     layer: owner
     basis: preference
