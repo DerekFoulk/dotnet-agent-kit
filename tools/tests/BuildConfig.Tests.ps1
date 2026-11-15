@@ -26,7 +26,9 @@ BeforeDiscovery {
         @{ Fixture = 'ExplicitNew'; Diagnostic = 'IDE0090'; Description = 'new with the type repeated where a target-typed new() does (STY-007)' }
         @{ Fixture = 'ConstructorOnlyAssigns'; Diagnostic = 'IDE0290'; Description = 'a constructor that only assigns its parameters, where a primary constructor does (STY-007)' }
         @{ Fixture = 'MixedOperators'; Diagnostic = 'IDE0048'; Description = 'operators of different precedence with no parentheses to show the order (STY-007)' }
-        @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
+        # STY-008 (rules audit, owner 2026-11-12): XML documentation comments on every publicly visible member.
+        @{ Fixture = 'UndocumentedPublicMember'; Diagnostic = 'CS1591'; Description = 'a public member with no XML documentation comment (STY-008)' }
+        @{ Fixture = 'NullableViolation';Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
         @{ Fixture = 'AwaitInLibrary'; Diagnostic = 'CA2007'; Description = 'an await without ConfigureAwait in a class library' }
