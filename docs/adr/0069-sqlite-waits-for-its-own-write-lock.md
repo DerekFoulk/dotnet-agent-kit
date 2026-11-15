@@ -5,43 +5,68 @@
 
 ## Context
 
-The sample's Locust load test (ADR-0062) failed 3 of 25 runs on 2026-11-13 and 14, on branches that don't touch the sample: `POST /bookmarks` had a p95 of 110, 150 and 190 ms against its 100 ms budget, while its median stayed at 3 ms and no request failed. The runs' artifacts hold Locust's stats and the app's log, where EF Core logs how long each SQL command took.
+The sample's Locust load test (ADR-0062) failed 4 of its 55 runs on 2026-11-13 and 14, all on branches that don't touch the sample. In each, `POST /bookmarks` had a p95 over its 100 ms budget: 110, 140, 150 and 190 ms. Its median stayed at 3 ms, and no request failed. Each run's artifact holds Locust's stats and the app's log, where EF Core logs how long each SQL command took. Ten runs' logs were read: the four red ones and six green ones.
 
-- **The time is in SQLite's INSERT.** In the three red runs, 24 to 73 of about 290 INSERTs took 20 ms or more, up to 423 ms. In green runs, 0 or 1 did, and in the steadiest one no INSERT took more than 2 ms.
-- **Many of the slow ones took exactly 151 ms.** 16 of them in the worst run, and others near 300 ms. Microsoft.Data.Sqlite answers a locked database (`SQLITE_BUSY`) by sleeping a fixed 150 ms on the request's thread, then trying again until the command timeout (`SqliteDataReader.NextResult`). It never sets SQLite's own busy timeout, so SQLite reports the lock at once.
-- **The rest were the commits that held the lock.** They took 10 to 140 ms in the red runs, against 2 ms or less in green ones. They're spread through the whole run, in bursts, not at the start, so the app's warm-up doesn't explain them. SQLite takes one write at a time, and the SQLite the sample loads (3.53.3, from SQLitePCLRaw's e_sqlite3) is built with `DEFAULT_WAL_SYNCHRONOUS=2`, `FULL`: each commit syncs its log file to disk. The likeliest cause is that runner's disk, shared with other jobs, but the sync time isn't measured on its own.
+- **The time is in SQLite's INSERT.**
+  - Red runs: 24 to 73 of their 262 to 298 INSERTs took 20 ms or more, up to 423 ms.
+  - Green runs: 0 to 7 did, and in the steadiest one no INSERT took more than 2 ms.
+- **Many of the slow ones took exactly 151 ms.** The worst run had 16, and 6 more between 290 and 314 ms, about two of them. Green runs had 0 to 3 near 151 ms.
+  - Microsoft.Data.Sqlite answers a locked database (`SQLITE_BUSY`) by sleeping a fixed 150 ms on the request's thread, then trying again until the command timeout (`SqliteDataReader.NextResult`).
+  - It never sets SQLite's own busy timeout, so SQLite reports the lock at once.
+  - So the pause comes on every runner, whenever two of the ten users' writes meet. On green runners it hits under 5% of the writes; on the red ones, more.
+- **The red runners were slow at everything.**
+  - The other slow INSERTs took 10 to 150 ms, against 2 ms or less on the steadiest green runner.
+  - SELECTs slowed too: 2 to 6 per red run took 100 to 248 ms, though a read in WAL mode doesn't wait for the write lock. No green run had one.
+  - The slow ones come in bursts through the whole run, not only at the start, so the app's warm-up doesn't explain them.
+  - A slow commit holds SQLite's one write lock longer, so writes meet more often, and each one that meets it pays the 150 ms sleep on top. The sample's SQLite (3.53.3, read with `sqlite_version()`) uses SQLite's default `DEFAULT_WAL_SYNCHRONOUS=2`, `FULL` (read with `pragma_compile_options`), so each commit syncs its log to disk. Why the runner was slow isn't measured: a shared runner's disk or CPU are both likely.
 
-So on a runner whose disk is slow, commits hold the write lock longer, and two of the ten users' writes overlap more often. Each overlap costs the waiting write at least 150 ms, however soon the lock is free. When more than 5% of the writes overlap, the p95 is 150 ms. Warm-up, too few samples (about 290 POSTs, so the p95 rests on about 15) and the budget aren't the cause: in the worst run, only 6 of the 298 INSERTs took over 100 ms without a 150 ms sleep in them.
+Without the sleeps, the worst run would likely have been within budget, though that can't be proven from the logs: 7 of its 298 INSERTs took 100 to 150 ms. Every one that took longer than that is consistent with one or two 150 ms sleeps on top of a shorter wait. Too few samples isn't the cause either: about 290 POSTs a run puts about 15 above the p95.
 
 A real user of an app on SQLite would see the same pause whenever two writes meet.
 
 ## Options
 
-### Option 1: SQLite's own busy timeout on every connection
+### Option 1: A short busy timeout on every connection
 
-An EF Core connection interceptor calls `sqlite3_busy_timeout` on each connection EF Core opens, through the `SqliteConnection.Handle` that Microsoft.Data.Sqlite exposes for native calls. SQLite's busy handler then waits for the lock itself, in short sleeps (1, 2, 5, 10, 15, 20, 25 ms and on), and goes on soon after the lock is free. The timeout is as long as a command may run: EF Core's command timeout when one is set, else the connection's `Default Timeout` (30 seconds unless the connection string says otherwise). A timeout of 0, Microsoft.Data.Sqlite's "no limit", becomes SQLite's longest wait (`int.MaxValue` milliseconds), since 0 would turn SQLite's handler off.
+An EF Core connection interceptor calls `sqlite3_busy_timeout` with 1 second on each connection EF Core opens. It goes through the `SqliteConnection.Handle` that Microsoft.Data.Sqlite exposes for native calls. SQLite's busy handler then waits for the lock itself, polling in sleeps of 1, 2, 5, 10, 15, 20 and 25 ms that grow to 50 and then 100 ms, and goes on about as soon as the lock is free. A lock held longer than a second falls back to Microsoft.Data.Sqlite's own retries, which still end at the command timeout.
 
-- **Trade-offs:** Covers every connection and every statement, writes from other processes too, with no change to the code that writes. A waiting write still blocks its thread while SQLite sleeps, as every Microsoft.Data.Sqlite call does (its async methods run synchronously). It's one small class, with no SQL text built.
+- **Trade-offs:**
+  - Covers every connection and every statement, including writes from another process, with no change to the code that writes.
+  - The busy timeout is per connection and per statement, while Microsoft.Data.Sqlite's command timeout covers a whole command, which can hold several statements (dotnet/efcore#28135). A second is short, so each statement can run past the command's timeout by a second at most. A command timeout is whole seconds, so a second is its smallest step.
+  - A waiting write still blocks its thread while SQLite sleeps. Every Microsoft.Data.Sqlite call does that, since its async methods run synchronously.
+  - It's one small class, with no SQL text built.
 - **Reversibility:** Easy: remove the interceptor.
-- **Risk:** Low. SQLite sleeps in fractions of a second only where it can: in SQLite 3.41 a Unix build needed `HAVE_USLEEP`, or it slept in whole seconds, and by 3.49 it does unless built with `HAVE_NANOSLEEP=0`. SQLitePCLRaw's Linux build sets neither, and the sample loads 3.53.3; the load test's app log shows each INSERT's time, so a whole-second sleep would show at once. It doesn't help a read-then-write transaction that SQLite refuses at once to avoid a deadlock (`SQLITE_BUSY_SNAPSHOT`); the sample has none.
+- **Risk:** Low.
+  - SQLite sleeps in fractions of a second only where it can. In SQLite 3.41 a Unix build needed `HAVE_USLEEP`, or it slept in whole seconds. By 3.49 it does unless built with `HAVE_NANOSLEEP=0`, and 3.53.3's code is the same. SQLitePCLRaw's Linux build sets neither, so CI's Linux runners should get the short sleeps. Each INSERT's time in the load test's app log would show a whole-second sleep at once.
+  - It doesn't help a read-then-write transaction, which SQLite refuses at once to avoid a deadlock (`SQLITE_BUSY_SNAPSHOT`). The sample has none.
 
-### Option 2: Queue the app's writes behind an async lock
+### Option 2: A busy timeout as long as the command timeout
 
-A `SemaphoreSlim` shared by every `DbContext` (a singleton) is taken around `SaveChanges`, so only one write runs at a time and the others wait without blocking a thread.
+The same interceptor, with the busy timeout set from EF Core's command timeout, or else the connection's `Default Timeout` (30 seconds), and 0 ("no limit") turned into SQLite's longest wait.
 
-- **Trade-offs:** Exact waits and no blocked threads. It covers only writes through `SaveChanges` in this process: `ExecuteUpdate`, `ExecuteDelete`, raw SQL, a second process or a tool on the same file would still meet Microsoft.Data.Sqlite's 150 ms sleep. Every new way of writing must remember the lock.
+- **Trade-offs:** SQLite does all the waiting. But each statement gets the whole timeout. A `SaveChanges` that EF Core batches into one command of several statements could run for several times its timeout. A timeout set after the connection opened isn't seen either. Microsoft.Data.Sqlite's maintainers decline to set the busy timeout from the command timeout for these reasons (dotnet/efcore#28135).
+- **Reversibility:** Easy.
+- **Risk:** Medium: it breaks the command timeout's meaning for any command of more than one statement. This branch built it first; review found the issue.
+
+### Option 3: Queue the app's writes behind an async lock
+
+A `SemaphoreSlim`, shared by every `DbContext` as a singleton, is taken around `SaveChanges`. Only one write runs at a time, and the others wait without blocking a thread.
+
+- **Trade-offs:** Exact waits and no blocked threads. It covers only writes through `SaveChanges` in this process. `ExecuteUpdate`, `ExecuteDelete`, raw SQL, a second process or a tool on the same file would still meet the 150 ms sleep. Every new way of writing must remember the lock.
 - **Reversibility:** Easy.
 - **Risk:** Medium: a write path that skips the lock brings the pause back silently.
 
-### Option 3: `synchronous=NORMAL`
+### Option 4: `synchronous=NORMAL`
 
-SQLite syncs its log only at checkpoints, so commits are fast and overlap less.
+SQLite syncs its log only at checkpoints, so commits are fast and meet less often.
 
-- **Trade-offs:** SQLite says WAL mode with `NORMAL` can't corrupt the database, but a committed transaction "might roll back following a power loss or system crash": a bookmark the API answered `201 Created` for could vanish. An overlap would still cost 150 ms; it would just happen less often.
+- **Trade-offs:** SQLite says WAL mode with `NORMAL` can't corrupt the database, but a committed transaction "might roll back following a power loss or system crash". A bookmark the API answered `201 Created` for could vanish. And writes that meet would still pay the 150 ms sleep, just less often.
 - **Reversibility:** Easy.
-- **Risk:** Medium: it trades durability for speed, which is a product decision, and hides the 150 ms pause instead of removing it.
+- **Risk:** Medium:
+  - it trades durability for speed, which is a product decision;
+  - it hides the 150 ms pause instead of removing it.
 
-### Option 4: Change the measurement
+### Option 5: Change the measurement
 
 Raise the budget, leave a warm-up out of the stats, or run longer for more samples.
 
@@ -51,33 +76,38 @@ Raise the budget, leave a warm-up out of the stats, or run longer for more sampl
 
 ## Recommendation
 
-Option 1: it removes the 150 ms pause for every connection and every kind of write, with the mechanism SQLite provides for exactly this.
+Option 1. It removes the 150 ms pause for every connection and every kind of write, with the mechanism SQLite provides for this, and it keeps the command timeout Microsoft.Data.Sqlite's.
 
 ## Decision
 
-Option 1, decided in auto mode (ADR-0035) on 2026-11-15, while answering the red load-test runs on PR 70's branch.
+Option 1, decided in auto mode (ADR-0035) on 2026-11-15, while answering the red load-test runs on the branches of PR 70, PR 73 and the release PR, PR 10.
 
 ## Consequences
 
-- `sample/src/Bookmarks.Infrastructure/SqliteBusyTimeoutInterceptor.cs`, registered in `AddBookmarksInfrastructure`, and `SqliteBusyTimeoutTests` in the integration tests, which read `PRAGMA busy_timeout` on connections opened through the app's own registration.
-- Measured on Windows with a write lock held for 20 ms by another connection, 20 saves each: 154 to 160 ms before, about 46 ms after (Windows sleeps in steps of about 15 ms; Linux sleeps closer to SQLite's steps).
-- The load test and its budget are unchanged (ADR-0062): it still measures the API and its SQLite file on a shared runner. A slow-disk run still shows its slow commits; it no longer adds 150 ms to every write that waits for one.
-- An app that uses SQLite through EF Core needs the same interceptor. Its database guide (`docs/database-guide.md`) picks SQLite only for a device's own data, where writes rarely meet, so the kit doesn't add a rule for it yet.
+- New: `sample/src/Bookmarks.Infrastructure/SqliteBusyTimeoutInterceptor.cs`, registered in `AddBookmarksInfrastructure`.
+- New: `SqliteBusyTimeoutTests` in the integration tests. They read `PRAGMA busy_timeout` on connections opened, synchronously and not, through the app's own registration.
+- Measured on Windows, with another connection holding the write lock for 20 ms, over 20 saves each:
+  - before: 154 to 160 ms;
+  - after: about 46 ms. Windows sleeps in steps of about 15 ms.
+  - Not yet measured on Linux. The PR's own Performance runs show it.
+- The load test and its budget are unchanged (ADR-0062): it still measures the API and its SQLite file on a shared runner. A slow runner still shows in its slow commits and reads, but writes that meet one no longer pay 150 ms on top. Whether that keeps every slow runner within budget is expected, not proven: a runner slower than the red ones could still fail it.
+- The database guide (`docs/database-guide.md`) tells an app that uses SQLite how to do the same. An app doesn't get the sample, so the guide states the call and the value itself. No kit rule checks it: the guide picks SQLite only for a device's own data, where writes rarely meet, and a rule would need a check that reads an app's EF Core setup.
 
 ## Pillars affected
 
 - **Performance Efficiency:** a write that meets another waits about as long as the lock is held, not 150 ms or more.
-- **Reliability:** the load test's POST p95 no longer flips red on a runner with a slow disk; writes still fail after the command timeout, as before.
+- **Reliability:** the command timeout still bounds each command, give or take a second per statement. The load test's POST p95 is expected to stay within budget on runners like the red ones; the PR's Performance runs are the first evidence.
 - **Operational Excellence:** the evidence came from the run artifacts ADR-0062 keeps: Locust's stats and the app's log.
 
 ## Sources
 
 - https://learn.microsoft.com/dotnet/standard/data/sqlite/database-errors, retrieved 2026-11-15
 - https://learn.microsoft.com/dotnet/standard/data/sqlite/interop, retrieved 2026-11-15
-- https://learn.microsoft.com/dotnet/standard/data/sqlite/connection-strings, retrieved 2026-11-15
+- https://learn.microsoft.com/dotnet/standard/data/sqlite/async, retrieved 2026-11-15
 - https://raw.githubusercontent.com/dotnet/efcore/release/10.0/src/Microsoft.Data.Sqlite.Core/SqliteDataReader.cs, retrieved 2026-11-15
+- https://github.com/dotnet/efcore/issues/28135, retrieved 2026-11-15
 - https://www.sqlite.org/c3ref/busy_timeout.html, retrieved 2026-11-15
 - https://www.sqlite.org/pragma.html#pragma_synchronous, retrieved 2026-11-15
-- https://raw.githubusercontent.com/sqlite/sqlite/version-3.49.1/src/main.c and https://raw.githubusercontent.com/sqlite/sqlite/version-3.41.0/src/main.c (`sqliteDefaultBusyCallback`), retrieved 2026-11-15
-- https://github.com/ericsink/cb/blob/master/bld/cb.cs (e_sqlite3's compile options), retrieved 2026-11-15
-- GitHub Actions runs 43504641754, 43503299942, 43541215632 and 43561350708 (red), 43675018136 and 43687112597 (green), their `load-test-results` artifacts, retrieved 2026-11-15
+- `sqliteDefaultBusyCallback` in SQLite's `src/main.c` at version-3.41.0, version-3.49.1 and version-3.53.3 (https://github.com/sqlite/sqlite), retrieved 2026-11-15
+- https://github.com/ericsink/cb/blob/cd2922b8867e4360f0976601414bd24a3ad613d8/bld/cb.cs (e_sqlite3's compile options), retrieved 2026-11-15
+- GitHub Actions runs 43504641754, 43503299942, 43541215632 and 43561350708 (red), and 43542125655, 43607986383, 43644689740, 43647654284, 43675018136 and 43687112597 (green), with their `load-test-results` artifacts, retrieved 2026-11-15
