@@ -26,7 +26,7 @@ Claude Code already has better mechanisms for reads. Its Read, Grep and Glob too
 
 - **Trade-offs:** No prompt for PowerShell reads and pipelines (`Get-Content`, `git log`, `| ConvertFrom-Json`). But each command needs every risky form carved out by text, the list grows with each new flag, and a pipeline, a variable or a script block can do what no rule's text names.
 - **Reversibility:** Easy: remove the rules.
-- **Risk:** High. Two reviews found eight ways to write a file, read or post a secret, or run code without a prompt, and SEC-002 is a floor rule.
+- **Risk:** High. Two reviews found more than ten forms that write a file, read or post a secret, or run code without a prompt, and SEC-002 is a floor rule.
 
 ### Option 2: Allow routine commands whose risky forms are few and nameable; leave reads to Claude Code's tools
 
@@ -50,21 +50,24 @@ Accepted as recommended. The owner agreed to a wider allow list in the chat on 2
 
 ## Consequences
 
-- The allow list grows from 26 to 78 rules, and the ask list from 106 to 127; the deny list is unchanged. The new asks cover:
+- The allow list grows from 26 to 78 rules, and the ask list from 106 to 131; the deny list is unchanged. The new asks cover:
   - every `gh api` write: `-X`, `--method`, `-f`, `-F`, `--field`, `--raw-field`, `--input`, and `-i`, since gh joins short flags, so `-iXPUT` is a PUT;
   - `& ./tools/New-KitApp`;
-  - any parent segment (`/..` or `\..`) in a command, which would leave `tools/`.
+  - a parent segment written as `/..` or `\..`, which would leave `tools/`. It also prompts for a Bash read such as `ls ../..`, which no routine kit command uses;
+  - `git push` with `--receive-pack` or `--exec`, which run a program. `git push *` was allowed before this ADR, and these asks close that gap.
 - `KitReview.psm1` is allowed only by exact `Import-Module` commands, since `-Name` takes a list and a comma would import a second module.
 - Still prompting, on purpose:
   - `git fetch` with options (`--upload-pack` runs a program);
   - `pwsh -Command "..."` (its quoted string isn't split into commands, so a wildcard would allow anything in it);
   - PowerShell cmdlets that read a file or `Env:`, or take a script block: `Get-Content`, `Select-String`, `Get-ChildItem`, `Get-Item`, `Select-Object`, `ForEach-Object` and the like;
   - PowerShell `git log`, `git diff`, `git show` and `git blame`;
-  - `gh pr comment` and `gh pr merge`;
+  - `gh pr comment` and `gh pr merge`; posting each review round's report (`finish-work` step 4) therefore asks once per round;
   - `rg`, which isn't installed on the owner's machine.
-- Known limits, unchanged from before this ADR:
-  - A `$( )` subexpression can hold any command inside any wide PowerShell allow (`git commit *`, `./tools/*` and the new ones alike), and Claude Code's docs don't say whether it checks the commands inside.
-  - `gh pr create --body-file`, and `git add -f` followed by a push, can send a secret file to GitHub without a prompt. The gitleaks scan in CI is the backstop (SEC-001).
+- Known limits, true of every text rule before this ADR as well:
+  - Rules match the command's text, and Claude Code's permissions page says a rule covers "the invocation Claude usually produces" and isn't a security boundary. A quoted or escaped spelling (`./tools/zz/'..'/x.ps1`, a backtick escape, `./tools/New-Kit'App'.ps1`) gets past an ask just as `git push --for'ce'` gets past main's. The asks guard against mistakes and the owner's surprise, not against a hostile agent.
+  - A grouping, array or subexpression (`( )`, `@( )`, `$( )`) can hold any command inside any wide PowerShell allow (`git commit *`, `./tools/*` and the new ones alike), and Claude Code's docs don't say whether it checks the commands inside. So `Add-ReviewReply -Body (Get-Content ./.env -Raw)` could post a secret.
+  - `gh pr create --body-file`, and `git add -f` followed by a push, can send a secret file to GitHub without a prompt. GitHub's push protection, which is on for the kit, blocks a push holding a known provider's token. The gitleaks scan in CI only finds a secret after it has been pushed, when it must be rotated. Neither sees a PR's body.
+  - The better design, for when these limits matter: a PreToolUse hook that resolves each command with PowerShell's own parser before it runs, or Claude Code's sandbox, which doesn't yet support the PowerShell tool on Windows. It waits because no misuse has been seen and the hook is a project of its own.
 - CLAUDE.md tells agents to read files with the Read, Grep and Glob tools, to run read-only git in the Bash tool, and to filter `gh` output with `--jq`.
 - Apps get the same file through `Export-KitApp.ps1`, which drops only the rules that name kit-only scripts (`New-KitApp`, `Install-PlaywrightBrowser`). `KitReview.psm1` is an app tool, so apps keep its rules.
 - VS Code is unchanged. The kit's `.vscode/settings.json` holds no approval settings, VS Code already auto-approves common read-only terminal commands, and its docs don't say whether a workspace value for `chat.tools.terminal.autoApprove` applies.
@@ -72,7 +75,7 @@ Accepted as recommended. The owner agreed to a wider allow list in the chat on 2
 
 ## Pillars affected
 
-Security: the owner keeps the asks that matter instead of turning them all off with Bypass, and no new allow reads a file the agent names, writes one, or posts one. Operational Excellence: far fewer prompts in routine work, and the reason for each rule lives in the tests. Reliability, Cost Optimization, Performance Efficiency: not affected.
+Security: the owner keeps the asks that matter instead of turning them all off with Bypass. Apart from the kit's own scripts (some of which write files, such as `Build-AgentRules.ps1`) and `Add-ReviewReply` and `Resolve-ReviewFinding`, whose posts are the review workflow's, no new allow reads a file the agent names, writes one or posts one. Operational Excellence: far fewer prompts in routine work, and the reason for each rule lives in the tests. Reliability, Cost Optimization, Performance Efficiency: not affected.
 
 ## Sources
 
@@ -81,3 +84,4 @@ Security: the owner keeps the asks that matter instead of turning them all off w
 - https://code.claude.com/docs/en/tools-reference, retrieved 2026-11-15 (PowerShell tool)
 - https://code.visualstudio.com/docs/agents/run/approvals, retrieved 2026-11-15 (terminal auto-approval)
 - `gh api --help` and `gh pr comment --help`, gh 2.83.1, read 2026-11-15
+- the kit repo's `security_and_analysis` settings (secret scanning and push protection on), read with `gh api` on 2026-11-15
