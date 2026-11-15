@@ -89,6 +89,15 @@ function Find-SourceEntry {
     $best
 }
 
+# Every reason the page can't be built: an entry that's incomplete, a cited URL no entry matches, an entry no
+# cited URL matches.
+function Get-AuthoritiesProblem {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Cited,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Entries
+    )
+}
+
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $RepoRoot) { $RepoRoot = Split-Path -Path $PSScriptRoot -Parent }

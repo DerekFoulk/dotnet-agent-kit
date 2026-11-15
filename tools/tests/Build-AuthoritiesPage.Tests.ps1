@@ -60,6 +60,41 @@ Describe 'Build-AuthoritiesPage.ps1' {
         }
     }
 
+    Context 'Problems' {
+        BeforeAll {
+            function New-Cited([string] $Url, [string] $RuleId = 'API-001', [string] $Basis = 'authority') {
+                [pscustomobject]@{ Url = $Url; RuleId = $RuleId; Status = 'accepted'; Basis = $Basis; File = 'api.md' }
+            }
+        }
+
+        It 'reports a cited URL that no entry matches, with the rule that cites it' {
+            $entries = @(New-Entry -Name 'IETF' -Match 'https://www.rfc-editor.org/')
+            $cited = @((New-Cited 'https://www.rfc-editor.org/rfc/rfc9457'), (New-Cited 'https://example.com/page' -RuleId 'API-004'))
+
+            @(Get-AuthoritiesProblem -Cited $cited -Entries $entries) |
+                Should -Be @("https://example.com/page (API-004) matches no entry in docs/authorities.yml; add its publisher there (ADR-0070)")
+        }
+
+        It 'reports an entry that matches no cited URL' {
+            $entries = @((New-Entry -Name 'IETF' -Match 'https://www.rfc-editor.org/'), (New-Entry -Name 'Gone' -Match 'https://gone.example.com/'))
+
+            @(Get-AuthoritiesProblem -Cited @(New-Cited 'https://www.rfc-editor.org/rfc/rfc9457') -Entries $entries) |
+                Should -Be @("entry 'Gone' matches no URL the rules cite; remove it")
+        }
+
+        It 'reports an entry with <Case>' -ForEach @(
+            @{ Case = 'no covers'; Change = { param($e) $e.Remove('covers') }; Message = "entry 'IETF' is missing 'covers'" }
+            @{ Case = 'an unknown class'; Change = { param($e) $e['class'] = 'blog' }; Message = "entry 'IETF' class 'blog' must be one of: authority, practitioner, project" }
+            @{ Case = 'a prefix that isn''t a folder URL'; Change = { param($e) $e['match'] = @('https://www.rfc-editor.org/rfc', 'https://www.rfc-editor.org/') }
+                Message = "entry 'IETF' match 'https://www.rfc-editor.org/rfc' must be an http or https URL ending in '/'" }
+        ) {
+            $entry = New-Entry -Name 'IETF' -Match 'https://www.rfc-editor.org/'
+            & $Change $entry
+
+            @(Get-AuthoritiesProblem -Cited @(New-Cited 'https://www.rfc-editor.org/rfc/rfc9457') -Entries @($entry)) | Should -Be @($Message)
+        }
+    }
+
     Context 'Classing a cited URL' {
         It 'gives a URL to the entry with the longest matching prefix, whatever the order' {
             $entries = @(
