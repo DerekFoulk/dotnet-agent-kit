@@ -6,9 +6,9 @@ Set-StrictMode -Version Latest
 
 # The layout of templates/app-intake.json this module reads. Raise it when a change to the file's layout would make
 # an older module misread it.
-$script:SchemaVersion = 1
+$script:SchemaVersion = 2
 
-# Reads templates/app-intake.json.
+# Reads templates/app-intake.json, and refuses one whose defaults don't name their source (ADR-0070).
 function Get-KitIntake {
     param([Parameter(Mandatory)] [string] $Text)
 
@@ -18,6 +18,10 @@ function Get-KitIntake {
     # A number, compared exactly: "1" as text would pass a loose -ne.
     if ($version -isnot [long] -or $version -ne $script:SchemaVersion) {
         throw "templates/app-intake.json has schemaVersion $version, and this New-KitApp reads version $($script:SchemaVersion). Run the New-KitApp from the same kit version as -KitRef."
+    }
+    $problems = @(Test-KitIntakeSource -Intake $intake)
+    if ($problems) {
+        throw "templates/app-intake.json has defaults with no labeled source:`n- $($problems -join "`n- ")`nEach card and test tool role needs the authority's recommendation and the agent's (ADR-0070)."
     }
     $intake
 }
@@ -72,7 +76,7 @@ function Resolve-KitIntakeAnswer {
     $kinds = foreach ($kind in $Intake['testKinds']) {
         $id = $kind['id']
         if (-not $chosen.Contains($id)) {
-            [pscustomobject]@{ Kind = $kind; Tools = @($kind['tools'] | Where-Object { $_['default'] }) }
+            [pscustomobject]@{ Kind = $kind; Tools = @(Get-KitDefaultTool -Kind $kind) }
             continue
         }
         $names = @($chosen[$id] | Where-Object { $_ })
@@ -89,6 +93,19 @@ function Resolve-KitIntakeAnswer {
         [pscustomobject]@{ Kind = $kind; Tools = @($tools) }
     }
     [pscustomobject]@{ Cards = @($cards); TestKinds = @($kinds) }
+}
+
+# The kit's default tools for a kind of test: one for each role, the authority's pick or else the agent's (ADR-0070).
+# A developer's preferences aren't read here, so New-KitApp gives the same app on every machine; the new-app skill
+# writes the developer's picks into the answers.
+function Get-KitDefaultTool {
+    param([Parameter(Mandatory)] [Collections.IDictionary] $Kind)
+
+    foreach ($role in $Kind['roles']) {
+        $recommendation = $role['recommendation']
+        $pick = if ($null -ne $recommendation['authority']['pick']) { $recommendation['authority']['pick'] } else { $recommendation['agent']['pick'] }
+        @($Kind['tools'] | Where-Object { $_['id'] -ceq $pick -and $_['role'] -ceq $role['id'] })[0]
+    }
 }
 
 # Writes the app's docs/app-profile.md from the resolved answers.
@@ -204,6 +221,7 @@ function Test-KitIntakeSource {
         }
     }
     foreach ($kind in $Intake['testKinds']) {
+        if (-not $kind['roles']) { "$($kind['id']) tests list no roles: each tool fills one, such as the test framework."; continue }
         $roleIds = @($kind['roles'] | ForEach-Object { $_['id'] })
         foreach ($tool in $kind['tools']) {
             if ($tool['role'] -cnotin $roleIds) {

@@ -1,11 +1,24 @@
 {
-  "schemaVersion": 1,
-  "about": "The new-app intake (ADR-0058): the question cards the new-app skill shows the owner, and the test tools for each kind of test. New-KitApp checks the answers against this file and writes them to the app's docs/app-profile.md. Each card's first option is its recommendation. A card with dependsOn shows only the options whose fits lists the other card's answer. Every option and tool has a cost label: Free, Free tier (free up to a limit) or Paid, with the price, its source and the date checked.",
+  "schemaVersion": 2,
+  "about": "The new-app intake (ADR-0058): the question cards the new-app skill shows, and the test tools for each kind of test. New-KitApp checks the answers against this file and writes them to the app's docs/app-profile.md. Each card, and each role a kind of test fills, carries two labeled recommendations (ADR-0070): the authority's, only what its page says, with the page and the date read (pick null when the page names no pick, or the search that found no page), and the agent's, with its reason. The developer's own preferences live in their preferences file, outside every repo (docs/preferences.md). A default is the developer's preference, then the authority's pick unless it's Paid (ARC-012), then the agent's. A card with dependsOn shows only the options whose fits lists the other card's answer, and has a recommendation for each answer that leaves more than one option. Every option and tool has a cost label: Free, Free tier (free up to a limit) or Paid, with the price, its source and the date checked, apart from all three recommendations.",
   "cards": [
     {
       "id": "appType",
       "header": "App type",
       "question": "What kind of app is it?",
+      "recommendation": {
+        "authority": {
+          "by": "Microsoft",
+          "pick": null,
+          "says": "Names no app type. For a web UI it says: \"For new project development, we recommend ASP.NET Core Blazor.\"",
+          "source": "https://learn.microsoft.com/aspnet/core/tutorials/choose-web-ui",
+          "read": "2026-11-15"
+        },
+        "agent": {
+          "pick": "web-api-blazor",
+          "reason": "Fits most apps people use in a browser: the web UI is Blazor, which Microsoft recommends for a new web UI, and the API can serve a phone app later."
+        }
+      },
       "options": [
         {
           "id": "web-api-blazor",
@@ -40,6 +53,19 @@
       "id": "data",
       "header": "Data",
       "question": "Where does the app keep its data, and what shape is it?",
+      "recommendation": {
+        "authority": {
+          "by": "Microsoft",
+          "pick": null,
+          "says": "No recommendation: it matches each data store to the workload's goals and data model.",
+          "source": "https://learn.microsoft.com/azure/architecture/guide/technology-choices/data-stores-getting-started",
+          "read": "2026-11-15"
+        },
+        "agent": {
+          "pick": "relational",
+          "reason": "Most business apps have records that refer to each other, and the kit's rules and checks for migrations cover relational data (docs/database-guide.md)."
+        }
+      },
       "options": [
         {
           "id": "relational",
@@ -69,6 +95,21 @@
       "question": "Which database should it use?",
       "dependsOn": "data",
       "prices": "docs/database-guide.md",
+      "recommendation": {
+        "relational": {
+          "authority": {
+            "by": "Microsoft",
+            "pick": null,
+            "says": "No pick between these two: it recommends SQL Database to build apps on a managed SQL database, and Azure Database for PostgreSQL for apps on PostgreSQL. It doesn't mention the free offer.",
+            "source": "https://learn.microsoft.com/azure/architecture/guide/technology-choices/data-stores-getting-started#common-database-scenarios",
+            "read": "2026-11-15"
+          },
+          "agent": {
+            "pick": "azure-sql-free",
+            "reason": "Free up to a monthly limit and paused rather than billed past it, with no end date, where PostgreSQL's free amount ends after 12 months; tests run on SQL Server in a container (docs/database-guide.md)."
+          }
+        }
+      },
       "options": [
         {
           "id": "azure-sql-free",
@@ -107,6 +148,19 @@
       "header": "Sign-in",
       "question": "Who signs in to the app?",
       "priced": true,
+      "recommendation": {
+        "authority": {
+          "by": "Microsoft",
+          "pick": null,
+          "says": "Picks by who signs in, not one for every app: an external tenant for apps for consumers and business customers, a workforce tenant for employees.",
+          "source": "https://learn.microsoft.com/entra/external-id/tenant-configurations",
+          "read": "2026-11-15"
+        },
+        "agent": {
+          "pick": "entra-external-id",
+          "reason": "Kit apps are public by default (ADR-0033), so most are used by people outside one organization; it's free for the first 50,000 monthly active users."
+        }
+      },
       "options": [
         {
           "id": "entra-external-id",
@@ -145,6 +199,19 @@
       "header": "Hosting",
       "question": "Where should it run?",
       "priced": true,
+      "recommendation": {
+        "authority": {
+          "by": "Microsoft",
+          "pick": null,
+          "says": "No recommendation without the workload: its flowchart picks a candidate service from the workload's needs.",
+          "source": "https://learn.microsoft.com/azure/architecture/guide/technology-choices/compute-decision-tree",
+          "read": "2026-11-15"
+        },
+        "agent": {
+          "pick": "none",
+          "reason": "Nothing to pay or set up until the first deployment is due, when the app's real needs can pick the service."
+        }
+      },
       "options": [
         {
           "id": "none",
@@ -183,7 +250,21 @@
       "header": "Budget",
       "question": "How much may this app cost each month?",
       "default": "budget-0",
+      "defaultRule": "ARC-012",
       "otherIsAmount": true,
+      "recommendation": {
+        "authority": {
+          "by": "Microsoft",
+          "pick": null,
+          "says": "No amount: it asks for realistic budgets that cover the workload's functional and nonfunctional requirements.",
+          "source": "https://learn.microsoft.com/azure/well-architected/cost-optimization/principles",
+          "read": "2026-11-15"
+        },
+        "agent": {
+          "pick": "budget-0",
+          "reason": "Every kit default starts free, so a first app can cost nothing, and a budget can rise later through an ADR."
+        }
+      },
       "options": [
         {
           "id": "budget-0",
@@ -209,15 +290,73 @@
       "name": "Unit",
       "checks": "One class or function: domain rules, application handlers, view models",
       "runs": "Every PR",
+      "roles": [
+        {
+          "id": "framework",
+          "name": "Test framework",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "No recommendation: it calls MSTest, NUnit, TUnit and xUnit.net the popular test frameworks.", "source": "https://learn.microsoft.com/dotnet/core/testing/", "read": "2026-11-15" },
+            "agent": { "pick": "xunit", "reason": "Free (Apache-2.0), runs on Microsoft.Testing.Platform in v3, and is what the kit's sample and shared CI run." }
+          }
+        },
+        {
+          "id": "mocking",
+          "name": "Mocking",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "Calls Moq and NSubstitute popular mocking libraries for .NET, without a pick.", "source": "https://learn.microsoft.com/dotnet/azure/sdk/unit-testing-mocking", "read": "2026-11-15" },
+            "agent": { "pick": "moq", "reason": "Free (BSD-3-Clause), so it never needs a paid license (ADR-0003)." }
+          }
+        },
+        {
+          "id": "assertions",
+          "name": "Assertions",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "No Microsoft Learn page found that names an assertion library; its pages show each test framework's own Assert.", "searched": "fluent assertion library for .NET unit tests recommended", "read": "2026-11-15" },
+            "agent": { "pick": "awesomeassertions", "reason": "Free for any app (Apache-2.0), with FluentAssertions' API and namespace; FluentAssertions 8 needs a paid license once an app is sold (ADR-0004)." }
+          }
+        },
+        {
+          "id": "fake-data",
+          "name": "Fake data",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "No Microsoft Learn page found that names a fake-data library.", "searched": ".NET tests generate fake test data library property-based testing mock HTTP server WireMock", "read": "2026-11-15" },
+            "agent": { "pick": "bogus", "reason": "Free (MIT); generates realistic test data from rules (ADR-0003)." }
+          }
+        },
+        {
+          "id": "properties",
+          "name": "Property-based tests",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "No Microsoft Learn page found that names a property-based testing library.", "searched": ".NET tests generate fake test data library property-based testing mock HTTP server WireMock", "read": "2026-11-15" },
+            "agent": { "pick": "fscheck", "reason": "Free (BSD-3-Clause); runs property-based tests from xUnit (ADR-0003)." }
+          }
+        },
+        {
+          "id": "time",
+          "name": "Time",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": "faketimeprovider", "says": "\"To make it easier to test time-dependent code, you can use FakeTimeProvider.\"", "source": "https://learn.microsoft.com/dotnet/api/system.timeprovider", "read": "2026-11-15" },
+            "agent": { "pick": "faketimeprovider", "reason": "Microsoft's own fake for TimeProvider, free (MIT); TST-010 asks for time through a seam." }
+          }
+        },
+        {
+          "id": "logging",
+          "name": "Logging",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": "fakelogger", "says": "FakeLogger \"is intended for use in unit tests\": it captures what's logged for the test to inspect.", "source": "https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.testing.fakelogger", "read": "2026-11-15" },
+            "agent": { "pick": "fakelogger", "reason": "Microsoft's own, free (MIT), and no mock of ILogger is needed." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "xunit", "name": "xUnit v3", "package": "xunit.v3", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } },
-        { "id": "moq", "name": "Moq", "package": "Moq", "license": "BSD-3-Clause", "default": true, "cost": { "label": "Free" } },
-        { "id": "fluentassertions", "name": "FluentAssertions 8", "package": "FluentAssertions", "license": "Xceed Community License", "default": true, "cost": { "label": "Free tier", "free": "Non-commercial use: free while the app isn't sold or paid for", "price": "A commercial app needs an Xceed license, reported at $129.95 per developer a year at launch (not verified on xceed.com), or swaps to AwesomeAssertions, which is free (ADR-0004)", "source": "https://www.infoq.com/news/2025/01/fluent-assertions-v8-license", "checked": "2026-11-11" }, "note": "The default for a non-commercial app; a commercial one uses AwesomeAssertions instead (ADR-0004)" },
-        { "id": "awesomeassertions", "name": "AwesomeAssertions", "package": "AwesomeAssertions", "license": "Apache-2.0", "default": false, "cost": { "label": "Free" }, "note": "FluentAssertions' API and namespace under Apache-2.0, for commercial apps (ADR-0004)" },
-        { "id": "bogus", "name": "Bogus", "package": "Bogus", "license": "MIT", "default": true, "cost": { "label": "Free" } },
-        { "id": "fscheck", "name": "FsCheck", "package": "FsCheck", "license": "BSD-3-Clause", "default": true, "cost": { "label": "Free" } },
-        { "id": "faketimeprovider", "name": "FakeTimeProvider", "package": "Microsoft.Extensions.TimeProvider.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } },
-        { "id": "fakelogger", "name": "FakeLogger", "package": "Microsoft.Extensions.Diagnostics.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+        { "id": "xunit", "role": "framework", "name": "xUnit v3", "package": "xunit.v3", "license": "Apache-2.0", "cost": { "label": "Free" } },
+        { "id": "moq", "role": "mocking", "name": "Moq", "package": "Moq", "license": "BSD-3-Clause", "cost": { "label": "Free" } },
+        { "id": "fluentassertions", "role": "assertions", "name": "FluentAssertions 8", "package": "FluentAssertions", "license": "Xceed Community License", "cost": { "label": "Free tier", "free": "Non-commercial use: free while the app isn't sold or paid for", "price": "A commercial app needs an Xceed license, reported at $129.95 per developer a year at launch (not verified on xceed.com), or swaps to AwesomeAssertions, which is free (ADR-0004)", "source": "https://www.infoq.com/news/2025/01/fluent-assertions-v8-license", "checked": "2026-11-11" }, "note": "Free for a non-commercial app only; a commercial one uses AwesomeAssertions instead (ADR-0004)" },
+        { "id": "awesomeassertions", "role": "assertions", "name": "AwesomeAssertions", "package": "AwesomeAssertions", "license": "Apache-2.0", "cost": { "label": "Free" }, "note": "FluentAssertions' API and namespace under Apache-2.0, free for any app (ADR-0004)" },
+        { "id": "bogus", "role": "fake-data", "name": "Bogus", "package": "Bogus", "license": "MIT", "cost": { "label": "Free" } },
+        { "id": "fscheck", "role": "properties", "name": "FsCheck", "package": "FsCheck", "license": "BSD-3-Clause", "cost": { "label": "Free" } },
+        { "id": "faketimeprovider", "role": "time", "name": "FakeTimeProvider", "package": "Microsoft.Extensions.TimeProvider.Testing", "license": "MIT", "cost": { "label": "Free" } },
+        { "id": "fakelogger", "role": "logging", "name": "FakeLogger", "package": "Microsoft.Extensions.Diagnostics.Testing", "license": "MIT", "cost": { "label": "Free" } }
       ]
     },
     {
@@ -225,10 +364,36 @@
       "name": "Integration",
       "checks": "Our code plus one real outside thing: database, HTTP service, file system",
       "runs": "Every PR",
+      "roles": [
+        {
+          "id": "containers",
+          "name": "Real dependencies in containers",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "Recommends testing against the production database system, and names Testcontainers as one library that can help.", "source": "https://learn.microsoft.com/ef/core/testing/testing-with-the-database", "read": "2026-11-15" },
+            "agent": { "pick": "testcontainers", "reason": "Free (MIT); starts the real engine in a container for each test run, as DAT-005 asks." }
+          }
+        },
+        {
+          "id": "reset",
+          "name": "Database reset",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": "respawn", "says": "\"You may also want to consider using the respawn package\" to clear the database between tests.", "source": "https://learn.microsoft.com/ef/core/testing/testing-with-the-database#efficient-database-cleanup", "read": "2026-11-15" },
+            "agent": { "pick": "respawn", "reason": "Free (Apache-2.0); clears test data without listing the tables." }
+          }
+        },
+        {
+          "id": "http-fakes",
+          "name": "HTTP services",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "No Microsoft Learn page found that names a library for faking HTTP services.", "searched": ".NET tests generate fake test data library property-based testing mock HTTP server WireMock", "read": "2026-11-15" },
+            "agent": { "pick": "wiremock", "reason": "Free (Apache-2.0); a real HTTP server the test controls, so the app's HttpClient pipeline runs as in production." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "testcontainers", "name": "Testcontainers", "package": "Testcontainers", "license": "MIT", "default": true, "cost": { "label": "Free" } },
-        { "id": "respawn", "name": "Respawn", "package": "Respawn", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } },
-        { "id": "wiremock", "name": "WireMock.Net", "package": "WireMock.Net", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } }
+        { "id": "testcontainers", "role": "containers", "name": "Testcontainers", "package": "Testcontainers", "license": "MIT", "cost": { "label": "Free" } },
+        { "id": "respawn", "role": "reset", "name": "Respawn", "package": "Respawn", "license": "Apache-2.0", "cost": { "label": "Free" } },
+        { "id": "wiremock", "role": "http-fakes", "name": "WireMock.Net", "package": "WireMock.Net", "license": "Apache-2.0", "cost": { "label": "Free" } }
       ]
     },
     {
@@ -236,9 +401,27 @@
       "name": "Functional",
       "checks": "The whole app in a test host, through its real HTTP pipeline; Blazor components",
       "runs": "Every PR",
+      "roles": [
+        {
+          "id": "host",
+          "name": "Test host",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": "webapplicationfactory", "says": "Microsoft.AspNetCore.Mvc.Testing provides WebApplicationFactory, and using the package \"streamlines test creation and execution\".", "source": "https://learn.microsoft.com/aspnet/core/test/integration-tests", "read": "2026-11-15" },
+            "agent": { "pick": "webapplicationfactory", "reason": "Microsoft's own, free (MIT); runs the app's real HTTP pipeline in the test." }
+          }
+        },
+        {
+          "id": "components",
+          "name": "Blazor components",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "There's no official Microsoft testing framework for Blazor; it names bUnit, which Microsoft doesn't maintain, as an example library.", "source": "https://learn.microsoft.com/aspnet/core/blazor/test", "read": "2026-11-15" },
+            "agent": { "pick": "bunit", "reason": "Free (MIT); the library Microsoft's Blazor testing page shows." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "webapplicationfactory", "name": "WebApplicationFactory", "package": "Microsoft.AspNetCore.Mvc.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" } },
-        { "id": "bunit", "name": "bUnit", "package": "bunit", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+        { "id": "webapplicationfactory", "role": "host", "name": "WebApplicationFactory", "package": "Microsoft.AspNetCore.Mvc.Testing", "license": "MIT", "cost": { "label": "Free" } },
+        { "id": "bunit", "role": "components", "name": "bUnit", "package": "bunit", "license": "MIT", "cost": { "label": "Free" } }
       ]
     },
     {
@@ -246,11 +429,37 @@
       "name": "UI (end to end)",
       "checks": "The running system in a real browser, accessibility included",
       "runs": "Every PR, in the shared .NET CI",
+      "roles": [
+        {
+          "id": "browser",
+          "name": "Browser automation",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "Names Playwright for .NET as an example of an end-to-end testing framework for Blazor apps.", "source": "https://learn.microsoft.com/aspnet/core/blazor/test", "read": "2026-11-15" },
+            "agent": { "pick": "playwright", "reason": "Free (MIT), from Microsoft; drives real browsers in CI (ADR-0061)." }
+          }
+        },
+        {
+          "id": "accessibility",
+          "name": "Accessibility checks",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "Its Power Platform Playwright samples audit pages with axe-core through a JavaScript package; no page found names a .NET package.", "source": "https://learn.microsoft.com/power-platform/developer/playwright-samples/advanced-testing#accessibility-testing", "read": "2026-11-15" },
+            "agent": { "pick": "axe", "reason": "Free (MIT, with an MPL-2.0 engine); runs axe-core's WCAG checks from the .NET Playwright tests (ADR-0061)." }
+          }
+        },
+        {
+          "id": "host",
+          "name": "App host for the browser",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "Its Blazor testing page names no way to host the app for end-to-end tests.", "source": "https://learn.microsoft.com/aspnet/core/blazor/test", "read": "2026-11-15" },
+            "agent": { "pick": "webapplicationfactory", "reason": "Free (MIT); hosts the app on Kestrel for the browser without an Aspire AppHost, as the kit's web UI fixture does (ADR-0061)." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "playwright", "name": "Playwright", "package": "Microsoft.Playwright", "license": "MIT", "default": true, "cost": { "label": "Free" } },
-        { "id": "axe", "name": "Deque axe for Playwright", "package": "Deque.AxeCore.Playwright", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Its axe-core engine, Deque.AxeCore.Commons, is MPL-2.0" },
-        { "id": "webapplicationfactory", "name": "WebApplicationFactory on Kestrel", "package": "Microsoft.AspNetCore.Mvc.Testing", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Hosts the app on Kestrel for the browser (UseKestrel), for an app without an Aspire AppHost; as in the kit's web UI fixture (ADR-0061)" },
-        { "id": "aspire-testing", "name": "Aspire testing", "package": "Aspire.Hosting.Testing", "license": "MIT", "default": false, "cost": { "label": "Free" }, "note": "For an app with an Aspire AppHost: starts the whole app for the browser" }
+        { "id": "playwright", "role": "browser", "name": "Playwright", "package": "Microsoft.Playwright", "license": "MIT", "cost": { "label": "Free" } },
+        { "id": "axe", "role": "accessibility", "name": "Deque axe for Playwright", "package": "Deque.AxeCore.Playwright", "license": "MIT", "cost": { "label": "Free" }, "note": "Its axe-core engine, Deque.AxeCore.Commons, is MPL-2.0" },
+        { "id": "webapplicationfactory", "role": "host", "name": "WebApplicationFactory on Kestrel", "package": "Microsoft.AspNetCore.Mvc.Testing", "license": "MIT", "cost": { "label": "Free" }, "note": "Hosts the app on Kestrel for the browser (UseKestrel), for an app without an Aspire AppHost; as in the kit's web UI fixture (ADR-0061)" },
+        { "id": "aspire-testing", "role": "host", "name": "Aspire testing", "package": "Aspire.Hosting.Testing", "license": "MIT", "cost": { "label": "Free" }, "note": "For an app with an Aspire AppHost: starts the whole app for the browser" }
       ]
     },
     {
@@ -258,8 +467,18 @@
       "name": "System (smoke)",
       "checks": "The deployed app in staging actually works",
       "runs": "After each deployment",
+      "roles": [
+        {
+          "id": "browser",
+          "name": "Browser automation",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "Names Playwright for .NET as an example of an end-to-end testing framework for Blazor apps.", "source": "https://learn.microsoft.com/aspnet/core/blazor/test", "read": "2026-11-15" },
+            "agent": { "pick": "playwright", "reason": "Free (MIT); the same tool as the UI tests, pointed at the deployed app." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "playwright", "name": "Playwright", "package": "Microsoft.Playwright", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+        { "id": "playwright", "role": "browser", "name": "Playwright", "package": "Microsoft.Playwright", "license": "MIT", "cost": { "label": "Free" } }
       ]
     },
     {
@@ -267,8 +486,18 @@
       "name": "Architecture",
       "checks": "Layers and modules depend only in allowed directions",
       "runs": "Every PR",
+      "roles": [
+        {
+          "id": "rules",
+          "name": "Dependency rules",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "No Microsoft Learn page found that names a tool for checking dependency rules in tests.", "searched": "architecture tests enforce layer dependencies .NET NetArchTest ArchUnitNET clean architecture", "read": "2026-11-15" },
+            "agent": { "pick": "archunitnet", "reason": "Free (Apache-2.0); checks layer and module dependencies as tests, with xUnit v3 support." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "archunitnet", "name": "ArchUnitNET", "package": "TngTech.ArchUnitNET.xUnitV3", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } }
+        { "id": "archunitnet", "role": "rules", "name": "ArchUnitNET", "package": "TngTech.ArchUnitNET.xUnitV3", "license": "Apache-2.0", "cost": { "label": "Free" } }
       ]
     },
     {
@@ -276,9 +505,27 @@
       "name": "Contract",
       "checks": "The public API didn't break",
       "runs": "Every PR",
+      "roles": [
+        {
+          "id": "api-snapshot",
+          "name": "HTTP API",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "No recommendation for a snapshot test; it notes a document generated at build time can be committed to source control or used for spec-based integration testing.", "source": "https://learn.microsoft.com/aspnet/core/fundamentals/openapi/aspnetcore-openapi#generate-openapi-documents-at-build-time", "read": "2026-11-15" },
+            "agent": { "pick": "openapi-snapshot", "reason": "Free; fails a PR whose API document changed without the committed snapshot changing, as the kit's sample does." }
+          }
+        },
+        {
+          "id": "package-api",
+          "name": "NuGet packages",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": "package-validation", "says": "\"CONSIDER enabling Package Validation\" to detect breaking changes automatically.", "source": "https://learn.microsoft.com/dotnet/standard/library-guidance/nuget-package-compatibility-rules", "read": "2026-11-15" },
+            "agent": { "pick": "package-validation", "reason": "Part of the .NET SDK, free; for apps that publish NuGet packages." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "openapi-snapshot", "name": "OpenAPI snapshot test", "package": "Microsoft.AspNetCore.OpenApi", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "The API's OpenAPI document must match a committed snapshot, as in the kit's sample (ContractTests.cs)" },
-        { "id": "package-validation", "name": ".NET package validation", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Part of the .NET SDK; for apps that publish NuGet packages" }
+        { "id": "openapi-snapshot", "role": "api-snapshot", "name": "OpenAPI snapshot test", "package": "Microsoft.AspNetCore.OpenApi", "license": "MIT", "cost": { "label": "Free" }, "note": "The API's OpenAPI document must match a committed snapshot, as in the kit's sample (ContractTests.cs)" },
+        { "id": "package-validation", "role": "package-api", "name": ".NET package validation", "license": "MIT", "cost": { "label": "Free" }, "note": "Part of the .NET SDK; for apps that publish NuGet packages" }
       ]
     },
     {
@@ -286,8 +533,18 @@
       "name": "Performance",
       "checks": "Hot paths stay within their time and memory budget",
       "runs": "Nightly or on demand",
+      "roles": [
+        {
+          "id": "benchmarks",
+          "name": "Benchmarks",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": "benchmarkdotnet", "says": "\"it's strongly recommended to use the well-known BenchmarkDotNet library\"", "source": "https://learn.microsoft.com/ef/core/performance/performance-diagnosis#benchmarking-with-ef-core", "read": "2026-11-15" },
+            "agent": { "pick": "benchmarkdotnet", "reason": "Free (MIT); handles warm-up and iteration counts, which hand-written timings get wrong." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "benchmarkdotnet", "name": "BenchmarkDotNet", "package": "BenchmarkDotNet", "license": "MIT", "default": true, "cost": { "label": "Free" } }
+        { "id": "benchmarkdotnet", "role": "benchmarks", "name": "BenchmarkDotNet", "package": "BenchmarkDotNet", "license": "MIT", "cost": { "label": "Free" } }
       ]
     },
     {
@@ -295,14 +552,24 @@
       "name": "Load",
       "checks": "The app keeps its response times and error rate within budget under many users at once",
       "runs": "Nightly or on demand, against the app started in CI; against a deployment once it has one",
+      "roles": [
+        {
+          "id": "load",
+          "name": "Load generator",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": null, "says": "Describes Azure Load Testing and lists third-party tools, Locust, Apache JMeter and NBomber among them, without a pick.", "source": "https://learn.microsoft.com/aspnet/core/test/load-tests", "read": "2026-11-15" },
+            "agent": { "pick": "locust", "reason": "Free (MIT); runs in GitHub Actions at no cost on a public repo (ADR-0057)." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "locust", "name": "Locust", "license": "MIT", "default": true, "cost": { "label": "Free" }, "note": "Runs in GitHub Actions: free on a public repo; a private one uses its account's Actions minutes (ADR-0057)" },
-        { "id": "jmeter", "name": "Apache JMeter", "license": "Apache-2.0", "default": false, "cost": { "label": "Free" }, "note": "For apps that need heavy database or queue load (ADR-0057)" },
+        { "id": "locust", "role": "load", "name": "Locust", "license": "MIT", "cost": { "label": "Free" }, "note": "Runs in GitHub Actions: free on a public repo; a private one uses its account's Actions minutes (ADR-0057)" },
+        { "id": "jmeter", "role": "load", "name": "Apache JMeter", "license": "Apache-2.0", "cost": { "label": "Free" }, "note": "For apps that need heavy database or queue load (ADR-0057)" },
         {
           "id": "azure-load-testing",
+          "role": "load",
           "name": "Azure Load Testing",
           "license": "Microsoft Azure service",
-          "default": false,
           "cost": {
             "label": "Paid",
             "price": "East US: $10 per resource per month, plus $0.15 per virtual user hour up to 10,000 and $0.06 after; each run bills at least 10 virtual users per engine for at least 10 minutes. A monthly virtual-user-hour limit on the resource stops tests at the cap",
@@ -313,9 +580,9 @@
         },
         {
           "id": "nbomber",
+          "role": "load",
           "name": "NBomber",
           "license": "NBomber license",
-          "default": false,
           "cost": {
             "label": "Paid",
             "price": "Free for personal use only; any organization needs Business, $1,500 a year per company, or Enterprise, $2,500 a year",
@@ -331,8 +598,18 @@
       "name": "Mutation",
       "checks": "The tests themselves catch real bugs",
       "runs": "Nightly (TST-004, ADR-0039)",
+      "roles": [
+        {
+          "id": "mutants",
+          "name": "Mutation testing",
+          "recommendation": {
+            "authority": { "by": "Microsoft", "pick": "stryker", "says": "Its mutation testing page uses Stryker.NET: \"the Stryker.NET tool automatically performs mutations in your code\".", "source": "https://learn.microsoft.com/dotnet/core/testing/mutation-testing", "read": "2026-11-15" },
+            "agent": { "pick": "stryker", "reason": "Free (Apache-2.0); the kit runs it nightly against TST-004's 85% score (ADR-0039)." }
+          }
+        }
+      ],
       "tools": [
-        { "id": "stryker", "name": "Stryker.NET", "package": "dotnet-stryker", "license": "Apache-2.0", "default": true, "cost": { "label": "Free" } }
+        { "id": "stryker", "role": "mutants", "name": "Stryker.NET", "package": "dotnet-stryker", "license": "Apache-2.0", "cost": { "label": "Free" } }
       ]
     }
   ]
