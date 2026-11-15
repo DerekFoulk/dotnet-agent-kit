@@ -33,6 +33,10 @@ $ErrorActionPreference = 'Stop'
 Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 
+# What docs/authorities.yml says about each publisher, and its classes (ADR-0070).
+$script:EntryFields = 'name', 'publisher', 'class', 'covers', 'match'
+$script:Classes = 'authority', 'practitioner', 'project'
+
 # Every URL source of the rules in docs/standards that aren't retired: one object per rule and URL, with the
 # rule's id, status and basis.
 function Get-CitedUrl {
@@ -96,6 +100,32 @@ function Get-AuthoritiesProblem {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Cited,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Entries
     )
+
+    foreach ($entry in $Entries) {
+        $name = if ($entry.Contains('name') -and (Test-Present $entry['name'])) { $entry['name'] } else { '(no name)' }
+        foreach ($field in $script:EntryFields) {
+            if (-not $entry.Contains($field) -or -not (Test-Present $entry[$field])) { "entry '$name' is missing '$field'" }
+        }
+        if ($entry.Contains('class') -and (Test-Present $entry['class']) -and "$($entry['class'])" -notin $script:Classes) {
+            "entry '$name' class '$($entry['class'])' must be one of: $($script:Classes -join ', ')"
+        }
+        # A folder URL, so 'https://github.com/dotnet/' can't also claim 'https://github.com/dotnetfoo'.
+        foreach ($prefix in @($(if ($entry.Contains('match')) { $entry['match'] }))) {
+            if ("$prefix" -notmatch '^https?://[^/\s]+/(\S*/)?$') {
+                "entry '$name' match '$prefix' must be an http or https URL ending in '/'"
+            }
+        }
+    }
+
+    $used = [System.Collections.Generic.HashSet[object]]::new()
+    foreach ($citation in $Cited) {
+        $entry = Find-SourceEntry -Url $citation.Url -Entries $Entries
+        if ($entry) { [void] $used.Add($entry) }
+        else { "$($citation.Url) ($($citation.RuleId)) matches no entry in docs/authorities.yml; add its publisher there (ADR-0070)" }
+    }
+    foreach ($entry in $Entries) {
+        if (-not $used.Contains($entry)) { "entry '$($entry['name'])' matches no URL the rules cite; remove it" }
+    }
 }
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
