@@ -25,7 +25,12 @@ internal sealed class SqliteBusyTimeoutInterceptor : DbConnectionInterceptor
     // SQLite's own call, through the handle Microsoft.Data.Sqlite exposes for it ("Interoperability" in its docs).
     private static void SetBusyTimeout(SqliteConnection connection)
     {
-        int result = raw.sqlite3_busy_timeout(connection.Handle, connection.DefaultTimeout * 1000);
+        int result = raw.sqlite3_busy_timeout(connection.Handle, Milliseconds(connection.DefaultTimeout));
         SqliteException.ThrowExceptionForRC(result, connection.Handle);
     }
+
+    // A timeout of 0 means none to Microsoft.Data.Sqlite, but turns SQLite's busy handler off; SQLite's longest wait
+    // is int.MaxValue milliseconds, about 24 days.
+    private static int Milliseconds(int seconds) =>
+        seconds == 0 ? int.MaxValue : (int)Math.Min(seconds * 1_000L, int.MaxValue);
 }
