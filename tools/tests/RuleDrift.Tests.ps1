@@ -112,4 +112,21 @@ Describe 'Rules stated in several places agree' {
         # \r? because a Windows checkout has CRLF line endings (.gitattributes: text=auto).
         Read-Text 'docs/standards/ui.md' | Should -Match '(?m)^\s+- id: UI-001\r?$'
     }
+
+    # The README summarizes "Whose rules win" for new readers (2026-11-15); AGENTS.md is the source, so the summary
+    # must name each layer, each floor item and each tie-breaker AGENTS.md does.
+    It 'the README''s "Whose rules win" names <Item>, as AGENTS.md does' -ForEach @(
+        @{ Item = 'floor' }, @{ Item = 'legal' }, @{ Item = 'safety' }, @{ Item = 'security' }, @{ Item = 'privacy' }
+        @{ Item = 'licen' }, @{ Item = 'never overridden' }, @{ Item = 'owner' }, @{ Item = 'accepted ADRs' }
+        @{ Item = 'outside authorities' }, @{ Item = 'more specific' }, @{ Item = 'ADR' }
+    ) {
+        $copies = [ordered]@{
+            'AGENTS.md "Whose rules win"' = Get-Between $agents '## Whose rules win' '\r?\n## '
+            # Without the diagram's accessible title and description, so what a reader sees names each item.
+            'README "Whose rules win"'    = (Get-Between (Read-Text 'README.md') '## Whose rules win' '\r?\n## ') -replace '(?m)^\s*acc(Title|Descr):.*$', ''
+        }
+        foreach ($copy in $copies.GetEnumerator()) {
+            $copy.Value | Should -Match "(?i)$Item" -Because "$($copy.Key) should name '$Item'"
+        }
+    }
 }
