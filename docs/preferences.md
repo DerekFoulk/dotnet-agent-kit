@@ -3,7 +3,7 @@
 The new-app intake recommends an answer to each question from three separate sources, each labeled (ADR-0070):
 
 1. **Your preference:** what you have said you want, with the date you said it. It lives in your preferences file, which is yours, not the kit's.
-2. **The authority's recommendation:** only what its page says, such as Microsoft Learn, with the page and the date it was read. Where the page names no pick, the intake says so. These live in `templates/app-intake.json`.
+2. **The authority's recommendation:** only what its page says, such as Microsoft Learn, with the page and the date it was read. It counts as a pick only where the page recommends the tool, says it should be used, or gives it a guideline level such as CONSIDER. A page that only says you can use a tool, uses one, or names one as an example names no pick, and the intake says so. These live in `templates/app-intake.json`.
 3. **The agent's recommendation:** the agent's pick, labeled as the agent's, with its reason. It's never stored as your preference and never shown as Microsoft's.
 
 The default is your preference if you have one. If you don't, it's the authority's pick, unless that's a paid option: ARC-012 starts every tool on its free option, so a paid pick is listed, never made the default. Failing both, it's the agent's pick. Prices and free amounts are facts with their own sources, kept apart from all three.
@@ -47,9 +47,9 @@ When you tell the agent a preference ("I always want PostgreSQL"), it writes it 
 
 Each preference has:
 
-- `stated`: what you said, in your words.
+- `stated`: what you said, in your words, or as close to them as the source records it.
 - `date`: when you said it, as `yyyy-mm-dd`.
 - `source`: where you said it, such as "said in chat" or an ADR.
 - `choice` and `pick`, when it answers an intake question. `choice` is the card's id, or `<kind of test>/<role>` for a test tool, such as `unit/assertions`. `pick` is the option or tool id. `when` names the other card's answer for a card that depends on one, such as the database for `relational` data.
 
-A preference without `choice` is still yours: agents read it when they plan, but the intake doesn't apply it. A pick that isn't an option any more is skipped, and the agent says so. Two preferences for the same question are refused: keep the one you mean.
+A preference without `choice` is still yours: agents read it when they plan, but the intake doesn't apply it. A pick that isn't an option any more is skipped, and so is a preference for a question the intake doesn't ask, or for the database with no `when`. Each time, the agent says so. Two preferences for the same question are refused: keep the one you mean.

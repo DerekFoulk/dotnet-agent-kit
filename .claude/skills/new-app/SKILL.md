@@ -28,7 +28,7 @@ Keep the three sources apart, each labeled, on every card:
 
 - **The developer's preference:** "Your preference (2026-11-10, ADR-0053)", from their file.
 - **The authority's recommendation:** only what the page says, with its link: "Microsoft: no recommendation" where it names no pick. Never present the agent's pick as Microsoft's.
-- **The agent's recommendation:** "The agent's recommendation", with its reason. It's yours, said now; never save it as the developer's preference.
+- **The agent's recommendation:** "The agent's recommendation", with its reason, from the intake's `agent` entry. Never save it as the developer's preference.
 
 Put each card's default first, labeled "(Recommended: your preference)", "(Recommended by Microsoft)" or "(Recommended by the agent)". In each option's description, put its cost label (Free, Free tier with the free amount, or Paid with the price), and on the default, the other sources. Say any note out loud. Prices are facts with their own sources, not a recommendation.
 
@@ -64,7 +64,7 @@ Write a JSON file in your scratchpad, never in the kit's folder:
 }
 ```
 
-Each card's key holds an option `id` or `Other: <text>`. Write every card, the budget too: an unanswered budget is $0 (ARC-012), whatever the developer's preference. In `testTools`, write each kind whose tools differ from the kit's own defaults (no preferences), or every kind, to be safe. `New-KitApp` doesn't read the developer's preferences file, so the same answers give the same app on any machine. Every kind left out uses the kit's defaults.
+Each card's key holds an option `id` or `Other: <text>`. Write every card, the budget too: an unanswered budget is $0 (ARC-012), whatever the developer's preference. Write `testTools` for every kind, always. `Get-KitTestToolAnswer -Default <the rows from step 1>` gives it with the developer's picks; then apply any change made in step 2. `New-KitApp` doesn't read the developer's preferences file, so the same answers give the same app on any machine, and a kind left out would get the kit's own defaults instead of the developer's.
 
 ## 4. Run New-KitApp
 

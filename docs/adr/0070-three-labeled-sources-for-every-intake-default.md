@@ -53,7 +53,12 @@ Option 1: the preferences stay the developer's, out of every public repo, and on
 
 ## Decision
 
-Proposed (auto mode, ADR-0035). The three sources and the order of picking are the owner's (2026-11-15). Where the file lives is the agent's recommendation, for the owner to accept or change.
+Proposed (auto mode, ADR-0035), like ADR-0053 and ADR-0058: it's in force, and the owner accepts or changes it. The three sources and the order of picking are the owner's (2026-11-15). These parts are the agent's, for him to review:
+
+- where the file lives (option 1);
+- the exception for a Paid authority pick (below);
+- the bar for an authority's pick;
+- the agent's recommendation of AwesomeAssertions for assertions.
 
 ## Consequences
 
@@ -63,12 +68,16 @@ Proposed (auto mode, ADR-0035). The three sources and the order of picking are t
   - Each kind of test lists its `roles` (test framework, mocking and so on), each with its own recommendation, and each tool names its role. The tools' `default` flags are gone.
   - The budget card keeps its `default` for an unanswered card, now with `defaultRule: ARC-012`.
 - `Test-KitIntakeSource` fails when a card or role has no recommendation, or when a part of one is missing or picks something that isn't an option. `Get-KitIntake` refuses such a file, so `New-KitApp`, the skill and the tests all enforce it.
-- How a default is picked: the developer's preference, then the authority's pick, then the agent's. One exception: an authority's pick that's Paid is listed but not made the default, because ARC-012 starts every tool on its free option. A developer's preference for a Paid option is still theirs to state, and spending still needs the owner's OK (SEC-003).
-- An unanswered kind of test gets the kit's defaults, authority then agent, with no developer file, so `New-KitApp` gives the same result on every machine. The skill writes the developer's picks into the answers.
+- How a default is picked: the developer's preference, then the authority's pick, then the agent's. One exception, the agent's: an authority's pick that's Paid is listed but not made the default, because ARC-012 starts every tool on its free option. The exception looks only at the Paid label: it doesn't weigh a Free tier that's free for non-commercial use only, or a budget above $0, which stay the plan's to weigh. A developer's preference for a Paid option is still theirs to state, and spending still needs the owner's OK (SEC-003).
+- The bar for an authority's pick: the page recommends the tool, says it should be used, or gives it a guideline level (DO, CONSIDER). "You can use", "consider" as one way among several, a tool a page only uses, or a tool named as an example is no pick, and `says` reports what the page does say. A test holds each pick's `says` to that wording. Two picks meet the bar today: Package Validation ("CONSIDER enabling") and BenchmarkDotNet ("strongly recommended", on EF Core's benchmarking page).
+- An agent's reason is its own: a license, a cost, what the kit's sample or CI already runs. It never cites an ADR that records the owner's preference (ADR-0003, ADR-0057); a test checks that.
+- No preference is dropped in silence. One for a question the intake doesn't ask, or for the database with no data answer, comes back as an unused preference with a note.
+- An unanswered kind of test gets the kit's defaults, authority then agent, with no developer file, so `New-KitApp` gives the same result on every machine. The skill writes every kind's tools into the answers with `Get-KitTestToolAnswer`, which carries the developer's picks.
 - The agent's recommendation for assertions is AwesomeAssertions, free for any app. FluentAssertions stays on the list, and stays the owner's own pick through his preferences file (ADR-0003, ADR-0004).
 - New `docs/preferences.md` describes the file. `docs/database-guide.md` labels its recommendations the same way, and a test checks that it agrees with the intake.
 - The owner's file is seeded with the preferences he has stated, each with its date and source: the ADRs and ARC-012.
-- Later work, already planned: moving the owner's preferences out of the kit's rules (`docs/standards/`), and letting an app's agents read the file while they plan.
+- Later work, already planned: moving the owner's preferences out of the kit's rules (`docs/standards/`, including `testing.md`'s note that load tests run Locust by default, and ARC-012's $0 budget), and letting an app's agents read the file while they plan.
+- Also later, and not yet planned: the tool lists themselves are still the ones the owner chose (ADR-0003). The test framework role offers only xUnit, though Microsoft names MSTest, NUnit and TUnit too. Mocking offers only Moq, though Microsoft names NSubstitute. Adding them needs an ADR each (TST-005), so a new kit user can't pick them yet.
 
 ## Pillars affected
 
