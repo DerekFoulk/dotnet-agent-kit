@@ -151,6 +151,27 @@ Describe 'the intake data' {
     }
 
     # ADR-0070: every card and every role names the authority's recommendation (or that it has none) and the agent's.
+    # The bar for an authority's pick (reviewer, ADR-0070): the page recommends it, says it should be used, or gives it
+    # a guideline level (DO, CONSIDER). "You can use", "consider" among other ways, or a page that only uses a tool or
+    # names it as an example is no pick.
+    It 'records an authority pick only where the page recommends it' {
+        $entries = @($intake['cards'] | ForEach-Object { $_['recommendation'] }) + @($intake['testKinds'] | ForEach-Object { $_['roles'] } | ForEach-Object { $_['recommendation'] })
+        $authorities = @($entries | ForEach-Object { if ($_.Contains('authority')) { $_['authority'] } else { $_.Values | ForEach-Object { $_['authority'] } } })
+        $picks = @($authorities | Where-Object { $null -ne $_['pick'] })
+
+        @($picks | Where-Object { $_['says'] -cnotmatch '(?i:\brecommend)|\bshould\b|\b(DO|CONSIDER)\b' } | ForEach-Object { $_['pick'] }) |
+            Should -BeNullOrEmpty -Because 'each authority pick quotes the page recommending it'
+    }
+
+    # The agent's reason is its own, never the owner's taste passed on (ADR-0070): ADR-0003 and ADR-0057 record what he
+    # prefers, so they belong in his preferences file, not in a reason a new kit user reads.
+    It 'gives agent reasons of the agent''s own, citing none of the owner''s preference ADRs' {
+        $entries = @($intake['cards'] | ForEach-Object { $_['recommendation'] }) + @($intake['testKinds'] | ForEach-Object { $_['roles'] } | ForEach-Object { $_['recommendation'] })
+        $agents = @($entries | ForEach-Object { if ($_.Contains('agent')) { $_['agent'] } else { $_.Values | ForEach-Object { $_['agent'] } } })
+
+        @($agents | Where-Object { $_['reason'] -match 'ADR-00(03|57)\b' } | ForEach-Object { $_['pick'] }) | Should -BeNullOrEmpty
+    }
+
     It 'gives every card and every test tool role both labeled sources' {
         @($intake['testKinds'] | Where-Object { -not $_['roles'] } | ForEach-Object { $_['id'] }) | Should -BeNullOrEmpty -Because 'every kind of test lists its roles'
         @(Test-KitIntakeSource -Intake $intake) | Should -BeNullOrEmpty
@@ -169,7 +190,7 @@ Describe 'the intake data' {
     }
 
     # ADR-0057, the owner's decision of 2026-11-11.
-    It 'offers load testing as the owner decided: Locust as the agent''s pick, JMeter beside it, Azure Load Testing and NBomber as Paid' {
+    It 'offers load testing with Locust as the agent''s pick, JMeter beside it, and Azure Load Testing and NBomber as Paid' {
         $kind = @($intake['testKinds'] | Where-Object id -EQ 'load')[0]
         $load = $kind['tools']
         $kind['roles'] | Should -Not -BeNullOrEmpty -Because 'load tests list the role Locust fills'
@@ -574,9 +595,9 @@ Describe 'Get-KitIntakeDefault' {
     }
 
     It 'gives the authority''s pick where it names one' {
-        $row = Get-Row $kitDefaults 'unit/time'
+        $row = Get-Row $kitDefaults 'performance/benchmarks'
 
-        $row.Pick | Should -Be 'faketimeprovider'
+        $row.Pick | Should -Be 'benchmarkdotnet'
         $row.From | Should -Be 'authority'
         $row.Authority['source'] | Should -Match '^https://learn\.microsoft\.com/'
     }
