@@ -48,6 +48,10 @@ If the owner prefers another option that fits the answers above (PostgreSQL, a p
 - **Cosmos DB free tier:** 1000 RU/s is shared by every container in the account, only one account per subscription can have it, and storage past 25 GB bills at the regular price.
 - **PostgreSQL free account:** it ends after 12 months, and then bills at the paid price without asking.
 
+## SQLite: set its busy timeout
+
+SQLite takes one write at a time. Microsoft.Data.Sqlite answers a write that finds the lock taken by sleeping a fixed 150 ms before it tries again, so two writes that meet cost the second one at least 150 ms. Have SQLite wait for the lock itself instead: in a `DbConnectionInterceptor`, override `ConnectionOpened` and `ConnectionOpenedAsync` to call `SQLitePCL.raw.sqlite3_busy_timeout(connection.Handle, 1000)` on the `SqliteConnection`, and add the interceptor with `AddInterceptors` next to `UseSqlite`. Keep it short, a second: SQLite's busy timeout applies to each statement, while Microsoft.Data.Sqlite's command timeout covers the whole command. The kit's sample does this in `sample/src/Bookmarks.Infrastructure/SqliteBusyTimeoutInterceptor.cs`, and the kit's ADR-0072 explains why ([kit repository](https://github.com/DerekFoulk/dotnet-agent-kit)).
+
 ## Every cloud database, whichever it is
 
 - **A budget alert:** a Cost Management budget on the resource group, set to alert the owner. A budget only alerts; it doesn't stop spending ([budgets tutorial](https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets), checked 2026-11-11).

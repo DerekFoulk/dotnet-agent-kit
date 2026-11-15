@@ -1,6 +1,6 @@
 # Practitioner sources
 
-Books, blogs and talks that inform a standard or profile (brief §4). They aren't a rule layer of their own. Each is read once, when the standard it informs is written or revised, and a rule taken from one applies only after the owner ratifies it. Agents don't read these while working.
+Books, blogs and talks that inform a standard or profile (brief §4). They aren't a rule layer of their own. Each is read once, when the standard it informs is written or revised, and a rule taken from one applies only after the owner ratifies it. Agents don't read these while working. For the pages the rules actually cite, and who published each, see `docs/authorities.md`.
 
 | Source | Informs | When |
 |---|---|---|
