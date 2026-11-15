@@ -215,10 +215,12 @@ function Invoke-AuthoritiesPageBuild {
 
     $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).ProviderPath
     $pagePath = Join-Path $RepoRoot 'docs' 'authorities.md'
+    # Kept across the catch, so a page that can't be filled is reported beside what was found before it.
+    $problems = @()
     try {
         $entries = @(Read-SourceEntry -Path (Join-Path $RepoRoot 'docs' 'authorities.yml'))
         $cited = @(Get-CitedUrl -StandardsPath (Join-Path $RepoRoot 'docs' 'standards'))
-        $problems = @(Get-AuthoritiesProblem -Cited $cited -Entries $entries)
+        $problems += @(Get-AuthoritiesProblem -Cited $cited -Entries $entries)
         if (-not (Test-Path -LiteralPath $pagePath)) { $problems += 'docs/authorities.md is missing' }
         else {
             $current = (Get-Content -Raw -LiteralPath $pagePath) -replace "`r`n", "`n"
@@ -226,7 +228,7 @@ function Invoke-AuthoritiesPageBuild {
         }
     }
     catch {
-        $problems = @($_.Exception.Message)
+        $problems += $_.Exception.Message
     }
 
     if ($problems) {
