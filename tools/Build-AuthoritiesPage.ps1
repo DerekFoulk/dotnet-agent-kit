@@ -118,6 +118,14 @@ function Get-AuthoritiesProblem {
                 "entry '$name' match '$prefix' must be an http or https URL ending in '/'"
             }
         }
+        # The page puts these in table cells, where a '|' ends the cell.
+        foreach ($field in 'name', 'publisher', 'covers') {
+            if ($entry.Contains($field) -and "$($entry[$field])".Contains('|')) { "entry '$name' $field has a '|', which would break the page's table" }
+        }
+    }
+    # Each name is a heading, an anchor and the key the page groups citations by.
+    foreach ($group in $Entries | Where-Object { $_.Contains('name') } | Group-Object { "$($_['name'])" } | Where-Object Count -GT 1) {
+        "entry '$($group.Name)' has the same name as another; each name is a heading and an anchor, so give each its own"
     }
 
     $used = [System.Collections.Generic.HashSet[object]]::new()
