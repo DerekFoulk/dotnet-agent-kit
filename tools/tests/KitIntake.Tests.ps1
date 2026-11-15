@@ -22,6 +22,18 @@ Describe 'the intake data' {
             $guide | Should -Match ([regex]::Escape($option['label'])) -Because "the guide lists $($option['label'])"
         }
     }
+    # ADR-0070: an app gets the guide but not templates/app-intake.json, so the guide labels its recommendations too,
+    # and this keeps them the same as the intake's (CRF-003).
+    It 'labels each database recommendation as the intake does: the authority''s page and the agent''s pick' {
+        $guide = Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'database-guide.md')
+        $card = @($intake['cards'] | Where-Object { $_['id'] -eq 'database' })[0]
+        foreach ($answer in $card['recommendation'].Keys) {
+            $recommendation = $card['recommendation'][$answer]
+            $label = @($card['options'] | Where-Object { $_['id'] -eq $recommendation['agent']['pick'] })[0]['label']
+            $guide | Should -Match ([regex]::Escape($recommendation['authority']['source'])) -Because "the guide links the page Microsoft's recommendation for $answer data comes from"
+            $guide | Should -Match "\*\*$([regex]::Escape($label))\*\* \(the agent's recommendation\)" -Because "the guide labels $label as the agent's pick for $answer data"
+        }
+    }
     It 'exists as templates/app-intake.json' {
         Test-Path -LiteralPath $intakePath | Should -BeTrue
     }
