@@ -34,7 +34,7 @@ ADR-0067 made the reviewer agent, which runs in the owner's Claude usage, review
 - **Reversibility:** Easy: one default value and some skill text.
 - **Risk:** Low.
   - A small fix reviewed on a cheaper model could miss something the strong model would catch. The guardrail exclusion and the 100-line limit keep that to small, ordinary fixes, and CI still runs every gate.
-  - A between-turn event can't merge unseen: step 5's checks run first. Plain PR comments are read there by the agent, untested, since the kit is public and apps are by default, so anyone can post one. The better design is for `Get-OpenFinding` to list them, as a tested check. It waits because it needs what review findings already have and comments don't: a way to mark one answered, and a way to tell the owner's comments from agents', which post with his login. It's planned as a follow-up PR (CRF-002).
+  - A between-turn event can't merge unseen: step 5's checks run first. Plain PR comments are read there by the agent, untested, since the kit is public and apps are by default, so anyone can post one. The better design is for `Get-OpenFinding` to list them, as a tested check. It can reuse `Get-OpenFinding`'s existing approach: skip the signed-in login, which agents post with, and count a prefixed reply as the answer. It waits only because it's new script behavior, which needs its own red/green Pester cycle (TST-006), outside this change to the skills. It's planned as a follow-up PR (CRF-002), named in this PR's "For the owner".
 
 ### Option 2: The same, with a 9-minute default
 
