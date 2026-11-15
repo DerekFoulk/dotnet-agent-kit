@@ -23,7 +23,7 @@ internal static class MemberCountRule
             .Where(file => !file.Generated)
             .OrderBy(file => file.Path, StringComparer.Ordinal)
             .SelectMany(file => file.Parse().GetCompilationUnitRoot().DescendantNodes().OfType<TypeDeclarationSyntax>())
-            .GroupBy(Identity, StringComparer.Ordinal)
+            .GroupBy(TypeIdentity.Of, StringComparer.Ordinal)
             .Where(parts => !parts.Any(LimitExemption.Covers)) // a marker on any part covers the whole type
             .Select(parts => (First: parts.First(), Count: MembersOf([.. parts])))
             .Where(type => type.Count > Limits.MembersPerType)
@@ -32,16 +32,6 @@ internal static class MemberCountRule
                 type.First.Identifier.GetLocation(),
                 $"{type.First.Identifier.Text} has {type.Count} members; the limit is {Limits.MembersPerType} (CRF-011)."));
     }
-
-    // What makes two declarations parts of one type: its namespace, the types it's nested in, its name and its
-    // number of type parameters.
-    private static string Identity(TypeDeclarationSyntax type) =>
-        string.Join('.', type.AncestorsAndSelf().Reverse().Select(node => node switch
-        {
-            BaseNamespaceDeclarationSyntax space => space.Name.ToString(),
-            TypeDeclarationSyntax outer => $"{outer.Identifier.Text}`{outer.Arity}",
-            _ => null,
-        }).OfType<string>());
 
     private static int MembersOf(IReadOnlyList<TypeDeclarationSyntax> parts)
     {

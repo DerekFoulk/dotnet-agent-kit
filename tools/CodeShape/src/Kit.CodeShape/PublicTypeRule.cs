@@ -6,7 +6,8 @@ namespace Kit.CodeShape;
 
 /// <summary>Finds files that declare more than <see cref="Limits.PublicTypesPerFile"/> public types (CRF-011): a
 /// class, struct, interface, record, enum or delegate declared public outside any other type. A nested type belongs
-/// to the type that holds it. The finding points at the first type over the limit.</summary>
+/// to the type that holds it, and a partial type's parts in the file are one type. The finding points at the first
+/// type over the limit.</summary>
 internal static class PublicTypeRule
 {
     /// <summary>Checks one file.</summary>
@@ -16,6 +17,7 @@ internal static class PublicTypeRule
 
         SyntaxToken[] names = [.. TopLevel(file.Parse().GetCompilationUnitRoot().Members)
             .Where(type => type.Declaration.Modifiers.Any(SyntaxKind.PublicKeyword))
+            .DistinctBy(type => TypeIdentity.Of(type.Declaration), StringComparer.Ordinal) // a partial type's parts are one type
             .Select(type => type.Name)];
         if (names.Length > Limits.PublicTypesPerFile)
         {
