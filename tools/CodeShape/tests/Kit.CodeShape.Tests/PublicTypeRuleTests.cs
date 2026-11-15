@@ -35,4 +35,13 @@ public sealed class PublicTypeRuleTests
             file class Local { }
             delegate void Handler();
             """)).Should().BeEmpty();
+
+    // Two parts of one partial type are one type; the same name in another namespace, or with type parameters, isn't.
+    [Theory]
+    [InlineData("public partial class A { } public partial class A { }", 0)]
+    [InlineData("namespace N { public partial class A { } } namespace N { public partial class A { } }", 0)]
+    [InlineData("namespace N { public class A { } } namespace M { public class A { } }", 1)]
+    [InlineData("public class Box { } public class Box<T> { }", 1)]
+    public void APartialTypesPartsInOneFileAreOneType(string text, int findings) =>
+        PublicTypeRule.Check(new SourceFile("Parts.cs", text)).Should().HaveCount(findings);
 }
