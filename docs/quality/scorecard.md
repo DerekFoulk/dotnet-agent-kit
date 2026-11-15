@@ -98,7 +98,7 @@ areas:
         status: proposed
         needs: "packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests"
       - id: GAP-037
-        gap: "22 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them."
+        gap: "24 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, OPS-005, OPS-006, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them."
         status: proposed
         needs: "test projects in the app template or a shared check, and a CI change"
       - id: GAP-027
@@ -139,7 +139,7 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/reliability/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks, retrieved 2026-11-07"
-    rules: [ARC-006, OPS-002, OPS-003, DAT-003, DAT-004, DAT-007, DAT-008]
+    rules: [ARC-006, OPS-002, OPS-003, OPS-005, OPS-006, DAT-003, DAT-004, DAT-007, DAT-008]
     gaps:
       - id: GAP-007
         gap: "No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-002, OPS-003 (accepted 2026-11-09)."
@@ -160,6 +160,10 @@ areas:
       - "https://aspire.dev/get-started/csharp-service-defaults/, retrieved 2026-11-07"
     rules: [ARC-006, OPS-001]
     gaps:
+      - id: GAP-043
+        gap: "No service level objectives or alerts: an app sends telemetry (OPS-001) but nothing says what good service is (an availability and latency objective) or who is told when it's missed. They belong with the deployment pipeline and its hosting (GAP-015) (rules audit, 2026-11-12)."
+        status: proposed
+        needs: "an SLO per app in its plan or runbook, and alert rules in its hosting's infrastructure code"
       - id: GAP-009
         gap: "No OpenTelemetry defaults for logs, metrics and traces; plans name observability (ARC-006) but nothing sets it up. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-001 (accepted 2026-11-09)."
         status: closed
@@ -187,7 +191,7 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/, retrieved 2026-11-07"
       - "https://benchmarkdotnet.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/aspnet/core/test/load-tests?view=aspnetcore-10.0, retrieved 2026-11-12"
-    rules: [ARC-006, TST-009, DAT-009]
+    rules: [ARC-006, TST-009, DAT-009, OPS-007]
     gaps:
       - id: GAP-012
         gap: "No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions). Closed by ADR-0062: BenchmarkDotNet benchmarks and a Locust load test, each against a budget in the repo, run by the shared performance workflow off the required path (TST-009, proposed), proven on the sample. A load test of a deployed app waits for GAP-015."
@@ -309,17 +313,17 @@ Each area in the front matter above has:
 | Code | 11 | 10 | 1 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
 | Security | 11 | 8 | 3 | 4 | 3 |
-| Reliability | 5 | 2 | 3 | 2 | 1 |
-| Observability | 2 | 1 | 1 | 0 | 0 |
+| Reliability | 7 | 4 | 3 | 2 | 1 |
+| Observability | 2 | 1 | 1 | 0 | 1 |
 | API design | 4 | 4 | 0 | 3 | 0 |
-| Performance | 2 | 0 | 2 | 1 | 0 |
+| Performance | 3 | 1 | 2 | 1 | 0 |
 | Supply chain and build | 9 | 9 | 0 | 3 | 3 |
 | Delivery | 1 | 1 | 0 | 2 | 3 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 86 rules in force, 54 checked by a tool and 32 advisory; 25 proposed; 20 open gaps.
+**Overall:** 89 rules in force, 57 checked by a tool and 32 advisory; 25 proposed; 21 open gaps.
 
 Open gaps:
 
@@ -329,12 +333,13 @@ Open gaps:
 - **GAP-031** (Architecture, proposed): The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059).
 - **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
-- **GAP-037** (Tests, proposed; needs test projects in the app template or a shared check, and a CI change): 22 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them.
+- **GAP-037** (Tests, proposed; needs test projects in the app template or a shared check, and a CI change): 24 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, OPS-005, OPS-006, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
 - **GAP-040** (Security, proposed; needs a script that reads the licenses of the packages in the lock files, an allowlist, and a CI step): SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12).
 - **GAP-041** (Security, proposed; needs a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR): Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
 - **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
+- **GAP-043** (Observability, proposed; needs an SLO per app in its plan or runbook, and alert rules in its hosting's infrastructure code): No service level objectives or alerts: an app sends telemetry (OPS-001) but nothing says what good service is (an availability and latency objective) or who is told when it's missed. They belong with the deployment pipeline and its hosting (GAP-015) (rules audit, 2026-11-12).
 - **GAP-029** (Supply chain and build, proposed; needs a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change): PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too.
 - **GAP-033** (Supply chain and build, proposed; needs a CI change to run the browser tests in a pinned container, and an ADR): Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3).
 - **GAP-038** (Supply chain and build, proposed; needs a scheduled workflow and a kit script): Nothing notices nuget.org rotating its repository certificate before a restore fails: SUP-012's trust policy lists the certificates nuget.org's service index announced on 2026-11-13, and a package signed with a new one fails NU3004 in the kit and every app until someone runs dotnet nuget trust sync nuget.org (ADR-0066). A scheduled check that compares nuget.config with the service index, and opens a PR or issue when they differ, would catch it first.

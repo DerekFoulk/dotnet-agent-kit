@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.Net;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Bookmarks.FunctionalTests;
@@ -82,18 +84,22 @@ public sealed class HostingSecurityTests : IDisposable
         rejected.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
-    // A limit of 0 or less would make every request fail; the app refuses to start with one instead.
+    // A limit of 0 or less would make every request fail; options validation stops the app at startup instead (OPS-006).
     [Theory]
-    [InlineData("RateLimiting:BurstLimit")]
-    [InlineData("RateLimiting:RequestsPerSecond")]
-    public void ARateLimitBelowOneStopsTheAppFromStarting(string setting)
+    [InlineData("RateLimiting:BurstLimit", "BurstLimit")]
+    [InlineData("RateLimiting:RequestsPerSecond", "RequestsPerSecond")]
+    public void ARateLimitBelowOneStopsTheAppFromStarting(string setting, string property)
     {
+        using ExceptionLog log = new();
         Action start = () =>
         {
-            using ApiHost host = new("Production", new Dictionary<string, string> { [setting] = "0" });
+            using ApiHost host = new("Production", new Dictionary<string, string> { [setting] = "0" }, services => services.AddSingleton<ILoggerProvider>(log));
         };
 
-        start.Should().Throw<InvalidOperationException>().WithMessage($"*{setting}*");
+        // Which exception WebApplicationFactory throws when the host fails to start varies from run to run (on CI it was
+        // once an ObjectDisposedException); the host logs the real cause either way, so the test reads it from the log.
+        start.Should().Throw<Exception>();
+        log.Exceptions.OfType<OptionsValidationException>().Should().Contain(exception => exception.Message.Contains(property, StringComparison.Ordinal));
     }
 
     // A platform's liveness probes come from one address; limiting them would get a healthy app restarted.
@@ -164,5 +170,35 @@ public sealed class HostingSecurityTests : IDisposable
         }
 
         throw new InvalidOperationException("No request was rejected.");
+    }
+
+    /// <summary>Keeps every exception the app logs, so a test can read why the host failed to start.</summary>
+    private sealed class ExceptionLog : ILoggerProvider
+    {
+        private readonly ConcurrentQueue<Exception> _exceptions = new();
+
+        public IEnumerable<Exception> Exceptions => _exceptions;
+
+        public ILogger CreateLogger(string categoryName) => new Logger(_exceptions);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(ConcurrentQueue<Exception> exceptions) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (exception is not null)
+                {
+                    exceptions.Enqueue(exception);
+                }
+            }
+        }
     }
 }
