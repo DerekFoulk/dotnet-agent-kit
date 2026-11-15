@@ -61,6 +61,27 @@ Describe 'Test-ArchitectureDiagram.ps1' {
         Get-Message -Path $script:diagram | Should -BeNullOrEmpty
     }
 
+    # Each case is one the outcome depends on: a fence read the wrong way gives a different answer (review 2).
+    It 'reads <Description>' -ForEach @(
+        @{ Description = 'a three-backtick line inside a four-backtick fence as text'; Text = "````````mermaid`n```````nflowchart LR`n`````````n"; Expected = $null }
+        @{ Description = 'a tilde line inside a backtick fence as text'; Text = "``````mermaid`n~~~`nflowchart LR`n```````n"; Expected = $null }
+        @{ Description = 'a fence line with text after it as text, not a close'; Text = "``````mermaid`n``````  text`nflowchart LR`n```````n"; Expected = $null }
+        @{ Description = 'an unclosed Mermaid fence as running to the end of the page'; Text = "``````mermaid`nflowchart LR`n  A --> B`n"; Expected = $null }
+        @{ Description = 'Mermaid in capitals as another language'; Text = "``````Mermaid`nflowchart LR`n```````n"; Expected = 'no ```mermaid code block' }
+        @{ Description = 'mermaidx as another language'; Text = "``````mermaidx`nflowchart LR`n```````n"; Expected = 'no ```mermaid code block' }
+        @{ Description = 'a backtick line with a backtick in its info string as text, not a fence'; Text = "``````mermaid ``x```n flowchart LR`n```````n"; Expected = 'no ```mermaid code block' }
+    ) {
+        Set-Content -Path $script:diagram -Value $Text
+
+        Get-Message -Path $script:diagram | Should -Be $Expected
+    }
+
+    It 'closes a fence on a CRLF line, so an empty block followed by text is still empty' {
+        [IO.File]::WriteAllText($script:diagram, "``````mermaid`r`n`r`n```````r`nThe modules are below.`r`n")
+
+        Get-Message -Path $script:diagram | Should -Be 'the ```mermaid code block is empty'
+    }
+
     It 'doesn''t read a line indented four spaces as a fence: it''s an indented code block' {
         Set-Content -Path $script:diagram -Value "    ``````mermaid`n    flowchart LR`n    ```````n"
 
