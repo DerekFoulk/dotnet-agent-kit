@@ -1,8 +1,10 @@
 namespace AtTypeCouplingLimit;
 
 // A class coupled to 95 types, 32 or fewer per method: CA1506's limit per type.
+/// <summary>A public member of this fixture (STY-008).</summary>
 public static class Hub
 {
+    /// <summary>A public member of this fixture (STY-008).</summary>
     public static void Take1(
         C01 p01,
         C02 p02,
@@ -40,6 +42,7 @@ public static class Hub
     {
     }
 
+    /// <summary>A public member of this fixture (STY-008).</summary>
     public static void Take2(
         C33 p33,
         C34 p34,
@@ -77,6 +80,7 @@ public static class Hub
     {
     }
 
+    /// <summary>A public member of this fixture (STY-008).</summary>
     public static void Take3(
         C65 p65,
         C66 p66,
