@@ -1,6 +1,6 @@
 # ADR-0064: GitHub Copilot code review replaces the reviewer agent
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0067
 - **Date:** 2026-11-12
 
 ## Context
@@ -62,6 +62,8 @@ Accepted (owner, 2026-11-12: "Yes, replace it").
 - **Advisory parts** of rules that said "checked by the reviewer agent" now say code review checks them.
 - **If Copilot can't review,** for example when the owner's AI credits run out, the agent tells the owner and the PR waits.
 - **Apps made before this change** get the instructions through the kit sync. Their ruleset gains the rule only when the owner adds it, because `New-KitApp` sets rulesets once.
+
+- **Superseded by ADR-0067 (2026-11-14):** the owner's AI credits ran out, so he turned Copilot code review off and removed the ruleset rule; the reviewer agent is back, reviewing against `docs/code-review.md`, and new apps no longer get the rule.
 
 ## Pillars affected
 

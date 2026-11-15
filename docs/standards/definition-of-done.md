@@ -31,19 +31,16 @@ rules:
     scope: core
     paths: ["**"]
   - id: DOD-003
-    statement: "Before the owner reviews, GitHub Copilot code review reviews every pull request and every push to it, against the kit's code-review instructions (.github/instructions/code-review.instructions.md) and rule files; the agent ranks each finding Blocking, Should fix or Consider and answers it (DOD-005), and reviews end at the first Copilot review of the head commit with nothing blocking or should-fix."
-    why: "A reviewer with fresh eyes caught four blocking issues in one project, and reviewing every nit fix again turned PRs 32 and 33 into hours-long loops (owner, 2026-11-09). Copilot code review replaced the kit's reviewer agent (owner, 2026-11-12, ADR-0064); CI runs the gates the agent used to run."
+    statement: "Before the owner reviews, an independent read-only reviewer agent that hasn't seen the work (.claude/agents/reviewer.md) reviews every branch against the kit's code-review instructions (docs/code-review.md) and rule files, before its pull request opens and again after each round of fixes; the agent ranks each finding Blocking, Should fix or Consider and answers it (DOD-005), and reviews end at the first round with nothing blocking or should-fix."
+    why: "A reviewer with fresh eyes caught four blocking issues in one project, and reviewing every nit fix again turned PRs 32 and 33 into hours-long loops (owner, 2026-11-09). GitHub Copilot code review stood in for the reviewer agent from 2026-11-12 (ADR-0064) until the owner's AI credits ran out; on 2026-11-14 he turned it off and brought the agent back (ADR-0067)."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["ADR-0010", "owner, 2026-11-09", "owner, 2026-11-12", "ADR-0064"]
+    sources: ["ADR-0010", "owner, 2026-11-09", "owner, 2026-11-14", "ADR-0067"]
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "ruleset: main protection's copilot_code_review rule requests a Copilot review on every pull request and push (in an app, templates/github/main-protection.json; tools/tests/New-KitApp.Tests.ps1); it requires no approval, so nothing blocks a merge when no review arrives, and waiting for Copilot's review of the head commit is the agent's (finish-work). Answered findings are DOD-005's"
-      - kind: advisory
-        in: [kit, app]
-        how: "ranking each finding and ending the reviews are the agent's (the finish-work and address-review skills); a review that fails, such as when the owner's AI credits run out, is reported to the owner, and the PR waits"
+        how: "the reviewer agent exists, read-only and pointed at docs/code-review.md (tools/tests/AgentConfig.Tests.ps1), and Export-KitApp gives every app a copy (tools/tests/Export-KitApp.Tests.ps1); running it, ranking each finding and ending the reviews are finish-work steps no tool enforces. Answered findings are DOD-005's"
     scope: core
     paths: ["**"]
   - id: DOD-004
