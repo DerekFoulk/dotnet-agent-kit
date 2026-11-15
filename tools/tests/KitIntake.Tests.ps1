@@ -371,6 +371,21 @@ Describe 'Test-KitIntakeSource' {
                 testKinds = @()
             }
         }
+        # The same, with a card that depends on another and a kind of test with a role.
+        function New-FullSourcedIntake {
+            $intake = New-SourcedIntake
+            $sources = { param($pick) @{
+                    authority = @{ by = 'Microsoft'; pick = $null; says = 'No recommendation'; searched = 'a query'; read = '2026-11-15' }
+                    agent = @{ pick = $pick; reason = 'Free' } } }
+            $intake['cards'] += @{ id = 'data'; options = @(@{ id = 'relational' }, @{ id = 'device' }); recommendation = (& $sources 'relational') }
+            $intake['cards'] += @{ id = 'database'; dependsOn = 'data'
+                options = @(@{ id = 'azure-sql-free'; fits = @('relational') }, @{ id = 'postgresql'; fits = @('relational') }, @{ id = 'sqlite'; fits = @('device') })
+                recommendation = @{ relational = (& $sources 'azure-sql-free') } }
+            $intake['testKinds'] = @(@{ id = 'load'
+                    roles = @(@{ id = 'load'; name = 'Load generator'; recommendation = (& $sources 'locust') })
+                    tools = @(@{ id = 'locust'; role = 'load' }, @{ id = 'jmeter'; role = 'load' }) })
+            $intake
+        }
     }
 
     It 'finds nothing wrong with a card that has both sources' {
@@ -395,5 +410,28 @@ Describe 'Test-KitIntakeSource' {
         & $Change $intake['cards'][0]
 
         (@(Test-KitIntakeSource -Intake $intake) -join "`n") | Should -BeLike $Message
+    }
+
+    # A kind of test fills several roles (a test framework, a mocking library...), each picked on its own. A card that
+    # depends on another needs a recommendation for each answer that leaves more than one option, and a card's own
+    # default for an unanswered card has to come from a rule.
+    It 'reports <Case>' -ForEach @(
+        @{ Case = 'a tool in no listed role'; Change = { param($i) $i['testKinds'][0]['tools'][1]['role'] = 'stress' }; Message = "*tool 'jmeter' of load tests has role 'stress', which isn't one of its roles: load*" }
+        @{ Case = 'a role with no tools'; Change = { param($i) $i['testKinds'][0]['roles'] += @{ id = 'soak'; name = 'Soak'; recommendation = @{} } }; Message = "*role 'load/soak' has no tools*" }
+        @{ Case = 'a role with no recommendation'; Change = { param($i) $i['testKinds'][0]['roles'][0].Remove('recommendation') }; Message = "*role 'load/load' has no recommendation*" }
+        @{ Case = 'a role whose agent picks a tool outside it'; Change = { param($i) $i['testKinds'][0]['roles'][0]['recommendation']['agent']['pick'] = 'k6' }; Message = "*role 'load/load'*agent picks 'k6', which isn't an option: locust, jmeter*" }
+        @{ Case = 'an answer that leaves two options with no recommendation'; Change = { param($i) $i['cards'][2]['recommendation'].Remove('relational') }; Message = "*card 'database' for data 'relational' has no recommendation*" }
+        @{ Case = 'a recommendation for an answer that isn''t one'; Change = { param($i) $i['cards'][2]['recommendation']['graph'] = @{} }; Message = "*card 'database' has a recommendation for data 'graph', which isn't an option*" }
+        @{ Case = 'an agent pick that doesn''t fit the answer'; Change = { param($i) $i['cards'][2]['recommendation']['relational']['agent']['pick'] = 'sqlite' }; Message = "*card 'database' for data 'relational'*agent picks 'sqlite', which isn't an option: azure-sql-free, postgresql*" }
+        @{ Case = 'a card default with no rule behind it'; Change = { param($i) $i['cards'][0]['default'] = 'none' }; Message = "*card 'hosting' has a default*no defaultRule*" }
+    ) {
+        $intake = New-FullSourcedIntake
+        & $Change $intake
+
+        (@(Test-KitIntakeSource -Intake $intake) -join "`n") | Should -BeLike $Message
+    }
+
+    It 'finds nothing wrong with roles and a dependent card that have both sources' {
+        @(Test-KitIntakeSource -Intake (New-FullSourcedIntake)) | Should -BeNullOrEmpty
     }
 }
