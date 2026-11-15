@@ -427,10 +427,19 @@ Describe 'Agent configuration' {
             $review = [regex]::Match($skill, '(?s)## 2\.(.*?)(?=\r?\n## )').Groups[1].Value
             $merge = [regex]::Match($skill, '(?s)## 5\.(.*?)(?=\r?\n## )').Groups[1].Value
 
-            $review | Should -Match 'Run the `reviewer` subagent'
+            $review | Should -Match 'Run the `reviewer` subagent.*before the PR opens'
             $review | Should -Not -Match 'Copilot'
-            $merge | Should -Match 'The latest `reviewer` round is on that head commit'
+            $merge | Should -Match 'The latest `reviewer` round is on that head commit,\*\* with no unanswered blocking or should-fix finding'
             $merge | Should -Not -Match 'Copilot has reviewed'
+        }
+
+        # The reviewer's round on finish-work step 5. A merge condition that drops "clean" lets an agent merge past an open
+        # blocking finding, so both copies pin it (the reviewer agent's review of this change, ADR-0067).
+        It 'are what AGENTS.md "Working modes" holds a merge to: a clean reviewer round on the head commit' {
+            $agents = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'AGENTS.md')
+            $modes = [regex]::Match($agents, '(?s)## Working modes(.*?)(?=\r?\n## )').Groups[1].Value
+
+            $modes | Should -Match 'the latest `reviewer` round on that commit has no unanswered blocking or should-fix finding'
         }
 
         It 'are what start-work''s plan review uses: the reviewer agent reviews a non-trivial plan' {
@@ -444,12 +453,14 @@ Describe 'Agent configuration' {
         # owner reads may still say it reviews every PR (CRF-003: the docs and the repo's settings agree).
         It 'are no longer said to be Copilot''s every-PR review in <File>' -ForEach @(
             @{ File = 'AGENTS.md' }, @{ File = 'CLAUDE.md' }, @{ File = 'README.md' }, @{ File = 'templates/app/AGENTS.md' }
-            @{ File = '.github/pull_request_template.md' }, @{ File = 'docs/code-review.md' }
+            @{ File = '.github/pull_request_template.md' }, @{ File = 'docs/code-review.md' }, @{ File = 'docs/quality/scorecard.md' }
+            @{ File = 'docs/standards/definition-of-done.md' }, @{ File = '.claude/agents/reviewer.md' }
             @{ File = '.claude/skills/finish-work/SKILL.md' }, @{ File = '.claude/skills/start-work/SKILL.md' }
             @{ File = '.claude/skills/address-review/SKILL.md' }
         ) {
             $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File)
-            $claim = '(?i)copilot (code review )?reviews|copilot''s (code )?review (of|findings)|copilot code review (checks|of the head)|asks copilot to review'
+            # The phrases the docs used, and any sentence that ties Copilot to every PR or push, however it's worded.
+            $claim = '(?i)copilot (code review )?reviews|copilot\Ws (code )?review (of|findings|lands)|copilot code review (checks|of the head)|asks copilot to review|copilot[^.\n]{0,80}\bevery (pr|pull request|push)\b|\bevery (pr|pull request|push)[^.\n]{0,40}\bcopilot'
 
             [regex]::Matches($text, $claim).Value | Should -BeNullOrEmpty
         }
@@ -477,7 +488,10 @@ Describe 'Agent configuration' {
             $frontMatter = Read-FrontMatter -Path $agentPath
 
             foreach ($tool in 'Edit', 'Write', 'NotebookEdit') { "$($frontMatter['disallowedTools'])" | Should -Match "\b$tool\b" }
-            Get-Content -Raw -LiteralPath $agentPath | Should -Match ([regex]::Escape('docs/code-review.md'))
+            $text = Get-Content -Raw -LiteralPath $agentPath
+            $text | Should -Match ([regex]::Escape('docs/code-review.md'))
+            # It keeps Bash and PowerShell, so this rule is what keeps it from committing or resetting from the shell.
+            $text | Should -Match ([regex]::Escape("- **Don't change anything.**"))
         }
     }
 
