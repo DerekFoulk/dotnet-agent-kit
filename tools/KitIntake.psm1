@@ -8,6 +8,9 @@ Set-StrictMode -Version Latest
 # an older module misread it.
 $script:SchemaVersion = 2
 
+# The layout of a developer's preferences file (docs/preferences.md, ADR-0070).
+$script:PreferenceSchemaVersion = 1
+
 # Reads templates/app-intake.json, and refuses one whose defaults don't name their source (ADR-0070).
 function Get-KitIntake {
     param([Parameter(Mandatory)] [string] $Text)
@@ -305,14 +308,43 @@ function Test-KitText {
 
 # Where a developer's preferences file lives: their home folder, outside every repo (ADR-0070).
 function Get-KitPreferencePath {
-    ''
+    Join-Path $HOME '.dotnet-agent-kit' 'preferences.json'
 }
 
-# Reads a developer's preferences file and checks each preference; a missing file is no preferences.
+# Reads a developer's preferences file and checks each preference: their words, the date, where they said it, and
+# a pick for a preference that answers an intake question. A missing file is no preferences: a new kit user has none.
 function Read-KitPreference {
     param([string] $Path = (Get-KitPreferencePath))
 
-    @()
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+    try { $file = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json -AsHashtable }
+    catch { throw "The preferences file $Path isn't valid JSON: $($_.Exception.Message)" }
+    if ($file -isnot [Collections.IDictionary]) { throw "The preferences file $Path isn't a JSON object." }
+    $version = if ($file.Contains('schemaVersion')) { $file['schemaVersion'] } else { 'none' }
+    if ($version -isnot [long] -or $version -ne $script:PreferenceSchemaVersion) {
+        throw "The preferences file $Path has schemaVersion $version, and this kit reads version $($script:PreferenceSchemaVersion) (docs/preferences.md)."
+    }
+    $seen = @{}
+    $number = 0
+    foreach ($entry in @($file['preferences'])) {
+        $number++
+        $at = "The preferences file $Path, preference $number"
+        if ($entry -isnot [Collections.IDictionary]) { throw "$at, isn't a JSON object." }
+        if (-not (Test-KitText $entry['stated'])) { throw "$at, has no stated: what you said, in your words." }
+        if ("$($entry['date'])" -notmatch '^\d{4}-\d{2}-\d{2}$') { throw "$at, needs the date you said it (date: yyyy-mm-dd)." }
+        if (-not (Test-KitText $entry['source'])) { throw "$at, has no source: where you said it, such as 'said in chat'." }
+        $choice = $entry['choice']
+        if (Test-KitText $choice) {
+            if (-not (Test-KitText $entry['pick'])) { throw "$at, answers choice '$choice' but has no pick." }
+            $key = "$choice|$($entry['when'])"
+            if ($seen.Contains($key)) { throw "The preferences file $Path has two preferences for '$choice' ($($seen[$key]) and $number): keep one." }
+            $seen[$key] = $number
+        }
+        [pscustomobject]@{
+            Choice = $choice; When = $entry['when']; Pick = $entry['pick']
+            Stated = $entry['stated']; Date = $entry['date']; Source = $entry['source']
+        }
+    }
 }
 
 Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference
