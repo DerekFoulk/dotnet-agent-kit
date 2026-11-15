@@ -102,10 +102,37 @@ function Get-KitDefaultTool {
     param([Parameter(Mandatory)] [Collections.IDictionary] $Kind)
 
     foreach ($role in $Kind['roles']) {
-        $recommendation = $role['recommendation']
-        $pick = if ($null -ne $recommendation['authority']['pick']) { $recommendation['authority']['pick'] } else { $recommendation['agent']['pick'] }
-        @($Kind['tools'] | Where-Object { $_['id'] -ceq $pick -and $_['role'] -ceq $role['id'] })[0]
+        $tools = @($Kind['tools'] | Where-Object { $_['role'] -ceq $role['id'] })
+        $pick = (Select-KitPick -Recommendation $role['recommendation'] -Option $tools).Pick
+        @($tools | Where-Object { $_['id'] -ceq $pick })[0]
     }
+}
+
+# Picks a default from a recommendation (ADR-0070): the developer's preference, then the authority's pick unless it's
+# Paid (ARC-012 starts every tool on its free option), then the agent's. Returns the pick, where it came from, and a
+# note for each source it passed over.
+function Select-KitPick {
+    param(
+        [Parameter(Mandatory)] [Collections.IDictionary] $Recommendation,
+        [Parameter(Mandatory)] [Collections.IDictionary[]] $Option,
+        [object] $Preference
+    )
+
+    $notes = [Collections.Generic.List[string]]::new()
+    $ids = @($Option | ForEach-Object { $_['id'] })
+    if ($Preference) {
+        if ($Preference.Pick -cin $ids) { return [pscustomobject]@{ Pick = $Preference.Pick; From = 'developer'; Notes = @($notes) } }
+        $notes.Add("Your preference of $($Preference.Date), '$($Preference.Pick)', isn't an option here any more, so it's skipped.")
+    }
+    $authority = $Recommendation['authority']
+    if ($null -ne $authority['pick']) {
+        $chosen = @($Option | Where-Object { $_['id'] -ceq $authority['pick'] })[0]
+        if ($chosen.Contains('cost') -and $chosen['cost']['label'] -eq 'Paid') {
+            $notes.Add("$($authority['by'])'s pick, '$($authority['pick'])', is Paid, so it isn't the default: every tool starts on its free option (ARC-012).")
+        }
+        else { return [pscustomobject]@{ Pick = $authority['pick']; From = 'authority'; Notes = @($notes) } }
+    }
+    [pscustomobject]@{ Pick = $Recommendation['agent']['pick']; From = 'agent'; Notes = @($notes) }
 }
 
 # Writes the app's docs/app-profile.md from the resolved answers.
