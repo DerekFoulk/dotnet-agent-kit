@@ -391,6 +391,26 @@ Describe 'Agent configuration' {
             Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse -Because 'an ask rule wins over an allow rule'
             Test-RuleMatch -Kind 'deny' -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
         }
+
+        # 'gh api *' is allowed for reads. gh api sends a GET unless a method or a field is given, so every form that
+        # writes asks, as it did before the allow rule (an ask rule wins over it). That keeps, among others, a merge
+        # through the API (PUT .../pulls/<n>/merge) asking in review mode, as 'gh pr merge' does. Matched case by
+        # case: Claude Code doesn't say whether Bash rules ignore case, so -f and -F each have a rule.
+        It 'asks before the gh api write <Tool>(<Command>)' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'gh api -X PUT repos/o/r/pulls/1/merge' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues/1/comments -XPOST' }
+                @{ Tool = $tool; Command = 'gh api --method POST repos/o/r/issues/1/comments' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues/1/comments -f body=hi' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues/1/labels -F labels[]=bug' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues --field title=x' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues --raw-field title=x' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/rulesets --input r.json' }
+                @{ Tool = $tool; Command = "gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: \""x\""}) { thread { id } } }'" }
+            }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
+        }
     }
 
     Context 'MCP servers' {
