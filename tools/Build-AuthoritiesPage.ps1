@@ -39,6 +39,18 @@ function Find-SourceEntry {
         [Parameter(Mandatory)] [string] $Url,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Entries
     )
+
+    $best = $null
+    $bestLength = -1
+    foreach ($entry in $Entries) {
+        foreach ($prefix in @($entry['match'])) {
+            if ($Url.StartsWith("$prefix", [System.StringComparison]::OrdinalIgnoreCase) -and "$prefix".Length -gt $bestLength) {
+                $best = $entry
+                $bestLength = "$prefix".Length
+            }
+        }
+    }
+    $best
 }
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
