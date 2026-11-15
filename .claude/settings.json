@@ -235,7 +235,21 @@
       "Read(./**/*.snk)",
       "Read(~/.ssh/**)",
       "Read(~/AppData/Roaming/Microsoft/UserSecrets/**)",
-      "Read(~/.microsoft/usersecrets/**)"
+      "Read(~/.microsoft/usersecrets/**)",
+      "PowerShell(Get-Content *.env*)",
+      "PowerShell(Get-Content *.pfx*)",
+      "PowerShell(Get-Content *.pem*)",
+      "PowerShell(Get-Content *.key*)",
+      "PowerShell(Get-Content *.snk*)",
+      "PowerShell(Get-Content *.ssh*)",
+      "PowerShell(Get-Content *UserSecrets*)",
+      "PowerShell(Select-String *.env*)",
+      "PowerShell(Select-String *.pfx*)",
+      "PowerShell(Select-String *.pem*)",
+      "PowerShell(Select-String *.key*)",
+      "PowerShell(Select-String *.snk*)",
+      "PowerShell(Select-String *.ssh*)",
+      "PowerShell(Select-String *UserSecrets*)"
     ]
   }
 }
