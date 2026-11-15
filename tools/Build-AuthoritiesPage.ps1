@@ -261,10 +261,13 @@ function Update-SourcesBlock {
         [Parameter(Mandatory)] [string] $Block
     )
 
+    # One opening line and one closing line, in that order. A second opening line, such as one quoted in an example,
+    # would otherwise start the match early and replace the hand-written text after it.
+    $opens = [regex]::Matches($Text, '(?m)^<!-- sources from docs/standards[^\n]*-->$')
     $pattern = '(?ms)^(?<open><!-- sources from docs/standards[^\n]*-->)\n.*?^<!-- end sources -->$'
     $found = [regex]::Matches($Text, $pattern)
-    if ($found.Count -ne 1) {
-        throw "docs/authorities.md needs one block: a '<!-- sources from docs/standards ... -->' line, then an '<!-- end sources -->' line."
+    if ($opens.Count -ne 1 -or $found.Count -ne 1) {
+        throw "docs/authorities.md needs one block: one '<!-- sources from docs/standards ... -->' line, then one '<!-- end sources -->' line."
     }
     $Text.Substring(0, $found[0].Index) + $found[0].Groups['open'].Value + "`n" + $Block + '<!-- end sources -->' +
         $Text.Substring($found[0].Index + $found[0].Length)
