@@ -1,5 +1,5 @@
-# The kit's own checks: script tests, rule sources, the quality scorecard, ADR sections, generated-file
-# drift, the authorities page, and on pull requests the commit subjects and red-to-green order. The PR title has its own workflow (pr-title.yml).
+# The kit's own checks: script tests, rule sources, the quality scorecard, ADR sections, the architecture diagram,
+# generated-file drift, the authorities page, and on pull requests the commit subjects and red-to-green order. The PR title has its own workflow (pr-title.yml).
 name: Kit checks (reusable)
 
 on:
@@ -50,6 +50,10 @@ jobs:
 
       - name: ADR sections
         run: ./tools/Test-AdrSections.ps1
+
+      # The kit keeps a diagram of its parts, as every app does (ARC-013).
+      - name: Architecture diagram
+        run: ./tools/Test-ArchitectureDiagram.ps1
 
       - name: Generated agent files are current
         run: ./tools/Build-AgentRules.ps1 -Check

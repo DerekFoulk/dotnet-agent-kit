@@ -21,16 +21,16 @@ rules:
     scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-002
-    statement: "Modules talk to each other only through their Contracts projects."
-    why: "It keeps modules independent and separable."
+    statement: "Modules talk to each other only through their Contracts projects; a module never reads or writes another module's tables, and an app never shares its database with another app."
+    why: "It keeps modules independent and separable. Microsoft's guidance for a bounded context gives it exclusive access to its own data, so another part can't couple itself to the schema (rules audit, owner 2026-11-12)."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["ADR-0008"]
+    sources: ["ADR-0008", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/architecture/microservices/architect-microservice-container-applications/data-sovereignty-per-microservice, retrieved 2026-11-15"]
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the sample has one module, so there's nothing to check yet; an ArchUnitNET test comes with the first app that has two"
+        how: "the sample has one module, so there's nothing to check yet; an ArchUnitNET test comes with the first app that has two, and code review checks that no module's Infrastructure maps another module's tables and that an app's connection strings name a database of its own"
     scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-003
@@ -178,11 +178,27 @@ rules:
         how: "picking the best option within the budget is the plan's: the plan-checklist skill's Cost heading points here and to the app profile's budget, and start-work's plan review checks it; spending stays the owner's call (SEC-003)"
     scope: core
     paths: ["**"]
+  - id: ARC-013
+    statement: "Every repo keeps a Mermaid diagram of its modules and the dependencies between them in docs/architecture/modules.md, updated in the same PR as a change that adds a module, a project or a dependency."
+    why: "A diagram as code is reviewed and versioned with the code it describes; the Well-Architected architect role asks for a design with diagrams, and ADR-0016 promised docs/architecture/ before any repo had one (rules audit, owner 2026-11-12)."
+    layer: owner
+    basis: preference
+    status: accepted
+    sources: ["owner, 2026-11-12", "ADR-0016", "https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals, retrieved 2026-11-12"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "ci: tools/Test-ArchitectureDiagram.ps1 fails when docs/architecture/modules.md is missing or has no non-empty ```mermaid block (kit-checks and app-checks); an app gets a starter page from templates/app"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks the diagram matches the change: a new module, project or dependency is on it"
+    scope: core
+    paths: ["**"]
 ---
 
 # Architecture
 
-The defaults are Clean Architecture for web apps, and native MAUI with the MVVM Toolkit and Shell for mobile (ADR-0008). Architecture practice follows the Azure Well-Architected Framework (ADR-0016). Diagrams live as Mermaid in `docs/architecture/` and are updated in the same PR as the change they describe.
+The defaults are Clean Architecture for web apps, and native MAUI with the MVVM Toolkit and Shell for mobile (ADR-0008). Architecture practice follows the Azure Well-Architected Framework (ADR-0016). Diagrams live as Mermaid in `docs/architecture/`, starting with `modules.md` (ARC-013), and are updated in the same PR as the change they describe.
 
 ## How much structure (ARC-009)
 
