@@ -28,7 +28,7 @@ BeforeDiscovery {
         @{ Fixture = 'MixedOperators'; Diagnostic = 'IDE0048'; Description = 'operators of different precedence with no parentheses to show the order (STY-007)' }
         # STY-008 (rules audit, owner 2026-11-12): XML documentation comments on every publicly visible member.
         @{ Fixture = 'UndocumentedPublicMember'; Diagnostic = 'CS1591'; Description = 'a public member with no XML documentation comment (STY-008)' }
-        @{ Fixture = 'NullableViolation';Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
+        @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
         @{ Fixture = 'AwaitInLibrary'; Diagnostic = 'CA2007'; Description = 'an await without ConfigureAwait in a class library' }
@@ -310,6 +310,17 @@ Describe 'Repo build configuration' -Tag 'Build' {
         ) {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
 
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
+    # STY-008, ADR-0068: a test project (a name ending in Tests) writes no documentation file, so its public classes need
+    # no XML comments.
+    Context 'XML documentation leaves out test projects' {
+        It 'allows an undocumented public class in a test project' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'UndocumentedTestProject') -Project 'Widgets.Tests'
+
+            $build.Output | Should -Not -Match 'CS1591'
             $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
