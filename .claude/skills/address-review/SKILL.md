@@ -67,7 +67,7 @@ To reply without resolving, use `Add-ReviewReply`:
 
 ## 5. Report
 
-Tell the owner, as a table: each finding, what you found, and its resolution, with commit links. List anything you couldn't verify. If Copilot reviews the new push, start again from step 1.
+Tell the owner, as a table: each finding, what you found, and its resolution, with commit links. List anything you couldn't verify. If a new review lands on the push, start again from step 1.
 
 ## Being woken when a review lands
 

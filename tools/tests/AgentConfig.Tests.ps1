@@ -344,7 +344,7 @@ Describe 'Agent configuration' {
         }
     }
 
-    # ADR-0064: Copilot code review reviews every pull request, against these instructions and the generated rule files.
+    # ADR-0067: the reviewer agent reviews every branch, against the code-review instructions and the rule files.
     # The owner's yes for a guardrail PR is given in chat, which neither GitHub nor Copilot can see; a PR comment
     # records it, so each guardrail merge can be checked from the PR alone (owner, 2026-11-13; Copilot's review of PR 66).
     # Cleanup step 4 of the rules audit: these sections hold the rules themselves, filled by Build-AgentRules, not a
