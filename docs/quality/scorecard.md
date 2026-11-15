@@ -98,7 +98,7 @@ areas:
         status: proposed
         needs: "packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests"
       - id: GAP-037
-        gap: "20 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, SEC-007 to SEC-010, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them."
+        gap: "22 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them."
         status: proposed
         needs: "test projects in the app template or a shared check, and a CI change"
       - id: GAP-027
@@ -111,8 +111,20 @@ areas:
     sources:
       - "https://asvs.owasp.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/azure/well-architected/security/, retrieved 2026-11-07"
-    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, ARC-006]
+    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-012, SEC-013, ARC-006]
     gaps:
+      - id: GAP-040
+        gap: "SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12)."
+        status: proposed
+        needs: "a script that reads the licenses of the packages in the lock files, an allowlist, and a CI step"
+      - id: GAP-041
+        gap: "Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12)."
+        status: proposed
+        needs: "a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR"
+      - id: GAP-042
+        gap: "SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12)."
+        status: proposed
+        needs: "a log-capturing test in the sample, and a deployment that uses Key Vault"
       - id: GAP-005
         gap: "No code scanning: CodeQL is free on public repos but isn't set up. Closed by ADR-0036: codeql.reusable.yml runs in the kit's and every public app's CI (SEC-006, accepted 2026-11-09), and the kit's ruleset requires its results before merging."
         status: closed
@@ -296,7 +308,7 @@ Each area in the front matter above has:
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 11 | 10 | 1 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
-| Security | 7 | 5 | 2 | 4 | 0 |
+| Security | 10 | 7 | 3 | 4 | 3 |
 | Reliability | 3 | 2 | 1 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 4 | 4 | 0 | 3 | 0 |
@@ -307,7 +319,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 79 rules in force, 51 checked by a tool and 28 advisory; 25 proposed; 17 open gaps.
+**Overall:** 82 rules in force, 53 checked by a tool and 29 advisory; 25 proposed; 20 open gaps.
 
 Open gaps:
 
@@ -317,8 +329,11 @@ Open gaps:
 - **GAP-031** (Architecture, proposed): The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059).
 - **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
-- **GAP-037** (Tests, proposed; needs test projects in the app template or a shared check, and a CI change): 20 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, SEC-007 to SEC-010, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them.
+- **GAP-037** (Tests, proposed; needs test projects in the app template or a shared check, and a CI change): 22 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
+- **GAP-040** (Security, proposed; needs a script that reads the licenses of the packages in the lock files, an allowlist, and a CI step): SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12).
+- **GAP-041** (Security, proposed; needs a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR): Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
+- **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
 - **GAP-029** (Supply chain and build, proposed; needs a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change): PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too.
 - **GAP-033** (Supply chain and build, proposed; needs a CI change to run the browser tests in a pinned container, and an ADR): Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3).

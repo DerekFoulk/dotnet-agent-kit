@@ -34,6 +34,19 @@ public sealed class ContractTests : IDisposable
         matches.Should().BeTrue($"the API contract must match {snapshotPath}; the current document was written to openapi-v1.received.json for review");
     }
 
+    // SEC-013 (OWASP API3, broken object property level authorization): the API accepts and returns only Contracts
+    // types, so a field added to a domain entity never reaches a client by accident. Every schema in the document is
+    // a Contracts type or one of ASP.NET Core's Problem Details types.
+    [Fact]
+    public async Task TheDocumentDescribesOnlyContractsTypes()
+    {
+        string json = await _host.Client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken);
+        JsonObject schemas = JsonNode.Parse(json)!["components"]!["schemas"]!.AsObject();
+        HashSet<string> allowed = [.. typeof(CreateBookmarkRequest).Assembly.GetExportedTypes().Select(type => type.Name), "ProblemDetails", "HttpValidationProblemDetails"];
+
+        schemas.Select(schema => schema.Key).Should().NotBeEmpty().And.OnlyContain(name => allowed.Contains(name));
+    }
+
     [Fact]
     public async Task TheDocumentDescribesEveryErrorAsProblemDetails()
     {

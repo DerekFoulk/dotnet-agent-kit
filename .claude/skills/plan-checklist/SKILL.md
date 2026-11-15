@@ -13,6 +13,7 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 
 ## Security
 - Does it touch data, sign-in, secrets or a trust boundary? If so, write a short threat model: what could an attacker do, and what stops them?
+- Name the OWASP ASVS 5.0 level the app targets (Level 1, or Level 2 when it holds personal data) and the ASVS chapters the change touches, such as V8 Authorization or V2 Validation (SEC-012).
 - Are inputs validated and bounded (SEC-010)? Do any secrets stay out of the repo and the logs?
 - Does a new endpoint need a signed-in user (the fallback policy, SEC-007), and does it reach only the caller's own data (SEC-009)? If it must be public, say why.
 
