@@ -374,27 +374,72 @@ Describe 'Agent configuration' {
             Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File) | Should -Match '\bWait-PullRequest\b'
         }
 
-        # A foreground wait costs no model call while it runs; a background one's notice arrived 6.5 hours late on PR #73
-        # (ADR-0068).
-        It '<File> waits in the foreground, never in the background' -ForEach @(
+        # A foreground wait costs no model call while it runs; a background one's notice arrived 6.5 hours late on kit PR
+        # #73 (ADR-0068). Every line naming Wait-PullRequest is checked, so "background" anywhere on one fails. None states
+        # the time-out: its one source is the module's default (CRF-003; the first review round of ADR-0068's PR).
+        It '<File> runs Wait-PullRequest in the foreground, never in the background, and leaves its time-out to the module' -ForEach @(
             @{ File = '.claude/skills/finish-work/SKILL.md' }
             @{ File = '.claude/skills/address-review/SKILL.md' }
             @{ File = 'CLAUDE.md' }
             @{ File = 'AGENTS.md' }
             @{ File = 'templates/app/AGENTS.md' }
         ) {
-            $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File)
+            $lines = @(Get-Content -LiteralPath (Join-Path $repoRoot $File) | Where-Object { $_ -match '\bWait-PullRequest\b' })
 
-            $text | Should -Match '(?i)\bforeground\b'
-            $text | Should -Not -Match '(?i)\b(run|wait)\b[^.\n]{0,60}\bin the background\b'
+            @($lines | Where-Object { $_ -match '(?i)\bforeground\b' }) | Should -Not -BeNullOrEmpty
+            @($lines | Where-Object { $_ -match '(?i)\bbackground\b' }) | Should -BeNullOrEmpty
+            @($lines | Where-Object { $_ -match '(?i)\b\d+\s+minutes?\b' }) | Should -BeNullOrEmpty
         }
 
-        # Wait-PullRequest covers what the desktop app's PR monitor did, which woke the session about 20 times on PR #73
-        # (ADR-0068).
-        It 'finish-work leaves the desktop app''s PR monitor off by default' {
+        It 'finish-work never polls in a loop, never waits in a background shell job, and ends the turn while the owner decides' {
             $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
 
-            $skill | Should -Match '(?i)PR monitor[^.\n]*\boff by default\b'
+            $skill | Should -Match '\*\*Never poll in a loop\.\*\*'
+            $skill | Should -Match '\*\*Not in a background shell job either\.\*\*'
+            $skill | Should -Match '(?i)\*\*Waiting on the owner\*\*[^\n]*\bthen end the turn\b'
+        }
+
+        # Wait-PullRequest covers most of what the desktop app's PR monitor did, which woke the session about 20 times on kit
+        # PR #73 (ADR-0068).
+        It '<File> leaves the desktop app''s PR monitor off by default' -ForEach @(
+            @{ File = '.claude/skills/finish-work/SKILL.md' }
+            @{ File = '.claude/skills/address-review/SKILL.md' }
+        ) {
+            Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File) | Should -Match '(?i)PR monitor[^.\n]*\boff by default\b'
+        }
+
+        It 'finish-work turns the PR monitor on only when the owner asks' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
+
+            $skill | Should -Match '(?i)Turn it on for a PR only when the owner asks'
+        }
+    }
+
+    # Review that costs less without reviewing less (ADR-0068): the first round sees everything; a fix round sees the fix.
+    Context 'review rounds' {
+        It 'finish-work runs the first round on the session''s own model, over the whole branch' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
+
+            $skill | Should -Match '(?i)\*\*The first round reviews the whole branch, on the session''s own model\*\*'
+        }
+
+        It 'finish-work reviews a fix round''s diff only, on a cheaper model only when it is small and touches no guardrail' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
+
+            $skill | Should -Match 'run one `reviewer` on the new commits only'
+            $skill | Should -Match 'git diff <reviewed head>\.\.HEAD'
+            $skill | Should -Match '(?i)under 100 changed lines[^.\n]*\band touches no guardrail\b'
+        }
+
+        It 'the reviewer agent reviews a fix round''s diff, not the whole branch' {
+            $agent = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'agents' 'reviewer.md')
+
+            $agent | Should -Match '\*\*A fix round\*\*[^\n]*git diff <reviewed head>\.\.HEAD'
+        }
+
+        # Each call carries the whole conversation, so a PR's work starts in a session of its own (Claude Code, ADR-0068).
+        It 'CLAUDE.md starts each new PR''s work in a fresh session' {
+            Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'CLAUDE.md') | Should -Match '(?i)Start each new PR''s work in a fresh session'
         }
 
         It 'is exported by KitReview.psm1, which apps get' {
