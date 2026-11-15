@@ -930,6 +930,19 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # A foreground wait costs no model call while it runs, and one wait fits a 10-minute tool call, the most Claude
+        # Code allows, so its default time-out stays under that (ADR-0068).
+        It 'times out after 9 minutes when no time-out is given' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @() } }
+
+                (Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks).Message | Should -Be 'Timed out after 9 minutes at head2: workflow runs still going: ci.'
+            }
+        }
+
         It 'returns Reviewed once Copilot has reviewed the head commit, not an older one' {
             Get-Command Wait-PullRequest -Module KitReview -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty -Because 'the module waits for a review'
             InModuleScope KitReview {
