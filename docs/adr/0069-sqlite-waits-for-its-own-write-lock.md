@@ -13,7 +13,7 @@ The sample's Locust load test (ADR-0062) failed 4 of its 55 runs on 2026-11-13 a
 - **Many of the slow ones took exactly 151 ms.** The worst run had 16, and 6 more between 290 and 314 ms, about two of them. Green runs had 0 to 3 near 151 ms.
   - Microsoft.Data.Sqlite answers a locked database (`SQLITE_BUSY`) by sleeping a fixed 150 ms on the request's thread, then trying again until the command timeout (`SqliteDataReader.NextResult`).
   - It never sets SQLite's own busy timeout, so SQLite reports the lock at once.
-  - So the pause comes on every runner, whenever two of the ten users' writes meet. On green runners 0 to 1.4% of the INSERTs took 150 ms or more; on the red ones, 2.4 to 12.8%. In the two red runs whose p95 was 110 and 140 ms, the p95 fell on slow commits under 150 ms, because the sleeps took the places above it.
+  - So the pause comes on every runner, whenever two of the ten users' writes meet. On green runners 0 to 1.4% of the INSERTs took 150 ms or more; on the red ones, 2.4 to 12.8%. In the two red runs whose p95 was 110 and 140 ms, the p95 fell on slow commits under 150 ms, because the sleeps filled only some of the 14 or so places above it.
 - **The red runners were slow at everything.**
   - The other slow INSERTs took 10 to 150 ms, against 2 ms or less on the steadiest green runner.
   - SELECTs slowed too: 2 to 6 per red run took 100 to 248 ms, though a read in WAL mode doesn't wait for the write lock. No green run had one.
