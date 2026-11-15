@@ -44,4 +44,9 @@ public sealed class PublicTypeRuleTests
     [InlineData("public class Box { } public class Box<T> { }", 1)]
     public void APartialTypesPartsInOneFileAreOneType(string text, int findings) =>
         PublicTypeRule.Check(new SourceFile("Parts.cs", text)).Should().HaveCount(findings);
+
+    // A file's top-level statements aren't types.
+    [Fact]
+    public void TopLevelStatementsBesideOnePublicTypeAreWithinTheLimit() =>
+        PublicTypeRule.Check(new SourceFile("Program.cs", "System.Console.WriteLine(); public class Only { }")).Should().BeEmpty();
 }

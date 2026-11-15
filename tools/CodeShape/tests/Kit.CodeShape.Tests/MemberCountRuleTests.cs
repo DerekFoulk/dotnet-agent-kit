@@ -64,6 +64,17 @@ public sealed class MemberCountRuleTests
             Message = "Wide has 22 members; the limit is 20 (CRF-011).",
         });
 
+    // Every kind of partial member counts once, from its declaring and its implementing part; a nested partial type
+    // still isn't a member.
+    [Theory]
+    [InlineData(15, 0)]
+    [InlineData(16, 1)]
+    public void EveryKindOfPartialMemberCountsOnce(int methods, int findings) =>
+        MemberCountRule.Check([
+            new SourceFile("Wide.A.cs", $"partial class Wide {{ partial Wide(int a); partial int P {{ get; }} partial int this[int i] {{ get; }} partial event System.Action E; partial void M(); partial class Inner {{ }} {Methods(methods)}}}"),
+            new SourceFile("Wide.B.cs", "partial class Wide { partial Wide(int a) { } partial int P => 0; partial int this[int i] => i; partial event System.Action E { add { } remove { } } partial void M() { } partial class Inner { } }"),
+        ]).Should().HaveCount(findings);
+
     // Types in different namespaces, or with a different number of type parameters, are different types.
     [Fact]
     public void TypesWithTheSameNameElsewhereAreNotParts() =>
