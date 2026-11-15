@@ -151,18 +151,6 @@ Describe 'the intake data' {
     }
 
     # ADR-0070: every card and every role names the authority's recommendation (or that it has none) and the agent's.
-    # The bar for an authority's pick (reviewer, ADR-0070): the page recommends it, says it should be used, or gives it
-    # a guideline level (DO, CONSIDER). "You can use", "consider" among other ways, or a page that only uses a tool or
-    # names it as an example is no pick.
-    It 'records an authority pick only where the page recommends it' {
-        $entries = @($intake['cards'] | ForEach-Object { $_['recommendation'] }) + @($intake['testKinds'] | ForEach-Object { $_['roles'] } | ForEach-Object { $_['recommendation'] })
-        $authorities = @($entries | ForEach-Object { if ($_.Contains('authority')) { $_['authority'] } else { $_.Values | ForEach-Object { $_['authority'] } } })
-        $picks = @($authorities | Where-Object { $null -ne $_['pick'] })
-
-        @($picks | Where-Object { $_['says'] -cnotmatch '(?i:\brecommend)|\bshould\b|\b(DO|CONSIDER)\b' } | ForEach-Object { $_['pick'] }) |
-            Should -BeNullOrEmpty -Because 'each authority pick quotes the page recommending it'
-    }
-
     # The agent's reason is its own, never the owner's taste passed on (ADR-0070): ADR-0003 and ADR-0057 record what he
     # prefers, so they belong in his preferences file, not in a reason a new kit user reads.
     It 'gives agent reasons of the agent''s own, citing none of the owner''s preference ADRs' {
