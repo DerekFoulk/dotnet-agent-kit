@@ -53,7 +53,7 @@ Every kit web app answers on two endpoints (OPS-002) with an HTTP status and the
    ```
 
 3. If `/alive` fails, the process is stuck or down: [fill in: how to see the hosting's restarts and logs]. If only `/health` fails, a dependency is down or slow: find which check failed in the logs (see "How to read its telemetry").
-4. Check that the hosting's probes and alerts use these endpoints: [fill in: where they're set up].
+4. Check that the hosting's probes and alerts use these endpoints, and that the Host header the probes send is in the app's `AllowedHosts` (SEC-011), or they get a 400: [fill in: where they're set up].
 
 ## How to read its telemetry
 

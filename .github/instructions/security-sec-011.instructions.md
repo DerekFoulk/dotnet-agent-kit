@@ -5,4 +5,4 @@ applyTo: '**/Program.cs,**/appsettings*.json,**/*Hosting*.cs,**/Dockerfile'
 
 # Security
 
-- SEC-011: Every ASP.NET Core app applies Microsoft's Kestrel production security checklist for where it's hosted, at the edge or behind a proxy: host filtering with its own AllowedHosts, HSTS outside Development, a rate limit for each caller, CORS only for named origins, a request body cap well under the 30 MB default, and no Server header; behind a proxy, forwarded headers only from KnownProxies or KnownIPNetworks, and never through ASPNETCORE_FORWARDEDHEADERS_ENABLED.
+- SEC-011: Every ASP.NET Core app applies Microsoft's Kestrel production security checklist for where it's hosted, at the edge or behind a proxy: HTTPS only (at the edge, Kestrel terminates TLS 1.2 or later and serves no plain HTTP; behind a proxy, the proxy does), host filtering with its own AllowedHosts, HSTS outside Development, a rate limit for each caller, CORS only for named origins, a request body cap well under the 30 MB default, and no Server header; behind a proxy, forwarded headers only from KnownProxies or KnownIPNetworks, and never through ASPNETCORE_FORWARDEDHEADERS_ENABLED.
