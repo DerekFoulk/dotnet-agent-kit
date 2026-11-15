@@ -4,14 +4,15 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Bookmarks.FunctionalTests;
 
 /// <summary>
-/// The container checks its registrations in every environment, not only in Development (CRF-013): Microsoft's
-/// dependency injection guidelines warn against resolving a scoped service from the root and against a singleton that
-/// captures one, and ValidateScopes and ValidateOnBuild find both.
+/// The tests catch a misregistered service in every environment they run the app in, not only in Development
+/// (CRF-013). Microsoft's dependency injection guidelines warn against a singleton that captures a scoped service and
+/// against resolving a scoped service from the root; ApiHost turns ValidateScopes and ValidateOnBuild on, which find
+/// both. The app itself keeps ASP.NET Core's default, which checks only in Development.
 /// </summary>
 public sealed class DependencyInjectionTests
 {
     [Fact]
-    public void ASingletonThatCapturesAScopedServiceStopsTheAppInProduction()
+    public void TheTestsCatchASingletonThatCapturesAScopedServiceInProduction()
     {
         Action start = () =>
         {
@@ -24,7 +25,7 @@ public sealed class DependencyInjectionTests
     }
 
     [Fact]
-    public void AScopedServiceCantBeResolvedFromTheRootInProduction()
+    public void TheTestsCatchAScopedServiceResolvedFromTheRootInProduction()
     {
         using ApiHost host = new("Production");
 
