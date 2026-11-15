@@ -657,3 +657,52 @@ Describe 'Get-KitTestToolAnswer' {
         @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) | Should -Contain 'fluentassertions'
     }
 }
+
+# Reviewer, round 1, findings 6, 7 and 12: no preference is passed over in silence, and the notes the skill reads out
+# say why.
+Describe 'notes on what the defaults passed over' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        function New-Preference {
+            param([string] $Choice, [string] $Pick, [string] $When)
+            [pscustomobject]@{ Choice = $Choice; When = $When; Pick = $Pick; Stated = "I want $Pick"; Date = '2026-11-15'; Source = 'said in chat' }
+        }
+    }
+
+    It 'reports a preference for <Case> as unused, saying why' -ForEach @(
+        @{ Case = 'a question the intake doesn''t ask'; Choice = 'unit/assert'; When = ''; Note = "*'unit/assert'*isn't an intake question*" }
+        @{ Case = 'the database with no data answer'; Choice = 'database'; When = ''; Note = "*'database'*when*" }
+    ) {
+        $rows = @(Get-KitIntakeDefault -Intake $intake -Preference (New-Preference $Choice 'postgresql' $When))
+
+        $unused = @($rows | Where-Object From -EQ 'unused preference')
+        $unused.Count | Should -Be 1
+        ($unused[0].Notes -join ' ') | Should -BeLike $Note
+    }
+
+    It 'says when an authority''s pick is Paid and so isn''t the default' {
+        $paid = $intake | ConvertTo-Json -Depth 20 | ConvertFrom-Json -AsHashtable
+        @($paid['testKinds'] | Where-Object { $_['id'] -eq 'load' })[0]['roles'][0]['recommendation']['authority']['pick'] = 'azure-load-testing'
+
+        $row = @(Get-KitIntakeDefault -Intake $paid | Where-Object Choice -EQ 'load/load')[0]
+
+        ($row.Notes -join ' ') | Should -Match "'azure-load-testing'.*Paid.*ARC-012"
+    }
+
+    It 'reads one preference for each data answer of the database card' {
+        $path = Join-Path $TestDrive 'per-answer.json'
+        @{ schemaVersion = 1; preferences = @(
+                @{ choice = 'database'; when = 'relational'; pick = 'postgresql'; stated = 'PostgreSQL'; date = '2026-11-15'; source = 'chat' }
+                @{ choice = 'database'; when = 'documents'; pick = 'cosmos-free'; stated = 'Cosmos DB'; date = '2026-11-15'; source = 'chat' }) } |
+            ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $path
+
+        @(Read-KitPreference -Path $path).Count | Should -Be 2
+    }
+
+    It 'reads a file with no preferences list as no preferences' {
+        $path = Join-Path $TestDrive 'empty.json'
+        Set-Content -LiteralPath $path -Value '{ "schemaVersion": 1 }'
+
+        @(Read-KitPreference -Path $path) | Should -BeNullOrEmpty
+    }
+}
