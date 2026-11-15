@@ -6,4 +6,4 @@ applyTo: '**/*Infrastructure*/**,**/*Repository*.cs'
 # Data
 
 - DAT-009: Data access follows Microsoft's EF Core efficient-querying guidance unless a measurement shows otherwise: queries project only what they need, read-only queries don't track, collections are paged in the database, related data loads without N+1 round trips and without lazy loading, and nothing is materialized before it's filtered.
-- DAT-010: Raw SQL is parameterized: FromSql and ExecuteSql with an interpolated string, which EF Core turns into parameters, or FromSqlRaw and ExecuteSqlRaw with explicit parameters; never a string built by concatenation or interpolation into a Raw method.
+- DAT-010: Raw SQL is parameterized: FromSql, SqlQuery and ExecuteSql with an interpolated string, which EF Core turns into parameters, or their Raw forms with explicit parameters; a caller's value is never concatenated or interpolated into a Raw method, and a part that can't be a parameter, such as a column name, is checked against a fixed list first, as EF Core's page shows for dynamic SQL.
