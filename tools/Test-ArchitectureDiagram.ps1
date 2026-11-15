@@ -33,14 +33,45 @@ function Get-ArchitectureDiagramProblem {
     }
 
     $text = (Get-Content -LiteralPath $Path -Raw) -replace '(?s)<!--.*?-->', ''
-    $blocks = [regex]::Matches($text, '(?ms)^ {0,3}```mermaid[ \t]*\r?\n(?<body>.*?)^ {0,3}```[ \t]*$')
+    $blocks = @(Get-MermaidBlock -Lines ($text -split '\r?\n'))
     if ($blocks.Count -eq 0) {
         return New-Problem -Message 'no ```mermaid code block'
     }
 
-    if (-not ($blocks | Where-Object { $_.Groups['body'].Value.Trim() })) {
+    if (-not ($blocks | Where-Object { $_ })) {
         New-Problem -Message 'the ```mermaid code block is empty'
     }
+}
+
+# Each mermaid fenced code block's text, trimmed, read as CommonMark reads a fence: three or more backticks or tildes,
+# indented up to three spaces, with the info string's first word naming the language; it closes on a line of the same
+# character, at least as long, with nothing after it, or at the end of the page.
+function Get-MermaidBlock {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Lines)
+
+    $fence = $null
+    $isMermaid = $false
+    $body = [System.Text.StringBuilder]::new()
+    foreach ($line in $Lines) {
+        if ($null -eq $fence) {
+            if ($line -match '^ {0,3}(?<fence>`{3,}|~{3,})[ \t]*(?<info>.*)$' -and
+                ($Matches['fence'][0] -eq '~' -or -not $Matches['info'].Contains('`'))) {
+                $fence = $Matches['fence']
+                $isMermaid = ($Matches['info'].Trim() -split '\s+')[0] -ceq 'mermaid'
+                [void] $body.Clear()
+            }
+        }
+        elseif ($line -match '^ {0,3}(?<fence>`{3,}|~{3,})[ \t]*$' -and
+            $Matches['fence'][0] -eq $fence[0] -and $Matches['fence'].Length -ge $fence.Length) {
+            if ($isMermaid) { $body.ToString().Trim() }
+            $fence = $null
+        }
+        else {
+            [void] $body.AppendLine($line)
+        }
+    }
+
+    if ($null -ne $fence -and $isMermaid) { $body.ToString().Trim() }
 }
 
 # Prints every problem and returns 0 when the page passes, otherwise 1.
