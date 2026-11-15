@@ -100,6 +100,22 @@ Describe 'Build-AuthoritiesPage.ps1' {
             @(Get-AuthoritiesProblem -Cited @(New-Cited 'https://www.rfc-editor.org/rfc/rfc9457') -Entries @($entry)) | Should -Be @($Message)
         }
 
+        It 'reports two entries with one name, and a | in a field the page puts in a table' {
+            $entries = @(
+                (New-Entry -Name 'IETF' -Match 'https://www.rfc-editor.org/')
+                (New-Entry -Name 'IETF' -Match 'https://datatracker.ietf.org/')
+                (New-Entry -Name 'W3C' -Publisher 'W3C | WAI' -Match 'https://www.w3.org/')
+            )
+            $cited = @(
+                (New-Cited 'https://www.rfc-editor.org/rfc/rfc9457'), (New-Cited 'https://datatracker.ietf.org/doc/x'), (New-Cited 'https://www.w3.org/TR/WCAG22/')
+            )
+
+            @(Get-AuthoritiesProblem -Cited $cited -Entries $entries) | Should -Be @(
+                "entry 'W3C' publisher has a '|', which would break the page's table"
+                "entry 'IETF' has the same name as another; each name is a heading and an anchor, so give each its own"
+            )
+        }
+
         It 'reports an authority rule that cites no authority''s or project''s page, but not one that cites practitioners too' {
             $entries = @(
                 (New-Entry -Name 'Fowler' -Class 'practitioner' -Match 'https://martinfowler.com/')
