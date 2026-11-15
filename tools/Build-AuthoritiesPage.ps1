@@ -40,6 +40,8 @@ function Find-SourceEntry {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Entries
     )
 
+    # An archived copy is the original author's page, so it's matched by the URL it archives.
+    if ($Url -match '^https?://web\.archive\.org/web/[^/]+/(?<original>https?://.+)$') { $Url = $Matches['original'] }
     $best = $null
     $bestLength = -1
     foreach ($entry in $Entries) {
