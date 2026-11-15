@@ -10,7 +10,7 @@ internal static class StatementRule
         ArgumentNullException.ThrowIfNull(file);
 
         return Member.Of(file.Parse().GetCompilationUnitRoot())
-            .Where(member => member.Statements.Count > Limits.StatementsPerMember && !LimitException.Covers(member.Node))
+            .Where(member => member.Statements.Count > Limits.StatementsPerMember && !LimitExemption.Covers(member.Node))
             .Select(member => Finding.At(
                 file.Path,
                 member.Location,

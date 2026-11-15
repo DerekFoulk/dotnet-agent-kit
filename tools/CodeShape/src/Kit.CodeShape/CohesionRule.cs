@@ -50,7 +50,7 @@ internal static class CohesionRule
 
     // A partial type is exempt when any of its declarations carries the exception.
     private static bool IsExempt(INamedTypeSymbol type) =>
-        type.DeclaringSyntaxReferences.Any(reference => LimitException.Covers(reference.GetSyntax()));
+        type.DeclaringSyntaxReferences.Any(reference => LimitExemption.Covers(reference.GetSyntax()));
 
     // The type's methods that use its instance state, grouped by what they share, in declaration order. A property
     // isn't a method here: it links the state it reads (JoinDerivedState), or every options class and record with two
