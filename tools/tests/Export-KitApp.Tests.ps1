@@ -488,8 +488,8 @@ Describe 'Export-KitApp' {
         }
     }
 
-    It 'leaves out the retired reviewer agent: Copilot code review reviews an app''s pull requests (ADR-0064)' {
-        @($map | ForEach-Object { $_.Target }) | Should -Not -Contain '.claude/agents/reviewer.md'
+    It 'gives the app the reviewer agent, which reviews an app''s branches as it does the kit''s (ADR-0067)' {
+        @($map | ForEach-Object { $_.Target }) | Should -Contain '.claude/agents/reviewer.md'
     }
 
     It 'includes the build files, agent files, rules, notices and tools an app needs' {

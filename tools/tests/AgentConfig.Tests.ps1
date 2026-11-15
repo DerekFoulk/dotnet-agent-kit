@@ -344,7 +344,7 @@ Describe 'Agent configuration' {
         }
     }
 
-    # ADR-0064: Copilot code review reviews every pull request, against these instructions and the generated rule files.
+    # ADR-0067: the reviewer agent reviews every branch, against the code-review instructions and the rule files.
     # The owner's yes for a guardrail PR is given in chat, which neither GitHub nor Copilot can see; a PR comment
     # records it, so each guardrail merge can be checked from the PR alone (owner, 2026-11-13; Copilot's review of PR 66).
     # Cleanup step 4 of the rules audit: these sections hold the rules themselves, filled by Build-AgentRules, not a
@@ -424,19 +424,45 @@ Describe 'Agent configuration' {
             $text | Should -Match ([regex]::Escape('gh api repos/DerekFoulk/dotnet-agent-kit/commits/<tag> --jq .sha'))
         }
 
-        # The ruleset's copilot_code_review rule only requests a review: with no required approval, nothing blocks a merge
-        # when no review arrives, so DOD-003 mustn't count it as a gate (Copilot's review of PR 64).
-        It 'are requested by the ruleset, which DOD-003 records as advisory' {
+        # ADR-0067: DOD-003 names the reviewer agent and its checklist. No tool makes an agent run the reviewer, so every
+        # part of DOD-003 is advisory.
+        It 'are what DOD-003''s reviewer agent uses' {
             $frontMatter = Read-FrontMatter -Path (Join-Path $repoRoot 'docs' 'standards' 'definition-of-done.md')
             $rule = @($frontMatter['rules'] | Where-Object { $_['id'] -eq 'DOD-003' })[0]
-            $requestParts = @(@($rule['enforcement']) | Where-Object { "$($_['how'])" -match 'copilot_code_review' })
 
-            $requestParts.Count | Should -BeGreaterThan 0
-            @($requestParts | Where-Object { "$($_['kind'])" -ne 'advisory' }).Count | Should -Be 0
+            "$($rule['statement'])" | Should -Match 'reviewer agent'
+            "$($rule['statement'])" | Should -Match ([regex]::Escape('docs/code-review.md'))
+            @(@($rule['enforcement']) | Where-Object { "$($_['kind'])" -ne 'advisory' }).Count | Should -Be 0
         }
 
-        # Copilot reviews the PR's diff, and a plan is posted in chat, so it can't check one; the start-work self-check
-        # against plan-checklist replaced the reviewer agent's plan review (ADR-0064; Copilot's review of PR 64).
+        # ADR-0067: the reviewer agent's rounds come before the PR opens, and a merge waits for a clean one at the head.
+        It 'are reviewed by the reviewer agent in finish-work, whose clean round on the head commit a merge needs' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
+            $review = [regex]::Match($skill, '(?s)## 2\.(.*?)(?=\r?\n## )').Groups[1].Value
+            $merge = [regex]::Match($skill, '(?s)## 5\.(.*?)(?=\r?\n## )').Groups[1].Value
+
+            $review | Should -Match 'Run the `reviewer` subagent.*before the PR opens'
+            $merge | Should -Match 'The latest `reviewer` round is on that head commit,\*\* with no unanswered blocking or should-fix finding'
+        }
+
+        # The reviewer's round on finish-work step 5. A merge condition that drops "clean" lets an agent merge past an open
+        # blocking finding, so both copies pin it (the reviewer agent's review of this change, ADR-0067).
+        It 'are what AGENTS.md "Working modes" holds a merge to: a clean reviewer round on the head commit' {
+            $agents = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'AGENTS.md')
+            $modes = [regex]::Match($agents, '(?s)## Working modes(.*?)(?=\r?\n## )').Groups[1].Value
+
+            $modes | Should -Match 'the latest `reviewer` round on that commit has no unanswered blocking or should-fix finding'
+        }
+
+        It 'are what start-work''s plan review uses: the reviewer agent reviews a non-trivial plan' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'start-work' 'SKILL.md')
+            $step = [regex]::Match($skill, '(?m)^5\. \*\*Review the plan\*\*.*$').Value
+
+            $step | Should -Match 'run the `reviewer` on the plan'
+        }
+
+        # A plan is posted in chat, before any code: no code review sees it, so the rules credit start-work's plan
+        # review, which the reviewer agent runs (ADR-0067), never code review.
         It 'aren''t said to check the plan in <Id>' -ForEach @(
             @{ Id = 'ARC-006'; File = 'architecture.md' }
             @{ Id = 'TST-002'; File = 'testing.md' }
@@ -450,8 +476,18 @@ Describe 'Agent configuration' {
             $how | Should -Not -Match 'code review'
         }
 
-        It 'replace the reviewer agent' {
-            Join-Path $repoRoot '.claude' 'agents' 'reviewer.md' | Should -Not -Exist
+        # ADR-0067: Copilot code review is off, so the read-only reviewer agent is back, and it works from the same
+        # checklist Copilot would read (CRF-003: one source for what a review looks for).
+        It 'are what the read-only reviewer agent reviews against' {
+            $agentPath = Join-Path $repoRoot '.claude' 'agents' 'reviewer.md'
+            $agentPath | Should -Exist
+            $frontMatter = Read-FrontMatter -Path $agentPath
+
+            foreach ($tool in 'Edit', 'Write', 'NotebookEdit') { "$($frontMatter['disallowedTools'])" | Should -Match "\b$tool\b" }
+            $text = Get-Content -Raw -LiteralPath $agentPath
+            $text | Should -Match ([regex]::Escape('docs/code-review.md'))
+            # It keeps Bash and PowerShell, so this rule is what keeps it from committing or resetting from the shell.
+            $text | Should -Match ([regex]::Escape("- **Don't change anything.**"))
         }
     }
 

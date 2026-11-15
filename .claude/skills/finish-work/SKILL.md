@@ -1,6 +1,6 @@
 ---
 name: finish-work
-description: Verify a finished change against the definition of done, open the pull request with evidence, answer Copilot's code review, and merge when the mode allows. Use when the test list is empty and before telling the owner anything is done.
+description: Verify a finished change against the definition of done, get the reviewer agent's review, open the pull request with evidence, and merge when the mode allows. Use when the test list is empty and before telling the owner anything is done.
 ---
 
 # Finish work
@@ -20,17 +20,21 @@ Then confirm:
 - Each red failed on an assertion, and each green passes from a clean checkout. Check that every new file is tracked (`git status --short --ignored`); an ignored config file passes locally and fails everywhere else.
 - Anything you didn't verify is listed as "not verified".
 
-## 2. Code review, by Copilot
+## 2. Independent review, by the reviewer agent
 
-It starts when you open the PR (step 4). GitHub Copilot code review reviews every pull request when it opens, and again after every push to it, through the "main protection" ruleset (DOD-003, ADR-0064). It reviews against the code-review instructions (`docs/code-review.md`, generated into `.github/instructions/code-review.instructions.md`) and the rule files. CI runs the build, the tests and every check, so there's no separate gate run.
+Run the `reviewer` subagent (`.claude/agents/reviewer.md`) on the branch, before the PR opens (DOD-003, ADR-0067). It hasn't seen your work, and it reviews against the code-review instructions (`docs/code-review.md`) and the rule files. Fix each finding test-first, or answer it with a reason; in review mode, leaving one unfixed is the owner's call (DOD-005). Then run step 1 again.
 
-**When a review lands, run `address-review`.** Rank each finding Blocking, Should fix or Consider (Copilot starts each comment with one; check it against the code, and re-rank it when it's wrong). Fix each real one test-first, or answer it with a reason. Push the fixes in one push where you can: each push starts another review, which uses the owner's AI credits.
+**Give it what you've already run.** Pass the gate results from step 1 (each command and its count) in the reviewer's prompt, so it checks the code and the claims instead of repeating every gate. It reruns a gate only when what it reviews could change the result.
 
-**Reviews end at the first Copilot review of the head commit with nothing blocking or should-fix** (owner, 2026-11-09). Answer its Consider findings with a reason, or note them for a later PR. Fix one only when it's cheap and changes no behavior: that push gets its own review, and a new blocking or should-fix finding in it reopens the reviews.
+**Run focused reviewers side by side** (owner, 2026-11-10). For a change that touches code and docs, run two or three reviewers at once, each with one focus named in its prompt: the code and its tests; the documents, against each other and the rules; the guardrails and "Always ask". Together they make one round. A docs-only change needs one.
 
-**If Copilot can't review** (no review appears, or it fails, as it does when the owner's AI credits run out), tell the owner and wait. Don't merge without a review.
+**Every fix gets its own review.** After fixing findings, run the `reviewer` again on the new commits (`git log <reviewed head>..HEAD`), and repeat until a round finds nothing blocking or should-fix. A round is every reviewer you ran on that head, side by side or alone. A fix that nobody reviewed can break something the first review passed.
+
+**A round with nothing blocking or should-fix, from any of its reviewers, ends the reviews** (owner, 2026-11-09). Fix its nits only when they're cheap and change no behavior, with no further round, and list those commits in that round's PR comment; answer the rest with a reason, or note them for a later PR. A nit whose fix would change behavior goes to a later PR: fixing it here would need another round, and each round finds new nits. The same rule ends a plan review.
 
 **Don't wait idle.** While a review runs, start the next task on its own branch.
+
+Keep each review's report: it goes on the PR (step 4).
 
 ## 3. Check the PR state
 
@@ -41,8 +45,11 @@ If a PR already exists for this branch, run `gh pr view <n> --json state,mergedA
 - The title is a Conventional Commit (it becomes the merge commit message).
 - Use `.github/pull_request_template.md` and fill in the red→green table from `git log`. A PR whose description a bot writes, such as Dependabot's, keeps it: post the template's sections as a PR comment instead, naming the head commit (DOD-006), and a new one whenever the head moves.
 - List the decisions the owner must make and any `proposed` rules he must ratify. **Ask each one in the chat too, with its recommendation** (COM-007): he may not read the PR before it merges.
+- **Post the reviews on the PR.** Add each `reviewer` report, with how every finding was fixed or answered, as a PR comment (`gh pr comment <n> --body-file <file>`), so the owner sees what was checked without reading the session. Post a new comment for each later review.
 - In review mode, don't merge: the owner merges, or tells you to for that PR.
-- **Watch for the review and for CI, in any tool, with `Wait-PullRequest`** (from `KitReview.psm1`). After each push, run one wait with `-For Review` and one with `-For Checks`, in the background where the tool allows. Each returns as soon as its event happens: `Reviewed`, `ChecksPassed` or `ChecksFailed`, `HeadMoved`, `Merged` or `Closed`. `ReviewFailed` means Copilot posted a reason instead of a review, such as running out of quota: the commit isn't reviewed, so tell the owner the reason. Once the owner requests Copilot's review again, that failed try is old news: the wait goes on for Copilot's new try, and its time-out names the failed one. CI here is every check and workflow run on the head, required or not, Copilot's own review run included; a red run that isn't required is still a finding to answer (ADR-0062). If it returns `TimedOut`, its message says what's still missing; look at once, and don't assume CI is still running. When a review lands, from Copilot or a person, run `address-review`; when CI finishes, check the merge conditions below.
+- **Watch for CI, in any tool, with `Wait-PullRequest`** (from `KitReview.psm1`). After each push, run one wait with `-For Checks`, in the background where the tool allows. It returns as soon as its event happens: `ChecksPassed` or `ChecksFailed`, `HeadMoved`, `Merged` or `Closed`. CI here is every check and workflow run on the head, required or not; a red run that isn't required is still a finding to answer (ADR-0062). If it returns `TimedOut`, its message says what's still missing; look at once, and don't assume CI is still running. When CI finishes, check the merge conditions below.
+  - **A Copilot review the owner asks for** (Copilot code review is off, ADR-0067): run a second wait with `-For Review`; Copilot's own review run is then one of the CI checks too. The review wait returns `Reviewed` once Copilot has reviewed the head commit, or `ReviewFailed` when Copilot posts a reason instead of a review, such as running out of quota: the commit isn't reviewed, so tell the owner the reason. Once the owner requests Copilot's review again, that failed try is old news: the wait goes on for Copilot's new try, and its time-out names the failed one. With no review requested, don't wait for one: it never comes.
+  - When a review lands on the PR, from a person or from a Copilot review the owner asked for, run `address-review`.
   - In the Claude Code desktop app, also turn on the PR monitor with auto-fix for the new PR (the owner said it needs no ask, 2026-11-13). It wakes the session on review comments, CI failures and merge conflicts, but not on a passing CI, so `Wait-PullRequest` still tells you when the PR is ready.
 
 ## 5. Merge, in auto mode
@@ -53,13 +60,13 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
 - **If it changes the guardrails, the owner has said yes for this head commit.** Run `gh pr diff <n> --name-only`, then read those files' changes. The guardrails are:
   - `AGENTS.md`'s "Working modes" or "Always ask" sections, or SEC-003 in `docs/standards/security.md`;
   - `.claude/settings.json` or the `Set-AgentMode.ps1` script;
-  - this skill or the code-review instructions (`docs/code-review.md`, generated into `.github/instructions/code-review.instructions.md`);
+  - this skill, the `reviewer` agent, or the code-review instructions (`docs/code-review.md`, generated into `.github/instructions/code-review.instructions.md`);
   - a ruleset, branch protection or the merge settings;
   - a CI check, if removed or weakened;
   - the Dependabot cooldown in `.github/dependabot.yml` (in the kit, `templates/app/.github/dependabot.yml` too), if shortened (any `*-days` value lowered, or any wait below 7 days, 14 for a NuGet or SDK major) or narrowed (an `exclude` or `include` list);
   - `New-KitApp`'s step that turns on Dependabot alerts and security updates, if removed or weakened.
 
-  A PR that changes any of them needs the owner's yes for that PR, at its head commit. Once every other condition below holds, ask him in the chat (COM-007), naming the head commit. On his yes, record it in a PR comment before you merge, because GitHub and Copilot can't see the chat: "Owner's yes, given in chat on <date>, at <head commit>", with his words quoted. Then merge it as below. A commit pushed after his yes needs a new yes. Start your next task while you wait.
+  A PR that changes any of them needs the owner's yes for that PR, at its head commit. Once every other condition below holds, ask him in the chat (COM-007), naming the head commit. On his yes, record it in a PR comment before you merge, because GitHub can't see the chat: "Owner's yes, given in chat on <date>, at <head commit>", with his words quoted. Then merge it as below. A commit pushed after his yes needs a new yes. Start your next task while you wait.
 - **If it's Dependabot's, it's only a patch or minor update of NuGet packages, .NET tools or the .NET SDK** (ADR-0041). All of these must hold, or the PR is the owner's to merge:
   - **GitHub says it's Dependabot's.** `gh pr view <n> --json author,isCrossRepository,headRefName` shows the author `app/dependabot`, `isCrossRepository` false, and a head branch starting `dependabot/`. A title or a commit author alone proves nothing: anyone can set them.
   - **The version change is a patch or minor.** Read it in the title and in the diff of `Directory.Packages.props`, `.config/dotnet-tools.json` or `global.json`. A major update, a GitHub Actions bump, a grouped PR with any major in it, or one you can't classify is the owner's. Any update of a 0.x package (0.13.5 → 0.13.6 as much as 0.13 → 0.14) is the owner's, since SemVer lets a 0.x version break anything. For the SDK, the third number holds the feature band: 10.0.403 → 10.0.500 is a minor, and 10.x → 11.x a major.
@@ -68,7 +75,7 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
 
   Any other bot's PR is the owner's too.
 - **It's open, and CI has passed at its head commit:** `gh pr view <n> --json state,headRefOid,mergeStateStatus` shows `OPEN` and `CLEAN`, and `gh pr checks <n>` passes.
-- **Copilot has reviewed that head commit,** and no blocking or should-fix finding from it is unanswered. `Get-OpenFinding` lists nothing open from Copilot or a person.
+- **The latest `reviewer` round is on that head commit,** with no unanswered blocking or should-fix finding, and it's posted on the PR. The one exception is step 2's final round: the head may be a few commits past it when those commits only fix that round's nits, change no behavior, and are listed in its PR comment. `Get-OpenFinding` lists nothing open on the PR from a person or Copilot.
 - **No question the PR depends on is waiting for the owner** (COM-007). A question that a later PR can settle doesn't hold this one; say so in the chat.
 - **The description is complete:** the template's sections are filled in, with the red→green table and counts from the head commit. For a PR whose description a bot writes, DOD-006's comment holds them, and it names this head commit.
 

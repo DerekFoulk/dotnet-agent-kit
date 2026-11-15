@@ -69,10 +69,10 @@ To reply without resolving, use `Add-ReviewReply`:
 
 ## 5. Report
 
-Tell the owner, as a table: each finding, what you found, and its resolution, with commit links. List anything you couldn't verify. If Copilot reviews the new push, start again from step 1.
+Tell the owner, as a table: each finding, what you found, and its resolution, with commit links. List anything you couldn't verify. If a new review lands on the push, start again from step 1.
 
 ## Being woken when a review lands
 
-- **In any tool:** after each push, `Wait-PullRequest -Repository <owner/repo> -Number <pr> -For Review` (from `KitReview.psm1`) returns `Reviewed` as soon as Copilot has reviewed the head commit; then start again from step 1 (`finish-work` step 4). It returns `ReviewFailed` when Copilot posts a reason instead of a review (tell the owner), `HeadMoved` after a push, and `TimedOut` with what's still missing; `finish-work` step 4 lists every event.
+- **In any tool:** after each push to a PR where the owner asked for a Copilot review (it's off otherwise, ADR-0067), `Wait-PullRequest -Repository <owner/repo> -Number <pr> -For Review` (from `KitReview.psm1`) returns `Reviewed` as soon as Copilot has reviewed the head commit; then start again from step 1 (`finish-work` step 4). It returns `ReviewFailed` when Copilot posts a reason instead of a review (tell the owner), `HeadMoved` after a push, and `TimedOut` with what's still missing; `finish-work` step 4 lists every event.
 - **Claude Code desktop app:** the PR monitor with auto-fix also wakes the session when review comments arrive (`finish-work` step 4). Observed on kit PRs #68 to #72. It relays every review on the PR, old ones included, so check `Get-OpenFinding` before acting on one.
 - **No running session:** run this skill when the owner points you at a review. Also run `Get-OpenFinding` before reporting on any open PR.

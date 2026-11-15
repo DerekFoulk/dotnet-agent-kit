@@ -8,11 +8,11 @@
       .claude/rules/<topic>.md                         Claude Code, always loaded (rules with paths **)
       .claude/rules/<topic>-<rule-id>.md               Claude Code, loaded by paths: (one per distinct path set)
       .github/instructions/<topic>[-<rule-id>].instructions.md   Copilot, the same split with applyTo:
-    Also writes .github/instructions/code-review.instructions.md from docs/code-review.md, for Copilot code
-    review (ADR-0064), and .github/copilot-instructions.md as a copy of AGENTS.md, because Visual Studio reads that
-    file but doesn't document reading AGENTS.md. It also fills each "rules from docs/standards/<file>.md" block in
-    AGENTS.md and templates/app/AGENTS.md with that standard's rules, leaving the rest of those files alone
-    (ADR-0065). Proposed and retired rules aren't in force, so they're
+    Also writes .github/instructions/code-review.instructions.md from docs/code-review.md, for a Copilot code
+    review the owner asks for (ADR-0064, ADR-0067), and .github/copilot-instructions.md as a copy of AGENTS.md,
+    because Visual Studio reads that file but doesn't document reading AGENTS.md. It also fills each
+    "rules from docs/standards/<file>.md" block in AGENTS.md and templates/app/AGENTS.md with that standard's
+    rules, leaving the rest of those files alone (ADR-0065). Proposed and retired rules aren't in force, so they're
     left out. Generated files carry a marker; generated files no standard produces any more are removed.
 
     -Check writes nothing and exits 1 when any generated file is missing, hand-edited or stale (S3).
@@ -157,7 +157,8 @@ function Get-CopilotInstructionsFile {
     [pscustomobject]@{ Path = '.github/copilot-instructions.md'; Content = $content }
 }
 
-# Copilot code review reads path-specific instructions from .github/instructions/ (ADR-0064). Apps rebuild that
+# Copilot code review reads path-specific instructions from .github/instructions/ (ADR-0064); the kit keeps them for
+# a review the owner asks for, while the reviewer agent reads docs/code-review.md itself (ADR-0067). Apps rebuild that
 # folder with their own copy of this script, so the review instructions are generated from docs/code-review.md,
 # one source, for every file and for code review only.
 function Get-CodeReviewInstructionsFile {

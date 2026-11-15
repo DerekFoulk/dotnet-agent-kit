@@ -39,6 +39,7 @@ Accepted as recommended (owner, 2026-11-01).
 
 - `.claude/agents/reviewer.md` defines the reviewer (build step 3).
 - **Updated by ADR-0064 (2026-11-12):** GitHub Copilot code review is now the independent reviewer, on every PR and every push to it; `.claude/agents/reviewer.md` is removed, and its checklist became `docs/code-review.md`.
+- **Updated by ADR-0067 (2026-11-14):** Copilot code review is off, and `.claude/agents/reviewer.md` is back as the independent reviewer, reviewing against `docs/code-review.md`.
 - Planner, security, accessibility and docs reviews are skills the same agent runs at the right step; a role becomes a separate agent only on evidence. A separate test-writer is the first candidate.
 - Parallel work means separate tasks on separate branches or worktrees.
 
