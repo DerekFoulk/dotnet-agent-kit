@@ -203,14 +203,18 @@ csharp_space_between_method_declaration_parameter_list_parentheses = false
 csharp_space_between_parentheses = false
 csharp_space_between_square_brackets = false
 
-# (kit) STY-009, ADR-0069: the Design, Naming and Usage rules check internal APIs too, not only public and protected
+# (kit) STY-009, ADR-0070: the Design, Naming and Usage rules check internal APIs too, not only public and protected
 # ones (their api_surface default), so they reach an app, whose types CA1515 makes internal. Set per category, never
 # for all rules: CA1822, CA1802 and CA1859 have their own scope, and CA1859 asks non-public code for concrete types.
-# Private members are left out: the guidelines are about a type's API.
+# Private members are left out: the guidelines are about a type's API. A category setting replaces each rule's own
+# default, so the two rules in these categories whose default is every member, private included (CA1068 and CA2208, in
+# the analyzers' source), keep it by rule ID; a rule's own setting wins over its category's.
 # https://learn.microsoft.com/dotnet/fundamentals/code-analysis/code-quality-rule-options#api_surface
 dotnet_code_quality.Design.api_surface = public, internal
 dotnet_code_quality.Naming.api_surface = public, internal
 dotnet_code_quality.Usage.api_surface = public, internal
+dotnet_code_quality.CA1068.api_surface = all
+dotnet_code_quality.CA2208.api_surface = all
 # CA1815 (override Equals on value types) and CA1819 (properties don't return arrays) are Performance rules.
 dotnet_code_quality.CA1815.api_surface = public, internal
 dotnet_code_quality.CA1819.api_surface = public, internal

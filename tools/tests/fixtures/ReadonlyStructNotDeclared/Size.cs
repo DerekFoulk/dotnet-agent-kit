@@ -1,4 +1,4 @@
-namespace MutableStruct;
+namespace ReadonlyStructNotDeclared;
 
 // FDG: don't define mutable value types; a struct whose members are all read-only is declared readonly (IDE0250,
 // STY-009).

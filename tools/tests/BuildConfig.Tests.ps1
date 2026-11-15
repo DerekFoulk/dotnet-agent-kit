@@ -35,7 +35,7 @@ BeforeDiscovery {
         @{ Fixture = 'InternalArrayProperty'; Diagnostic = 'CA1819'; Description = 'an internal property that returns an array (STY-009)' }
         @{ Fixture = 'PrivateArgumentException'; Diagnostic = 'CA2208'; Description = 'a private member that names a parameter it doesn''t have, a Usage rule that checks every member by default (STY-009)' }
         @{ Fixture = 'PrivateCancellationTokenFirst'; Diagnostic = 'CA1068'; Description = 'a private method that takes its CancellationToken first, a Design rule that checks every member by default (STY-009)' }
-        @{ Fixture = 'MutableStruct'; Diagnostic = 'IDE0250'; Description = 'a struct whose members are all read-only but isn''t declared readonly (STY-009)' }
+        @{ Fixture = 'ReadonlyStructNotDeclared'; Diagnostic = 'IDE0250'; Description = 'a struct whose members are all read-only but isn''t declared readonly (STY-009)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
