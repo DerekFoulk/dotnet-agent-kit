@@ -49,6 +49,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 | `docs/standards/` | The kit's rules, in full (managed by the kit) |
 | `docs/runbook.md` | How to deploy, roll back, check, restore and run this app in an incident (OPS-004). A Draft until the first production deployment: fill in every `[fill in: ...]`, then set it to In use |
 | `docs/corrections-log.md` | Every owner correction and what it became |
+| `docs/architecture/modules.md` | A Mermaid diagram of this app's modules and their dependencies (ARC-013); update it with any change that adds a module, a project or a dependency |
 | `.claude/skills/`, `.claude/agents/reviewer.md`, `docs/code-review.md` | The kit's workflow skills, its independent reviewer, and what the reviewer checks on every branch. Some skills are curated .NET skills that the kit copies unchanged from Microsoft's dotnet/skills at a pinned commit (kit ADR-0042): where one disagrees with a kit rule, the kit rule wins |
 | `.kit/` | The kit's checking scripts (`.kit/tools/`) and the manifest of kit-managed files (`.kit/manifest.json`) |
 

@@ -30,7 +30,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the sample has one module, so there's nothing to check yet; an ArchUnitNET test comes with the first app that has two, and code review checks that no module's Infrastructure maps another module's tables"
+        how: "the sample has one module, so there's nothing to check yet; an ArchUnitNET test comes with the first app that has two, and code review checks that no module's Infrastructure maps another module's tables and that an app's connection strings name a database of its own"
     scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-003
@@ -193,7 +193,7 @@ rules:
         in: [kit, app]
         how: "code review checks the diagram matches the change: a new module, project or dependency is on it"
     scope: core
-    paths: ["docs/architecture/**", "src/**", "sample/**"]
+    paths: ["**"]
 ---
 
 # Architecture
