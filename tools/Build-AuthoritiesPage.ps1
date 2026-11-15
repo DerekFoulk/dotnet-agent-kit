@@ -242,6 +242,14 @@ function Invoke-AuthoritiesPageBuild {
     }
     if ($Check) {
         Write-Host '  out of date: docs/authorities.md' -ForegroundColor Red
+        # The first line that differs, so a failure in CI shows what changed without a local run.
+        $want = $expected -split "`n"
+        $have = $current -split "`n"
+        $line = 0
+        while ($line -lt $want.Count -and $line -lt $have.Count -and $want[$line] -ceq $have[$line]) { $line++ }
+        Write-Host "  first difference, line $($line + 1):" -ForegroundColor Red
+        Write-Host "    expected: $(if ($line -lt $want.Count) { $want[$line] } else { '(end of page)' })" -ForegroundColor Red
+        Write-Host "    found:    $(if ($line -lt $have.Count) { $have[$line] } else { '(end of page)' })" -ForegroundColor Red
         Write-Host "`nRun ./tools/Build-AuthoritiesPage.ps1 and commit the result." -ForegroundColor Red
         return 1
     }
