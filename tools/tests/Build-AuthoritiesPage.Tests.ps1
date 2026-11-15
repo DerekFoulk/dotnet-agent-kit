@@ -64,6 +64,10 @@ Describe 'Build-AuthoritiesPage.ps1' {
             @(Get-CitedUrl -StandardsPath $script:standards | ForEach-Object Url | Sort-Object -Unique) |
                 Should -Be @('https://learn.microsoft.com/dotnet/architecture/x')
         }
+
+        It 'keeps a locale-like path segment on any other site, where it may be part of the page' {
+            ConvertTo-PageUrl 'https://example.com/en-us/page' | Should -BeExactly 'https://example.com/en-us/page'
+        }
     }
 
     Context 'Problems' {
@@ -98,6 +102,17 @@ Describe 'Build-AuthoritiesPage.ps1' {
             & $Change $entry
 
             @(Get-AuthoritiesProblem -Cited @(New-Cited 'https://www.rfc-editor.org/rfc/rfc9457') -Entries @($entry)) | Should -Be @($Message)
+        }
+
+        It 'reports an entry with no <Field>' -ForEach @(
+            @{ Field = 'name' }, @{ Field = 'publisher' }, @{ Field = 'class' }, @{ Field = 'covers' }, @{ Field = 'match' }
+        ) {
+            $entry = New-Entry -Name 'IETF' -Match 'https://www.rfc-editor.org/'
+            $entry.Remove($Field)
+            $name = if ($Field -eq 'name') { '(no name)' } else { 'IETF' }
+
+            @(Get-AuthoritiesProblem -Cited @(New-Cited 'https://www.rfc-editor.org/rfc/rfc9457') -Entries @($entry)) |
+                Should -Contain "entry '$name' is missing '$Field'"
         }
 
         It 'reports two entries with one name, and a | in a field the page puts in a table' {
@@ -206,8 +221,20 @@ Describe 'Build-AuthoritiesPage.ps1' {
             $page = "# Sources`n`n$open`nold`n$close`n"
             $root = New-Repo -Page $page
 
-            Invoke-AuthoritiesPageBuild -RepoRoot $root -Check 6>$null | Should -Be 1
+            $output = @(Invoke-AuthoritiesPageBuild -RepoRoot $root -Check 6>&1)
+
+            @($output | Where-Object { $_ -is [int] }) | Should -Be @(1)
+            ($output | Where-Object { $_ -is [System.Management.Automation.InformationRecord] }) -join "`n" | Should -Match 'out of date: docs/authorities\.md'
             Read-Page $root | Should -BeExactly $page
+        }
+
+        It 'passes a current page that a Windows checkout gave CRLF line endings' {
+            $root = New-Repo -Page "# Sources`n`n$open`nold`n$close`n"
+            Invoke-AuthoritiesPageBuild -RepoRoot $root 6>$null | Should -Be 0
+            $path = Join-Path $root 'docs' 'authorities.md'
+            Set-Content -Path $path -Value ((Get-Content -Raw -Path $path) -replace "`r?`n", "`r`n") -NoNewline
+
+            Invoke-AuthoritiesPageBuild -RepoRoot $root -Check 6>$null | Should -Be 0
         }
 
         It 'fails, says why, and writes nothing when <Case>' -ForEach @(
@@ -257,6 +284,15 @@ Describe 'Build-AuthoritiesPage.ps1' {
             Get-EntryName 'https://github.com/OWASP/ASVS/blob/v5.0.0/x.md' ($entries[1], $entries[0]) | Should -Be 'OWASP'
             Get-EntryName 'https://github.com/dequelabs/axe-core' $entries | Should -Be 'Tool repos'
             Find-SourceEntry -Url 'https://example.com/page' -Entries $entries | Should -BeNullOrEmpty
+        }
+
+        It 'matches a prefix whatever the case of the URL' {
+            Get-EntryName 'https://LEARN.microsoft.com/dotnet/x' @(New-Entry -Name 'Microsoft Learn' -Match 'https://learn.microsoft.com/') |
+                Should -Be 'Microsoft Learn'
+        }
+
+        It 'gives a heading the anchor GitHub gives it, punctuation dropped' {
+            ConvertTo-HeadingAnchor ".NET's (X) 2.2, archived!" | Should -BeExactly 'nets-x-22-archived'
         }
 
         It 'classes an archived copy by its original URL, http or https' {

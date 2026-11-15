@@ -118,7 +118,7 @@ Describe 'Rules stated in several places agree' {
     It 'the README''s "Whose rules win" names <Item>, as AGENTS.md does' -ForEach @(
         @{ Item = 'floor' }, @{ Item = 'legal' }, @{ Item = 'safety' }, @{ Item = 'security' }, @{ Item = 'privacy' }
         @{ Item = 'licen' }, @{ Item = 'never overridden' }, @{ Item = 'owner' }, @{ Item = 'accepted ADRs' }
-        @{ Item = 'outside authorities' }, @{ Item = 'more specific' }, @{ Item = 'ADR' }
+        @{ Item = 'outside authorities' }, @{ Item = 'more specific' }, @{ Item = 'conflict' }
     ) {
         $copies = [ordered]@{
             'AGENTS.md "Whose rules win"' = Get-Between $agents '## Whose rules win' '\r?\n## '
