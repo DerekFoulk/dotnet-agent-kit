@@ -303,6 +303,9 @@ Describe 'Agent configuration' {
             @{ Tool = 'PowerShell'; Command = '.\tools\New-KitApp.ps1 -Name Contoso.Orders' }
             @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
             @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
+            # ADR-0075 allows '& ./tools/*' and '& .\tools\*', so the call operator's forms ask too (review 1 of PR 1).
+            @{ Tool = 'PowerShell'; Command = '& ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = '& .\tools\New-KitApp -Name Contoso.Orders' }
         ) {
             # A rule's '*' matches any text, as in Claude Code's patterns; [, ] and ? are taken literally. The match
             # is case-sensitive, the stricter reading, since whether Claude Code ignores case isn't documented.
@@ -338,10 +341,12 @@ Describe 'Agent configuration' {
             @(Get-RuleList 'allow') -match 'git switch .*\*' | Should -BeNullOrEmpty
         }
 
-        # The owner (2026-11-15): every command outside the allow list prompts, so he was asked about routine reads he
-        # can't judge, turned on Bypass, which also skips the asks that matter, and turned it off again. Read-only and
-        # routine commands are allowed; each must match an allow rule and no ask or deny rule. Bash's ls, cat, grep and
-        # read-only git are on Claude Code's built-in read-only list already, so only PowerShell needs rules for those.
+        # ADR-0075 (owner, 2026-11-15): every command outside the allow list prompted, so he was asked about routine
+        # commands he couldn't judge, turned on Bypass, which also skips the asks that matter, and turned it off again.
+        # Routine commands are allowed; each must match an allow rule, case for case, and no ask or deny rule. Reading
+        # files and read-only git aren't here: the Read, Grep and Glob tools and the Bash tool's built-in read-only
+        # check (ls, cat, grep, git log, git diff and the rest) run them unasked, and Claude Code itself keeps their
+        # risky forms out.
         It 'runs the routine command <Tool>(<Command>) unasked' -ForEach @(
             foreach ($tool in 'Bash', 'PowerShell') {
                 @{ Tool = $tool; Command = 'gh pr view 76 --json state,headRefOid' }
@@ -363,16 +368,11 @@ Describe 'Agent configuration' {
             }
             @{ Tool = 'PowerShell'; Command = 'git status' }
             @{ Tool = 'PowerShell'; Command = 'git status --short --ignored' }
-            @{ Tool = 'PowerShell'; Command = "git log --reverse --format='%h %s' origin/main..HEAD" }
-            @{ Tool = 'PowerShell'; Command = 'git diff origin/main --stat' }
-            @{ Tool = 'PowerShell'; Command = 'git show HEAD --stat' }
             @{ Tool = 'PowerShell'; Command = 'git branch --list' }
             @{ Tool = 'PowerShell'; Command = 'git branch --show-current' }
             @{ Tool = 'PowerShell'; Command = 'git rev-parse HEAD' }
+            @{ Tool = 'PowerShell'; Command = 'git merge-base HEAD origin/main' }
             @{ Tool = 'PowerShell'; Command = 'git ls-files tools' }
-            @{ Tool = 'PowerShell'; Command = 'Get-ChildItem tools -Recurse -Filter *.ps1' }
-            @{ Tool = 'PowerShell'; Command = 'Get-Content -Raw ./AGENTS.md' }
-            @{ Tool = 'PowerShell'; Command = "Select-String -Path docs/standards/*.md -Pattern 'SEC-003'" }
             @{ Tool = 'PowerShell'; Command = 'Select-Object -First 5' }
             @{ Tool = 'PowerShell'; Command = 'ConvertFrom-Json -AsHashtable' }
             @{ Tool = 'PowerShell'; Command = 'Measure-Object -Line' }
@@ -387,7 +387,7 @@ Describe 'Agent configuration' {
             @{ Tool = 'PowerShell'; Command = 'Add-ReviewReply -Repository o/r -Number 76 -CommentId 1 -Body x' }
             @{ Tool = 'PowerShell'; Command = 'Resolve-ReviewFinding -Repository o/r -ThreadId x' }
         ) {
-            Test-RuleMatch -Kind 'allow' -Tool $Tool -Command $Command -IgnoreCase | Should -BeTrue -Because "an allow rule should cover $Tool($Command)"
+            Test-RuleMatch -Kind 'allow' -Tool $Tool -Command $Command | Should -BeTrue -Because "an allow rule should cover $Tool($Command)"
             Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse -Because 'an ask rule wins over an allow rule'
             Test-RuleMatch -Kind 'deny' -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
         }
@@ -395,9 +395,13 @@ Describe 'Agent configuration' {
         # 'gh api *' is allowed for reads. gh api sends a GET unless a method or a field is given, so every form that
         # writes asks, as it did before the allow rule (an ask rule wins over it). That keeps, among others, a merge
         # through the API (PUT .../pulls/<n>/merge) asking in review mode, as 'gh pr merge' does. Matched case by
-        # case: Claude Code doesn't say whether Bash rules ignore case, so -f and -F each have a rule.
+        # case: Claude Code doesn't say whether Bash rules ignore case, so -f and -F each have a rule. gh parses flags
+        # with pflag, which joins short flags, and -i is gh api's one boolean short flag, so '-iXPUT' sends a PUT and
+        # '-ifbody=x' a POST; any -i asks (review 1 of PR 1, probed against an unresolvable host).
         It 'asks before the gh api write <Tool>(<Command>)' -ForEach @(
             foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'gh api repos/o/r/pulls/1/merge -iXPUT' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues/1/comments -ifbody=x' }
                 @{ Tool = $tool; Command = 'gh api -X PUT repos/o/r/pulls/1/merge' }
                 @{ Tool = $tool; Command = 'gh api repos/o/r/issues/1/comments -XPOST' }
                 @{ Tool = $tool; Command = 'gh api --method POST repos/o/r/issues/1/comments' }
@@ -412,35 +416,42 @@ Describe 'Agent configuration' {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
         }
 
-        # SEC-002: the Read deny rules cover Claude Code's file tools, not a shell command. Before Get-Content and
-        # Select-String were allowed, reading a secret file with them prompted; deny rules now refuse the common forms
-        # outright, for the same files the Read rules name. Text matching is no boundary (ADR-0026): a path held in a
-        # variable or found by a recursive search isn't caught, and a search whose pattern names '.env' is refused
-        # too, so searches belong in the Grep tool, which honors the Read rules.
-        It 'refuses to read a secret file with PowerShell(<Command>)' -ForEach @(
-            @{ Command = 'Get-Content .env' }
-            @{ Command = 'Get-Content -Raw ./src/App/.env.local' }
-            @{ Command = 'Get-Content ./certs/site.pfx' }
-            @{ Command = 'Get-Content ./certs/site.pem' }
-            @{ Command = 'Get-Content ./certs/site.key' }
-            @{ Command = 'Get-Content ./src/App.snk' }
-            @{ Command = 'Get-Content ~/.ssh/id_ed25519' }
-            @{ Command = 'Get-Content ~/AppData/Roaming/Microsoft/UserSecrets/abc/secrets.json' }
-            @{ Command = 'Get-Content ~/.microsoft/usersecrets/abc/secrets.json' }
-            @{ Command = 'Select-String -Path ./.env -Pattern KEY' }
-            @{ Command = 'Select-String -Pattern BEGIN -Path ./certs/site.pem' }
-            @{ Command = 'Select-String -Path ~/.ssh/config -Pattern Host' }
-        ) {
-            Test-RuleMatch -Kind 'deny' -Tool 'PowerShell' -Command $Command -IgnoreCase | Should -BeTrue -Because "a deny rule should refuse PowerShell($Command)"
-        }
-
-        # Look-alikes of the routine commands that write, run a program or drop work, which no allow rule may cover.
-        # git fetch, merge and pull are allowed only as exact commands, since --upload-pack runs a program. A
-        # 'pwsh -Command "..."' string is opaque to Claude Code's command splitting, as 'bash -c' is in its docs, so a
-        # wildcard there would allow anything after a ';' inside the quotes; run Invoke-Pester or a ./tools script
-        # directly instead. ForEach-Object and Where-Object take script blocks, and whether Claude Code checks the
-        # commands inside one isn't documented, so they stay unallowed too.
+        # Look-alikes of the routine commands that write, run a program, read a secret or drop work, which no allow
+        # rule may cover (ADR-0075). git fetch, merge and pull are allowed only as exact commands, since --upload-pack
+        # runs a program. A 'pwsh -Command "..."' string is opaque to Claude Code's command splitting, as 'bash -c' is
+        # in its docs, so a wildcard there would allow anything after a ';' inside the quotes; run Invoke-Pester or a
+        # ./tools script directly instead. ForEach-Object and Where-Object take script blocks, and whether Claude Code
+        # checks the commands inside one isn't documented, so they stay unallowed too.
+        # Review 1 of PR 1 probed the rest: git log, diff and show write any file with --output (.agent-mode, the
+        # settings), diff --no-index and blame --contents print any file, gh pr comment deletes or rewrites a comment,
+        # and a path through tools/.. or a second module after a comma leaves the kit's scripts. Reading files and
+        # read-only git therefore go through the Read, Grep and Glob tools and the Bash tool's built-in read-only
+        # check, which honor the Read deny rules and Claude Code's own list of risky flags; a PowerShell cmdlet that
+        # reads a file or Env: prompts, since a pipeline can hand it a secret's path that no rule's text names.
         It 'leaves <Tool>(<Command>) to prompt' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'gh pr comment 76 --delete-last --yes' }
+                @{ Tool = $tool; Command = 'gh pr comment 76 --edit-last --body x' }
+            }
+            @{ Tool = 'PowerShell'; Command = 'git log -1 --format=%B --output=.claude/settings.json' }
+            @{ Tool = 'PowerShell'; Command = 'git diff --output=.agent-mode' }
+            @{ Tool = 'PowerShell'; Command = 'git show -s --format=%s --output=.agent-mode HEAD' }
+            @{ Tool = 'PowerShell'; Command = 'git diff --no-index NUL ./src/App/.env' }
+            @{ Tool = 'PowerShell'; Command = 'git blame --contents ./src/App/.env -- README.md' }
+            @{ Tool = 'PowerShell'; Command = 'Get-Content .env' }
+            @{ Tool = 'PowerShell'; Command = 'Get-Content Env:GH_TOKEN' }
+            @{ Tool = 'PowerShell'; Command = 'Get-ChildItem Env:' }
+            @{ Tool = 'PowerShell'; Command = 'Get-ChildItem -Recurse -Force -Filter .env' }
+            @{ Tool = 'PowerShell'; Command = 'Get-Item Env:GH_TOKEN' }
+            @{ Tool = 'PowerShell'; Command = 'Select-String -Path ./.env -Pattern KEY' }
+            @{ Tool = 'PowerShell'; Command = 'Write-Output $env:GH_TOKEN' }
+            @{ Tool = 'PowerShell'; Command = 'Import-Module ./tools/KitReview.psm1 ,./scratch/x.psm1' }
+            @{ Tool = 'PowerShell'; Command = './tools/../scratch/x.ps1' }
+            @{ Tool = 'PowerShell'; Command = '& ./tools/../scratch/x.ps1' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\..\scratch\x.ps1' }
+            @{ Tool = 'PowerShell'; Command = './.kit/tools/../scratch/x.ps1' }
+            @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/../scratch/x.ps1' }
+            @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/../scratch/x.ps1' }
             foreach ($tool in 'Bash', 'PowerShell') {
                 @{ Tool = $tool; Command = 'git fetch --upload-pack=./evil.sh origin' }
                 @{ Tool = $tool; Command = 'git fetch origin --upload-pack=./evil.sh' }
