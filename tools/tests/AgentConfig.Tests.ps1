@@ -388,7 +388,16 @@ Describe 'Agent configuration' {
 
             @($lines | Where-Object { $_ -match '(?i)\bforeground\b' }) | Should -Not -BeNullOrEmpty
             @($lines | Where-Object { $_ -match '(?i)\bbackground\b' }) | Should -BeNullOrEmpty
-            @($lines | Where-Object { $_ -match '(?i)\b\d+\s+minutes?\b' }) | Should -BeNullOrEmpty
+            @($lines | Where-Object { $_ -match '(?i)\b\d+\s*min(ute)?s?\b|-TimeoutMinutes\s+\d' }) | Should -BeNullOrEmpty
+        }
+
+        # Both of finish-work's instructions to wait say foreground, not just one of them (the fix round of ADR-0068's PR).
+        It 'finish-work says foreground in each instruction to wait' {
+            $lines = @(Get-Content -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md'))
+            $instructions = @($lines | Where-Object { $_ -match '^- \*\*Watch for CI|^  - \*\*CI or a Copilot review\*\*' })
+
+            $instructions.Count | Should -Be 2
+            @($instructions | Where-Object { $_ -notmatch '(?i)\bin the foreground\b' }) | Should -BeNullOrEmpty
         }
 
         It 'finish-work never polls in a loop, never waits in a background shell job, and ends the turn while the owner decides' {
@@ -420,7 +429,7 @@ Describe 'Agent configuration' {
         It 'finish-work runs the first round on the session''s own model, over the whole branch' {
             $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
 
-            $skill | Should -Match '(?i)\*\*The first round reviews the whole branch, on the session''s own model\*\*'
+            $skill | Should -Match '(?i)\*\*The first round reviews the whole branch, on the session''s own model\*\* \(in Claude Code, leave the agent''s `model` unset\)'
         }
 
         It 'finish-work reviews a fix round''s diff only, on a cheaper model only when it is small and touches no guardrail' {
@@ -428,13 +437,15 @@ Describe 'Agent configuration' {
 
             $skill | Should -Match 'run one `reviewer` on the new commits only'
             $skill | Should -Match 'git diff <reviewed head>\.\.HEAD'
-            $skill | Should -Match '(?i)under 100 changed lines[^.\n]*\band touches no guardrail\b'
+            $skill | Should -Match '(?i)under 100 changed lines[^.\n]*\band touches no guardrail \(step 5 lists them\), run it on a cheaper model\b'
+            $skill | Should -Match '(?i)run it on a cheaper model[^\n]*\. Otherwise use the session''s model\.'
         }
 
         It 'the reviewer agent reviews a fix round''s diff, not the whole branch' {
             $agent = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'agents' 'reviewer.md')
 
             $agent | Should -Match '\*\*A fix round\*\*[^\n]*git diff <reviewed head>\.\.HEAD'
+            $agent | Should -Match '\*\*A fix round\*\*[^\n]*Read the rest of the branch only where the fix reaches it'
         }
 
         # Each call carries the whole conversation, so a PR's work starts in a session of its own (Claude Code, ADR-0068).
