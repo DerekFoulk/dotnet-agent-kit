@@ -304,7 +304,7 @@
           "name": "Mocking",
           "recommendation": {
             "authority": { "by": "Microsoft", "pick": null, "says": "Calls Moq and NSubstitute popular mocking libraries for .NET, without a pick.", "source": "https://learn.microsoft.com/dotnet/azure/sdk/unit-testing-mocking", "read": "2026-11-15" },
-            "agent": { "pick": "moq", "reason": "Free (BSD-3-Clause), so it never needs a paid license (ADR-0003)." }
+            "agent": { "pick": "moq", "reason": "Free (BSD-3-Clause) for any app, so it never needs a paid license, and the kit's sample tests use it." }
           }
         },
         {
@@ -320,7 +320,7 @@
           "name": "Fake data",
           "recommendation": {
             "authority": { "by": "Microsoft", "pick": null, "says": "No Microsoft Learn page found that names a fake-data library.", "searched": ".NET tests generate fake test data library property-based testing mock HTTP server WireMock", "read": "2026-11-15" },
-            "agent": { "pick": "bogus", "reason": "Free (MIT); generates realistic test data from rules (ADR-0003)." }
+            "agent": { "pick": "bogus", "reason": "Free (MIT); generates realistic test data from rules, so tests don't hand-write it." }
           }
         },
         {
@@ -328,14 +328,14 @@
           "name": "Property-based tests",
           "recommendation": {
             "authority": { "by": "Microsoft", "pick": null, "says": "No Microsoft Learn page found that names a property-based testing library.", "searched": ".NET tests generate fake test data library property-based testing mock HTTP server WireMock", "read": "2026-11-15" },
-            "agent": { "pick": "fscheck", "reason": "Free (BSD-3-Clause); runs property-based tests from xUnit (ADR-0003)." }
+            "agent": { "pick": "fscheck", "reason": "Free (BSD-3-Clause); generates many inputs for one property, and runs from xUnit." }
           }
         },
         {
           "id": "time",
           "name": "Time",
           "recommendation": {
-            "authority": { "by": "Microsoft", "pick": "faketimeprovider", "says": "\"To make it easier to test time-dependent code, you can use FakeTimeProvider.\"", "source": "https://learn.microsoft.com/dotnet/api/system.timeprovider", "read": "2026-11-15" },
+            "authority": { "by": "Microsoft", "pick": null, "says": "No pick: it says \"you can use FakeTimeProvider\" to test time-dependent code, and names no other fake.", "source": "https://learn.microsoft.com/dotnet/api/system.timeprovider", "read": "2026-11-15" },
             "agent": { "pick": "faketimeprovider", "reason": "Microsoft's own fake for TimeProvider, free (MIT); TST-010 asks for time through a seam." }
           }
         },
@@ -343,7 +343,7 @@
           "id": "logging",
           "name": "Logging",
           "recommendation": {
-            "authority": { "by": "Microsoft", "pick": "fakelogger", "says": "FakeLogger \"is intended for use in unit tests\": it captures what's logged for the test to inspect.", "source": "https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.testing.fakelogger", "read": "2026-11-15" },
+            "authority": { "by": "Microsoft", "pick": null, "says": "No pick: it says FakeLogger \"is intended for use in unit tests\", capturing what's logged for the test to inspect.", "source": "https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.testing.fakelogger", "read": "2026-11-15" },
             "agent": { "pick": "fakelogger", "reason": "Microsoft's own, free (MIT), and no mock of ILogger is needed." }
           }
         }
@@ -377,7 +377,7 @@
           "id": "reset",
           "name": "Database reset",
           "recommendation": {
-            "authority": { "by": "Microsoft", "pick": "respawn", "says": "\"You may also want to consider using the respawn package\" to clear the database between tests.", "source": "https://learn.microsoft.com/ef/core/testing/testing-with-the-database#efficient-database-cleanup", "read": "2026-11-15" },
+            "authority": { "by": "Microsoft", "pick": null, "says": "No pick: to clear the database between tests it shows EF Core APIs and raw SQL, and says you \"may also want to consider\" the respawn package.", "source": "https://learn.microsoft.com/ef/core/testing/testing-with-the-database#efficient-database-cleanup", "read": "2026-11-15" },
             "agent": { "pick": "respawn", "reason": "Free (Apache-2.0); clears test data without listing the tables." }
           }
         },
@@ -406,7 +406,7 @@
           "id": "host",
           "name": "Test host",
           "recommendation": {
-            "authority": { "by": "Microsoft", "pick": "webapplicationfactory", "says": "Microsoft.AspNetCore.Mvc.Testing provides WebApplicationFactory, and using the package \"streamlines test creation and execution\".", "source": "https://learn.microsoft.com/aspnet/core/test/integration-tests", "read": "2026-11-15" },
+            "authority": { "by": "Microsoft", "pick": null, "says": "No pick among tools: its integration tests are built on WebApplicationFactory, from Microsoft.AspNetCore.Mvc.Testing, whose use \"streamlines test creation and execution\".", "source": "https://learn.microsoft.com/aspnet/core/test/integration-tests", "read": "2026-11-15" },
             "agent": { "pick": "webapplicationfactory", "reason": "Microsoft's own, free (MIT); runs the app's real HTTP pipeline in the test." }
           }
         },
@@ -538,7 +538,7 @@
           "id": "benchmarks",
           "name": "Benchmarks",
           "recommendation": {
-            "authority": { "by": "Microsoft", "pick": "benchmarkdotnet", "says": "\"it's strongly recommended to use the well-known BenchmarkDotNet library\"", "source": "https://learn.microsoft.com/ef/core/performance/performance-diagnosis#benchmarking-with-ef-core", "read": "2026-11-15" },
+            "authority": { "by": "Microsoft", "pick": "benchmarkdotnet", "says": "For benchmarking EF Core queries, \"it's strongly recommended to use the well-known BenchmarkDotNet library\".", "source": "https://learn.microsoft.com/ef/core/performance/performance-diagnosis#benchmarking-with-ef-core", "read": "2026-11-15" },
             "agent": { "pick": "benchmarkdotnet", "reason": "Free (MIT); handles warm-up and iteration counts, which hand-written timings get wrong." }
           }
         }
@@ -558,7 +558,7 @@
           "name": "Load generator",
           "recommendation": {
             "authority": { "by": "Microsoft", "pick": null, "says": "Describes Azure Load Testing and lists third-party tools, Locust, Apache JMeter and NBomber among them, without a pick.", "source": "https://learn.microsoft.com/aspnet/core/test/load-tests", "read": "2026-11-15" },
-            "agent": { "pick": "locust", "reason": "Free (MIT); runs in GitHub Actions at no cost on a public repo (ADR-0057)." }
+            "agent": { "pick": "locust", "reason": "Free (MIT); runs in GitHub Actions at no cost on a public repo, and the kit's performance workflow already runs it against a budget (ADR-0062)." }
           }
         }
       ],
@@ -603,7 +603,7 @@
           "id": "mutants",
           "name": "Mutation testing",
           "recommendation": {
-            "authority": { "by": "Microsoft", "pick": "stryker", "says": "Its mutation testing page uses Stryker.NET: \"the Stryker.NET tool automatically performs mutations in your code\".", "source": "https://learn.microsoft.com/dotnet/core/testing/mutation-testing", "read": "2026-11-15" },
+            "authority": { "by": "Microsoft", "pick": null, "says": "No pick: its mutation testing page walks through Stryker.NET as its example tool, without recommending it.", "source": "https://learn.microsoft.com/dotnet/core/testing/mutation-testing", "read": "2026-11-15" },
             "agent": { "pick": "stryker", "reason": "Free (Apache-2.0); the kit runs it nightly against TST-004's 85% score (ADR-0039)." }
           }
         }
