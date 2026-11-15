@@ -8,10 +8,10 @@ Set-StrictMode -Version Latest
 # an older module misread it.
 $script:SchemaVersion = 2
 
-# The layout of a developer's preferences file (docs/preferences.md, ADR-0070).
+# The layout of a developer's preferences file (docs/preferences.md, ADR-0074).
 $script:PreferenceSchemaVersion = 1
 
-# Reads templates/app-intake.json, and refuses one whose defaults don't name their source (ADR-0070).
+# Reads templates/app-intake.json, and refuses one whose defaults don't name their source (ADR-0074).
 function Get-KitIntake {
     param([Parameter(Mandatory)] [string] $Text)
 
@@ -24,7 +24,7 @@ function Get-KitIntake {
     }
     $problems = @(Test-KitIntakeSource -Intake $intake)
     if ($problems) {
-        throw "templates/app-intake.json has defaults with no labeled source:`n- $($problems -join "`n- ")`nEach card and test tool role needs the authority's recommendation and the agent's (ADR-0070)."
+        throw "templates/app-intake.json has defaults with no labeled source:`n- $($problems -join "`n- ")`nEach card and test tool role needs the authority's recommendation and the agent's (ADR-0074)."
     }
     $intake
 }
@@ -98,7 +98,7 @@ function Resolve-KitIntakeAnswer {
     [pscustomobject]@{ Cards = @($cards); TestKinds = @($kinds) }
 }
 
-# The kit's default tools for a kind of test: one for each role, the authority's pick or else the agent's (ADR-0070).
+# The kit's default tools for a kind of test: one for each role, the authority's pick or else the agent's (ADR-0074).
 # A developer's preferences aren't read here, so New-KitApp gives the same app on every machine; the new-app skill
 # writes the developer's picks into the answers.
 function Get-KitDefaultTool {
@@ -111,7 +111,7 @@ function Get-KitDefaultTool {
     }
 }
 
-# Picks a default from a recommendation (ADR-0070): the developer's preference, then the authority's pick unless it's
+# Picks a default from a recommendation (ADR-0074): the developer's preference, then the authority's pick unless it's
 # Paid (ARC-012 starts every tool on its free option), then the agent's. Returns the pick, where it came from, and a
 # note for each source it passed over.
 function Select-KitPick {
@@ -220,7 +220,7 @@ function Format-KitCell {
     ($Text -replace '\|', '\|' -replace '\s*\r?\n\s*', ' ').Trim()
 }
 
-# Checks that every default the intake gives names its source (ADR-0070), and returns what's missing.
+# Checks that every default the intake gives names its source (ADR-0074), and returns what's missing.
 function Test-KitIntakeSource {
     param([Parameter(Mandatory)] [Collections.IDictionary] $Intake)
 
@@ -290,7 +290,7 @@ function Test-KitRecommendation {
         if ("$($authority['read'])" -notmatch '^\d{4}-\d{2}-\d{2}$') { "$label's authority recommendation needs the date it was read (read: yyyy-mm-dd)." }
         $pick = $authority['pick']
         if ($null -ne $pick -and $pick -cnotin $OptionId) { "$label's authority picks '$pick', which isn't an option: $options." }
-        # The bar for a pick (ADR-0070): the page recommends it, says it should be used, or gives it a guideline level.
+        # The bar for a pick (ADR-0074): the page recommends it, says it should be used, or gives it a guideline level.
         # "You can use", an example or a tool a page only uses is no pick, and neither is one whose words say so.
         elseif ($null -ne $pick -and "$($authority['says'])" -cmatch '(?i)^\s*no (pick|recommendation)\b|without recommending|doesn''t recommend') {
             "$label's authority picks '$pick', but its says reads as no pick: record pick null, or quote the page's recommendation."
@@ -314,7 +314,7 @@ function Test-KitText {
     $Value -is [string] -and [bool]$Value.Trim()
 }
 
-# Where a developer's preferences file lives: their home folder, outside every repo (ADR-0070).
+# Where a developer's preferences file lives: their home folder, outside every repo (ADR-0074).
 function Get-KitPreferencePath {
     Join-Path $HOME '.dotnet-agent-kit' 'preferences.json'
 }
@@ -356,7 +356,7 @@ function Read-KitPreference {
 }
 
 # The default for each intake question and each test tool role, with where it came from and all three sources side
-# by side (ADR-0070), for the new-app skill to show.
+# by side (ADR-0074), for the new-app skill to show.
 function Get-KitIntakeDefault {
     param(
         [Parameter(Mandatory)] [Collections.IDictionary] $Intake,

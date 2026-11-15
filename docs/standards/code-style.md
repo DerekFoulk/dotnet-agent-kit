@@ -95,6 +95,32 @@ rules:
         how: "the recommendations no analyzer checks, checked by code review: meaningful names without abbreviations or single letters, no double underscore, t_ for thread-static fields, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
     scope: core
     paths: ["**/*.cs", ".editorconfig"]
+  - id: STY-008
+    statement: "Every publicly visible type and member has an XML documentation comment; test projects (names ending in Tests) are left out."
+    why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12); the coding conventions pass made XML documentation on public members a gate. A comment on the public surface is what IntelliSense and a reviewer read; a test class's name already says what it checks (ADR-0069)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "ADR-0069", "https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/recommended-tags, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: Directory.Build.props sets GenerateDocumentationFile in every project whose name doesn't end in Tests (and not in the project BenchmarkDotNet generates for a run, ADR-0069), so the compiler reports CS1591 for an undocumented public member and STY-004 fails the build on it; tools/tests/BuildConfig.Tests.ps1 (the UndocumentedPublicMember fixture fails; the UndocumentedTestProject and BenchmarkDotNetGenerated fixtures build)"
+    scope: core
+    paths: ["**/*.cs", "Directory.Build.props"]
+  - id: STY-009
+    statement: "Code follows the Framework Design Guidelines wherever an analyzer checks them: the Design, Naming and Usage rules, CA1815 and CA1819 check internal APIs as well as public and protected ones, and a struct whose members are all read-only is declared readonly."
+    why: "The owner asked for Microsoft Learn's guidance as rules (owner O7, 2026-11-12); the Framework Design Guidelines pass found that 70 of the guidelines an analyzer gates rest on rules that check only public APIs by default, so they never reach an app, whose types CA1515 makes internal (owner, 2026-11-13: \"Yes, accept them\"; ADR-0070)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-13", "ADR-0070", "https://learn.microsoft.com/dotnet/standard/design-guidelines/, retrieved 2026-11-13", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/code-quality-rule-options#api_surface, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: .editorconfig sets api_surface to public, internal for the Design, Naming and Usage categories and for CA1815 and CA1819, keeps all for CA1068 and CA2208 (their own default), and csharp_style_prefer_readonly_struct to true:warning (IDE0250); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA1051, CA1711, CA2225, CA1815, CA1819 and IDE0250, and for a private CA2208 and CA1068"
+    scope: core
+    paths: ["**/*.cs", ".editorconfig"]
 ---
 
 # Code style

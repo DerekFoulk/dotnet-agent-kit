@@ -19,7 +19,7 @@ The developer starts an app from the chat and never opens a terminal (ADR-0058).
   Get-KitIntakeDefault -Intake $intake -Preference (Read-KitPreference) | ConvertTo-Json -Depth 8
   ```
 
-  Each row is one card (one per data answer for the database card) or one test tool role (`unit/framework`, `load/load`...). `Pick` is the default and `From` says whose it is: `developer`, `authority`, `agent` or `only option`. `Developer`, `Authority` and `Agent` hold the three sources, and `Notes` says what was passed over: a preference that isn't an option any more, or an authority pick that's Paid (ARC-012). The developer's preferences file is theirs, outside every repo (`docs/preferences.md`, ADR-0070). A new kit user has none, and that's fine.
+  Each row is one card (one per data answer for the database card) or one test tool role (`unit/framework`, `load/load`...). `Pick` is the default and `From` says whose it is: `developer`, `authority`, `agent` or `only option`. `Developer`, `Authority` and `Agent` hold the three sources, and `Notes` says what was passed over: a preference that isn't an option any more, or an authority pick that's Paid (ARC-012). The developer's preferences file is theirs, outside every repo (`docs/preferences.md`, ADR-0074). A new kit user has none, and that's fine.
 - Check the prices you'll show. Each priced entry has its source and the date it was checked. If a date is more than a month old, check the source again, and if a price changed, say so and fix the file in a PR. The database card's prices are in `docs/database-guide.md`.
 
 ## 2. Ask

@@ -2,7 +2,7 @@
 
 This guide picks the database for an app (DAT-001, ADR-0053). Questions 1 and 2 find the options that fit the app. Among those, your preference comes first (question 3), then Microsoft's recommendation, then the agent's. Then put the choice, its label and the reason in the plan.
 
-Each recommendation names its source, and the three are never mixed (kit ADR-0070):
+Each recommendation names its source, and the three are never mixed (kit ADR-0074):
 
 - **Your preference:** what you have said you want, with the date, from your own preferences file (`~/.dotnet-agent-kit/preferences.json`, outside every repo). It comes first.
 - **Microsoft's recommendation:** only what its page says, with the page and the date it was read. Where the page names no pick, the guide says so.
@@ -53,6 +53,10 @@ If you prefer another option that fits the answers above (PostgreSQL, a paid tie
 - **Azure SQL Database free offer:** it pauses after about 15 minutes with no connections, so the first request after a pause waits while it resumes. Turn on EF Core's retry for transient errors (`EnableRetryOnFailure`). It has no SLA, and Microsoft positions it for development and proof of concept: an app whose users can't wait or need an SLA moves to a paid tier, which is the owner's call. Once the month's vCore seconds run out, it stays paused until the next month.
 - **Cosmos DB free tier:** 1000 RU/s is shared by every container in the account, only one account per subscription can have it, and storage past 25 GB bills at the regular price.
 - **PostgreSQL free account:** it ends after 12 months, and then bills at the paid price without asking.
+
+## SQLite: set its busy timeout
+
+SQLite takes one write at a time. Microsoft.Data.Sqlite answers a write that finds the lock taken by sleeping a fixed 150 ms before it tries again, so two writes that meet cost the second one at least 150 ms. Have SQLite wait for the lock itself instead: in a `DbConnectionInterceptor`, override `ConnectionOpened` and `ConnectionOpenedAsync` to call `SQLitePCL.raw.sqlite3_busy_timeout(connection.Handle, 1000)` on the `SqliteConnection`, and add the interceptor with `AddInterceptors` next to `UseSqlite`. Keep it short, a second: SQLite's busy timeout applies to each statement, while Microsoft.Data.Sqlite's command timeout covers the whole command. The kit's sample does this in `sample/src/Bookmarks.Infrastructure/SqliteBusyTimeoutInterceptor.cs`, and the kit's ADR-0072 explains why ([kit repository](https://github.com/DerekFoulk/dotnet-agent-kit)).
 
 ## Every cloud database, whichever it is
 

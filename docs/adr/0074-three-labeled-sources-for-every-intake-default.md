@@ -1,4 +1,4 @@
-# ADR-0070: Three labeled sources for every intake default, and a preferences file each developer owns
+# ADR-0074: Three labeled sources for every intake default, and a preferences file each developer owns
 
 - **Status:** Proposed
 - **Date:** 2026-11-15

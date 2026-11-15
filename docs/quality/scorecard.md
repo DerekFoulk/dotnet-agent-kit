@@ -33,7 +33,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"
       - "ADR-0043"
       - "ADR-0050"
-    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010, CRF-011]
+    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010, CRF-011, CRF-012, CRF-013, CRF-014]
     gaps:
       - id: GAP-019
         gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-011 (proposed) states the four as limits."
@@ -66,7 +66,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
-    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, CRF-008, CRF-010]
+    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, STY-008, STY-009, CRF-008, CRF-010]
     gaps:
       - id: GAP-021
         gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version. Closed by ADR-0049, which found the 48 counted each diagnostic twice (24 places then, 32 by the time it was decided): CA1014 is on, and Directory.Build.props declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be; a library published for other .NET languages declares CLSCompliant(true) instead."
@@ -288,9 +288,9 @@ Each area in the front matter above has:
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
 | Architecture | 9 | 5 | 4 | 4 | 3 |
-| Craft | 10 | 5 | 5 | 1 | 1 |
+| Craft | 13 | 7 | 6 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
-| Code | 9 | 8 | 1 | 0 | 0 |
+| Code | 11 | 10 | 1 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
 | Security | 7 | 5 | 2 | 4 | 0 |
 | Reliability | 3 | 2 | 1 | 2 | 1 |
@@ -303,7 +303,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 72 rules in force, 45 checked by a tool and 27 advisory; 25 proposed; 16 open gaps.
+**Overall:** 77 rules in force, 49 checked by a tool and 28 advisory; 25 proposed; 16 open gaps.
 
 Open gaps:
 

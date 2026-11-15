@@ -16,7 +16,7 @@ namespace Kit.CodeShape;
 /// top-level statements.</item>
 /// </list>
 /// A marker without a reason covers nothing.</summary>
-internal static partial class LimitException
+internal static partial class LimitExemption
 {
     /// <summary>Whether a member, or a type's cohesion, has an exception.</summary>
     public static bool Covers(SyntaxNode node)

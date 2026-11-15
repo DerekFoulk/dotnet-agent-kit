@@ -25,6 +25,19 @@ public sealed class LayerTests
     public void InfrastructureDoesNotDependOnTheApi() =>
         Layer(Sample.Infrastructure).Should().NotDependOnAny(Layer(Sample.Api)).Check(Sample.Value);
 
+    // Persistence ignorance (CRF-014): the domain knows nothing of how it's stored, so it references no EF Core or
+    // ADO.NET assembly. The architecture holds only the sample's assemblies, so a rule on EF Core's types would match
+    // nothing; the domain's own references are what it's compiled against.
+    [Fact]
+    public void TheDomainKnowsNothingOfPersistence() =>
+        PersistenceReferences(Sample.Domain).Should().BeEmpty();
+
+    private static IEnumerable<string> PersistenceReferences(Assembly assembly) =>
+        assembly.GetReferencedAssemblies().Select(reference => reference.Name ?? string.Empty)
+            .Where(name => name.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal)
+                || name.StartsWith("Microsoft.Data.", StringComparison.Ordinal)
+                || name.StartsWith("System.Data", StringComparison.Ordinal));
+
     // On Linux, CI's coverage collector rewrites each assembly and injects tracker types
     // (Microsoft.CodeCoverage.Instrumentation.*); they aren't part of any layer.
     private static GivenTypesConjunction Layer(params Assembly[] assemblies) =>

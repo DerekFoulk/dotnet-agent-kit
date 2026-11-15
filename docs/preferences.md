@@ -1,6 +1,6 @@
 # Your preferences file
 
-The new-app intake recommends an answer to each question from three separate sources, each labeled (ADR-0070):
+The new-app intake recommends an answer to each question from three separate sources, each labeled (ADR-0074):
 
 1. **Your preference:** what you have said you want, with the date you said it. It lives in your preferences file, which is yours, not the kit's.
 2. **The authority's recommendation:** only what its page says, such as Microsoft Learn, with the page and the date it was read. It counts as a pick only where the page recommends the tool, says it should be used, or gives it a guideline level such as CONSIDER. A page that only says you can use a tool, uses one, or names one as an example names no pick, and the intake says so. These live in `templates/app-intake.json`.

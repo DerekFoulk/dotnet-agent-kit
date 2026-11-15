@@ -22,7 +22,7 @@ Describe 'the intake data' {
             $guide | Should -Match ([regex]::Escape($option['label'])) -Because "the guide lists $($option['label'])"
         }
     }
-    # ADR-0070: an app gets the guide but not templates/app-intake.json, so the guide labels its recommendations too,
+    # ADR-0074: an app gets the guide but not templates/app-intake.json, so the guide labels its recommendations too,
     # and this keeps them the same as the intake's (CRF-003).
     It 'labels each database recommendation as the intake does: the authority''s page and the agent''s pick' {
         $guide = Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'database-guide.md')
@@ -150,8 +150,7 @@ Describe 'the intake data' {
         }
     }
 
-    # ADR-0070: every card and every role names the authority's recommendation (or that it has none) and the agent's.
-    # The agent's reason is its own, never the owner's taste passed on (ADR-0070): ADR-0003 and ADR-0057 record what he
+    # The agent's reason is its own, never the owner's taste passed on (ADR-0074): ADR-0003 and ADR-0057 record what he
     # prefers, so they belong in his preferences file, not in a reason a new kit user reads.
     It 'gives agent reasons of the agent''s own, citing none of the owner''s preference ADRs' {
         $entries = @($intake['cards'] | ForEach-Object { $_['recommendation'] }) + @($intake['testKinds'] | ForEach-Object { $_['roles'] } | ForEach-Object { $_['recommendation'] })
@@ -160,6 +159,7 @@ Describe 'the intake data' {
         @($agents | Where-Object { $_['reason'] -match 'ADR-00(03|57)\b' } | ForEach-Object { $_['pick'] }) | Should -BeNullOrEmpty
     }
 
+    # ADR-0074: every card and every role names the authority's recommendation (or that it has none) and the agent's.
     It 'gives every card and every test tool role both labeled sources' {
         @($intake['testKinds'] | Where-Object { -not $_['roles'] } | ForEach-Object { $_['id'] }) | Should -BeNullOrEmpty -Because 'every kind of test lists its roles'
         @(Test-KitIntakeSource -Intake $intake) | Should -BeNullOrEmpty
@@ -228,13 +228,13 @@ Describe 'Resolve-KitIntakeAnswer' {
         ($resolved.Cards | Where-Object Id -EQ 'hosting').Option['id'] | Should -Be 'none'
         @($resolved.TestKinds.Kind | ForEach-Object { $_['id'] }) | Should -Be @($intake['testKinds'].id)
         @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'load' }).Tools | ForEach-Object { $_['id'] }) | Should -Be @('locust')
-        # One tool for each role; with no developer file, the agent picks AwesomeAssertions, free for any app (ADR-0070).
+        # One tool for each role; with no developer file, the agent picks AwesomeAssertions, free for any app (ADR-0074).
         @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) |
             Should -Be @('xunit', 'moq', 'awesomeassertions', 'bogus', 'fscheck', 'faketimeprovider', 'fakelogger')
     }
 
     # ARC-012 starts every tool on its free option, so an authority's pick that's Paid is listed but never the
-    # default by itself (ADR-0070).
+    # default by itself (ADR-0074).
     It 'skips an authority pick that''s Paid, so an unanswered kind of test starts free' {
         $paid = $intake | ConvertTo-Json -Depth 20 | ConvertFrom-Json -AsHashtable
         @($paid['testKinds'] | Where-Object { $_['id'] -eq 'load' })[0]['roles'][0]['recommendation']['authority']['pick'] = 'azure-load-testing'
@@ -334,12 +334,12 @@ Describe 'Get-KitIntake' {
         { Get-KitIntake -Text $Text } | Should -Throw $Message
     }
 
-    # ADR-0070: New-KitApp and the new-app skill both read the intake through Get-KitIntake, so a default with no
+    # ADR-0074: New-KitApp and the new-app skill both read the intake through Get-KitIntake, so a default with no
     # labeled source never reaches a new app.
     It 'refuses an intake whose defaults have no labeled source, naming each' {
         $text = '{ "schemaVersion": 2, "cards": [ { "id": "hosting", "options": [ { "id": "none" } ] } ], "testKinds": [] }'
 
-        { Get-KitIntake -Text $text } | Should -Throw "*no labeled source*card 'hosting' has no recommendation*ADR-0070*"
+        { Get-KitIntake -Text $text } | Should -Throw "*no labeled source*card 'hosting' has no recommendation*ADR-0074*"
     }
 }
 
@@ -407,7 +407,7 @@ Describe 'ConvertTo-KitAppProfile' {
         $text | Should -Match '(?m)^\| Where should it run\? \| Other: my own server \\\| a VPS in Ohio \| Needs an ADR'
     }
 }
-# ADR-0070 (owner, 2026-11-15): every default the intake gives names its source. The authority's recommendation is
+# ADR-0074 (owner, 2026-11-15): every default the intake gives names its source. The authority's recommendation is
 # only what its page says, with the page and the date read (or the search that found no page); the agent's is its
 # pick with a reason. A default with neither, or a pick that isn't an option, fails the check.
 Describe 'Test-KitIntakeSource' {
@@ -493,7 +493,7 @@ Describe 'Test-KitIntakeSource' {
     }
 }
 
-# ADR-0070: a developer's preferences live in their own file, outside every repo, each with their words, the date and
+# ADR-0074: a developer's preferences live in their own file, outside every repo, each with their words, the date and
 # where they said it. A new kit user has no file, and that's no preferences, not an error.
 Describe 'Read-KitPreference' {
     BeforeAll {
@@ -556,7 +556,7 @@ Describe 'Read-KitPreference' {
     }
 }
 
-# ADR-0070: the new-app skill shows, for each question and each test tool role, the default and where it came from,
+# ADR-0074: the new-app skill shows, for each question and each test tool role, the default and where it came from,
 # with all three sources side by side: the developer's preference first, then the authority's pick, then the agent's.
 Describe 'Get-KitIntakeDefault' {
     BeforeAll {
