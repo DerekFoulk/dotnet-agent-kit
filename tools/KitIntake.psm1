@@ -326,7 +326,7 @@ function Read-KitPreference {
     }
     $seen = @{}
     $number = 0
-    foreach ($entry in @($file['preferences'])) {
+    foreach ($entry in @(if ($file.Contains('preferences')) { $file['preferences'] })) {
         $number++
         $at = "The preferences file $Path, preference $number"
         if ($entry -isnot [Collections.IDictionary]) { throw "$at, isn't a JSON object." }
@@ -377,6 +377,21 @@ function Get-KitIntakeDefault {
             $tools = @($kind['tools'] | Where-Object { $_['role'] -ceq $role['id'] })
             New-KitDefaultRow -Choice "$($kind['id'])/$($role['id'])" -Recommendation $role['recommendation'] -Option $tools -Preference $Preference
         }
+    }
+    # A preference that answers none of these is reported, never dropped in silence.
+    $asked = @($Intake['cards'] | ForEach-Object {
+            $card = $_
+            if (-not $card.Contains('dependsOn')) { "$($card['id'])|" }
+            else { @($Intake['cards'] | Where-Object { $_['id'] -ceq $card['dependsOn'] } | ForEach-Object { $_['options'] }) | ForEach-Object { "$($card['id'])|$($_['id'])" } }
+        }) + @($Intake['testKinds'] | ForEach-Object { $kind = $_; $kind['roles'] | ForEach-Object { "$($kind['id'])/$($_['id'])|" } })
+    $dependent = @($Intake['cards'] | Where-Object { $_.Contains('dependsOn') } | ForEach-Object { $_['id'] })
+    foreach ($unused in @($Preference | Where-Object { (Test-KitText $_.Choice) -and "$($_.Choice)|$($_.When)" -cnotin $asked })) {
+        $why = if ($unused.Choice -cin $dependent -and -not (Test-KitText $unused.When)) {
+            "Your preference for '$($unused.Choice)' names no answer of the card it depends on (when), so it's unused: add when, such as 'relational'."
+        }
+        else { "Your preference for '$($unused.Choice)' isn't an intake question, so it's unused: check its choice against docs/preferences.md." }
+        [pscustomobject]@{ Choice = $unused.Choice; When = $unused.When; Pick = $null; From = 'unused preference'
+            Developer = $unused; Authority = $null; Agent = $null; Notes = @($why) }
     }
 }
 
