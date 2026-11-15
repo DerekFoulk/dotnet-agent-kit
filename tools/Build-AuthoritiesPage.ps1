@@ -36,6 +36,9 @@ Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 # What docs/authorities.yml says about each publisher, and its classes (ADR-0070).
 $script:EntryFields = 'name', 'publisher', 'class', 'covers', 'match'
 $script:Classes = 'authority', 'practitioner', 'project'
+# The page lists authorities first, then the tool pages ADR-0063 also counts as authorities, then practitioners.
+$script:ClassOrder = [System.Collections.Generic.List[string]] @('authority', 'project', 'practitioner')
+$script:ClassHeadings = @{ authority = 'Authorities'; project = 'Tool and project pages'; practitioner = 'Practitioners and references' }
 
 # Every URL source of the rules in docs/standards that aren't retired: one object per rule and URL, with the
 # rule's id, status and basis.
@@ -146,6 +149,52 @@ function ConvertTo-AuthoritiesBlock {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Cited,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Entries
     )
+
+    $bySource = [ordered]@{}
+    foreach ($entry in $Entries) { $bySource[$entry['name']] = [System.Collections.Generic.List[object]]::new() }
+    foreach ($citation in $Cited) {
+        $entry = Find-SourceEntry -Url $citation.Url -Entries $Entries
+        if ($entry) { $bySource[$entry['name']].Add($citation) }
+    }
+
+    $pageCount = @($Cited | ForEach-Object Url | Sort-Object -Unique).Count
+    $ruleCount = @($Cited | ForEach-Object RuleId | Sort-Object -Unique).Count
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $lines.Add("The rules cite $pageCount pages from $($Entries.Count) sources; $ruleCount rules cite them.")
+    foreach ($class in $script:ClassOrder) {
+        $lines.AddRange([string[]] @('', "### $($script:ClassHeadings[$class])", '', '| Source | Publisher | Covers | Cited by |', '|---|---|---|---|'))
+        foreach ($entry in $Entries | Where-Object { $_['class'] -eq $class } | Sort-Object { $_['name'] }) {
+            $name = $entry['name']
+            $lines.Add("| [$name](#$(ConvertTo-HeadingAnchor $name)) | $($entry['publisher']) | $($entry['covers']) | $(ConvertTo-RuleLinks $bySource[$name]) |")
+        }
+    }
+    $lines.AddRange([string[]] @('', '### Pages cited'))
+    foreach ($class in $script:ClassOrder) {
+        foreach ($entry in $Entries | Where-Object { $_['class'] -eq $class } | Sort-Object { $_['name'] }) {
+            $lines.AddRange([string[]] @('', "#### $($entry['name'])", '', '| Page | Cited by |', '|---|---|'))
+            foreach ($page in $bySource[$entry['name']] | Group-Object Url | Sort-Object Name) {
+                $lines.Add("| <$($page.Name)> | $(ConvertTo-RuleLinks $page.Group) |")
+            }
+        }
+    }
+    ($lines -join "`n") + "`n"
+}
+
+# Each citing rule once, sorted, linked to its standard, with a proposed rule marked: it isn't in force yet.
+function ConvertTo-RuleLinks {
+    param([AllowEmptyCollection()] [object[]] $Citations)
+
+    $rules = @($Citations | Sort-Object RuleId -Unique | ForEach-Object {
+            $mark = if ($_.Status -eq 'proposed') { ' (proposed)' } else { '' }
+            "[$($_.RuleId)](standards/$($_.File))$mark"
+        })
+    $rules -join ', '
+}
+
+# The anchor GitHub gives a heading: lower case, punctuation dropped, spaces as hyphens.
+function ConvertTo-HeadingAnchor {
+    param([Parameter(Mandatory)] [string] $Heading)
+    (($Heading.ToLowerInvariant() -replace '[^\p{L}\p{N}\s-]', '') -replace '\s', '-')
 }
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
