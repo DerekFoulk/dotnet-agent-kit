@@ -23,11 +23,15 @@ internal sealed class SqliteBusyTimeoutInterceptor : DbConnectionInterceptor
 {
     private const int BusyTimeoutMilliseconds = 1_000;
 
-    public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData) =>
+    public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
         SetBusyTimeout((SqliteConnection)connection);
+    }
 
     public override Task ConnectionOpenedAsync(DbConnection connection, ConnectionEndEventData eventData, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(connection);
         SetBusyTimeout((SqliteConnection)connection);
         return Task.CompletedTask;
     }
