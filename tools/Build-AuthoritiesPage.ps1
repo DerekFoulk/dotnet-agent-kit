@@ -33,6 +33,12 @@ $ErrorActionPreference = 'Stop'
 Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 
+# Every URL source of the rules in docs/standards that aren't retired: one object per rule and URL, with the
+# rule's id, status and basis.
+function Get-CitedUrl {
+    param([Parameter(Mandatory)] [string] $StandardsPath)
+}
+
 # The entry in docs/authorities.yml whose 'match' prefixes include the longest one the URL starts with, or $null.
 function Find-SourceEntry {
     param(
