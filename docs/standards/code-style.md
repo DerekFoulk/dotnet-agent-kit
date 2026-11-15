@@ -105,7 +105,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: Directory.Build.props sets GenerateDocumentationFile in every project whose name doesn't end in Tests, so the compiler reports CS1591 for an undocumented public member and STY-004 fails the build on it; tools/tests/BuildConfig.Tests.ps1 (the UndocumentedPublicMember fixture fails; the AwaitInTests fixtures, test projects, build)"
+        how: "build: Directory.Build.props sets GenerateDocumentationFile in every project whose name doesn't end in Tests (and not in the project BenchmarkDotNet generates for a run, ADR-0068), so the compiler reports CS1591 for an undocumented public member and STY-004 fails the build on it; tools/tests/BuildConfig.Tests.ps1 (the UndocumentedPublicMember fixture fails; the UndocumentedTestProject and BenchmarkDotNetGenerated fixtures build)"
     scope: core
     paths: ["**/*.cs", "Directory.Build.props"]
 ---
