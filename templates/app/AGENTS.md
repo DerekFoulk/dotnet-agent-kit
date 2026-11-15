@@ -22,6 +22,7 @@ This repo follows dotnet-agent-kit {{KitVersion}} (commit `{{KitCommit}}`): the 
 | Every C# project in the solution holds code of its own, and none keeps the class library template's empty `Class1` (ARC-009) | `./.kit/tools/Test-EmptyProjects.ps1 -Solution {{Name}}.slnx` |
 | Every ADR has its required sections | `./.kit/tools/Test-AdrSections.ps1 -AdrPath ./docs/adr` |
 | The runbook has every section, and no placeholder once it's In use (OPS-004) | `./.kit/tools/Test-Runbook.ps1 -Path ./docs/runbook.md` |
+| The architecture diagram is there (ARC-013) | `./.kit/tools/Test-ArchitectureDiagram.ps1 -Path ./docs/architecture/modules.md` |
 | No migration drops or renames what the running version uses without a `// DAT-003:` reason (DAT-003) | `./.kit/tools/Test-SafeMigrations.ps1 -Path .` |
 | Benchmarks within their budget (kit TST-009): in CI, nightly in `.github/workflows/performance.yml`, not required; locally after a BenchmarkDotNet run with `--exporters json` | `dotnet run --project tests/<Name>.Benchmarks --configuration Release -- --filter '*' --exporters json`, then `./.kit/tools/Test-BenchmarkBudget.ps1 -Path BenchmarkDotNet.Artifacts/results -Budget tests/<Name>.Benchmarks/benchmark-budget.json` |
 | A Locust load test within its budget (kit TST-009): in CI, in `.github/workflows/performance.yml` once it names the app to load; locally after a run with `--csv` | `./.kit/tools/Test-LoadBudget.ps1 -Path <the --csv prefix> -Budget tests/load/load-budget.json` |
@@ -48,6 +49,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 | `docs/standards/` | The kit's rules, in full (managed by the kit) |
 | `docs/runbook.md` | How to deploy, roll back, check, restore and run this app in an incident (OPS-004). A Draft until the first production deployment: fill in every `[fill in: ...]`, then set it to In use |
 | `docs/corrections-log.md` | Every owner correction and what it became |
+| `docs/architecture/modules.md` | A Mermaid diagram of this app's modules and their dependencies (ARC-013); update it with any change that adds a module, a project or a dependency |
 | `.claude/skills/`, `.claude/agents/reviewer.md`, `docs/code-review.md` | The kit's workflow skills, its independent reviewer, and what the reviewer checks on every branch. Some skills are curated .NET skills that the kit copies unchanged from Microsoft's dotnet/skills at a pinned commit (kit ADR-0042): where one disagrees with a kit rule, the kit rule wins |
 | `.kit/` | The kit's checking scripts (`.kit/tools/`) and the manifest of kit-managed files (`.kit/manifest.json`) |
 
