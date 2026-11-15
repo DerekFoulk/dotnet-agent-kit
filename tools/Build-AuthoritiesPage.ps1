@@ -37,6 +37,34 @@ Import-Module -Name (Join-Path $PSScriptRoot 'KitFrontMatter.psm1') -Force
 # rule's id, status and basis.
 function Get-CitedUrl {
     param([Parameter(Mandatory)] [string] $StandardsPath)
+
+    foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
+        $frontMatter = Read-FrontMatter -Path $file.FullName
+        if ($null -eq $frontMatter -or -not $frontMatter.Contains('rules')) { continue }
+        foreach ($rule in @($frontMatter['rules'] | Where-Object { $_['status'] -ne 'retired' })) {
+            foreach ($source in @($(if ($rule.Contains('sources')) { $rule['sources'] }))) {
+                # The outside-source form Get-SourceProblem accepts (KitFrontMatter.psm1); Test-RuleSources reports
+                # any source that doesn't have it, so a malformed one is left to that check.
+                if ("$source" -notmatch '^(?<url>https?://\S+), retrieved \S+$') { continue }
+                [pscustomobject]@{
+                    Url    = ConvertTo-PageUrl -Url $Matches['url']
+                    RuleId = "$($rule['id'])"
+                    Status = "$($rule['status'])"
+                    Basis  = "$($rule['basis'])"
+                    File   = $file.Name
+                }
+            }
+        }
+    }
+}
+
+# One page cited two ways is one page: Microsoft Learn serves /en-us/x and /x alike, and a #fragment points
+# into the same page.
+function ConvertTo-PageUrl {
+    param([Parameter(Mandatory)] [string] $Url)
+
+    $page = $Url -replace '#.*$', ''
+    $page -replace '^(https://learn\.microsoft\.com)/[a-z]{2}-[a-z]{2}/', '$1/'
 }
 
 # The entry in docs/authorities.yml whose 'match' prefixes include the longest one the URL starts with, or $null.
