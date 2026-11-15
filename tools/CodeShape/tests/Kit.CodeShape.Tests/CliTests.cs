@@ -28,7 +28,7 @@ public sealed class CliTests : IDisposable
 
         exitCode.Should().Be(1);
         output.Should().Be(
-            $"{deep}(5,74): error CRF011: Run nests 5 levels deep; the limit is 4 (CRF-011). [{project}]{Environment.NewLine}");
+            $"{deep}(5,74): error CRF011: Run nests 5 levels deep; the limit is 3 (CRF-011). [{project}]{Environment.NewLine}");
     }
 
     [Fact]

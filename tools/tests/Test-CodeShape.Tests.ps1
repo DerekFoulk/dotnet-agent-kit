@@ -47,7 +47,7 @@ Describe 'Test-CodeShape.ps1' {
             $result = Invoke-CodeShapeCheck -Solution (Join-Path $script:fixtures 'Deep.slnx') -KitRoot $script:kitRoot
 
             $result.ExitCode | Should -Be 1
-            $result.Output | Should -Match '[\\/]Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep; the limit is 4 \(CRF-011\)\. \[.*Deep\.csproj\]$'
+            $result.Output | Should -Match '[\\/]Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep; the limit is 3 \(CRF-011\)\. \[.*Deep\.csproj\]$'
         }
 
         It 'passes a solution within every limit' {

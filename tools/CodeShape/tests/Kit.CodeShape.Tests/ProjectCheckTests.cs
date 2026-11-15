@@ -48,8 +48,8 @@ public sealed class ProjectCheckTests : IDisposable
     [Fact]
     public void EveryLimitReportsInPathLineAndColumnOrder()
     {
-        string d = Write("D.cs", string.Join('\n', Enumerable.Repeat("// a line", 801)));
-        string c = Write("C.cs", "class Long { void Run(int a) { " + string.Concat(Enumerable.Repeat("a++; ", 101)) + "} }");
+        string d = Write("D.cs", string.Join('\n', Enumerable.Repeat("// a line", 401)));
+        string c = Write("C.cs", "class Long { void Run(int a) { " + string.Concat(Enumerable.Repeat("a++; ", 31)) + "} }");
         string b = Write("B.cs", DeepClass);
         string a = Write("A.cs", string.Join('\n',
             "class Ledger { private int _a; private int _b; void A() => _a++; void B() { if (_b > 0) { if (_b > 1) { if (_b > 2) { if (_b > 3) { if (_b > 4) { _b++; } } } } } } }",
@@ -59,7 +59,7 @@ public sealed class ProjectCheckTests : IDisposable
         IEnumerable<string> found = ProjectCheck.Check(new ProjectFiles("App.csproj", [], [d, c, b, a]))
             .Select(finding => $"{Path.GetFileName(finding.Path)}:{finding.Line}:{string.Join(' ', finding.Message.Split(' ').Take(2))}");
 
-        found.Should().Equal("A.cs:1:Ledger's methods", "A.cs:1:B nests", "A.cs:3:Run nests", "B.cs:1:Run nests", "C.cs:1:Run has", "D.cs:801:The file");
+        found.Should().Equal("A.cs:1:Ledger's methods", "A.cs:1:B nests", "A.cs:3:Run nests", "B.cs:1:Run nests", "C.cs:1:Run has", "D.cs:401:The file");
     }
 
     private string Write(string name, string text)
