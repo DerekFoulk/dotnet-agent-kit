@@ -57,6 +57,59 @@ public sealed class HostingSecurityTests : IDisposable
         statuses.Should().Contain(HttpStatusCode.TooManyRequests);
     }
 
+    // Review 1: the limiter ran after authorization, so a caller with no token, or a forged one, was never limited.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("not-a-token")]
+    public async Task AFloodWithoutAValidTokenIsAnsweredWithTooManyRequests(string? token)
+    {
+        using ApiHost host = SlowLimit();
+        using HttpClient caller = host.CreateClient(token);
+
+        List<HttpStatusCode> statuses = await Flood(caller, "/bookmarks?limit=1");
+
+        statuses.Should().Contain(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task ARejectedRequestSaysWhenToRetryInProblemDetails()
+    {
+        using ApiHost host = SlowLimit();
+
+        using HttpResponseMessage rejected = await FirstRejected(host.Client, "/bookmarks?limit=1");
+
+        rejected.Headers.RetryAfter.Should().NotBeNull();
+        rejected.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+    }
+
+    // A limit of 0 or less would make every request fail; the app refuses to start with one instead.
+    [Theory]
+    [InlineData("RateLimiting:BurstLimit")]
+    [InlineData("RateLimiting:RequestsPerSecond")]
+    public void ARateLimitBelowOneStopsTheAppFromStarting(string setting)
+    {
+        Action start = () =>
+        {
+            using ApiHost host = new("Production", new Dictionary<string, string> { [setting] = "0" });
+        };
+
+        start.Should().Throw<InvalidOperationException>().WithMessage($"*{setting}*");
+    }
+
+    // A platform's liveness probes come from one address; limiting them would get a healthy app restarted.
+    [Theory]
+    [InlineData("/alive")]
+    [InlineData("/health")]
+    public async Task TheHealthProbesAreNotRateLimited(string path)
+    {
+        using ApiHost host = SlowLimit();
+        using HttpClient probe = host.CreateClient(token: null);
+
+        List<HttpStatusCode> statuses = await Flood(probe, path);
+
+        statuses.Should().NotContain(HttpStatusCode.TooManyRequests);
+    }
+
     [Fact]
     public async Task ACrossOriginPreflightGetsNoPermission()
     {
@@ -76,5 +129,40 @@ public sealed class HostingSecurityTests : IDisposable
 
         kestrel.AddServerHeader.Should().BeFalse();
         kestrel.Limits.MaxRequestBodySize.Should().BeLessThanOrEqualTo(1024 * 1024);
+    }
+
+    // A burst of 5 and 1 more a second: 20 requests at once go over it, however slow the machine.
+    private static ApiHost SlowLimit() => new("Production", new Dictionary<string, string>
+    {
+        ["RateLimiting:BurstLimit"] = "5",
+        ["RateLimiting:RequestsPerSecond"] = "1",
+    });
+
+    private static async Task<List<HttpStatusCode>> Flood(HttpClient client, string path)
+    {
+        List<HttpStatusCode> statuses = [];
+        for (int i = 0; i < 20; i++)
+        {
+            using HttpResponseMessage response = await client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+            statuses.Add(response.StatusCode);
+        }
+
+        return statuses;
+    }
+
+    private static async Task<HttpResponseMessage> FirstRejected(HttpClient client, string path)
+    {
+        for (int i = 0; i < 20; i++)
+        {
+            HttpResponseMessage response = await client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                return response;
+            }
+
+            response.Dispose();
+        }
+
+        throw new InvalidOperationException("No request was rejected.");
     }
 }
