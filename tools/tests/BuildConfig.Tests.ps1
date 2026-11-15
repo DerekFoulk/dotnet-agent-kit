@@ -40,6 +40,23 @@ BeforeDiscovery {
         @{ Fixture = 'ReadonlyStructNotDeclared'; Diagnostic = 'IDE0250'; Description = 'a struct whose members are all read-only but isn''t declared readonly (STY-009)' }
         # DAT-010: a caller's value interpolated into a Raw method of EF Core is SQL injection (EF1002).
         @{ Fixture = 'RawSqlInterpolation'; Diagnostic = 'EF1002'; Description = 'a value interpolated into SqlQueryRaw or ExecuteSqlRaw (DAT-010)' }
+        # SEC-014 (Secure Coding Guidelines pass): the security analyzers latest-all turns on, and the SYSLIB obsoletions, fail
+        # the build. The first ten pin rules that are on already; the last five are BannedSymbols entries for what they miss.
+        @{ Fixture = 'BrokenHash'; Diagnostic = 'CA5351'; Description = 'MD5, a broken hash (SEC-014)' }
+        @{ Fixture = 'WeakHash'; Diagnostic = 'CA5350'; Description = 'SHA-1, a weak hash (SEC-014)' }
+        @{ Fixture = 'UnsafeCipherMode'; Diagnostic = 'CA5358'; Description = 'ECB, an unsafe cipher mode (SEC-014)' }
+        @{ Fixture = 'HardcodedKey'; Diagnostic = 'CA5390'; Description = 'an encryption key written in the code (SEC-014)' }
+        @{ Fixture = 'InsecureRandom'; Diagnostic = 'CA5394'; Description = 'Random for a value that should be unguessable (SEC-014)' }
+        @{ Fixture = 'DeprecatedTls'; Diagnostic = 'CA5397'; Description = 'TLS 1.1 (SEC-014)' }
+        @{ Fixture = 'DisabledCertificateCheck'; Diagnostic = 'CA5359'; Description = 'a certificate check that accepts everything (SEC-014)' }
+        @{ Fixture = 'BinaryFormatterUse'; Diagnostic = 'SYSLIB0011'; Description = 'BinaryFormatter (SEC-014)' }
+        @{ Fixture = 'ObsoleteCryptoType'; Diagnostic = 'SYSLIB0021'; Description = 'an obsolete cryptography type, AesManaged (SEC-014)' }
+        @{ Fixture = 'UnsafeDataSetRead'; Diagnostic = 'CA2351'; Description = 'DataSet.ReadXml on untrusted input (SEC-014)' }
+        @{ Fixture = 'AesCreate'; Diagnostic = 'RS0030'; Description = 'Aes.Create, CBC with no integrity check (SEC-014)' }
+        @{ Fixture = 'CryptoConfigByName'; Diagnostic = 'RS0030'; Description = 'an algorithm picked by name at run time (SEC-014)' }
+        @{ Fixture = 'DsaCreate'; Diagnostic = 'RS0030'; Description = 'DSA through its factory (SEC-014)' }
+        @{ Fixture = 'AcceptAnyCertificate'; Diagnostic = 'RS0030'; Description = 'the accept-any-certificate validator (SEC-014)' }
+        @{ Fixture = 'DtdParse'; Diagnostic = 'RS0030'; Description = 'DTD parsing in XmlReaderSettings (SEC-014)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
