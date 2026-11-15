@@ -15,7 +15,7 @@ internal static class MemberCountRule
         {
             foreach (TypeDeclarationSyntax type in file.Parse().GetCompilationUnitRoot().DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
-                int count = type.Members.Count(member => member is not BaseTypeDeclarationSyntax and not DelegateDeclarationSyntax);
+                int count = type.Members.Sum(Count) + PositionalProperties(type);
                 if (count > Limits.MembersPerType)
                 {
                     yield return Finding.At(
@@ -25,5 +25,26 @@ internal static class MemberCountRule
                 }
             }
         }
+    }
+
+    // A field or event declaration declares a member for each name it lists; a nested type isn't a member here.
+    private static int Count(MemberDeclarationSyntax member) => member switch
+    {
+        BaseFieldDeclarationSyntax field => field.Declaration.Variables.Count,
+        BaseTypeDeclarationSyntax or DelegateDeclarationSyntax => 0,
+        _ => 1,
+    };
+
+    // A record's positional parameters are properties the compiler declares for it, unless the record declares the
+    // property itself. A class's or struct's primary constructor parameters aren't members.
+    private static int PositionalProperties(TypeDeclarationSyntax type)
+    {
+        if (type is not RecordDeclarationSyntax { ParameterList: { } parameters })
+        {
+            return 0;
+        }
+
+        HashSet<string> declared = [.. type.Members.OfType<PropertyDeclarationSyntax>().Select(property => property.Identifier.Text)];
+        return parameters.Parameters.Count(parameter => !declared.Contains(parameter.Identifier.Text));
     }
 }
