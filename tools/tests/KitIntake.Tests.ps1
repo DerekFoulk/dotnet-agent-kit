@@ -353,3 +353,47 @@ Describe 'ConvertTo-KitAppProfile' {
         $text | Should -Match '(?m)^\| Where should it run\? \| Other: my own server \\\| a VPS in Ohio \| Needs an ADR'
     }
 }
+# ADR-0070 (owner, 2026-11-15): every default the intake gives names its source. The authority's recommendation is
+# only what its page says, with the page and the date read (or the search that found no page); the agent's is its
+# pick with a reason. A default with neither, or a pick that isn't an option, fails the check.
+Describe 'Test-KitIntakeSource' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        # The smallest intake that passes: one card and one kind of test, each with both sources.
+        function New-SourcedIntake {
+            $authority = @{ by = 'Microsoft'; pick = $null; says = 'No recommendation'; source = 'https://learn.microsoft.com/example'; read = '2026-11-15' }
+            @{
+                schemaVersion = 2
+                cards = @(
+                    @{ id = 'hosting'; options = @(@{ id = 'none' }, @{ id = 'app-service' })
+                        recommendation = @{ authority = $authority.Clone(); agent = @{ pick = 'none'; reason = 'Nothing to pay or set up yet' } } }
+                )
+                testKinds = @()
+            }
+        }
+    }
+
+    It 'finds nothing wrong with a card that has both sources' {
+        @(Test-KitIntakeSource -Intake (New-SourcedIntake)) | Should -BeNullOrEmpty
+    }
+
+    It 'reports <Case>' -ForEach @(
+        @{ Case = 'a card with no recommendation'; Change = { param($c) $c.Remove('recommendation') }; Message = "*card 'hosting' has no recommendation*" }
+        @{ Case = 'no authority'; Change = { param($c) $c['recommendation'].Remove('authority') }; Message = "*card 'hosting'*no authority*" }
+        @{ Case = 'an authority with no name'; Change = { param($c) $c['recommendation']['authority'].Remove('by') }; Message = "*card 'hosting'*authority*who*" }
+        @{ Case = 'an authority with no words'; Change = { param($c) $c['recommendation']['authority']['says'] = ' ' }; Message = "*card 'hosting'*authority*says*" }
+        @{ Case = 'an authority with neither a page nor a search'; Change = { param($c) $c['recommendation']['authority'].Remove('source') }; Message = "*card 'hosting'*authority*https:// page*search*" }
+        @{ Case = 'an authority page that isn''t a URL'; Change = { param($c) $c['recommendation']['authority']['source'] = 'Microsoft Learn' }; Message = "*card 'hosting'*authority*https:// page*" }
+        @{ Case = 'an authority with no date read'; Change = { param($c) $c['recommendation']['authority']['read'] = 'last week' }; Message = "*card 'hosting'*authority*date it was read*" }
+        @{ Case = 'an authority pick that isn''t an option'; Change = { param($c) $c['recommendation']['authority']['pick'] = 'aks' }; Message = "*card 'hosting'*authority picks 'aks'*isn't an option*none, app-service*" }
+        @{ Case = 'no agent recommendation'; Change = { param($c) $c['recommendation'].Remove('agent') }; Message = "*card 'hosting'*no agent recommendation*" }
+        @{ Case = 'an agent pick with no reason'; Change = { param($c) $c['recommendation']['agent'].Remove('reason') }; Message = "*card 'hosting'*agent*reason*" }
+        @{ Case = 'an agent that picks nothing'; Change = { param($c) $c['recommendation']['agent']['pick'] = $null }; Message = "*card 'hosting'*agent picks nothing*" }
+        @{ Case = 'an agent pick that isn''t an option'; Change = { param($c) $c['recommendation']['agent']['pick'] = 'aks' }; Message = "*card 'hosting'*agent picks 'aks'*isn't an option*" }
+    ) {
+        $intake = New-SourcedIntake
+        & $Change $intake['cards'][0]
+
+        (@(Test-KitIntakeSource -Intake $intake) -join "`n") | Should -BeLike $Message
+    }
+}

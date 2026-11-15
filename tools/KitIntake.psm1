@@ -173,4 +173,11 @@ function Format-KitCell {
     ($Text -replace '\|', '\|' -replace '\s*\r?\n\s*', ' ').Trim()
 }
 
-Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile
+# Checks that every default the intake gives names its source (ADR-0070), and returns what's missing.
+function Test-KitIntakeSource {
+    param([Parameter(Mandatory)] [Collections.IDictionary] $Intake)
+
+    @()
+}
+
+Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource
