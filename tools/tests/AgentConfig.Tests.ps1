@@ -422,6 +422,15 @@ Describe 'Agent configuration' {
 
             $skill | Should -Match '(?i)Turn it on for a PR only when the owner asks'
         }
+
+        # With the monitor off, a plain PR comment posted between turns reaches no check, and the kit is public, so anyone can
+        # post one: step 5 reads them before a merge (review round 3 of ADR-0068's PR).
+        It 'finish-work reads people''s plain PR comments before a merge' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
+            $merge = [regex]::Match($skill, '(?s)## 5\. Merge, in auto mode(.*?)(?=\r?\n## )').Groups[1].Value
+
+            $merge | Should -Match '(?i)\*\*No plain PR comment from a person is unanswered\.\*\*[^\n]*gh pr view <n> --comments'
+        }
     }
 
     # Review that costs less without reviewing less (ADR-0068): the first round sees everything; a fix round sees the fix.
