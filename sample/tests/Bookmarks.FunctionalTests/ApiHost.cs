@@ -26,6 +26,16 @@ internal sealed class ApiHost : IDisposable
         _keepAlive.Open();
         _factory = _baseFactory.WithWebHostBuilder(host =>
         {
+            // The container checks the registrations it can when the app starts (not a factory's dependencies, nor open
+            // generics), and refuses a scoped service resolved from the root, in whichever environment the test runs, as
+            // it does in Development (CRF-013). ASP.NET Core leaves
+            // both off in other environments for performance, so the app's own setting stays Microsoft's default; the
+            // tests are the gate, and they run the app in Production too.
+            host.UseDefaultServiceProvider(options =>
+            {
+                options.ValidateScopes = true;
+                options.ValidateOnBuild = true;
+            });
             host.UseEnvironment(environment).UseSetting("ConnectionStrings:Bookmarks", connectionString)
                 // The issuer and audience come from configuration, as they do in production (SEC-008).
                 .UseSetting("Authentication:Schemes:Bearer:ValidIssuer", TestTokens.Issuer)
