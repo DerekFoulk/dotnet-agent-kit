@@ -20,22 +20,30 @@ Describe 'Agent configuration' {
             if ($permissions.ContainsKey($Kind)) { @($permissions[$Kind]) } else { @() }
         }
 
-        # Whether an ask rule catches a command. A rule's '*' matches any text, as in Claude Code's patterns; [, ]
-        # and ? are taken literally. By default the match is case-sensitive, the stricter reading for a test that a
-        # rule asks. -IgnoreCase is the stricter reading for a test that a rule doesn't ask, and the real one for
-        # PowerShell: on 2026-11-11 a scan of the session transcripts found 38 prompts for PowerShell commands that
-        # matched '*git *push* -f*' only through a later '-Force' or '-F' (Claude Code's docs don't say either way).
+        # Whether a rule of the given kind (ask by default) catches a command. A rule's '*' matches any text, as in
+        # Claude Code's patterns; [, ] and ? are taken literally. A trailing ' *' that is the rule's only wildcard
+        # also matches the bare command ('git log *' matches 'git log'), as Claude Code's permissions page says. By
+        # default the match is case-sensitive, the stricter reading for a test that a rule asks. -IgnoreCase is the
+        # stricter reading for a test that a rule doesn't ask, and the real one for PowerShell, whose matching the
+        # permissions page calls case-insensitive (on 2026-11-11 a scan of the session transcripts found 38 prompts for
+        # PowerShell commands that matched '*git *push* -f*' only through a later '-Force' or '-F').
         # A rule ending in ":*" is Claude Code's older prefix syntax: the text before it is a literal prefix and any
         # '*' in it isn't expanded (review 4 of PR 19, from Claude Code's own rule parser).
-        function Test-AskRuleMatch([string] $Tool, [string] $Command, [switch] $IgnoreCase) {
+        # Claude Code also splits compound commands and canonicalizes PowerShell aliases (ls, cat, gc) before
+        # matching; these helpers don't, so each test names one command by its cmdlet name.
+        function Test-RuleMatch([string] $Kind, [string] $Tool, [string] $Command, [switch] $IgnoreCase) {
             $comparison = if ($IgnoreCase) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
-            [bool] @(Get-RuleList 'ask' | Where-Object {
+            [bool] @(Get-RuleList $Kind | Where-Object {
                     if ($_ -notmatch "^$Tool\((.*)\)$") { return $false }
                     $pattern = $Matches[1]
                     if ($pattern -match '^(.+):\*$') { return [string]::Equals($Command, $Matches[1], $comparison) -or $Command.StartsWith("$($Matches[1]) ", $comparison) }
+                    if ($pattern -match '^([^*]+) \*$' -and [string]::Equals($Command, $Matches[1], $comparison)) { return $true }
                     $wildcard = $pattern -replace '[\[\]?]', '`$0'
                     if ($IgnoreCase) { $Command -ilike $wildcard } else { $Command -clike $wildcard }
                 }).Count
+        }
+        function Test-AskRuleMatch([string] $Tool, [string] $Command, [switch] $IgnoreCase) {
+            Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command -IgnoreCase:$IgnoreCase
         }
     }
 
@@ -328,6 +336,60 @@ Describe 'Agent configuration' {
         # Any wildcard also accepts --discard-changes or -f, which drop uncommitted work: those must prompt.
         It 'has no wildcard allow rule for git switch' {
             @(Get-RuleList 'allow') -match 'git switch .*\*' | Should -BeNullOrEmpty
+        }
+
+        # The owner (2026-11-15): every command outside the allow list prompts, so he was asked about routine reads he
+        # can't judge, turned on Bypass, which also skips the asks that matter, and turned it off again. Read-only and
+        # routine commands are allowed; each must match an allow rule and no ask or deny rule. Bash's ls, cat, grep and
+        # read-only git are on Claude Code's built-in read-only list already, so only PowerShell needs rules for those.
+        It 'runs the routine command <Tool>(<Command>) unasked' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'gh pr view 76 --json state,headRefOid' }
+                @{ Tool = $tool; Command = 'gh pr list --state open' }
+                @{ Tool = $tool; Command = 'gh pr checks 76' }
+                @{ Tool = $tool; Command = 'gh pr diff 76 --name-only' }
+                @{ Tool = $tool; Command = 'gh pr comment 76 --body-file review.md' }
+                @{ Tool = $tool; Command = 'gh run view 123 --log-failed' }
+                @{ Tool = $tool; Command = 'gh run list --branch feat/x' }
+                @{ Tool = $tool; Command = 'gh api repos/DerekFoulk/dotnet-agent-kit/pulls/76/comments --paginate' }
+                @{ Tool = $tool; Command = 'gh api -H "Accept: application/vnd.github+json" repos/o/r/commits/abc/check-runs' }
+                @{ Tool = $tool; Command = 'git fetch' }
+                @{ Tool = $tool; Command = 'git fetch origin' }
+                @{ Tool = $tool; Command = 'git fetch -q origin' }
+                @{ Tool = $tool; Command = 'git merge origin/main' }
+                @{ Tool = $tool; Command = 'git merge --no-edit origin/main' }
+                @{ Tool = $tool; Command = 'git pull --ff-only' }
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./tools/Test-RuleSources.ps1' }
+            }
+            @{ Tool = 'PowerShell'; Command = 'git status' }
+            @{ Tool = 'PowerShell'; Command = 'git status --short --ignored' }
+            @{ Tool = 'PowerShell'; Command = "git log --reverse --format='%h %s' origin/main..HEAD" }
+            @{ Tool = 'PowerShell'; Command = 'git diff origin/main --stat' }
+            @{ Tool = 'PowerShell'; Command = 'git show HEAD --stat' }
+            @{ Tool = 'PowerShell'; Command = 'git branch --list' }
+            @{ Tool = 'PowerShell'; Command = 'git branch --show-current' }
+            @{ Tool = 'PowerShell'; Command = 'git rev-parse HEAD' }
+            @{ Tool = 'PowerShell'; Command = 'git ls-files tools' }
+            @{ Tool = 'PowerShell'; Command = 'Get-ChildItem tools -Recurse -Filter *.ps1' }
+            @{ Tool = 'PowerShell'; Command = 'Get-Content -Raw ./AGENTS.md' }
+            @{ Tool = 'PowerShell'; Command = "Select-String -Path docs/standards/*.md -Pattern 'SEC-003'" }
+            @{ Tool = 'PowerShell'; Command = 'Select-Object -First 5' }
+            @{ Tool = 'PowerShell'; Command = 'ConvertFrom-Json -AsHashtable' }
+            @{ Tool = 'PowerShell'; Command = 'Measure-Object -Line' }
+            @{ Tool = 'PowerShell'; Command = 'Test-Path ./docs/adr' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\Test-AdrSections.ps1' }
+            @{ Tool = 'PowerShell'; Command = '& ./tools/Test-AdrSections.ps1' }
+            @{ Tool = 'PowerShell'; Command = '.\.kit\tools\Test-ConventionalTitle.ps1 -Range origin/main..HEAD' }
+            @{ Tool = 'PowerShell'; Command = 'Import-Module ./tools/KitReview.psm1 -Force' }
+            @{ Tool = 'PowerShell'; Command = 'Import-Module ./.kit/tools/KitReview.psm1' }
+            @{ Tool = 'PowerShell'; Command = 'Wait-PullRequest -Repository o/r -Number 76 -For Checks' }
+            @{ Tool = 'PowerShell'; Command = 'Get-OpenFinding -Repository o/r -Number 76' }
+            @{ Tool = 'PowerShell'; Command = 'Add-ReviewReply -Repository o/r -Number 76 -CommentId 1 -Body x' }
+            @{ Tool = 'PowerShell'; Command = 'Resolve-ReviewFinding -Repository o/r -ThreadId x' }
+        ) {
+            Test-RuleMatch -Kind 'allow' -Tool $Tool -Command $Command -IgnoreCase | Should -BeTrue -Because "an allow rule should cover $Tool($Command)"
+            Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse -Because 'an ask rule wins over an allow rule'
+            Test-RuleMatch -Kind 'deny' -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
         }
     }
 
