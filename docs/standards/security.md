@@ -158,6 +158,54 @@ rules:
         how: "until the app follows the sample"
     scope: core
     paths: ["**/*Contracts*/**", "**/*Endpoints*.cs", "**/*Domain*/**"]
+  - id: SEC-011
+    statement: "Every ASP.NET Core app applies Microsoft's Kestrel production security checklist for where it's hosted, at the edge or behind a proxy: host filtering with its own AllowedHosts, HSTS outside Development, a rate limit for each caller, CORS only for named origins, a request body cap well under the 30 MB default, and no Server header; behind a proxy, forwarded headers only from KnownProxies or KnownIPNetworks, and never through ASPNETCORE_FORWARDEDHEADERS_ENABLED."
+    why: "Kestrel's defaults allow every host, any body up to 30 MB and unlimited requests, and announce the server; each is a door Microsoft's checklist closes. Rate limiting is OWASP API4, unrestricted resource consumption (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations, retrieved 2026-11-15", "https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's FunctionalTests (HostingSecurityTests) check that another host gets a 400, an HTTPS response carries HSTS in Production, a flood from one caller gets 429, a cross-origin preflight gets no permission, and Kestrel sends no Server header and caps the request body"
+      - kind: advisory
+        in: [app]
+        how: "until the app follows the sample"
+      - kind: advisory
+        in: [kit, app]
+        how: "the plan names where the app is hosted, and code review checks the rest for that hosting: AllowedHosts set to the deployment's hosts, TLS 1.2 or later at the edge, forwarded headers with KnownProxies behind a proxy, and no ASPNETCORE_FORWARDEDHEADERS_ENABLED in any Dockerfile or deployment"
+    scope: core
+    paths: ["**/Program.cs", "**/appsettings*.json", "**/*Hosting*.cs", "**/Dockerfile"]
+  - id: SEC-012
+    statement: "Every app targets OWASP ASVS 5.0 Level 1, and Level 2 when it holds personal data; its plan's threat model names the ASVS chapters the change touches."
+    why: "ASVS is OWASP's checklist of what a secure application verifies; naming the chapters in the plan turns the threat model into checks someone can confirm (rules audit, owner 2026-11-12). The first checks a tool can make, no secrets or personal data in logs and a deployed app's secrets in Key Vault with managed identity, are a scorecard gap until they exist."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://github.com/OWASP/ASVS/tree/v5.0.0, retrieved 2026-11-15"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "the plan-checklist skill's security heading and the reviewer's plan review check that the threat model names the ASVS level and chapters; SEC-007 to SEC-011 gate the parts the sample proves"
+    scope: core
+    paths: ["**"]
+  - id: SEC-013
+    statement: "An HTTP endpoint accepts and returns only Contracts types, never a domain entity, so a field added to the domain never reaches a client by accident."
+    why: "OWASP API3, broken object property level authorization: an API that serializes its entities exposes every property they gain, and binds every property a client sends (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://api-security.owasp.org/editions/2023/en/0xa3-broken-object-property-level-authorization, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's ContractTests check that every schema in the OpenAPI document is a Contracts type or one of ASP.NET Core's Problem Details types"
+      - kind: advisory
+        in: [app]
+        how: "until the app follows the sample"
+    scope: core
+    paths: ["**/*Endpoints*.cs", "**/*Contracts*/**"]
 ---
 
 # Security
