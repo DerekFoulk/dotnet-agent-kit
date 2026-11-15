@@ -43,5 +43,43 @@ public sealed class MemberCountRuleTests
     public void ARecordsPositionalParametersAreItsProperties(string opening, int methods, int findings) =>
         MemberCountRule.Check([new SourceFile("Point.cs", $"{opening}{Methods(methods)}}}")]).Should().HaveCount(findings);
 
-    private static string Methods(int count) => string.Concat(Enumerable.Range(0, count).Select(i => $"void M{i}() {{ }} "));
+    // A nested type is a type of its own, measured on its own; it isn't a member of the type that holds it.
+    [Fact]
+    public void ANestedTypeIsMeasuredOnItsOwn() =>
+        MemberCountRule.Check([new SourceFile("Outer.cs", $"class Outer {{ {Methods(20)}class Inner {{ {Methods(21)}}} }}")])
+            .Should().ContainSingle().Which.Message.Should().Be("Inner has 21 members; the limit is 20 (CRF-011).");
+
+    // A partial type is one type: its hand-written parts count together, a partial member declared in one and
+    // implemented in another counts once, and the type is reported once, at its first part.
+    [Fact]
+    public void APartialTypesPartsCountTogetherAndItIsReportedOnce() =>
+        MemberCountRule.Check([
+            new SourceFile("Wide.B.cs", $"namespace App; partial class Wide {{ {Methods(10)}partial void Done() {{ }} }}"),
+            new SourceFile("Wide.A.cs", $"namespace App; partial class Wide {{ {Methods(10, from: 10)}partial void Done(); int _a; }}"),
+        ]).Should().ContainSingle().Which.Should().BeEquivalentTo(new
+        {
+            Path = "Wide.A.cs",
+            Line = 1,
+            Column = 30,
+            Message = "Wide has 22 members; the limit is 20 (CRF-011).",
+        });
+
+    // Types in different namespaces, or with a different number of type parameters, are different types.
+    [Fact]
+    public void TypesWithTheSameNameElsewhereAreNotParts() =>
+        MemberCountRule.Check([
+            new SourceFile("A.cs", $"namespace A {{ partial class Wide {{ {Methods(11)}}} }} namespace B {{ partial class Wide {{ {Methods(10)}}} }}"),
+            new SourceFile("C.cs", $"namespace A {{ partial class Wide<T> {{ {Methods(10)}}} }}"),
+        ]).Should().BeEmpty();
+
+    // What a generator writes isn't counted: a reader doesn't maintain it, as the other limits don't read it either.
+    [Fact]
+    public void AGeneratedPartIsNotCounted() =>
+        MemberCountRule.Check([
+            new SourceFile("Wide.cs", $"partial class Wide {{ {Methods(20)}}}"),
+            new SourceFile("Wide.g.cs", $"partial class Wide {{ {Methods(5, from: 20)}}} class Made {{ {Methods(21)}}}") { Generated = true },
+        ]).Should().BeEmpty();
+
+    private static string Methods(int count, int from = 0) =>
+        string.Concat(Enumerable.Range(from, count).Select(i => $"void M{i}() {{ }} "));
 }
