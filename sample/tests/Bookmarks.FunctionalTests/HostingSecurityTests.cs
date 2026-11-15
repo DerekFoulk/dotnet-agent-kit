@@ -29,9 +29,11 @@ public sealed class HostingSecurityTests : IDisposable
     [Fact]
     public async Task AnHttpsResponseCarriesHstsInProduction()
     {
-        using HttpRequestMessage request = new(HttpMethod.Get, new Uri("https://localhost/bookmarks"));
+        // UseHsts leaves localhost out, so the request names the host a deployment would allow.
+        using ApiHost host = new("Production", new Dictionary<string, string> { ["AllowedHosts"] = "bookmarks.example" });
+        using HttpRequestMessage request = new(HttpMethod.Get, new Uri("https://bookmarks.example/bookmarks"));
 
-        using HttpResponseMessage response = await _host.Client.SendAsync(request, TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await host.Client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.Headers.Contains("Strict-Transport-Security").Should().BeTrue();
     }
@@ -39,11 +41,16 @@ public sealed class HostingSecurityTests : IDisposable
     [Fact]
     public async Task AFloodFromOneCallerIsAnsweredWithTooManyRequests()
     {
-        // The limiter allows a burst of 100 and 50 more a second for each caller, so 300 requests at once go over it.
-        List<HttpStatusCode> statuses = [];
-        for (int i = 0; i < 300; i++)
+        // A burst of 5 and 1 more a second: 20 requests at once go over it, however slow the machine.
+        using ApiHost host = new("Production", new Dictionary<string, string>
         {
-            using HttpResponseMessage response = await _host.Client.GetAsync(new Uri("/bookmarks?limit=1", UriKind.Relative), TestContext.Current.CancellationToken);
+            ["RateLimiting:BurstLimit"] = "5",
+            ["RateLimiting:RequestsPerSecond"] = "1",
+        });
+        List<HttpStatusCode> statuses = [];
+        for (int i = 0; i < 20; i++)
+        {
+            using HttpResponseMessage response = await host.Client.GetAsync(new Uri("/bookmarks?limit=1", UriKind.Relative), TestContext.Current.CancellationToken);
             statuses.Add(response.StatusCode);
         }
 
