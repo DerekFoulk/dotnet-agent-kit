@@ -82,18 +82,18 @@ public sealed class HostingSecurityTests : IDisposable
         rejected.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
-    // A limit of 0 or less would make every request fail; the app refuses to start with one instead.
+    // A limit of 0 or less would make every request fail; options validation stops the app at startup instead (OPS-006).
     [Theory]
-    [InlineData("RateLimiting:BurstLimit")]
-    [InlineData("RateLimiting:RequestsPerSecond")]
-    public void ARateLimitBelowOneStopsTheAppFromStarting(string setting)
+    [InlineData("RateLimiting:BurstLimit", "BurstLimit")]
+    [InlineData("RateLimiting:RequestsPerSecond", "RequestsPerSecond")]
+    public void ARateLimitBelowOneStopsTheAppFromStarting(string setting, string property)
     {
         Action start = () =>
         {
             using ApiHost host = new("Production", new Dictionary<string, string> { [setting] = "0" });
         };
 
-        start.Should().Throw<InvalidOperationException>().WithMessage($"*{setting}*");
+        start.Should().Throw<OptionsValidationException>().WithMessage($"*{property}*");
     }
 
     // A platform's liveness probes come from one address; limiting them would get a healthy app restarted.
