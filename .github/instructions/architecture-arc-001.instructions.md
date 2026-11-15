@@ -6,5 +6,5 @@ applyTo: 'src/**,sample/**'
 # Architecture
 
 - ARC-001: Web apps use Clean Architecture in one deployable app; each distinct business area is a module with Domain, Application, Infrastructure, Presentation and Contracts projects, and Application code is grouped by feature; a project can deviate by ADR.
-- ARC-002: Modules talk to each other only through their Contracts projects.
+- ARC-002: Modules talk to each other only through their Contracts projects; a module never reads or writes another module's tables, and an app never shares its database with another app.
 - ARC-003: Shared libraries (Domain, Application, Contracts, API client, validation, UI-independent presentation logic) reference no UI or platform package.

@@ -33,6 +33,10 @@ public static class ServiceDefaultsExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
+        // On SIGTERM the host cancels its stopping token and gives in-flight requests this long to finish. Kubernetes, by
+        // default, kills the process 30 seconds after SIGTERM, so 25 leaves the host time to finish shutting
+        // down first (OPS-005).
+        builder.Services.Configure<HostOptions>(host => host.ShutdownTimeout = TimeSpan.FromSeconds(25));
         builder.ConfigureOpenTelemetry();
         // Liveness: the process answers. It checks nothing else, so a slow dependency never restarts the app.
         builder.Services.AddHealthChecks().AddCheck("self", () => HealthCheckResult.Healthy(), [LiveTag]);
@@ -108,7 +112,9 @@ public static class ServiceDefaultsExtensions
         RouteGroupBuilder health = app.MapGroup(string.Empty);
         // Probes call without a token, so the health endpoints stay public when the app requires a signed-in user
         // everywhere else (SEC-007).
-        health.CacheOutput(HealthPolicy).WithRequestTimeout(HealthPolicy).AllowAnonymous();
+        // Not rate limited: a platform's probes come from one address, and limiting them would get a healthy app
+        // restarted; the output cache already bounds what a flood of probes costs.
+        health.CacheOutput(HealthPolicy).WithRequestTimeout(HealthPolicy).AllowAnonymous().DisableRateLimiting();
         health.MapHealthChecks(HealthPath);
         health.MapHealthChecks(AlivePath, new HealthCheckOptions { Predicate = registration => registration.Tags.Contains(LiveTag) });
         return app;

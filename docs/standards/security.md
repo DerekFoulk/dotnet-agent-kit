@@ -109,7 +109,7 @@ rules:
         in: [app]
         how: "until the app follows the sample"
     scope: core
-    paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*ServiceDefaults*/**"]
+    paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*ServiceDefaults*/**", "**/*Security*.cs"]
   - id: SEC-008
     statement: "An app never stores passwords or issues its own access tokens: users sign in with an OpenID Connect provider (Microsoft Entra ID or Entra External ID unless an ADR picks another), and an HTTP API accepts its access tokens with AddJwtBearer, which checks their signature, issuer, audience and lifetime, set under Authentication:Schemes:Bearer; development uses dotnet user-jwts, whose key stays in user secrets; ASP.NET Core Identity or any other scheme needs an ADR."
     why: "Password storage and token issuing are where home-made sign-in goes wrong; Microsoft says to create access tokens only through OpenID Connect or OAuth flows and to validate them fully in the API, and ASVS 9.1.1, 9.1.2, 9.2.1 and 9.2.3 ask for the signature, algorithm, lifetime and audience checks (GAP-006)."
@@ -125,7 +125,7 @@ rules:
         in: [app]
         how: "until the app follows the sample"
     scope: core
-    paths: ["**/Program.cs", "**/appsettings*.json", "**/*.csproj"]
+    paths: ["**/Program.cs", "**/appsettings*.json", "**/*.csproj", "**/*Security*.cs"]
   - id: SEC-009
     statement: "Every read or change of a user's data is limited to that user's data in the query itself, in the application and data layers, not only in the endpoint; the user's id is the token's sub claim, which the fallback policy requires (unique within one issuer, so an app that trusts more than one keys on the issuer and sub together), and another user's item answers 404, as one that doesn't exist does."
     why: "Broken object-level authorization is OWASP's top API risk: an id in a URL is easy to change, and a filter in the query is a check no endpoint can skip; a 404 doesn't even confirm that someone else's id exists; ASVS 8.2.2 and 8.3.1 ask for it at a trusted layer (GAP-006)."
@@ -158,6 +158,54 @@ rules:
         how: "until the app follows the sample"
     scope: core
     paths: ["**/*Contracts*/**", "**/*Endpoints*.cs", "**/*Domain*/**"]
+  - id: SEC-011
+    statement: "Every ASP.NET Core app applies Microsoft's Kestrel production security checklist for where it's hosted, at the edge or behind a proxy: HTTPS only (at the edge, Kestrel terminates TLS 1.2 or later and serves no plain HTTP; behind a proxy, the proxy does), host filtering with its own AllowedHosts, HSTS outside Development, a rate limit for each caller, CORS only for named origins, a request body cap well under the 30 MB default, and no Server header; behind a proxy, forwarded headers only from KnownProxies or KnownIPNetworks, and never through ASPNETCORE_FORWARDEDHEADERS_ENABLED."
+    why: "Kestrel's defaults allow every host, any body up to 30 MB and unlimited requests, and announce the server; each is a door Microsoft's checklist closes. Rate limiting is OWASP API4, unrestricted resource consumption (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations, retrieved 2026-11-15", "https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's FunctionalTests (HostingSecurityTests) check that another host gets a 400, an HTTPS response carries HSTS in Production, a flood from one caller gets 429 with Retry-After as Problem Details, whether the caller has a valid token, no token or a forged one, the health probes are never limited, a rate limit below one stops the app at startup, a cross-origin preflight gets no permission, and Kestrel sends no Server header and caps the request body"
+      - kind: advisory
+        in: [app]
+        how: "until the app follows the sample"
+      - kind: advisory
+        in: [kit, app]
+        how: "the plan names where the app is hosted, and code review checks the rest for that hosting: AllowedHosts set to the deployment's hosts, including the Host header its probes send, HTTPS only with TLS 1.2 or later at the edge, forwarded headers with KnownProxies behind a proxy, and no ASPNETCORE_FORWARDEDHEADERS_ENABLED in any Dockerfile or deployment"
+    scope: core
+    paths: ["**/Program.cs", "**/appsettings*.json", "**/*Hosting*.cs", "**/Dockerfile"]
+  - id: SEC-012
+    statement: "Every app targets OWASP ASVS 5.0 Level 1, and Level 2 when it holds personal data; its plan's threat model names the ASVS chapters the change touches."
+    why: "ASVS is OWASP's checklist of what a secure application verifies; naming the chapters in the plan turns the threat model into checks someone can confirm (rules audit, owner 2026-11-12). The first checks a tool can make, no secrets or personal data in logs and a deployed app's secrets in Key Vault with managed identity, are a scorecard gap until they exist."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://github.com/OWASP/ASVS/tree/v5.0.0, retrieved 2026-11-15"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "the plan-checklist skill's security heading and the reviewer's plan review check that the threat model names the ASVS level and chapters; SEC-007 to SEC-011 gate the parts the sample proves"
+    scope: core
+    paths: ["**"]
+  - id: SEC-013
+    statement: "An HTTP endpoint accepts and returns only Contracts types, never a domain entity, so a field added to the domain never reaches a client by accident."
+    why: "OWASP API3, broken object property level authorization: an API that serializes its entities exposes every property they gain, and binds every property a client sends (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://api-security.owasp.org/editions/2023/en/0xa3-broken-object-property-level-authorization, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's Architecture.Tests check that the endpoint types use no domain type (LayerTests, ArchUnitNET), and its ContractTests that every schema in the OpenAPI document is a Contracts type or one of ASP.NET Core's Problem Details types"
+      - kind: advisory
+        in: [app]
+        how: "until the app follows the sample"
+    scope: core
+    paths: ["**/*Endpoints*.cs", "**/*Contracts*/**"]
 ---
 
 # Security
@@ -174,6 +222,17 @@ Every app gets these defaults (GAP-006, ADR-0048). The reference is the sample's
 - **Each user's own data (SEC-009):** an endpoint reads the caller's id from `sub` and passes it down; the repository filters every query by it. Another user's item is a 404. An app with shared data (teams, sharing) writes its own policy in an ADR, with resource-based authorization (`IAuthorizationService`).
 - **Bounded input (SEC-010):** every request type has `[Required]`, `[MaxLength]`, `[Range]` or a custom `ValidationAttribute` on each property; API-006 has the details. The limits live in the domain (the sample's `Bookmark.MaxTitleLength`), the EF model uses them, and the tests check the contract against them at both edges.
 - **Tests:** the sample's FunctionalTests issue real RS256 tokens with a key made in memory per run (`TestTokens`), and the app's own JWT bearer handler checks them, trusting only that key. Microsoft's integration-testing guide also shows a mocked handler (`TestAuthHandler`); the kit doesn't use it, because it can't show that the issuer, audience or lifetime are checked.
+
+## Hosting (SEC-011 to SEC-013)
+
+The sample applies Microsoft's [Kestrel production security checklist](https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations) in `ApiHostingExtensions.cs` and `Program.cs`:
+
+- **Host filtering.** `AllowedHosts` is `localhost` in `appsettings.json` and `*` in Development. A deployment sets it to its own host names, and to the Host header its probes send: a platform that probes by pod IP gets a 400 otherwise.
+- **HTTPS and HSTS.** At the edge, Kestrel terminates TLS and listens on no plain-HTTP port; behind a proxy, the proxy terminates TLS and Kestrel trusts its forwarded headers only from `KnownProxies`. `UseHsts` runs outside Development, and leaves localhost out.
+- **Rate limit.** One token bucket per caller: a signed-in user by their `sub` claim, anyone else by IP address. `RateLimiting:BurstLimit` (default 100) and `RateLimiting:RequestsPerSecond` (default 50) set it; the defaults let the CI load test (ten users on one token, about 40 requests a second) through, so an app sets its own from its traffic. A value below 1 stops the app at startup. The limiter runs after authentication and before authorization, so a caller with no token, or a forged one, is limited too. An answer over the limit is 429 Problem Details with `Retry-After`. The health endpoints opt out, since a platform's probes come from one address.
+- **CORS.** None: the sample's API isn't called from a browser on another origin. An app that is names its origins.
+- **Request body and Server header.** Kestrel reads at most 64 KB and sends no `Server` header.
+- **Contracts only (SEC-013).** An ArchUnitNET test fails if an endpoint type uses a domain type, and a contract test fails if the OpenAPI document describes any type but a Contracts type or Problem Details.
 
 ## Pending ratification
 
