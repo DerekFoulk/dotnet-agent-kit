@@ -22,7 +22,7 @@ public sealed class SqliteBusyTimeoutTests
     {
         long busyTimeout = await BusyTimeoutAfterOpenAsync(SevenSecondTimeout);
 
-        busyTimeout.Should().Be(OneSecond, "SQLite waits for the lock itself for a second per statement, and the 7-second command timeout bounds the command");
+        busyTimeout.Should().Be(OneSecond, "SQLite waits for the lock itself for a second per statement, whatever the connection's 7-second command timeout");
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class SqliteBusyTimeoutTests
         // EnsureCreated opens its connection this way, at startup.
         long busyTimeout = BusyTimeoutAfterOpen(SevenSecondTimeout);
 
-        busyTimeout.Should().Be(OneSecond, "SQLite waits for the lock itself for a second per statement, and the 7-second command timeout bounds the command");
+        busyTimeout.Should().Be(OneSecond, "SQLite waits for the lock itself for a second per statement, whatever the connection's 7-second command timeout");
     }
 
     // Each helper opens the database connection through the app's own registration, then asks SQLite how long it

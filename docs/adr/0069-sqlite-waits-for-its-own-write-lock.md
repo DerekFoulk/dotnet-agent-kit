@@ -13,7 +13,7 @@ The sample's Locust load test (ADR-0062) failed 4 of its 55 runs on 2026-11-13 a
 - **Many of the slow ones took exactly 151 ms.** The worst run had 16, and 6 more between 290 and 314 ms, about two of them. Green runs had 0 to 3 near 151 ms.
   - Microsoft.Data.Sqlite answers a locked database (`SQLITE_BUSY`) by sleeping a fixed 150 ms on the request's thread, then trying again until the command timeout (`SqliteDataReader.NextResult`).
   - It never sets SQLite's own busy timeout, so SQLite reports the lock at once.
-  - So the pause comes on every runner, whenever two of the ten users' writes meet. On green runners it hits under 5% of the writes; on the red ones, more.
+  - So the pause comes on every runner, whenever two of the ten users' writes meet. On green runners 0 to 1.4% of the INSERTs took 150 ms or more; on the red ones, 2.4 to 12.8%. In the two red runs whose p95 was 110 and 140 ms, the p95 fell on slow commits under 150 ms, which the sleeps made more frequent.
 - **The red runners were slow at everything.**
   - The other slow INSERTs took 10 to 150 ms, against 2 ms or less on the steadiest green runner.
   - SELECTs slowed too: 2 to 6 per red run took 100 to 248 ms, though a read in WAL mode doesn't wait for the write lock. No green run had one.
@@ -31,7 +31,7 @@ A real user of an app on SQLite would see the same pause whenever two writes mee
 An EF Core connection interceptor calls `sqlite3_busy_timeout` with 1 second on each connection EF Core opens. It goes through the `SqliteConnection.Handle` that Microsoft.Data.Sqlite exposes for native calls. SQLite's busy handler then waits for the lock itself, polling in sleeps of 1, 2, 5, 10, 15, 20 and 25 ms that grow to 50 and then 100 ms, and goes on about as soon as the lock is free. A lock held longer than a second falls back to Microsoft.Data.Sqlite's own retries, which still end at the command timeout.
 
 - **Trade-offs:** It covers every connection and every statement, including writes from another process, with no change to the code that writes.
-  - The busy timeout is per connection and per statement, while Microsoft.Data.Sqlite's command timeout covers a whole command, which can hold several statements (dotnet/efcore#28135). A second is short, so each statement can run past the command's timeout by a second at most. A command timeout is whole seconds, so a second is its smallest step.
+  - The busy timeout is per connection and per statement, while Microsoft.Data.Sqlite's command timeout covers a whole command, which can hold several statements (dotnet/efcore#28135). A second is short, so each statement can run past the command's timeout by about a second more than the library already allowed: it checks the timeout only after a step returns busy, and then sleeps 150 ms and steps again. A command timeout is whole seconds, so a second is its smallest step.
   - A waiting write still blocks its thread while SQLite sleeps. Every Microsoft.Data.Sqlite call does that, since its async methods run synchronously.
   - It's one small class, with no SQL text built.
 - **Reversibility:** Easy: remove the interceptor.
@@ -95,7 +95,7 @@ Option 1, decided in auto mode (ADR-0035) on 2026-11-15, while answering the red
 ## Pillars affected
 
 - **Performance Efficiency:** a write that meets another waits about as long as the lock is held, not 150 ms or more.
-- **Reliability:** the command timeout still bounds each command, give or take a second per statement. The load test's POST p95 is expected to stay within budget on runners like the red ones; the PR's Performance runs are the first evidence.
+- **Reliability:** the command timeout still bounds each command, give or take about a second per statement more than before. The load test's POST p95 is expected to stay within budget on runners like the red ones; the PR's Performance runs are the first evidence.
 - **Operational Excellence:** the evidence came from the run artifacts ADR-0062 keeps: Locust's stats and the app's log.
 
 ## Sources

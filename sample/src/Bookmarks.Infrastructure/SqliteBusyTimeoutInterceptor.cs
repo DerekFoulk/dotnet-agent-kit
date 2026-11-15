@@ -16,7 +16,8 @@ namespace Bookmarks.Infrastructure;
 /// The busy timeout is per connection and per statement, while Microsoft.Data.Sqlite's command timeout covers a whole
 /// command, which can hold several statements (dotnet/efcore#28135). So it's short: a lock held longer than a second
 /// falls back to Microsoft.Data.Sqlite's own retries, which still end at the command timeout, and a statement can run
-/// past that timeout by a second at most. A command timeout is whole seconds, so a second is its smallest step.
+/// past that timeout by about a second more than the library already allowed. A command timeout is whole seconds, so
+/// a second is its smallest step.
 /// </remarks>
 internal sealed class SqliteBusyTimeoutInterceptor : DbConnectionInterceptor
 {
