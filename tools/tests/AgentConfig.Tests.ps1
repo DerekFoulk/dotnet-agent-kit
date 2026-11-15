@@ -421,6 +421,25 @@ Describe 'Agent configuration' {
             @(@($rule['enforcement']) | Where-Object { "$($_['kind'])" -ne 'advisory' }).Count | Should -Be 0
         }
 
+        # ADR-0067: the reviewer agent's rounds come before the PR opens, and a merge waits for a clean one at the head.
+        It 'are reviewed by the reviewer agent in finish-work, whose clean round on the head commit a merge needs' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'finish-work' 'SKILL.md')
+            $review = [regex]::Match($skill, '(?s)## 2\.(.*?)(?=\r?\n## )').Groups[1].Value
+            $merge = [regex]::Match($skill, '(?s)## 5\.(.*?)(?=\r?\n## )').Groups[1].Value
+
+            $review | Should -Match 'Run the `reviewer` subagent'
+            $review | Should -Not -Match 'Copilot'
+            $merge | Should -Match 'The latest `reviewer` round is on that head commit'
+            $merge | Should -Not -Match 'Copilot has reviewed'
+        }
+
+        It 'are what start-work''s plan review uses: the reviewer agent reviews a non-trivial plan' {
+            $skill = Get-Content -Raw -LiteralPath (Join-Path $repoRoot '.claude' 'skills' 'start-work' 'SKILL.md')
+            $step = [regex]::Match($skill, '(?m)^5\. \*\*Review the plan\*\*.*$').Value
+
+            $step | Should -Match 'run the `reviewer` on the plan'
+        }
+
         # A plan is posted in chat, before any code: no code review sees it, so the rules credit start-work's plan
         # review, which the reviewer agent runs (ADR-0067), never code review.
         It 'aren''t said to check the plan in <Id>' -ForEach @(
