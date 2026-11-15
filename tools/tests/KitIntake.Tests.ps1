@@ -469,3 +469,66 @@ Describe 'Test-KitIntakeSource' {
         @(Test-KitIntakeSource -Intake (New-FullSourcedIntake)) | Should -BeNullOrEmpty
     }
 }
+
+# ADR-0070: a developer's preferences live in their own file, outside every repo, each with their words, the date and
+# where they said it. A new kit user has no file, and that's no preferences, not an error.
+Describe 'Read-KitPreference' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        # Writes a preferences file with the given entries and returns its path.
+        function New-PreferenceFile {
+            param([object[]] $Preference, [object] $Version = 1)
+            $path = Join-Path $TestDrive "preferences-$([guid]::NewGuid()).json"
+            @{ schemaVersion = $Version; preferences = @($Preference) } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $path
+            $path
+        }
+        $budget = @{ choice = 'budget'; pick = 'budget-0'; stated = 'A $0 budget unless I say otherwise'; date = '2026-11-12'; source = 'ARC-012' }
+    }
+
+    It 'lives in the developer''s home folder, outside every repo' {
+        Get-KitPreferencePath | Should -Be (Join-Path $HOME '.dotnet-agent-kit' 'preferences.json')
+    }
+
+    It 'reads no preferences when the developer has no file' {
+        @(Read-KitPreference -Path (Join-Path $TestDrive 'none.json')) | Should -BeNullOrEmpty
+    }
+
+    It 'reads each preference with its words, date and source' {
+        $general = @{ stated = 'EF Core with code-first migrations'; date = '2026-11-10'; source = 'ADR-0053' }
+        $read = @(Read-KitPreference -Path (New-PreferenceFile -Preference $budget, $general))
+
+        $read.Count | Should -Be 2
+        $read[0].Choice | Should -Be 'budget'
+        $read[0].Pick | Should -Be 'budget-0'
+        $read[0].Stated | Should -Be 'A $0 budget unless I say otherwise'
+        $read[0].Date | Should -Be '2026-11-12'
+        $read[0].Source | Should -Be 'ARC-012'
+        $read[1].Choice | Should -BeNullOrEmpty -Because 'a preference with no choice is for plans, not the intake'
+    }
+
+    It 'refuses <Case>, naming the file' -ForEach @(
+        @{ Case = 'a preference with no words'; Entry = @{ choice = 'budget'; pick = 'budget-0'; date = '2026-11-12'; source = 'ARC-012' }; Message = "*preferences-*.json*preference 1*stated*" }
+        @{ Case = 'a preference with no date'; Entry = @{ stated = 'Locust'; source = 'chat' }; Message = "*preference 1*date*yyyy-mm-dd*" }
+        @{ Case = 'a date that isn''t a date'; Entry = @{ stated = 'Locust'; date = 'yesterday'; source = 'chat' }; Message = "*preference 1*date*yyyy-mm-dd*" }
+        @{ Case = 'a preference with no source'; Entry = @{ stated = 'Locust'; date = '2026-11-12' }; Message = "*preference 1*source*" }
+        @{ Case = 'a choice with no pick'; Entry = @{ choice = 'load/load'; stated = 'Locust'; date = '2026-11-12'; source = 'chat' }; Message = "*preference 1*choice 'load/load'*no pick*" }
+    ) {
+        { Read-KitPreference -Path (New-PreferenceFile -Preference $Entry) } | Should -Throw $Message
+    }
+
+    It 'refuses two preferences for the same question' {
+        $again = @{ choice = 'budget'; pick = 'budget-20'; stated = 'Up to $20'; date = '2026-11-14'; source = 'chat' }
+
+        { Read-KitPreference -Path (New-PreferenceFile -Preference $budget, $again) } | Should -Throw "*two preferences for 'budget'*keep one*"
+    }
+
+    It 'refuses <Case>' -ForEach @(
+        @{ Case = 'a file that isn''t JSON'; Text = 'not json'; Message = "*preferences.json*isn't valid JSON*" }
+        @{ Case = 'another schemaVersion'; Text = '{ "schemaVersion": 2, "preferences": [] }'; Message = "*schemaVersion 2*reads version 1*" }
+    ) {
+        $path = Join-Path $TestDrive 'preferences.json'
+        Set-Content -LiteralPath $path -Value $Text
+
+        { Read-KitPreference -Path $path } | Should -Throw $Message
+    }
+}

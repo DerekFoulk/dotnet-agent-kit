@@ -303,4 +303,16 @@ function Test-KitText {
     $Value -is [string] -and [bool]$Value.Trim()
 }
 
-Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource
+# Where a developer's preferences file lives: their home folder, outside every repo (ADR-0070).
+function Get-KitPreferencePath {
+    ''
+}
+
+# Reads a developer's preferences file and checks each preference; a missing file is no preferences.
+function Read-KitPreference {
+    param([string] $Path = (Get-KitPreferencePath))
+
+    @()
+}
+
+Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference
