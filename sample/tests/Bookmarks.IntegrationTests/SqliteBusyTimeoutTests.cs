@@ -32,6 +32,16 @@ public sealed class SqliteBusyTimeoutTests
         busyTimeout.Should().Be(7_000, "a command may run for the connection's Default Timeout, 7 seconds");
     }
 
+    [Theory]
+    [InlineData(0)] // Microsoft.Data.Sqlite's "no timeout"
+    [InlineData((int.MaxValue / 1_000) + 1)] // seconds whose milliseconds don't fit SQLite's int
+    public async Task OpenConnectionAsyncWaitsAsLongAsSqliteCanWhenTheDefaultTimeoutIsNoneOrPastSqlitesLongestWait(int seconds)
+    {
+        long busyTimeout = await BusyTimeoutAfterOpenAsync($"DataSource=:memory:;Default Timeout={seconds}");
+
+        busyTimeout.Should().Be(int.MaxValue, "SQLite's busy timeout is an int of milliseconds, and 0 would turn it off");
+    }
+
     // Each helper opens the database connection through the app's own registration, then asks SQLite how long it
     // waits for a lock.
     private static async Task<long> BusyTimeoutAfterOpenAsync(string connectionString)
