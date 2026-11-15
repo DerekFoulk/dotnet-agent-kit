@@ -30,11 +30,11 @@ ADR-0067 made the reviewer agent, which runs in the owner's Claude usage, review
   - While a wait runs, CI and Copilot's review still reach the agent within a poll (20 seconds).
   - The full first round keeps review quality where most findings come from.
   - CI that runs past one wait needs a second call; on kit CI that is at most one more cached call.
-  - With the monitor off, a person's review or a merge conflict that lands between turns waits until `finish-work` step 5 checks the PR (`mergeStateStatus`, `Get-OpenFinding`) before a merge, or until the owner points at it. A person's plain PR comment, outside a review, is in no check, so it waits for the owner.
+  - With the monitor off, a person's review, plain PR comment or merge conflict that lands between turns waits until `finish-work` step 5 checks the PR before a merge (`mergeStateStatus`, `Get-OpenFinding`, and `gh pr view <n> --comments` for plain comments, which `Get-OpenFinding` doesn't read), or until the owner points at it.
 - **Reversibility:** Easy: one default value and some skill text.
 - **Risk:** Low.
   - A small fix reviewed on a cheaper model could miss something the strong model would catch. The guardrail exclusion and the 100-line limit keep that to small, ordinary fixes, and CI still runs every gate.
-  - A between-turn review or conflict can't merge unseen: step 5's checks run first. A plain PR comment can: on a kit PR only the owner and agents comment, and the owner speaks in the chat (COM-007), so that gap is small. Reading plain comments in step 5 would close it, and waits for its own PR.
+  - A between-turn event can't merge unseen: step 5's checks run first. Plain PR comments are read there by hand, since the kit and apps are public, so anyone can post one. Reading them in `Get-OpenFinding` would make that a tested check; it's a later improvement, not a gap.
 
 ### Option 2: The same, with a 9-minute default
 
@@ -78,6 +78,7 @@ Option 1. The goal is the owner's (2026-11-14: "A cheap, yet responsive PR monit
   - Never a loop of short waits, a scheduled wake-up or a background shell job.
   - While the owner decides something, the turn ends.
 - **The desktop app's PR monitor** is optional and off by default, in the kit and in apps, which get the same skills. It's turned on only when the owner asks, with no further ask (owner, 2026-11-13). `address-review` says the same.
+- **`finish-work` step 5** reads people's plain PR comments (`gh pr view <n> --comments`) before a merge, because with the monitor off nothing else would see one posted between turns.
 - **`finish-work` step 2:**
   - The first round reviews the whole branch on the session's model, with focused reviewers side by side.
   - Each fix round runs one reviewer on `git diff <reviewed head>..HEAD`. It runs on a cheaper model (`model: sonnet` in Claude Code) when that diff is under 100 changed lines (insertions plus deletions) and touches no guardrail.
