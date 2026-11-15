@@ -18,4 +18,7 @@ internal static class Limits
 
     /// <summary>The most members one type may declare, counting every part of a partial type.</summary>
     public const int MembersPerType = 20;
+
+    /// <summary>The most public top-level types one source file may declare.</summary>
+    public const int PublicTypesPerFile = 1;
 }
