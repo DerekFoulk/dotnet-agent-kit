@@ -13,8 +13,8 @@ namespace Kit.CodeShape;
 /// <item>a member's or type's is the last comment right before it (before its attributes), with no blank line
 /// between; a property's covers its accessors, and a type's covers its cohesion and its member count, not its
 /// members (on any part of a partial type, the whole type);</item>
-/// <item>a file's is the file's first comment, with a blank line below it, and covers the file's length and its
-/// top-level statements.</item>
+/// <item>a file's is the file's first comment, with a blank line below it, and covers the file's length, its public
+/// types and its top-level statements.</item>
 /// </list>
 /// A marker without a reason covers nothing.</summary>
 internal static partial class LimitExemption
@@ -32,7 +32,7 @@ internal static partial class LimitExemption
         };
     }
 
-    /// <summary>Whether a file has an exception for its length and its top-level statements.</summary>
+    /// <summary>Whether a file has an exception for its length, its public types and its top-level statements.</summary>
     public static bool CoversFile(CompilationUnitSyntax root)
     {
         ArgumentNullException.ThrowIfNull(root);
