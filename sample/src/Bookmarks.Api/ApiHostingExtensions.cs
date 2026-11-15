@@ -1,6 +1,9 @@
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace Bookmarks.Api;
@@ -30,15 +33,10 @@ internal static class ApiHostingExtensions
             kestrel.AddServerHeader = false;
             kestrel.Limits.MaxRequestBodySize = MaxRequestBodyBytes;
         });
-        RateLimitSettings settings = builder.Configuration.GetSection("RateLimiting").Get<RateLimitSettings>() ?? new RateLimitSettings();
-        // A limit below one would fail every request, so the app refuses to start with one.
-        if (settings.BurstLimit < 1 || settings.RequestsPerSecond < 1)
-        {
-            throw new InvalidOperationException(
-                $"RateLimiting:BurstLimit and RateLimiting:RequestsPerSecond must be at least 1; they're {settings.BurstLimit} and {settings.RequestsPerSecond}.");
-        }
-
-        builder.Services.AddApiRateLimiting(settings);
+        // The settings are options validated when the app starts, so a limit below one stops it then, instead of
+        // failing every request (OPS-006).
+        builder.Services.AddOptions<RateLimitSettings>().BindConfiguration("RateLimiting").ValidateDataAnnotations().ValidateOnStart();
+        builder.Services.AddApiRateLimiting();
         return builder;
     }
 
@@ -63,7 +61,7 @@ internal static class ApiHostingExtensions
     /// Too Many Requests, which status code pages turn into Problem Details (OWASP API4, unrestricted resource
     /// consumption).
     /// </summary>
-    private static void AddApiRateLimiting(this IServiceCollection services, RateLimitSettings settings)
+    private static void AddApiRateLimiting(this IServiceCollection services)
     {
         services.AddRateLimiter(options =>
         {
@@ -77,16 +75,19 @@ internal static class ApiHostingExtensions
                 return ValueTask.CompletedTask;
             };
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-                RateLimitPartition.GetTokenBucketLimiter(Caller(context), _ => new TokenBucketRateLimiterOptions
-                {
-                    TokenLimit = settings.BurstLimit,
-                    TokensPerPeriod = settings.RequestsPerSecond,
-                    ReplenishmentPeriod = TimeSpan.FromSeconds(1),
-                    QueueLimit = 0,
-                    AutoReplenishment = true,
-                }));
+                RateLimitPartition.GetTokenBucketLimiter(Caller(context), _ => Bucket(context.RequestServices.GetRequiredService<IOptions<RateLimitSettings>>().Value)));
         });
     }
+
+    private static TokenBucketRateLimiterOptions Bucket(RateLimitSettings settings) =>
+        new()
+        {
+            TokenLimit = settings.BurstLimit,
+            TokensPerPeriod = settings.RequestsPerSecond,
+            ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+            QueueLimit = 0,
+            AutoReplenishment = true,
+        };
 
     private static string Caller(HttpContext context) =>
         context.User.FindFirstValue(JwtRegisteredClaimNames.Sub) is { } sub
@@ -97,10 +98,13 @@ internal static class ApiHostingExtensions
     /// The rate limit's settings. The defaults let the sample's load test (ten users on one token, about 40 requests a
     /// second) through, while a flood from one caller is cut off.
     /// </summary>
+    [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "The options binder creates it from configuration (OPS-006); CA1812 can't see that.")]
     private sealed class RateLimitSettings
     {
+        [Range(1, int.MaxValue)]
         public int BurstLimit { get; init; } = 100;
 
+        [Range(1, int.MaxValue)]
         public int RequestsPerSecond { get; init; } = 50;
     }
 }
