@@ -290,6 +290,14 @@ function Test-KitRecommendation {
         if ("$($authority['read'])" -notmatch '^\d{4}-\d{2}-\d{2}$') { "$label's authority recommendation needs the date it was read (read: yyyy-mm-dd)." }
         $pick = $authority['pick']
         if ($null -ne $pick -and $pick -cnotin $OptionId) { "$label's authority picks '$pick', which isn't an option: $options." }
+        # The bar for a pick (ADR-0070): the page recommends it, says it should be used, or gives it a guideline level.
+        # "You can use", an example or a tool a page only uses is no pick, and neither is one whose words say so.
+        elseif ($null -ne $pick -and "$($authority['says'])" -cmatch '(?i)^\s*no (pick|recommendation)\b|without recommending|doesn''t recommend') {
+            "$label's authority picks '$pick', but its says reads as no pick: record pick null, or quote the page's recommendation."
+        }
+        elseif ($null -ne $pick -and "$($authority['says'])" -cnotmatch '(?i:\brecommend)|\bshould\b|\b(DO|CONSIDER)\b') {
+            "$label's authority picks '$pick', but its says doesn't quote the page saying it recommends it, should use it, or a DO or CONSIDER."
+        }
     }
     $agent = $Recommendation['agent']
     if ($agent -isnot [Collections.IDictionary]) { "$label has no agent recommendation: the agent's pick, with its reason."; return }
@@ -418,7 +426,8 @@ function Get-KitTestToolAnswer {
     param([Parameter(Mandatory)] [object[]] $Default)
 
     $answer = [ordered]@{}
-    foreach ($row in $Default | Where-Object { $_.Choice -like '*/*' }) {
+    # An unused preference (a typo, a removed role) is a note for the developer, not an answer for New-KitApp.
+    foreach ($row in $Default | Where-Object { $_.Choice -like '*/*' -and $_.From -ne 'unused preference' }) {
         $kind = $row.Choice.Split('/')[0]
         if (-not $answer.Contains($kind)) { $answer[$kind] = [Collections.Generic.List[string]]::new() }
         $answer[$kind].Add($row.Pick)
