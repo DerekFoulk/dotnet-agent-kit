@@ -16,7 +16,7 @@ public sealed class AuthenticationTests : IDisposable
         { "a token from another issuer", TestTokens.For(issuer: "https://login.other.test/") },
         { "a token for another API", TestTokens.For(audience: "api://another-api") },
         { "a token signed with a key the API doesn't trust", TestTokens.For(key: TestTokens.NewKey()) },
-        { "an unsigned token", TestTokens.For(signed: false) },
+        { "an unsigned token", TestTokens.For(isSigned: false) },
     };
 
     [Theory]
