@@ -29,5 +29,16 @@ Describe 'Build-AuthoritiesPage.ps1' {
             Get-EntryName 'https://github.com/dequelabs/axe-core' $entries | Should -Be 'Tool repos'
             Find-SourceEntry -Url 'https://example.com/page' -Entries $entries | Should -BeNullOrEmpty
         }
+
+        It 'classes an archived copy by its original URL, http or https' {
+            $entries = @(
+                (New-Entry -Name 'Archive' -Class 'practitioner' -Match 'https://web.archive.org/')
+                (New-Entry -Name 'Robert C. Martin' -Class 'practitioner' -Match 'http://butunclebob.com/')
+            )
+
+            Get-EntryName 'https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod' $entries |
+                Should -Be 'Robert C. Martin'
+            Get-EntryName 'https://web.archive.org/web/2022/https://example.com/x' $entries | Should -BeNullOrEmpty
+        }
     }
 }
