@@ -322,7 +322,7 @@ Applied 2026-11-12 with the owner's OK, and removed 2026-11-14 on his yes:
 
 | Setting | Value | Why |
 |---|---|---|
-| "main protection" ruleset: automatically request Copilot code review | Off: the rule is removed | From 2026-11-12 it requested a Copilot review of every PR and every push to it (ADR-0064). Each used the owner's GitHub AI credits, and they ran out; the reviewer agent reviews instead (ADR-0067) |
+| "main protection" ruleset: automatically request Copilot code review | Off: the rule is removed | From 2026-11-12 it asked Copilot for a review of each PR and each push to it (ADR-0064). Each used the owner's GitHub AI credits, and they ran out; the reviewer agent reviews instead (ADR-0067) |
 
 ## Run the tests
 
