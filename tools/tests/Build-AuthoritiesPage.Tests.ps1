@@ -113,6 +113,43 @@ Describe 'Build-AuthoritiesPage.ps1' {
         }
     }
 
+    Context 'The generated block' {
+        BeforeAll {
+            $entries = @(
+                (New-Entry -Name 'Fowler' -Publisher 'Martin Fowler' -Class 'practitioner' -Match 'https://martinfowler.com/')
+                (New-Entry -Name 'Microsoft Learn' -Publisher 'Microsoft' -Match 'https://learn.microsoft.com/')
+                (New-Entry -Name 'axe-core' -Publisher 'Deque Systems' -Class 'project' -Match 'https://github.com/dequelabs/')
+            )
+            $cited = @(
+                [pscustomobject]@{ Url = 'https://learn.microsoft.com/b'; RuleId = 'SEC-002'; Status = 'accepted'; Basis = 'authority'; File = 'security.md' }
+                [pscustomobject]@{ Url = 'https://learn.microsoft.com/a'; RuleId = 'API-002'; Status = 'accepted'; Basis = 'authority'; File = 'api-design.md' }
+                [pscustomobject]@{ Url = 'https://learn.microsoft.com/a'; RuleId = 'API-001'; Status = 'proposed'; Basis = 'authority'; File = 'api-design.md' }
+                [pscustomobject]@{ Url = 'https://learn.microsoft.com/b'; RuleId = 'API-002'; Status = 'accepted'; Basis = 'authority'; File = 'api-design.md' }
+                [pscustomobject]@{ Url = 'https://github.com/dequelabs/axe-core'; RuleId = 'UI-002'; Status = 'proposed'; Basis = 'authority'; File = 'ui.md' }
+                [pscustomobject]@{ Url = 'https://martinfowler.com/bliki/Yagni.html'; RuleId = 'CRF-004'; Status = 'accepted'; Basis = 'preference'; File = 'craft.md' }
+            )
+            $block = ConvertTo-AuthoritiesBlock -Cited $cited -Entries $entries
+        }
+
+        It 'lists the classes in order: authorities, then tool and project pages, then practitioners' {
+            $block | Should -Match '(?s)### Authorities\n.*### Tool and project pages\n.*### Practitioners and references\n'
+        }
+
+        It 'gives each source a row in its class, with its publisher, what it covers and the rules citing it, each once and sorted' {
+            $block | Should -Match '(?s)### Authorities\n.*\| \[Microsoft Learn\]\(#microsoft-learn\) \| Microsoft \| What Microsoft Learn covers \| \[API-001\]\(standards/api-design\.md\) \(proposed\), \[API-002\]\(standards/api-design\.md\), \[SEC-002\]\(standards/security\.md\) \|\n.*### Tool and project pages'
+            $block | Should -Match '(?s)### Tool and project pages\n.*\| \[axe-core\]\(#axe-core\) \| Deque Systems \|.*### Practitioners'
+            $block | Should -Match '(?s)### Practitioners and references\n.*\| \[Fowler\]\(#fowler\) \| Martin Fowler \|'
+        }
+
+        It 'lists each source''s pages, sorted, with the rules citing each' {
+            $block | Should -Match '(?s)#### Microsoft Learn\n\n\| Page \| Cited by \|\n\|---\|---\|\n\| <https://learn\.microsoft\.com/a> \| \[API-001\]\(standards/api-design\.md\) \(proposed\), \[API-002\]\(standards/api-design\.md\) \|\n\| <https://learn\.microsoft\.com/b> \| \[API-002\]\(standards/api-design\.md\), \[SEC-002\]\(standards/security\.md\) \|\n'
+        }
+
+        It 'counts the pages, sources and rules' {
+            $block | Should -Match 'The rules cite 4 pages from 3 sources; 5 rules cite them\.'
+        }
+    }
+
     Context 'Classing a cited URL' {
         It 'gives a URL to the entry with the longest matching prefix, whatever the order' {
             $entries = @(

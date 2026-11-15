@@ -140,6 +140,14 @@ function Get-AuthoritiesProblem {
     }
 }
 
+# The generated block's Markdown, between its markers: a table per class, then each source's pages.
+function ConvertTo-AuthoritiesBlock {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Cited,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Entries
+    )
+}
+
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $RepoRoot) { $RepoRoot = Split-Path -Path $PSScriptRoot -Parent }
