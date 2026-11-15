@@ -440,6 +440,20 @@ Describe 'Agent configuration' {
             $step | Should -Match 'run the `reviewer` on the plan'
         }
 
+        # ADR-0067: Copilot code review is off in the kit and isn't requested in new apps, so no doc an agent or the
+        # owner reads may still say it reviews every PR (CRF-003: the docs and the repo's settings agree).
+        It 'are no longer said to be Copilot''s every-PR review in <File>' -ForEach @(
+            @{ File = 'AGENTS.md' }, @{ File = 'CLAUDE.md' }, @{ File = 'README.md' }, @{ File = 'templates/app/AGENTS.md' }
+            @{ File = '.github/pull_request_template.md' }, @{ File = 'docs/code-review.md' }
+            @{ File = '.claude/skills/finish-work/SKILL.md' }, @{ File = '.claude/skills/start-work/SKILL.md' }
+            @{ File = '.claude/skills/address-review/SKILL.md' }
+        ) {
+            $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File)
+            $claim = '(?i)copilot (code review )?reviews|copilot''s (code )?review (of|findings)|copilot code review (checks|of the head)|asks copilot to review'
+
+            [regex]::Matches($text, $claim).Value | Should -BeNullOrEmpty
+        }
+
         # A plan is posted in chat, before any code: no code review sees it, so the rules credit start-work's plan
         # review, which the reviewer agent runs (ADR-0067), never code review.
         It 'aren''t said to check the plan in <Id>' -ForEach @(
