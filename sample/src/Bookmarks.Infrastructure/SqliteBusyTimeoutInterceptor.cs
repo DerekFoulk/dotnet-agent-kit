@@ -13,6 +13,9 @@ namespace Bookmarks.Infrastructure;
 /// </summary>
 internal sealed class SqliteBusyTimeoutInterceptor : DbConnectionInterceptor
 {
+    public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData) =>
+        SetBusyTimeout((SqliteConnection)connection);
+
     public override Task ConnectionOpenedAsync(DbConnection connection, ConnectionEndEventData eventData, CancellationToken cancellationToken = default)
     {
         SetBusyTimeout((SqliteConnection)connection);
