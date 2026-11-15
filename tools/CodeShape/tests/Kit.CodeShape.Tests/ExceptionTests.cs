@@ -41,6 +41,14 @@ public sealed class ExceptionTests
         "// CRF-011 exception: one table of every country code.\n\n" + string.Join('\n', Enumerable.Repeat("// a line", 800))))
         .Should().BeEmpty();
 
+    [Fact]
+    public void AnExceptionAtTheTopOfAFileExemptsItsPublicTypes() => PublicTypeRule.Check(new SourceFile("Pair.cs", """
+        // CRF-011 exception: the generic type and its non-generic helper are read together.
+
+        public class Box<T> { }
+        public static class Box { }
+        """)).Should().BeEmpty();
+
     // Review 1 of GAP-019: what each placement covers. A file's marker stands apart, a blank line below it; a
     // member's or type's sits right before it; a property's covers its accessors.
     [Fact]
