@@ -72,6 +72,12 @@ jobs:
             'No docs/adr in this repo; nothing to check.'
           }
 
+      # Every app gets docs/architecture/modules.md from the kit's template, so a missing or empty diagram fails (ARC-013).
+      - name: Architecture diagram
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-ArchitectureDiagram.ps1" -Path (Join-Path $env:GITHUB_WORKSPACE ''docs/architecture/modules.md'')'
+
       # Every app gets docs/runbook.md from the kit's template, so a missing one fails (OPS-004).
       - name: Runbook
         env:

@@ -22,6 +22,7 @@ This repo follows dotnet-agent-kit {{KitVersion}} (commit `{{KitCommit}}`): the 
 | Every C# project in the solution holds code of its own, and none keeps the class library template's empty `Class1` (ARC-009) | `./.kit/tools/Test-EmptyProjects.ps1 -Solution {{Name}}.slnx` |
 | Every ADR has its required sections | `./.kit/tools/Test-AdrSections.ps1 -AdrPath ./docs/adr` |
 | The runbook has every section, and no placeholder once it's In use (OPS-004) | `./.kit/tools/Test-Runbook.ps1 -Path ./docs/runbook.md` |
+| The architecture diagram is there (ARC-013) | `./.kit/tools/Test-ArchitectureDiagram.ps1 -Path ./docs/architecture/modules.md` |
 | No migration drops or renames what the running version uses without a `// DAT-003:` reason (DAT-003) | `./.kit/tools/Test-SafeMigrations.ps1 -Path .` |
 | Benchmarks within their budget (kit TST-009): in CI, nightly in `.github/workflows/performance.yml`, not required; locally after a BenchmarkDotNet run with `--exporters json` | `dotnet run --project tests/<Name>.Benchmarks --configuration Release -- --filter '*' --exporters json`, then `./.kit/tools/Test-BenchmarkBudget.ps1 -Path BenchmarkDotNet.Artifacts/results -Budget tests/<Name>.Benchmarks/benchmark-budget.json` |
 | A Locust load test within its budget (kit TST-009): in CI, in `.github/workflows/performance.yml` once it names the app to load; locally after a run with `--csv` | `./.kit/tools/Test-LoadBudget.ps1 -Path <the --csv prefix> -Budget tests/load/load-budget.json` |

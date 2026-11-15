@@ -51,6 +51,10 @@ jobs:
       - name: ADR sections
         run: ./tools/Test-AdrSections.ps1
 
+      # The kit keeps a diagram of its parts, as every app does (ARC-013).
+      - name: Architecture diagram
+        run: ./tools/Test-ArchitectureDiagram.ps1
+
       - name: Generated agent files are current
         run: ./tools/Build-AgentRules.ps1 -Check
 

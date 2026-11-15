@@ -18,9 +18,29 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Every problem with the page, one Message each; nothing when it passes.
+function New-Problem {
+    param([string] $Message)
+    [pscustomobject]@{ Message = $Message }
+}
+
+# Every problem with the page, one Message each; nothing when it passes. A ```mermaid block inside an HTML comment
+# isn't shown to a reader, so it doesn't count.
 function Get-ArchitectureDiagramProblem {
     param([Parameter(Mandatory)] [string] $Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return New-Problem -Message "no architecture diagram at $Path"
+    }
+
+    $text = (Get-Content -LiteralPath $Path -Raw) -replace '(?s)<!--.*?-->', ''
+    $blocks = [regex]::Matches($text, '(?ms)^ {0,3}```mermaid[ \t]*\r?\n(?<body>.*?)^ {0,3}```[ \t]*$')
+    if ($blocks.Count -eq 0) {
+        return New-Problem -Message 'no ```mermaid code block'
+    }
+
+    if (-not ($blocks | Where-Object { $_.Groups['body'].Value.Trim() })) {
+        New-Problem -Message 'the ```mermaid code block is empty'
+    }
 }
 
 # Prints every problem and returns 0 when the page passes, otherwise 1.
