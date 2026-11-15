@@ -1,0 +1,113 @@
+# Who publishes each source the rules in docs/standards cite, and what kind of source it is (ADR-0073).
+# tools/Build-AuthoritiesPage.ps1 reads this file and the rules' sources, and fills the generated block in
+# docs/authorities.md. Its -Check fails when a cited URL matches no entry here, or an entry matches no cited URL.
+#
+# class:
+#   authority     the body that makes the product or sets the standard: a vendor documenting its own product
+#                 (its docs site or its own repos), or a standards body. A rule resting on one has basis 'authority'.
+#   practitioner  a person, a book, or a reference work such as Wikipedia. Their ideas back the owner's choices,
+#                 so a rule resting on them alone is a 'preference' (ADR-0063).
+#   project       a tool's own repo or docs, from the vendor of a tool the kit uses: ADR-0063 counts it as an
+#                 authority, for how to use that tool only, so the page lists it apart.
+# Who counts as an authority is ADR-0063's to say; this file only says who published each cited page.
+# match: URL prefixes; the longest that matches a cited URL wins. An archived copy
+#   (https://web.archive.org/web/<timestamp>/<url>) is matched by its original URL.
+sources:
+  - name: Microsoft Learn
+    publisher: Microsoft
+    class: authority
+    covers: .NET, C#, ASP.NET Core, Blazor, EF Core, MAUI, NuGet, Azure and the Well-Architected Framework, Entra ID, SQL Server, Visual Studio
+    match:
+      - https://learn.microsoft.com/
+  - name: .NET's own repositories
+    publisher: Microsoft (the .NET team)
+    class: authority
+    covers: the .NET runtime's code style (.editorconfig)
+    match:
+      - https://github.com/dotnet/
+  - name: Aspire documentation
+    publisher: Microsoft (the Aspire team)
+    class: authority
+    covers: Aspire's service defaults and health checks
+    match:
+      - https://aspire.dev/
+  - name: GitHub Docs
+    publisher: GitHub
+    class: authority
+    covers: code scanning with CodeQL, secret scanning and push protection
+    match:
+      - https://docs.github.com/
+  - name: Web Content Accessibility Guidelines (WCAG) 2.2
+    publisher: W3C (World Wide Web Consortium)
+    class: authority
+    covers: accessibility of web and app user interfaces, and WCAG2ICT for apps that aren't on the web
+    match:
+      - https://www.w3.org/
+  - name: OWASP
+    publisher: OWASP Foundation (Open Worldwide Application Security Project)
+    class: authority
+    covers: input validation, secrets management, API authorization, and the Application Security Verification Standard (ASVS) 5.0
+    match:
+      - https://cheatsheetseries.owasp.org/
+      - https://api-security.owasp.org/
+      - https://github.com/OWASP/
+  - name: RFC Editor
+    publisher: IETF (Internet Engineering Task Force)
+    class: authority
+    covers: HTTP problem details for API errors (RFC 9457)
+    match:
+      - https://www.rfc-editor.org/
+  - name: Martin Fowler's site
+    publisher: Martin Fowler
+    class: practitioner
+    covers: YAGNI and evolutionary design
+    match:
+      - https://martinfowler.com/
+  - name: The Pragmatic Programmer, tips
+    publisher: Andrew Hunt and David Thomas
+    class: practitioner
+    covers: DRY (don't repeat yourself)
+    match:
+      - https://pragprog.com/
+  - name: Principles of OOD, archived
+    publisher: Robert C. Martin
+    class: practitioner
+    covers: SOLID and the package principles
+    match:
+      - http://butunclebob.com/
+  - name: From STUPID to SOLID Code!
+    publisher: William Durand
+    class: practitioner
+    covers: the STUPID anti-patterns
+    match:
+      - https://williamdurand.fr/
+  - name: Wikipedia
+    publisher: Wikipedia contributors
+    class: practitioner
+    covers: summaries of Robert C. Martin's SOLID and acyclic dependencies principles, and Barbara Liskov's substitution principle
+    match:
+      - https://en.wikipedia.org/
+  - name: Diátaxis
+    publisher: Daniele Procida
+    class: practitioner
+    covers: the four kinds of documentation (tutorial, how-to, reference, explanation)
+    match:
+      - https://diataxis.fr/
+  - name: axe-core
+    publisher: Deque Systems
+    class: project
+    covers: the axe accessibility engine and its Playwright package for .NET
+    match:
+      - https://github.com/dequelabs/
+  - name: CycloneDX for .NET
+    publisher: OWASP CycloneDX
+    class: project
+    covers: the SBOM tool the kit's CI runs
+    match:
+      - https://github.com/CycloneDX/
+  - name: OpenSSF Scorecard action
+    publisher: OpenSSF (Open Source Security Foundation)
+    class: project
+    covers: the Scorecard GitHub Action and its workflow limits
+    match:
+      - https://github.com/ossf/
