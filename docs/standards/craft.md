@@ -210,7 +210,7 @@ rules:
         how: "ci: the sample's Architecture.Tests (LayerTests) fail if the domain assembly references EF Core or ADO.NET"
       - kind: gate
         in: [kit, app]
-        how: "build: CA1051 (no visible instance fields) and CA1002 (no List<T> as a property or return type), on internal types too (STY-009), and CA2227 (collection properties are read-only), on public types only, all on through AnalysisLevel latest-all"
+        how: "build: CA1051 (no visible instance fields) and CA1002 (no List<T> in a member's signature: property, return type or parameter), on internal types too (STY-009), and CA2227 (collection properties are read-only), on public types only, all on through AnalysisLevel latest-all"
       - kind: advisory
         in: [app]
         how: "until it has architecture tests of its own, following the sample"
@@ -259,7 +259,7 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 | Dependency injection validation (CRF-013) | the sample's FunctionalTests: `ApiHost` turns on ValidateScopes and ValidateOnBuild, and `DependencyInjectionTests` proves they're on | a singleton that captures a scoped service, or a scoped service resolved from the root, in any environment the tests run the app in |
 | ASP0000 (CRF-013) | ASP.NET Core's analyzers, at warning, in ASP.NET Core projects | a call to `BuildServiceProvider` while services are being registered |
 | Persistence ignorance (CRF-014) | the sample's `LayerTests` | a domain assembly that references EF Core or ADO.NET |
-| CA1051, CA1002, CA2227 (CRF-014) | `AnalysisLevel latest-all` | a visible instance field or a `List<T>` property or return type, on public and internal types; a settable collection property, on public types only |
+| CA1051, CA1002, CA2227 (CRF-014) | `AnalysisLevel latest-all` | a visible instance field or a `List<T>` in a member's signature (property, return type, parameter), on public and internal types; a settable collection property, on public types only |
 
 `CodeMetricsConfig.txt` is the one source of the limits; CRF-008 states them for readers, and a Pester test fails if the two disagree. `tools/CodeShape/src/Kit.CodeShape/Limits.cs` is the one source of CRF-011's four, checked against its statement the same way. `.globalconfig` is the one list of the rules `latest-all` leaves off and the kit turns on; each has a fixture in `tools/tests/BuildConfig.Tests.ps1`. CA1509 can only be turned on in a global config, which is why these rules live there and not in `.editorconfig`. All of them are on; for CA1014, `Directory.Build.props` declares every assembly not CLS-compliant (ADR-0049). ADR-0043 records the limits and why each is where it is.
 
