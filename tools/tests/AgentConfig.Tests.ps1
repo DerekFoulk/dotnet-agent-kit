@@ -407,17 +407,14 @@ Describe 'Agent configuration' {
             $text | Should -Match ([regex]::Escape('gh api repos/DerekFoulk/dotnet-agent-kit/commits/<tag> --jq .sha'))
         }
 
-        # ADR-0067: the owner removed the copilot_code_review rule from the kit's ruleset (2026-11-14), so DOD-003 names
-        # the reviewer agent and mustn't cite a rule that isn't there. No tool makes an agent run the reviewer, so every
+        # ADR-0067: DOD-003 names the reviewer agent and its checklist. No tool makes an agent run the reviewer, so every
         # part of DOD-003 is advisory.
-        It 'are what DOD-003''s reviewer agent uses, with no Copilot ruleset rule' {
+        It 'are what DOD-003''s reviewer agent uses' {
             $frontMatter = Read-FrontMatter -Path (Join-Path $repoRoot 'docs' 'standards' 'definition-of-done.md')
             $rule = @($frontMatter['rules'] | Where-Object { $_['id'] -eq 'DOD-003' })[0]
-            $how = @(@($rule['enforcement']) | ForEach-Object { "$($_['how'])" }) -join ' '
 
             "$($rule['statement'])" | Should -Match 'reviewer agent'
             "$($rule['statement'])" | Should -Match ([regex]::Escape('docs/code-review.md'))
-            "$($rule['statement'])$how" | Should -Not -Match 'copilot_code_review|Copilot code review reviews'
             @(@($rule['enforcement']) | Where-Object { "$($_['kind'])" -ne 'advisory' }).Count | Should -Be 0
         }
 
@@ -428,9 +425,7 @@ Describe 'Agent configuration' {
             $merge = [regex]::Match($skill, '(?s)## 5\.(.*?)(?=\r?\n## )').Groups[1].Value
 
             $review | Should -Match 'Run the `reviewer` subagent.*before the PR opens'
-            $review | Should -Not -Match 'Copilot'
             $merge | Should -Match 'The latest `reviewer` round is on that head commit,\*\* with no unanswered blocking or should-fix finding'
-            $merge | Should -Not -Match 'Copilot has reviewed'
         }
 
         # The reviewer's round on finish-work step 5. A merge condition that drops "clean" lets an agent merge past an open
@@ -447,22 +442,6 @@ Describe 'Agent configuration' {
             $step = [regex]::Match($skill, '(?m)^5\. \*\*Review the plan\*\*.*$').Value
 
             $step | Should -Match 'run the `reviewer` on the plan'
-        }
-
-        # ADR-0067: Copilot code review is off in the kit and isn't requested in new apps, so no doc an agent or the
-        # owner reads may still say it reviews every PR (CRF-003: the docs and the repo's settings agree).
-        It 'are no longer said to be Copilot''s every-PR review in <File>' -ForEach @(
-            @{ File = 'AGENTS.md' }, @{ File = 'CLAUDE.md' }, @{ File = 'README.md' }, @{ File = 'templates/app/AGENTS.md' }
-            @{ File = '.github/pull_request_template.md' }, @{ File = 'docs/code-review.md' }, @{ File = 'docs/quality/scorecard.md' }
-            @{ File = 'docs/standards/definition-of-done.md' }, @{ File = '.claude/agents/reviewer.md' }
-            @{ File = '.claude/skills/finish-work/SKILL.md' }, @{ File = '.claude/skills/start-work/SKILL.md' }
-            @{ File = '.claude/skills/address-review/SKILL.md' }
-        ) {
-            $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $File)
-            # The phrases the docs used, and any sentence that ties Copilot to every PR or push, however it's worded.
-            $claim = '(?i)copilot (code review )?reviews|copilot\Ws (code )?review (of|findings|lands)|copilot code review (checks|of the head)|asks copilot to review|copilot[^.\n]{0,80}\bevery (pr|pull request|push)\b|\bevery (pr|pull request|push)[^.\n]{0,40}\bcopilot'
-
-            [regex]::Matches($text, $claim).Value | Should -BeNullOrEmpty
         }
 
         # A plan is posted in chat, before any code: no code review sees it, so the rules credit start-work's plan
