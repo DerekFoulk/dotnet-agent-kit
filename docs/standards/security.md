@@ -43,7 +43,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "claude settings: .claude/settings.json asks in both modes before installs, New-KitApp (in the kit only: an app's copy leaves out rules for kit scripts the app doesn't get), switching with Set-AgentMode, git reset --hard, git clean, deleting or force-pushing, changing visibility, rulesets, branch protection or merge settings, deleting a repo, releases, gh api calls that write, deleting or editing a PR comment, and edits to agent config, connectors and the mode files; review mode adds asks before merging, repo-settings edits, packages and build or CI edits, in .claude/settings.local.json through Set-AgentMode.ps1"
+        how: "claude settings: .claude/settings.json asks in both modes before installs, New-KitApp (in the kit only: an app's copy leaves out rules for kit scripts the app doesn't get), switching with Set-AgentMode, git reset --hard, git clean, deleting or force-pushing, changing visibility, rulesets, branch protection or merge settings, deleting a repo, releases, gh api calls that write, and edits to agent config, connectors and the mode files; review mode adds asks before merging, repo-settings edits, packages and build or CI edits, in .claude/settings.local.json through Set-AgentMode.ps1"
       - kind: advisory
         in: [kit, app]
         how: "the rest (ADR-0026, ADR-0035); finish-work refuses to merge a PR on a release-please-- branch, and the settings' ask rule for releases backs the ban on publishing one"
