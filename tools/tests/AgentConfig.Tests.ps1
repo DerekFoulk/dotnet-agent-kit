@@ -353,7 +353,6 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'gh pr list --state open' }
                 @{ Tool = $tool; Command = 'gh pr checks 76' }
                 @{ Tool = $tool; Command = 'gh pr diff 76 --name-only' }
-                @{ Tool = $tool; Command = 'gh pr comment 76 --body-file review.md' }
                 @{ Tool = $tool; Command = 'gh run view 123 --log-failed' }
                 @{ Tool = $tool; Command = 'gh run list --branch feat/x' }
                 @{ Tool = $tool; Command = 'gh api repos/DerekFoulk/dotnet-agent-kit/pulls/76/comments --paginate' }
@@ -373,10 +372,6 @@ Describe 'Agent configuration' {
             @{ Tool = 'PowerShell'; Command = 'git rev-parse HEAD' }
             @{ Tool = 'PowerShell'; Command = 'git merge-base HEAD origin/main' }
             @{ Tool = 'PowerShell'; Command = 'git ls-files tools' }
-            @{ Tool = 'PowerShell'; Command = 'Select-Object -First 5' }
-            @{ Tool = 'PowerShell'; Command = 'ConvertFrom-Json -AsHashtable' }
-            @{ Tool = 'PowerShell'; Command = 'Measure-Object -Line' }
-            @{ Tool = 'PowerShell'; Command = 'Test-Path ./docs/adr' }
             @{ Tool = 'PowerShell'; Command = '.\tools\Test-AdrSections.ps1' }
             @{ Tool = 'PowerShell'; Command = '& ./tools/Test-AdrSections.ps1' }
             @{ Tool = 'PowerShell'; Command = '.\.kit\tools\Test-ConventionalTitle.ps1 -Range origin/main..HEAD' }
@@ -420,19 +415,34 @@ Describe 'Agent configuration' {
         # rule may cover (ADR-0075). git fetch, merge and pull are allowed only as exact commands, since --upload-pack
         # runs a program. A 'pwsh -Command "..."' string is opaque to Claude Code's command splitting, as 'bash -c' is
         # in its docs, so a wildcard there would allow anything after a ';' inside the quotes; run Invoke-Pester or a
-        # ./tools script directly instead. ForEach-Object and Where-Object take script blocks, and whether Claude Code
-        # checks the commands inside one isn't documented, so they stay unallowed too.
-        # Review 1 of PR 1 probed the rest: git log, diff and show write any file with --output (.agent-mode, the
-        # settings), diff --no-index and blame --contents print any file, gh pr comment deletes or rewrites a comment,
-        # and a path through tools/.. or a second module after a comma leaves the kit's scripts. Reading files and
-        # read-only git therefore go through the Read, Grep and Glob tools and the Bash tool's built-in read-only
-        # check, which honor the Read deny rules and Claude Code's own list of risky flags; a PowerShell cmdlet that
-        # reads a file or Env: prompts, since a pipeline can hand it a secret's path that no rule's text names.
+        # ./tools script directly instead. ForEach-Object, Where-Object and the other cmdlets that take a script block
+        # stay unallowed too, since whether Claude Code checks the commands inside one isn't documented.
+        # Reviews 1 and 2 of PR 1 probed the rest: git log, diff and show write any file with --output (.agent-mode,
+        # the settings), diff --no-index and blame --contents print any file, gh pr comment deletes or rewrites a
+        # comment or posts a file, and a parent segment in a path or a second module after a comma leaves the kit's
+        # scripts. Reading files and read-only git therefore go through the Read, Grep and Glob tools, which honor the
+        # Read deny rules, and the Bash tool's built-in read-only check, which applies Claude Code's own list of risky
+        # flags; a PowerShell cmdlet that reads a file or Env: prompts, since a pipeline can hand it a secret's path
+        # that no rule's text names.
         It 'leaves <Tool>(<Command>) to prompt' -ForEach @(
             foreach ($tool in 'Bash', 'PowerShell') {
                 @{ Tool = $tool; Command = 'gh pr comment 76 --delete-last --yes' }
                 @{ Tool = $tool; Command = 'gh pr comment 76 --edit-last --body x' }
+                # Review 2: gh reads a --body-file itself, which the Read deny rules don't cover, so posting stays asked.
+                @{ Tool = $tool; Command = 'gh pr comment 76 --body-file ./src/App/.env' }
+                # Review 2: a parent segment anywhere in the path leaves tools/, not only right after it.
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./tools/zz/../../x.ps1' }
             }
+            # Review 2: these cmdlets run a script block (a calculated property, a delay-bind parameter) or a
+            # subexpression, probed in a scratch folder; whether Claude Code checks the commands inside isn't documented.
+            @{ Tool = 'PowerShell'; Command = "Select-Object @{n='x';e={Set-Content ./x.txt y}}" }
+            @{ Tool = 'PowerShell'; Command = 'Measure-Object -Property { Set-Content ./x.txt y }' }
+            @{ Tool = 'PowerShell'; Command = 'Test-Path -Path { Set-Content ./x.txt y }' }
+            @{ Tool = 'PowerShell'; Command = 'ConvertFrom-Json $(Set-Content ./x.txt y)' }
+            @{ Tool = 'PowerShell'; Command = './tools/zz/../../x.ps1' }
+            @{ Tool = 'PowerShell'; Command = './tools/./../x.ps1' }
+            @{ Tool = 'PowerShell'; Command = './tools//../x.ps1' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\zz\..\..\x.ps1' }
             @{ Tool = 'PowerShell'; Command = 'git log -1 --format=%B --output=.claude/settings.json' }
             @{ Tool = 'PowerShell'; Command = 'git diff --output=.agent-mode' }
             @{ Tool = 'PowerShell'; Command = 'git show -s --format=%s --output=.agent-mode HEAD' }
