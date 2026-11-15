@@ -204,7 +204,70 @@ function Invoke-AuthoritiesPageBuild {
         [Parameter(Mandatory)] [string] $RepoRoot,
         [switch] $Check
     )
-    1
+
+    $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).ProviderPath
+    $pagePath = Join-Path $RepoRoot 'docs' 'authorities.md'
+    try {
+        $entries = @(Read-SourceEntry -Path (Join-Path $RepoRoot 'docs' 'authorities.yml'))
+        $cited = @(Get-CitedUrl -StandardsPath (Join-Path $RepoRoot 'docs' 'standards'))
+        $problems = @(Get-AuthoritiesProblem -Cited $cited -Entries $entries)
+        if (-not (Test-Path -LiteralPath $pagePath)) { $problems += 'docs/authorities.md is missing' }
+        else {
+            $current = (Get-Content -Raw -LiteralPath $pagePath) -replace "`r`n", "`n"
+            $expected = Update-SourcesBlock -Text $current -Block (ConvertTo-AuthoritiesBlock -Cited $cited -Entries $entries)
+        }
+    }
+    catch {
+        $problems = @($_.Exception.Message)
+    }
+
+    if ($problems) {
+        foreach ($problem in $problems) { Write-Host "  $problem" -ForegroundColor Red }
+        Write-Host "`n$($problems.Count) problem(s); docs/authorities.md was not written." -ForegroundColor Red
+        return 1
+    }
+    if ($current -ceq $expected) {
+        Write-Host "docs/authorities.md is current: $($cited.Count) citations from $($entries.Count) sources." -ForegroundColor Green
+        return 0
+    }
+    if ($Check) {
+        Write-Host '  out of date: docs/authorities.md' -ForegroundColor Red
+        Write-Host "`nRun ./tools/Build-AuthoritiesPage.ps1 and commit the result." -ForegroundColor Red
+        return 1
+    }
+    Set-Content -LiteralPath $pagePath -Value $expected -NoNewline
+    Write-Host 'updated: docs/authorities.md' -ForegroundColor Cyan
+    0
+}
+
+# The entries of docs/authorities.yml. A missing file, or one without a 'sources' list, is a mistake to fix, not
+# "no sources": every cited URL would then be reported, so stop with the real reason.
+function Read-SourceEntry {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) { throw 'docs/authorities.yml is missing; it classes every source the rules cite (ADR-0070).' }
+    $data = ConvertFrom-Yaml -Yaml (Get-Content -Raw -LiteralPath $Path)
+    if ($data -isnot [System.Collections.IDictionary] -or -not $data.Contains('sources') -or
+        $data['sources'] -is [string] -or $data['sources'] -isnot [System.Collections.IEnumerable]) {
+        throw "docs/authorities.yml has no 'sources' list."
+    }
+    @($data['sources'])
+}
+
+# Replaces what's between the block's markers, which must each be a line of their own; the rest stays the author's.
+function Update-SourcesBlock {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text,
+        [Parameter(Mandatory)] [string] $Block
+    )
+
+    $pattern = '(?ms)^(?<open><!-- sources from docs/standards[^\n]*-->)\n.*?^<!-- end sources -->$'
+    $found = [regex]::Matches($Text, $pattern)
+    if ($found.Count -ne 1) {
+        throw "docs/authorities.md needs one block: a '<!-- sources from docs/standards ... -->' line, then an '<!-- end sources -->' line."
+    }
+    $Text.Substring(0, $found[0].Index) + $found[0].Groups['open'].Value + "`n" + $Block + '<!-- end sources -->' +
+        $Text.Substring($found[0].Index + $found[0].Length)
 }
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
