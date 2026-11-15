@@ -235,7 +235,10 @@ Describe 'Build-AuthoritiesPage.ps1' {
             $output = @(Invoke-AuthoritiesPageBuild -RepoRoot $root -Check 6>&1)
 
             @($output | Where-Object { $_ -is [int] }) | Should -Be @(1)
-            ($output | Where-Object { $_ -is [System.Management.Automation.InformationRecord] }) -join "`n" | Should -Match 'out of date: docs/authorities\.md'
+            $text = ($output | Where-Object { $_ -is [System.Management.Automation.InformationRecord] }) -join "`n"
+            $text | Should -Match 'out of date: docs/authorities\.md'
+            # The first line that differs, so a failure in CI shows what changed without a local run.
+            $text | Should -Match "first difference, line 4:`n\s+expected: The rules cite 1 pages[^`n]*`n\s+found:\s+old"
             Read-Page $root | Should -BeExactly $page
         }
 
