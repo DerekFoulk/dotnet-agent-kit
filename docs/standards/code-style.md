@@ -95,6 +95,19 @@ rules:
         how: "the recommendations no analyzer checks, checked by code review: meaningful names without abbreviations or single letters, no double underscore, t_ for thread-static fields, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
     scope: core
     paths: ["**/*.cs", ".editorconfig"]
+  - id: STY-010
+    statement: "Code follows the Framework Design Guidelines where no analyzer checks them; code review checks the themes docs/code-review.md lists."
+    why: "The owner asked for Microsoft Learn's guidance as rules (owner O7, 2026-11-12). The Framework Design Guidelines pass found 229 of their 369 guidelines are judgment no analyzer checks, and the owner accepted one advisory rule for them, with the themes worth a reviewer's eye in an app listed for code review (owner, 2026-11-13: \"Yes, accept them\"). The themes for libraries a kit app ships (versioning, extensibility, virtual and protected members) wait for the .NET library guidance pass."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-13", "https://learn.microsoft.com/dotnet/standard/design-guidelines/, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/exception-throwing, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/exceptions-and-performance, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/guidelines-for-collections, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/parameter-design, retrieved 2026-11-15"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review: the reviewer agent checks the Framework Design Guidelines themes in docs/code-review.md and ranks a broken one Consider, or higher where it causes a defect; STY-009 gates the guidelines an analyzer checks"
+    scope: core
+    paths: ["**/*.cs"]
 ---
 
 # Code style
