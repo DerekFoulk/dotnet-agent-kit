@@ -9,7 +9,7 @@ namespace Bookmarks.IntegrationTests;
 /// The busy timeout SQLite has on each connection the app opens: how long it waits itself when another connection holds
 /// its write lock. Without one, Microsoft.Data.Sqlite answers a locked database by sleeping a fixed 150 ms before it
 /// tries again, so a write that found the lock taken took at least 150 ms however soon the lock was free: the load
-/// test's POST p95 of 110 to 190 ms (ADR-0069). With one, SQLite polls the lock and the write goes on about as soon as
+/// test's POST p95 of 110 to 190 ms (ADR-0072). With one, SQLite polls the lock and the write goes on about as soon as
 /// it's free.
 /// </summary>
 public sealed class SqliteBusyTimeoutTests

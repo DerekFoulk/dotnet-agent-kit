@@ -1,4 +1,4 @@
-# ADR-0069: SQLite waits for its own write lock in the sample
+# ADR-0072: SQLite waits for its own write lock in the sample
 
 - **Status:** Accepted
 - **Date:** 2026-11-15

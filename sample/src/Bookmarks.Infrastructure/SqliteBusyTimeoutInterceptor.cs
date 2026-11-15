@@ -10,7 +10,7 @@ namespace Bookmarks.Infrastructure;
 /// SQLite takes one write at a time. Without a busy timeout it fails a second writer at once, and Microsoft.Data.Sqlite
 /// then sleeps a fixed 150 ms before trying again, so a write that found the lock taken took at least 150 ms, however
 /// soon the lock was free. With it, SQLite polls the lock in short sleeps that grow to 100 ms, so the write goes on
-/// about as soon as the lock is free (ADR-0069).
+/// about as soon as the lock is free (ADR-0072).
 /// </summary>
 /// <remarks>
 /// The busy timeout is per connection and per statement, while Microsoft.Data.Sqlite's command timeout covers a whole

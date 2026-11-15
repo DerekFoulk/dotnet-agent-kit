@@ -13,6 +13,8 @@ public class BookmarkBenchmarks
     private readonly Uri _url = new("https://example.com/articles/benchmarking-dotnet?ref=kit#budgets");
     private readonly DateTimeOffset _createdAt = new(2026, 11, 12, 0, 0, 0, TimeSpan.Zero);
 
+    /// <summary>Makes one bookmark whose title needs trimming.</summary>
+    /// <returns>The bookmark, so the work isn't optimized away.</returns>
     [Benchmark]
     public Bookmark Create() => Bookmark.Create("user-1", _url, "  Benchmarking in .NET  ", _createdAt);
 }

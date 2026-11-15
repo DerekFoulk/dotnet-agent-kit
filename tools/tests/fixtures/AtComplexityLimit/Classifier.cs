@@ -1,8 +1,10 @@
 namespace AtComplexityLimit;
 
 // 14 if statements: CA1502 reports a cyclomatic complexity of 15.
+/// <summary>A public member of this fixture (STY-008).</summary>
 public static class Classifier
 {
+    /// <summary>A public member of this fixture (STY-008).</summary>
     public static string Name(int code)
     {
         if (code == 1)

@@ -10,6 +10,10 @@ public static class InfrastructureServiceCollectionExtensions
     // It holds no state, so every DbContext shares one, as EF Core's interceptor docs suggest.
     private static readonly SqliteBusyTimeoutInterceptor s_busyTimeout = new();
 
+    /// <summary>Adds the bookmarks database, on SQLite, and its repository.</summary>
+    /// <param name="services">The app's services.</param>
+    /// <param name="connectionString">The SQLite connection string.</param>
+    /// <returns>The same services, to chain more calls.</returns>
     public static IServiceCollection AddBookmarksInfrastructure(this IServiceCollection services, string connectionString)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
