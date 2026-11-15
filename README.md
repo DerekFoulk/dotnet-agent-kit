@@ -421,7 +421,7 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 
 ### Start a new app
 
-Ask an agent in the chat for a new app. Its `new-app` skill asks you the intake cards, each with a recommended answer and its cost (Free, Free tier or Paid, with the price): app type, data, database, sign-in, hosting, and the test tools for each kind of test, free by default (for a commercial app, FluentAssertions 8 is swapped for AwesomeAssertions, ADR-0004). It writes your answers to a file, runs `New-KitApp` with `-WhatIf`, and creates the repo once you say yes. The answers become the app's `docs/app-profile.md`, which its plans start from (ADR-0058). The cards and the test tools live in `templates/app-intake.json`.
+Ask an agent in the chat for a new app. Its `new-app` skill asks you the intake cards, each with a recommended answer and its cost (Free, Free tier or Paid, with the price): app type, data, database, sign-in, hosting, a monthly budget, and the test tools for each kind of test, free by default (for a commercial app, FluentAssertions 8 is swapped for AwesomeAssertions, ADR-0004). It writes your answers to a file, runs `New-KitApp` with `-WhatIf`, and creates the repo once you say yes. The answers become the app's `docs/app-profile.md`, which its plans start from (ADR-0058). The cards and the test tools live in `templates/app-intake.json`.
 
 `tools/New-KitApp.ps1` creates an app repo on your own GitHub account, with the kit's files, settings and ruleset, using your existing `gh` sign-in (ADR-0033). Try it with `-WhatIf` first: it runs the checks and lists the steps, and changes nothing.
 
@@ -457,7 +457,7 @@ If a step fails, it stops and says what's done and what's left, and whether the 
 
 ### Keep an app current
 
-Each new kit release reaches an app as one pull request, with no stored token (ADR-0044, ADR-0045):
+Each new kit release is designed to reach an app as one pull request, with no stored token (ADR-0044, ADR-0045). The kit has no release yet, so this hasn't run end to end (see "Not verified" below):
 
 1. The app's Dependabot (`.github/dependabot.yml`, its `github-actions` entry) opens a PR that moves the kit pin in the app's workflows to the new release, 7 days after it's out. Every kit reference is in one group, so it's one PR. Dependabot may change workflow files; a workflow's own token can't.
 2. On that PR, the app's `.github/workflows/kit-sync.yml` calls `kit-sync.reusable.yml` at the new pin, so the sync that runs is the release's own. It runs only on Dependabot's own GitHub Actions PRs from the app's repo.

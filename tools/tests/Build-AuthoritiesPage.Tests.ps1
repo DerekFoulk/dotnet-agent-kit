@@ -131,6 +131,17 @@ Describe 'Build-AuthoritiesPage.ps1' {
             )
         }
 
+        It 'reports a | in the entry''s <Field>, which the page puts in a table cell' -ForEach @(
+            @{ Field = 'name' }, @{ Field = 'publisher' }, @{ Field = 'covers' }
+        ) {
+            $entry = New-Entry -Name 'W3C' -Match 'https://www.w3.org/'
+            $entry[$Field] = "W3C | WAI"
+            $name = if ($Field -eq 'name') { 'W3C | WAI' } else { 'W3C' }
+
+            @(Get-AuthoritiesProblem -Cited @(New-Cited 'https://www.w3.org/TR/WCAG22/') -Entries @($entry)) |
+                Should -Contain "entry '$name' $Field has a '|', which would break the page's table"
+        }
+
         It 'reports an authority rule that cites no authority''s or project''s page, but not one that cites practitioners too' {
             $entries = @(
                 (New-Entry -Name 'Fowler' -Class 'practitioner' -Match 'https://martinfowler.com/')
