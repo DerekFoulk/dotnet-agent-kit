@@ -25,6 +25,12 @@ public sealed class LayerTests
     public void InfrastructureDoesNotDependOnTheApi() =>
         Layer(Sample.Infrastructure).Should().NotDependOnAny(Layer(Sample.Api)).Check(Sample.Value);
 
+    // SEC-013 (OWASP API3): the endpoints accept and return Contracts types, so they use no domain type, even through
+    // an untyped IResult the OpenAPI document can't see (ContractTests checks what the document shows).
+    [Fact]
+    public void TheEndpointsUseNoDomainType() =>
+        Layer(Sample.Api).And().HaveNameEndingWith("Endpoints").Should().NotDependOnAny(Layer(Sample.Domain)).Check(Sample.Value);
+
     // Persistence ignorance (CRF-014): the domain knows nothing of how it's stored, so it references no EF Core or
     // ADO.NET assembly. The architecture holds only the sample's assemblies, so a rule on EF Core's types would match
     // nothing; the domain's own references are what it's compiled against.
