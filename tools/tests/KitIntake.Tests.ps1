@@ -212,6 +212,17 @@ Describe 'Resolve-KitIntakeAnswer' {
             Should -Be @('xunit', 'moq', 'awesomeassertions', 'bogus', 'fscheck', 'faketimeprovider', 'fakelogger')
     }
 
+    # ARC-012 starts every tool on its free option, so an authority's pick that's Paid is listed but never the
+    # default by itself (ADR-0070).
+    It 'skips an authority pick that''s Paid, so an unanswered kind of test starts free' {
+        $paid = $intake | ConvertTo-Json -Depth 20 | ConvertFrom-Json -AsHashtable
+        @($paid['testKinds'] | Where-Object { $_['id'] -eq 'load' })[0]['roles'][0]['recommendation']['authority']['pick'] = 'azure-load-testing'
+
+        $resolved = Resolve-KitIntakeAnswer -Intake $paid -Answers (New-Answer)
+
+        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'load' }).Tools | ForEach-Object { $_['id'] }) | Should -Be @('locust')
+    }
+
     # Checked before New-KitApp changes anything, so a wrong answer leaves nothing behind.
     It 'refuses <Case>, naming the card and what it accepts' -ForEach @(
         @{ Case = 'a missing card'; Change = { param($a) $a.Remove('hosting') }; Message = "*no answer for 'hosting'*none, container-apps, app-service*" }
