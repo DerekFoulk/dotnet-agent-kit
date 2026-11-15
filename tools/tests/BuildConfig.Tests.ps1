@@ -28,6 +28,16 @@ BeforeDiscovery {
         @{ Fixture = 'MixedOperators'; Diagnostic = 'IDE0048'; Description = 'operators of different precedence with no parentheses to show the order (STY-007)' }
         # STY-008 (rules audit, owner 2026-11-12): XML documentation comments on every publicly visible member.
         @{ Fixture = 'UndocumentedPublicMember'; Diagnostic = 'CS1591'; Description = 'a public member with no XML documentation comment (STY-008)' }
+        # STY-009 (Framework Design Guidelines pass, owner 2026-11-13): the Design, Naming and Usage rules, CA1815 and
+        # CA1819 check internal APIs too, so they reach an app whose types CA1515 made internal; and IDE0250.
+        @{ Fixture = 'InternalVisibleField'; Diagnostic = 'CA1051'; Description = 'a visible instance field on an internal type, a Design rule (STY-009)' }
+        @{ Fixture = 'InternalIncorrectSuffix'; Diagnostic = 'CA1711'; Description = 'an internal type named with the Impl suffix, a Naming rule (STY-009)' }
+        @{ Fixture = 'InternalOperatorWithoutAlternate'; Diagnostic = 'CA2225'; Description = 'an operator on an internal type with no named alternative, a Usage rule (STY-009)' }
+        @{ Fixture = 'InternalStructWithoutEquals'; Diagnostic = 'CA1815'; Description = 'an internal struct that doesn''t override Equals (STY-009)' }
+        @{ Fixture = 'InternalArrayProperty'; Diagnostic = 'CA1819'; Description = 'an internal property that returns an array (STY-009)' }
+        @{ Fixture = 'PrivateArgumentException'; Diagnostic = 'CA2208'; Description = 'a private member that names a parameter it doesn''t have, a Usage rule that checks every member by default (STY-009)' }
+        @{ Fixture = 'PrivateCancellationTokenFirst'; Diagnostic = 'CA1068'; Description = 'a private method that takes its CancellationToken first, a Design rule that checks every member by default (STY-009)' }
+        @{ Fixture = 'ReadonlyStructNotDeclared'; Diagnostic = 'IDE0250'; Description = 'a struct whose members are all read-only but isn''t declared readonly (STY-009)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
