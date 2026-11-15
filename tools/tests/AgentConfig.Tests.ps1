@@ -433,6 +433,34 @@ Describe 'Agent configuration' {
         ) {
             Test-RuleMatch -Kind 'deny' -Tool 'PowerShell' -Command $Command -IgnoreCase | Should -BeTrue -Because "a deny rule should refuse PowerShell($Command)"
         }
+
+        # Look-alikes of the routine commands that write, run a program or drop work, which no allow rule may cover.
+        # git fetch, merge and pull are allowed only as exact commands, since --upload-pack runs a program. A
+        # 'pwsh -Command "..."' string is opaque to Claude Code's command splitting, as 'bash -c' is in its docs, so a
+        # wildcard there would allow anything after a ';' inside the quotes; run Invoke-Pester or a ./tools script
+        # directly instead. ForEach-Object and Where-Object take script blocks, and whether Claude Code checks the
+        # commands inside one isn't documented, so they stay unallowed too.
+        It 'leaves <Tool>(<Command>) to prompt' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'git fetch --upload-pack=./evil.sh origin' }
+                @{ Tool = $tool; Command = 'git fetch origin --upload-pack=./evil.sh' }
+                @{ Tool = $tool; Command = 'git merge feat/other' }
+                @{ Tool = $tool; Command = 'git pull' }
+                @{ Tool = $tool; Command = 'git switch -c feat/x --discard-changes' }
+                @{ Tool = $tool; Command = 'gh pr merge 76 --merge' }
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -Command "Invoke-Pester -Path ./tools/tests; Remove-Item -Recurse -Force ~"' }
+            }
+            @{ Tool = 'PowerShell'; Command = 'git branch -D feat/x' }
+            @{ Tool = 'PowerShell'; Command = 'Set-Content ./AGENTS.md x' }
+            @{ Tool = 'PowerShell'; Command = 'Remove-Item ./docs -Recurse' }
+            @{ Tool = 'PowerShell'; Command = 'ForEach-Object { Remove-Item $_ }' }
+            @{ Tool = 'PowerShell'; Command = 'Where-Object { Remove-Item $_ }' }
+        ) {
+            $allowed = (Test-RuleMatch -Kind 'allow' -Tool $Tool -Command $Command -IgnoreCase) -and
+                -not (Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command) -and
+                -not (Test-RuleMatch -Kind 'deny' -Tool $Tool -Command $Command)
+            $allowed | Should -BeFalse -Because "no allow rule should run $Tool($Command) unasked"
+        }
     }
 
     Context 'MCP servers' {
