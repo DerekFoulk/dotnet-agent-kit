@@ -179,8 +179,44 @@ function Test-KitIntakeSource {
 
     foreach ($card in $Intake['cards']) {
         $label = "card '$($card['id'])'"
-        if (-not $card.Contains('recommendation')) { "$label has no recommendation."; continue }
-        Test-KitRecommendation -Label $label -Recommendation $card['recommendation'] -OptionId @($card['options'] | ForEach-Object { $_['id'] })
+        # An unanswered card's own default, such as the $0 budget, is a rule's, not a recommendation's.
+        if ($card.Contains('default') -and -not (Test-KitText $card['defaultRule'])) {
+            "$label has a default for an unanswered card but no defaultRule naming the rule that sets it."
+        }
+        if ($card['recommendation'] -isnot [Collections.IDictionary]) { "$label has no recommendation."; continue }
+        if (-not $card.Contains('dependsOn')) {
+            Test-KitRecommendation -Label $label -Recommendation $card['recommendation'] -OptionId @($card['options'] | ForEach-Object { $_['id'] })
+            continue
+        }
+        # One recommendation for each answer of the other card that leaves more than one option.
+        $parentId = $card['dependsOn']
+        $parent = @($Intake['cards'] | Where-Object { $_['id'] -ceq $parentId })
+        $parentOptions = @($parent | ForEach-Object { $_['options'] } | ForEach-Object { $_['id'] })
+        foreach ($answer in $card['recommendation'].Keys) {
+            if ($answer -cnotin $parentOptions) { "$label has a recommendation for $parentId '$answer', which isn't an option of that card." }
+        }
+        foreach ($answer in $parentOptions) {
+            $fitting = @($card['options'] | Where-Object { $answer -cin @($_['fits']) } | ForEach-Object { $_['id'] })
+            if ($fitting.Count -lt 2) { continue }
+            $forAnswer = "$label for $parentId '$answer'"
+            if ($card['recommendation'][$answer] -isnot [Collections.IDictionary]) { "$forAnswer has no recommendation."; continue }
+            Test-KitRecommendation -Label $forAnswer -Recommendation $card['recommendation'][$answer] -OptionId $fitting
+        }
+    }
+    foreach ($kind in $Intake['testKinds']) {
+        $roleIds = @($kind['roles'] | ForEach-Object { $_['id'] })
+        foreach ($tool in $kind['tools']) {
+            if ($tool['role'] -cnotin $roleIds) {
+                "tool '$($tool['id'])' of $($kind['id']) tests has role '$($tool['role'])', which isn't one of its roles: $($roleIds -join ', ')."
+            }
+        }
+        foreach ($role in $kind['roles']) {
+            $label = "role '$($kind['id'])/$($role['id'])'"
+            $toolIds = @($kind['tools'] | Where-Object { $_['role'] -ceq $role['id'] } | ForEach-Object { $_['id'] })
+            if (-not $toolIds) { "$label has no tools."; continue }
+            if ($role['recommendation'] -isnot [Collections.IDictionary]) { "$label has no recommendation."; continue }
+            Test-KitRecommendation -Label $label -Recommendation $role['recommendation'] -OptionId $toolIds
+        }
     }
 }
 
