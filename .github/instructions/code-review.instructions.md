@@ -32,13 +32,13 @@ If you find nothing, say so.
   - a dependency added with no source the kit's standards or ADRs name for it;
   - anything in `AGENTS.md`'s "Always ask" done without the owner's yes.
 - Craft (`docs/standards/craft.md`): any craft rule broken, a suppression or raised limit that doesn't meet its "Exceptions", and everything its "What the checks miss" lists, such as a copy with renamed variables, which the duplicate-code check can't see.
-- The Framework Design Guidelines that no analyzer checks (STY-010; STY-009 gates the rest), in a type's API, public or internal. Rank each **Consider**, or higher where it causes a defect:
+- The Framework Design Guidelines that no analyzer checks (STY-010; STY-009 gates the rest), in a type's API, public or internal (the guidelines are written for public APIs; the kit applies them to internal ones too, as STY-009 does). Rank each **Consider**, or higher where it causes a defect:
   - names that say what a thing is, with no abbreviations;
-  - a Try method (`bool TryParse(string, out T)`) beside one that throws, where callers expect the failure;
-  - exceptions, not error codes, for a member that can't do what its name says;
+  - exceptions, not error codes, for a member that can't do what its name says; a failure callers expect often goes through a Try method;
+  - a Try method returns only `bool`, with its result in an `out` parameter (`bool TryParse(string, out T)`), still throws for any other failure, and sits beside a member that throws;
   - an empty collection or array, never `null`, from a method or property that returns one;
-  - get-only properties where callers shouldn't set them;
-  - an enum, not a Boolean parameter, where a call like `Open(path, true)` doesn't say what `true` means;
+  - get-only properties where callers shouldn't set them, remembering that a get-only property of a mutable type, such as a `List<T>`, can still be changed;
+  - an enum, not Booleans, where a member would take two or more Boolean parameters or a Boolean might later need a third value; a constructor's Boolean that only sets a Boolean property is fine;
   - events typed `EventHandler<TEventArgs>`, with an `EventArgs` subclass for their data;
   - operator overloads only on types that behave like primitives, such as a money or vector type.
 - A rule or doc that contradicts the ADR it cites, or another rule (CRF-003: each fact has one source).

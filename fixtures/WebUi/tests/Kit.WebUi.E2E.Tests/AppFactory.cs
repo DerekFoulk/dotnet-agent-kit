@@ -18,6 +18,7 @@ internal class AppFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        ArgumentNullException.ThrowIfNull(builder);
         builder.UseSolutionRelativeContentRoot(Path.Combine("fixtures", "WebUi", "src", typeof(Program).Assembly.GetName().Name!));
         builder.ConfigureServices(services =>
             services.AddSingleton<IStartupFilter>(provider => new LoopbackAddressFilter(provider.GetRequiredService<IServer>())));

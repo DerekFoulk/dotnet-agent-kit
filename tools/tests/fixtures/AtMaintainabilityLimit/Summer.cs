@@ -1,8 +1,10 @@
 namespace AtMaintainabilityLimit;
 
 // 475 statements in one method: CA1505 reports a maintainability index of 10, Microsoft's limit, so it builds.
+/// <summary>A public member of this fixture (STY-008).</summary>
 public static class Summer
 {
+    /// <summary>A public member of this fixture (STY-008).</summary>
     public static int Sum(int code)
     {
         int total = 0;
