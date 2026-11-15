@@ -6,8 +6,10 @@ namespace Bookmarks.Infrastructure;
 /// <summary>The bookmarks database (SQLite).</summary>
 public sealed class BookmarksDbContext(DbContextOptions<BookmarksDbContext> options) : DbContext(options)
 {
+    /// <summary>Every user's bookmarks; the repository reads only the owner's (SEC-009).</summary>
     public DbSet<Bookmark> Bookmarks => Set<Bookmark>();
 
+    /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
