@@ -11,6 +11,8 @@ BeforeAll {
 }
 
 Describe 'the intake data' {
+    BeforeAll { Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force }
+
     # The guide holds the database options' prices and trade-offs (CRF-003); the card names the same options.
     It 'names each database option as docs/database-guide.md does' {
         $guide = Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'database-guide.md')
@@ -36,7 +38,7 @@ Describe 'the intake data' {
     # The agent shows each card with AskUserQuestion: a header of at most 12 characters, a question, and 2 to 4
     # options, the recommended one first (COM-001). A card that depends on another shows only the options that
     # fit that card's answer, so each such subset has to fit too, with at least one option.
-    It 'has cards that AskUserQuestion can show, each with its recommended option first' {
+    It 'has cards that AskUserQuestion can show' {
         $intake | Should -Not -BeNullOrEmpty -Because 'templates/app-intake.json holds the cards'
         @($intake['cards'].id) | Should -Be @('appType', 'data', 'database', 'signIn', 'hosting', 'budget')
         foreach ($card in $intake['cards']) {
@@ -121,18 +123,25 @@ Describe 'the intake data' {
             if ($cost['label'] -eq 'Free tier') { $cost['free'] | Should -Not -BeNullOrEmpty -Because "$($entry['id']) says what's free" }
         }
         foreach ($card in $pricedCards) {
-            $card['options'][0]['cost']['label'] | Should -BeIn @('Free', 'Free tier') -Because "card $($card['id'])'s recommendation costs nothing up to its free amount"
+            $card['recommendation'] | Should -Not -BeNullOrEmpty -Because "card $($card['id']) has a recommendation"
+            $pick = @($card['options'] | Where-Object id -EQ $card['recommendation']['agent']['pick'])
+            $pick[0]['cost']['label'] | Should -BeIn @('Free', 'Free tier') -Because "card $($card['id'])'s agent recommendation costs nothing up to its free amount"
         }
         foreach ($kind in $intake['testKinds']) {
             $kind['tools'] | ForEach-Object { $_['license'] | Should -Not -BeNullOrEmpty -Because "$($_['id']) names its license" }
-            $defaults = @($kind['tools'] | Where-Object { $_['default'] })
-            $defaults | Should -Not -BeNullOrEmpty -Because "the $($kind['id']) kind has a default"
-            # Free, or free for a non-commercial app, as FluentAssertions 8 is (ADR-0004).
-            $defaults | ForEach-Object {
-                ($_['cost']['label'] -eq 'Free' -or ($_['cost']['label'] -eq 'Free tier' -and $_['cost']['free'] -like 'Non-commercial use*')) |
-                    Should -BeTrue -Because "$($_['id']) is a default, so it's free, at least for a non-commercial app"
+            # The agent's pick is the default when neither the developer nor the authority has one, so it's free.
+            $kind['roles'] | Should -Not -BeNullOrEmpty -Because "the $($kind['id']) kind lists the roles its tools fill"
+            foreach ($role in $kind['roles']) {
+                $pick = @($kind['tools'] | Where-Object id -EQ $role['recommendation']['agent']['pick'])
+                $pick[0]['cost']['label'] | Should -Be 'Free' -Because "$($kind['id'])/$($role['id'])'s agent pick, $($pick[0]['id']), is a default for anyone, so it's free"
             }
         }
+    }
+
+    # ADR-0070: every card and every role names the authority's recommendation (or that it has none) and the agent's.
+    It 'gives every card and every test tool role both labeled sources' {
+        @($intake['testKinds'] | Where-Object { -not $_['roles'] } | ForEach-Object { $_['id'] }) | Should -BeNullOrEmpty -Because 'every kind of test lists its roles'
+        @(Test-KitIntakeSource -Intake $intake) | Should -BeNullOrEmpty
     }
 
     # ADR-0004: FluentAssertions 8 is free only while the app isn't sold or paid for. A commercial app swaps it for
@@ -148,9 +157,11 @@ Describe 'the intake data' {
     }
 
     # ADR-0057, the owner's decision of 2026-11-11.
-    It 'offers load testing as the owner decided: Locust by default, JMeter beside it, Azure Load Testing and NBomber as Paid' {
-        $load = @($intake['testKinds'] | Where-Object id -EQ 'load')[0]['tools']
-        @($load | Where-Object { $_['default'] }).id | Should -Be @('locust')
+    It 'offers load testing as the owner decided: Locust as the agent''s pick, JMeter beside it, Azure Load Testing and NBomber as Paid' {
+        $kind = @($intake['testKinds'] | Where-Object id -EQ 'load')[0]
+        $load = $kind['tools']
+        $kind['roles'] | Should -Not -BeNullOrEmpty -Because 'load tests list the role Locust fills'
+        @($kind['roles'] | ForEach-Object { $_['recommendation']['agent']['pick'] }) | Should -Be @('locust')
         $byId = @{}; $load | ForEach-Object { $byId[$_['id']] = $_ }
         $byId['locust']['license'] | Should -Be 'MIT'
         $byId['jmeter']['license'] | Should -Be 'Apache-2.0'
@@ -168,7 +179,8 @@ Describe 'the intake data' {
     It 'runs UI tests on every PR, with Playwright, axe and WebApplicationFactory by default, and names axe''s licenses' {
         $ui = @($intake['testKinds'] | Where-Object id -EQ 'ui')[0]
         $ui['runs'] | Should -Be 'Every PR, in the shared .NET CI'
-        @($ui['tools'] | Where-Object { $_['default'] }).id | Should -Be @('playwright', 'axe', 'webapplicationfactory')
+        $ui['roles'] | Should -Not -BeNullOrEmpty -Because 'UI tests list the roles their tools fill'
+        @($ui['roles'] | ForEach-Object { $_['recommendation']['agent']['pick'] }) | Should -Be @('playwright', 'axe', 'webapplicationfactory')
         $byId = @{}; $ui['tools'] | ForEach-Object { $byId[$_['id']] = $_ }
         $byId['webapplicationfactory']['package'] | Should -Be 'Microsoft.AspNetCore.Mvc.Testing'
         $byId['webapplicationfactory']['note'] | Should -Match 'Kestrel'
@@ -195,7 +207,9 @@ Describe 'Resolve-KitIntakeAnswer' {
         ($resolved.Cards | Where-Object Id -EQ 'hosting').Option['id'] | Should -Be 'none'
         @($resolved.TestKinds.Kind | ForEach-Object { $_['id'] }) | Should -Be @($intake['testKinds'].id)
         @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'load' }).Tools | ForEach-Object { $_['id'] }) | Should -Be @('locust')
-        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) | Should -Not -Contain 'awesomeassertions'
+        # One tool for each role; with no developer file, the agent picks AwesomeAssertions, free for any app (ADR-0070).
+        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) |
+            Should -Be @('xunit', 'moq', 'awesomeassertions', 'bogus', 'fscheck', 'faketimeprovider', 'fakelogger')
     }
 
     # Checked before New-KitApp changes anything, so a wrong answer leaves nothing behind.
@@ -280,12 +294,20 @@ Describe 'Get-KitIntake' {
     }
 
     It 'refuses <Case>' -ForEach @(
-        @{ Case = 'another schemaVersion'; Text = '{ "schemaVersion": 2, "cards": [], "testKinds": [] }'; Message = "*schemaVersion 2*reads version 1*same kit version*" }
-        @{ Case = 'a schemaVersion written as text'; Text = '{ "schemaVersion": "1", "cards": [], "testKinds": [] }'; Message = "*schemaVersion 1*reads version 1*" }
-        @{ Case = 'no schemaVersion'; Text = '{ "cards": [], "testKinds": [] }'; Message = "*schemaVersion none*reads version 1*" }
+        @{ Case = 'another schemaVersion'; Text = '{ "schemaVersion": 1, "cards": [], "testKinds": [] }'; Message = "*schemaVersion 1*reads version 2*same kit version*" }
+        @{ Case = 'a schemaVersion written as text'; Text = '{ "schemaVersion": "2", "cards": [], "testKinds": [] }'; Message = "*schemaVersion 2*reads version 2*" }
+        @{ Case = 'no schemaVersion'; Text = '{ "cards": [], "testKinds": [] }'; Message = "*schemaVersion none*reads version 2*" }
         @{ Case = 'text that isn''t a JSON object'; Text = '[1, 2]'; Message = "*isn't a JSON object*" }
     ) {
         { Get-KitIntake -Text $Text } | Should -Throw $Message
+    }
+
+    # ADR-0070: New-KitApp and the new-app skill both read the intake through Get-KitIntake, so a default with no
+    # labeled source never reaches a new app.
+    It 'refuses an intake whose defaults have no labeled source, naming each' {
+        $text = '{ "schemaVersion": 2, "cards": [ { "id": "hosting", "options": [ { "id": "none" } ] } ], "testKinds": [] }'
+
+        { Get-KitIntake -Text $text } | Should -Throw "*no labeled source*card 'hosting' has no recommendation*ADR-0070*"
     }
 }
 
@@ -417,6 +439,7 @@ Describe 'Test-KitIntakeSource' {
     # default for an unanswered card has to come from a rule.
     It 'reports <Case>' -ForEach @(
         @{ Case = 'a tool in no listed role'; Change = { param($i) $i['testKinds'][0]['tools'][1]['role'] = 'stress' }; Message = "*tool 'jmeter' of load tests has role 'stress', which isn't one of its roles: load*" }
+        @{ Case = 'a kind of test with no roles'; Change = { param($i) $i['testKinds'][0].Remove('roles') }; Message = "*load tests list no roles*" }
         @{ Case = 'a role with no tools'; Change = { param($i) $i['testKinds'][0]['roles'] += @{ id = 'soak'; name = 'Soak'; recommendation = @{} } }; Message = "*role 'load/soak' has no tools*" }
         @{ Case = 'a role with no recommendation'; Change = { param($i) $i['testKinds'][0]['roles'][0].Remove('recommendation') }; Message = "*role 'load/load' has no recommendation*" }
         @{ Case = 'a role whose agent picks a tool outside it'; Change = { param($i) $i['testKinds'][0]['roles'][0]['recommendation']['agent']['pick'] = 'k6' }; Message = "*role 'load/load'*agent picks 'k6', which isn't an option: locust, jmeter*" }
