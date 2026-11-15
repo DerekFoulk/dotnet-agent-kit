@@ -4,8 +4,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Kit.CodeShape;
 
-/// <summary>Finds types with more than <see cref="Limits.MembersPerType"/> members (CRF-011). A type's members are
-/// the methods, constructors, finalizers, properties, indexers, events, fields and operators it declares, a field or
+/// <summary>Finds classes, structs, interfaces and records with more than <see cref="Limits.MembersPerType"/> members
+/// (CRF-011); an enum's values are data, so enums aren't measured. A type's members are the methods, constructors, finalizers, properties, indexers, events, fields and operators it declares, a field or
 /// event declaration counting once for each name it lists, and a record's positional parameters, which the compiler
 /// makes properties. A nested type isn't a member: it's measured on its own. A partial type is measured whole, across
 /// its project's hand-written files, with a partial member counted once, and reported once, at its first part. What a
