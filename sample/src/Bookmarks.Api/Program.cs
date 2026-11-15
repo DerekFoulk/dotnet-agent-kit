@@ -36,10 +36,11 @@ app.UseApiHsts();
 // After the exception handler and status code pages, so a failed sign-in and the 401 or 403 that follows are Problem
 // Details (WebApplication would add them by itself, but ahead of both), and before MapDefaultEndpoints, whose output
 // cache must run after them (see its remarks).
+// The rate limiter runs after authentication, so a signed-in caller is limited by their user id, and before
+// authorization, so a caller with no token or a forged one is limited by IP address before the 401 (review 1).
 app.UseAuthentication();
-app.UseAuthorization();
-// After authentication, so the limit is each signed-in user's, not their IP address's.
 app.UseRateLimiter();
+app.UseAuthorization();
 
 // The sample creates its schema on startup; a real app would use migrations.
 using (IServiceScope scope = app.Services.CreateScope())

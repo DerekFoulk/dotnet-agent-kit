@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -29,7 +30,15 @@ internal static class ApiHostingExtensions
             kestrel.AddServerHeader = false;
             kestrel.Limits.MaxRequestBodySize = MaxRequestBodyBytes;
         });
-        builder.Services.AddApiRateLimiting(builder.Configuration.GetSection("RateLimiting").Get<RateLimitSettings>() ?? new RateLimitSettings());
+        RateLimitSettings settings = builder.Configuration.GetSection("RateLimiting").Get<RateLimitSettings>() ?? new RateLimitSettings();
+        // A limit below one would fail every request, so the app refuses to start with one.
+        if (settings.BurstLimit < 1 || settings.RequestsPerSecond < 1)
+        {
+            throw new InvalidOperationException(
+                $"RateLimiting:BurstLimit and RateLimiting:RequestsPerSecond must be at least 1; they're {settings.BurstLimit} and {settings.RequestsPerSecond}.");
+        }
+
+        builder.Services.AddApiRateLimiting(settings);
         return builder;
     }
 
@@ -59,6 +68,14 @@ internal static class ApiHostingExtensions
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            // Retry-After says how long until the caller's bucket has a token again; status code pages give the empty 429
+            // its Problem Details body.
+            options.OnRejected = (context, _) =>
+            {
+                TimeSpan wait = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter) ? retryAfter : TimeSpan.FromSeconds(1);
+                context.HttpContext.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(wait.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+                return ValueTask.CompletedTask;
+            };
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                 RateLimitPartition.GetTokenBucketLimiter(Caller(context), _ => new TokenBucketRateLimiterOptions
                 {
