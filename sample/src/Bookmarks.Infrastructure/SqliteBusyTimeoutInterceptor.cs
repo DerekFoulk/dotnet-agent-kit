@@ -1,5 +1,6 @@
 using System.Data.Common;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using SQLitePCL;
 
@@ -14,19 +15,23 @@ namespace Bookmarks.Infrastructure;
 internal sealed class SqliteBusyTimeoutInterceptor : DbConnectionInterceptor
 {
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData) =>
-        SetBusyTimeout((SqliteConnection)connection);
+        SetBusyTimeout(connection, eventData);
 
     public override Task ConnectionOpenedAsync(DbConnection connection, ConnectionEndEventData eventData, CancellationToken cancellationToken = default)
     {
-        SetBusyTimeout((SqliteConnection)connection);
+        SetBusyTimeout(connection, eventData);
         return Task.CompletedTask;
     }
 
-    // SQLite's own call, through the handle Microsoft.Data.Sqlite exposes for it ("Interoperability" in its docs).
-    private static void SetBusyTimeout(SqliteConnection connection)
+    // A command runs for EF Core's command timeout when one is set, and for the connection's Default Timeout otherwise.
+    // The call is SQLite's own, through the handle Microsoft.Data.Sqlite exposes for it ("Interoperability" in its docs).
+    private static void SetBusyTimeout(DbConnection connection, ConnectionEndEventData eventData)
     {
-        int result = raw.sqlite3_busy_timeout(connection.Handle, Milliseconds(connection.DefaultTimeout));
-        SqliteException.ThrowExceptionForRC(result, connection.Handle);
+        ArgumentNullException.ThrowIfNull(eventData);
+        SqliteConnection sqlite = (SqliteConnection)connection;
+        int seconds = eventData.Context?.Database.GetCommandTimeout() ?? sqlite.DefaultTimeout;
+        int result = raw.sqlite3_busy_timeout(sqlite.Handle, Milliseconds(seconds));
+        SqliteException.ThrowExceptionForRC(result, sqlite.Handle);
     }
 
     // A timeout of 0 means none to Microsoft.Data.Sqlite, but turns SQLite's busy handler off; SQLite's longest wait
