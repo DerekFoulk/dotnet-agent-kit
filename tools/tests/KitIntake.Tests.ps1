@@ -634,3 +634,26 @@ Describe 'Get-KitIntakeDefault' {
         @(Get-KitIntakeDefault -Intake $intake -Preference $plan).Count | Should -Be $kitDefaults.Count
     }
 }
+
+# Reviewer, round 1, finding 3: New-KitApp doesn't read the preferences file, so the new-app skill writes every kind
+# of test's tools from the defaults it showed, the developer's picks included.
+Describe 'Get-KitTestToolAnswer' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        $preference = [pscustomobject]@{ Choice = 'unit/assertions'; When = $null; Pick = 'fluentassertions'; Stated = 'FluentAssertions'; Date = '2026-11-01'; Source = 'ADR-0003' }
+        $answer = Get-KitTestToolAnswer -Default (Get-KitIntakeDefault -Intake $intake -Preference $preference)
+    }
+
+    It 'names every kind of test''s tools as the defaults show them, the developer''s picks included' {
+        @($answer.Keys) | Should -Be @($intake['testKinds'] | ForEach-Object { $_['id'] })
+        $answer['unit'] | Should -Be @('xunit', 'moq', 'fluentassertions', 'bogus', 'fscheck', 'faketimeprovider', 'fakelogger')
+    }
+
+    It 'gives New-KitApp answers that resolve to the same tools' {
+        $answers = [ordered]@{ appType = 'web-api-blazor'; data = 'relational'; database = 'azure-sql-free'; signIn = 'entra-external-id'; hosting = 'none'; testTools = $answer }
+
+        $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers $answers
+
+        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) | Should -Contain 'fluentassertions'
+    }
+}

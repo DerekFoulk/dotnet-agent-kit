@@ -398,4 +398,11 @@ function New-KitDefaultRow {
     }
 }
 
-Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference, Get-KitIntakeDefault
+# The answers' testTools from the defaults the new-app skill showed: each kind of test with its roles' picks.
+function Get-KitTestToolAnswer {
+    param([Parameter(Mandatory)] [object[]] $Default)
+
+    [ordered]@{}
+}
+
+Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference, Get-KitIntakeDefault, Get-KitTestToolAnswer
