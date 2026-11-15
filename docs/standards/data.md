@@ -122,7 +122,7 @@ rules:
     scope: core
     paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
   - id: DAT-010
-    statement: "Raw SQL is parameterized: FromSql, SqlQuery and ExecuteSql with an interpolated string, which EF Core turns into parameters, or their Raw forms with explicit parameters; a caller's value is never concatenated or interpolated into a Raw method, and a part that can't be a parameter, such as a column name, is checked against a fixed list first, as EF Core's page shows for dynamic SQL."
+    statement: "Raw SQL is parameterized: FromSql, SqlQuery and ExecuteSql with an interpolated string, which EF Core turns into parameters, or their Raw forms with explicit parameters; a caller's value is never concatenated or interpolated into a Raw method. Where a query needs a part that can't be a parameter, such as a column name, the code picks one of a fixed set of query texts it wrote itself, so no Raw call ever carries a caller's text; EF Core's page leaves sanitizing such a part to the developer, and the kit takes the stricter way."
     why: "SQL built from a caller's text is SQL injection, OWASP's oldest top risk; EF Core's interpolated-string methods parameterize every value, and its own analyzer EF1002 flags the unsafe form (rules audit, owner 2026-11-12, which asked to verify EF1002)."
     layer: outside
     basis: authority
@@ -134,7 +134,7 @@ rules:
         how: "build: EF Core's analyzer EF1002 (an interpolated string passed to a Raw method) is a warning, which STY-004 makes an error; tools/tests/BuildConfig.Tests.ps1 (the RawSqlInterpolation fixture, where EF1002 reports both its SqlQueryRaw and its ExecuteSqlRaw call)"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks a Raw call built by concatenation, which EF1002 doesn't see, and that a dynamic identifier is checked against a fixed list"
+        how: "code review checks a Raw call built by concatenation (whether EF1002 also reports one isn't verified) and that a dynamic part comes from a fixed set of query texts"
     scope: core
     paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
 ---
