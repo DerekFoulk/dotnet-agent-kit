@@ -11,7 +11,7 @@ Facts that shape the design (checked 2026-11-03):
 - GitHub's GraphQL `resolveReviewThread` takes a `resolutionReason` of `ADDRESSED`, `WONT_FIX` or `INVALID` (read from the live API schema). The API has no field to read a reason back.
 - On PRs 1–5, Copilot left one review per pull request, and its findings could refer to commits older than the branch head. Whether a re-review adds a new review or updates the old one isn't confirmed, so the module reads the latest.
 - Copilot's summary can list an issue that has no inline thread.
-- An agent can only react if something wakes it. The Claude Code desktop app offers a PR monitor. Its tool description says it wakes a session when review comments, CI failures or merge conflicts arrive; that hasn't been observed on a kit PR yet. The owner approves turning it on. (Update, 2026-11-14: it has since woken sessions on kit PRs #68 to #73; it needs no ask since 2026-11-13; and `Wait-PullRequest` is the kit's own watcher; see ADR-0064's update.)
+- An agent can only react if something wakes it. The Claude Code desktop app offers a PR monitor. Its tool description says it wakes a session when review comments, CI failures or merge conflicts arrive; that hasn't been observed on a kit PR yet. The owner approves turning it on. (Update, 2026-11-14: it has since woken sessions on kit PRs #68 to #73; it needs no ask since 2026-11-13; and `Wait-PullRequest` is the kit's own watcher; see ADR-0064's update. Since ADR-0068, the monitor is optional and off by default for kit PRs: `Wait-PullRequest` covers what it did, at fewer model calls.)
 
 ## Options
 
