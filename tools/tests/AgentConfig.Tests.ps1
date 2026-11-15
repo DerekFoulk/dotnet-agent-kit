@@ -161,6 +161,9 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'git push origin ":feat/x"' }
                 @{ Tool = $tool; Command = "git push origin '+feat/x'" }
                 @{ Tool = $tool; Command = 'git push origin feat/x -d' }
+                # Review 3 of ADR-0075's PR: 'git push *' is allowed, and these run a program (probed with a local bare repo).
+                @{ Tool = $tool; Command = 'git push --receive-pack=./evil.sh origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --exec=./evil.sh origin feat/x' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
@@ -316,10 +319,11 @@ Describe 'Agent configuration' {
         }
 
         # ADR-0026 leaves pushes to main to the GitHub ruleset. ADR-0035 adds asks, never denies, for deleting and
-        # force-pushing, which the ruleset doesn't guard on other branches; an ordinary push stays unasked.
+        # force-pushing, which the ruleset doesn't guard on other branches; an ordinary push stays unasked. ADR-0075
+        # adds asks for the two push options that run a program.
         It 'leaves pushes to the GitHub ruleset: no deny rule matches git push, and only destructive forms ask' {
             @(Get-RuleList 'deny') -match 'git push' | Should -BeNullOrEmpty
-            @(Get-RuleList 'ask') -match 'git \*?push' | Where-Object { $_ -notmatch '--delete|-d( |\))|--force|-f|:\*|\+\*|--mirror|--prune' } | Should -BeNullOrEmpty
+            @(Get-RuleList 'ask') -match 'git \*?push' | Where-Object { $_ -notmatch '--delete|-d( |\))|--force|-f|:\*|\+\*|--mirror|--prune|--receive-pack|--exec' } | Should -BeNullOrEmpty
         }
 
         It 'allows git switch only as the exact command <Rule>' -ForEach @(
