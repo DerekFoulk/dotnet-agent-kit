@@ -14,22 +14,23 @@ namespace Bookmarks.IntegrationTests;
 public sealed class SqliteBusyTimeoutTests
 {
     private const string SevenSecondTimeout = "DataSource=:memory:;Default Timeout=7";
+    private const long OneSecond = 1_000;
 
     [Fact]
-    public async Task OpenConnectionAsyncWaitsForALockedDatabaseAsLongAsTheConnectionsDefaultTimeout()
+    public async Task OpenConnectionAsyncWaitsUpToOneSecondForALockedDatabase()
     {
         long busyTimeout = await BusyTimeoutAfterOpenAsync(SevenSecondTimeout);
 
-        busyTimeout.Should().Be(7_000, "a command may run for the connection's Default Timeout, 7 seconds");
+        busyTimeout.Should().Be(OneSecond, "SQLite waits for the lock itself for a second per statement, and the 7-second command timeout bounds the command");
     }
 
     [Fact]
-    public void OpenConnectionWaitsForALockedDatabaseAsLongAsTheConnectionsDefaultTimeout()
+    public void OpenConnectionWaitsUpToOneSecondForALockedDatabase()
     {
         // EnsureCreated opens its connection this way, at startup.
         long busyTimeout = BusyTimeoutAfterOpen(SevenSecondTimeout);
 
-        busyTimeout.Should().Be(7_000, "a command may run for the connection's Default Timeout, 7 seconds");
+        busyTimeout.Should().Be(OneSecond, "SQLite waits for the lock itself for a second per statement, and the 7-second command timeout bounds the command");
     }
 
     [Theory]
