@@ -155,7 +155,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
-    sources: ["owner, 2026-11-11", "ADR-0050"]
+    sources: ["owner, 2026-11-11", "owner, 2026-11-12", "ADR-0050", "ADR-0071"]
     enforcement:
       - kind: gate
         in: [kit, app]

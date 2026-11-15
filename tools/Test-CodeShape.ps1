@@ -1,8 +1,8 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Fails when C# code breaks a CRF-011 limit that no analyzer checks: nesting, statements per member, file length
-    or LCOM4 (ADR-0050).
+    Fails when C# code breaks a CRF-011 limit that no analyzer checks: nesting, statements per member, file length,
+    members per type, public types per file or LCOM4 (ADR-0050, ADR-0071).
 
 .DESCRIPTION
     Lists the .slnx solution's projects (KitSolution.psm1) and skips any that isn't C#. For each, it asks MSBuild for

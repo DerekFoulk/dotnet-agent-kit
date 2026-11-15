@@ -320,7 +320,8 @@ jobs:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-EmptyProjects.ps1" -Solution $env:SOLUTION'
 
-      # CRF-011's limits, which no analyzer checks: nesting, statements per member, file length and LCOM4 (ADR-0050).
+      # CRF-011's limits, which no analyzer checks: nesting, statements per member, file length, members per type, public
+      # types per file and LCOM4 (ADR-0050, ADR-0071).
       # It runs from the repo root, so the repo's global.json picks the SDK that builds the kit's checking tool.
       # It evaluates every project with MSBuild, and a MAUI project doesn't evaluate here, without workloads; with UI
       # projects, the ui job runs it on Windows instead (ADR-0059).
