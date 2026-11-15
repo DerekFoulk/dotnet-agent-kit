@@ -467,6 +467,8 @@ Describe 'Test-KitIntakeSource' {
         @{ Case = 'an authority page that isn''t a URL'; Change = { param($c) $c['recommendation']['authority']['source'] = 'Microsoft Learn' }; Message = "*card 'hosting'*authority*https:// page*" }
         @{ Case = 'an authority with no date read'; Change = { param($c) $c['recommendation']['authority']['read'] = 'last week' }; Message = "*card 'hosting'*authority*date it was read*" }
         @{ Case = 'an authority pick that isn''t an option'; Change = { param($c) $c['recommendation']['authority']['pick'] = 'aks' }; Message = "*card 'hosting'*authority picks 'aks'*isn't an option*none, app-service*" }
+        @{ Case = 'an authority pick the page only says you can use'; Change = { param($c) $c['recommendation']['authority']['pick'] = 'none'; $c['recommendation']['authority']['says'] = 'You can use it' }; Message = "*card 'hosting'*authority picks 'none'*recommends*should*CONSIDER*" }
+        @{ Case = 'an authority pick whose words say there''s no recommendation'; Change = { param($c) $c['recommendation']['authority']['pick'] = 'none'; $c['recommendation']['authority']['says'] = 'No recommendation: it lists several' }; Message = "*card 'hosting'*authority picks 'none'*no pick*" }
         @{ Case = 'no agent recommendation'; Change = { param($c) $c['recommendation'].Remove('agent') }; Message = "*card 'hosting'*no agent recommendation*" }
         @{ Case = 'an agent pick with no reason'; Change = { param($c) $c['recommendation']['agent'].Remove('reason') }; Message = "*card 'hosting'*agent*reason*" }
         @{ Case = 'an agent that picks nothing'; Change = { param($c) $c['recommendation']['agent']['pick'] = $null }; Message = "*card 'hosting'*agent picks nothing*" }
@@ -647,6 +649,14 @@ Describe 'Get-KitTestToolAnswer' {
     It 'names every kind of test''s tools as the defaults show them, the developer''s picks included' {
         @($answer.Keys) | Should -Be @($intake['testKinds'] | ForEach-Object { $_['id'] })
         $answer['unit'] | Should -Be @('xunit', 'moq', 'fluentassertions', 'bogus', 'fscheck', 'faketimeprovider', 'fakelogger')
+    }
+
+    # Reviewer, round 2, finding 2: an unused preference (a typo) is reported, not passed on to New-KitApp.
+    It 'leaves out a preference no question uses, so New-KitApp still takes the answers' {
+        $typo = [pscustomobject]@{ Choice = 'e2e/browser'; When = $null; Pick = 'playwright'; Stated = 'Playwright'; Date = '2026-11-15'; Source = 'said in chat' }
+        $typoAnswer = Get-KitTestToolAnswer -Default (Get-KitIntakeDefault -Intake $intake -Preference $typo)
+
+        @($typoAnswer.Keys) | Should -Be @($intake['testKinds'] | ForEach-Object { $_['id'] })
     }
 
     It 'gives New-KitApp answers that resolve to the same tools' {
