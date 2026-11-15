@@ -55,17 +55,13 @@ public sealed class ContractTests : IDisposable
         JsonNode document = JsonNode.Parse(await _host.Client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken))!;
 
         List<string> bare = [];
-        foreach (KeyValuePair<string, JsonNode?> path in document["paths"]!.AsObject())
+        foreach ((string method, string path, JsonNode operation) in Operations(document))
         {
-            // Only operations: a path item can also hold parameters, a summary or servers.
-            foreach (KeyValuePair<string, JsonNode?> operation in path.Value!.AsObject().Where(entry => s_methods.Contains(entry.Key)))
+            foreach (KeyValuePair<string, JsonNode?> response in operation["responses"]!.AsObject())
             {
-                foreach (KeyValuePair<string, JsonNode?> response in operation.Value!["responses"]!.AsObject())
+                if (response.Key[0] is '4' or '5' && response.Value?["content"]?["application/problem+json"] is null)
                 {
-                    if (response.Key[0] is '4' or '5' && response.Value?["content"]?["application/problem+json"] is null)
-                    {
-                        bare.Add($"{operation.Key} {path.Key} {response.Key}");
-                    }
+                    bare.Add($"{method} {path} {response.Key}");
                 }
             }
         }
@@ -86,16 +82,13 @@ public sealed class ContractTests : IDisposable
         scheme["scheme"]!.GetValue<string>().Should().Be("bearer");
 
         List<string> unprotected = [];
-        foreach (KeyValuePair<string, JsonNode?> path in document["paths"]!.AsObject())
+        foreach ((string method, string path, JsonNode operation) in Operations(document))
         {
-            foreach (KeyValuePair<string, JsonNode?> operation in path.Value!.AsObject().Where(entry => s_methods.Contains(entry.Key)))
+            JsonNode responses = operation["responses"]!;
+            bool requiresBearer = operation["security"]?.AsArray().Any(requirement => requirement!.AsObject().ContainsKey("Bearer")) ?? false;
+            if (!requiresBearer || responses["401"] is null || responses["403"] is null)
             {
-                JsonNode responses = operation.Value!["responses"]!;
-                bool requiresBearer = operation.Value["security"]?.AsArray().Any(requirement => requirement!.AsObject().ContainsKey("Bearer")) ?? false;
-                if (!requiresBearer || responses["401"] is null || responses["403"] is null)
-                {
-                    unprotected.Add($"{operation.Key} {path.Key}");
-                }
+                unprotected.Add($"{method} {path}");
             }
         }
 
@@ -126,6 +119,13 @@ public sealed class ContractTests : IDisposable
     }
 
     public void Dispose() => _host.Dispose();
+
+    // Every operation in the document, with its HTTP method and path. Only operations: a path item can also hold
+    // parameters, a summary or servers.
+    private static IEnumerable<(string Method, string Path, JsonNode Operation)> Operations(JsonNode document) =>
+        document["paths"]!.AsObject().SelectMany(path => path.Value!.AsObject()
+            .Where(entry => s_methods.Contains(entry.Key))
+            .Select(operation => (operation.Key, path.Key, operation.Value!)));
 
     // The project folder, recorded at build time (see the .csproj). [CallerFilePath] is mapped to /_/ in CI builds.
     private static string SourceDirectory() =>
