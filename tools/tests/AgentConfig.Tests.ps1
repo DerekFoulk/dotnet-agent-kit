@@ -407,19 +407,22 @@ Describe 'Agent configuration' {
             $text | Should -Match ([regex]::Escape('gh api repos/DerekFoulk/dotnet-agent-kit/commits/<tag> --jq .sha'))
         }
 
-        # The ruleset's copilot_code_review rule only requests a review: with no required approval, nothing blocks a merge
-        # when no review arrives, so DOD-003 mustn't count it as a gate (Copilot's review of PR 64).
-        It 'are requested by the ruleset, which DOD-003 records as advisory' {
+        # ADR-0067: the owner removed the copilot_code_review rule from the kit's ruleset (2026-11-14), so DOD-003 names
+        # the reviewer agent and mustn't cite a rule that isn't there. No tool makes an agent run the reviewer, so every
+        # part of DOD-003 is advisory.
+        It 'are what DOD-003''s reviewer agent uses, with no Copilot ruleset rule' {
             $frontMatter = Read-FrontMatter -Path (Join-Path $repoRoot 'docs' 'standards' 'definition-of-done.md')
             $rule = @($frontMatter['rules'] | Where-Object { $_['id'] -eq 'DOD-003' })[0]
-            $requestParts = @(@($rule['enforcement']) | Where-Object { "$($_['how'])" -match 'copilot_code_review' })
+            $how = @(@($rule['enforcement']) | ForEach-Object { "$($_['how'])" }) -join ' '
 
-            $requestParts.Count | Should -BeGreaterThan 0
-            @($requestParts | Where-Object { "$($_['kind'])" -ne 'advisory' }).Count | Should -Be 0
+            "$($rule['statement'])" | Should -Match 'reviewer agent'
+            "$($rule['statement'])" | Should -Match ([regex]::Escape('docs/code-review.md'))
+            "$($rule['statement'])$how" | Should -Not -Match 'copilot_code_review|Copilot code review reviews'
+            @(@($rule['enforcement']) | Where-Object { "$($_['kind'])" -ne 'advisory' }).Count | Should -Be 0
         }
 
-        # Copilot reviews the PR's diff, and a plan is posted in chat, so it can't check one; the start-work self-check
-        # against plan-checklist replaced the reviewer agent's plan review (ADR-0064; Copilot's review of PR 64).
+        # A plan is posted in chat, before any code: no code review sees it, so the rules credit start-work's plan
+        # review, which the reviewer agent runs (ADR-0067), never code review.
         It 'aren''t said to check the plan in <Id>' -ForEach @(
             @{ Id = 'ARC-006'; File = 'architecture.md' }
             @{ Id = 'TST-002'; File = 'testing.md' }
