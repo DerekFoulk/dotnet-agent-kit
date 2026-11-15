@@ -323,6 +323,15 @@ Describe 'Repo build configuration' -Tag 'Build' {
             $build.Output | Should -Not -Match 'CS1591'
             $build.ExitCode | Should -Be 0 -Because $build.Output
         }
+
+        # BenchmarkDotNet builds a project of its own for each run, which imports Directory.Build.props though it asks not
+        # to (dotnet/BenchmarkDotNet#2722); its generated code has no comments.
+        It 'allows undocumented public code in the project BenchmarkDotNet generates' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'BenchmarkDotNetGenerated')
+
+            $build.Output | Should -Not -Match 'CS1591'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
     }
 
     # ADR-0029: CA2007 is for libraries; Microsoft advises suppressing it for application code.
