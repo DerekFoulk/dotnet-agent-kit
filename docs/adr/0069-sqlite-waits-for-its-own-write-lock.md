@@ -30,8 +30,7 @@ A real user of an app on SQLite would see the same pause whenever two writes mee
 
 An EF Core connection interceptor calls `sqlite3_busy_timeout` with 1 second on each connection EF Core opens. It goes through the `SqliteConnection.Handle` that Microsoft.Data.Sqlite exposes for native calls. SQLite's busy handler then waits for the lock itself, polling in sleeps of 1, 2, 5, 10, 15, 20 and 25 ms that grow to 50 and then 100 ms, and goes on about as soon as the lock is free. A lock held longer than a second falls back to Microsoft.Data.Sqlite's own retries, which still end at the command timeout.
 
-- **Trade-offs:**
-  - Covers every connection and every statement, including writes from another process, with no change to the code that writes.
+- **Trade-offs:** It covers every connection and every statement, including writes from another process, with no change to the code that writes.
   - The busy timeout is per connection and per statement, while Microsoft.Data.Sqlite's command timeout covers a whole command, which can hold several statements (dotnet/efcore#28135). A second is short, so each statement can run past the command's timeout by a second at most. A command timeout is whole seconds, so a second is its smallest step.
   - A waiting write still blocks its thread while SQLite sleeps. Every Microsoft.Data.Sqlite call does that, since its async methods run synchronously.
   - It's one small class, with no SQL text built.
