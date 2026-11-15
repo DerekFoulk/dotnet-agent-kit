@@ -1,4 +1,4 @@
-# ADR-0068: The XML documentation gate leaves out test projects
+# ADR-0069: The XML documentation gate leaves out test projects
 
 - **Status:** Accepted
 - **Date:** 2026-11-15

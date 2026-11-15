@@ -97,15 +97,15 @@ rules:
     paths: ["**/*.cs", ".editorconfig"]
   - id: STY-008
     statement: "Every publicly visible type and member has an XML documentation comment; test projects (names ending in Tests) are left out."
-    why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12); the coding conventions pass made XML documentation on public members a gate. A comment on the public surface is what IntelliSense and a reviewer read; a test class's name already says what it checks (ADR-0068)."
+    why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12); the coding conventions pass made XML documentation on public members a gate. A comment on the public surface is what IntelliSense and a reviewer read; a test class's name already says what it checks (ADR-0069)."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-12", "ADR-0068", "https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/recommended-tags, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-15"]
+    sources: ["owner, 2026-11-12", "ADR-0069", "https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/recommended-tags, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: Directory.Build.props sets GenerateDocumentationFile in every project whose name doesn't end in Tests (and not in the project BenchmarkDotNet generates for a run, ADR-0068), so the compiler reports CS1591 for an undocumented public member and STY-004 fails the build on it; tools/tests/BuildConfig.Tests.ps1 (the UndocumentedPublicMember fixture fails; the UndocumentedTestProject and BenchmarkDotNetGenerated fixtures build)"
+        how: "build: Directory.Build.props sets GenerateDocumentationFile in every project whose name doesn't end in Tests (and not in the project BenchmarkDotNet generates for a run, ADR-0069), so the compiler reports CS1591 for an undocumented public member and STY-004 fails the build on it; tools/tests/BuildConfig.Tests.ps1 (the UndocumentedPublicMember fixture fails; the UndocumentedTestProject and BenchmarkDotNetGenerated fixtures build)"
     scope: core
     paths: ["**/*.cs", "Directory.Build.props"]
 ---

@@ -314,7 +314,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 
-    # STY-008, ADR-0068: a test project (a name ending in Tests) writes no documentation file, so its public classes need
+    # STY-008, ADR-0069: a test project (a name ending in Tests) writes no documentation file, so its public classes need
     # no XML comments.
     Context 'XML documentation leaves out test projects' {
         It 'allows an undocumented public class in a test project' {
