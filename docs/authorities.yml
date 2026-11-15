@@ -5,9 +5,11 @@
 # class:
 #   authority     the body that makes the product or sets the standard: a vendor documenting its own product
 #                 (its docs site or its own repos), or a standards body. A rule resting on one has basis 'authority'.
-#   practitioner  a person, a book, or a reference work. Their ideas back the owner's choices, so a rule resting
-#                 on one alone is a 'preference' (docs/code-review.md).
-#   project       a tool's own repo or docs: an authority for how to use that tool, and for nothing else.
+#   practitioner  a person, a book, or a reference work such as Wikipedia. Their ideas back the owner's choices,
+#                 so a rule resting on them alone is a 'preference' (ADR-0063).
+#   project       a tool's own repo or docs, from the vendor of a tool the kit uses: ADR-0063 counts it as an
+#                 authority, for how to use that tool only, so the page lists it apart.
+# Who counts as an authority is ADR-0063's to say; this file only says who published each cited page.
 # match: URL prefixes; the longest that matches a cited URL wins. An archived copy
 #   (https://web.archive.org/web/<timestamp>/<url>) is matched by its original URL.
 sources:
@@ -82,7 +84,7 @@ sources:
   - name: Wikipedia
     publisher: Wikipedia contributors
     class: practitioner
-    covers: summaries of SOLID, the Liskov substitution principle and the acyclic dependencies principle
+    covers: summaries of Robert C. Martin's SOLID and acyclic dependencies principles, and Barbara Liskov's substitution principle
     match:
       - https://en.wikipedia.org/
   - name: Diátaxis
