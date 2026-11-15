@@ -1,8 +1,10 @@
 namespace AtMemberCouplingLimit;
 
 // A method coupled to 40 types: CA1506's limit per member.
+/// <summary>A public member of this fixture (STY-008).</summary>
 public static class Hub
 {
+    /// <summary>A public member of this fixture (STY-008).</summary>
     public static void Take1(
         C01 p01,
         C02 p02,

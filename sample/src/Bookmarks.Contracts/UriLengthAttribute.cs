@@ -15,8 +15,10 @@ public sealed class UriLengthAttribute(int maximumLength) : ValidationAttribute
     /// <summary>The most characters the URI may have.</summary>
     public int MaximumLength { get; } = maximumLength;
 
+    /// <inheritdoc/>
     public override bool IsValid(object? value) => value is not Uri uri || (uri.IsAbsoluteUri ? uri.AbsoluteUri : uri.OriginalString).Length <= MaximumLength;
 
+    /// <inheritdoc/>
     public override string FormatErrorMessage(string name) =>
         $"The field {name} must be a URI of at most {MaximumLength} characters.";
 }

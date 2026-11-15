@@ -22,7 +22,7 @@ internal static class TestTokens
     /// <summary>A valid token for the given user (the sub claim), or with the given changes.</summary>
     public static string For(
         string? user = "alice", string issuer = Issuer, string audience = Audience, TimeSpan? expiresIn = null,
-        SecurityKey? key = null, bool signed = true)
+        SecurityKey? key = null, bool isSigned = true)
     {
         DateTime now = DateTime.UtcNow;
         DateTime expires = now + (expiresIn ?? TimeSpan.FromMinutes(5));
@@ -35,7 +35,7 @@ internal static class TestTokens
             NotBefore = expires < now ? expires.AddMinutes(-5) : now,
             Expires = expires,
             Subject = new ClaimsIdentity(user is null ? [] : [new Claim(JwtRegisteredClaimNames.Sub, user)]),
-            SigningCredentials = signed ? new SigningCredentials(key ?? SigningKey, SecurityAlgorithms.RsaSha256) : null,
+            SigningCredentials = isSigned ? new SigningCredentials(key ?? SigningKey, SecurityAlgorithms.RsaSha256) : null,
         };
         return new JsonWebTokenHandler().CreateToken(descriptor);
     }

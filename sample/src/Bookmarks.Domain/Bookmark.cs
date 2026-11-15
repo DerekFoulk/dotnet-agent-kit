@@ -1,5 +1,6 @@
 namespace Bookmarks.Domain;
 
+/// <summary>A link a user saved, with its title: the sample's one aggregate. Make one with <see cref="Create"/>.</summary>
 public sealed class Bookmark
 {
     private Bookmark(Guid id, string ownerId, Uri url, string title, DateTimeOffset createdAt)
@@ -26,17 +27,29 @@ public sealed class Bookmark
     /// </summary>
     public const int MaxUrlLength = 2048;
 
+    /// <summary>The bookmark's id, a UUID version 7, which starts with its creation time to the millisecond.</summary>
     public Guid Id { get; }
 
     /// <summary>The user who saved it: their id from the identity provider (the token's sub claim, SEC-009).</summary>
     public string OwnerId { get; }
 
+    /// <summary>The saved link: an absolute http or https URL, in its escaped absolute form.</summary>
     public Uri Url { get; }
 
+    /// <summary>The title the user gave it, trimmed.</summary>
     public string Title { get; }
 
+    /// <summary>When it was saved.</summary>
     public DateTimeOffset CreatedAt { get; }
 
+    /// <summary>Checks a new bookmark's parts and makes the bookmark.</summary>
+    /// <param name="ownerId">The saving user's id from the identity provider, at most <see cref="MaxOwnerIdLength"/> characters.</param>
+    /// <param name="url">An absolute http or https URL, at most <see cref="MaxUrlLength"/> characters once escaped.</param>
+    /// <param name="title">The title, at most <see cref="MaxTitleLength"/> characters once trimmed.</param>
+    /// <param name="createdAt">When it's saved, from <see cref="TimeProvider"/>.</param>
+    /// <returns>The new bookmark.</returns>
+    /// <exception cref="ArgumentException">A part is missing, too long, or not an absolute http or https URL.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="createdAt"/> is before 1970.</exception>
     public static Bookmark Create(string ownerId, Uri url, string title, DateTimeOffset createdAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);

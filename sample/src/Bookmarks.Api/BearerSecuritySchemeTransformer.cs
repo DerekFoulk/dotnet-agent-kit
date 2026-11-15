@@ -17,6 +17,7 @@ internal sealed class BearerSecuritySchemeTransformer : IOpenApiDocumentTransfor
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(document);
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes = new Dictionary<string, IOpenApiSecurityScheme>
         {
