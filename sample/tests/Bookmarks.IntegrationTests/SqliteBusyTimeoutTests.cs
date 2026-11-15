@@ -42,13 +42,23 @@ public sealed class SqliteBusyTimeoutTests
         busyTimeout.Should().Be(int.MaxValue, "SQLite's busy timeout is an int of milliseconds, and 0 would turn it off");
     }
 
+    [Fact]
+    public async Task OpenConnectionAsyncWaitsAsLongAsEfCoresCommandTimeoutWhenOneIsSet()
+    {
+        // EF Core gives each command its own timeout, in place of the connection's Default Timeout.
+        long busyTimeout = await BusyTimeoutAfterOpenAsync(SevenSecondTimeout, commandTimeout: 4);
+
+        busyTimeout.Should().Be(4_000, "a command may run for EF Core's command timeout, 4 seconds");
+    }
+
     // Each helper opens the database connection through the app's own registration, then asks SQLite how long it
     // waits for a lock.
-    private static async Task<long> BusyTimeoutAfterOpenAsync(string connectionString)
+    private static async Task<long> BusyTimeoutAfterOpenAsync(string connectionString, int? commandTimeout = null)
     {
         await using ServiceProvider services = AppServices(connectionString);
         await using AsyncServiceScope scope = services.CreateAsyncScope();
         BookmarksDbContext db = scope.ServiceProvider.GetRequiredService<BookmarksDbContext>();
+        db.Database.SetCommandTimeout(commandTimeout);
         await db.Database.OpenConnectionAsync(TestContext.Current.CancellationToken);
         await using DbCommand command = BusyTimeoutQuery(db);
         return (long)(await command.ExecuteScalarAsync(TestContext.Current.CancellationToken))!;
