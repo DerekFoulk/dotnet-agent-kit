@@ -70,6 +70,8 @@ Describe 'Test-ArchitectureDiagram.ps1' {
         @{ Description = 'Mermaid in capitals as another language'; Text = "``````Mermaid`nflowchart LR`n```````n"; Expected = 'no ```mermaid code block' }
         @{ Description = 'mermaidx as another language'; Text = "``````mermaidx`nflowchart LR`n```````n"; Expected = 'no ```mermaid code block' }
         @{ Description = 'a backtick line with a backtick in its info string as text, not a fence'; Text = "``````mermaid ``x```n flowchart LR`n```````n"; Expected = 'no ```mermaid code block' }
+        @{ Description = 'a tilde fence with a backtick in its info string as a fence'; Text = "~~~mermaid ``x```n flowchart LR`n~~~`n"; Expected = $null }
+        @{ Description = 'a fence line indented four spaces inside a fence as text, not a close'; Text = "``````mermaid`n    ```````n flowchart LR`n```````n"; Expected = $null }
     ) {
         Set-Content -Path $script:diagram -Value $Text
 
