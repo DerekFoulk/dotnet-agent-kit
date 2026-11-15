@@ -52,7 +52,7 @@ BeforeDiscovery {
         @{ Fixture = 'BinaryFormatterUse'; Diagnostic = 'SYSLIB0011'; Description = 'BinaryFormatter (SEC-014)' }
         @{ Fixture = 'ObsoleteCryptoType'; Diagnostic = 'SYSLIB0021'; Description = 'an obsolete cryptography type, AesManaged (SEC-014)' }
         @{ Fixture = 'UnsafeDataSetRead'; Diagnostic = 'CA2351'; Description = 'DataSet.ReadXml on untrusted input (SEC-014)' }
-        @{ Fixture = 'AesCreate'; Diagnostic = 'RS0030'; Description = 'Aes.Create, CBC with no integrity check (SEC-014)' }
+        @{ Fixture = 'AesCreate'; Diagnostic = 'RS0030'; Description = 'Aes.Create, whose CBC needs an HMAC nothing checks for (SEC-014)' }
         @{ Fixture = 'CryptoConfigByName'; Diagnostic = 'RS0030'; Description = 'an algorithm picked by name at run time (SEC-014)' }
         @{ Fixture = 'XmlResolverUse'; Diagnostic = 'RS0030'; Description = 'XmlUrlResolver, which fetches what the input names (SEC-014)' }
         @{ Fixture = 'LegacyXmlReader'; Diagnostic = 'RS0030'; Description = 'the legacy XmlTextReader (SEC-014)' }
