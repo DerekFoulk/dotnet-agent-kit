@@ -13,28 +13,54 @@ namespace Bookmarks.IntegrationTests;
 /// </summary>
 public sealed class SqliteBusyTimeoutTests
 {
+    private const string SevenSecondTimeout = "DataSource=:memory:;Default Timeout=7";
+
     [Fact]
     public async Task OpenConnectionAsyncWaitsForALockedDatabaseAsLongAsTheConnectionsDefaultTimeout()
     {
-        long busyTimeout = await BusyTimeoutAfterOpenAsync("DataSource=:memory:;Default Timeout=7");
+        long busyTimeout = await BusyTimeoutAfterOpenAsync(SevenSecondTimeout);
 
         busyTimeout.Should().Be(7_000, "a command may run for the connection's Default Timeout, 7 seconds");
     }
 
-    // Opens the database connection through the app's own registration, then asks SQLite how long it waits for a lock.
+    [Fact]
+    public void OpenConnectionWaitsForALockedDatabaseAsLongAsTheConnectionsDefaultTimeout()
+    {
+        // EnsureCreated opens its connection this way, at startup.
+        long busyTimeout = BusyTimeoutAfterOpen(SevenSecondTimeout);
+
+        busyTimeout.Should().Be(7_000, "a command may run for the connection's Default Timeout, 7 seconds");
+    }
+
+    // Each helper opens the database connection through the app's own registration, then asks SQLite how long it
+    // waits for a lock.
     private static async Task<long> BusyTimeoutAfterOpenAsync(string connectionString)
     {
-        await using ServiceProvider services = new ServiceCollection().AddBookmarksInfrastructure(connectionString).BuildServiceProvider();
+        await using ServiceProvider services = AppServices(connectionString);
         await using AsyncServiceScope scope = services.CreateAsyncScope();
         BookmarksDbContext db = scope.ServiceProvider.GetRequiredService<BookmarksDbContext>();
         await db.Database.OpenConnectionAsync(TestContext.Current.CancellationToken);
-        return await ReadBusyTimeoutAsync(db.Database.GetDbConnection());
+        await using DbCommand command = BusyTimeoutQuery(db);
+        return (long)(await command.ExecuteScalarAsync(TestContext.Current.CancellationToken))!;
     }
 
-    private static async Task<long> ReadBusyTimeoutAsync(DbConnection connection)
+    private static long BusyTimeoutAfterOpen(string connectionString)
     {
-        await using DbCommand command = connection.CreateCommand();
+        using ServiceProvider services = AppServices(connectionString);
+        using IServiceScope scope = services.CreateScope();
+        BookmarksDbContext db = scope.ServiceProvider.GetRequiredService<BookmarksDbContext>();
+        db.Database.OpenConnection();
+        using DbCommand command = BusyTimeoutQuery(db);
+        return (long)command.ExecuteScalar()!;
+    }
+
+    private static ServiceProvider AppServices(string connectionString) =>
+        new ServiceCollection().AddBookmarksInfrastructure(connectionString).BuildServiceProvider();
+
+    private static DbCommand BusyTimeoutQuery(BookmarksDbContext db)
+    {
+        DbCommand command = db.Database.GetDbConnection().CreateCommand();
         command.CommandText = "PRAGMA busy_timeout";
-        return (long)(await command.ExecuteScalarAsync(TestContext.Current.CancellationToken))!;
+        return command;
     }
 }
