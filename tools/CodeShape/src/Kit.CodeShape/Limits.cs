@@ -15,4 +15,7 @@ internal static class Limits
 
     /// <summary>The most groups a type's methods may form that share no state (LCOM4).</summary>
     public const int Lcom4 = 1;
+
+    /// <summary>The most members one type may declare, counting every part of a partial type.</summary>
+    public const int MembersPerType = 20;
 }
