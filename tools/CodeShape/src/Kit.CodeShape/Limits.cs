@@ -1,7 +1,8 @@
 namespace Kit.CodeShape;
 
-/// <summary>The limits CRF-011 sets beyond Microsoft's metric rules (ADR-0050). CRF-011 states the same numbers, and
-/// tools/tests/Test-CodeShape.Tests.ps1 fails if the two disagree.</summary>
+/// <summary>The limits CRF-011 sets beyond Microsoft's metric rules (ADR-0050; the owner's numbers of 2026-11-12,
+/// ADR-0071). CRF-011 states the same numbers, and tools/tests/Test-CodeShape.Tests.ps1 fails if the two
+/// disagree.</summary>
 internal static class Limits
 {
     /// <summary>The most control-flow statements a statement may sit inside, within one member.</summary>
