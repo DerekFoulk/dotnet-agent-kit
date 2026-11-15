@@ -91,6 +91,25 @@ rules:
         how: "until the app follows the sample"
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*Contracts*/**"]
+  - id: API-007
+    statement: "An HTTP API follows HTTP's semantics as Azure's API design guidance sets them out: URIs name resources with nouns (plural for collections), never verbs; a POST that creates a resource answers 201 Created with its URI in the Location header; PUT and DELETE are idempotent; and work that outlasts a request answers 202 Accepted with a Location header pointing at a status endpoint."
+    why: "Clients, caches and retries rely on what each method and status code promises: a retried PUT must not change anything twice, and a client finds what it created at Location (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/azure/architecture/best-practices/api-design, retrieved 2026-11-15", "https://learn.microsoft.com/azure/architecture/best-practices/api-implementation, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's FunctionalTests check that POST /bookmarks answers 201 Created and that a GET of its Location returns the bookmark (AuthorizationTests)"
+      - kind: advisory
+        in: [app]
+        how: "until the app follows the sample"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks the rest: nouns for resources, idempotent PUT and DELETE, and 202 with a status endpoint for long work, none of which an analyzer sees"
+    scope: core
+    paths: ["**/Program.cs", "**/*Endpoints*.cs"]
 ---
 
 # API design
