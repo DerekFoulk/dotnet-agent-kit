@@ -355,7 +355,47 @@ function Get-KitIntakeDefault {
         [object[]] $Preference = @()
     )
 
-    @()
+    foreach ($card in $Intake['cards']) {
+        if (-not $card.Contains('dependsOn')) {
+            New-KitDefaultRow -Choice $card['id'] -Recommendation $card['recommendation'] -Option $card['options'] -Preference $Preference
+            continue
+        }
+        # A card that depends on another has a default for each of that card's answers.
+        $parent = $Intake['cards'] | Where-Object { $_['id'] -ceq $card['dependsOn'] } | Select-Object -First 1
+        foreach ($answer in @($parent['options'] | ForEach-Object { $_['id'] })) {
+            $fitting = @($card['options'] | Where-Object { $answer -cin @($_['fits']) })
+            if ($fitting.Count -eq 1) {
+                [pscustomobject]@{ Choice = $card['id']; When = $answer; Pick = $fitting[0]['id']; From = 'only option'
+                    Developer = $null; Authority = $null; Agent = $null; Notes = @() }
+                continue
+            }
+            New-KitDefaultRow -Choice $card['id'] -When $answer -Recommendation $card['recommendation'][$answer] -Option $fitting -Preference $Preference
+        }
+    }
+    foreach ($kind in $Intake['testKinds']) {
+        foreach ($role in $kind['roles']) {
+            $tools = @($kind['tools'] | Where-Object { $_['role'] -ceq $role['id'] })
+            New-KitDefaultRow -Choice "$($kind['id'])/$($role['id'])" -Recommendation $role['recommendation'] -Option $tools -Preference $Preference
+        }
+    }
+}
+
+# One question's default: the developer's preference for it, if any, picked against the recommendation.
+function New-KitDefaultRow {
+    param(
+        [Parameter(Mandatory)] [string] $Choice,
+        [string] $When,
+        [Parameter(Mandatory)] [Collections.IDictionary] $Recommendation,
+        [Parameter(Mandatory)] [Collections.IDictionary[]] $Option,
+        [object[]] $Preference = @()
+    )
+
+    $mine = $Preference | Where-Object { $_.Choice -ceq $Choice -and "$($_.When)" -ceq $When } | Select-Object -First 1
+    $picked = Select-KitPick -Recommendation $Recommendation -Option $Option -Preference $mine
+    [pscustomobject]@{
+        Choice = $Choice; When = if ($When) { $When } else { $null }; Pick = $picked.Pick; From = $picked.From
+        Developer = $mine; Authority = $Recommendation['authority']; Agent = $Recommendation['agent']; Notes = $picked.Notes
+    }
 }
 
 Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference, Get-KitIntakeDefault
