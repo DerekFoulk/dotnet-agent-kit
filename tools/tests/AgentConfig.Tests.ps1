@@ -411,6 +411,28 @@ Describe 'Agent configuration' {
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
         }
+
+        # SEC-002: the Read deny rules cover Claude Code's file tools, not a shell command. Before Get-Content and
+        # Select-String were allowed, reading a secret file with them prompted; deny rules now refuse the common forms
+        # outright, for the same files the Read rules name. Text matching is no boundary (ADR-0026): a path held in a
+        # variable or found by a recursive search isn't caught, and a search whose pattern names '.env' is refused
+        # too, so searches belong in the Grep tool, which honors the Read rules.
+        It 'refuses to read a secret file with PowerShell(<Command>)' -ForEach @(
+            @{ Command = 'Get-Content .env' }
+            @{ Command = 'Get-Content -Raw ./src/App/.env.local' }
+            @{ Command = 'Get-Content ./certs/site.pfx' }
+            @{ Command = 'Get-Content ./certs/site.pem' }
+            @{ Command = 'Get-Content ./certs/site.key' }
+            @{ Command = 'Get-Content ./src/App.snk' }
+            @{ Command = 'Get-Content ~/.ssh/id_ed25519' }
+            @{ Command = 'Get-Content ~/AppData/Roaming/Microsoft/UserSecrets/abc/secrets.json' }
+            @{ Command = 'Get-Content ~/.microsoft/usersecrets/abc/secrets.json' }
+            @{ Command = 'Select-String -Path ./.env -Pattern KEY' }
+            @{ Command = 'Select-String -Pattern BEGIN -Path ./certs/site.pem' }
+            @{ Command = 'Select-String -Path ~/.ssh/config -Pattern Host' }
+        ) {
+            Test-RuleMatch -Kind 'deny' -Tool 'PowerShell' -Command $Command -IgnoreCase | Should -BeTrue -Because "a deny rule should refuse PowerShell($Command)"
+        }
     }
 
     Context 'MCP servers' {
