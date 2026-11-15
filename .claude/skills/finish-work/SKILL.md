@@ -1,6 +1,6 @@
 ---
 name: finish-work
-description: Verify a finished change against the definition of done, get an independent review from the reviewer agent, open the pull request with evidence, and merge when the mode allows. Use when the test list is empty and before telling the owner anything is done.
+description: Verify a finished change against the definition of done, get the reviewer agent's review, open the pull request with evidence, and merge when the mode allows. Use when the test list is empty and before telling the owner anything is done.
 ---
 
 # Finish work
