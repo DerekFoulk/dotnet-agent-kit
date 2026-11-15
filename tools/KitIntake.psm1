@@ -177,7 +177,49 @@ function Format-KitCell {
 function Test-KitIntakeSource {
     param([Parameter(Mandatory)] [Collections.IDictionary] $Intake)
 
-    @()
+    foreach ($card in $Intake['cards']) {
+        $label = "card '$($card['id'])'"
+        if (-not $card.Contains('recommendation')) { "$label has no recommendation."; continue }
+        Test-KitRecommendation -Label $label -Recommendation $card['recommendation'] -OptionId @($card['options'] | ForEach-Object { $_['id'] })
+    }
+}
+
+# What's missing from one recommendation: the authority's (who, what its page says, the page or the search that
+# found none, the date read, and a pick that's an option or none) and the agent's (an option, with a reason).
+function Test-KitRecommendation {
+    param(
+        [Parameter(Mandatory)] [string] $Label,
+        [Parameter(Mandatory)] [Collections.IDictionary] $Recommendation,
+        [Parameter(Mandatory)] [string[]] $OptionId
+    )
+
+    $options = $OptionId -join ', '
+    $authority = $Recommendation['authority']
+    if ($authority -isnot [Collections.IDictionary]) { "$label has no authority recommendation: what the authority's page says, or that it names no pick." }
+    else {
+        if (-not (Test-KitText $authority['by'])) { "$label's authority recommendation doesn't say who the authority is (by)." }
+        if (-not (Test-KitText $authority['says'])) { "$label's authority recommendation doesn't say what the page says (says)." }
+        $page = $authority['source'] -is [string] -and $authority['source'] -match '^https://\S+$'
+        if (-not $page -and -not (Test-KitText $authority['searched'])) {
+            "$label's authority recommendation needs the https:// page it comes from (source), or the search that found no page (searched)."
+        }
+        if ("$($authority['read'])" -notmatch '^\d{4}-\d{2}-\d{2}$') { "$label's authority recommendation needs the date it was read (read: yyyy-mm-dd)." }
+        $pick = $authority['pick']
+        if ($null -ne $pick -and $pick -cnotin $OptionId) { "$label's authority picks '$pick', which isn't an option: $options." }
+    }
+    $agent = $Recommendation['agent']
+    if ($agent -isnot [Collections.IDictionary]) { "$label has no agent recommendation: the agent's pick, with its reason."; return }
+    $pick = $agent['pick']
+    if ($null -eq $pick) { "$label's agent picks nothing: the agent always picks an option, as the last default." }
+    elseif ($pick -cnotin $OptionId) { "$label's agent picks '$pick', which isn't an option: $options." }
+    if (-not (Test-KitText $agent['reason'])) { "$label's agent recommendation gives no reason." }
+}
+
+# Whether a value is text with something in it.
+function Test-KitText {
+    param([AllowNull()] [object] $Value)
+
+    $Value -is [string] -and [bool]$Value.Trim()
 }
 
 Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource
