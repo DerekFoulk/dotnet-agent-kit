@@ -48,7 +48,7 @@ Accepted as recommended (owner, 2026-11-02). The ruleset "main protection" was c
 - Build step 4 adds required status checks to the ruleset once CI exists.
 - GIT-001, GIT-002 and GIT-003 are now enforced by the ruleset rather than advisory.
 - **Amended by ADR-0035 (2026-11-07):** pushes still have no deny rule, but deleting or force-pushing a branch asks, because the ruleset guards only `main`. The asks for merging, packages, repo settings and build or CI files move to review mode, in the owner's `.claude/settings.local.json`.
-- **Amended (owner, 2026-11-15):** every command outside the allow list prompted, so the owner was asked about routine reads he couldn't judge, turned on Bypass, which also skips the asks that matter, and turned it off again. The allow list now covers routine read-only and workflow commands: `gh pr`/`gh run` reads, `gh pr comment`, `gh api` reads, PowerShell's read-only git, `Get-ChildItem`, `Get-Content`, `Select-String` and harmless pipeline cmdlets, the exact `git fetch`, `git merge origin/main` and `git pull --ff-only` forms, and the kit's scripts and `KitReview` commands. Every ask and deny stays, and each new allow brings the rules that keep its risky forms out: any `gh api` call that writes asks, and `Get-Content` or `Select-String` on a secret file is denied. Still prompting, on purpose: `git fetch` with options (`--upload-pack` runs a program), `pwsh -Command "..."` (its quoted string isn't split into commands, so a wildcard would allow anything in it), and script-block cmdlets such as `ForEach-Object` (Claude Code's docs don't say whether the commands inside a block are checked). `tools/tests/AgentConfig.Tests.ps1` pins each of these.
+- **Amended by ADR-0075 (2026-11-15):** routine workflow commands get wide allow rules, each with its risky forms asked, so the owner isn't prompted for commands he can't judge. Reading files and history is left to Claude Code's own tools and its Bash read-only check.
 
 ## Pillars affected
 
@@ -59,5 +59,3 @@ Security: protection moves to a layer that can't be bypassed by spelling. Operat
 - owner, 2026-11-02
 - https://code.claude.com/docs/en/permissions, retrieved 2026-11-01
 - https://docs.github.com/en/rest/repos/rules, retrieved 2026-11-02
-- owner, 2026-11-15
-- https://code.claude.com/docs/en/permissions, retrieved 2026-11-15 (rule order, wildcards, compound commands, PowerShell rules)
