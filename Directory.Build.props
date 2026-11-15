@@ -15,6 +15,13 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
+  <!-- XML documentation on every publicly visible member (STY-008): with a documentation file, the compiler reports
+       CS1591 for each one that has no comment, and STY-004 makes it an error. Test projects (names ending in Tests) are
+       left out: their public members are test classes no one calls (ADR-0068). -->
+  <PropertyGroup Condition="!$(MSBuildProjectName.EndsWith('Tests'))">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
   <!-- Every assembly says COM can't see its types, which CA1017 asks for (STY-003, ADR-0043). A type that COM must
        see says so itself with [ComVisible(true)]. A project that already declares an assembly-level ComVisible
        (error CS0579, duplicate attribute) removes this one with

@@ -250,16 +250,19 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/BookmarkResponse"
-            }
+            },
+            "description": "The bookmarks on this page."
           },
           "nextLink": {
             "type": [
               "null",
               "string"
             ],
+            "description": "The next page, or null where paging ends: on the last page, or at the offset cap, even when more bookmarks exist.",
             "format": "uri"
           }
-        }
+        },
+        "description": "One page of bookmarks, oldest first."
       },
       "BookmarkResponse": {
         "required": [
@@ -272,20 +275,25 @@
         "properties": {
           "id": {
             "type": "string",
+            "description": "The bookmark\u0027s id.",
             "format": "uuid"
           },
           "url": {
             "type": "string",
+            "description": "The saved link.",
             "format": "uri"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "The bookmark\u0027s title, trimmed."
           },
           "createdAt": {
             "type": "string",
+            "description": "When it was saved.",
             "format": "date-time"
           }
-        }
+        },
+        "description": "A saved bookmark."
       },
       "CreateBookmarkRequest": {
         "required": [
@@ -297,13 +305,16 @@
           "url": {
             "maxLength": 2048,
             "type": "string",
+            "description": "The link to save: an absolute http or https URL.",
             "format": "uri"
           },
           "title": {
             "maxLength": 500,
-            "type": "string"
+            "type": "string",
+            "description": "The bookmark\u0027s title."
           }
-        }
+        },
+        "description": "A request to save a bookmark."
       },
       "HttpValidationProblemDetails": {
         "type": "object",

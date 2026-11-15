@@ -6,3 +6,4 @@ applyTo: '**/*.cs,Directory.Build.props'
 # Code style
 
 - STY-005: Nullable reference types are on in every project.
+- STY-008: Every publicly visible type and member has an XML documentation comment; test projects (names ending in Tests) are left out.

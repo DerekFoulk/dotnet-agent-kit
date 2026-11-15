@@ -1,0 +1,73 @@
+# ADR-0068: The XML documentation gate leaves out test projects
+
+- **Status:** Accepted
+- **Date:** 2026-11-15
+
+## Context
+
+The rules audit's C# coding conventions pass (owner, 2026-11-12: "Yes, to both") made XML documentation comments on public members a gate: every project writes its documentation file (`GenerateDocumentationFile`), so the compiler reports CS1591 for each publicly visible type or member with no comment, and STY-004's TreatWarningsAsErrors fails the build. That is STY-008.
+
+Microsoft's XML documentation page says that once the documentation file is on, "the compiler generates the CS1591 warning for any publicly visible member declared in your project without XML documentation comments". It doesn't say which projects should turn it on.
+
+A test project's public members are test classes and their methods. xUnit finds them by attribute; no code calls them, and no IntelliSense or API reference reads their comments. Their names already say what they check (the unit-testing best practices name tests Method_Scenario_ExpectedBehavior). Benchmarks projects are different: BenchmarkDotNet needs their classes public (ADR-0062), but there are only a few, and a summary of what each one measures is worth reading.
+
+The kit already tells test projects apart by name: a project whose name ends in `Tests` (`sample/Directory.Build.props`, an app's `tests/Directory.Build.props`, and the coverage gate).
+
+## Options
+
+### Option 1: Every project except test projects, by name
+
+`Directory.Build.props` turns `GenerateDocumentationFile` on for every project whose name doesn't end in `Tests`.
+
+- **Trade-offs:** Every shipped project, and the benchmarks, documents its public surface, which is where comments are read. Test classes carry no boilerplate. The condition sits in the root file, so the build-configuration fixtures, which copy only the root files, see it; it uses the name rule the kit already has, so no new rule needs a source.
+- **Reversibility:** Easy: one condition.
+- **Risk:** Low. A project named `...Tests` that isn't a test project would escape the gate; the kit's naming makes that a mistake already.
+
+### Option 2: Every project, test projects included
+
+- **Trade-offs:** One rule with no exception, and the documentation file also lets the build report IDE0005 (unnecessary usings) in tests. But every test class and test method needs a comment that repeats its name, hundreds of lines of noise in the sample alone.
+- **Reversibility:** Easy.
+- **Risk:** Low for correctness; the comments would rot, because nothing reads them.
+
+### Option 3: Every project except test and benchmarks projects
+
+- **Trade-offs:** Saves a few comments in benchmarks projects, but needs a second copy of the benchmarks name rule in the root `Directory.Build.props`, which `KitSolution.Tests.ps1` forbids (CRF-003: `Test-BenchmarksProject` is its one source).
+- **Reversibility:** Easy.
+- **Risk:** Low, but it adds a copy of a rule to keep in step.
+
+### Option 4: Every project writes the file, and `.editorconfig` turns CS1591 off in test folders
+
+- **Trade-offs:** Test projects get IDE0005 at build too. But a test project writes a documentation file no one reads, and the exception is split between two files.
+- **Reversibility:** Easy.
+- **Risk:** Low.
+
+## Recommendation
+
+Option 1: comments where they're read, no noise in tests, and no new copy of a rule.
+
+## Decision
+
+Accepted. The owner accepted the gate itself on 2026-11-12 (rules audit, C# coding conventions pass); which projects it leaves out was the agent's call in auto mode, recorded here for the owner.
+
+## Consequences
+
+- **STY-008** states the rule; `Directory.Build.props` turns the documentation file on for every project whose name doesn't end in `Tests`, and an app gets the same file.
+- **Tests:** `tools/tests/BuildConfig.Tests.ps1` has a failing fixture (`UndocumentedPublicMember`, CS1591). The `AwaitInTests` and `AwaitInNestedTests` fixtures, test projects with an undocumented public class, still build, so the exception is tested. The fixtures that must build clean document their public members.
+- **The sample** documents every public member of its libraries, with `<inheritdoc/>` where a member implements or overrides a documented one.
+- **OpenAPI:** with the documentation files on, ASP.NET Core's OpenAPI source generator puts the comments of the API's types into the OpenAPI document as descriptions (https://learn.microsoft.com/aspnet/core/fundamentals/openapi/openapi-comments). So the sample's Contracts comments are written for the API's callers, with notes for developers in plain `//` comments, and each stays on one line: a line break becomes part of the description, `\r\n` or `\n` depending on the checkout, and the contract snapshot test would then differ between Windows and Linux. The snapshot (`sample/tests/Bookmarks.FunctionalTests/Contract/openapi-v1.json`) gains those descriptions.
+- **Apps** get the gate through the kit's `Directory.Build.props`: a new public member without a comment fails the build. CA1515 makes an app's executable projects' types internal, so the gate falls mostly on its class libraries.
+
+## Pillars affected
+
+Operational Excellence: the public surface explains itself in IntelliSense and in review, and a missing comment is found by the build, not by a reader.
+
+## Sources
+
+- owner, 2026-11-12
+- https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/, retrieved 2026-11-15
+- https://learn.microsoft.com/dotnet/csharp/language-reference/compiler-messages/cs1591, retrieved 2026-11-15
+- https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/recommended-tags, retrieved 2026-11-15
+- https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-15
+- https://learn.microsoft.com/dotnet/core/project-sdk/msbuild-props#generatedocumentationfile, retrieved 2026-11-15
+- https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-15
+- https://learn.microsoft.com/aspnet/core/fundamentals/openapi/openapi-comments, retrieved 2026-11-15

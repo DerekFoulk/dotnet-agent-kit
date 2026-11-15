@@ -8,6 +8,7 @@ namespace Bookmarks.Application.Features.Bookmarks;
 /// </summary>
 public interface IBookmarkRepository
 {
+    /// <summary>The owner's bookmark with this id, or null when the owner has none with it.</summary>
     Task<Bookmark?> FindAsync(string ownerId, Guid id, CancellationToken cancellationToken);
 
     /// <summary>
@@ -19,5 +20,6 @@ public interface IBookmarkRepository
     /// <summary>One page of the owner's bookmarks, in a stable order: <paramref name="limit"/> of them from <paramref name="offset"/>.</summary>
     Task<IReadOnlyList<Bookmark>> ListAsync(string ownerId, int offset, int limit, CancellationToken cancellationToken);
 
+    /// <summary>Saves a new bookmark.</summary>
     Task AddAsync(Bookmark bookmark, CancellationToken cancellationToken);
 }

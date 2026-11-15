@@ -95,6 +95,19 @@ rules:
         how: "the recommendations no analyzer checks, checked by code review: meaningful names without abbreviations or single letters, no double underscore, t_ for thread-static fields, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
     scope: core
     paths: ["**/*.cs", ".editorconfig"]
+  - id: STY-008
+    statement: "Every publicly visible type and member has an XML documentation comment; test projects (names ending in Tests) are left out."
+    why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12); the coding conventions pass made XML documentation on public members a gate. A comment on the public surface is what IntelliSense and a reviewer read; a test class's name already says what it checks (ADR-0068)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "ADR-0068", "https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/recommended-tags, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: Directory.Build.props sets GenerateDocumentationFile in every project whose name doesn't end in Tests, so the compiler reports CS1591 for an undocumented public member and STY-004 fails the build on it; tools/tests/BuildConfig.Tests.ps1 (the UndocumentedPublicMember fixture fails; the AwaitInTests fixtures, test projects, build)"
+    scope: core
+    paths: ["**/*.cs", "Directory.Build.props"]
 ---
 
 # Code style
