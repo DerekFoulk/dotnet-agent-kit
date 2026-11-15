@@ -38,6 +38,8 @@ BeforeDiscovery {
         @{ Fixture = 'PrivateArgumentException'; Diagnostic = 'CA2208'; Description = 'a private member that names a parameter it doesn''t have, a Usage rule that checks every member by default (STY-009)' }
         @{ Fixture = 'PrivateCancellationTokenFirst'; Diagnostic = 'CA1068'; Description = 'a private method that takes its CancellationToken first, a Design rule that checks every member by default (STY-009)' }
         @{ Fixture = 'ReadonlyStructNotDeclared'; Diagnostic = 'IDE0250'; Description = 'a struct whose members are all read-only but isn''t declared readonly (STY-009)' }
+        # DAT-010: a caller's value interpolated into a Raw method of EF Core is SQL injection (EF1002).
+        @{ Fixture = 'RawSqlInterpolation'; Diagnostic = 'EF1002'; Description = 'a value interpolated into SqlQueryRaw or ExecuteSqlRaw (DAT-010)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }

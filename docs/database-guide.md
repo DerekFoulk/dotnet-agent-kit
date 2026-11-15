@@ -56,7 +56,7 @@ SQLite takes one write at a time. Microsoft.Data.Sqlite answers a write that fin
 
 - **A budget alert:** a Cost Management budget on the resource group, set to alert the owner. A budget only alerts; it doesn't stop spending ([budgets tutorial](https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets), checked 2026-11-11).
 - **The owner creates it:** creating a cloud resource, and anything that could cost money, is the owner's call (SEC-003). The agent writes the guard settings into the plan, or into the infrastructure code once apps have it (GAP-016).
-- **Tests run on the same engine:** in a container or the emulator, never against the cloud database (DAT-005).
+- **Tests and local development run on the same engine:** in a container or the emulator, never against the cloud database (DAT-005).
 
 ## Sources
 
