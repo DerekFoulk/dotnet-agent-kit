@@ -47,6 +47,7 @@ If the owner prefers another option that fits the answers above (PostgreSQL, a p
 - **Azure SQL Database free offer:** it pauses after about 15 minutes with no connections, so the first request after a pause waits while it resumes. Turn on EF Core's retry for transient errors (`EnableRetryOnFailure`). It has no SLA, and Microsoft positions it for development and proof of concept: an app whose users can't wait or need an SLA moves to a paid tier, which is the owner's call. Once the month's vCore seconds run out, it stays paused until the next month.
 - **Cosmos DB free tier:** 1000 RU/s is shared by every container in the account, only one account per subscription can have it, and storage past 25 GB bills at the regular price.
 - **PostgreSQL free account:** it ends after 12 months, and then bills at the paid price without asking.
+- **SQLite:** it takes one write at a time, and Microsoft.Data.Sqlite answers a locked database by sleeping a fixed 150 ms before it tries again. Set SQLite's own busy timeout on every connection, as the sample's `SqliteBusyTimeoutInterceptor` does, so a write waits only as long as the lock is held (ADR-0069).
 
 ## Every cloud database, whichever it is
 
