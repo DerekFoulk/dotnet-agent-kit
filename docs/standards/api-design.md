@@ -29,7 +29,7 @@ rules:
         in: [app]
         how: "until the app follows the sample"
     scope: core
-    paths: ["**/Program.cs", "**/*Endpoints*.cs"]
+    paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*Error*.cs"]
   - id: API-003
     statement: "An HTTP API describes itself with the built-in OpenAPI document (Microsoft.AspNetCore.OpenApi) and typed results; the document, and any UI for it such as Scalar or Swagger UI, is mapped in Development only; a contract test snapshots the document, so every change to the API shows in review."
     why: "The document is the API's contract and the source for generated clients, but published in production it maps the whole API for an attacker; Microsoft's templates map it in Development only (GAP-011)."
