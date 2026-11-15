@@ -5,4 +5,4 @@ applyTo: '**/*ServiceDefaults*/**,**/Program.cs'
 
 # Operations
 
-- OPS-005: An app shuts down gracefully: on SIGTERM its host stops taking requests and gives in-flight work a shutdown timeout that ends before the platform's grace period (25 seconds where the platform allows 30), and every long-running call passes on the cancellation token it was given, so it stops when the host does.
+- OPS-005: An app shuts down gracefully: on SIGTERM its host stops taking requests and gives in-flight work a shutdown timeout that ends before the platform's grace period (25 seconds where the platform allows 30, Kubernetes' default), and long-running work stops on the host's stopping token or the request's cancellation token, which every call passes on.

@@ -75,6 +75,7 @@ internal static class ApiHostingExtensions
                 return ValueTask.CompletedTask;
             };
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                // A caller's bucket is made once, from the settings at that time; a change to them takes a restart.
                 RateLimitPartition.GetTokenBucketLimiter(Caller(context), _ => Bucket(context.RequestServices.GetRequiredService<IOptions<RateLimitSettings>>().Value)));
         });
     }

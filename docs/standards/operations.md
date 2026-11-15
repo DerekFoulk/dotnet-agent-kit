@@ -66,7 +66,7 @@ rules:
     scope: core
     paths: ["**/docs/runbook.md"]
   - id: OPS-005
-    statement: "An app shuts down gracefully: on SIGTERM its host stops taking requests and gives in-flight work a shutdown timeout that ends before the platform's grace period (25 seconds where the platform allows 30), and every long-running call passes on the cancellation token it was given, so it stops when the host does."
+    statement: "An app shuts down gracefully: on SIGTERM its host stops taking requests and gives in-flight work a shutdown timeout that ends before the platform's grace period (25 seconds where the platform allows 30, Kubernetes' default), and long-running work stops on the host's stopping token or the request's cancellation token, which every call passes on."
     why: "A container platform sends SIGTERM and kills the process when its grace period ends; work still running then is cut off mid-write. The generic host's stopping token and ShutdownTimeout are how .NET finishes in time (rules audit, owner 2026-11-12)."
     layer: outside
     basis: authority
@@ -109,7 +109,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/aspnet/core/fundamentals/best-practices, retrieved 2026-11-15"]
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/aspnet/core/fundamentals/best-practices, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -142,7 +142,7 @@ Every app starts with `docs/runbook.md`, from the kit's `templates/app/docs/runb
 
 - **Shutdown.** `AddServiceDefaults` sets `HostOptions.ShutdownTimeout` to 25 seconds. On SIGTERM the host stops taking requests, cancels the stopping token and waits that long for in-flight work, which passes the token on (CA2016). A platform with another grace period gets a timeout a few seconds under it.
 - **Settings.** Bind each settings section as options with `AddOptions<T>().BindConfiguration(...).ValidateDataAnnotations().ValidateOnStart()`. The sample's rate limit (`RateLimiting:BurstLimit` and `RequestsPerSecond`, each `[Range(1, int.MaxValue)]`) is the example: a 0 stops the app at startup with an `OptionsValidationException`.
-- **Performance.** Microsoft's [ASP.NET Core best practices](https://learn.microsoft.com/aspnet/core/fundamentals/best-practices). CA1849, CA2016 and CA1848 catch blocking calls, dropped tokens and slow logging; code review checks the rest with the analyzing-dotnet-performance skill; the benchmarks and load test (TST-009) measure it.
+- **Performance.** Microsoft's [ASP.NET Core best practices](https://learn.microsoft.com/aspnet/core/fundamentals/best-practices). CA1849 and CA2016 catch blocking calls and dropped tokens, and CA1848 slow logging (from the [high-performance logging](https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging) page); code review checks the rest with the analyzing-dotnet-performance skill; the benchmarks and load test (TST-009) measure it.
 
 ## Pending ratification
 

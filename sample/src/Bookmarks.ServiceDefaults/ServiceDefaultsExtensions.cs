@@ -33,8 +33,8 @@ public static class ServiceDefaultsExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        // On SIGTERM the host cancels its stopping token and gives in-flight requests this long to finish. Kubernetes and
-        // Azure Container Apps kill the process 30 seconds after SIGTERM, so 25 leaves the host time to finish shutting
+        // On SIGTERM the host cancels its stopping token and gives in-flight requests this long to finish. Kubernetes, by
+        // default, kills the process 30 seconds after SIGTERM, so 25 leaves the host time to finish shutting
         // down first (OPS-005).
         builder.Services.Configure<HostOptions>(host => host.ShutdownTimeout = TimeSpan.FromSeconds(25));
         builder.ConfigureOpenTelemetry();
