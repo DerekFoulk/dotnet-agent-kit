@@ -25,6 +25,9 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks for EnsureCreated and for a HasPendingModelChanges test, until the sample follows (GAP-025)"
+      - kind: gate
+        in: [kit, app]
+        how: "build: EF Core's own analyzer EF1002 (raw SQL built by interpolation, a SQL injection risk) is a warning, which STY-004 makes an error; a probe of FromSqlRaw with an interpolated string in the sample's Infrastructure failed the build with error EF1002 (2026-11-15)"
     scope: core
     paths: ["**/*Infrastructure*/**", "**/Migrations/**", "**/Program.cs"]
   - id: DAT-003
@@ -57,16 +60,16 @@ rules:
     scope: core
     paths: ["**/Program.cs", ".github/workflows/**"]
   - id: DAT-005
-    statement: "Integration and functional tests run against the production database engine, in a container (Testcontainers) or its official emulator (the Azure Cosmos DB emulator), with the app's migrations applied; never the EF Core in-memory provider, and never SQLite standing in for another engine."
-    why: "A fake behaves differently from the real engine (case sensitivity, translations, transactions, raw SQL), so tests pass and production fails; Microsoft recommends testing against the production database system and discourages the in-memory provider. Microsoft allows SQLite as a fake when a repository layer isn't an option; the kit rules it out as well, because it differs from the engine it replaces in the same ways (GAP-008)."
+    statement: "Integration and functional tests, and local development, run against the production database engine, in a container (Testcontainers for tests) or its official emulator (the Azure Cosmos DB emulator), with the app's migrations applied; never the EF Core in-memory provider, and never SQLite standing in for another engine."
+    why: "A fake behaves differently from the real engine (case sensitivity, translations, transactions, raw SQL), so tests pass and production fails; Microsoft recommends testing against the production database system and discourages the in-memory provider. Microsoft allows SQLite as a fake when a repository layer isn't an option; the kit rules it out as well, because it differs from the engine it replaces in the same ways (GAP-008). Local development runs the same engine, so what a developer sees is what production does (owner O8, rules audit 2026-11-12: \"Anything that we can run in docker should probably run in docker\")."
     layer: outside
     basis: authority
     status: proposed
-    sources: ["ADR-0054", "https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/testing/testing-with-the-database, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux, retrieved 2026-11-11"]
+    sources: ["ADR-0054", "owner, 2026-11-12", "https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/ef/core/testing/testing-with-the-database, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux, retrieved 2026-11-11"]
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "code review checks the test projects' database setup, until the sample proves it (GAP-025)"
+        how: "code review checks the test projects' database setup and the app's local development setup (a container or the emulator, not SQLite or the in-memory provider), until the sample proves it (GAP-025)"
     scope: core
     paths: ["**/*Tests*/**"]
   - id: DAT-006
@@ -82,6 +85,45 @@ rules:
         how: "the guard is a setting in infrastructure code, which apps don't have yet (GAP-016), so its check waits (GAP-024); creating a cloud resource is the owner's call in any case (SEC-003)"
     scope: core
     paths: ["**/*.bicep", "**/infra/**"]
+  - id: DAT-007
+    statement: "A connection to a cloud or server database retries transient failures with its provider's execution strategy (EnableRetryOnFailure for SQL Server and Azure SQL, or the provider's own), and work that a retry could repeat runs inside the strategy as one unit."
+    why: "A cloud database drops connections and throttles as a matter of course; EF Core's execution strategies retry what's transient, and Microsoft's connection resiliency guidance says a user-started transaction must run through the strategy, or a retry repeats only part of it (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/ef/core/miscellaneous/connection-resiliency, retrieved 2026-11-15"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks the provider's registration and any explicit transaction; the sample's SQLite provider has no execution strategy, so the check waits for the sample's move to SQL Server (GAP-025)"
+    scope: core
+    paths: ["**/*Infrastructure*/**"]
+  - id: DAT-008
+    statement: "An entity that two users or requests can change at the same time carries a concurrency token (a rowversion with IsRowVersion, or IsConcurrencyToken on a property the app changes), and a conflict is answered as a 409 or retried with fresh values, never silently overwritten."
+    why: "Without a token, the last write wins and an earlier change is lost with no error; EF Core's optimistic concurrency detects the conflict at SaveChanges (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/ef/core/saving/concurrency, retrieved 2026-11-15"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks every entity that can be updated; the sample's bookmarks are only created, so it has none yet"
+    scope: core
+    paths: ["**/*Infrastructure*/**", "**/*Domain*/**"]
+  - id: DAT-009
+    statement: "Data access follows Microsoft's EF Core performance guidance: queries project only what they need, read-only queries don't track, collections are paged in the database, related data loads without N+1 round trips, and nothing is materialized before it's filtered."
+    why: "EF Core's defaults are correct but not always fast, and the costly mistakes (N+1 queries, tracking what's only read, filtering in memory) don't show in a small test database (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/ef/core/performance/, retrieved 2026-11-15"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks data access with the optimizing-ef-core-queries skill; CA1849 and CA2016 already gate synchronous and uncancellable calls"
+    scope: core
+    paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
 ---
 
 # Data

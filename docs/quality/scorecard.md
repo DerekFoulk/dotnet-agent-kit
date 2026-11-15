@@ -123,7 +123,7 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/reliability/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks, retrieved 2026-11-07"
-    rules: [ARC-006, OPS-002, OPS-003, DAT-003, DAT-004]
+    rules: [ARC-006, OPS-002, OPS-003, DAT-003, DAT-004, DAT-007, DAT-008]
     gaps:
       - id: GAP-007
         gap: "No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-002, OPS-003 (accepted 2026-11-09)."
@@ -171,7 +171,7 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/, retrieved 2026-11-07"
       - "https://benchmarkdotnet.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/aspnet/core/test/load-tests?view=aspnetcore-10.0, retrieved 2026-11-12"
-    rules: [ARC-006, TST-009]
+    rules: [ARC-006, TST-009, DAT-009]
     gaps:
       - id: GAP-012
         gap: "No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions). Closed by ADR-0062: BenchmarkDotNet benchmarks and a Locust load test, each against a budget in the repo, run by the shared performance workflow off the required path (TST-009, proposed), proven on the sample. A load test of a deployed app waits for GAP-015."
@@ -293,17 +293,17 @@ Each area in the front matter above has:
 | Code | 11 | 10 | 1 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
 | Security | 7 | 5 | 2 | 4 | 0 |
-| Reliability | 3 | 2 | 1 | 2 | 1 |
+| Reliability | 5 | 2 | 3 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 0 |
 | API design | 4 | 4 | 0 | 3 | 0 |
-| Performance | 1 | 0 | 1 | 1 | 0 |
+| Performance | 2 | 0 | 2 | 1 | 0 |
 | Supply chain and build | 9 | 9 | 0 | 3 | 3 |
 | Delivery | 1 | 1 | 0 | 2 | 3 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 78 rules in force, 50 checked by a tool and 28 advisory; 25 proposed; 16 open gaps.
+**Overall:** 81 rules in force, 50 checked by a tool and 31 advisory; 25 proposed; 16 open gaps.
 
 Open gaps:
 
