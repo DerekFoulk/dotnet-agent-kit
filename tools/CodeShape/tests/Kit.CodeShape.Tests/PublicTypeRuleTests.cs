@@ -45,6 +45,19 @@ public sealed class PublicTypeRuleTests
     public void APartialTypesPartsInOneFileAreOneType(string text, int findings) =>
         PublicTypeRule.Check([new SourceFile("Parts.cs", text)]).Should().HaveCount(findings);
 
+    // A partial type is public when any of its parts says so, so a part that doesn't repeat it still declares a public
+    // type in its file.
+    [Fact]
+    public void APartThatDoesNotRepeatPublicStillDeclaresAPublicType() =>
+        PublicTypeRule.Check([
+            new SourceFile("A.cs", "public partial class Wide { }"),
+            new SourceFile("B.cs", "partial class Wide { } public class Other { }"),
+        ]).Should().ContainSingle().Which.Should().BeEquivalentTo(new
+        {
+            Path = "B.cs",
+            Message = "The file declares 2 public types (Wide, Other); the limit is 1 (CRF-011).",
+        });
+
     // A file's top-level statements aren't types.
     [Fact]
     public void TopLevelStatementsBesideOnePublicTypeAreWithinTheLimit() =>
