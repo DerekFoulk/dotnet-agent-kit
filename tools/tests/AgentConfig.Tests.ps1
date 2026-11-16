@@ -186,6 +186,8 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'git push -du origin feat/x' }
                 @{ Tool = $tool; Command = 'git push origin feat/x -uf' }
                 @{ Tool = $tool; Command = 'git push origin feat/x -ud' }
+                @{ Tool = $tool; Command = 'git push origin feat/x -fu' }
+                @{ Tool = $tool; Command = 'git push origin feat/x -du' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
