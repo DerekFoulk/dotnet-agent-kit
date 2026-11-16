@@ -206,6 +206,35 @@ rules:
         how: "until the app follows the sample"
     scope: core
     paths: ["**/*Endpoints*.cs", "**/*Contracts*/**"]
+  - id: SEC-014
+    statement: "The security analyzers stay on and fail the build: every CA2xxx, CA3xxx and CA5xxx security rule that AnalysisLevel latest-all turns on, the SYSLIB obsoletions of unsafe APIs (BinaryFormatter, obsolete cryptography and TLS types), and BannedSymbols.txt's bans of the APIs those rules miss (Aes.Create, whose CBC needs an HMAC nothing checks for, algorithms named at run time, the accept-any-certificate validator, DTD parsing and the legacy XML resolver and reader); a suppression of one names its reason where it lives."
+    why: "Microsoft's Secure Coding Guidelines and its security rule pages say what to avoid; the analyzers find much of it, and the Secure Coding Guidelines pass found what they don't (CBC from Aes.Create, which is safe only with an HMAC checked before decrypting, an algorithm picked by name, the accept-all certificate delegate, DTD parsing), so the kit bans those; a documented need, such as CBC with encrypt-then-MAC or a trusted stylesheet's xsl:include, suppresses the ban with its reason (owner O7, 2026-11-12; Secure Coding Guidelines pass, 2026-11-15)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/standard/security/secure-coding-guidelines, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/security-warnings, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/serialization/binaryformatter-security-guide, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: AnalysisLevel latest-all turns the security rules on and STY-004 makes them errors, BannedSymbols.txt's security block bans the APIs they miss (RS0030); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA5350, CA5351, CA5358, CA5359, CA5384, CA5390, CA5394, CA5397, CA2351, SYSLIB0011, SYSLIB0021 and each banned API (one overload each; its test that every banned ID resolves shows the other overloads' IDs name real symbols)"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks that a suppression of a security rule names its reason; the taint rules (CA3001 to CA3012) see only some paths, such as not a request value passed through a minimal API lambda, which code review and CodeQL (SEC-006) cover"
+    scope: core
+    paths: ["**/*.cs", "BannedSymbols.txt"]
+  - id: SEC-015
+    statement: "Cryptography and deserialization follow Microsoft's guidance: don't write your own; protect data with ASP.NET Core Data Protection, or encrypt with an authenticated cipher (AesGcm or ChaCha20Poly1305); compare secrets with CryptographicOperations.FixedTimeEquals; derive keys from passwords with PBKDF2 over SHA-256 or better and a high iteration count; draw secrets from RandomNumberGenerator; and treat everything deserialized from outside the app as untrusted input."
+    why: "Hand-rolled or unauthenticated cryptography fails in ways tests don't show, and deserialization is a trust boundary; these are the patterns Microsoft's secure-coding and cryptography pages recommend, and no analyzer checks all of them (Secure Coding Guidelines pass, 2026-11-15)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/standard/security/cryptography-model, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/security/security-and-user-input, retrieved 2026-11-15", "https://learn.microsoft.com/aspnet/core/security/data-protection/introduction, retrieved 2026-11-15"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks cryptography and deserialization against this rule: no custom cipher or MAC, no secret compared with == or SequenceEqual, no PBKDF2 over SHA-1 or a low iteration count, no RSA key under 2048 bits, and no type chosen from the input; SEC-014's analyzers and bans gate what a tool can see"
+    scope: core
+    paths: ["**/*.cs"]
 ---
 
 # Security

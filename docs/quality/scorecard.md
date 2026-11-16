@@ -111,7 +111,7 @@ areas:
     sources:
       - "https://asvs.owasp.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/azure/well-architected/security/, retrieved 2026-11-07"
-    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-012, SEC-013, ARC-006, DAT-010]
+    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-012, SEC-013, SEC-014, SEC-015, ARC-006, DAT-010]
     gaps:
       - id: GAP-040
         gap: "SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12)."
@@ -316,7 +316,7 @@ Each area in the front matter above has:
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 11 | 10 | 1 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
-| Security | 11 | 8 | 3 | 4 | 3 |
+| Security | 13 | 9 | 4 | 4 | 3 |
 | Reliability | 7 | 4 | 3 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 1 |
 | API design | 4 | 4 | 0 | 3 | 0 |
@@ -327,7 +327,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 89 rules in force, 57 checked by a tool and 32 advisory; 25 proposed; 22 open gaps.
+**Overall:** 91 rules in force, 58 checked by a tool and 33 advisory; 25 proposed; 22 open gaps.
 
 Open gaps:
 
