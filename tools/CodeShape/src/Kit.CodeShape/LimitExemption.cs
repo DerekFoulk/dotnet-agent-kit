@@ -11,14 +11,15 @@ namespace Kit.CodeShape;
 /// Where it sits says what it covers:
 /// <list type="bullet">
 /// <item>a member's or type's is the last comment right before it (before its attributes), with no blank line
-/// between; a property's covers its accessors, and a type's covers its cohesion, not its members;</item>
-/// <item>a file's is the file's first comment, with a blank line below it, and covers the file's length and its
-/// top-level statements.</item>
+/// between; a property's covers its accessors, and a type's covers its cohesion and its member count, not its
+/// members (on any part of a partial type, the whole type);</item>
+/// <item>a file's is the file's first comment, with a blank line below it, and covers the file's length, its public
+/// types and its top-level statements.</item>
 /// </list>
 /// A marker without a reason covers nothing.</summary>
 internal static partial class LimitExemption
 {
-    /// <summary>Whether a member, or a type's cohesion, has an exception.</summary>
+    /// <summary>Whether a member, a type's cohesion and member count, or a file, has an exception.</summary>
     public static bool Covers(SyntaxNode node)
     {
         ArgumentNullException.ThrowIfNull(node);
@@ -31,7 +32,16 @@ internal static partial class LimitExemption
         };
     }
 
-    /// <summary>Whether a file has an exception for its length and its top-level statements.</summary>
+    /// <summary>Whether a type's cohesion and member count have an exception: a marker on any of its declarations,
+    /// so on any part of a partial type, covers the whole type.</summary>
+    public static bool CoversType(INamedTypeSymbol type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        return type.DeclaringSyntaxReferences.Any(reference => RightBefore(reference.GetSyntax()));
+    }
+
+    /// <summary>Whether a file has an exception for its length, its public types and its top-level statements.</summary>
     public static bool CoversFile(CompilationUnitSyntax root)
     {
         ArgumentNullException.ThrowIfNull(root);

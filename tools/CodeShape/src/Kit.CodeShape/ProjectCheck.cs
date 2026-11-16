@@ -11,8 +11,12 @@ internal static class ProjectCheck
         SourceFile[] files = [.. project.Files.Select(path => Read(path, project.Defines))];
         return files
             .Where(file => !file.Generated)
-            .SelectMany(file => NestingRule.Check(file).Concat(StatementRule.Check(file)).Concat(FileLengthRule.Check(file)))
+            .SelectMany(file => NestingRule.Check(file)
+                .Concat(StatementRule.Check(file))
+                .Concat(FileLengthRule.Check(file)))
+            .Concat(PublicTypeRule.Check(files))
             .Concat(CohesionRule.Check(files))
+            .Concat(MemberCountRule.Check(files))
             .OrderBy(finding => finding.Path, StringComparer.Ordinal)
             .ThenBy(finding => finding.Line)
             .ThenBy(finding => finding.Column);
