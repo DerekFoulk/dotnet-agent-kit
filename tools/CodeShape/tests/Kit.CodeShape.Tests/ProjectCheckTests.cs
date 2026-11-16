@@ -100,6 +100,17 @@ public sealed class ProjectCheckTests : IDisposable
         ProjectCheck.Check(new ProjectFiles("App.csproj", [], [designer])).Should().BeEmpty();
     }
 
+    // Review 2: only a Migrations folder inside the project counts, not one the repo happens to sit in.
+    [Fact]
+    public void AFolderNamedMigrationsAboveTheProjectExemptsNothing()
+    {
+        string legacy = Write(Path.Join("Migrations", "App", "Legacy.cs"), "#nullable disable\nclass Legacy { }\n");
+        string marked = Write(Path.Join("Migrations", "App", "Marked.g.cs"), "class Marked { }");
+
+        ProjectCheck.Check(new ProjectFiles(Path.Join(_folder.FullName, "Migrations", "App", "App.csproj"), [], [legacy, marked]))
+            .Should().HaveCount(2);
+    }
+
     private string Write(string name, string text)
     {
         string path = Path.Join(_folder.FullName, name);

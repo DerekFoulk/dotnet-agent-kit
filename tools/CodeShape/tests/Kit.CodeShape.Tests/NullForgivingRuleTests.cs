@@ -22,6 +22,12 @@ public sealed class NullForgivingRuleTests
     public void ALabelOnItsLineOrTheLineAboveCoversIt(string member) =>
         NullForgivingRule.Check(new SourceFile("Name.cs", $"class Name\n{{\n    string? _text;\n{member}}}\n")).Should().BeEmpty();
 
+    // Review 2: a label with no reason covers nothing, as a CRF-011 exception comment with no reason doesn't.
+    [Fact]
+    public void ALabelWithNoReasonDoesNotCoverIt() =>
+        NullForgivingRule.Check(new SourceFile("Name.cs", "class Name\n{\n    string? _text;\n    // CRF-001 safety net:\n    int Length() => _text!.Length;\n}\n"))
+            .Should().ContainSingle();
+
     [Fact]
     public void AnotherCommentDoesNotCoverIt() =>
         NullForgivingRule.Check(new SourceFile("Name.cs", "class Name\n{\n    string? _text;\n    // never null here\n    int Length() => _text!.Length;\n}\n"))
