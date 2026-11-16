@@ -37,7 +37,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: AnalysisLevel latest-all, and the root .globalconfig for every rule latest-all leaves off, with Directory.Build.props declaring ComVisible(false) on every assembly for CA1017 (ADR-0043) and CLSCompliant(false) for CA1014 (ADR-0049); tools/tests/BuildConfig.Tests.ps1 (the CatchAll fixture, and fixtures that cover every rule .globalconfig turns on)"
+        how: "build: AnalysisLevel latest-all, and the root .globalconfig for every rule latest-all leaves off, with Directory.Build.props declaring ComVisible(false) on every assembly for CA1017 (ADR-0043) and CLSCompliant(false) for CA1014 (ADR-0049); tools/tests/BuildConfig.Tests.ps1 (the CatchAll fixture; one fixture per family of rules latest-all turns on that Microsoft's .NET best-practices pages rely on: strings and culture, CA1305, CA1307, CA1309, CA1310, CA1311; dispose, CA2000, CA1063, CA1816, CA1001; async, CA2008, CA2016, CA1849, CA2012, and CS4014, a compiler warning; logging, CA1848, CA2254, CA1727, CA1873; throwing, CA2200, CA2201, CA1510 to CA1513; and fixtures that cover every rule .globalconfig turns on)"
     scope: core
     paths: ["**/*.cs", "Directory.Build.props", ".globalconfig"]
   - id: STY-004
@@ -121,7 +121,7 @@ rules:
         how: "build: BannedSymbols.txt bans ArrayList, Hashtable and the non-generic Queue and Stack (RS0030) wherever code creates or calls one (a parameter or field typed as one isn't flagged, since nothing can fill it), which the thread-safe collections page and the Framework Design Guidelines replace with generic and concurrent collections (.NET best-practices pass, owner 2026-11-16); tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each"
       - kind: gate
         in: [kit, app]
-        how: "build: .editorconfig sets api_surface to public, internal for the Design, Naming and Usage categories and for CA1815 and CA1819, keeps all for CA1068 and CA2208 (their own default), and csharp_style_prefer_readonly_struct to true:warning (IDE0250); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA1051, CA1711, CA2225, CA1815, CA1819 and IDE0250, and for a private CA2208 and CA1068"
+        how: "build: .editorconfig sets api_surface to public, internal for the Design, Naming and Usage categories and for CA1815 and CA1819, keeps all for CA1068 and CA2208 (their own default), and csharp_style_prefer_readonly_struct to true:warning (IDE0250); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA1051, CA1711, CA2225, CA1815, CA1819 and IDE0250 (on a struct and on a record struct), for a private CA2208 and CA1068, and for CA1064 on an internal exception in a class library (an Exe's internal exception builds, as CA1515 asks)"
     scope: core
     paths: ["**/*.cs", ".editorconfig", "BannedSymbols.txt"]
   - id: STY-010
