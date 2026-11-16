@@ -113,8 +113,12 @@ Describe 'Get-BashCommand' {
         @{ Command = 'git push origin x > out.txt 2>&1'; Words = @('git', 'push', 'origin', 'x') }
         @{ Command = 'echo ${HOME} $((1 + 2)) $x'; Words = @('echo', '${HOME}', '$((1 + 2))', '$x') }
         @{ Command = 'echo a""b '''''; Words = @('echo', 'ab', '') }
+        # Inside double quotes, '$' before the closing quote is a literal '$', not Bash's $"..." quoting (found by
+        # replaying the kit's session transcripts through the guard).
+        @{ Command = 'grep -v "^\s*$" "id: $id$"'; Words = @('grep', '-v', '^\s*$', 'id: $id$') }
     ) {
-        $commands = @(InModuleScope KitCommandGuard -Parameters @{ Command = $Command } { param($Command) Get-BashCommand -Command $Command })
+        # A throw counts as no commands, so a misread fails on the assertion below.
+        $commands = @(try { InModuleScope KitCommandGuard -Parameters @{ Command = $Command } { param($Command) Get-BashCommand -Command $Command } } catch { })
         $commands.Count | Should -Be 1
         $commands[0].Words | Should -Be $Words
     }
@@ -126,6 +130,13 @@ Describe 'Get-BashCommand' {
         @{ Command = 'a |& b ;; c'; Count = 3 }
     ) {
         @(InModuleScope KitCommandGuard -Parameters @{ Command = $Command } { param($Command) Get-BashCommand -Command $Command }).Count | Should -Be $Count
+    }
+
+    It 'reads a case statement''s patterns as patterns, whose '')'' closes nothing, and its commands as commands' {
+        # Valid Bash: 'bash -n' accepts it.
+        $text = 'case "$r" in *completed*|x) echo "$r"; git push --for''ce'';; (y) exit 1 ;; esac; echo done'
+        $commands = @(try { InModuleScope KitCommandGuard -Parameters @{ Text = $text } { param($Text) Get-BashCommand -Command $Text } } catch { })
+        ($commands | ForEach-Object { $_.Words -join ' ' }) | Should -Be @('case $r in', 'echo $r', 'git push --force', 'exit 1', 'echo done')
     }
 
     It 'also resolves the commands inside $( ), backticks and <( )' {
