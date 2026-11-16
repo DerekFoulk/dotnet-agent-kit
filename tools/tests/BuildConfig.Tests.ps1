@@ -59,6 +59,24 @@ BeforeDiscovery {
         @{ Fixture = 'LegacyXmlReader'; Diagnostic = 'RS0030'; Description = 'the legacy XmlTextReader (SEC-014)' }
         @{ Fixture = 'AcceptAnyCertificate'; Diagnostic = 'RS0030'; Description = 'the accept-any-certificate validator (SEC-014)' }
         @{ Fixture = 'DtdParse'; Diagnostic = 'RS0030'; Description = 'DTD parsing in XmlReaderSettings (SEC-014)' }
+        # The .NET best-practices and C# passes (owner, 2026-11-16): BannedSymbols.txt bans what no analyzer flags. One
+        # fixture holds a family's banned calls, and each row names the symbol its RS0030 must be about.
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTime.Now'; Description = 'DateTime.Now, where TimeProvider gives the time (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTime.UtcNow'; Description = 'DateTime.UtcNow (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTime.Today'; Description = 'DateTime.Today (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.Now'; Description = 'DateTimeOffset.Now (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.UtcNow'; Description = 'DateTimeOffset.UtcNow (ARC-008)' }
+        @{ Fixture = 'ObsoleteTimeZone'; Diagnostic = 'CS0618'; Description = 'TimeZone, obsolete in favor of TimeZoneInfo, so it needs no ban (ARC-008)' }
+        @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.WaitAll('; Description = 'Task.WaitAll (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.WaitAny('; Description = 'Task.WaitAny (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Thread.Sleep('; Description = 'Thread.Sleep (STY-011)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'ArrayList'; Description = 'ArrayList (STY-009)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'Hashtable'; Description = 'Hashtable (STY-009)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'Queue'''; Description = 'the non-generic Queue (STY-009)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'Stack'''; Description = 'the non-generic Stack (STY-009)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
@@ -327,6 +345,20 @@ Describe 'Repo build configuration' -Tag 'Build' {
 
             $build.ExitCode | Should -Not -Be 0 -Because $build.Output
             $build.Output | Should -Match "error $Diagnostic"
+            if ($_['Symbol']) {
+                $build.Output | Should -Match ([regex]::Escape("error ${Diagnostic}: The symbol '$($_['Symbol'])")) -Because "the ban on $($_['Symbol']) should fire"
+            }
+        }
+    }
+
+    # STY-011: the C# async page lists GetAwaiter().GetResult() first among the ways to block where await can't reach,
+    # because it keeps the original exception; the ban on Wait and Result leaves it open.
+    Context 'blocking where await can''t reach' {
+        It 'allows GetAwaiter().GetResult()' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'BlockingEscape')
+
+            $build.Output | Should -Not -Match 'RS0030'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
 
