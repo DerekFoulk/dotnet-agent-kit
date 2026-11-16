@@ -99,6 +99,14 @@ public sealed class MemberCountRuleTests
             new SourceFile("Wide.g.cs", $"partial class Wide {{ {Methods(5, from: 20)}}} class Made {{ {Methods(21)}}}") { Generated = true },
         ]).Should().BeEmpty();
 
+    // A C# 14 extension block isn't a type someone maintains on its own: the compiler declares its members in the
+    // static class that holds it, so they count toward that class.
+    [Theory]
+    [InlineData(10, 0)]
+    [InlineData(11, 1)]
+    public void AnExtensionBlocksMembersCountTowardItsClass(int each, int findings) =>
+        MemberCountRule.Check([new SourceFile("Extensions.cs", $"static class Extensions {{ extension(string s) {{ {Methods(each)}}} extension(int i) {{ {Methods(each, from: each)}}} }}")])
+            .Should().HaveCount(findings).And.OnlyContain(finding => finding.Message == $"Extensions has {2 * each} members; the limit is 20 (CRF-011).");
     private static string Methods(int count, int from = 0) =>
         string.Concat(Enumerable.Range(from, count).Select(i => $"void M{i}() {{ }} "));
 }
