@@ -31,6 +31,19 @@ public sealed class CliTests : IDisposable
             $"{deep}(5,74): error CRF011: Run nests 5 levels deep; the limit is 3 (CRF-011). [{project}]{Environment.NewLine}");
     }
 
+    // A finding names the rule it breaks in the error code, so STY-005's findings aren't reported as CRF-011's.
+    [Fact]
+    public void AFindingCarriesItsOwnRulesCode()
+    {
+        string legacy = Write("Legacy.cs", "#nullable disable\nclass Legacy { }\n");
+        string project = Path.Join(_folder.FullName, "App.csproj");
+
+        (int exitCode, string output) = Run(new { name = project, defines = Array.Empty<string>(), files = new[] { legacy } });
+
+        exitCode.Should().Be(1);
+        output.Should().StartWith($"{legacy}(1,1): error STY005: #nullable changes");
+    }
+
     [Fact]
     public void ARunWithNoFindingsSaysSoAndPasses()
     {
