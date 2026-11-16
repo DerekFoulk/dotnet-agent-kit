@@ -164,6 +164,15 @@ Describe 'Agent configuration' {
                 # Review 3 of ADR-0075's PR: 'git push *' is allowed, and these run a program (probed with a local bare repo).
                 @{ Tool = $tool; Command = 'git push --receive-pack=./evil.sh origin feat/x' }
                 @{ Tool = $tool; Command = 'git push --exec=./evil.sh origin feat/x' }
+                # Review 4: git takes any unique prefix of a long option (probed with git 2.56.0).
+                @{ Tool = $tool; Command = 'git push --receive=../evil.sh ../remote.git HEAD:refs/heads/x' }
+                @{ Tool = $tool; Command = 'git push --rece=../evil.sh origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --exe=../evil.sh origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --e=../evil.sh origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --dele origin feat/x' }
+                @{ Tool = $tool; Command = 'git push origin --del feat/x' }
+                @{ Tool = $tool; Command = 'git push --mir origin' }
+                @{ Tool = $tool; Command = 'git push --pru origin' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
