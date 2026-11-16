@@ -602,13 +602,15 @@ function Get-PullRequestChange {
 # running out of quota, instead of a review of the head, and no review request came after it), ChecksPassed or ChecksFailed (no check or workflow
 # run on the head is pending, and a pass is confirmed by the next poll; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
 # still waits for. -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
-# kit's one watcher, for any agent in any tool (owner, 2026-11-14); a host's own monitor may wake the agent sooner.
+# kit's one watcher, for any agent in any tool (owner, 2026-11-14). Polling costs no model call, so an agent runs it in
+# the foreground. The default time-out stays under 5 minutes, the prompt cache's shortest lifetime, by about a minute, so
+# the call after a wait usually reads the conversation from the cache on any plan (ADR-0068).
 function Wait-PullRequest {
     param(
         [Parameter(Mandatory)] [string] $Repository,
         [Parameter(Mandatory)] [int] $Number,
         [ValidateSet('Review', 'Checks', 'Either')] [string] $For = 'Either',
-        [ValidateRange(1, 180)] [int] $TimeoutMinutes = 30,
+        [ValidateRange(1, 180)] [int] $TimeoutMinutes = 4,
         [ValidateRange(5, 600)] [int] $IntervalSeconds = 20
     )
 

@@ -155,21 +155,21 @@ Whether a rule says only what its source says is still a reviewer's question: no
 
 ## Three sources of a recommendation
 
-**Decided, not built yet.** The owner decided this on 2026-11-15 (`docs/corrections-log.md`), because the kit is meant for other developers as well as for him. No rule or file carries it yet: there's no preferences file, and agents don't yet label their recommendations this way. It's the planned design.
+**Built for the new-app intake; the rules come next.** The owner decided this on 2026-11-15 (`docs/corrections-log.md`), because the kit is meant for other developers as well as for him. The new-app intake labels every default this way (ADR-0074), and a check fails when one has no labeled source. Each developer's preferences live in their own file, `~/.dotnet-agent-kit/preferences.json`, outside every repo (`docs/preferences.md`). The kit's rules don't label their recommendations this way yet.
 
-When an agent recommends something, such as a database, a test library or a hosting plan, the recommendation will come from one of three sources, and the agent will say which:
+When an agent recommends something, such as a database, a test library or a hosting plan, the recommendation comes from one of three sources, and the agent says which:
 
 | Source | What it may say | How it's labeled |
 |---|---|---|
-| **An authority** | Only what its page says | The page's URL and the date it was read |
+| **An authority** | Only what its page says: a pick only where the page recommends it, not where it just uses a tool or gives an example | The page's URL and the date it was read |
 | **Your own preference** | Whatever you've chosen for your own work | "Your preference", from your own preferences file. It's yours alone, kept out of the kit's rules, so it never reaches another developer as if it were guidance |
 | **The agent** | Its own judgment, when neither of the others decides | "The agent's", with its reason. It stays proposed until you accept it |
 
-Among the options a rule allows, the default will come from your preference first, then the authority's, then the agent's. ARC-012, a rule in force today, still sets the limits: the industry-standard option while it's free for the app, within the app's monthly budget ($0 unless the intake set one), and spending money needs the owner's OK. Prices and free-tier limits will be facts with a source (a URL and a date), separate from all three; ARC-012 already lists every paid option with its price, the price's source and the date checked.
+Among the options a rule allows, the default comes from your preference first, then the authority's, then the agent's. An authority's pick that's Paid is shown but not made the default. ARC-012 still sets the limits: the industry-standard option while it's free for the app, within the app's monthly budget ($0 unless the intake set one), and spending money needs the owner's OK. Prices and free-tier limits are facts with a source (a URL and a date), separate from all three.
 
 ```mermaid
 flowchart TD
-    accTitle: How a default will be picked
+    accTitle: How a default is picked
     accDescr: Within what ARC-012 allows, free first and within the budget: if your preferences file names an option, that is the default, labeled as your preference. If not, and an authority recommends one, that is the default, labeled with the page and its date. Otherwise the agent recommends one, labeled as its own with a reason, proposed until you accept it. Prices and free-tier limits are sourced facts shown beside every option.
     L["The options ARC-012 allows:<br/>free first, within the budget"] --> P{"Does your preferences<br/>file name one?"}
     P -- yes --> UP["Default: your preference"]
@@ -181,7 +181,7 @@ flowchart TD
     PRICE -.- AG
 ```
 
-Planned, in order: a rule and ADR with the per-developer preferences file, and the new-app intake labeling each recommendation by its source; then a pass over the kit's own `preference` rules, row by row, to keep those that are the kit's method (with their ADRs) and move the owner's personal taste to his own preferences file. Until then, a `preference` rule is the owner's choice, as the `basis` table above says.
+Done: ADR-0074, with the per-developer preferences file and the new-app intake labeling each recommendation by its source. Planned next: a rule for it, then a pass over the kit's own `preference` rules, row by row, to keep those that are the kit's method (with their ADRs) and move the owner's personal taste to his own preferences file. Until then, a `preference` rule is the owner's choice, as the `basis` table above says.
 
 ## Learn more
 
