@@ -26,7 +26,7 @@ Claude Code already has better mechanisms for reads. Its Read, Grep and Glob too
 
 - **Trade-offs:** No prompt for PowerShell reads and pipelines (`Get-Content`, `git log`, `| ConvertFrom-Json`). But each command needs every risky form carved out by text, the list grows with each new flag, and a pipeline, a variable or a script block can do what no rule's text names.
 - **Reversibility:** Easy: remove the rules.
-- **Risk:** High. Two reviews found more than ten forms that write a file, read or post a secret, or run code without a prompt, and SEC-002 is a floor rule.
+- **Risk:** High. Two reviews found the fifteen forms listed under Context that write a file, read or post a secret, or run code without a prompt, and SEC-002 is a floor rule.
 
 ### Option 2: Allow routine commands whose risky forms are few and nameable; leave reads to Claude Code's tools
 
@@ -55,6 +55,7 @@ Accepted as recommended. The owner agreed to a wider allow list in the chat on 2
   - `& ./tools/New-KitApp`;
   - a parent segment written as `/..` or `\..`, which would leave `tools/`. It also prompts for a Bash read such as `ls ../..`, which no routine kit command uses;
   - `git push` with `--receive-pack` or `--exec`, which run a program. `git push *` was allowed before this ADR, and these asks close that gap.
+- git takes any unique prefix of a long option, so `--rece=` is `--receive-pack=` and `--dele` is `--delete`. The push asks therefore spell each option as its shortest unique prefix: `--de`, `--mi`, `--pru`, `--rece` and ` --e`. That widens main's `--delete`, `--mirror` and `--prune` asks without dropping any form they caught. `--force` needs no change, because git rejects `--forc` as ambiguous.
 - `KitReview.psm1` is allowed only by exact `Import-Module` commands, since `-Name` takes a list and a comma would import a second module.
 - Still prompting, on purpose:
   - `git fetch` with options (`--upload-pack` runs a program);
