@@ -1,5 +1,7 @@
 is_global = true
 
+# The security rules are on through latest-all, not this file; tools/tests/BuildConfig.Tests.ps1 proves them (SEC-014).
+#
 # The analyzer rules that AnalysisLevel latest-all leaves off, turned on here so that every rule is on (STY-003);
 # warnings fail the build (STY-004). Microsoft lists eleven of them, the code metric rules and six design rules, and
 # calls them all legacy rules that might be deprecated:

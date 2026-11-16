@@ -71,6 +71,7 @@ Accepted (owner, 2026-11-14), with these answers:
 - **Cost:** each round runs in the owner's Claude usage, not GitHub AI credits.
 - **Apps made before this change** get the agent through the kit sync. A ruleset that already has the Copilot rule keeps it until the owner removes it, because `New-KitApp` sets rulesets once.
 - **ADR-0064** is superseded. ADR-0010's reviewer is back in force.
+- **Update (2026-11-14):** ADR-0068 changes how this runs, to spend less Claude usage. `Wait-PullRequest` runs in the foreground, with a default time-out under the prompt cache's lifetime, not in the background. Fix rounds review only the fix commits, on a cheaper model when the diff is small. The first round and the stopping rule are unchanged.
 
 ## Pillars affected
 
