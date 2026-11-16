@@ -70,7 +70,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
-    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, STY-008, STY-009, STY-010, STY-011, CRF-008, CRF-010]
+    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, STY-008, STY-009, STY-010, STY-011, STY-012, CRF-008, CRF-010]
     gaps:
       - id: GAP-021
         gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version. Closed by ADR-0049, which found the 48 counted each diagnostic twice (24 places then, 32 by the time it was decided): CA1014 is on, and Directory.Build.props declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be; a library published for other .NET languages declares CLSCompliant(true) instead."
@@ -126,7 +126,7 @@ areas:
         status: proposed
         needs: "a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR"
       - id: GAP-042
-        gap: "SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12)."
+        gap: "SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12). Microsoft's logging pages offer redaction (Microsoft.Extensions.Compliance.Redaction, with [LoggerMessage] parameters classified as sensitive) as the way to keep such data out; it would be a new dependency, chosen with the test (.NET best-practices pass, 2026-11-16)."
         status: proposed
         needs: "a log-capturing test in the sample, and a deployment that uses Key Vault"
       - id: GAP-005
@@ -318,7 +318,7 @@ Each area in the front matter above has:
 | Architecture | 10 | 7 | 3 | 4 | 4 |
 | Craft | 13 | 7 | 6 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
-| Code | 13 | 11 | 2 | 0 | 1 |
+| Code | 14 | 11 | 3 | 0 | 1 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
 | Security | 13 | 9 | 4 | 4 | 3 |
 | Reliability | 7 | 4 | 3 | 2 | 1 |
@@ -331,7 +331,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 93 rules in force, 60 checked by a tool and 33 advisory; 25 proposed; 23 open gaps.
+**Overall:** 94 rules in force, 60 checked by a tool and 34 advisory; 25 proposed; 23 open gaps.
 
 Open gaps:
 
@@ -346,7 +346,7 @@ Open gaps:
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
 - **GAP-040** (Security, proposed; needs a script that reads the licenses of the packages in the lock files, an allowlist, and a CI step): SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12).
 - **GAP-041** (Security, proposed; needs a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR): Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
-- **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
+- **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12). Microsoft's logging pages offer redaction (Microsoft.Extensions.Compliance.Redaction, with [LoggerMessage] parameters classified as sensitive) as the way to keep such data out; it would be a new dependency, chosen with the test (.NET best-practices pass, 2026-11-16).
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
 - **GAP-043** (Observability, proposed; needs an SLO per app in its plan or runbook, and alert rules in its hosting's infrastructure code): No service level objectives or alerts: an app sends telemetry (OPS-001) but nothing says what good service is (an availability and latency objective) or who is told when it's missed. They belong with the deployment pipeline and its hosting (GAP-015) (rules audit, 2026-11-12).
 - **GAP-029** (Supply chain and build, proposed; needs a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change): PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too.

@@ -159,6 +159,19 @@ rules:
         how: "code review checks that each GetAwaiter().GetResult() is where await can't reach, with its reason, and that a VSTHRD100 or VSTHRD101 suppression is on an event handler"
     scope: core
     paths: ["**/*.cs", "BannedSymbols.txt", ".editorconfig", "Directory.Packages.props"]
+  - id: STY-012
+    statement: "Code follows Microsoft's .NET best-practices and C# guidance pages where no analyzer checks them; code review checks the themes docs/code-review.md lists."
+    why: "The owner asked for Microsoft Learn's guidance as rules (owner O7, 2026-11-12). The .NET best-practices pass (21 pages) found 67 of its 157 recommendations, and the C# pass (8 pages) 30 of its 67, are judgment no analyzer checks; the owner accepted one advisory rule for them, like STY-010, with the themes worth a reviewer's eye listed for code review (owner, 2026-11-16: \"Yes, accept them\"). Where an analyzer, a ban or a kit rule checks a recommendation, that rule is its source (STY-003, STY-005, STY-007, STY-009, STY-011, ARC-008, OPS-003)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-16", "https://learn.microsoft.com/dotnet/standard/exceptions/best-practices-for-exceptions, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/base-types/best-practices-strings, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/base-types/best-practices-display-data, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/base-types/best-practices-regex, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/threading/managed-threading-best-practices, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/task-based-asynchronous-pattern-tap, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/implementing-the-task-based-asynchronous-pattern, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/garbage-collection/implementing-dispose, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/garbage-collection/implementing-disposeasync, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/memory-and-spans/memory-t-usage-guidelines, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/datetime/choosing-between-datetime, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/core/extensions/options, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/csharp/fundamentals/exceptions/creating-and-throwing-exceptions, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/programming-guide/statements-expressions-operators/how-to-define-value-equality-for-a-type, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/fundamentals/types/records, retrieved 2026-11-15"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review: the reviewer agent checks the .NET best-practices and C# themes in docs/code-review.md and ranks a broken one as that list says"
+    scope: core
+    paths: ["**/*.cs"]
 ---
 
 # Code style
