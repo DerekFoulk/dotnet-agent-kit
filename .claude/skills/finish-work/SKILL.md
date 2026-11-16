@@ -66,7 +66,7 @@ Check the mode first (`Set-AgentMode.ps1` prints it). In auto mode, merge your o
 - **It isn't a release PR.** `gh pr view <n> --json headRefName` doesn't start with `release-please--`. Never merge one, in either mode: releases are the owner's (ADR-0035).
 - **If it changes the guardrails, the owner has said yes for this head commit.** Run `gh pr diff <n> --name-only`, then read those files' changes. The guardrails are:
   - `AGENTS.md`'s "Working modes" or "Always ask" sections, or SEC-003 in `docs/standards/security.md`;
-  - `.claude/settings.json` or the `Set-AgentMode.ps1` script;
+  - `.claude/settings.json`, the command guard it runs (`KitCommandGuard.psm1` and `Invoke-CommandGuard.ps1`, ADR-0076), or the `Set-AgentMode.ps1` script;
   - this skill, the `reviewer` agent, or the code-review instructions (`docs/code-review.md`, generated into `.github/instructions/code-review.instructions.md`);
   - a ruleset, branch protection or the merge settings;
   - a CI check, if removed or weakened;
