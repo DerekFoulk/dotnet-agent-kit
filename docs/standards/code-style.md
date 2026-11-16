@@ -80,19 +80,19 @@ rules:
     scope: core
     paths: [".editorconfig"]
   - id: STY-007
-    statement: "Code follows Microsoft's C# coding conventions and identifier names: PascalCase for types, namespaces, members, local functions and local constants, camelCase for parameters and locals; simple using declarations; collection expressions; a target-typed new() where the type is apparent; a primary constructor where a constructor only assigns its parameters; parentheses wherever operators of different precedence meet; an Async suffix on every async method and local function, except in test projects; and a dedicated System.Threading.Lock for a lock statement."
+    statement: "Code follows Microsoft's C# coding conventions and identifier names: PascalCase for types, namespaces, members, local functions and local constants, camelCase for parameters and locals; simple using declarations; collection expressions; a target-typed new() where the type is apparent; a primary constructor where a constructor only assigns its parameters; parentheses wherever operators of different precedence meet; and a dedicated System.Threading.Lock for a lock statement."
     why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12: \"adhere to all of the guidance provided by Microsoft Learn\"); the rules audit mapped both pages recommendation by recommendation and made every one an analyzer can check a gate."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/identifier-names, retrieved 2026-11-12", "owner, 2026-11-16", "ADR-0076", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/task-based-asynchronous-pattern-tap, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/threading/managed-threading-best-practices, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/naming-rules#rule-order, retrieved 2026-11-16"]
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/identifier-names, retrieved 2026-11-12", "owner, 2026-11-16", "ADR-0076", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/task-based-asynchronous-pattern-tap, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/standard/threading/managed-threading-best-practices, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: .editorconfig's naming rules with IDE1006 at warning (the build reports a naming rule only at IDE1006's own severity), among them the Async suffix for async methods and local functions (off in test projects, ADR-0076) and PascalCase for non-public constants, the intersection rule Microsoft's naming rules page gives so the s_ rule for static fields doesn't claim them; and IDE0063, IDE0300 to IDE0305, IDE0090, IDE0290, IDE0047, IDE0048 and IDE0330 at warning; tools/tests/BuildConfig.Tests.ps1 has a failing fixture for each, and a clean one with an async Main, middleware's InvokeAsync (middleware named Invoke must be InvokeAsync when async), a Razor Pages OnGetAsync, a private constant and an unsuffixed test method"
+        how: "build: .editorconfig's naming rules with IDE1006 at warning (the build reports a naming rule only at IDE1006's own severity), and IDE0063, IDE0300 to IDE0305, IDE0090, IDE0290, IDE0047, IDE0048 and IDE0330 at warning; tools/tests/BuildConfig.Tests.ps1 has a failing fixture for each"
       - kind: advisory
         in: [kit, app]
-        how: "the recommendations no analyzer checks, checked by code review: meaningful names without abbreviations or single letters, no double underscore, t_ for thread-static fields, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
+        how: "the recommendations no analyzer checks, checked by code review: an Async suffix on a method that returns an awaitable, async or not (the TAP and C# async pages), except where a framework or the pages say otherwise: an event handler, a controller action (MVC trims the suffix, so nameof() in CreatedAtAction would name a missing action), middleware's Invoke and a test method (ADR-0076: a naming rule tripped these, so the owner's decision keeps it advisory); meaningful names without abbreviations or single letters, no double underscore, t_ for thread-static fields, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
     scope: core
     paths: ["**/*.cs", ".editorconfig"]
   - id: STY-008
@@ -138,12 +138,12 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: STY-011
-    statement: "Code awaits a task instead of blocking on it: no Task.Wait, Task.WaitAll, Task.WaitAny, Task<T>.Result or Thread.Sleep; where await can't reach, such as a synchronous interface the code must implement, it blocks with GetAwaiter().GetResult() and a comment saying why. No method or lambda is async void, except an event handler, which suppresses VSTHRD100 where it lives with that reason."
-    why: "Blocking on a task can deadlock under a synchronization context and ties up a thread the pool needs; Wait and Result also wrap the exception in an AggregateException. Microsoft's C# async page replaces each blocking call with an await, and lists GetAwaiter().GetResult() first where blocking can't be avoided, because it keeps the original exception (.NET best-practices and C# guidance passes, owner 2026-11-16: \"Yes, accept them\"). CA1849 flags a blocking call only inside an async method, so a ban covers the rest. Thread.Sleep is in the page's table too: a pause is awaited, with Task.Delay."
+    statement: "Code awaits a task instead of blocking on it: no Task.Wait, Task.WaitAll, Task.WaitAny, Task<T>.Result or Thread.Sleep; where await can't reach, such as a synchronous interface the code must implement, it blocks with GetAwaiter().GetResult() and a comment saying why. No method or lambda is async void, except an event handler, which suppresses the rule where it lives with that reason: VSTHRD100 on a method, VSTHRD101 on a lambda (with #pragma warning disable, since a lambda takes no attribute)."
+    why: "Blocking on a task can deadlock under a synchronization context and ties up a thread the pool needs; Wait and Result also wrap the exception in an AggregateException. Microsoft's C# async page replaces each blocking call with an await, and lists GetAwaiter().GetResult() first where blocking can't be avoided, because it keeps the original exception (.NET best-practices and C# guidance passes, owner 2026-11-16: \"Yes, accept them\"). CA1849 flags a blocking call only inside an async method, so a ban covers the rest. Thread.Sleep is in the page's table too: a pause is awaited, with Task.Delay. An async void method or lambda can't be awaited, so its caller can't catch its exception (the C# async page), which is likely to bring the app down (the async return types page); event handlers are the page's one exception, and the threading analyzers flag them too, so each says why where it lives (ADR-0076)."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-16", "ADR-0076", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/consuming-the-task-based-asynchronous-pattern, retrieved 2026-11-15"]
+    sources: ["owner, 2026-11-16", "ADR-0076", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-return-types, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/consuming-the-task-based-asynchronous-pattern, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -153,9 +153,9 @@ rules:
         how: "build: Microsoft.VisualStudio.Threading.Analyzers, a global package reference, reports async void (VSTHRD100) and an async lambda passed as a void delegate (VSTHRD101), with its other rules off (ADR-0076); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for each"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks that each GetAwaiter().GetResult() is where await can't reach, with its reason, and that a VSTHRD100 suppression is on an event handler"
+        how: "code review checks that each GetAwaiter().GetResult() is where await can't reach, with its reason, and that a VSTHRD100 or VSTHRD101 suppression is on an event handler"
     scope: core
-    paths: ["**/*.cs", "BannedSymbols.txt"]
+    paths: ["**/*.cs", "BannedSymbols.txt", ".editorconfig", "Directory.Packages.props"]
 ---
 
 # Code style

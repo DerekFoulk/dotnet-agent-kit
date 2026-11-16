@@ -154,7 +154,8 @@ The rules cite 137 pages from 16 sources; 76 rules cite them.
 | <https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices> | [TST-004](standards/testing.md), [TST-010](standards/testing.md) |
 | <https://learn.microsoft.com/dotnet/core/tools/dotnet-workload-sets> | [SUP-011](standards/supply-chain.md) (proposed) |
 | <https://learn.microsoft.com/dotnet/core/tools/nuget-signed-package-verification> | [SUP-012](standards/supply-chain.md) |
-| <https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios> | [STY-011](standards/code-style.md) |
+| <https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-return-types> | [STY-011](standards/code-style.md) |
+| <https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios> | [STY-007](standards/code-style.md), [STY-011](standards/code-style.md) |
 | <https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions> | [STY-007](standards/code-style.md), [STY-008](standards/code-style.md) |
 | <https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/identifier-names> | [STY-007](standards/code-style.md) |
 | <https://learn.microsoft.com/dotnet/csharp/language-reference/xmldoc/> | [STY-008](standards/code-style.md) |
@@ -163,7 +164,6 @@ The rules cite 137 pages from 16 sources; 76 rules cite them.
 | <https://learn.microsoft.com/dotnet/fundamentals/code-analysis/code-quality-rule-options> | [STY-009](standards/code-style.md) |
 | <https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1506> | [CRF-008](standards/craft.md) |
 | <https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/security-warnings> | [SEC-014](standards/security.md) |
-| <https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/naming-rules> | [STY-007](standards/code-style.md) |
 | <https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines> | [OPS-003](standards/operations.md) |
 | <https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility> | [UI-001](standards/ui.md) (proposed) |
 | <https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/consuming-the-task-based-asynchronous-pattern> | [STY-011](standards/code-style.md) |

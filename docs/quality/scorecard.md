@@ -76,6 +76,10 @@ areas:
         gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version. Closed by ADR-0049, which found the 48 counted each diagnostic twice (24 places then, 32 by the time it was decided): CA1014 is on, and Directory.Build.props declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be; a library published for other .NET languages declares CLSCompliant(true) instead."
         status: closed
         needs: "an ADR, and a change to every project or a recorded opt-out"
+      - id: GAP-045
+        gap: "Two async defects have no check: a Task dropped in a method that isn't async (CS4014 looks only inside async methods, CA2012 only at ValueTask), and a Task used in a using statement, which disposes the task instead of awaiting it. The threading analyzers' VSTHRD110 and VSTHRD107 catch them, but they're off, since the owner chose VSTHRD100 and VSTHRD101 only (ADR-0076; .NET best-practices and C# passes, reviews of 2026-11-16)."
+        status: proposed
+        needs: "the owner's choice to turn VSTHRD107 and VSTHRD110 on, each with a failing fixture"
   - id: tests
     name: Tests
     perfect: "Test-first; fast unit tests, integration tests against a real database, API tests in memory, plus contract, browser and accessibility tests; mutation testing that proves the tests catch bugs; deterministic tests, with no sleeps or real clocks."
@@ -314,7 +318,7 @@ Each area in the front matter above has:
 | Architecture | 10 | 7 | 3 | 4 | 4 |
 | Craft | 13 | 7 | 6 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
-| Code | 13 | 11 | 2 | 0 | 0 |
+| Code | 13 | 11 | 2 | 0 | 1 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
 | Security | 13 | 9 | 4 | 4 | 3 |
 | Reliability | 7 | 4 | 3 | 2 | 1 |
@@ -327,7 +331,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 93 rules in force, 60 checked by a tool and 33 advisory; 25 proposed; 22 open gaps.
+**Overall:** 93 rules in force, 60 checked by a tool and 33 advisory; 25 proposed; 23 open gaps.
 
 Open gaps:
 
@@ -336,6 +340,7 @@ Open gaps:
 - **GAP-028** (Architecture, proposed; needs a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change): No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, the runners' Android SDK, and the checks that move to Windows (code shape, duplicate code with PMD's batch launcher, the SBOM) are untested (ADR-0059).
 - **GAP-031** (Architecture, proposed): The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059).
 - **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
+- **GAP-045** (Code, proposed; needs the owner's choice to turn VSTHRD107 and VSTHRD110 on, each with a failing fixture): Two async defects have no check: a Task dropped in a method that isn't async (CS4014 looks only inside async methods, CA2012 only at ValueTask), and a Task used in a using statement, which disposes the task instead of awaiting it. The threading analyzers' VSTHRD110 and VSTHRD107 catch them, but they're off, since the owner chose VSTHRD100 and VSTHRD101 only (ADR-0076; .NET best-practices and C# passes, reviews of 2026-11-16).
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-037** (Tests, proposed; needs test projects in the app template or a shared check, and a CI change): 24 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001, OPS-002, OPS-003's resilience handler (its constructor ban is a build gate), OPS-005, OPS-006, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.

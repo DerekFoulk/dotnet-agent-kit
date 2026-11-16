@@ -83,16 +83,6 @@ dotnet_naming_rule.parameters_and_locals_should_be_camel_case.symbols  = paramet
 dotnet_naming_rule.parameters_and_locals_should_be_camel_case.style    = camel_case_style
 dotnet_naming_symbols.parameters_and_locals.applicable_kinds = parameter, local
 dotnet_naming_style.camel_case_style.capitalization = camel_case
-# (kit) STY-007, ADR-0076: the TAP and C# async pages: an async method or local function ends in Async. More specific
-# than the PascalCase rule above (it adds a modifier), so it wins for async methods; test projects are left out below.
-# An async Main, middleware's InvokeAsync and a Razor Pages handler's OnGetAsync pass (the AsyncNamingAllowed fixture).
-dotnet_naming_rule.async_methods_should_end_in_async.severity = warning
-dotnet_naming_rule.async_methods_should_end_in_async.symbols  = async_methods
-dotnet_naming_rule.async_methods_should_end_in_async.style    = end_in_async_style
-dotnet_naming_symbols.async_methods.applicable_kinds = method, local_function
-dotnet_naming_symbols.async_methods.required_modifiers = async
-dotnet_naming_style.end_in_async_style.required_suffix = Async
-dotnet_naming_style.end_in_async_style.capitalization = pascal_case
 # The build reports naming rules only at IDE1006's own severity; a rule's severity line alone stays in the editor.
 dotnet_diagnostic.IDE1006.severity = warning
 
@@ -113,17 +103,6 @@ dotnet_naming_symbols.static_fields.required_modifiers = static
 dotnet_naming_symbols.static_fields.applicable_accessibilities = private, internal, private_protected
 dotnet_naming_style.static_prefix_style.required_prefix = s_
 dotnet_naming_style.static_prefix_style.capitalization = camel_case
-
-# (kit) Non-public constant fields are PascalCase too: const implies static, so the s_ rule above would otherwise claim
-# them once rule ordering puts it first. This is the intersection rule Microsoft's naming rules page gives for exactly
-# this overlap ("const modifier includes static and readonly"); the async rule added for STY-007 exposed it.
-# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/naming-rules#rule-order  retrieved 2026-11-16
-dotnet_naming_rule.non_public_constant_fields_should_be_pascal_case.severity = warning
-dotnet_naming_rule.non_public_constant_fields_should_be_pascal_case.symbols  = non_public_constant_fields
-dotnet_naming_rule.non_public_constant_fields_should_be_pascal_case.style    = pascal_case_style
-dotnet_naming_symbols.non_public_constant_fields.applicable_kinds = field
-dotnet_naming_symbols.non_public_constant_fields.applicable_accessibilities = private, internal, private_protected
-dotnet_naming_symbols.non_public_constant_fields.required_modifiers = const
 
 # Internal and private fields are _camelCase
 dotnet_naming_rule.camel_case_for_private_internal_fields.severity = warning
@@ -245,9 +224,12 @@ csharp_prefer_system_threading_lock = true:warning
 dotnet_diagnostic.IDE0330.severity = warning
 
 # (kit) STY-011, ADR-0076: Microsoft.VisualStudio.Threading.Analyzers is here for VSTHRD100 (async void) and VSTHRD101
-# (an async lambda passed as a void delegate) only. Its other rules concern Visual Studio's JoinableTaskFactory or
-# repeat a rule the kit has from one source already (CRF-003): VSTHRD002 is BannedSymbols.txt's (STY-011), VSTHRD103
-# CA1849's, VSTHRD105 CA2008's, VSTHRD110 CS4014's and CA2012's, VSTHRD111 CA2007's, VSTHRD200 IDE1006's.
+# (an async lambda passed as a void delegate) only, as the owner chose (2026-11-16). Of its other rules, most concern
+# Visual Studio's JoinableTaskFactory; some repeat a rule the kit already has from one source (CRF-003): VSTHRD002 is
+# BannedSymbols.txt's (STY-011), VSTHRD103 CA1849's, VSTHRD105 CA2008's, VSTHRD111 CA2007's and VSTHRD200 the Async
+# suffix, which stays advisory (STY-007). Two catch what nothing else does and are off by that choice, a scorecard gap
+# (GAP-045): VSTHRD107 (a Task in a using, disposed instead of awaited) and VSTHRD110 (a Task dropped in a method that
+# isn't async, where CS4014 doesn't look).
 # https://github.com/microsoft/vs-threading/tree/main/docfx/analyzers  retrieved 2026-11-16
 dotnet_diagnostic.VSTHRD001.severity = none
 dotnet_diagnostic.VSTHRD002.severity = none
@@ -285,8 +267,6 @@ dotnet_code_quality.CA2007.output_kind = DynamicallyLinkedLibrary
 # (kit) ADR-0029: test projects are libraries too, but they're application code for CA2007's purposes.
 [{*Tests/**.cs,**/*Tests/**.cs}]
 dotnet_diagnostic.CA2007.severity = none
-# (kit) STY-007, ADR-0076: test methods are named for the behavior they check (TST-010), not with an Async suffix.
-dotnet_naming_rule.async_methods_should_end_in_async.severity = none
 
 # (kit) ADR-0062: BenchmarkDotNet runs only public, unsealed benchmark classes, and CA1515 asks an app (a benchmarks
 # project is an Exe) to make its public types internal. Off in benchmarks projects (names ending in .Benchmarks) only.
