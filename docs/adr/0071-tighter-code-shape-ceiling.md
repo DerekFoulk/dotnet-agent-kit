@@ -23,12 +23,16 @@ What measurement showed, with the new numbers on the kit's own solution (16 proj
 ### Option 1: The owner's six numbers as hard limits now, with two new counts in Kit.CodeShape
 
 `Limits.cs` takes the three tighter numbers and two new ones, `MembersPerType = 20` and `PublicTypesPerFile = 1`. Two new rules count them:
-- **Members per type** (`MemberCountRule`): the methods, constructors, finalizers, properties, indexers, events, fields and operators a type declares. A field or event declaration counts once for each name it lists. A record's positional parameters count as the properties the compiler makes of them, unless the record declares that property itself; a class's or struct's primary constructor parameters aren't members. A nested type isn't a member of the type that holds it: it's measured on its own. A partial type is measured whole, across its project's hand-written files, with a partial member declared in one part and implemented in another counted once, and it's reported once, at its first part. Interfaces count too. Enums aren't measured: their values are data.
-- **Public types per file** (`PublicTypeRule`): the classes, structs, interfaces, records, enums and delegates declared `public` outside any other type, through every namespace in the file. A partial type's parts in one file are one type. The finding points at the first type over the limit and lists them all.
-- **Both read syntax only,** with no compilation: two declarations are parts of one type when they share a namespace, the types they're nested in, a name and a number of type parameters (`TypeIdentity`, the one place that says so). What a generator writes isn't counted, as no limit reads it.
+- **Members per type** (`MemberCountRule`): the methods, constructors, finalizers, properties, indexers, events, fields and operators a type declares. A field or event declaration counts once for each name it lists. A record's positional parameters count as the properties the compiler makes of them, unless the record declares that property itself; a class's or struct's primary constructor parameters aren't members. A nested type isn't a member of the type that holds it: it's measured on its own. A partial type is measured whole, across its project's hand-written files, with a partial member declared in one part and implemented in another counted once, and it's reported once, at its first part. A C# 14 extension block isn't measured on its own: its members count toward the static class that holds it, where the compiler declares them. Interfaces count too. Enums aren't measured: their values are data.
+- **Public types per file** (`PublicTypeRule`): the classes, structs, interfaces, records, enums and delegates declared outside any other type, through every namespace in the file, that the compiler sees as public. A partial type's parts in one file are one type, and a part that doesn't repeat `public` still counts when another part makes the type public. The finding points at the first type over the limit and lists them all.
+- **Both ask the compiler,** as the cohesion check does: each project's files are compiled together (`CompiledProject`, which the three rules share), so a partial type's parts are one symbol and a file-local type is its own, whatever its name. What the compiler adds on its own (a record's equality members, an accessor) isn't counted, nor is a primary constructor. What a generator writes isn't counted, as no limit reads it. Review 1 of this PR found the first version, which matched parts by name in the syntax, merged two file-local types with one name and measured extension blocks as nameless types.
 - **Exceptions:** a type's `// CRF-011 exception: <reason>` comment now covers its member count as well as its cohesion, and on any part of a partial type it covers the whole type. A file's comment now covers its public types as well as its length and top-level statements.
 
-- **Trade-offs:** the gate matches what the owner asked for, and the kit's own code meets it after three small refactors. The tighter numbers will fail some app code that passed before, and test classes are the likeliest: xUnit needs them public, so a test file with two test classes now fails. In an executable project, where CA1515 makes types internal (craft.md), the public type check finds few. Members per type counts by syntax, so an unusual case, such as a member that a source generator declares in a hand-written part, can count differently from the compiler's own view.
+- **Trade-offs:** the gate matches what the owner asked for, and the kit's own code meets it after three small refactors. The tighter numbers will fail some app code that passed before, and test code is the likeliest:
+  - **Members per type:** a test class's tests and helpers are its members, so a class with more than 20 fails. The kit's own `CohesionRuleTests` has 20. The fix is to split the class by the behavior its tests cover.
+  - **Public types per file:** xUnit needs test classes public, so a test file with two test classes fails, and so does one that keeps a public fixture or `[CollectionDefinition]` class beside its test class. The fix is a file for each.
+
+  In an executable project, where CA1515 makes types internal (craft.md), the public type check finds few. The compiler binds only the project's own files, with no package references; that doesn't change what a type declares, so the counts aren't affected.
 - **Reversibility:** easy. Each number is one constant in `Limits.cs` and one phrase in CRF-011's statement, which a Pester test keeps in step; each rule is one class and one line in `ProjectCheck`.
 - **Risk:** medium. An app updating the kit may get findings it has to fix or mark as exceptions before its CI passes again. The exception comment keeps a real case possible without hiding it.
 
@@ -49,19 +53,19 @@ The owner's numbers from 2026-11-12, applied in auto mode (ADR-0035) overnight f
 ## Consequences
 
 - `tools/CodeShape/src/Kit.CodeShape/Limits.cs`: nesting 3, 30 statements per member, 400 lines per file, 20 members per type, one public type per file, LCOM4 of 1. CRF-011's statement in `docs/standards/craft.md` states all six, and `tools/tests/Test-CodeShape.Tests.ps1` now checks the two new ones too.
-- New in Kit.CodeShape: `MemberCountRule`, `PublicTypeRule` and `TypeIdentity`, with xUnit tests, and `ProjectCheck` runs both rules. `LimitExemption`'s comments and craft.md's "Exceptions" say what a type's and a file's comment now cover.
+- New in Kit.CodeShape: `MemberCountRule` and `PublicTypeRule`, with xUnit tests, and `ProjectCheck` runs both rules. `CompiledProject` compiles a project's files for them and for `CohesionRule`, and `LimitExemption.CoversType` holds the partial-type exemption the member count and cohesion share. `LimitExemption`'s comments and craft.md's "Exceptions" say what a type's and a file's comment now cover.
 - The kit's own code, fixed without exceptions:
   - the sample's contract tests read every operation through one `Operations` helper, which keeps both tests that walk them at 3 levels deep and states the walk once (CRF-003);
   - each Contracts type has its own file (`CreateBookmarkRequest.cs`, `BookmarkResponse.cs`, `BookmarkPage.cs`); the OpenAPI snapshot test passes unchanged;
   - `AddBookmarkResult` and `BookmarkListResult` moved out of `BookmarkService.cs` into files of their own.
 - Every app's CI runs the tighter check from its next kit update. Its findings name the rule and the limit, and the exception comment is the escape hatch for a real case.
-- craft.md's "What the checks miss" adds the two new counts' gaps: syntax only, and few public types in executable projects.
+- craft.md's "What the checks miss" says what the two new counts see, that they reach test classes and fixtures, and that they find few public types in executable projects.
 
 ## Pillars affected
 
 - **Operational excellence:** smaller members, types and files are easier to read, review and change, and a tool keeps them from drifting.
 - **Reliability:** defects collect in large, deeply nested code (CRF-008's reason); the ceiling keeps units small enough to test in isolation (CRF-009).
-- **Performance efficiency:** the two new counts read syntax only, with no compilation, so the check takes about as long as before.
+- **Performance efficiency:** each of the three compiling rules compiles a project once, against .NET's own assemblies only. The whole check took 9 seconds on the kit's 16 projects (measured 2026-11-16), so sharing one compilation among them waits until a measurement says it's needed.
 - **Cost optimization:** none; the check stays the kit's own free tool.
 - **Security:** none directly.
 
