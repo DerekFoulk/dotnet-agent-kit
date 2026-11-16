@@ -83,6 +83,14 @@ public sealed class MemberCountRuleTests
             new SourceFile("C.cs", $"namespace A {{ partial class Wide<T> {{ {Methods(10)}}} }}"),
         ]).Should().BeEmpty();
 
+    // A file-local type is seen only in its own file, so two with the same name in two files are two types.
+    [Fact]
+    public void FileLocalTypesWithTheSameNameAreDifferentTypes() =>
+        MemberCountRule.Check([
+            new SourceFile("A.cs", $"file class Helper {{ {Methods(11)}}}"),
+            new SourceFile("B.cs", $"file class Helper {{ {Methods(11)}}}"),
+        ]).Should().BeEmpty();
+
     // What a generator writes isn't counted: a reader doesn't maintain it, as the other limits don't read it either.
     [Fact]
     public void AGeneratedPartIsNotCounted() =>
