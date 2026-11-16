@@ -59,6 +59,33 @@ BeforeDiscovery {
         @{ Fixture = 'LegacyXmlReader'; Diagnostic = 'RS0030'; Description = 'the legacy XmlTextReader (SEC-014)' }
         @{ Fixture = 'AcceptAnyCertificate'; Diagnostic = 'RS0030'; Description = 'the accept-any-certificate validator (SEC-014)' }
         @{ Fixture = 'DtdParse'; Diagnostic = 'RS0030'; Description = 'DTD parsing in XmlReaderSettings (SEC-014)' }
+        # STY-003 (.NET best-practices pass, owner 2026-11-16): one fixture per family of rules latest-all turns on, so each
+        # is proved, not assumed. CA1305 doesn't see an interpolated or concatenated number, so that stays code review's.
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1305'; Description = 'a number formatted in the current culture (STY-003)' }
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1307'; Description = 'a string call that doesn''t say its comparison (STY-003)' }
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1309'; Description = 'an invariant-culture comparison where ordinal is meant (STY-003)' }
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1310'; Description = 'a culture-sensitive comparison by default (STY-003)' }
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1311'; Description = 'a case change with no culture (STY-003)' }
+        @{ Fixture = 'DisposePattern'; Diagnostic = 'CA2000'; Description = 'a disposable that''s never disposed (STY-003)' }
+        @{ Fixture = 'DisposePattern'; Diagnostic = 'CA1063'; Description = 'a Dispose that doesn''t follow the dispose pattern (STY-003)' }
+        @{ Fixture = 'DisposePattern'; Diagnostic = 'CA1816'; Description = 'a Dispose that doesn''t call GC.SuppressFinalize (STY-003)' }
+        @{ Fixture = 'DisposePattern'; Diagnostic = 'CA1001'; Description = 'a type that owns a disposable field but isn''t disposable (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CA2008'; Description = 'a continuation with no TaskScheduler (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CA2016'; Description = 'a cancellation token not passed on (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CA1849'; Description = 'a blocking call in an async method where an async one exists (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CA2012'; Description = 'a ValueTask thrown away (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CS4014'; Description = 'a task started and not awaited (STY-003)' }
+        @{ Fixture = 'LoggingMisuse'; Diagnostic = 'CA1848'; Description = 'a logger extension method where a [LoggerMessage] method does (STY-003)' }
+        @{ Fixture = 'LoggingMisuse'; Diagnostic = 'CA2254'; Description = 'a log template that varies between calls (STY-003)' }
+        @{ Fixture = 'LoggingMisuse'; Diagnostic = 'CA1727'; Description = 'a log placeholder that isn''t PascalCase (STY-003)' }
+        @{ Fixture = 'LoggingMisuse'; Diagnostic = 'CA1873'; Description = 'a log argument computed even when the level is off, a rule new in .NET 10 (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA2200'; Description = 'a caught exception rethrown with throw e (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA2201'; Description = 'a reserved, too general exception type (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1510'; Description = 'a hand-written null check where ThrowIfNull does (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1511'; Description = 'a hand-written empty check where ThrowIfNullOrEmpty does (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1512'; Description = 'a hand-written range check where ThrowIfNegative does (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1513'; Description = 'a hand-written disposed check where ObjectDisposedException.ThrowIf does (STY-003)' }
+        @{ Fixture = 'RecordStructNotReadonly'; Diagnostic = 'IDE0250'; Description = 'a record struct whose members are all read-only but isn''t declared readonly (STY-009)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
@@ -322,11 +349,29 @@ Describe 'Repo build configuration' -Tag 'Build' {
     }
 
     Context 'violations fail the build' {
+        # A fixture that backs several rows (one per rule in its family) is built once, in a workspace of its own, and
+        # each row reads that build.
+        BeforeAll { $builds = @{} }
+
         It 'rejects <Description> (<Diagnostic>)' -ForEach $violations {
-            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
+            if (-not $builds.ContainsKey($Fixture)) {
+                $builds[$Fixture] = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
+            }
+            $build = $builds[$Fixture]
 
             $build.ExitCode | Should -Not -Be 0 -Because $build.Output
             $build.Output | Should -Match "error $Diagnostic"
+        }
+    }
+
+    # C# guidance pass (owner 2026-11-16): CA1064 asks for public exceptions and CA1515 for an app's types to be internal;
+    # an app's own exception builds as internal, so the two don't collide.
+    Context 'an app''s own exception' {
+        It 'builds as an internal type with the three standard constructors' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'InternalCustomException')
+
+            $build.Output | Should -Not -Match 'CA1064|CA1515|CA1032'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
 
