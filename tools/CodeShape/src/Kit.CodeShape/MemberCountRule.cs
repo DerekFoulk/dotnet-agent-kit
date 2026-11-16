@@ -8,7 +8,8 @@ namespace Kit.CodeShape;
 /// (CRF-011); an enum's values are data, so enums aren't measured. The compiler says what a type declares, so a
 /// partial type is one type, with a partial member counted once, and a file-local type is its own type, whatever its
 /// name. A type's members are the methods, constructors, finalizers, properties, indexers, events, fields and
-/// operators written in it, and a record's positional parameters, which the compiler makes properties. What the
+/// operators written in it, a record's positional parameters, which the compiler makes properties, and the members of
+/// its C# 14 extension blocks, which the compiler declares in it, so a block isn't measured on its own. What the
 /// compiler adds on its own (a record's equality members, a default constructor, an accessor) isn't counted, nor is a
 /// primary constructor, nor a member only a generator declares, since nobody maintains it by hand. A nested type isn't
 /// a member: it's measured on its own. A type is reported once, at its first hand-written part, and its exception
@@ -26,12 +27,14 @@ internal static class MemberCountRule
             SemanticModel model = project.Compilation.GetSemanticModel(tree);
             foreach (TypeDeclarationSyntax declaration in tree.GetRoot().DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
-                if (model.GetDeclaredSymbol(declaration) is not { } type || !measured.Add(type) || LimitExemption.CoversType(type))
+                if (model.GetDeclaredSymbol(declaration) is not { IsExtension: false } type
+                    || !measured.Add(type)
+                    || LimitExemption.CoversType(type))
                 {
                     continue;
                 }
 
-                int count = type.GetMembers().Count(member => IsWritten(member, handWritten));
+                int count = MembersOf(type, handWritten);
                 if (count > Limits.MembersPerType)
                 {
                     yield return Finding.At(
@@ -42,6 +45,11 @@ internal static class MemberCountRule
             }
         }
     }
+
+    // An extension block's members are its class's: the compiler declares them there.
+    private static int MembersOf(INamedTypeSymbol type, HashSet<SyntaxTree> handWritten) =>
+        type.GetMembers().Count(member => IsWritten(member, handWritten))
+        + type.GetTypeMembers().Where(nested => nested.IsExtension).Sum(extension => MembersOf(extension, handWritten));
 
     // A member someone wrote in a hand-written file. An accessor belongs to its property or event, and a primary
     // constructor is declared by its type: its parameters are the type's state, not members, unless the type is a
