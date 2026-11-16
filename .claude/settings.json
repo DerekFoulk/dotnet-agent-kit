@@ -228,7 +228,9 @@
       "Edit(./.agent-mode)",
       "Edit(./.mcp.json)",
       "Edit(./.vscode/mcp.json)",
-      "Edit(./.kit/**)"
+      "Edit(./.kit/**)",
+      "Edit(./tools/KitCommandGuard.psm1)",
+      "Edit(./tools/Invoke-CommandGuard.ps1)"
     ],
     "deny": [
       "Read(./.env)",
@@ -242,6 +244,21 @@
       "Read(~/.ssh/**)",
       "Read(~/AppData/Roaming/Microsoft/UserSecrets/**)",
       "Read(~/.microsoft/usersecrets/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh",
+            "args": ["-NoProfile", "-NonInteractive", "-File", "${CLAUDE_PROJECT_DIR}/tools/Invoke-CommandGuard.ps1"],
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }

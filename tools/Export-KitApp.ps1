@@ -52,7 +52,7 @@ $script:KitTools = @(
     'Test-DeprecatedPackages.ps1', 'KitReview.psm1', 'Initialize-DevMachine.ps1', 'Build-AgentRules.ps1',
     'KitFrontMatter.psm1', 'Set-AgentMode.ps1', 'Test-Runbook.ps1', 'Test-ArchitectureDiagram.ps1',
     'Test-EmptyProjects.ps1', 'Test-SafeMigrations.ps1', 'Get-UiProject.ps1', 'KitSolution.psm1',
-    'Test-BenchmarkBudget.ps1', 'Test-LoadBudget.ps1'
+    'Test-BenchmarkBudget.ps1', 'Test-LoadBudget.ps1', 'Invoke-CommandGuard.ps1', 'KitCommandGuard.psm1'
 )
 
 # Templates the app owns from the start: the sync job never changes them. The app fills in its runbook (OPS-004) and
