@@ -8,3 +8,4 @@ paths:
 
 - STY-002: Use var only where the type is named on the right side of the assignment (a new or a cast), as dotnet/runtime does, and never for a built-in type such as int or string; everywhere else, write the type.
 - STY-010: Code follows the Framework Design Guidelines where no analyzer checks them; code review checks the themes docs/code-review.md lists.
+- STY-012: Code follows Microsoft's .NET best-practices and C# guidance pages where no analyzer checks them; code review checks the themes docs/code-review.md lists.

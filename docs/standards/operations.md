@@ -103,7 +103,7 @@ rules:
         how: "until the app follows the sample"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks that every settings section the app binds is validated on start"
+        how: "code review checks that every settings section the app binds is validated on start, nested options and collections included ([ValidateObjectMembers], [ValidateEnumeratedItems], or the options validation source generator), as the options page shows"
     scope: core
     paths: ["**/Program.cs", "**/*Extensions*.cs", "**/appsettings*.json"]
   - id: OPS-007

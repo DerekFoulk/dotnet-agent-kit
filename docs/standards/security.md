@@ -183,7 +183,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-12", "https://github.com/OWASP/ASVS/tree/v5.0.0, retrieved 2026-11-15"]
+    sources: ["owner, 2026-11-12", "https://github.com/OWASP/ASVS/tree/v5.0.0, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/core/extensions/logging/source-generation, retrieved 2026-11-15"]
     enforcement:
       - kind: advisory
         in: [kit, app]
