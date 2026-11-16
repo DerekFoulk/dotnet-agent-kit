@@ -41,9 +41,9 @@ If you find nothing, say so.
   - an enum, not Booleans, where a member would take two or more Boolean parameters or a Boolean might later need a third value; a constructor's Boolean that only sets a Boolean property is fine;
   - events typed `EventHandler<TEventArgs>`, with an `EventArgs` subclass for their data;
   - operator overloads only on types that behave like primitives, such as a money or vector type.
-- Microsoft's .NET best-practices and C# guidance that no analyzer checks (STY-012; the analyzers, bans and rules STY-012 names gate the rest). Rank each **Consider**, or higher where it causes a defect, and **Blocking** where it's a security or privacy problem (a secret or personal data in a message, untrusted input in a pattern or matched with no timeout):
+- Microsoft's .NET best-practices and C# guidance that no analyzer checks (STY-012; the analyzers, bans and rules STY-012 names gate the rest). Rank each **Consider**, or higher where it causes a defect, and **Blocking** where it's a security or privacy problem (a secret or personal data in a message, untrusted input in a pattern, or matched with neither a timeout nor `NonBacktracking`):
   - **Exceptions.**
-    - State is restored when an operation fails partway (STY-010 covers the Try pattern).
+    - State is restored when an operation fails partway, and a check comes first, such as a state test, where a failure callers expect often would otherwise throw (STY-010 covers the Try pattern).
     - Messages are full sentences that end in a period, with no secret or personal data (SEC-012).
     - Catch `OperationCanceledException`, not `TaskCanceledException`.
     - An argument check in a task-returning method throws synchronously, so the check sits in a method that isn't `async` and the work in a local async function: in an `async` method, even a throw before the first `await` lands in the returned task.

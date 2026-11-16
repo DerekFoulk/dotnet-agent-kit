@@ -166,7 +166,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "code review: the reviewer agent checks the .NET best-practices and C# themes in docs/code-review.md and ranks a broken one Consider, or higher where it causes a defect"
+        how: "code review: the reviewer agent checks the .NET best-practices and C# themes in docs/code-review.md and ranks a broken one as that list says"
     scope: core
     paths: ["**/*.cs"]
 ---
