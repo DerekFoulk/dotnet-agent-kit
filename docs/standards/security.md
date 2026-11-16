@@ -216,7 +216,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: AnalysisLevel latest-all turns the security rules on and STY-004 makes them errors, BannedSymbols.txt's security block bans the APIs they miss (RS0030); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA5350, CA5351, CA5358, CA5359, CA5390, CA5394, CA5397, CA2351, SYSLIB0011, SYSLIB0021 and each banned API (one overload each; its test that every banned ID resolves shows the other overloads' IDs match real symbols, so the analyzer can find them)"
+        how: "build: AnalysisLevel latest-all turns the security rules on and STY-004 makes them errors, BannedSymbols.txt's security block bans the APIs they miss (RS0030); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA5350, CA5351, CA5358, CA5359, CA5384, CA5390, CA5394, CA5397, CA2351, SYSLIB0011, SYSLIB0021 and each banned API (one overload each; its test that every banned ID resolves shows the other overloads' IDs name real symbols)"
       - kind: advisory
         in: [kit, app]
         how: "code review checks that a suppression of a security rule names its reason; the taint rules (CA3001 to CA3012) see only some paths, such as not a request value passed through a minimal API lambda, which code review and CodeQL (SEC-006) cover"
