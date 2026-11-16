@@ -65,6 +65,60 @@ rules:
         how: "that the status turns In use before the first production deployment, until the production workflow (GAP-015) refuses a Draft, and whether the steps are right, which code review and a practised restore check"
     scope: core
     paths: ["**/docs/runbook.md"]
+  - id: OPS-005
+    statement: "An app shuts down gracefully: on SIGTERM its host stops taking requests and gives in-flight work a shutdown timeout that ends before the platform's grace period (25 seconds where the platform allows 30, Kubernetes' default), and long-running work stops on the host's stopping token or the request's cancellation token, which every call passes on."
+    why: "A container platform sends SIGTERM and kills the process when its grace period ends; work still running then is cut off mid-write. The generic host's stopping token and ShutdownTimeout are how .NET finishes in time (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's ServiceDefaults sets HostOptions.ShutdownTimeout to 25 seconds, and its FunctionalTests (ShutdownTests) check it ends before 30"
+      - kind: gate
+        in: [kit, app]
+        how: "build: CA2016 makes every call pass on the cancellation token it has"
+      - kind: advisory
+        in: [app]
+        how: "until the app has its own ServiceDefaults project, following the sample, with the timeout set under its own platform's grace period"
+    scope: core
+    paths: ["**/*ServiceDefaults*/**", "**/Program.cs"]
+  - id: OPS-006
+    statement: "An app's settings are options validated when it starts (ValidateDataAnnotations or a validator, and ValidateOnStart), so bad configuration stops it at startup instead of failing requests later."
+    why: "A setting read lazily fails on the first request that needs it, in production; validating at startup makes a bad deployment fail its health check before it takes traffic (rules audit, owner 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/options#options-validation, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample binds its rate limit's settings as validated options, and its FunctionalTests check that a limit below one stops the app at startup with an OptionsValidationException"
+      - kind: advisory
+        in: [app]
+        how: "until the app follows the sample"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks that every settings section the app binds is validated on start"
+    scope: core
+    paths: ["**/Program.cs", "**/*Extensions*.cs", "**/appsettings*.json"]
+  - id: OPS-007
+    statement: "An ASP.NET Core app follows Microsoft's ASP.NET Core best practices: async all the way, no blocking calls, no large objects or whole request bodies buffered without need, HttpClient through IHttpClientFactory, no access to HttpContext after the request or from another thread, and logging through the generated, high-performance logger."
+    why: "The owner asked for Microsoft Learn's performance guidance (owner O7, 2026-11-12); the best-practices page names the mistakes that hurt a server under load, and its analyzers catch some of them (rules audit, 2026-11-12)."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/aspnet/core/fundamentals/best-practices, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: CA1849 (a blocking call where an async one exists), CA2016 (cancellation tokens) and CA1848 (LoggerMessage-based logging), which AnalysisLevel latest-all turns on"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks the rest with the analyzing-dotnet-performance skill, and TST-009's benchmarks and load test measure it"
+    scope: core
+    paths: ["**/*.cs"]
 ---
 
 # Operations
@@ -83,6 +137,12 @@ Every app starts with `docs/runbook.md`, from the kit's `templates/app/docs/runb
 - **Secrets:** the runbook names where a secret is kept, never its value (SEC-001).
 
 `Test-Runbook.ps1` checks the shape in CI (`app-checks.reusable.yml`). An app runs it as `./.kit/tools/Test-Runbook.ps1 -Path ./docs/runbook.md`. It can't tell whether the app has been deployed, or whether a step works; the production workflow GAP-015 builds should refuse to deploy while the runbook is a Draft.
+
+## Shutdown, settings and performance (OPS-005 to OPS-007)
+
+- **Shutdown.** `AddServiceDefaults` sets `HostOptions.ShutdownTimeout` to 25 seconds. On SIGTERM the host stops taking requests, cancels the stopping token and waits that long for in-flight work, which passes the token on (CA2016). A platform with another grace period gets a timeout a few seconds under it.
+- **Settings.** Bind each settings section as options with `AddOptions<T>().BindConfiguration(...).ValidateDataAnnotations().ValidateOnStart()`. The sample's rate limit (`RateLimiting:BurstLimit` and `RequestsPerSecond`, each `[Range(1, int.MaxValue)]`) is the example: a 0 stops the app at startup with an `OptionsValidationException`.
+- **Performance.** Microsoft's [ASP.NET Core best practices](https://learn.microsoft.com/aspnet/core/fundamentals/best-practices). CA1849 and CA2016 catch blocking calls and dropped tokens, and CA1848 slow logging (from the [high-performance logging](https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging) page); code review checks the rest with the analyzing-dotnet-performance skill; the benchmarks and load test (TST-009) measure it.
 
 ## Pending ratification
 

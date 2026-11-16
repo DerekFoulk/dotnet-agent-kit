@@ -21,6 +21,7 @@ You are an independent reviewer (DOD-003, ADR-0067). You haven't seen the work b
 
 - **A plan** (`start-work` step 5): there's no code yet, so run no gates. Check the plan against `AGENTS.md`, the standards and ADRs for the area, "Always ask", and the `plan-checklist` headings; check that the test list covers every behavior the plan changes, and that the design fits how the platform is documented to work.
 - **A branch, with one focus named in the prompt** (one of several reviewers running side by side, `finish-work` step 2): review only that focus, rank only what you find in it, and run only the gates that focus needs.
+- **A fix round** (`finish-work` step 2, ADR-0068): the prompt names the head the last round reviewed and the findings the new commits answer. Review `git diff <reviewed head>..HEAD`: check each fix answers its finding, that its tests follow step 3, and that it breaks nothing it reaches. Read the rest of the branch only where the fix reaches it; the last round already reviewed it.
 - **A branch, or some of its commits:** follow the steps below.
 
 ## Steps

@@ -1,6 +1,12 @@
 # Choosing a database
 
-This guide picks the database for an app (DAT-001, ADR-0053). Answer three questions in order. The first answer that settles it wins. Then put the choice, its label and the reason in the plan.
+This guide picks the database for an app (DAT-001, ADR-0053). Questions 1 and 2 find the options that fit the app. Among those, your preference comes first (question 3), then Microsoft's recommendation, then the agent's. Then put the choice, its label and the reason in the plan.
+
+Each recommendation names its source, and the three are never mixed (kit ADR-0074):
+
+- **Your preference:** what you have said you want, with the date, from your own preferences file (`~/.dotnet-agent-kit/preferences.json`, outside every repo). It comes first.
+- **Microsoft's recommendation:** only what its page says, with the page and the date it was read. Where the page names no pick, the guide says so.
+- **The agent's recommendation:** labeled as the agent's, with its reason. It's the default only when neither of the others gives one.
 
 Every option has a label:
 
@@ -14,21 +20,21 @@ Prices are pay-as-you-go retail prices in US dollars for the East US region, fro
 
 | Answer | Choose |
 |---|---|
-| Only on the user's device (a MAUI or desktop app's own data) | **SQLite**, through EF Core's SQLite provider. Free. Go no further. |
+| Only on the user's device (a MAUI or desktop app's own data) | **SQLite**, through EF Core's SQLite provider. Free. The only option for it. Go no further. |
 | On a server the app shares between users | Go to question 2. |
 
 ## 2. What shape is the data?
 
-| Answer | Choose |
-|---|---|
-| Tables that refer to each other, with transactions across them (most business apps) | **Azure SQL Database, on the free offer.** The default. Free tier. |
-| Documents or key-value items read by one key, with a schema that changes often, or data spread across regions | **Azure Cosmos DB, on the free tier.** Free tier. |
+| Answer | Microsoft's recommendation | The agent's recommendation |
+|---|---|---|
+| Tables that refer to each other, with transactions across them (most business apps) | No pick between Azure SQL Database and PostgreSQL: [Prepare to choose a data store](https://learn.microsoft.com/azure/architecture/guide/technology-choices/data-stores-getting-started#common-database-scenarios) recommends SQL Database to build apps on a managed SQL database, and Azure Database for PostgreSQL for apps on PostgreSQL. It doesn't mention the free offer (read 2026-11-15). | **Azure SQL Database, free offer** (the agent's recommendation). Free tier. It's free up to a monthly limit and paused rather than billed past it, with no end date, where PostgreSQL's free amount ends after 12 months. |
+| Documents or key-value items read by one key, with a schema that changes often, or data spread across regions | The same page recommends Azure Cosmos DB for NoSQL apps that need low latency at any scale, and Azure DocumentDB for MongoDB workloads. It doesn't mention the free tier (read 2026-11-15). | **Azure Cosmos DB, on the free tier.** Free tier. The only document option in this guide. |
 
-When unsure, pick relational: the kit's rules for migrations (DAT-002) and its check of each migration (DAT-003) cover it, and most apps have related data.
+When unsure, the agent recommends relational: the kit's rules for migrations (DAT-002) and its check of each migration (DAT-003) cover it, and most apps have related data. Microsoft's page names no default data shape: it matches the store to the workload.
 
-## 3. Any preference?
+## 3. Your preference
 
-If the owner prefers another option that fits the answers above (PostgreSQL, a paid tier for an SLA, a database he already runs), use it, and say in the plan what it costs.
+If you prefer another option that fits the answers above (PostgreSQL, a paid tier for an SLA, a database you already run), it's the default: your preference comes before both recommendations. Your preferences file keeps the ones you've stated, with their dates. A paid option is still listed with its price, and the plan says what it costs.
 
 ## The options
 
@@ -56,11 +62,12 @@ SQLite takes one write at a time. Microsoft.Data.Sqlite answers a write that fin
 
 - **A budget alert:** a Cost Management budget on the resource group, set to alert the owner. A budget only alerts; it doesn't stop spending ([budgets tutorial](https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets), checked 2026-11-11).
 - **The owner creates it:** creating a cloud resource, and anything that could cost money, is the owner's call (SEC-003). The agent writes the guard settings into the plan, or into the infrastructure code once apps have it (GAP-016).
-- **Tests run on the same engine:** in a container or the emulator, never against the cloud database (DAT-005).
+- **Tests and local development run on the same engine:** in a container or the emulator, never against the cloud database (DAT-005).
 
 ## Sources
 
 - https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/data-store-decision-tree, retrieved 2026-11-11
+- https://learn.microsoft.com/azure/architecture/guide/technology-choices/data-stores-getting-started, retrieved 2026-11-15
 - https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer, retrieved 2026-11-11
 - https://learn.microsoft.com/en-us/azure/cosmos-db/free-tier, retrieved 2026-11-11
 - https://learn.microsoft.com/en-us/azure/cosmos-db/limit-total-account-throughput, retrieved 2026-11-11

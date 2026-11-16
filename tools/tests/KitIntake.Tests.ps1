@@ -11,6 +11,8 @@ BeforeAll {
 }
 
 Describe 'the intake data' {
+    BeforeAll { Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force }
+
     # The guide holds the database options' prices and trade-offs (CRF-003); the card names the same options.
     It 'names each database option as docs/database-guide.md does' {
         $guide = Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'database-guide.md')
@@ -18,6 +20,18 @@ Describe 'the intake data' {
         $card['prices'] | Should -Be 'docs/database-guide.md'
         foreach ($option in $card['options'] | Where-Object { $_['id'] -ne 'none' }) {
             $guide | Should -Match ([regex]::Escape($option['label'])) -Because "the guide lists $($option['label'])"
+        }
+    }
+    # ADR-0074: an app gets the guide but not templates/app-intake.json, so the guide labels its recommendations too,
+    # and this keeps them the same as the intake's (CRF-003).
+    It 'labels each database recommendation as the intake does: the authority''s page and the agent''s pick' {
+        $guide = Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'database-guide.md')
+        $card = @($intake['cards'] | Where-Object { $_['id'] -eq 'database' })[0]
+        foreach ($answer in $card['recommendation'].Keys) {
+            $recommendation = $card['recommendation'][$answer]
+            $label = @($card['options'] | Where-Object { $_['id'] -eq $recommendation['agent']['pick'] })[0]['label']
+            $guide | Should -Match ([regex]::Escape($recommendation['authority']['source'])) -Because "the guide links the page Microsoft's recommendation for $answer data comes from"
+            $guide | Should -Match "\*\*$([regex]::Escape($label))\*\* \(the agent's recommendation\)" -Because "the guide labels $label as the agent's pick for $answer data"
         }
     }
     It 'exists as templates/app-intake.json' {
@@ -36,7 +50,7 @@ Describe 'the intake data' {
     # The agent shows each card with AskUserQuestion: a header of at most 12 characters, a question, and 2 to 4
     # options, the recommended one first (COM-001). A card that depends on another shows only the options that
     # fit that card's answer, so each such subset has to fit too, with at least one option.
-    It 'has cards that AskUserQuestion can show, each with its recommended option first' {
+    It 'has cards that AskUserQuestion can show' {
         $intake | Should -Not -BeNullOrEmpty -Because 'templates/app-intake.json holds the cards'
         @($intake['cards'].id) | Should -Be @('appType', 'data', 'database', 'signIn', 'hosting', 'budget')
         foreach ($card in $intake['cards']) {
@@ -121,18 +135,34 @@ Describe 'the intake data' {
             if ($cost['label'] -eq 'Free tier') { $cost['free'] | Should -Not -BeNullOrEmpty -Because "$($entry['id']) says what's free" }
         }
         foreach ($card in $pricedCards) {
-            $card['options'][0]['cost']['label'] | Should -BeIn @('Free', 'Free tier') -Because "card $($card['id'])'s recommendation costs nothing up to its free amount"
+            $card['recommendation'] | Should -Not -BeNullOrEmpty -Because "card $($card['id']) has a recommendation"
+            $pick = @($card['options'] | Where-Object id -EQ $card['recommendation']['agent']['pick'])
+            $pick[0]['cost']['label'] | Should -BeIn @('Free', 'Free tier') -Because "card $($card['id'])'s agent recommendation costs nothing up to its free amount"
         }
         foreach ($kind in $intake['testKinds']) {
             $kind['tools'] | ForEach-Object { $_['license'] | Should -Not -BeNullOrEmpty -Because "$($_['id']) names its license" }
-            $defaults = @($kind['tools'] | Where-Object { $_['default'] })
-            $defaults | Should -Not -BeNullOrEmpty -Because "the $($kind['id']) kind has a default"
-            # Free, or free for a non-commercial app, as FluentAssertions 8 is (ADR-0004).
-            $defaults | ForEach-Object {
-                ($_['cost']['label'] -eq 'Free' -or ($_['cost']['label'] -eq 'Free tier' -and $_['cost']['free'] -like 'Non-commercial use*')) |
-                    Should -BeTrue -Because "$($_['id']) is a default, so it's free, at least for a non-commercial app"
+            # The agent's pick is the default when neither the developer nor the authority has one, so it's free.
+            $kind['roles'] | Should -Not -BeNullOrEmpty -Because "the $($kind['id']) kind lists the roles its tools fill"
+            foreach ($role in $kind['roles']) {
+                $pick = @($kind['tools'] | Where-Object id -EQ $role['recommendation']['agent']['pick'])
+                $pick[0]['cost']['label'] | Should -Be 'Free' -Because "$($kind['id'])/$($role['id'])'s agent pick, $($pick[0]['id']), is a default for anyone, so it's free"
             }
         }
+    }
+
+    # The agent's reason is its own, never the owner's taste passed on (ADR-0074): ADR-0003 and ADR-0057 record what he
+    # prefers, so they belong in his preferences file, not in a reason a new kit user reads.
+    It 'gives agent reasons of the agent''s own, citing none of the owner''s preference ADRs' {
+        $entries = @($intake['cards'] | ForEach-Object { $_['recommendation'] }) + @($intake['testKinds'] | ForEach-Object { $_['roles'] } | ForEach-Object { $_['recommendation'] })
+        $agents = @($entries | ForEach-Object { if ($_.Contains('agent')) { $_['agent'] } else { $_.Values | ForEach-Object { $_['agent'] } } })
+
+        @($agents | Where-Object { $_['reason'] -match 'ADR-00(03|57)\b' } | ForEach-Object { $_['pick'] }) | Should -BeNullOrEmpty
+    }
+
+    # ADR-0074: every card and every role names the authority's recommendation (or that it has none) and the agent's.
+    It 'gives every card and every test tool role both labeled sources' {
+        @($intake['testKinds'] | Where-Object { -not $_['roles'] } | ForEach-Object { $_['id'] }) | Should -BeNullOrEmpty -Because 'every kind of test lists its roles'
+        @(Test-KitIntakeSource -Intake $intake) | Should -BeNullOrEmpty
     }
 
     # ADR-0004: FluentAssertions 8 is free only while the app isn't sold or paid for. A commercial app swaps it for
@@ -148,9 +178,11 @@ Describe 'the intake data' {
     }
 
     # ADR-0057, the owner's decision of 2026-11-11.
-    It 'offers load testing as the owner decided: Locust by default, JMeter beside it, Azure Load Testing and NBomber as Paid' {
-        $load = @($intake['testKinds'] | Where-Object id -EQ 'load')[0]['tools']
-        @($load | Where-Object { $_['default'] }).id | Should -Be @('locust')
+    It 'offers load testing with Locust as the agent''s pick, JMeter beside it, and Azure Load Testing and NBomber as Paid' {
+        $kind = @($intake['testKinds'] | Where-Object id -EQ 'load')[0]
+        $load = $kind['tools']
+        $kind['roles'] | Should -Not -BeNullOrEmpty -Because 'load tests list the role Locust fills'
+        @($kind['roles'] | ForEach-Object { $_['recommendation']['agent']['pick'] }) | Should -Be @('locust')
         $byId = @{}; $load | ForEach-Object { $byId[$_['id']] = $_ }
         $byId['locust']['license'] | Should -Be 'MIT'
         $byId['jmeter']['license'] | Should -Be 'Apache-2.0'
@@ -168,7 +200,8 @@ Describe 'the intake data' {
     It 'runs UI tests on every PR, with Playwright, axe and WebApplicationFactory by default, and names axe''s licenses' {
         $ui = @($intake['testKinds'] | Where-Object id -EQ 'ui')[0]
         $ui['runs'] | Should -Be 'Every PR, in the shared .NET CI'
-        @($ui['tools'] | Where-Object { $_['default'] }).id | Should -Be @('playwright', 'axe', 'webapplicationfactory')
+        $ui['roles'] | Should -Not -BeNullOrEmpty -Because 'UI tests list the roles their tools fill'
+        @($ui['roles'] | ForEach-Object { $_['recommendation']['agent']['pick'] }) | Should -Be @('playwright', 'axe', 'webapplicationfactory')
         $byId = @{}; $ui['tools'] | ForEach-Object { $byId[$_['id']] = $_ }
         $byId['webapplicationfactory']['package'] | Should -Be 'Microsoft.AspNetCore.Mvc.Testing'
         $byId['webapplicationfactory']['note'] | Should -Match 'Kestrel'
@@ -195,7 +228,20 @@ Describe 'Resolve-KitIntakeAnswer' {
         ($resolved.Cards | Where-Object Id -EQ 'hosting').Option['id'] | Should -Be 'none'
         @($resolved.TestKinds.Kind | ForEach-Object { $_['id'] }) | Should -Be @($intake['testKinds'].id)
         @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'load' }).Tools | ForEach-Object { $_['id'] }) | Should -Be @('locust')
-        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) | Should -Not -Contain 'awesomeassertions'
+        # One tool for each role; with no developer file, the agent picks AwesomeAssertions, free for any app (ADR-0074).
+        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) |
+            Should -Be @('xunit', 'moq', 'awesomeassertions', 'bogus', 'fscheck', 'faketimeprovider', 'fakelogger')
+    }
+
+    # ARC-012 starts every tool on its free option, so an authority's pick that's Paid is listed but never the
+    # default by itself (ADR-0074).
+    It 'skips an authority pick that''s Paid, so an unanswered kind of test starts free' {
+        $paid = $intake | ConvertTo-Json -Depth 20 | ConvertFrom-Json -AsHashtable
+        @($paid['testKinds'] | Where-Object { $_['id'] -eq 'load' })[0]['roles'][0]['recommendation']['authority']['pick'] = 'azure-load-testing'
+
+        $resolved = Resolve-KitIntakeAnswer -Intake $paid -Answers (New-Answer)
+
+        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'load' }).Tools | ForEach-Object { $_['id'] }) | Should -Be @('locust')
     }
 
     # Checked before New-KitApp changes anything, so a wrong answer leaves nothing behind.
@@ -280,12 +326,20 @@ Describe 'Get-KitIntake' {
     }
 
     It 'refuses <Case>' -ForEach @(
-        @{ Case = 'another schemaVersion'; Text = '{ "schemaVersion": 2, "cards": [], "testKinds": [] }'; Message = "*schemaVersion 2*reads version 1*same kit version*" }
-        @{ Case = 'a schemaVersion written as text'; Text = '{ "schemaVersion": "1", "cards": [], "testKinds": [] }'; Message = "*schemaVersion 1*reads version 1*" }
-        @{ Case = 'no schemaVersion'; Text = '{ "cards": [], "testKinds": [] }'; Message = "*schemaVersion none*reads version 1*" }
+        @{ Case = 'another schemaVersion'; Text = '{ "schemaVersion": 1, "cards": [], "testKinds": [] }'; Message = "*schemaVersion 1*reads version 2*same kit version*" }
+        @{ Case = 'a schemaVersion written as text'; Text = '{ "schemaVersion": "2", "cards": [], "testKinds": [] }'; Message = "*schemaVersion 2*reads version 2*" }
+        @{ Case = 'no schemaVersion'; Text = '{ "cards": [], "testKinds": [] }'; Message = "*schemaVersion none*reads version 2*" }
         @{ Case = 'text that isn''t a JSON object'; Text = '[1, 2]'; Message = "*isn't a JSON object*" }
     ) {
         { Get-KitIntake -Text $Text } | Should -Throw $Message
+    }
+
+    # ADR-0074: New-KitApp and the new-app skill both read the intake through Get-KitIntake, so a default with no
+    # labeled source never reaches a new app.
+    It 'refuses an intake whose defaults have no labeled source, naming each' {
+        $text = '{ "schemaVersion": 2, "cards": [ { "id": "hosting", "options": [ { "id": "none" } ] } ], "testKinds": [] }'
+
+        { Get-KitIntake -Text $text } | Should -Throw "*no labeled source*card 'hosting' has no recommendation*ADR-0074*"
     }
 }
 
@@ -351,5 +405,302 @@ Describe 'ConvertTo-KitAppProfile' {
         $text = ConvertTo-KitAppProfile -Resolved (Resolve-KitIntakeAnswer -Intake $intake -Answers $other) -Name 'Contoso.Orders' -KitCommit 'abc1234'
 
         $text | Should -Match '(?m)^\| Where should it run\? \| Other: my own server \\\| a VPS in Ohio \| Needs an ADR'
+    }
+}
+# ADR-0074 (owner, 2026-11-15): every default the intake gives names its source. The authority's recommendation is
+# only what its page says, with the page and the date read (or the search that found no page); the agent's is its
+# pick with a reason. A default with neither, or a pick that isn't an option, fails the check.
+Describe 'Test-KitIntakeSource' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        # The smallest intake that passes: one card and one kind of test, each with both sources.
+        function New-SourcedIntake {
+            $authority = @{ by = 'Microsoft'; pick = $null; says = 'No recommendation'; source = 'https://learn.microsoft.com/example'; read = '2026-11-15' }
+            @{
+                schemaVersion = 2
+                cards = @(
+                    @{ id = 'hosting'; options = @(@{ id = 'none' }, @{ id = 'app-service' })
+                        recommendation = @{ authority = $authority.Clone(); agent = @{ pick = 'none'; reason = 'Nothing to pay or set up yet' } } }
+                )
+                testKinds = @()
+            }
+        }
+        # The same, with a card that depends on another and a kind of test with a role.
+        function New-FullSourcedIntake {
+            $intake = New-SourcedIntake
+            $sources = { param($pick) @{
+                    authority = @{ by = 'Microsoft'; pick = $null; says = 'No recommendation'; searched = 'a query'; read = '2026-11-15' }
+                    agent = @{ pick = $pick; reason = 'Free' } } }
+            $intake['cards'] += @{ id = 'data'; options = @(@{ id = 'relational' }, @{ id = 'device' }); recommendation = (& $sources 'relational') }
+            $intake['cards'] += @{ id = 'database'; dependsOn = 'data'
+                options = @(@{ id = 'azure-sql-free'; fits = @('relational') }, @{ id = 'postgresql'; fits = @('relational') }, @{ id = 'sqlite'; fits = @('device') })
+                recommendation = @{ relational = (& $sources 'azure-sql-free') } }
+            $intake['testKinds'] = @(@{ id = 'load'
+                    roles = @(@{ id = 'load'; name = 'Load generator'; recommendation = (& $sources 'locust') })
+                    tools = @(@{ id = 'locust'; role = 'load' }, @{ id = 'jmeter'; role = 'load' }) })
+            $intake
+        }
+    }
+
+    It 'finds nothing wrong with a card that has both sources' {
+        @(Test-KitIntakeSource -Intake (New-SourcedIntake)) | Should -BeNullOrEmpty
+    }
+
+    It 'reports <Case>' -ForEach @(
+        @{ Case = 'a card with no recommendation'; Change = { param($c) $c.Remove('recommendation') }; Message = "*card 'hosting' has no recommendation*" }
+        @{ Case = 'no authority'; Change = { param($c) $c['recommendation'].Remove('authority') }; Message = "*card 'hosting'*no authority*" }
+        @{ Case = 'an authority with no name'; Change = { param($c) $c['recommendation']['authority'].Remove('by') }; Message = "*card 'hosting'*authority*who*" }
+        @{ Case = 'an authority with no words'; Change = { param($c) $c['recommendation']['authority']['says'] = ' ' }; Message = "*card 'hosting'*authority*says*" }
+        @{ Case = 'an authority with neither a page nor a search'; Change = { param($c) $c['recommendation']['authority'].Remove('source') }; Message = "*card 'hosting'*authority*https:// page*search*" }
+        @{ Case = 'an authority page that isn''t a URL'; Change = { param($c) $c['recommendation']['authority']['source'] = 'Microsoft Learn' }; Message = "*card 'hosting'*authority*https:// page*" }
+        @{ Case = 'an authority with no date read'; Change = { param($c) $c['recommendation']['authority']['read'] = 'last week' }; Message = "*card 'hosting'*authority*date it was read*" }
+        @{ Case = 'an authority pick that isn''t an option'; Change = { param($c) $c['recommendation']['authority']['pick'] = 'aks' }; Message = "*card 'hosting'*authority picks 'aks'*isn't an option*none, app-service*" }
+        @{ Case = 'an authority pick the page only says you can use'; Change = { param($c) $c['recommendation']['authority']['pick'] = 'none'; $c['recommendation']['authority']['says'] = 'You can use it' }; Message = "*card 'hosting'*authority picks 'none'*recommends*should*CONSIDER*" }
+        @{ Case = 'an authority pick whose words say there''s no recommendation'; Change = { param($c) $c['recommendation']['authority']['pick'] = 'none'; $c['recommendation']['authority']['says'] = 'No recommendation: it lists several' }; Message = "*card 'hosting'*authority picks 'none'*no pick*" }
+        @{ Case = 'no agent recommendation'; Change = { param($c) $c['recommendation'].Remove('agent') }; Message = "*card 'hosting'*no agent recommendation*" }
+        @{ Case = 'an agent pick with no reason'; Change = { param($c) $c['recommendation']['agent'].Remove('reason') }; Message = "*card 'hosting'*agent*reason*" }
+        @{ Case = 'an agent that picks nothing'; Change = { param($c) $c['recommendation']['agent']['pick'] = $null }; Message = "*card 'hosting'*agent picks nothing*" }
+        @{ Case = 'an agent pick that isn''t an option'; Change = { param($c) $c['recommendation']['agent']['pick'] = 'aks' }; Message = "*card 'hosting'*agent picks 'aks'*isn't an option*" }
+    ) {
+        $intake = New-SourcedIntake
+        & $Change $intake['cards'][0]
+
+        (@(Test-KitIntakeSource -Intake $intake) -join "`n") | Should -BeLike $Message
+    }
+
+    # A kind of test fills several roles (a test framework, a mocking library...), each picked on its own. A card that
+    # depends on another needs a recommendation for each answer that leaves more than one option, and a card's own
+    # default for an unanswered card has to come from a rule.
+    It 'reports <Case>' -ForEach @(
+        @{ Case = 'a tool in no listed role'; Change = { param($i) $i['testKinds'][0]['tools'][1]['role'] = 'stress' }; Message = "*tool 'jmeter' of load tests has role 'stress', which isn't one of its roles: load*" }
+        @{ Case = 'a kind of test with no roles'; Change = { param($i) $i['testKinds'][0].Remove('roles') }; Message = "*load tests list no roles*" }
+        @{ Case = 'a role with no tools'; Change = { param($i) $i['testKinds'][0]['roles'] += @{ id = 'soak'; name = 'Soak'; recommendation = @{} } }; Message = "*role 'load/soak' has no tools*" }
+        @{ Case = 'a role with no recommendation'; Change = { param($i) $i['testKinds'][0]['roles'][0].Remove('recommendation') }; Message = "*role 'load/load' has no recommendation*" }
+        @{ Case = 'a role whose agent picks a tool outside it'; Change = { param($i) $i['testKinds'][0]['roles'][0]['recommendation']['agent']['pick'] = 'k6' }; Message = "*role 'load/load'*agent picks 'k6', which isn't an option: locust, jmeter*" }
+        @{ Case = 'an answer that leaves two options with no recommendation'; Change = { param($i) $i['cards'][2]['recommendation'].Remove('relational') }; Message = "*card 'database' for data 'relational' has no recommendation*" }
+        @{ Case = 'a recommendation for an answer that isn''t one'; Change = { param($i) $i['cards'][2]['recommendation']['graph'] = @{} }; Message = "*card 'database' has a recommendation for data 'graph', which isn't an option*" }
+        @{ Case = 'an agent pick that doesn''t fit the answer'; Change = { param($i) $i['cards'][2]['recommendation']['relational']['agent']['pick'] = 'sqlite' }; Message = "*card 'database' for data 'relational'*agent picks 'sqlite', which isn't an option: azure-sql-free, postgresql*" }
+        @{ Case = 'a card default with no rule behind it'; Change = { param($i) $i['cards'][0]['default'] = 'none' }; Message = "*card 'hosting' has a default*no defaultRule*" }
+    ) {
+        $intake = New-FullSourcedIntake
+        & $Change $intake
+
+        (@(Test-KitIntakeSource -Intake $intake) -join "`n") | Should -BeLike $Message
+    }
+
+    It 'finds nothing wrong with roles and a dependent card that have both sources' {
+        @(Test-KitIntakeSource -Intake (New-FullSourcedIntake)) | Should -BeNullOrEmpty
+    }
+}
+
+# ADR-0074: a developer's preferences live in their own file, outside every repo, each with their words, the date and
+# where they said it. A new kit user has no file, and that's no preferences, not an error.
+Describe 'Read-KitPreference' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        # Writes a preferences file with the given entries and returns its path.
+        function New-PreferenceFile {
+            param([object[]] $Preference, [object] $Version = 1)
+            $path = Join-Path $TestDrive "preferences-$([guid]::NewGuid()).json"
+            @{ schemaVersion = $Version; preferences = @($Preference) } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $path
+            $path
+        }
+        $budget = @{ choice = 'budget'; pick = 'budget-0'; stated = 'A $0 budget unless I say otherwise'; date = '2026-11-12'; source = 'ARC-012' }
+    }
+
+    It 'lives in the developer''s home folder, outside every repo' {
+        Get-KitPreferencePath | Should -Be (Join-Path $HOME '.dotnet-agent-kit' 'preferences.json')
+    }
+
+    It 'reads no preferences when the developer has no file' {
+        @(Read-KitPreference -Path (Join-Path $TestDrive 'none.json')) | Should -BeNullOrEmpty
+    }
+
+    It 'reads each preference with its words, date and source' {
+        $general = @{ stated = 'EF Core with code-first migrations'; date = '2026-11-10'; source = 'ADR-0053' }
+        $read = @(Read-KitPreference -Path (New-PreferenceFile -Preference $budget, $general))
+
+        $read.Count | Should -Be 2
+        $read[0].Choice | Should -Be 'budget'
+        $read[0].Pick | Should -Be 'budget-0'
+        $read[0].Stated | Should -Be 'A $0 budget unless I say otherwise'
+        $read[0].Date | Should -Be '2026-11-12'
+        $read[0].Source | Should -Be 'ARC-012'
+        $read[1].Choice | Should -BeNullOrEmpty -Because 'a preference with no choice is for plans, not the intake'
+    }
+
+    It 'refuses <Case>, naming the file' -ForEach @(
+        @{ Case = 'a preference with no words'; Entry = @{ choice = 'budget'; pick = 'budget-0'; date = '2026-11-12'; source = 'ARC-012' }; Message = "*preferences-*.json*preference 1*stated*" }
+        @{ Case = 'a preference with no date'; Entry = @{ stated = 'Locust'; source = 'chat' }; Message = "*preference 1*date*yyyy-mm-dd*" }
+        @{ Case = 'a date that isn''t a date'; Entry = @{ stated = 'Locust'; date = 'yesterday'; source = 'chat' }; Message = "*preference 1*date*yyyy-mm-dd*" }
+        @{ Case = 'a preference with no source'; Entry = @{ stated = 'Locust'; date = '2026-11-12' }; Message = "*preference 1*source*" }
+        @{ Case = 'a choice with no pick'; Entry = @{ choice = 'load/load'; stated = 'Locust'; date = '2026-11-12'; source = 'chat' }; Message = "*preference 1*choice 'load/load'*no pick*" }
+    ) {
+        { Read-KitPreference -Path (New-PreferenceFile -Preference $Entry) } | Should -Throw $Message
+    }
+
+    It 'refuses two preferences for the same question' {
+        $again = @{ choice = 'budget'; pick = 'budget-20'; stated = 'Up to $20'; date = '2026-11-14'; source = 'chat' }
+
+        { Read-KitPreference -Path (New-PreferenceFile -Preference $budget, $again) } | Should -Throw "*two preferences for 'budget'*keep one*"
+    }
+
+    It 'refuses <Case>' -ForEach @(
+        @{ Case = 'a file that isn''t JSON'; Text = 'not json'; Message = "*preferences.json*isn't valid JSON*" }
+        @{ Case = 'another schemaVersion'; Text = '{ "schemaVersion": 2, "preferences": [] }'; Message = "*schemaVersion 2*reads version 1*" }
+    ) {
+        $path = Join-Path $TestDrive 'preferences.json'
+        Set-Content -LiteralPath $path -Value $Text
+
+        { Read-KitPreference -Path $path } | Should -Throw $Message
+    }
+}
+
+# ADR-0074: the new-app skill shows, for each question and each test tool role, the default and where it came from,
+# with all three sources side by side: the developer's preference first, then the authority's pick, then the agent's.
+Describe 'Get-KitIntakeDefault' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        # A preference as Read-KitPreference returns it.
+        function New-Preference {
+            param([string] $Choice, [string] $Pick, [string] $When)
+            [pscustomobject]@{ Choice = $Choice; When = $When; Pick = $Pick; Stated = "I want $Pick"; Date = '2026-11-15'; Source = 'said in chat' }
+        }
+        # The row for one question, or for one answer of a card that depends on another.
+        function Get-Row {
+            param([object[]] $Rows, [string] $Choice, [string] $When)
+            @($Rows | Where-Object { $_.Choice -eq $Choice -and "$($_.When)" -eq $When })[0]
+        }
+        $kitDefaults = @(Get-KitIntakeDefault -Intake $intake)
+    }
+
+    It 'gives the agent''s pick, labeled, where the authority names none' {
+        $row = Get-Row $kitDefaults 'appType'
+
+        $row.Pick | Should -Be 'web-api-blazor'
+        $row.From | Should -Be 'agent'
+        $row.Agent['reason'] | Should -Not -BeNullOrEmpty
+        $row.Authority['pick'] | Should -BeNullOrEmpty -Because 'Microsoft names no app type'
+        $row.Developer | Should -BeNullOrEmpty
+    }
+
+    It 'gives the authority''s pick where it names one' {
+        $row = Get-Row $kitDefaults 'performance/benchmarks'
+
+        $row.Pick | Should -Be 'benchmarkdotnet'
+        $row.From | Should -Be 'authority'
+        $row.Authority['source'] | Should -Match '^https://learn\.microsoft\.com/'
+    }
+
+    It 'gives a row for each data answer, and says when only one database fits' {
+        (Get-Row $kitDefaults 'database' 'relational').From | Should -Be 'agent'
+        $documents = Get-Row $kitDefaults 'database' 'documents'
+        $documents.Pick | Should -Be 'cosmos-free'
+        $documents.From | Should -Be 'only option'
+    }
+
+    It 'puts the developer''s preference first, with their words and date' {
+        $rows = @(Get-KitIntakeDefault -Intake $intake -Preference (New-Preference 'unit/time' 'faketimeprovider'), (New-Preference 'database' 'postgresql' 'relational'))
+
+        $time = Get-Row $rows 'unit/time'
+        $time.From | Should -Be 'developer'
+        $time.Developer.Stated | Should -Be 'I want faketimeprovider'
+        $relational = Get-Row $rows 'database' 'relational'
+        $relational.Pick | Should -Be 'postgresql'
+        $relational.From | Should -Be 'developer'
+    }
+
+    It 'skips a preference that isn''t an option any more, and says so' {
+        $row = Get-Row @(Get-KitIntakeDefault -Intake $intake -Preference (New-Preference 'load/load' 'k6')) 'load/load'
+
+        $row.Pick | Should -Be 'locust'
+        $row.From | Should -Be 'agent'
+        ($row.Notes -join ' ') | Should -Match "'k6'.*isn't an option"
+    }
+
+    It 'leaves out a preference that answers no intake question' {
+        $plan = [pscustomobject]@{ Choice = $null; When = $null; Pick = $null; Stated = 'EF Core'; Date = '2026-11-10'; Source = 'ADR-0053' }
+
+        @(Get-KitIntakeDefault -Intake $intake -Preference $plan).Count | Should -Be $kitDefaults.Count
+    }
+}
+
+# Reviewer, round 1, finding 3: New-KitApp doesn't read the preferences file, so the new-app skill writes every kind
+# of test's tools from the defaults it showed, the developer's picks included.
+Describe 'Get-KitTestToolAnswer' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        $preference = [pscustomobject]@{ Choice = 'unit/assertions'; When = $null; Pick = 'fluentassertions'; Stated = 'FluentAssertions'; Date = '2026-11-01'; Source = 'ADR-0003' }
+        $answer = Get-KitTestToolAnswer -Default (Get-KitIntakeDefault -Intake $intake -Preference $preference)
+    }
+
+    It 'names every kind of test''s tools as the defaults show them, the developer''s picks included' {
+        @($answer.Keys) | Should -Be @($intake['testKinds'] | ForEach-Object { $_['id'] })
+        $answer['unit'] | Should -Be @('xunit', 'moq', 'fluentassertions', 'bogus', 'fscheck', 'faketimeprovider', 'fakelogger')
+    }
+
+    # Reviewer, round 2, finding 2: an unused preference (a typo) is reported, not passed on to New-KitApp.
+    It 'leaves out a preference no question uses, so New-KitApp still takes the answers' {
+        $typo = [pscustomobject]@{ Choice = 'e2e/browser'; When = $null; Pick = 'playwright'; Stated = 'Playwright'; Date = '2026-11-15'; Source = 'said in chat' }
+        $typoAnswer = Get-KitTestToolAnswer -Default (Get-KitIntakeDefault -Intake $intake -Preference $typo)
+
+        @($typoAnswer.Keys) | Should -Be @($intake['testKinds'] | ForEach-Object { $_['id'] })
+    }
+
+    It 'gives New-KitApp answers that resolve to the same tools' {
+        $answers = [ordered]@{ appType = 'web-api-blazor'; data = 'relational'; database = 'azure-sql-free'; signIn = 'entra-external-id'; hosting = 'none'; testTools = $answer }
+
+        $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers $answers
+
+        @(($resolved.TestKinds | Where-Object { $_.Kind['id'] -eq 'unit' }).Tools | ForEach-Object { $_['id'] }) | Should -Contain 'fluentassertions'
+    }
+}
+
+# Reviewer, round 1, findings 6, 7 and 12: no preference is passed over in silence, and the notes the skill reads out
+# say why.
+Describe 'notes on what the defaults passed over' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        function New-Preference {
+            param([string] $Choice, [string] $Pick, [string] $When)
+            [pscustomobject]@{ Choice = $Choice; When = $When; Pick = $Pick; Stated = "I want $Pick"; Date = '2026-11-15'; Source = 'said in chat' }
+        }
+    }
+
+    It 'reports a preference for <Case> as unused, saying why' -ForEach @(
+        @{ Case = 'a question the intake doesn''t ask'; Choice = 'unit/assert'; When = ''; Note = "*'unit/assert'*isn't an intake question*" }
+        @{ Case = 'the database with no data answer'; Choice = 'database'; When = ''; Note = "*'database'*when*" }
+    ) {
+        $rows = @(Get-KitIntakeDefault -Intake $intake -Preference (New-Preference $Choice 'postgresql' $When))
+
+        $unused = @($rows | Where-Object From -EQ 'unused preference')
+        $unused.Count | Should -Be 1
+        ($unused[0].Notes -join ' ') | Should -BeLike $Note
+    }
+
+    It 'says when an authority''s pick is Paid and so isn''t the default' {
+        $paid = $intake | ConvertTo-Json -Depth 20 | ConvertFrom-Json -AsHashtable
+        @($paid['testKinds'] | Where-Object { $_['id'] -eq 'load' })[0]['roles'][0]['recommendation']['authority']['pick'] = 'azure-load-testing'
+
+        $row = @(Get-KitIntakeDefault -Intake $paid | Where-Object Choice -EQ 'load/load')[0]
+
+        ($row.Notes -join ' ') | Should -Match "'azure-load-testing'.*Paid.*ARC-012"
+    }
+
+    It 'reads one preference for each data answer of the database card' {
+        $path = Join-Path $TestDrive 'per-answer.json'
+        @{ schemaVersion = 1; preferences = @(
+                @{ choice = 'database'; when = 'relational'; pick = 'postgresql'; stated = 'PostgreSQL'; date = '2026-11-15'; source = 'chat' }
+                @{ choice = 'database'; when = 'documents'; pick = 'cosmos-free'; stated = 'Cosmos DB'; date = '2026-11-15'; source = 'chat' }) } |
+            ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $path
+
+        @(Read-KitPreference -Path $path).Count | Should -Be 2
+    }
+
+    It 'reads a file with no preferences list as no preferences' {
+        $path = Join-Path $TestDrive 'empty.json'
+        Set-Content -LiteralPath $path -Value '{ "schemaVersion": 1 }'
+
+        @(Read-KitPreference -Path $path) | Should -BeNullOrEmpty
     }
 }

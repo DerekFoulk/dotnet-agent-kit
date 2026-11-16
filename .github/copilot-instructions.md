@@ -114,6 +114,7 @@ In review mode, also ask the owner first before you:
 | Every rule has a source and an enforcement | `./tools/Test-RuleSources.ps1` |
 | Every rule in force has a quality area, and the scorecard's table is current; `-Update` rewrites the table after a rule or area changes | `./tools/Test-Scorecard.ps1` |
 | Every ADR has its required sections | `./tools/Test-AdrSections.ps1` |
+| The kit's architecture diagram is there (ARC-013) | `./tools/Test-ArchitectureDiagram.ps1` |
 | List the solution's MAUI and desktop (UI) projects, which CI builds on Windows and macOS and the coverage gate exempts (ARC-010) | `./tools/Get-UiProject.ps1 -Solution dotnet-agent-kit.slnx` |
 | Regenerate agent rule files after editing a standard or this file | `./tools/Build-AgentRules.ps1` |
 | Check generated files are current | `./tools/Build-AgentRules.ps1 -Check` |
@@ -125,7 +126,7 @@ In review mode, also ask the owner first before you:
 | Nesting, statements per member, file length and LCOM4 within CRF-011's limits (proposed) | `./tools/Test-CodeShape.ps1 -Solution dotnet-agent-kit.slnx` |
 | No duplicate code (CRF-003): in CI; locally only with Java and PMD, which are the owner's to install | CI: the "Duplicate code" step of `dotnet-ci.reusable.yml`. Locally: `./tools/Test-Duplication.ps1 -Solution dotnet-agent-kit.slnx -Pmd <PMD folder>/bin/pmd` (`pmd.bat` on Windows) |
 | List a PR's open review findings; reply; resolve a thread | `Import-Module ./tools/KitReview.psm1`, then `Get-OpenFinding`, `Resolve-ReviewFinding`, `Add-ReviewReply` (see the `address-review` skill) |
-| Wait for a PR's CI after a push, or for a Copilot review the owner asked for (`finish-work` step 4) | `Import-Module ./tools/KitReview.psm1`, then `Wait-PullRequest -Repository <owner/repo> -Number <pr> -For Checks` (or `-For Review`); it returns `Reviewed`, `ReviewFailed` (Copilot posted a reason, not a review), `ChecksPassed`, `ChecksFailed`, `HeadMoved`, `Merged`, `Closed` or `TimedOut`, with a message |
+| Wait for a PR's CI after a push, or for a Copilot review the owner asked for (`finish-work` step 4) | `Import-Module ./tools/KitReview.psm1`, then `Wait-PullRequest -Repository <owner/repo> -Number <pr> -For Checks` (or `-For Review`), in the foreground, with its default time-out (`finish-work` step 4, "Wait cheaply"); it costs no model call while it polls. It returns `Reviewed`, `ReviewFailed` (Copilot posted a reason, not a review), `ChecksPassed`, `ChecksFailed`, `HeadMoved`, `Merged`, `Closed` or `TimedOut`, with a message |
 | Build | `dotnet build` |
 | .NET tests with coverage, then the coverage gate (TST-004) | Delete `TestResults` first (the gate merges every report it finds), then `dotnet test --coverage --coverage-output-format cobertura --results-directory TestResults` and `./tools/Test-CoverageGate.ps1 -Path TestResults -Solution dotnet-agent-kit.slnx`. On Windows, run it from a clone in a short folder, such as `C:\src\<repo>`: from a deep one, the coverage collector can drop the browser tests' project and the gate fails the web project (docs/standards/testing.md, "Browser and accessibility tests") |
 | Browser and accessibility tests (Playwright, axe) run in that `dotnet test`; they need the Chromium build the Microsoft.Playwright version pins. Installing it is the owner's step ("Always ask"); CI installs it itself (`tools/Install-PlaywrightBrowser.ps1`, ADR-0061) | After a Debug build: `pwsh fixtures/WebUi/tests/Kit.WebUi.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install chromium` |
@@ -152,6 +153,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS (ADR-0040). Eve
 | `docs/authorities.md` | Every source the rules cite, by publisher and kind (authority, tool or project page, practitioner), generated from the rules' sources and `docs/authorities.yml` (ADR-0073) |
 | `docs/quality/scorecard.md` | What a "perfect" .NET app is, area by area; the rules that cover each area and its open gaps (ADR-0034). A new rule names its area here |
 | `docs/corrections-log.md` | Every owner correction and what it became |
+| `docs/architecture/modules.md` | A Mermaid diagram of the kit's parts and the sample's layers (ARC-013); update it with any change that adds a part or a dependency |
 | `.claude/skills/` | The workflow skills, read by Claude Code, Visual Studio and VS Code. Some are curated .NET skills, copied unchanged from Microsoft's dotnet/skills at one pinned commit (`docs/dotnet-skills.md`, ADR-0042): never edit those copies, and where one disagrees with a kit rule, the kit rule wins |
 | `.claude/agents/reviewer.md`, `docs/code-review.md` | The independent reviewer, and what it checks on every branch; `Build-AgentRules.ps1` also generates `.github/instructions/code-review.instructions.md` from the checklist, for a Copilot review the owner asks for (ADR-0067) |
 | `tools/` | PowerShell 7 scripts, with tests in `tools/tests/` |

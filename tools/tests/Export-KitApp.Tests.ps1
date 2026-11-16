@@ -166,9 +166,9 @@ Describe 'Export-KitApp' {
             $listed[$path]['sha256'] | Should -Be $actual -Because "$path's hash should match the exported file"
         }
 
-        # The app owns these from the start; the sync job never touches them. The runbook is the app's to fill in, and
-        # performance.yml is where it names its load test (review 1 of PR 57; ADR-0062).
-        foreach ($path in 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md', '.github/workflows/performance.yml') {
+        # The app owns these from the start; the sync job never touches them. The runbook and the architecture diagram
+        # are the app's to fill in, and performance.yml is where it names its load test (review 1 of PR 57; ADR-0062).
+        foreach ($path in 'README.md', 'Contoso.Orders.slnx', 'docs/corrections-log.md', 'docs/runbook.md', 'docs/architecture/modules.md', '.github/workflows/performance.yml') {
             $listed.ContainsKey($path) | Should -BeFalse -Because "$path belongs to the app"
         }
 
@@ -257,6 +257,16 @@ Describe 'Export-KitApp' {
         Get-Content -Raw -LiteralPath $runbook | Should -Match '# Contoso\.Orders runbook'
 
         $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-Runbook.ps1') -Path $runbook 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $output
+    }
+
+    It 'gets an architecture diagram that passes its own check (ARC-013)' {
+        $diagram = Join-Path $app 'docs/architecture/modules.md'
+        Test-Path -LiteralPath $diagram | Should -BeTrue -Because 'every app starts with a diagram of its modules to fill in'
+        Get-Content -Raw -LiteralPath $diagram | Should -Match '# Contoso\.Orders''s modules'
+
+        $output = & pwsh -NoProfile -File (Join-Path $app '.kit/tools/Test-ArchitectureDiagram.ps1') -Path $diagram 2>&1 | Out-String
 
         $LASTEXITCODE | Should -Be 0 -Because $output
     }
