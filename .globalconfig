@@ -58,3 +58,14 @@ dotnet_diagnostic.CA1014.severity = warning
 
 # CA1516: Use cross-platform intrinsics
 dotnet_diagnostic.CA1516.severity = warning
+
+# Source-generator rules the SDK leaves at info, which latest-all doesn't raise (STY-003; the .NET best-practices pass,
+# owner 2026-11-16): Microsoft's regular-expression and native interop pages ask for the generated forms.
+#   https://learn.microsoft.com/dotnet/standard/base-types/best-practices-regex  retrieved 2026-11-15
+#   https://learn.microsoft.com/dotnet/standard/native-interop/best-practices  retrieved 2026-11-15
+
+# SYSLIB1045: Use GeneratedRegexAttribute to generate the regular expression implementation at compile time
+dotnet_diagnostic.SYSLIB1045.severity = warning
+
+# SYSLIB1054: Use LibraryImportAttribute instead of DllImportAttribute to generate P/Invoke marshalling code at compile time
+dotnet_diagnostic.SYSLIB1054.severity = warning
