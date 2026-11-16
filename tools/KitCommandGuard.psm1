@@ -71,15 +71,32 @@ function Get-PowerShellCommand {
             'Dot' { $words.Add('.') }
         }
         foreach ($element in $commandAst.CommandElements) { $words.Add((ConvertTo-PowerShellWord -Element $element)) }
-        [pscustomobject]@{ Words = $words.ToArray() }
+        $name = $words[$words.Count - $commandAst.CommandElements.Count]
+        [pscustomobject]@{ Words = $words.ToArray(); Native = -not (Test-PowerShellCommandName -Name $name) }
     }
 }
 
-# The spellings of one resolved command that the ask rules are matched against: its words joined by spaces.
+# Whether a command name is PowerShell's own (a Verb-Noun cmdlet or function, or a .ps1 or .psm1 script), which binds
+# "-fd" to one parameter, rather than a native program such as git or gh, which may read it as "-f -d".
+function Test-PowerShellCommandName {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Name)
+
+    $Name -match '\.psm?1$' -or $Name -match '^[A-Za-z]+-[A-Za-z0-9]+$'
+}
+
+# The spellings of one resolved command that the ask rules are matched against: its words joined by spaces, and for a
+# native command also with each cluster of short options split up ("-qf" as "-q -f"), as git's and gh's option
+# parsers read it. Both are kept, so a rule written for the cluster ("-uf") still matches.
 function Get-CommandSpelling {
     param([Parameter(Mandatory)] [pscustomobject] $Resolved)
 
     $Resolved.Words -join ' '
+    if ($Resolved.Native) {
+        $split = foreach ($word in $Resolved.Words) {
+            if ($word -cmatch '^-[A-Za-z][A-Za-z0-9]+$') { ($word.Substring(1).ToCharArray() | ForEach-Object { "-$_" }) -join ' ' } else { $word }
+        }
+        $split -join ' '
+    }
 }
 
 # Why the command guard asks before a command runs, or $null when it leaves the command to Claude Code's own rules.
