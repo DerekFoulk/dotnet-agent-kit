@@ -202,6 +202,33 @@ function Test-KitOnlyRule {
     $false
 }
 
+# Points each command hook that runs a kit script, "${CLAUDE_PROJECT_DIR}/tools/<script>" in its command or args, at
+# the app's copy in .kit/tools, where Get-KitAppFileMap puts the kit's tools (ADR-0076). Throws for a script the app
+# doesn't get, since the hook would then fail on every call. Settings of another shape are left as they are.
+function Update-KitAppHookPath {
+    param([Parameter(Mandatory)] [Collections.IDictionary] $Settings, [Parameter(Mandatory)] [string[]] $AppTools)
+
+    if ($Settings['hooks'] -isnot [Collections.IDictionary]) { return }
+    $pattern = '\$\{CLAUDE_PROJECT_DIR\}/tools/(?<name>[\w.-]+)'
+    $rewrite = {
+        param([string] $Text)
+        [regex]::Replace($Text, $pattern, {
+                param($match)
+                $name = $match.Groups['name'].Value
+                if ($name -notin $AppTools) { throw "A hook in the kit's .claude/settings.json runs tools/$name, which an app doesn't get." }
+                '${CLAUDE_PROJECT_DIR}/.kit/tools/' + $name
+            })
+    }
+    foreach ($groups in @($Settings['hooks'].Values | Where-Object { $_ -is [Collections.IList] })) {
+        foreach ($group in @($groups | Where-Object { $_ -is [Collections.IDictionary] -and $_['hooks'] -is [Collections.IList] })) {
+            foreach ($hook in @($group['hooks'] | Where-Object { $_ -is [Collections.IDictionary] })) {
+                if ($hook['command'] -is [string]) { $hook['command'] = & $rewrite $hook['command'] }
+                if ($hook['args'] -is [Collections.IList]) { $hook['args'] = @($hook['args'] | ForEach-Object { if ($_ -is [string]) { & $rewrite $_ } else { $_ } }) }
+            }
+        }
+    }
+}
+
 # The kit's .claude/settings.json for an app: every setting as it is, except the allow and ask rules that are
 # kit-only. Worked out from the tools an app gets, so a rule for a new kit-only script is dropped without being
 # listed anywhere. Deny rules are never dropped: they only ever protect.
@@ -222,6 +249,7 @@ function Get-KitAppSettingsText {
             $settings['permissions'][$list] = @($settings['permissions'][$list] | Where-Object { -not (Test-KitOnlyRule -Rule $_ -AppTools $AppTools) })
         }
     }
+    Update-KitAppHookPath -Settings $settings -AppTools $AppTools
     # 100 is ConvertTo-Json's maximum. Anything deeper would be written as a type name with only a warning, so the
     # warning stops the export instead.
     $json = $settings | ConvertTo-Json -Depth 100 -WarningAction SilentlyContinue -WarningVariable truncated
