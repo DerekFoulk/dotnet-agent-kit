@@ -346,7 +346,7 @@ Describe 'Agent configuration' {
         # unique prefix (--de, --m, --pru, --rece, --e), since git takes any of them.
         It 'leaves pushes to the GitHub ruleset: no deny rule matches git push, and only destructive forms ask' {
             @(Get-RuleList 'deny') -match 'git push' | Should -BeNullOrEmpty
-            @(Get-RuleList 'ask') -match 'git \*?push' | Where-Object { $_ -notmatch '--de\*|-d( |\))|--force|-f|:\*|\+\*|--m\*|--pru\*|--rece\*|--e\*' } | Should -BeNullOrEmpty
+            @(Get-RuleList 'ask') -match 'git \*?push' | Where-Object { $_ -notmatch '--de\*|-d( |\))|--force|-f|:\*|\+\*|--m\*|--pru\*|--rece\*|--e\*| -uf| -ud| -du' } | Should -BeNullOrEmpty
         }
 
         It 'allows git switch only as the exact command <Rule>' -ForEach @(
