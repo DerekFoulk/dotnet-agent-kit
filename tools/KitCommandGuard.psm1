@@ -425,4 +425,10 @@ function Get-CommandGuardDecision {
     $null
 }
 
-Export-ModuleMember -Function Test-PermissionRuleMatch, Get-CommandGuardDecision
+function Invoke-CommandGuard {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $InputJson, [Parameter(Mandatory)] [AllowEmptyString()] [string] $ProjectDir)
+
+    $null
+}
+
+Export-ModuleMember -Function Test-PermissionRuleMatch, Get-CommandGuardDecision, Invoke-CommandGuard

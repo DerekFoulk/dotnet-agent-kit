@@ -14,6 +14,65 @@ BeforeAll {
     }
 }
 
+Describe 'Invoke-CommandGuard' {
+    # The hook's input and output, as Claude Code's hooks page gives them: tool_name and tool_input.command in, and
+    # hookSpecificOutput with permissionDecision "ask" out, or nothing, which leaves the call to the permission rules.
+    BeforeEach {
+        $project = Join-Path $TestDrive ([guid]::NewGuid())
+        New-Item -ItemType Directory -Path (Join-Path $project '.claude') -Force | Out-Null
+        Set-Content -Path (Join-Path $project '.claude' 'settings.json') -Value '{"permissions":{"ask":["PowerShell(*git *push*--force*)"]}}'
+        function New-HookInput([string] $Tool, [string] $Command) {
+            @{ hook_event_name = 'PreToolUse'; cwd = $project; tool_name = $Tool; tool_input = @{ command = $Command; description = 'x' } } | ConvertTo-Json
+        }
+    }
+
+    It 'asks, with the reason, for a command the guard resolves to an asked form' {
+        $output = Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "git push --for'ce'") -ProjectDir $project
+        $output | Should -Not -BeNullOrEmpty
+        $decision = ($output | ConvertFrom-Json -AsHashtable)['hookSpecificOutput']
+        $decision['hookEventName'] | Should -Be 'PreToolUse'
+        $decision['permissionDecision'] | Should -Be 'ask'
+        $decision['permissionDecisionReason'] | Should -BeLike '*git push --force*'
+    }
+
+    It 'writes nothing for a command it leaves to the rules, or for another tool' {
+        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' 'git push origin x') -ProjectDir $project | Should -BeNullOrEmpty
+        $read = @{ hook_event_name = 'PreToolUse'; tool_name = 'Read'; tool_input = @{ file_path = 'x' } } | ConvertTo-Json
+        Invoke-CommandGuard -InputJson $read -ProjectDir $project | Should -BeNullOrEmpty
+    }
+
+    It 'reads the ask rules of .claude/settings.local.json too, where review mode adds its asks' {
+        Set-Content -Path (Join-Path $project '.claude' 'settings.local.json') -Value '{"permissions":{"ask":["PowerShell(gh pr merge *)"]}}'
+        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "gh pr mer'ge' 5") -ProjectDir $project | Should -BeLike '*"ask"*'
+    }
+
+    It 'takes the project from the input''s cwd when it isn''t given one' {
+        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "git push --for'ce'") -ProjectDir '' | Should -BeLike '*"ask"*'
+    }
+
+    It 'asks when <Case>, rather than let the call through unchecked' -ForEach @(
+        @{ Case = 'the settings are missing'; Settings = $null; InputJson = $null }
+        @{ Case = 'the settings aren''t JSON'; Settings = '{'; InputJson = $null }
+        @{ Case = 'the ask rules aren''t a list of strings'; Settings = '{"permissions":{"ask":"x"}}'; InputJson = $null }
+        @{ Case = 'the input isn''t JSON'; Settings = '{}'; InputJson = 'not json' }
+        @{ Case = 'the command isn''t a string'; Settings = '{}'; InputJson = '{"tool_name":"Bash","tool_input":{"command":5}}' }
+    ) {
+        $path = Join-Path $project '.claude' 'settings.json'
+        if ($null -eq $Settings) { Remove-Item -Path $path } else { Set-Content -Path $path -Value $Settings }
+        $json = if ($InputJson) { $InputJson } else { New-HookInput 'Bash' 'git status' }
+        $output = Invoke-CommandGuard -InputJson $json -ProjectDir $project
+        $output | Should -BeLike '*"permissionDecision":"ask"*'
+        ($output | ConvertFrom-Json).hookSpecificOutput.permissionDecisionReason | Should -BeLike '*command guard*'
+    }
+
+    It 'writes ASCII only, so the console''s code page can''t garble it' {
+        $output = Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "git push --for'ce' → é") -ProjectDir $project
+        $output | Should -Not -BeNullOrEmpty
+        $output | Should -Match '^[\x20-\x7E]*$'
+        ($output | ConvertFrom-Json).hookSpecificOutput.permissionDecisionReason | Should -BeLike '*→ é*'
+    }
+}
+
 Describe 'Get-BashCommand' {
     # POSIX token recognition (XCU 2.3) and quote removal, with Bash's $'...' quoting: the words each command receives.
     It 'resolves <Command> to its words' -ForEach @(
