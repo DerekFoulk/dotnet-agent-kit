@@ -335,10 +335,10 @@ Describe 'Agent configuration' {
         # ADR-0026 leaves pushes to main to the GitHub ruleset. ADR-0035 adds asks, never denies, for deleting and
         # force-pushing, which the ruleset doesn't guard on other branches; an ordinary push stays unasked. ADR-0075
         # adds asks for the two push options that run a program, and spells each long option as git's shortest
-        # unique prefix (--de, --mi, --pru, --rece, --e), since git takes any of them.
+        # unique prefix (--de, --m, --pru, --rece, --e), since git takes any of them.
         It 'leaves pushes to the GitHub ruleset: no deny rule matches git push, and only destructive forms ask' {
             @(Get-RuleList 'deny') -match 'git push' | Should -BeNullOrEmpty
-            @(Get-RuleList 'ask') -match 'git \*?push' | Where-Object { $_ -notmatch '--de\*|-d( |\))|--force|-f|:\*|\+\*|--mi\*|--pru\*|--rece\*| --e\*' } | Should -BeNullOrEmpty
+            @(Get-RuleList 'ask') -match 'git \*?push' | Where-Object { $_ -notmatch '--de\*|-d( |\))|--force|-f|:\*|\+\*|--m\*|--pru\*|--rece\*|--e\*' } | Should -BeNullOrEmpty
         }
 
         It 'allows git switch only as the exact command <Rule>' -ForEach @(
