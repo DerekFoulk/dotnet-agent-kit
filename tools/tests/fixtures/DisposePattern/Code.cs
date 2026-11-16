@@ -11,7 +11,7 @@ internal static class Reader
     }
 }
 
-// CA1063 and CA1816: Dispose doesn't call Dispose(true) and GC.SuppressFinalize.
+// CA1063 and CA1816: Dispose calls Dispose(true) but not GC.SuppressFinalize.
 internal class Finalized : IDisposable
 {
     ~Finalized()

@@ -59,8 +59,10 @@ BeforeDiscovery {
         @{ Fixture = 'LegacyXmlReader'; Diagnostic = 'RS0030'; Description = 'the legacy XmlTextReader (SEC-014)' }
         @{ Fixture = 'AcceptAnyCertificate'; Diagnostic = 'RS0030'; Description = 'the accept-any-certificate validator (SEC-014)' }
         @{ Fixture = 'DtdParse'; Diagnostic = 'RS0030'; Description = 'DTD parsing in XmlReaderSettings (SEC-014)' }
-        # STY-003 (.NET best-practices pass, owner 2026-11-16): one fixture per family of rules latest-all turns on, so each
-        # is proved, not assumed. CA1305 doesn't see an interpolated or concatenated number, so that stays code review's.
+        # STY-003 (.NET best-practices pass, owner 2026-11-16): one fixture per family of rules latest-all turns on, plus
+        # CS4014, a compiler warning, so each is proved, not assumed. Two limits the fixtures found: CA1305 doesn't see an
+        # interpolated or concatenated number, and CA1510 to CA1513 fire only on a check that passes no message of its own
+        # (CA1511 only with an empty one); both stay code review's.
         @{ Fixture = 'StringCulture'; Diagnostic = 'CA1305'; Description = 'a number formatted in the current culture (STY-003)' }
         @{ Fixture = 'StringCulture'; Diagnostic = 'CA1307'; Description = 'a string call that doesn''t say its comparison (STY-003)' }
         @{ Fixture = 'StringCulture'; Diagnostic = 'CA1309'; Description = 'an invariant-culture comparison where ordinal is meant (STY-003)' }
@@ -86,6 +88,7 @@ BeforeDiscovery {
         @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1512'; Description = 'a hand-written range check where ThrowIfNegative does (STY-003)' }
         @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1513'; Description = 'a hand-written disposed check where ObjectDisposedException.ThrowIf does (STY-003)' }
         @{ Fixture = 'RecordStructNotReadonly'; Diagnostic = 'IDE0250'; Description = 'a record struct whose members are all read-only but isn''t declared readonly (STY-009)' }
+        @{ Fixture = 'InternalExceptionInLibrary'; Diagnostic = 'CA1064'; Description = 'an internal exception in a class library (STY-009)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
@@ -364,11 +367,20 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 
-    # C# guidance pass (owner 2026-11-16): CA1064 asks for public exceptions and CA1515 for an app's types to be internal;
-    # an app's own exception builds as internal, so the two don't collide.
+    # C# guidance pass (owner 2026-11-16): CA1064 asks for public exceptions, and CA1515 asks an Exe's types to be
+    # internal. In an Exe, an internal exception builds: CA1064's page names no exception for an Exe, so this pins what the
+    # analyzer does. In a class library, such as a module's Domain project, CA1064 fails an internal exception (the
+    # InternalExceptionInLibrary row) and CA1515 doesn't apply, so a library's exception is public.
     Context 'an app''s own exception' {
-        It 'builds as an internal type with the three standard constructors' {
+        It 'builds as an internal type in an Exe project' {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'InternalCustomException')
+
+            $build.Output | Should -Not -Match 'CA1064|CA1515|CA1032'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+
+        It 'builds as a public type in a class library' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'PublicExceptionInLibrary')
 
             $build.Output | Should -Not -Match 'CA1064|CA1515|CA1032'
             $build.ExitCode | Should -Be 0 -Because $build.Output
