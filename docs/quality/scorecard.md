@@ -287,7 +287,11 @@ areas:
       - "ADR-0026"
       - "owner, 2026-10-26"
     rules: [GIT-001, GIT-002, GIT-003, GIT-004, GIT-005, COM-001, COM-002, COM-003, COM-004, COM-005, COM-006, COM-007, DOD-002, DOD-003, DOD-004, DOD-005, DOD-006]
-    gaps: []
+    gaps:
+      - id: GAP-044
+        gap: "The asks in .claude/settings.json match a command's text, so a quoted or escaped spelling, joined short options such as git push -qf, or a command inside ( ), @( ) or $( ) gets past them (ADR-0075, Known limits). A PreToolUse hook that resolves each command with PowerShell's own parser (and Bash's) before it runs, and asks for what the rules would ask for, would close them; so would Claude Code's sandbox, once it supports the PowerShell tool on Windows."
+        status: proposed
+        needs: "a hook script with Pester tests, a hooks entry in .claude/settings.json, and an ADR"
 ---
 
 # Quality scorecard
@@ -321,9 +325,9 @@ Each area in the front matter above has:
 | Delivery | 1 | 1 | 0 | 2 | 3 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
-| Process | 17 | 6 | 11 | 0 | 0 |
+| Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 89 rules in force, 57 checked by a tool and 32 advisory; 25 proposed; 21 open gaps.
+**Overall:** 89 rules in force, 57 checked by a tool and 32 advisory; 25 proposed; 22 open gaps.
 
 Open gaps:
 
@@ -348,6 +352,7 @@ Open gaps:
 - **GAP-024** (Delivery, proposed; needs infrastructure as code first (GAP-016)): No check that an app's cloud database keeps its free-tier guard on (DAT-006): the guard is a setting in infrastructure code, which apps don't have yet (GAP-016).
 - **GAP-032** (UI and accessibility, proposed; needs a native UI test tool (an ADR and packages), and CI runners with emulators or devices): No automated UI tests for MAUI or desktop apps: UI-001 and its accessibility checks stay manual there, with each platform's tools, and nothing drives a native UI the way Playwright drives a browser (Appium for MAUI, or a Windows UI Automation driver for desktop). See also GAP-031: the intake offers a MAUI app browser test tools (ADR-0061).
 - **GAP-036** (UI and accessibility, proposed; needs an interactive page in the fixture and a documented way to wait for interactivity): The kit's web UI fixture uses static server rendering with enhanced navigation only, so nothing shows how to test a page with an interactive render mode (Server, WebAssembly or Auto), where a click made before the component is interactive is lost, nor proves it in CI (ADR-0061).
+- **GAP-044** (Process, proposed; needs a hook script with Pester tests, a hooks entry in .claude/settings.json, and an ADR): The asks in .claude/settings.json match a command's text, so a quoted or escaped spelling, joined short options such as git push -qf, or a command inside ( ), @( ) or $( ) gets past them (ADR-0075, Known limits). A PreToolUse hook that resolves each command with PowerShell's own parser (and Bash's) before it runs, and asks for what the rules would ask for, would close them; so would Claude Code's sandbox, once it supports the PowerShell tool on Windows.
 <!-- scorecard-table:end -->
 
 ## Keeping it current
