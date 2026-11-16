@@ -427,12 +427,12 @@ Describe 'Repo build configuration' -Tag 'Build' {
     }
 
     # STY-011 (ADR-0076): of the threading analyzers, only VSTHRD100 and VSTHRD101 are on, so the names a framework fixes
-    # or documents (an async Main, middleware's InvokeAsync, a Razor Pages OnGetAsync) and a test method named for its
+    # or documents (an async Main, middleware's InvokeAsync and async Invoke, a Razor Pages OnGetAsync) and a test method named for its
     # behavior (TST-010) build, where VSTHRD200 would ask for or against an Async suffix.
     Context 'the threading analyzers'' other rules stay off' {
         It 'allows <Description>' -ForEach @(
             @{ Project = 'Console'; Description = 'an async Main' }
-            @{ Project = 'Web'; Description = 'middleware''s InvokeAsync and a Razor Pages handler''s OnGetAsync' }
+            @{ Project = 'Web'; Description = 'middleware''s InvokeAsync and async Invoke, and a Razor Pages handler''s OnGetAsync' }
             @{ Project = 'Widgets.Tests'; Description = 'a test method with no Async suffix' }
         ) {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'AsyncNamingAllowed') -Project $Project

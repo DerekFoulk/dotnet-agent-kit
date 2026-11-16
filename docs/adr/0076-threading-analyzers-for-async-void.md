@@ -78,9 +78,9 @@ Accepted as recommended (owner, 2026-11-16, "Yes, accept them": best-practices d
   - `Directory.Packages.props` adds the package as a global reference, which every project and every new app gets: `New-KitApp` copies global references outside the sample's group.
 - **Tests.** `tools/tests/BuildConfig.Tests.ps1` has:
   - a failing fixture for VSTHRD100 and VSTHRD101;
-  - a clean fixture with an async `Main`, middleware's `InvokeAsync`, a Razor Pages `OnGetAsync` and an unsuffixed test method, which VSTHRD200 would flag if it were on;
+  - a clean fixture with an async `Main`, middleware named `InvokeAsync` and `Invoke`, a Razor Pages `OnGetAsync` and an unsuffixed test method: VSTHRD200 would flag the async `Invoke` and the test method if it were on;
   - the fixture that builds with `GetAwaiter().GetResult()`, which shows VSTHRD002 is off.
-- **Event handlers.** Where a handler must be async, such as MAUI code-behind, it suppresses the rule where it lives with the reason: VSTHRD100 on a method, VSTHRD101 on a lambda with `#pragma warning disable`, since a lambda takes no attribute. A MAUI app keeps its logic in view models (ARC-010), whose async commands return a `Task`, so most apps rarely need it.
+- **Event handlers.** Where a handler must be async, such as MAUI code-behind, it suppresses the rule where it lives with the reason: VSTHRD100 on a method, VSTHRD101 on a lambda with `#pragma warning disable`, since a SuppressMessage attribute on a lambda compiles but doesn't suppress it. A MAUI app keeps its logic in view models (ARC-010), whose async commands return a `Task`, so most apps rarely need it.
 - **The gap.** VSTHRD107 and VSTHRD110 are off by the owner's choice of 100 and 101 only. GAP-045 records them, for the owner to turn on.
 - **Lock files.** Every project's `packages.lock.json` lists the new package.
 - **Existing apps.** An app that syncs this kit release gets the package and the `.editorconfig` block, so an `async void` method or lambda in it fails its next build until it's changed or suppressed with its reason.

@@ -5,4 +5,4 @@ applyTo: '**/*.cs,BannedSymbols.txt,.editorconfig,Directory.Packages.props'
 
 # Code style
 
-- STY-011: Code awaits a task instead of blocking on it: no Task.Wait, Task.WaitAll, Task.WaitAny, Task<T>.Result or Thread.Sleep; where await can't reach, such as a synchronous interface the code must implement, it blocks with GetAwaiter().GetResult() and a comment saying why. No method or lambda is async void, except an event handler, which suppresses the rule where it lives with that reason: VSTHRD100 on a method, VSTHRD101 on a lambda (with #pragma warning disable, since a lambda takes no attribute).
+- STY-011: Code awaits a task instead of blocking on it: no Task.Wait, Task.WaitAll, Task.WaitAny, Task<T>.Result or Thread.Sleep; where await can't reach, such as a synchronous interface the code must implement, it blocks with GetAwaiter().GetResult() and a comment saying why. No method or lambda is async void, except an event handler, which suppresses the rule where it lives with that reason: VSTHRD100 on a method, VSTHRD101 on a lambda (with #pragma warning disable, since a SuppressMessage attribute on a lambda compiles but doesn't suppress it).
