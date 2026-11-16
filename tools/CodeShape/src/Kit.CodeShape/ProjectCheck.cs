@@ -1,19 +1,26 @@
 namespace Kit.CodeShape;
 
-/// <summary>Runs every CRF-011 limit over one project's hand-written files. Generated files are read too, for the
-/// state a partial type declares in them, but never reported on.</summary>
+/// <summary>Runs every CRF-011 limit and STY-005's nullable rules over one project's hand-written files. Generated
+/// files are read too, for the state a partial type declares in them, and reported on only when no tool wrote them
+/// into source: outside the project's EF Core Migrations folder, and not a .resx file's designer (STY-005).</summary>
 internal static class ProjectCheck
 {
     public static IEnumerable<Finding> Check(ProjectFiles project)
     {
         ArgumentNullException.ThrowIfNull(project);
 
-        SourceFile[] files = [.. project.Files.Select(path => Read(path, project.Defines))];
+        SourceFile[] files = [.. project.Files.Select(path => Read(path, project))];
+        // The owner, 2026-11-16: a test's ! follows an assertion or passes null on purpose to test a guard, so a test
+        // project (a name ending in Tests, as STY-008 and CA2007 have it) needs no label on it (STY-005).
+        bool isTestProject = Path.GetFileNameWithoutExtension(project.Name).EndsWith("Tests", StringComparison.Ordinal);
         return files
             .Where(file => !file.Generated)
             .SelectMany(file => NestingRule.Check(file)
                 .Concat(StatementRule.Check(file))
-                .Concat(FileLengthRule.Check(file)))
+                .Concat(FileLengthRule.Check(file))
+                .Concat(NullableDirectiveRule.Check(file))
+                .Concat(isTestProject ? [] : NullForgivingRule.Check(file)))
+            .Concat(files.SelectMany(GeneratedMarkerRule.Check))
             .Concat(PublicTypeRule.Check(files))
             .Concat(CohesionRule.Check(files))
             .Concat(MemberCountRule.Check(files))
@@ -27,12 +34,14 @@ internal static class ProjectCheck
     {
         ArgumentNullException.ThrowIfNull(project);
 
-        return project.Files.Select(path => Read(path, project.Defines)).Where(file => !file.Generated);
+        return project.Files.Select(path => Read(path, project)).Where(file => !file.Generated);
     }
 
-    private static SourceFile Read(string path, IReadOnlyList<string> defines)
+    private static SourceFile Read(string path, ProjectFiles project)
     {
-        SourceFile file = new(path, File.ReadAllText(path)) { Defines = defines };
+        IReadOnlyList<string> defines = project.Defines;
+        string projectFolder = Path.GetDirectoryName(project.Name) ?? string.Empty;
+        SourceFile file = new(path, File.ReadAllText(path)) { Defines = defines, ProjectFolder = projectFolder };
         return file with { Generated = GeneratedCode.Is(file) };
     }
 }

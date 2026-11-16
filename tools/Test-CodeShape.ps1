@@ -2,7 +2,11 @@
 <#
 .SYNOPSIS
     Fails when C# code breaks a CRF-011 limit that no analyzer checks: nesting, statements per member, file length,
-    members per type, public types per file or LCOM4 (ADR-0050, ADR-0071).
+    members per type, public types per file or LCOM4 (ADR-0050, ADR-0071); or breaks STY-005's nullable rules: a
+    #nullable directive, a null-forgiving operator (!) with no "// CRF-001 safety net: <reason>" comment on its line or
+    the line above, or a file marked as generated code outside an EF Core Migrations folder (a .resx file's designer
+    excepted). Code under an #if the evaluation doesn't define, such as NET10_0_OR_GREATER, isn't read, so a ! there
+    isn't checked.
 
 .DESCRIPTION
     Lists the .slnx solution's projects (KitSolution.psm1) and skips any that isn't C#. For each, it asks MSBuild for
