@@ -32,6 +32,15 @@ internal static partial class LimitExemption
         };
     }
 
+    /// <summary>Whether a type's cohesion and member count have an exception: a marker on any of its declarations,
+    /// so on any part of a partial type, covers the whole type.</summary>
+    public static bool CoversType(INamedTypeSymbol type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        return type.DeclaringSyntaxReferences.Any(reference => RightBefore(reference.GetSyntax()));
+    }
+
     /// <summary>Whether a file has an exception for its length, its public types and its top-level statements.</summary>
     public static bool CoversFile(CompilationUnitSyntax root)
     {

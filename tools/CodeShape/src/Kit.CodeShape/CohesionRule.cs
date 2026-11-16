@@ -9,28 +9,19 @@ namespace Kit.CodeShape;
 /// (LCOM4; CRF-011, ADR-0050).</summary>
 internal static class CohesionRule
 {
-    // The running .NET's own assemblies, a documented runtime property. They let the compiler bind the code's own
-    // members; a project's packages aren't needed for that, and types from them stay unresolved, which LCOM4 ignores.
-    private static readonly Lazy<MetadataReference[]> s_runtime = new(() =>
-        [.. ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-            .Select(path => MetadataReference.CreateFromFile(path))]);
-
     /// <summary>Checks the types of one project, whose files are compiled together so a partial type is seen whole.
     /// Generated files are read for what they declare, and never reported on.</summary>
     public static IEnumerable<Finding> Check(IReadOnlyList<SourceFile> files)
     {
-        ArgumentNullException.ThrowIfNull(files);
-
-        (SourceFile File, SyntaxTree Tree)[] parsed = [.. files.Select(file => (file, file.Parse()))];
-        CSharpCompilation compilation = CSharpCompilation.Create("CodeShape", parsed.Select(pair => pair.Tree), s_runtime.Value);
+        CompiledProject project = CompiledProject.Of(files);
+        CSharpCompilation compilation = project.Compilation;
         HashSet<INamedTypeSymbol> measured = new(SymbolEqualityComparer.Default);
-        foreach (SyntaxTree tree in parsed.Where(pair => !pair.File.Generated).Select(pair => pair.Tree))
+        foreach (SyntaxTree tree in project.HandWritten)
         {
             SemanticModel model = compilation.GetSemanticModel(tree);
             foreach (TypeDeclarationSyntax declaration in tree.GetRoot().DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
-                if (model.GetDeclaredSymbol(declaration) is not { } type || !measured.Add(type) || IsExempt(type))
+                if (model.GetDeclaredSymbol(declaration) is not { } type || !measured.Add(type) || LimitExemption.CoversType(type))
                 {
                     continue;
                 }
@@ -47,10 +38,6 @@ internal static class CohesionRule
             }
         }
     }
-
-    // A partial type is exempt when any of its declarations carries the exception.
-    private static bool IsExempt(INamedTypeSymbol type) =>
-        type.DeclaringSyntaxReferences.Any(reference => LimitExemption.Covers(reference.GetSyntax()));
 
     // The type's methods that use its instance state, grouped by what they share, in declaration order. A property
     // isn't a method here: it links the state it reads (JoinDerivedState), or every options class and record with two
