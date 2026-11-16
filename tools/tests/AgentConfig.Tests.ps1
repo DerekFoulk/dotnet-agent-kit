@@ -173,6 +173,11 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'git push origin --del feat/x' }
                 @{ Tool = $tool; Command = 'git push --mir origin' }
                 @{ Tool = $tool; Command = 'git push --pru origin' }
+                # Review 5: --m alone is --mirror, and a quoted option must still match (as the quoted refspecs do).
+                @{ Tool = $tool; Command = 'git push --m origin' }
+                @{ Tool = $tool; Command = 'git push origin --m' }
+                @{ Tool = $tool; Command = "git push '--exec=./evil.sh' origin feat/x" }
+                @{ Tool = $tool; Command = 'git push "--e=./evil.sh" origin feat/x' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
