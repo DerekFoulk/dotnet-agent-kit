@@ -121,6 +121,19 @@ rules:
         how: "build: .editorconfig sets api_surface to public, internal for the Design, Naming and Usage categories and for CA1815 and CA1819, keeps all for CA1068 and CA2208 (their own default), and csharp_style_prefer_readonly_struct to true:warning (IDE0250); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA1051, CA1711, CA2225, CA1815, CA1819 and IDE0250, and for a private CA2208 and CA1068"
     scope: core
     paths: ["**/*.cs", ".editorconfig"]
+  - id: STY-010
+    statement: "Code follows the Framework Design Guidelines where no analyzer checks them; code review checks the themes docs/code-review.md lists."
+    why: "The owner asked for Microsoft Learn's guidance as rules (owner O7, 2026-11-12). The Framework Design Guidelines pass found 229 of their 369 guidelines are judgment no analyzer checks, and the owner accepted one advisory rule for them, with the themes worth a reviewer's eye in an app listed for code review (owner, 2026-11-13: \"Yes, accept them\"). The guidelines are written for public APIs; like STY-009, the kit applies the themes to internal ones too, since CA1515 makes an app's types internal. The themes for libraries a kit app ships (versioning, extensibility, virtual and protected members) wait for the .NET library guidance pass."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-13", "https://learn.microsoft.com/dotnet/standard/design-guidelines/, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/exception-throwing, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/exceptions-and-performance, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/guidelines-for-collections, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/parameter-design, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/general-naming-conventions, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/property, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/event, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/design-guidelines/operator-overloads, retrieved 2026-11-15"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review: the reviewer agent checks the Framework Design Guidelines themes in docs/code-review.md and ranks a broken one Consider, or higher where it causes a defect; STY-009 gates the guidelines an analyzer checks"
+    scope: core
+    paths: ["**/*.cs"]
 ---
 
 # Code style

@@ -70,7 +70,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
-    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, STY-008, STY-009, CRF-008, CRF-010]
+    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, STY-008, STY-009, STY-010, CRF-008, CRF-010]
     gaps:
       - id: GAP-021
         gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version. Closed by ADR-0049, which found the 48 counted each diagnostic twice (24 places then, 32 by the time it was decided): CA1014 is on, and Directory.Build.props declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be; a library published for other .NET languages declares CLSCompliant(true) instead."
@@ -314,7 +314,7 @@ Each area in the front matter above has:
 | Architecture | 10 | 6 | 4 | 4 | 4 |
 | Craft | 13 | 7 | 6 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
-| Code | 11 | 10 | 1 | 0 | 0 |
+| Code | 12 | 10 | 2 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
 | Security | 13 | 9 | 4 | 4 | 3 |
 | Reliability | 7 | 4 | 3 | 2 | 1 |
@@ -327,7 +327,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 91 rules in force, 58 checked by a tool and 33 advisory; 25 proposed; 22 open gaps.
+**Overall:** 92 rules in force, 58 checked by a tool and 34 advisory; 25 proposed; 22 open gaps.
 
 Open gaps:
 
