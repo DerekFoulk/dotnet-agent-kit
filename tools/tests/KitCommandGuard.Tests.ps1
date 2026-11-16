@@ -6,6 +6,49 @@
 
 BeforeAll {
     Import-Module -Name (Join-Path $PSScriptRoot '..' 'KitCommandGuard.psm1') -Force
+    # The kit's own ask rules, so each test shows the guard closing a gap in the rules that are in force.
+    $settingsPath = Join-Path $PSScriptRoot '..' '..' '.claude' 'settings.json'
+    $script:KitAskRules = @((Get-Content -Path $settingsPath -Raw | ConvertFrom-Json -AsHashtable)['permissions']['ask'])
+    function Get-KitDecision([string] $Tool, [string] $Command) {
+        Get-CommandGuardDecision -Tool $Tool -Command $Command -AskRules $script:KitAskRules
+    }
+}
+
+Describe 'Get-CommandGuardDecision for PowerShell' {
+    It 'asks for <Command>, which the shell resolves to a form an ask rule covers' -ForEach @(
+        # Quotes and backtick escapes removed: what git or the script receives.
+        @{ Command = "git push --for'ce' origin x" }
+        @{ Command = 'git push "--de`lete" origin x' }
+        @{ Command = 'git push --rece''ive-pack=x origin' }
+        @{ Command = "./tools/New-Kit'App'.ps1 -Name X" }
+        @{ Command = '.\tools\New-Kit`App.ps1 -Name X' }
+        @{ Command = "& ./tools/New-Kit'App'.ps1 -Name X" }
+        @{ Command = "./tools/Set-AgentMode.ps1 -Mo``de Review" }
+        @{ Command = "gh api repos/a/b '-X' PUT" }
+        # A parent segment that leaves tools/, once its quotes are gone.
+        @{ Command = "./tools/zz/'..'/x.ps1" }
+        @{ Command = ".\tools\zz\'..'\x.ps1" }
+        # Each command of a compound one is resolved on its own.
+        @{ Command = "git status; git clean' -fd'" }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -Not -BeNullOrEmpty
+    }
+
+    It 'names the rule and the resolved command in its reason' {
+        $reason = Get-CommandGuardDecision -Tool 'PowerShell' -Command "git push --for'ce'" -AskRules 'PowerShell(*git *push*--force*)'
+        $reason | Should -BeLike '*PowerShell(`*git `*push`*--force`*)*'
+        $reason | Should -BeLike '*git push --force*'
+    }
+
+    It 'leaves <Command> to the rules, since it resolves to nothing they ask for' -ForEach @(
+        @{ Command = 'git push -u origin feat/x' }
+        @{ Command = './tools/Build-AgentRules.ps1 -Check' }
+        @{ Command = 'gh pr view 91 --json state --jq .state' }
+        @{ Command = 'Wait-PullRequest -Repository DerekFoulk/dotnet-agent-kit -Number 92 -For Checks' }
+        @{ Command = "git commit -m 'fix: a ''quoted'' word'" }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeNullOrEmpty
+    }
 }
 
 Describe 'Test-PermissionRuleMatch' {

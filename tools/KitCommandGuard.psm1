@@ -34,4 +34,14 @@ function Test-PermissionRuleMatch {
     [regex]::IsMatch($Command, $regex, $options)
 }
 
-Export-ModuleMember -Function Test-PermissionRuleMatch
+function Get-CommandGuardDecision {
+    param(
+        [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Command,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $AskRules
+    )
+
+    $null
+}
+
+Export-ModuleMember -Function Test-PermissionRuleMatch, Get-CommandGuardDecision
