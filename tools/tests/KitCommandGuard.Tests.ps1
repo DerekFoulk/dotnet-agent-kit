@@ -69,6 +69,38 @@ Describe 'Get-BashCommand' {
     }
 }
 
+Describe 'Get-CommandGuardDecision for Bash' {
+    It 'asks for <Command>, which the shell resolves to a form an ask rule covers' -ForEach @(
+        @{ Command = "git push --for'ce' origin x" }
+        @{ Command = 'git push --for\ce origin x' }
+        @{ Command = "git push `$'--force' origin x" }
+        @{ Command = "g'it' push -qf origin x" }
+        @{ Command = 'git push -nuf origin x' }
+        @{ Command = 'git push origin x -fd' }
+        @{ Command = "pwsh -NoProfile -File ./tools/New-Kit'App'.ps1 -Name X" }
+        @{ Command = "ls ./tools/zz/'..'/x" }
+        @{ Command = "git status && git cl'ean' -fd" }
+        # Claude Code checks the commands inside a substitution against its rules; the guard resolves them first.
+        @{ Command = "echo ""`$(git push --for'ce')""" }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -Not -BeNullOrEmpty
+    }
+
+    It 'leaves <Command> to the rules, since it resolves to nothing they ask for' -ForEach @(
+        @{ Command = 'git push -u origin feat/x' }
+        @{ Command = 'git status -sb' }
+        @{ Command = "gh pr view 91 --json state --jq '.state'" }
+        @{ Command = "git commit -m ""`$(cat <<'EOF'`nfix: don't stop (yet)`n`nCo-Authored-By: A <a@b.c>`nEOF`n)""" }
+        @{ Command = 'echo "$(git status)"' }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
+    }
+
+    It 'asks for a command Bash can''t read, since nothing in it can be resolved' {
+        Get-CommandGuardDecision -Tool 'Bash' -Command "git push 'x" -AskRules @() | Should -BeLike '*can''t*'
+    }
+}
+
 Describe 'Get-CommandGuardDecision for PowerShell' {
     It 'asks for <Command>, which the shell resolves to a form an ask rule covers' -ForEach @(
         # Quotes and backtick escapes removed: what git or the script receives.
