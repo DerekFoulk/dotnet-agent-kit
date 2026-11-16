@@ -7,5 +7,5 @@ internal static class RuleCodes
     public const string Shape = "CRF011";
 
     /// <summary>STY-005's nullable rules.</summary>
-    public const string Nullable = "CRF011";
+    public const string Nullable = "STY005";
 }

@@ -5,7 +5,7 @@ namespace Kit.CodeShape.Tests;
 public sealed class GeneratedMarkerRuleTests
 {
     private const string Message =
-        "The file is marked as generated code, which the compiler's nullable analysis, its analyzers and these checks skip; only EF Core migrations, in a Migrations folder, may be (STY-005).";
+        "The file is marked as generated code, which the compiler's nullable analysis, its analyzers and these checks skip; only EF Core migrations, in a Migrations folder, and a .resx file's designer may be (STY-005).";
 
     [Theory]
     [InlineData("Widget.g.cs", "")]

@@ -49,7 +49,7 @@ internal static class Cli
         }
 
         int files = projects.Sum(project => project.Files.Count);
-        output.WriteLine($"Code shape (CRF-011): {Count(projects.Length, "project")}, {Count(files, "file")}, no findings.");
+        output.WriteLine($"Code shape (CRF-011, STY-005): {Count(projects.Length, "project")}, {Count(files, "file")}, no findings.");
         return 0;
     }
 
