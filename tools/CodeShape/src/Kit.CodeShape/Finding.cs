@@ -10,6 +10,9 @@ namespace Kit.CodeShape;
 /// <param name="Message">What breaks which limit.</param>
 internal sealed record Finding(string Path, int Line, int Column, string Message)
 {
+    /// <summary>The error code of the rule the finding breaks, as the command line prints it.</summary>
+    public string Rule { get; init; } = RuleCodes.Shape;
+
     /// <summary>A finding at a place in a file's syntax tree.</summary>
     public static Finding At(string path, Location location, string message)
     {

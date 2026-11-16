@@ -13,6 +13,7 @@ internal sealed record CompiledProject(CSharpCompilation Compilation, IReadOnlyL
     // The running .NET's own assemblies, a documented runtime property. They let the compiler bind the code's own
     // members; a project's packages aren't needed for that, and types from them stay unresolved, which the rules ignore.
     private static readonly Lazy<MetadataReference[]> s_runtime = new(() =>
+        // CRF-001 safety net: the .NET host sets TRUSTED_PLATFORM_ASSEMBLIES for every app it starts.
         [.. ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
             .Select(path => MetadataReference.CreateFromFile(path))]);
