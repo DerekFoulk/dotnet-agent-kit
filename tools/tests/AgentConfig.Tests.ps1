@@ -81,8 +81,21 @@ Describe 'Agent configuration' {
             @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' },
             # An app's kit-managed scripts and manifest (ADR-0032): the sync job changes them, not a hand edit.
             @{ Path = './.kit/**' }
+            # The command guard (ADR-0076), which an edit could turn off as surely as one to the settings.
+            @{ Path = './tools/KitCommandGuard.psm1' }, @{ Path = './tools/Invoke-CommandGuard.ps1' }
         ) {
             (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
+        }
+
+        # ADR-0076: before every Bash or PowerShell call, the command guard applies the ask rules to the command as the
+        # shell resolves it. Exec form (args), so the project path needs no quoting; pwsh, the kit's PowerShell 7.
+        It 'runs the command guard before every Bash or PowerShell call' {
+            $groups = @(if ($settings.ContainsKey('hooks') -and $settings['hooks'].ContainsKey('PreToolUse')) { $settings['hooks']['PreToolUse'] })
+            $guard = @($groups | Where-Object { $_['matcher'] -ceq 'Bash|PowerShell' } | ForEach-Object { $_['hooks'] } |
+                    Where-Object { $_['type'] -ceq 'command' -and $_['command'] -ceq 'pwsh' })
+            $guard.Count | Should -Be 1
+            $guard[0]['args'] | Should -Be @('-NoProfile', '-NonInteractive', '-File', '${CLAUDE_PROJECT_DIR}/tools/Invoke-CommandGuard.ps1')
+            Join-Path $repoRoot 'tools' 'Invoke-CommandGuard.ps1' | Should -Exist
         }
 
         # Auto mode is the default (ADR-0035): the rules review mode adds can't also be in the shared file, or

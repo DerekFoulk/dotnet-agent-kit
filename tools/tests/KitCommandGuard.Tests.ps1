@@ -73,6 +73,34 @@ Describe 'Invoke-CommandGuard' {
     }
 }
 
+Describe 'Invoke-CommandGuard.ps1' {
+    # The script Claude Code runs: the hook's JSON on stdin, the decision on stdout, exit code 0 either way.
+    BeforeAll {
+        $script:GuardScript = Join-Path $PSScriptRoot '..' 'Invoke-CommandGuard.ps1'
+        $script:GuardProject = Join-Path $TestDrive 'project'
+        New-Item -ItemType Directory -Path (Join-Path $script:GuardProject '.claude') -Force | Out-Null
+        Set-Content -Path (Join-Path $script:GuardProject '.claude' 'settings.json') -Value '{"permissions":{"ask":["Bash(*git *push*--force*)"]}}'
+        function Invoke-GuardScript([string] $Command) {
+            $json = @{ hook_event_name = 'PreToolUse'; cwd = $TestDrive; tool_name = 'Bash'; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
+            $env:CLAUDE_PROJECT_DIR = $script:GuardProject
+            try { $output = $json | pwsh -NoProfile -NonInteractive -File $script:GuardScript } finally { Remove-Item Env:CLAUDE_PROJECT_DIR }
+            [pscustomobject]@{ Output = ($output -join "`n"); ExitCode = $LASTEXITCODE }
+        }
+    }
+
+    It 'asks on stdout for a command an ask rule covers once resolved, taking the project from CLAUDE_PROJECT_DIR' {
+        $result = Invoke-GuardScript "git push --for'ce' origin x"
+        $result.ExitCode | Should -Be 0
+        ($result.Output | ConvertFrom-Json).hookSpecificOutput.permissionDecision | Should -Be 'ask'
+    }
+
+    It 'prints nothing for a command it leaves to the rules' {
+        $result = Invoke-GuardScript 'git push origin x'
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Get-BashCommand' {
     # POSIX token recognition (XCU 2.3) and quote removal, with Bash's $'...' quoting: the words each command receives.
     It 'resolves <Command> to its words' -ForEach @(
