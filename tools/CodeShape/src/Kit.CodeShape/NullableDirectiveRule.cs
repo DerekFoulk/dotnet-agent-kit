@@ -15,6 +15,6 @@ internal static class NullableDirectiveRule
 
         return file.Parse().GetRoot().DescendantTrivia(descendIntoTrivia: true)
             .Where(trivia => trivia.IsKind(SyntaxKind.NullableDirectiveTrivia))
-            .Select(trivia => Finding.At(file.Path, trivia.GetLocation(), Message));
+            .Select(trivia => Finding.At(file.Path, trivia.GetLocation(), Message) with { Rule = "STY005" });
     }
 }

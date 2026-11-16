@@ -22,7 +22,7 @@ internal static class NullForgivingRule
         return tree.GetRoot().DescendantNodes()
             .Where(node => node.IsKind(SyntaxKind.SuppressNullableWarningExpression))
             .Where(node => !IsLabelled(lines, node.GetLocation().GetLineSpan().StartLinePosition.Line))
-            .Select(node => Finding.At(file.Path, node.GetLocation(), Message));
+            .Select(node => Finding.At(file.Path, node.GetLocation(), Message) with { Rule = "STY005" });
     }
 
     private static bool IsLabelled(TextLineCollection lines, int line) =>

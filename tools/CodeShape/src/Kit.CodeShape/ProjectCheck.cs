@@ -1,7 +1,8 @@
 namespace Kit.CodeShape;
 
-/// <summary>Runs every CRF-011 limit over one project's hand-written files. Generated files are read too, for the
-/// state a partial type declares in them, but never reported on.</summary>
+/// <summary>Runs every CRF-011 limit and STY-005's nullable rules over one project's hand-written files. Generated
+/// files are read too, for the state a partial type declares in them, and reported on only when they sit outside an
+/// EF Core Migrations folder (STY-005).</summary>
 internal static class ProjectCheck
 {
     public static IEnumerable<Finding> Check(ProjectFiles project)
@@ -9,11 +10,15 @@ internal static class ProjectCheck
         ArgumentNullException.ThrowIfNull(project);
 
         SourceFile[] files = [.. project.Files.Select(path => Read(path, project.Defines))];
+        bool isTestProject = Path.GetFileNameWithoutExtension(project.Name).EndsWith("Tests", StringComparison.Ordinal);
         return files
             .Where(file => !file.Generated)
             .SelectMany(file => NestingRule.Check(file)
                 .Concat(StatementRule.Check(file))
-                .Concat(FileLengthRule.Check(file)))
+                .Concat(FileLengthRule.Check(file))
+                .Concat(NullableDirectiveRule.Check(file))
+                .Concat(isTestProject ? [] : NullForgivingRule.Check(file)))
+            .Concat(files.SelectMany(GeneratedMarkerRule.Check))
             .Concat(PublicTypeRule.Check(files))
             .Concat(CohesionRule.Check(files))
             .Concat(MemberCountRule.Check(files))

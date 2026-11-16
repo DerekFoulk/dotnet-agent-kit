@@ -38,7 +38,7 @@ internal static class Cli
             foreach (Finding finding in ProjectCheck.Check(project))
             {
                 // MSBuild's canonical error format, with the project in brackets as setup-dotnet's matcher expects.
-                output.WriteLine($"{finding.Path}({finding.Line},{finding.Column}): error CRF011: {finding.Message} [{project.Name}]");
+                output.WriteLine($"{finding.Path}({finding.Line},{finding.Column}): error {finding.Rule}: {finding.Message} [{project.Name}]");
                 findings++;
             }
         }

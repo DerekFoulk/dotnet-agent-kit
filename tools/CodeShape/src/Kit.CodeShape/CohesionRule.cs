@@ -89,6 +89,7 @@ internal static class CohesionRule
         IEnumerable<(ISymbol? Target, ExpressionSyntax Source)> fieldInitializers = declaration.Members.OfType<FieldDeclarationSyntax>()
             .SelectMany(field => field.Declaration.Variables)
             .Where(variable => variable.Initializer is not null)
+            // CRF-001 safety net: the Where above keeps only variables with an initializer, which the compiler can't see.
             .Select(variable => (model.GetDeclaredSymbol(variable), variable.Initializer!.Value));
         // A property's whole declaration: what its accessors read, and its initializer.
         IEnumerable<(ISymbol? Target, SyntaxNode Source)> properties = declaration.Members.OfType<BasePropertyDeclarationSyntax>()

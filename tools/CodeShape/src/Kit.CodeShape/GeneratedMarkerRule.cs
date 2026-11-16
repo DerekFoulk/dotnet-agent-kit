@@ -15,7 +15,7 @@ internal static class GeneratedMarkerRule
     {
         ArgumentNullException.ThrowIfNull(file);
 
-        return file.Generated && !InMigrations(file.Path) ? [new Finding(file.Path, 1, 1, Message)] : [];
+        return file.Generated && !InMigrations(file.Path) ? [new Finding(file.Path, 1, 1, Message) { Rule = "STY005" }] : [];
     }
 
     private static bool InMigrations(string path) =>
