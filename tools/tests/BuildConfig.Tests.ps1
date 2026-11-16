@@ -526,6 +526,28 @@ Describe 'BannedSymbols.txt' {
         Test-DocumentationId -Id $Id | Should -BeFalse
     }
 
+    # Review 1 of PR 94: STY-011 and OPS-003 ban these in every overload, and the fixtures call one each, so a row that
+    # goes missing, or an overload a later .NET adds, fails here instead of going unbanned.
+    It 'bans every public overload of <Member>' -ForEach @(
+        @{ Member = 'System.Threading.Tasks.Task.Wait' }
+        @{ Member = 'System.Threading.Tasks.Task.WaitAll' }
+        @{ Member = 'System.Threading.Tasks.Task.WaitAny' }
+        @{ Member = 'System.Threading.Thread.Sleep' }
+        @{ Member = 'System.Net.Http.HttpClient.#ctor' }
+    ) {
+        $ids = @(Get-Content -LiteralPath $bannedPath | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
+        $type = Find-KitType $Member.Substring(0, $Member.LastIndexOf('.'))
+        $name = $Member.Substring($Member.LastIndexOf('.') + 1)
+        $overloads = if ($name -ceq '#ctor') { $type.GetConstructors() } else { $type.GetMethods() | Where-Object { $_.Name -ceq $name -and $_.DeclaringType -eq $type } }
+
+        @($overloads).Count | Should -BeGreaterThan 0
+        foreach ($overload in $overloads) {
+            $parameters = @($overload.GetParameters() | ForEach-Object { Get-DocumentationTypeName $_.ParameterType }) -join ','
+            $id = "M:$Member" + $(if ($parameters) { "($parameters)" } else { '' })
+            $ids | Should -Contain $id -Because "every overload of $Member is banned"
+        }
+    }
+
     It 'names only symbols that exist' {
         $ids = @(Get-Content -LiteralPath $bannedPath | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
 
