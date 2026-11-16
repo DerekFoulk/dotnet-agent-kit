@@ -20,27 +20,17 @@ Describe 'Agent configuration' {
             if ($permissions.ContainsKey($Kind)) { @($permissions[$Kind]) } else { @() }
         }
 
-        # Whether a rule of the given kind (ask by default) catches a command. A rule's '*' matches any text, as in
-        # Claude Code's patterns; [, ] and ? are taken literally. A trailing ' *' that is the rule's only wildcard
-        # also matches the bare command ('git log *' matches 'git log'), as Claude Code's permissions page says. By
-        # default the match is case-sensitive, the stricter reading for a test that a rule asks. -IgnoreCase is the
-        # stricter reading for a test that a rule doesn't ask, and the real one for PowerShell, whose matching the
-        # permissions page calls case-insensitive (on 2026-11-11 a scan of the session transcripts found 38 prompts for
-        # PowerShell commands that matched '*git *push* -f*' only through a later '-Force' or '-F').
-        # A rule ending in ":*" is Claude Code's older prefix syntax: the text before it is a literal prefix and any
-        # '*' in it isn't expanded (review 4 of PR 19, from Claude Code's own rule parser).
+        # Whether a rule of the given kind (ask by default) catches a command, matched as Claude Code's permissions
+        # page describes, by the command guard's own matcher (KitCommandGuard.psm1, ADR-0076). By default the match is
+        # case-sensitive, the stricter reading for a test that a rule asks. -IgnoreCase is the stricter reading for a
+        # test that a rule doesn't ask, and the real one for PowerShell, whose matching the permissions page calls
+        # case-insensitive (on 2026-11-11 a scan of the session transcripts found 38 prompts for PowerShell commands
+        # that matched '*git *push* -f*' only through a later '-Force' or '-F').
         # Claude Code also splits compound commands and canonicalizes PowerShell aliases (ls, cat, gc) before
         # matching; these helpers don't, so each test names one command by its cmdlet name.
+        Import-Module -Name (Join-Path $repoRoot 'tools' 'KitCommandGuard.psm1') -Force
         function Test-RuleMatch([string] $Kind, [string] $Tool, [string] $Command, [switch] $IgnoreCase) {
-            $comparison = if ($IgnoreCase) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
-            [bool] @(Get-RuleList $Kind | Where-Object {
-                    if ($_ -notmatch "^$Tool\((.*)\)$") { return $false }
-                    $pattern = $Matches[1]
-                    if ($pattern -match '^(.+):\*$') { return [string]::Equals($Command, $Matches[1], $comparison) -or $Command.StartsWith("$($Matches[1]) ", $comparison) }
-                    if ($pattern -match '^([^*]+) \*$' -and [string]::Equals($Command, $Matches[1], $comparison)) { return $true }
-                    $wildcard = $pattern -replace '[\[\]?]', '`$0'
-                    if ($IgnoreCase) { $Command -ilike $wildcard } else { $Command -clike $wildcard }
-                }).Count
+            [bool] @(Get-RuleList $Kind | Where-Object { Test-PermissionRuleMatch -Rule $_ -Tool $Tool -Command $Command -IgnoreCase:$IgnoreCase }).Count
         }
         function Test-AskRuleMatch([string] $Tool, [string] $Command, [switch] $IgnoreCase) {
             Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command -IgnoreCase:$IgnoreCase
