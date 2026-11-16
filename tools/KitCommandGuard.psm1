@@ -97,6 +97,10 @@ function Test-PowerShellCommandName {
     $Name -match '\.psm?1$' -or $Name -match '^[A-Za-z]+-[A-Za-z0-9]+$'
 }
 
+function Get-BashCommand {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Command)
+}
+
 # The spellings of one resolved command that the ask rules are matched against: its words joined by spaces, and for a
 # native command also with each cluster of short options split up ("-qf" as "-q -f"), as git's and gh's option
 # parsers read it. Both are kept, so a rule written for the cluster ("-uf") still matches.

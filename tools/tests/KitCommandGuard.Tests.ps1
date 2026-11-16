@@ -14,6 +14,61 @@ BeforeAll {
     }
 }
 
+Describe 'Get-BashCommand' {
+    # POSIX token recognition (XCU 2.3) and quote removal, with Bash's $'...' quoting: the words each command receives.
+    It 'resolves <Command> to its words' -ForEach @(
+        @{ Command = "git push --for'ce' origin"; Words = @('git', 'push', '--force', 'origin') }
+        @{ Command = 'g"it" push --for\ce'; Words = @('git', 'push', '--force') }
+        @{ Command = "echo `$'--for\x63e' `$'a\nb' `$'\''"; Words = @('echo', '--force', "a`nb", "'") }
+        @{ Command = 'echo "a \"b\" \$c \x" ''it''''s'''; Words = @('echo', 'a "b" $c \x', 'its') }
+        @{ Command = "git push \`n--force"; Words = @('git', 'push', '--force') }
+        @{ Command = 'git status # push --force'; Words = @('git', 'status') }
+        @{ Command = 'git push origin x > out.txt 2>&1'; Words = @('git', 'push', 'origin', 'x') }
+        @{ Command = 'echo ${HOME} $((1 + 2)) $x'; Words = @('echo', '${HOME}', '$((1 + 2))', '$x') }
+        @{ Command = 'echo a""b '''''; Words = @('echo', 'ab', '') }
+    ) {
+        $commands = @(InModuleScope KitCommandGuard -Parameters @{ Command = $Command } { param($Command) Get-BashCommand -Command $Command })
+        $commands.Count | Should -Be 1
+        $commands[0].Words | Should -Be $Words
+    }
+
+    It 'splits <Command> into <Count> commands at its operators' -ForEach @(
+        @{ Command = 'a && b || c; d | e & f'; Count = 6 }
+        @{ Command = "a`nb"; Count = 2 }
+        @{ Command = '(cd x && git clean -fd)'; Count = 2 }
+        @{ Command = 'a |& b ;; c'; Count = 3 }
+    ) {
+        @(InModuleScope KitCommandGuard -Parameters @{ Command = $Command } { param($Command) Get-BashCommand -Command $Command }).Count | Should -Be $Count
+    }
+
+    It 'also resolves the commands inside $( ), backticks and <( )' {
+        $commands = @(InModuleScope KitCommandGuard { Get-BashCommand -Command "echo ""`$(git push --for'ce')"" ``gh 'api'`` <(ls -a)" })
+        $commands.Words | Should -Contain '--force'
+        ($commands | ForEach-Object { $_.Words -join ' ' }) | Should -Contain 'git push --force'
+        ($commands | ForEach-Object { $_.Words -join ' ' }) | Should -Contain 'gh api'
+        ($commands | ForEach-Object { $_.Words -join ' ' }) | Should -Contain 'ls -a'
+    }
+
+    It 'reads a heredoc''s body as data, so its quotes and parentheses don''t end the command' {
+        # The form Claude Code's own commits use.
+        $text = "git commit -m ""`$(cat <<'EOF'`nfix: don't (stop)`nEOF`n)"" && git push --for'ce'"
+        $commands = @(InModuleScope KitCommandGuard -Parameters @{ Text = $text } { param($Text) Get-BashCommand -Command $Text })
+        ($commands | ForEach-Object { $_.Words -join ' ' }) | Should -Contain 'cat'
+        ($commands | ForEach-Object { $_.Words -join ' ' }) | Should -Contain 'git push --force'
+    }
+
+    It 'resolves the commands inside an unquoted heredoc''s $( )' {
+        $commands = @(InModuleScope KitCommandGuard { Get-BashCommand -Command "cat <<EOF`n`$(git push --for'ce')`nEOF" })
+        ($commands | ForEach-Object { $_.Words -join ' ' }) | Should -Contain 'git push --force'
+    }
+
+    It 'throws for <Command>, which the shell can''t read either' -ForEach @(
+        @{ Command = "echo 'abc" }, @{ Command = 'echo "abc' }, @{ Command = 'echo $(ls' }, @{ Command = 'echo `ls' }, @{ Command = 'a )' }
+    ) {
+        { InModuleScope KitCommandGuard -Parameters @{ Command = $Command } { param($Command) Get-BashCommand -Command $Command } } | Should -Throw '*Bash*'
+    }
+}
+
 Describe 'Get-CommandGuardDecision for PowerShell' {
     It 'asks for <Command>, which the shell resolves to a form an ask rule covers' -ForEach @(
         # Quotes and backtick escapes removed: what git or the script receives.
