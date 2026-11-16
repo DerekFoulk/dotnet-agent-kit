@@ -48,6 +48,7 @@ Accepted as recommended (owner, 2026-11-02). The ruleset "main protection" was c
 - Build step 4 adds required status checks to the ruleset once CI exists.
 - GIT-001, GIT-002 and GIT-003 are now enforced by the ruleset rather than advisory.
 - **Amended by ADR-0035 (2026-11-07):** pushes still have no deny rule, but deleting or force-pushing a branch asks, because the ruleset guards only `main`. The asks for merging, packages, repo settings and build or CI files move to review mode, in the owner's `.claude/settings.local.json`.
+- **Amended by ADR-0075 (2026-11-15):** routine workflow commands get wide allow rules, each with its risky forms asked, so the owner isn't prompted for commands he can't judge. Reading files and history is left to Claude Code's own tools and its Bash read-only check.
 
 ## Pillars affected
 

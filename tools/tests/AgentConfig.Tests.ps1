@@ -20,22 +20,30 @@ Describe 'Agent configuration' {
             if ($permissions.ContainsKey($Kind)) { @($permissions[$Kind]) } else { @() }
         }
 
-        # Whether an ask rule catches a command. A rule's '*' matches any text, as in Claude Code's patterns; [, ]
-        # and ? are taken literally. By default the match is case-sensitive, the stricter reading for a test that a
-        # rule asks. -IgnoreCase is the stricter reading for a test that a rule doesn't ask, and the real one for
-        # PowerShell: on 2026-11-11 a scan of the session transcripts found 38 prompts for PowerShell commands that
-        # matched '*git *push* -f*' only through a later '-Force' or '-F' (Claude Code's docs don't say either way).
+        # Whether a rule of the given kind (ask by default) catches a command. A rule's '*' matches any text, as in
+        # Claude Code's patterns; [, ] and ? are taken literally. A trailing ' *' that is the rule's only wildcard
+        # also matches the bare command ('git log *' matches 'git log'), as Claude Code's permissions page says. By
+        # default the match is case-sensitive, the stricter reading for a test that a rule asks. -IgnoreCase is the
+        # stricter reading for a test that a rule doesn't ask, and the real one for PowerShell, whose matching the
+        # permissions page calls case-insensitive (on 2026-11-11 a scan of the session transcripts found 38 prompts for
+        # PowerShell commands that matched '*git *push* -f*' only through a later '-Force' or '-F').
         # A rule ending in ":*" is Claude Code's older prefix syntax: the text before it is a literal prefix and any
         # '*' in it isn't expanded (review 4 of PR 19, from Claude Code's own rule parser).
-        function Test-AskRuleMatch([string] $Tool, [string] $Command, [switch] $IgnoreCase) {
+        # Claude Code also splits compound commands and canonicalizes PowerShell aliases (ls, cat, gc) before
+        # matching; these helpers don't, so each test names one command by its cmdlet name.
+        function Test-RuleMatch([string] $Kind, [string] $Tool, [string] $Command, [switch] $IgnoreCase) {
             $comparison = if ($IgnoreCase) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
-            [bool] @(Get-RuleList 'ask' | Where-Object {
+            [bool] @(Get-RuleList $Kind | Where-Object {
                     if ($_ -notmatch "^$Tool\((.*)\)$") { return $false }
                     $pattern = $Matches[1]
                     if ($pattern -match '^(.+):\*$') { return [string]::Equals($Command, $Matches[1], $comparison) -or $Command.StartsWith("$($Matches[1]) ", $comparison) }
+                    if ($pattern -match '^([^*]+) \*$' -and [string]::Equals($Command, $Matches[1], $comparison)) { return $true }
                     $wildcard = $pattern -replace '[\[\]?]', '`$0'
                     if ($IgnoreCase) { $Command -ilike $wildcard } else { $Command -clike $wildcard }
                 }).Count
+        }
+        function Test-AskRuleMatch([string] $Tool, [string] $Command, [switch] $IgnoreCase) {
+            Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command -IgnoreCase:$IgnoreCase
         }
     }
 
@@ -153,6 +161,34 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'git push origin ":feat/x"' }
                 @{ Tool = $tool; Command = "git push origin '+feat/x'" }
                 @{ Tool = $tool; Command = 'git push origin feat/x -d' }
+                # Review 3 of ADR-0075's PR: 'git push *' is allowed, and these run a program (probed with a local bare repo).
+                @{ Tool = $tool; Command = 'git push --receive-pack=./evil.sh origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --exec=./evil.sh origin feat/x' }
+                # Review 4: git takes any unique prefix of a long option (probed with git 2.56.0).
+                @{ Tool = $tool; Command = 'git push --receive=../evil.sh ../remote.git HEAD:refs/heads/x' }
+                @{ Tool = $tool; Command = 'git push --rece=../evil.sh origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --exe=../evil.sh origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --e=../evil.sh origin feat/x' }
+                @{ Tool = $tool; Command = 'git push --dele origin feat/x' }
+                @{ Tool = $tool; Command = 'git push origin --del feat/x' }
+                @{ Tool = $tool; Command = 'git push --mir origin' }
+                @{ Tool = $tool; Command = 'git push --pru origin' }
+                # Review 5: --m alone is --mirror, and a quoted long option must still match (as the quoted refspecs do).
+                @{ Tool = $tool; Command = 'git push --m origin' }
+                @{ Tool = $tool; Command = 'git push origin --m' }
+                @{ Tool = $tool; Command = "git push '--exec=./evil.sh' origin feat/x" }
+                @{ Tool = $tool; Command = 'git push "--e=./evil.sh" origin feat/x' }
+                # Review 6: the likeliest joined short options, matched as whole words (probed: -uf force-pushes,
+                # -ud deletes). Other clusters, such as -qf, are a known limit (ADR-0075, GAP-044).
+                @{ Tool = $tool; Command = 'git push -uf origin feat/x' }
+                @{ Tool = $tool; Command = 'git push -fu origin feat/x' }
+                @{ Tool = $tool; Command = 'git push -ud origin feat/x' }
+                @{ Tool = $tool; Command = 'git push -du origin feat/x' }
+                @{ Tool = $tool; Command = 'git push origin feat/x -uf' }
+                @{ Tool = $tool; Command = 'git push origin feat/x -ud' }
+                # Review 7: the end-of-command -fu and -du forms.
+                @{ Tool = $tool; Command = 'git push origin feat/x -fu' }
+                @{ Tool = $tool; Command = 'git push origin feat/x -du' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
@@ -295,6 +331,9 @@ Describe 'Agent configuration' {
             @{ Tool = 'PowerShell'; Command = '.\tools\New-KitApp.ps1 -Name Contoso.Orders' }
             @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
             @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
+            # ADR-0075 allows '& ./tools/*' and '& .\tools\*', so the call operator's forms ask too (review 1 of PR 1).
+            @{ Tool = 'PowerShell'; Command = '& ./tools/New-KitApp.ps1 -Name Contoso.Orders' }
+            @{ Tool = 'PowerShell'; Command = '& .\tools\New-KitApp -Name Contoso.Orders' }
         ) {
             # A rule's '*' matches any text, as in Claude Code's patterns; [, ] and ? are taken literally. The match
             # is case-sensitive, the stricter reading, since whether Claude Code ignores case isn't documented.
@@ -305,10 +344,12 @@ Describe 'Agent configuration' {
         }
 
         # ADR-0026 leaves pushes to main to the GitHub ruleset. ADR-0035 adds asks, never denies, for deleting and
-        # force-pushing, which the ruleset doesn't guard on other branches; an ordinary push stays unasked.
+        # force-pushing, which the ruleset doesn't guard on other branches; an ordinary push stays unasked. ADR-0075
+        # adds asks for the two push options that run a program, and spells each long option as git's shortest
+        # unique prefix (--de, --m, --pru, --rece, --e), since git takes any of them.
         It 'leaves pushes to the GitHub ruleset: no deny rule matches git push, and only destructive forms ask' {
             @(Get-RuleList 'deny') -match 'git push' | Should -BeNullOrEmpty
-            @(Get-RuleList 'ask') -match 'git \*?push' | Where-Object { $_ -notmatch '--delete|-d( |\))|--force|-f|:\*|\+\*|--mirror|--prune' } | Should -BeNullOrEmpty
+            @(Get-RuleList 'ask') -match 'git \*?push' | Where-Object { $_ -notmatch '--de\*|-d( |\))|--force|-f|:\*|\+\*|--m\*|--pru\*|--rece\*|--e\*| -uf| -ud| -du' } | Should -BeNullOrEmpty
         }
 
         It 'allows git switch only as the exact command <Rule>' -ForEach @(
@@ -328,6 +369,148 @@ Describe 'Agent configuration' {
         # Any wildcard also accepts --discard-changes or -f, which drop uncommitted work: those must prompt.
         It 'has no wildcard allow rule for git switch' {
             @(Get-RuleList 'allow') -match 'git switch .*\*' | Should -BeNullOrEmpty
+        }
+
+        # ADR-0075 (owner, 2026-11-15): every command outside the allow list prompted, so he was asked about routine
+        # commands he couldn't judge, turned on Bypass, which also skips the asks that matter, and turned it off again.
+        # Routine commands are allowed; each must match an allow rule, case for case, and no ask or deny rule. Reading
+        # files and read-only git aren't here: the Read, Grep and Glob tools and the Bash tool's built-in read-only
+        # check (ls, cat, grep, git log, git diff and the rest) run them unasked, and Claude Code itself keeps their
+        # risky forms out.
+        It 'runs the routine command <Tool>(<Command>) unasked' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'gh pr view 76 --json state,headRefOid' }
+                @{ Tool = $tool; Command = 'gh pr list --state open' }
+                @{ Tool = $tool; Command = 'gh pr checks 76' }
+                @{ Tool = $tool; Command = 'gh pr diff 76 --name-only' }
+                @{ Tool = $tool; Command = 'gh run view 123 --log-failed' }
+                @{ Tool = $tool; Command = 'gh run list --branch feat/x' }
+                @{ Tool = $tool; Command = 'gh api repos/DerekFoulk/dotnet-agent-kit/pulls/76/comments --paginate' }
+                @{ Tool = $tool; Command = 'gh api -H "Accept: application/vnd.github+json" repos/o/r/commits/abc/check-runs' }
+                @{ Tool = $tool; Command = 'git fetch' }
+                @{ Tool = $tool; Command = 'git fetch origin' }
+                @{ Tool = $tool; Command = 'git fetch -q origin' }
+                @{ Tool = $tool; Command = 'git merge origin/main' }
+                @{ Tool = $tool; Command = 'git merge --no-edit origin/main' }
+                @{ Tool = $tool; Command = 'git pull --ff-only' }
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./tools/Test-RuleSources.ps1' }
+            }
+            @{ Tool = 'PowerShell'; Command = 'git status' }
+            @{ Tool = 'PowerShell'; Command = 'git status --short --ignored' }
+            @{ Tool = 'PowerShell'; Command = 'git branch --list' }
+            @{ Tool = 'PowerShell'; Command = 'git branch --show-current' }
+            @{ Tool = 'PowerShell'; Command = 'git rev-parse HEAD' }
+            @{ Tool = 'PowerShell'; Command = 'git merge-base HEAD origin/main' }
+            @{ Tool = 'PowerShell'; Command = 'git ls-files tools' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\Test-AdrSections.ps1' }
+            @{ Tool = 'PowerShell'; Command = '& ./tools/Test-AdrSections.ps1' }
+            @{ Tool = 'PowerShell'; Command = '.\.kit\tools\Test-ConventionalTitle.ps1 -Range origin/main..HEAD' }
+            @{ Tool = 'PowerShell'; Command = 'Import-Module ./tools/KitReview.psm1 -Force' }
+            @{ Tool = 'PowerShell'; Command = 'Import-Module ./.kit/tools/KitReview.psm1' }
+            @{ Tool = 'PowerShell'; Command = 'Wait-PullRequest -Repository o/r -Number 76 -For Checks' }
+            @{ Tool = 'PowerShell'; Command = 'Get-OpenFinding -Repository o/r -Number 76' }
+            @{ Tool = 'PowerShell'; Command = 'Add-ReviewReply -Repository o/r -Number 76 -CommentId 1 -Body x' }
+            @{ Tool = 'PowerShell'; Command = 'Resolve-ReviewFinding -Repository o/r -ThreadId x' }
+        ) {
+            Test-RuleMatch -Kind 'allow' -Tool $Tool -Command $Command | Should -BeTrue -Because "an allow rule should cover $Tool($Command)"
+            Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse -Because 'an ask rule wins over an allow rule'
+            Test-RuleMatch -Kind 'deny' -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse
+        }
+
+        # 'gh api *' is allowed for reads. gh api sends a GET unless a method or a field is given, so every form that
+        # writes asks, as it did before the allow rule (an ask rule wins over it). That keeps, among others, a merge
+        # through the API (PUT .../pulls/<n>/merge) asking in review mode, as 'gh pr merge' does. Matched case by
+        # case: Claude Code doesn't say whether Bash rules ignore case, so -f and -F each have a rule. gh parses flags
+        # with pflag, which joins short flags, and -i is gh api's one boolean short flag, so '-iXPUT' sends a PUT and
+        # '-ifbody=x' a POST; any -i asks (review 1 of PR 1, probed against an unresolvable host).
+        It 'asks before the gh api write <Tool>(<Command>)' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'gh api repos/o/r/pulls/1/merge -iXPUT' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues/1/comments -ifbody=x' }
+                @{ Tool = $tool; Command = 'gh api -X PUT repos/o/r/pulls/1/merge' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues/1/comments -XPOST' }
+                @{ Tool = $tool; Command = 'gh api --method POST repos/o/r/issues/1/comments' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues/1/comments -f body=hi' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues/1/labels -F labels[]=bug' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues --field title=x' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/issues --raw-field title=x' }
+                @{ Tool = $tool; Command = 'gh api repos/o/r/rulesets --input r.json' }
+                @{ Tool = $tool; Command = "gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: \""x\""}) { thread { id } } }'" }
+            }
+        ) {
+            Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
+        }
+
+        # Look-alikes of the routine commands that write, run a program, read a secret or drop work, which no allow
+        # rule may cover (ADR-0075). git fetch, merge and pull are allowed only as exact commands, since --upload-pack
+        # runs a program. A 'pwsh -Command "..."' string is opaque to Claude Code's command splitting, as 'bash -c' is
+        # in its docs, so a wildcard there would allow anything after a ';' inside the quotes; run Invoke-Pester or a
+        # ./tools script directly instead. ForEach-Object, Where-Object and the other cmdlets that take a script block
+        # stay unallowed too, since whether Claude Code checks the commands inside one isn't documented.
+        # Reviews 1 and 2 of PR 1 probed the rest: git log, diff and show write any file with --output (.agent-mode,
+        # the settings), diff --no-index and blame --contents print any file, gh pr comment deletes or rewrites a
+        # comment or posts a file, and a parent segment in a path or a second module after a comma leaves the kit's
+        # scripts. Reading files and read-only git therefore go through the Read, Grep and Glob tools, which honor the
+        # Read deny rules, and the Bash tool's built-in read-only check, which applies Claude Code's own list of risky
+        # flags; a PowerShell cmdlet that reads a file or Env: prompts, since a pipeline can hand it a secret's path
+        # that no rule's text names.
+        It 'leaves <Tool>(<Command>) to prompt' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'gh pr comment 76 --delete-last --yes' }
+                @{ Tool = $tool; Command = 'gh pr comment 76 --edit-last --body x' }
+                # Review 2: gh reads a --body-file itself, which the Read deny rules don't cover, so posting stays asked.
+                @{ Tool = $tool; Command = 'gh pr comment 76 --body-file ./src/App/.env' }
+                # Review 2: a parent segment anywhere in the path leaves tools/, not only right after it.
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./tools/zz/../../x.ps1' }
+            }
+            # Review 2: these cmdlets run a script block (a calculated property, a delay-bind parameter) or a
+            # subexpression, probed in a scratch folder; whether Claude Code checks the commands inside isn't documented.
+            @{ Tool = 'PowerShell'; Command = "Select-Object @{n='x';e={Set-Content ./x.txt y}}" }
+            @{ Tool = 'PowerShell'; Command = 'Measure-Object -Property { Set-Content ./x.txt y }' }
+            @{ Tool = 'PowerShell'; Command = 'Test-Path -Path { Set-Content ./x.txt y }' }
+            @{ Tool = 'PowerShell'; Command = 'ConvertFrom-Json $(Set-Content ./x.txt y)' }
+            @{ Tool = 'PowerShell'; Command = './tools/zz/../../x.ps1' }
+            @{ Tool = 'PowerShell'; Command = './tools/./../x.ps1' }
+            @{ Tool = 'PowerShell'; Command = './tools//../x.ps1' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\zz\..\..\x.ps1' }
+            @{ Tool = 'PowerShell'; Command = 'git log -1 --format=%B --output=.claude/settings.json' }
+            @{ Tool = 'PowerShell'; Command = 'git diff --output=.agent-mode' }
+            @{ Tool = 'PowerShell'; Command = 'git show -s --format=%s --output=.agent-mode HEAD' }
+            @{ Tool = 'PowerShell'; Command = 'git diff --no-index NUL ./src/App/.env' }
+            @{ Tool = 'PowerShell'; Command = 'git blame --contents ./src/App/.env -- README.md' }
+            @{ Tool = 'PowerShell'; Command = 'Get-Content .env' }
+            @{ Tool = 'PowerShell'; Command = 'Get-Content Env:GH_TOKEN' }
+            @{ Tool = 'PowerShell'; Command = 'Get-ChildItem Env:' }
+            @{ Tool = 'PowerShell'; Command = 'Get-ChildItem -Recurse -Force -Filter .env' }
+            @{ Tool = 'PowerShell'; Command = 'Get-Item Env:GH_TOKEN' }
+            @{ Tool = 'PowerShell'; Command = 'Select-String -Path ./.env -Pattern KEY' }
+            @{ Tool = 'PowerShell'; Command = 'Write-Output $env:GH_TOKEN' }
+            @{ Tool = 'PowerShell'; Command = 'Import-Module ./tools/KitReview.psm1 ,./scratch/x.psm1' }
+            @{ Tool = 'PowerShell'; Command = './tools/../scratch/x.ps1' }
+            @{ Tool = 'PowerShell'; Command = '& ./tools/../scratch/x.ps1' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\..\scratch\x.ps1' }
+            @{ Tool = 'PowerShell'; Command = './.kit/tools/../scratch/x.ps1' }
+            @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -File ./tools/../scratch/x.ps1' }
+            @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/../scratch/x.ps1' }
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'git fetch --upload-pack=./evil.sh origin' }
+                @{ Tool = $tool; Command = 'git fetch origin --upload-pack=./evil.sh' }
+                @{ Tool = $tool; Command = 'git merge feat/other' }
+                @{ Tool = $tool; Command = 'git pull' }
+                @{ Tool = $tool; Command = 'git switch -c feat/x --discard-changes' }
+                @{ Tool = $tool; Command = 'gh pr merge 76 --merge' }
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -Command "Invoke-Pester -Path ./tools/tests; Remove-Item -Recurse -Force ~"' }
+            }
+            @{ Tool = 'PowerShell'; Command = 'git branch -D feat/x' }
+            @{ Tool = 'PowerShell'; Command = 'Set-Content ./AGENTS.md x' }
+            @{ Tool = 'PowerShell'; Command = 'Remove-Item ./docs -Recurse' }
+            @{ Tool = 'PowerShell'; Command = 'ForEach-Object { Remove-Item $_ }' }
+            @{ Tool = 'PowerShell'; Command = 'Where-Object { Remove-Item $_ }' }
+        ) {
+            $allowed = (Test-RuleMatch -Kind 'allow' -Tool $Tool -Command $Command -IgnoreCase) -and
+                -not (Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command) -and
+                -not (Test-RuleMatch -Kind 'deny' -Tool $Tool -Command $Command)
+            $allowed | Should -BeFalse -Because "no allow rule should run $Tool($Command) unasked"
         }
     }
 
