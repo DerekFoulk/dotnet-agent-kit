@@ -105,8 +105,8 @@ rules:
     scope: core
     paths: ["spikes/**"]
   - id: ARC-008
-    statement: "No code reads the clock directly: the time comes from an injected TimeProvider. Assemblies marked pure (core business logic) also use no randomness, file or network access except through injected abstractions."
-    why: "Pure logic gives deterministic tests; opt-in per project. The clock is read everywhere, so it's injected everywhere: Microsoft's world-ready apps page says to use TimeProvider, and the sample already does, except one test helper (.NET best-practices pass, owner 2026-11-16: \"Yes, accept them\")."
+    statement: "No code reads the clock directly: the time comes from an injected TimeProvider, and TimeProvider.System appears only where the app registers it, or where code must agree with a clock it can't inject, such as a test token the app checks against the system clock. Assemblies marked pure (core business logic) also use no randomness, file or network access except through injected abstractions."
+    why: "Pure logic gives deterministic tests; opt-in per project. The clock is read everywhere, so it's injected everywhere: Microsoft's world-ready apps page says to use TimeProvider, and the sample does: its one test helper that read DateTime.UtcNow reads TimeProvider.System, the clock the API checks a token's lifetime against (.NET best-practices pass, owner 2026-11-16: \"Yes, accept them\")."
     layer: owner
     basis: preference
     status: accepted
@@ -117,7 +117,7 @@ rules:
         how: "build: BannedSymbols.txt bans DateTime.Now, UtcNow and Today and DateTimeOffset.Now and UtcNow in every project (RS0030), and the compiler rejects the obsolete TimeZone (CS0618, an error under STY-004); tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each"
       - kind: advisory
         in: [kit, app]
-        how: "the ban list for pure assemblies' randomness, file and network access isn't written yet, nor how an assembly is marked pure (GAP-039)"
+        how: "code review checks what the ban can't see: TimeProvider.System outside the places the statement allows, Stopwatch or Environment.TickCount64 used as a clock, and Task.Delay or a Timer with no TimeProvider where a test should control the wait. The ban list for pure assemblies' randomness, file and network access isn't written yet, nor how an assembly is marked pure (GAP-039)"
     scope: core
     paths: ["**/*.cs", "BannedSymbols.txt"]
   - id: ARC-009

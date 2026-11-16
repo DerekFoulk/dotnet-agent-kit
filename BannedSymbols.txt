@@ -1,4 +1,5 @@
-// APIs the build rejects (RS0030), through Microsoft.CodeAnalysis.BannedApiAnalyzers (CRF-010, ADR-0043).
+// APIs the build rejects (RS0030), through Microsoft.CodeAnalysis.BannedApiAnalyzers (CRF-010, ADR-0043). Each section
+// names the rule it serves; lifting any ban, even for one member, needs an ADR (CRF-010).
 // Format: a documentation comment ID, then an optional message after ';' (the analyzer's help page in dotnet/roslyn).
 // The analyzer ignores an ID that names nothing, so tools/tests/BuildConfig.Tests.ps1 checks that every ID resolves.
 
@@ -106,7 +107,7 @@ P:System.DateTimeOffset.UtcNow;Read the time from an injected TimeProvider (GetU
 // the standard resilience handler. One built and disposed per request exhausts sockets and misses DNS changes, and
 // CA2000's fix for an undisposed client is that very pattern
 // (https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines). An app that needs cookies
-// suppresses this at its one long-lived client, naming the ADR that decided it.
+// keeps a long-lived client for each cookie container, with the ADR that decided it lifting the ban there (OPS-003).
 M:System.Net.Http.HttpClient.#ctor;Get the client from IHttpClientFactory (AddHttpClient), which pools handlers and adds the resilience handler (OPS-003)
 M:System.Net.Http.HttpClient.#ctor(System.Net.Http.HttpMessageHandler);Get the client from IHttpClientFactory (AddHttpClient), which pools handlers and adds the resilience handler (OPS-003)
 M:System.Net.Http.HttpClient.#ctor(System.Net.Http.HttpMessageHandler,System.Boolean);Get the client from IHttpClientFactory (AddHttpClient), which pools handlers and adds the resilience handler (OPS-003)

@@ -34,7 +34,7 @@ rules:
     scope: core
     paths: ["**/Program.cs", "**/*ServiceDefaults*/**", "**/*Infrastructure*/**"]
   - id: OPS-003
-    statement: "Every HttpClient comes from IHttpClientFactory and gets the standard resilience handler (timeouts, retries with backoff, circuit breaker) from the ServiceDefaults project, retrying only safe methods; a client that needs other settings removes the default handler (RemoveAllResilienceHandlers, experimental: suppress EXTEXP0001 with a reason) before adding its own. An app that needs cookies, which the factory's pooled handlers would share, keeps one long-lived HttpClient over a SocketsHttpHandler with a PooledConnectionLifetime instead, decided by ADR."
+    statement: "Every HttpClient comes from IHttpClientFactory and gets the standard resilience handler (timeouts, retries with backoff, circuit breaker) from the ServiceDefaults project, retrying only safe methods; a client that needs other settings removes the default handler (RemoveAllResilienceHandlers, experimental: suppress EXTEXP0001 with a reason) before adding its own. An app that needs cookies, which the factory's pooled handlers would share, keeps a long-lived HttpClient for each cookie container instead, over a SocketsHttpHandler with a PooledConnectionLifetime and wrapped in a ResilienceHandler, as the HttpClient guidelines page shows, decided by an ADR that also lifts the constructor ban there (CRF-010)."
     why: "A call to another service without a timeout can hang a request forever, and a retry without backoff can overload a service that is already struggling (GAP-007). A client built and disposed per request exhausts sockets and never sees a DNS change, and CA2000's fix for an undisposed client is that very pattern, so the constructors are banned (.NET best-practices pass, owner 2026-11-16)."
     layer: outside
     basis: authority
@@ -46,7 +46,7 @@ rules:
         how: "ci: the sample's FunctionalTests check that a client from IHttpClientFactory has the resilience handler and doesn't retry a failed POST"
       - kind: gate
         in: [kit, app]
-        how: "build: BannedSymbols.txt bans HttpClient's constructors (RS0030), so a client comes from the factory or, for the cookie case, from a suppression that names its ADR (CRF-001); tools/tests/BuildConfig.Tests.ps1 has a failing fixture"
+        how: "build: BannedSymbols.txt bans HttpClient's constructors (RS0030), so a client comes from the factory or, for the cookie case, from a suppression that names its ADR (CRF-010); tools/tests/BuildConfig.Tests.ps1 has a failing fixture"
       - kind: advisory
         in: [app]
         how: "until the app follows the sample"
@@ -107,7 +107,7 @@ rules:
     scope: core
     paths: ["**/Program.cs", "**/*Extensions*.cs", "**/appsettings*.json"]
   - id: OPS-007
-    statement: "An ASP.NET Core app follows Microsoft's ASP.NET Core best practices: async all the way, no blocking calls, no large objects or whole request bodies buffered without need, HttpClient through IHttpClientFactory, no access to HttpContext after the request or from another thread, and logging through the generated, high-performance logger."
+    statement: "An ASP.NET Core app follows Microsoft's ASP.NET Core best practices: async all the way, no blocking calls, no large objects or whole request bodies buffered without need, HttpClient through IHttpClientFactory (OPS-003, which names the one exception, for cookies), no access to HttpContext after the request or from another thread, and logging through the generated, high-performance logger."
     why: "The owner asked for Microsoft Learn's performance guidance (owner O7, 2026-11-12); the best-practices page names the mistakes that hurt a server under load, and its analyzers catch some of them (rules audit, 2026-11-12)."
     layer: outside
     basis: authority

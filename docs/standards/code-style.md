@@ -118,7 +118,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: BannedSymbols.txt bans ArrayList, Hashtable and the non-generic Queue and Stack (RS0030), which the thread-safe collections page and the Framework Design Guidelines replace with generic and concurrent collections (.NET best-practices pass, owner 2026-11-16); tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each"
+        how: "build: BannedSymbols.txt bans ArrayList, Hashtable and the non-generic Queue and Stack (RS0030) wherever code creates or calls one (a parameter or field typed as one isn't flagged, since nothing can fill it), which the thread-safe collections page and the Framework Design Guidelines replace with generic and concurrent collections (.NET best-practices pass, owner 2026-11-16); tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each"
       - kind: gate
         in: [kit, app]
         how: "build: .editorconfig sets api_surface to public, internal for the Design, Naming and Usage categories and for CA1815 and CA1819, keeps all for CA1068 and CA2208 (their own default), and csharp_style_prefer_readonly_struct to true:warning (IDE0250); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA1051, CA1711, CA2225, CA1815, CA1819 and IDE0250, and for a private CA2208 and CA1068"
@@ -139,7 +139,7 @@ rules:
     paths: ["**/*.cs"]
   - id: STY-011
     statement: "Code awaits a task instead of blocking on it: no Task.Wait, Task.WaitAll, Task.WaitAny, Task<T>.Result or Thread.Sleep; where await can't reach, such as a synchronous interface the code must implement, it blocks with GetAwaiter().GetResult() and a comment saying why."
-    why: "Blocking on a task can deadlock under a synchronization context and ties up a thread the pool needs; Wait and Result also wrap the exception in an AggregateException. Microsoft's C# async page replaces each blocking call with an await, and lists GetAwaiter().GetResult() first where blocking can't be avoided, because it keeps the original exception (.NET best-practices and C# guidance passes, owner 2026-11-16: \"Yes, accept them\"). CA1849 flags a blocking call only inside an async method, so a ban covers the rest."
+    why: "Blocking on a task can deadlock under a synchronization context and ties up a thread the pool needs; Wait and Result also wrap the exception in an AggregateException. Microsoft's C# async page replaces each blocking call with an await, and lists GetAwaiter().GetResult() first where blocking can't be avoided, because it keeps the original exception (.NET best-practices and C# guidance passes, owner 2026-11-16: \"Yes, accept them\"). CA1849 flags a blocking call only inside an async method, so a ban covers the rest. Thread.Sleep is in the page's table too: a pause is awaited, with Task.Delay."
     layer: outside
     basis: authority
     status: accepted
@@ -147,7 +147,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: BannedSymbols.txt bans every overload of Task.Wait, Task.WaitAll and Task.WaitAny, Task<T>.Result and Thread.Sleep (RS0030), and CA1849 flags a blocking call inside an async method; tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each banned call, and a fixture that builds with GetAwaiter().GetResult(). Suppressing the ban at one site, with its reason where it lives (CRF-001), isn't lifting it, which needs an ADR (CRF-010)"
+        how: "build: BannedSymbols.txt bans every overload of Task.Wait, Task.WaitAll and Task.WaitAny, Task<T>.Result and Thread.Sleep (RS0030), and CA1849 flags a blocking call inside an async method; tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each banned call, a test that every public overload is listed, and a fixture that builds with GetAwaiter().GetResult(), the way out that needs no suppression; RS0030 is never suppressed without an ADR (CRF-010)"
       - kind: advisory
         in: [kit, app]
         how: "code review checks that each GetAwaiter().GetResult() is where await can't reach, with its reason"

@@ -5,4 +5,4 @@ applyTo: '**/*.cs,BannedSymbols.txt'
 
 # Architecture
 
-- ARC-008: No code reads the clock directly: the time comes from an injected TimeProvider. Assemblies marked pure (core business logic) also use no randomness, file or network access except through injected abstractions.
+- ARC-008: No code reads the clock directly: the time comes from an injected TimeProvider, and TimeProvider.System appears only where the app registers it, or where code must agree with a clock it can't inject, such as a test token the app checks against the system clock. Assemblies marked pure (core business logic) also use no randomness, file or network access except through injected abstractions.
