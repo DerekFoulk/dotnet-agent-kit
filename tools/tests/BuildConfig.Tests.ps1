@@ -449,6 +449,26 @@ Describe 'BannedSymbols.txt' {
         Test-DocumentationId -Id 'M:System.Reflection.Module.FindTypes(System.Reflection.typefilter,System.object)' | Should -BeFalse
     }
 
+    # The .NET best-practices pass bans HttpClient's constructors and Task.WaitAll's overloads, so the IDs name a
+    # constructor (#ctor) and generic parameter types ({...}), as documentation comment IDs do.
+    It 'resolves <Id>' -ForEach @(
+        @{ Id = 'M:System.Net.Http.HttpClient.#ctor' }
+        @{ Id = 'M:System.Net.Http.HttpClient.#ctor(System.Net.Http.HttpMessageHandler,System.Boolean)' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task})' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.Collections.Generic.IEnumerable{System.Threading.Tasks.Task},System.Threading.CancellationToken)' }
+        @{ Id = 'P:System.Threading.Tasks.Task`1.Result' }
+    ) {
+        Test-DocumentationId -Id $Id | Should -BeTrue
+    }
+
+    It 'rejects <Id>, which names no symbol' -ForEach @(
+        @{ Id = 'M:System.Net.Http.HttpClient.#ctor(System.String)' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.String})' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task)' }
+    ) {
+        Test-DocumentationId -Id $Id | Should -BeFalse
+    }
+
     It 'names only symbols that exist' {
         $ids = @(Get-Content -LiteralPath $bannedPath | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
 
