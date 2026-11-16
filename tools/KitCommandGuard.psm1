@@ -72,9 +72,22 @@ function Get-PowerShellCommand {
         }
         foreach ($element in $commandAst.CommandElements) { $words.Add((ConvertTo-PowerShellWord -Element $element)) }
         $name = $words[$words.Count - $commandAst.CommandElements.Count]
-        [pscustomobject]@{ Words = $words.ToArray(); Native = -not (Test-PowerShellCommandName -Name $name) }
+        $inner = $commandAst.Find({ param($node) $node.GetType() -in $script:ComputedArgumentAst }, $true)
+        [pscustomobject]@{
+            Words  = $words.ToArray()
+            Native = -not (Test-PowerShellCommandName -Name $name)
+            Nested = if ($inner) { $inner.Extent.Text } else { $null }
+        }
     }
 }
+
+# The parts of a PowerShell command that compute a value when it runs: ( ), @( ), $( ) (in a string too) and { }.
+# Any command can sit inside one, and Claude Code's docs don't say it checks commands there, so a wide allow such as
+# "git commit *" would cover whatever they hold. A value built from expressions ('--for'+'ce') is no easier to read.
+$script:ComputedArgumentAst = @(
+    [Management.Automation.Language.ParenExpressionAst], [Management.Automation.Language.ArrayExpressionAst],
+    [Management.Automation.Language.SubExpressionAst], [Management.Automation.Language.ScriptBlockExpressionAst]
+)
 
 # Whether a command name is PowerShell's own (a Verb-Noun cmdlet or function, or a .ps1 or .psm1 script), which binds
 # "-fd" to one parameter, rather than a native program such as git or gh, which may read it as "-f -d".
@@ -109,8 +122,12 @@ function Get-CommandGuardDecision {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $AskRules
     )
 
-    try { $commands = Get-PowerShellCommand -Command $Command } catch { return $null }
+    try { $commands = @(Get-PowerShellCommand -Command $Command) }
+    catch { return "The command guard (ADR-0076) can't resolve this command, so it asks: $($_.Exception.Message)" }
     foreach ($resolved in $commands) {
+        if ($resolved.Nested) {
+            return "The command guard (ADR-0076) asks because this command computes an argument inside ( ), @( ), `$( ) or { }, which Claude Code's rules may not check: $($resolved.Nested)"
+        }
         foreach ($spelling in Get-CommandSpelling -Resolved $resolved) {
             foreach ($rule in $AskRules) {
                 if (Test-PermissionRuleMatch -Rule $rule -Tool $Tool -Command $spelling -IgnoreCase:($Tool -eq 'PowerShell')) {
