@@ -173,11 +173,19 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'git push origin --del feat/x' }
                 @{ Tool = $tool; Command = 'git push --mir origin' }
                 @{ Tool = $tool; Command = 'git push --pru origin' }
-                # Review 5: --m alone is --mirror, and a quoted option must still match (as the quoted refspecs do).
+                # Review 5: --m alone is --mirror, and a quoted long option must still match (as the quoted refspecs do).
                 @{ Tool = $tool; Command = 'git push --m origin' }
                 @{ Tool = $tool; Command = 'git push origin --m' }
                 @{ Tool = $tool; Command = "git push '--exec=./evil.sh' origin feat/x" }
                 @{ Tool = $tool; Command = 'git push "--e=./evil.sh" origin feat/x' }
+                # Review 6: the likeliest joined short options, matched as whole words (probed: -uf force-pushes,
+                # -ud deletes). Other clusters, such as -qf, are a known limit (ADR-0075, GAP-044).
+                @{ Tool = $tool; Command = 'git push -uf origin feat/x' }
+                @{ Tool = $tool; Command = 'git push -fu origin feat/x' }
+                @{ Tool = $tool; Command = 'git push -ud origin feat/x' }
+                @{ Tool = $tool; Command = 'git push -du origin feat/x' }
+                @{ Tool = $tool; Command = 'git push origin feat/x -uf' }
+                @{ Tool = $tool; Command = 'git push origin feat/x -ud' }
             }
         ) {
             Test-AskRuleMatch -Tool $Tool -Command $Command | Should -BeTrue -Because "an ask rule should catch $Tool($Command)"
