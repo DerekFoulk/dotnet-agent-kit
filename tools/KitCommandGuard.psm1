@@ -425,10 +425,55 @@ function Get-CommandGuardDecision {
     $null
 }
 
+# The ask rules in force for the project: .claude/settings.json's, and .claude/settings.local.json's when it exists
+# (review mode adds its asks there, ADR-0035). Throws when either can't be read, since the guard can't check anything
+# without them.
+function Get-ProjectAskRule {
+    param([Parameter(Mandatory)] [string] $ProjectDir)
+
+    foreach ($name in 'settings.json', 'settings.local.json') {
+        $path = Join-Path $ProjectDir '.claude' $name
+        if ($name -eq 'settings.local.json' -and -not (Test-Path -LiteralPath $path)) { continue }
+        $settings = Get-Content -LiteralPath $path -Raw -ErrorAction Stop | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        # Assigned, not taken from an if expression, which would unwrap a one-rule list into its string.
+        $ask = $null
+        if ($settings -is [Collections.IDictionary] -and $settings['permissions'] -is [Collections.IDictionary]) { $ask = $settings['permissions']['ask'] }
+        if ($null -eq $ask) { continue }
+        if ($ask -isnot [Collections.IList] -or @($ask | Where-Object { $_ -isnot [string] }).Count) {
+            throw "permissions.ask in .claude/$name isn't a list of rules."
+        }
+        $ask
+    }
+}
+
+# The hook's answer for Claude Code: "ask" with the reason, as hookSpecificOutput (Claude Code's hooks page), in ASCII
+# so the console's code page can't change it.
+function ConvertTo-AskDecision {
+    param([Parameter(Mandatory)] [string] $Reason)
+
+    @{ hookSpecificOutput = [ordered]@{ hookEventName = 'PreToolUse'; permissionDecision = 'ask'; permissionDecisionReason = $Reason } } |
+        ConvertTo-Json -Compress -EscapeHandling EscapeNonAscii
+}
+
+# Answers one PreToolUse hook call: the JSON to print, or $null to leave a Bash or PowerShell call to Claude Code's
+# permission rules (and any other tool's call alone). ProjectDir is where .claude/ is; when it's empty, the input's
+# cwd. Anything that goes wrong asks, so a failure never lets a command through unchecked.
 function Invoke-CommandGuard {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $InputJson, [Parameter(Mandatory)] [AllowEmptyString()] [string] $ProjectDir)
 
-    $null
+    try {
+        $hookInput = $InputJson | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        $tool = if ($hookInput -is [Collections.IDictionary]) { $hookInput['tool_name'] }
+        if ($tool -cnotin 'Bash', 'PowerShell') { return $null }
+        $command = if ($hookInput['tool_input'] -is [Collections.IDictionary]) { $hookInput['tool_input']['command'] }
+        if ($command -isnot [string]) { throw "the $tool call's tool_input.command isn't a string." }
+        $directory = if ($ProjectDir) { $ProjectDir } else { [string] $hookInput['cwd'] }
+        $reason = Get-CommandGuardDecision -Tool $tool -Command $command -AskRules @(Get-ProjectAskRule -ProjectDir $directory)
+    }
+    catch {
+        $reason = "The command guard (ADR-0076) failed, so it asks: $($_.Exception.Message)"
+    }
+    if ($reason) { ConvertTo-AskDecision -Reason $reason }
 }
 
 Export-ModuleMember -Function Test-PermissionRuleMatch, Get-CommandGuardDecision, Invoke-CommandGuard
