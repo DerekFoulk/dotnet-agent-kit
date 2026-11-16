@@ -7,12 +7,15 @@ internal static class EfCoreMigrations
 {
     private const string Folder = "Migrations";
 
-    /// <summary>Whether a file sits in a Migrations folder.</summary>
-    public static bool Contains(string path)
+    /// <summary>Whether a file sits in a Migrations folder inside its project, so a folder the repo itself sits in
+    /// doesn't count.</summary>
+    public static bool Contains(string path, string projectFolder = "")
     {
         ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(projectFolder);
 
-        return path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).SkipLast(1)
+        string inProject = projectFolder.Length == 0 ? path : Path.GetRelativePath(projectFolder, path);
+        return inProject.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).SkipLast(1)
             .Contains(Folder, StringComparer.OrdinalIgnoreCase);
     }
 }

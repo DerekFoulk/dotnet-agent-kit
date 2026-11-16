@@ -15,7 +15,7 @@ internal static class GeneratedMarkerRule
     {
         ArgumentNullException.ThrowIfNull(file);
 
-        bool written = file.Generated && !EfCoreMigrations.Contains(file.Path) && !IsResourceDesigner(file.Path);
+        bool written = file.Generated && !EfCoreMigrations.Contains(file.Path, file.ProjectFolder) && !IsResourceDesigner(file.Path);
         return written ? [new Finding(file.Path, 1, 1, Message) { Rule = RuleCodes.Nullable }] : [];
     }
 

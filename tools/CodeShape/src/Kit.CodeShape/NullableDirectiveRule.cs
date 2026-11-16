@@ -14,7 +14,7 @@ internal static class NullableDirectiveRule
     {
         ArgumentNullException.ThrowIfNull(file);
 
-        return EfCoreMigrations.Contains(file.Path)
+        return EfCoreMigrations.Contains(file.Path, file.ProjectFolder)
             ? []
             : file.Parse().GetRoot().DescendantTrivia(descendIntoTrivia: true)
                 .Where(trivia => trivia.IsKind(SyntaxKind.NullableDirectiveTrivia))

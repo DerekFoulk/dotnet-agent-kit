@@ -18,7 +18,7 @@ internal static class NullForgivingRule
 
         SyntaxNode root = file.Parse().GetRoot();
         HashSet<int> labelled = [.. root.DescendantTrivia()
-            .Where(trivia => trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) && trivia.ToString().StartsWith(Label, StringComparison.Ordinal))
+            .Where(trivia => trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) && HasReason(trivia.ToString()))
             .Select(trivia => trivia.GetLocation().GetLineSpan().StartLinePosition.Line)];
         return root.DescendantNodes().OfType<PostfixUnaryExpressionSyntax>()
             .Where(node => node.IsKind(SyntaxKind.SuppressNullableWarningExpression))
@@ -26,6 +26,10 @@ internal static class NullForgivingRule
             .Where(location => !IsLabelled(labelled, location.GetLineSpan().StartLinePosition.Line))
             .Select(location => Finding.At(file.Path, location, Message) with { Rule = RuleCodes.Nullable });
     }
+
+    // A label with no reason after it covers nothing, as CRF-001 asks a safety net for its reason.
+    private static bool HasReason(string comment) =>
+        comment.StartsWith(Label, StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(comment[Label.Length..]);
 
     private static bool IsLabelled(HashSet<int> labelled, int line) => labelled.Contains(line) || labelled.Contains(line - 1);
 }

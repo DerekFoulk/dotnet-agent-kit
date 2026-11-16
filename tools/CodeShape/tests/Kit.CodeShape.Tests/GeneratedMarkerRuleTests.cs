@@ -1,7 +1,7 @@
 namespace Kit.CodeShape.Tests;
 
 // The compiler treats a file marked as generated as nullable-disabled and its analyzers skip it, as these checks and the
-// coverage gate do; so only EF Core's migrations, which it generates, may carry a marker (STY-005).
+// coverage gate do; so only what a tool writes into source, EF Core's migrations and a .resx file's designer, may carry a marker (STY-005).
 public sealed class GeneratedMarkerRuleTests
 {
     private const string Message =
