@@ -6,4 +6,4 @@ paths:
 
 # Operations
 
-- OPS-007: An ASP.NET Core app follows Microsoft's ASP.NET Core best practices: async all the way, no blocking calls, no large objects or whole request bodies buffered without need, HttpClient through IHttpClientFactory, no access to HttpContext after the request or from another thread, and logging through the generated, high-performance logger.
+- OPS-007: An ASP.NET Core app follows Microsoft's ASP.NET Core best practices: async all the way, no blocking calls, no large objects or whole request bodies buffered without need, HttpClient through IHttpClientFactory (OPS-003, which names the one exception, for cookies), no access to HttpContext after the request or from another thread, and logging through the generated, high-performance logger.

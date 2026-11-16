@@ -59,6 +59,24 @@ BeforeDiscovery {
         @{ Fixture = 'LegacyXmlReader'; Diagnostic = 'RS0030'; Description = 'the legacy XmlTextReader (SEC-014)' }
         @{ Fixture = 'AcceptAnyCertificate'; Diagnostic = 'RS0030'; Description = 'the accept-any-certificate validator (SEC-014)' }
         @{ Fixture = 'DtdParse'; Diagnostic = 'RS0030'; Description = 'DTD parsing in XmlReaderSettings (SEC-014)' }
+        # The .NET best-practices and C# passes (owner, 2026-11-16): BannedSymbols.txt bans what no analyzer flags. One
+        # fixture holds a family's banned calls, and each row names the symbol its RS0030 must be about.
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTime.Now'; Description = 'DateTime.Now, where TimeProvider gives the time (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTime.UtcNow'; Description = 'DateTime.UtcNow (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTime.Today'; Description = 'DateTime.Today (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.Now'; Description = 'DateTimeOffset.Now (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.UtcNow'; Description = 'DateTimeOffset.UtcNow (ARC-008)' }
+        @{ Fixture = 'ObsoleteTimeZone'; Diagnostic = 'CS0618'; Description = 'TimeZone, obsolete in favor of TimeZoneInfo, so it needs no ban (ARC-008)' }
+        @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.WaitAll('; Description = 'Task.WaitAll (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.WaitAny('; Description = 'Task.WaitAny (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Thread.Sleep('; Description = 'Thread.Sleep (STY-011)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'ArrayList'; Description = 'ArrayList (STY-009)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'Hashtable'; Description = 'Hashtable (STY-009)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'Queue'''; Description = 'the non-generic Queue (STY-009)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'Stack'''; Description = 'the non-generic Stack (STY-009)' }
         # STY-003 (.NET best-practices pass, owner 2026-11-16): one fixture per family of rules latest-all turns on, plus
         # CS4014, a compiler warning, so each is proved, not assumed. Two limits the fixtures found: CA1305 doesn't see an
         # interpolated or concatenated number, and CA1510 to CA1513 fire only on a check that passes no message of its own
@@ -372,6 +390,20 @@ Describe 'Repo build configuration' -Tag 'Build' {
 
             $build.ExitCode | Should -Not -Be 0 -Because $build.Output
             $build.Output | Should -Match "error $Diagnostic"
+            if ($_['Symbol']) {
+                $build.Output | Should -Match ([regex]::Escape("error ${Diagnostic}: The symbol '$($_['Symbol'])")) -Because "the ban on $($_['Symbol']) should fire"
+            }
+        }
+    }
+
+    # STY-011: the C# async page lists GetAwaiter().GetResult() first among the ways to block where await can't reach,
+    # because it keeps the original exception; the ban on Wait and Result leaves it open.
+    Context 'blocking where await can''t reach' {
+        It 'allows GetAwaiter().GetResult()' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'BlockingEscape')
+
+            $build.Output | Should -Not -Match 'RS0030'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
 
@@ -505,8 +537,11 @@ Describe 'BannedSymbols.txt' {
             if ($Matches['kind'] -eq 'T') { return $null -ne (Find-KitType $name) }
 
             # Roslyn finds only members declared on the named type, so an inherited member mustn't count, and it compares
-            # with case. Generic methods (`0), ref or out parameters (@), nested types (. where FullName has +) and
-            # generic type arguments ({...}) aren't parsed; such an entry fails here until this function learns them.
+            # with case. An instance constructor is #ctor (a static one is #cctor), a generic parameter type is its name
+            # without the arity and its type arguments in braces (System.ReadOnlySpan{System.Threading.Tasks.Task}), and a
+            # generic type's own parameter is `0, `1 and so on. A generic method's parameters (``0), ref or out parameters
+            # (@), multi-dimensional arrays ([0:,0:]) and nested types (. where FullName has +) aren't parsed; such an entry
+            # fails here until this function learns them.
             $declared = [Reflection.BindingFlags]'Public, NonPublic, Static, Instance, DeclaredOnly'
             $owner = Find-KitType ($name.Substring(0, $name.LastIndexOf('.')))
             $member = $name.Substring($name.LastIndexOf('.') + 1)
@@ -515,12 +550,28 @@ Describe 'BannedSymbols.txt' {
                 'F' { return $null -ne $owner.GetField($member, $declared) }
                 'P' { return $null -ne $owner.GetProperty($member, $declared) }
                 'M' {
-                    $wanted = if ($Matches['params']) { $Matches['params'].Split(',') } else { @() }
-                    return [bool]($owner.GetMethods($declared) | Where-Object {
-                        $_.Name -ceq $member -and ((@($_.GetParameters() | ForEach-Object { $_.ParameterType.FullName }) -join ',') -ceq ($wanted -join ','))
+                    $wanted = [string] $Matches['params']
+                    $candidates = if ($member -ceq '#ctor') { $owner.GetConstructors($declared) | Where-Object { -not $_.IsStatic } } else { $owner.GetMethods($declared) | Where-Object Name -CEQ $member }
+                    return [bool]($candidates | Where-Object {
+                        (@($_.GetParameters() | ForEach-Object { Get-DocumentationTypeName $_.ParameterType }) -join ',') -ceq $wanted
                     })
                 }
             }
+        }
+
+        # A type as a documentation comment ID names it in a parameter list: generic types as Name{Argument,...}, and a
+        # generic type's own parameter by its position. The forms it doesn't parse come back as text no ID contains, so an
+        # entry with one never resolves.
+        function Get-DocumentationTypeName {
+            param([Parameter(Mandatory)] [Type] $Type)
+
+            $unparsed = '<not parsed>'
+            if ($Type.IsGenericParameter) { return $(if ($Type.DeclaringMethod) { $unparsed } else { '`' + $Type.GenericParameterPosition }) }
+            if ($Type.IsArray) { return $(if ($Type.GetArrayRank() -gt 1) { $unparsed } else { (Get-DocumentationTypeName $Type.GetElementType()) + '[]' }) }
+            if ($Type.IsByRef) { return $unparsed }
+            if (-not $Type.IsGenericType) { return $Type.FullName }
+            $arguments = @($Type.GenericTypeArguments | ForEach-Object { Get-DocumentationTypeName $_ }) -join ','
+            ($Type.GetGenericTypeDefinition().FullName -replace '`\d+$', '') + "{$arguments}"
         }
     }
 
@@ -528,6 +579,54 @@ Describe 'BannedSymbols.txt' {
     It 'rejects an ID that differs from the symbol only in case' {
         Test-DocumentationId -Id 'M:System.Reflection.Module.gettypes' | Should -BeFalse
         Test-DocumentationId -Id 'M:System.Reflection.Module.FindTypes(System.Reflection.typefilter,System.object)' | Should -BeFalse
+    }
+
+    # The .NET best-practices pass bans HttpClient's constructors and Task.WaitAll's overloads, so the IDs name a
+    # constructor (#ctor) and generic parameter types ({...}), as documentation comment IDs do.
+    It 'resolves <Id>' -ForEach @(
+        @{ Id = 'M:System.Net.Http.HttpClient.#ctor' }
+        @{ Id = 'M:System.Net.Http.HttpClient.#ctor(System.Net.Http.HttpMessageHandler,System.Boolean)' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task})' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.Collections.Generic.IEnumerable{System.Threading.Tasks.Task},System.Threading.CancellationToken)' }
+        @{ Id = 'P:System.Threading.Tasks.Task`1.Result' }
+        @{ Id = 'M:System.Collections.Generic.List`1.Add(`0)' }
+    ) {
+        Test-DocumentationId -Id $Id | Should -BeTrue
+    }
+
+    It 'rejects <Id>, which names no symbol' -ForEach @(
+        @{ Id = 'M:System.Net.Http.HttpClient.#ctor(System.String)' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.String})' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task)' }
+        # Review 1 of this PR: a static constructor is #cctor, so #ctor must name an instance constructor.
+        @{ Id = 'M:System.Environment.#ctor' }
+        @{ Id = 'M:System.AttributeUsageAttribute.#ctor' }
+        # A generic type's own parameter is `0, and an ID that leaves it out names nothing.
+        @{ Id = 'M:System.Collections.Generic.List`1.Add' }
+    ) {
+        Test-DocumentationId -Id $Id | Should -BeFalse
+    }
+
+    # Review 1 of PR 94: STY-011 and OPS-003 ban these in every overload, and the fixtures call one each, so a row that
+    # goes missing, or an overload a later .NET adds, fails here instead of going unbanned.
+    It 'bans every public overload of <Member>' -ForEach @(
+        @{ Member = 'System.Threading.Tasks.Task.Wait' }
+        @{ Member = 'System.Threading.Tasks.Task.WaitAll' }
+        @{ Member = 'System.Threading.Tasks.Task.WaitAny' }
+        @{ Member = 'System.Threading.Thread.Sleep' }
+        @{ Member = 'System.Net.Http.HttpClient.#ctor' }
+    ) {
+        $ids = @(Get-Content -LiteralPath $bannedPath | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
+        $type = Find-KitType $Member.Substring(0, $Member.LastIndexOf('.'))
+        $name = $Member.Substring($Member.LastIndexOf('.') + 1)
+        $overloads = if ($name -ceq '#ctor') { $type.GetConstructors() } else { $type.GetMethods() | Where-Object { $_.Name -ceq $name -and $_.DeclaringType -eq $type } }
+
+        @($overloads).Count | Should -BeGreaterThan 0
+        foreach ($overload in $overloads) {
+            $parameters = @($overload.GetParameters() | ForEach-Object { Get-DocumentationTypeName $_.ParameterType }) -join ','
+            $id = "M:$Member" + $(if ($parameters) { "($parameters)" } else { '' })
+            $ids | Should -Contain $id -Because "every overload of $Member is banned"
+        }
     }
 
     It 'names only symbols that exist' {
