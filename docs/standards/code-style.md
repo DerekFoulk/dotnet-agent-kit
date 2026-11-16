@@ -109,18 +109,21 @@ rules:
     scope: core
     paths: ["**/*.cs", "Directory.Build.props"]
   - id: STY-009
-    statement: "Code follows the Framework Design Guidelines wherever an analyzer checks them: the Design, Naming and Usage rules, CA1815 and CA1819 check internal APIs as well as public and protected ones, and a struct whose members are all read-only is declared readonly."
+    statement: "Code follows the Framework Design Guidelines wherever an analyzer checks them: the Design, Naming and Usage rules, CA1815 and CA1819 check internal APIs as well as public and protected ones, a struct whose members are all read-only is declared readonly, and the non-generic collections (ArrayList, Hashtable, Queue, Stack) give way to the generic ones."
     why: "The owner asked for Microsoft Learn's guidance as rules (owner O7, 2026-11-12); the Framework Design Guidelines pass found that 70 of the guidelines an analyzer gates rest on rules that check only public APIs by default, so they never reach an app, whose types CA1515 makes internal (owner, 2026-11-13: \"Yes, accept them\"; ADR-0070)."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-13", "ADR-0070", "https://learn.microsoft.com/dotnet/standard/design-guidelines/, retrieved 2026-11-13", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/code-quality-rule-options#api_surface, retrieved 2026-11-15"]
+    sources: ["owner, 2026-11-13", "ADR-0070", "https://learn.microsoft.com/dotnet/standard/design-guidelines/, retrieved 2026-11-13", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/code-quality-rule-options#api_surface, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/collections/thread-safe/, retrieved 2026-11-15"]
     enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: BannedSymbols.txt bans ArrayList, Hashtable and the non-generic Queue and Stack (RS0030) wherever code creates or calls one (a parameter or field typed as one isn't flagged, since nothing can fill it), which the thread-safe collections page and the Framework Design Guidelines replace with generic and concurrent collections (.NET best-practices pass, owner 2026-11-16); tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each"
       - kind: gate
         in: [kit, app]
         how: "build: .editorconfig sets api_surface to public, internal for the Design, Naming and Usage categories and for CA1815 and CA1819, keeps all for CA1068 and CA2208 (their own default), and csharp_style_prefer_readonly_struct to true:warning (IDE0250); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for CA1051, CA1711, CA2225, CA1815, CA1819 and IDE0250 (on a struct and on a record struct), for a private CA2208 and CA1068, and for CA1064 on an internal exception in a class library (an Exe's internal exception builds, as CA1515 asks)"
     scope: core
-    paths: ["**/*.cs", ".editorconfig"]
+    paths: ["**/*.cs", ".editorconfig", "BannedSymbols.txt"]
   - id: STY-010
     statement: "Code follows the Framework Design Guidelines where no analyzer checks them; code review checks the themes docs/code-review.md lists."
     why: "The owner asked for Microsoft Learn's guidance as rules (owner O7, 2026-11-12). The Framework Design Guidelines pass found 229 of their 369 guidelines are judgment no analyzer checks, and the owner accepted one advisory rule for them, with the themes worth a reviewer's eye in an app listed for code review (owner, 2026-11-13: \"Yes, accept them\"). The guidelines are written for public APIs; like STY-009, the kit applies the themes to internal ones too, since CA1515 makes an app's types internal. The themes for libraries a kit app ships (versioning, extensibility, virtual and protected members) wait for the .NET library guidance pass."
@@ -134,6 +137,22 @@ rules:
         how: "code review: the reviewer agent checks the Framework Design Guidelines themes in docs/code-review.md and ranks a broken one Consider, or higher where it causes a defect; STY-009 gates the guidelines an analyzer checks"
     scope: core
     paths: ["**/*.cs"]
+  - id: STY-011
+    statement: "Code awaits a task instead of blocking on it: no Task.Wait, Task.WaitAll, Task.WaitAny, Task<T>.Result or Thread.Sleep; where await can't reach, such as a synchronous interface the code must implement, it blocks with GetAwaiter().GetResult() and a comment saying why."
+    why: "Blocking on a task can deadlock under a synchronization context and ties up a thread the pool needs; Wait and Result also wrap the exception in an AggregateException. Microsoft's C# async page replaces each blocking call with an await, and lists GetAwaiter().GetResult() first where blocking can't be avoided, because it keeps the original exception (.NET best-practices and C# guidance passes, owner 2026-11-16: \"Yes, accept them\"). CA1849 flags a blocking call only inside an async method, so a ban covers the rest. Thread.Sleep is in the page's table too: a pause is awaited, with Task.Delay."
+    layer: outside
+    basis: authority
+    status: accepted
+    sources: ["owner, 2026-11-16", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/consuming-the-task-based-asynchronous-pattern, retrieved 2026-11-15"]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: BannedSymbols.txt bans every overload of Task.Wait, Task.WaitAll and Task.WaitAny, Task<T>.Result and Thread.Sleep (RS0030), and CA1849 flags a blocking call inside an async method; tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each banned call, a test that every public overload is listed, and a fixture that builds with GetAwaiter().GetResult(), the way out that needs no suppression; RS0030 is never suppressed without an ADR (CRF-010)"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks that each GetAwaiter().GetResult() is where await can't reach, with its reason"
+    scope: core
+    paths: ["**/*.cs", "BannedSymbols.txt"]
 ---
 
 # Code style

@@ -24,7 +24,8 @@ internal static class TestTokens
         string? user = "alice", string issuer = Issuer, string audience = Audience, TimeSpan? expiresIn = null,
         SecurityKey? key = null, bool isSigned = true)
     {
-        DateTime now = DateTime.UtcNow;
+        // The API checks a token's lifetime against the system clock, so the token is issued by it too (ARC-008).
+        DateTime now = TimeProvider.System.GetUtcNow().UtcDateTime;
         DateTime expires = now + (expiresIn ?? TimeSpan.FromMinutes(5));
         SecurityTokenDescriptor descriptor = new()
         {
