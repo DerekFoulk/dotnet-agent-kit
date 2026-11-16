@@ -34,11 +34,12 @@ public sealed class MemberCountRuleTests
             .Which.Message.Should().Be("Kinds has 21 members; the limit is 20 (CRF-011).");
 
     // A record's positional parameters are properties the compiler declares for it, unless the record declares the
-    // property itself; a class's primary constructor parameters aren't members.
+    // property itself, or a field of that name; a class's primary constructor parameters aren't members.
     [Theory]
     [InlineData("record Point(int X, int Y) { ", 19, 1)]
     [InlineData("record struct Point(int X, int Y) { ", 19, 1)]
     [InlineData("record Point(int X, int Y) { public int X { get; } = X; ", 18, 0)]
+    [InlineData("record Point(int X, int Y) { private readonly int X = X; ", 18, 0)]
     [InlineData("class Point(int x, int y) { ", 20, 0)]
     public void ARecordsPositionalParametersAreItsProperties(string opening, int methods, int findings) =>
         MemberCountRule.Check([new SourceFile("Point.cs", $"{opening}{Methods(methods)}}}")]).Should().HaveCount(findings);
@@ -82,6 +83,16 @@ public sealed class MemberCountRuleTests
             new SourceFile("A.cs", $"namespace A {{ partial class Wide {{ {Methods(11)}}} }} namespace B {{ partial class Wide {{ {Methods(10)}}} }}"),
             new SourceFile("C.cs", $"namespace A {{ partial class Wide<T> {{ {Methods(10)}}} }}"),
         ]).Should().BeEmpty();
+
+    // Partial overloads are different members, and each counts once.
+    [Theory]
+    [InlineData(18, 0)]
+    [InlineData(19, 1)]
+    public void PartialOverloadsCountOnceEach(int methods, int findings) =>
+        MemberCountRule.Check([
+            new SourceFile("Wide.A.cs", $"partial class Wide {{ partial void M(int a); partial void M(string a); {Methods(methods)}}}"),
+            new SourceFile("Wide.B.cs", "partial class Wide { partial void M(int a) { } partial void M(string a) { } }"),
+        ]).Should().HaveCount(findings);
 
     // A file-local type is seen only in its own file, so two with the same name in two files are two types.
     [Fact]
