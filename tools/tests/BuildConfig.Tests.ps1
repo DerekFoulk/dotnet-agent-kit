@@ -456,10 +456,11 @@ Describe 'BannedSymbols.txt' {
             if ($Matches['kind'] -eq 'T') { return $null -ne (Find-KitType $name) }
 
             # Roslyn finds only members declared on the named type, so an inherited member mustn't count, and it compares
-            # with case. A constructor is #ctor, and a generic parameter type is its name without the arity and its type
-            # arguments in braces (System.ReadOnlySpan{System.Threading.Tasks.Task}). Generic methods (`0), ref or out
-            # parameters (@) and nested types (. where FullName has +) aren't parsed; such an entry fails here until this
-            # function learns them.
+            # with case. An instance constructor is #ctor (a static one is #cctor), a generic parameter type is its name
+            # without the arity and its type arguments in braces (System.ReadOnlySpan{System.Threading.Tasks.Task}), and a
+            # generic type's own parameter is `0, `1 and so on. A generic method's parameters (``0), ref or out parameters
+            # (@), multi-dimensional arrays ([0:,0:]) and nested types (. where FullName has +) aren't parsed; such an entry
+            # fails here until this function learns them.
             $declared = [Reflection.BindingFlags]'Public, NonPublic, Static, Instance, DeclaredOnly'
             $owner = Find-KitType ($name.Substring(0, $name.LastIndexOf('.')))
             $member = $name.Substring($name.LastIndexOf('.') + 1)
@@ -469,7 +470,7 @@ Describe 'BannedSymbols.txt' {
                 'P' { return $null -ne $owner.GetProperty($member, $declared) }
                 'M' {
                     $wanted = [string] $Matches['params']
-                    $candidates = if ($member -ceq '#ctor') { $owner.GetConstructors($declared) } else { $owner.GetMethods($declared) | Where-Object Name -CEQ $member }
+                    $candidates = if ($member -ceq '#ctor') { $owner.GetConstructors($declared) | Where-Object { -not $_.IsStatic } } else { $owner.GetMethods($declared) | Where-Object Name -CEQ $member }
                     return [bool]($candidates | Where-Object {
                         (@($_.GetParameters() | ForEach-Object { Get-DocumentationTypeName $_.ParameterType }) -join ',') -ceq $wanted
                     })
@@ -477,11 +478,16 @@ Describe 'BannedSymbols.txt' {
             }
         }
 
-        # A type as a documentation comment ID names it in a parameter list: generic types as Name{Argument,...}.
+        # A type as a documentation comment ID names it in a parameter list: generic types as Name{Argument,...}, and a
+        # generic type's own parameter by its position. The forms it doesn't parse come back as text no ID contains, so an
+        # entry with one never resolves.
         function Get-DocumentationTypeName {
             param([Parameter(Mandatory)] [Type] $Type)
 
-            if ($Type.IsArray) { return (Get-DocumentationTypeName $Type.GetElementType()) + '[]' }
+            $unparsed = '<not parsed>'
+            if ($Type.IsGenericParameter) { return $(if ($Type.DeclaringMethod) { $unparsed } else { '`' + $Type.GenericParameterPosition }) }
+            if ($Type.IsArray) { return $(if ($Type.GetArrayRank() -gt 1) { $unparsed } else { (Get-DocumentationTypeName $Type.GetElementType()) + '[]' }) }
+            if ($Type.IsByRef) { return $unparsed }
             if (-not $Type.IsGenericType) { return $Type.FullName }
             $arguments = @($Type.GenericTypeArguments | ForEach-Object { Get-DocumentationTypeName $_ }) -join ','
             ($Type.GetGenericTypeDefinition().FullName -replace '`\d+$', '') + "{$arguments}"
