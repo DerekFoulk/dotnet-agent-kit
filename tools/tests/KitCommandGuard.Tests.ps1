@@ -34,6 +34,25 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -Not -BeNullOrEmpty
     }
 
+    It 'asks for <Command>, whose joined short options git or gh reads one by one' -ForEach @(
+        # git and gh read "-qf" as "-q -f": a force-push no whole-word rule sees.
+        @{ Command = 'git push -qf origin x' }
+        @{ Command = 'git push -nuf origin x' }
+        @{ Command = 'git push origin x -fd' }
+        @{ Command = 'git push origin -qd x' }
+        @{ Command = 'gh api -iXPUT repos/a/b' }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -Not -BeNullOrEmpty
+    }
+
+    It 'splits joined short options for a native command, not for a cmdlet, function or script' {
+        # PowerShell binds "-fd" to one parameter of a cmdlet, function or script, so it isn't "-f -d" there.
+        $rules = 'PowerShell(* -f *)'
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command 'tool -fd x' -AskRules $rules | Should -Not -BeNullOrEmpty
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command 'Set-Thing -fd x' -AskRules $rules | Should -BeNullOrEmpty
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command './tools/Thing.ps1 -fd x' -AskRules $rules | Should -BeNullOrEmpty
+    }
+
     It 'names the rule and the resolved command in its reason' {
         $reason = Get-CommandGuardDecision -Tool 'PowerShell' -Command "git push --for'ce'" -AskRules 'PowerShell(*git *push*--force*)'
         $reason | Should -BeLike '*PowerShell(`*git `*push`*--force`*)*'
