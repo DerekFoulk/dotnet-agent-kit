@@ -186,6 +186,7 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'git push -du origin feat/x' }
                 @{ Tool = $tool; Command = 'git push origin feat/x -uf' }
                 @{ Tool = $tool; Command = 'git push origin feat/x -ud' }
+                # Review 7: the end-of-command -fu and -du forms.
                 @{ Tool = $tool; Command = 'git push origin feat/x -fu' }
                 @{ Tool = $tool; Command = 'git push origin feat/x -du' }
             }
