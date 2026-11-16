@@ -105,18 +105,21 @@ rules:
     scope: core
     paths: ["spikes/**"]
   - id: ARC-008
-    statement: "Assemblies marked pure (core business logic) use no hidden dependencies: no clock, randomness, file or network access except through injected abstractions."
-    why: "Pure logic gives deterministic tests; opt-in per project."
+    statement: "No code reads the clock directly: the time comes from an injected TimeProvider. Assemblies marked pure (core business logic) also use no randomness, file or network access except through injected abstractions."
+    why: "Pure logic gives deterministic tests; opt-in per project. The clock is read everywhere, so it's injected everywhere: Microsoft's world-ready apps page says to use TimeProvider, and the sample already does, except one test helper (.NET best-practices pass, owner 2026-11-16: \"Yes, accept them\")."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
+    sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-16", "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/datetime/choosing-between-datetime, retrieved 2026-11-15"]
     enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: BannedSymbols.txt bans DateTime.Now, UtcNow and Today and DateTimeOffset.Now and UtcNow in every project (RS0030), and the compiler rejects the obsolete TimeZone (CS0618, an error under STY-004); tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each"
       - kind: advisory
         in: [kit, app]
-        how: "the banned-API analyzer runs in every project (ADR-0043), but the ban list for pure assemblies (clock, randomness, file and network access) isn't written yet (web profile, after v0.1)"
+        how: "the ban list for pure assemblies' randomness, file and network access isn't written yet, nor how an assembly is marked pure (GAP-039)"
     scope: core
-    paths: ["src/**"]
+    paths: ["**/*.cs", "BannedSymbols.txt"]
   - id: ARC-009
     statement: "Give an app only the structure today's requirements need: a web app starts with one ARC-001 module and gets another only for a second distinct business area (its own language, data and rules), never one per entity or feature; a console tool, a standalone worker or a library is one project and its tests, its concerns kept apart by namespace, until code another app must share or a boundary the compiler must enforce needs a second project (ARC-010 settles MAUI and desktop apps); every project, each of a module's five included, is created with its first real type, never before; and inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository or an interface that inverts no dependency come only with the requirement the plan names for each."
     why: "Microsoft keeps DDD and CQRS patterns for complex domains and calls them over-engineering for simple services, and the Well-Architected Framework asks for every component to be justified by a requirement; an agent following ARC-001 to the letter can still build every layer and pattern for a tiny app (GAP-002)."

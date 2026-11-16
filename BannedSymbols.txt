@@ -91,3 +91,55 @@ P:System.Net.Http.HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
 F:System.Xml.DtdProcessing.Parse;Parsing DTDs lets the input pull in files and URLs; leave DtdProcessing at Prohibit or Ignore, or suppress with the reason for a trusted document that needs its DTD (CA3075, SEC-014)
 T:System.Xml.XmlUrlResolver;Resolves external references named in the input; set XmlResolver to null, or suppress with the reason for a trusted stylesheet that needs xsl:include (CA3075, SEC-014)
 T:System.Xml.XmlTextReader;A legacy reader with no safe default; use XmlReader.Create with XmlReaderSettings (CA3075, CA3077, SEC-014)
+
+// The clock (ARC-008, the .NET best-practices pass): the time comes from an injected TimeProvider, which a test can fake
+// and which is the same clock everywhere. Microsoft's world-ready apps page says to use TimeProvider
+// (https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps). TimeZone needs no
+// ban: it's obsolete, and CS0618 is an error under STY-004.
+P:System.DateTime.Now;Read the time from an injected TimeProvider (GetLocalNow), which a test can fake (ARC-008)
+P:System.DateTime.UtcNow;Read the time from an injected TimeProvider (GetUtcNow), which a test can fake (ARC-008)
+P:System.DateTime.Today;Read the time from an injected TimeProvider (GetLocalNow().Date), which a test can fake (ARC-008)
+P:System.DateTimeOffset.Now;Read the time from an injected TimeProvider (GetLocalNow), which a test can fake (ARC-008)
+P:System.DateTimeOffset.UtcNow;Read the time from an injected TimeProvider (GetUtcNow), which a test can fake (ARC-008)
+
+// HttpClient (OPS-003, the .NET best-practices pass): a client comes from IHttpClientFactory, with its pooled handlers and
+// the standard resilience handler. One built and disposed per request exhausts sockets and misses DNS changes, and
+// CA2000's fix for an undisposed client is that very pattern
+// (https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines). An app that needs cookies
+// suppresses this at its one long-lived client, naming the ADR that decided it.
+M:System.Net.Http.HttpClient.#ctor;Get the client from IHttpClientFactory (AddHttpClient), which pools handlers and adds the resilience handler (OPS-003)
+M:System.Net.Http.HttpClient.#ctor(System.Net.Http.HttpMessageHandler);Get the client from IHttpClientFactory (AddHttpClient), which pools handlers and adds the resilience handler (OPS-003)
+M:System.Net.Http.HttpClient.#ctor(System.Net.Http.HttpMessageHandler,System.Boolean);Get the client from IHttpClientFactory (AddHttpClient), which pools handlers and adds the resilience handler (OPS-003)
+
+// Blocking on a task (STY-011, the C# async page's table): await it. Blocking can deadlock under a synchronization context
+// and ties up a thread, and Wait and Result wrap the exception in an AggregateException; CA1849 sees a blocking call only
+// inside an async method. Where await can't reach, GetAwaiter().GetResult() stays open, the page's preferred way to block
+// (https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios).
+M:System.Threading.Tasks.Task.Wait;Await the task; where await can't reach, use GetAwaiter().GetResult() with the reason (STY-011)
+M:System.Threading.Tasks.Task.Wait(System.Int32);Await the task, with WaitAsync for a time limit (STY-011)
+M:System.Threading.Tasks.Task.Wait(System.TimeSpan);Await the task, with WaitAsync for a time limit (STY-011)
+M:System.Threading.Tasks.Task.Wait(System.Threading.CancellationToken);Await the task, with WaitAsync for a token (STY-011)
+M:System.Threading.Tasks.Task.Wait(System.Int32,System.Threading.CancellationToken);Await the task, with WaitAsync for a time limit and a token (STY-011)
+M:System.Threading.Tasks.Task.Wait(System.TimeSpan,System.Threading.CancellationToken);Await the task, with WaitAsync for a time limit and a token (STY-011)
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[]);Await Task.WhenAll (STY-011)
+M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task});Await Task.WhenAll (STY-011)
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[],System.Int32);Await Task.WhenAll, with WaitAsync for a time limit (STY-011)
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[],System.TimeSpan);Await Task.WhenAll, with WaitAsync for a time limit (STY-011)
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[],System.Threading.CancellationToken);Await Task.WhenAll, with WaitAsync for a token (STY-011)
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[],System.Int32,System.Threading.CancellationToken);Await Task.WhenAll, with WaitAsync for a time limit and a token (STY-011)
+M:System.Threading.Tasks.Task.WaitAll(System.Collections.Generic.IEnumerable{System.Threading.Tasks.Task},System.Threading.CancellationToken);Await Task.WhenAll, with WaitAsync for a token (STY-011)
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[]);Await Task.WhenAny (STY-011)
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[],System.Int32);Await Task.WhenAny, with WaitAsync for a time limit (STY-011)
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[],System.TimeSpan);Await Task.WhenAny, with WaitAsync for a time limit (STY-011)
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[],System.Threading.CancellationToken);Await Task.WhenAny, with WaitAsync for a token (STY-011)
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[],System.Int32,System.Threading.CancellationToken);Await Task.WhenAny, with WaitAsync for a time limit and a token (STY-011)
+P:System.Threading.Tasks.Task`1.Result;Await the task; where await can't reach, use GetAwaiter().GetResult() with the reason (STY-011)
+M:System.Threading.Thread.Sleep(System.Int32);Await Task.Delay, with the injected TimeProvider where a test should control it (STY-011)
+M:System.Threading.Thread.Sleep(System.TimeSpan);Await Task.Delay, with the injected TimeProvider where a test should control it (STY-011)
+
+// Non-generic collections (STY-009): they box their items and check no types. Microsoft's thread-safe collections page
+// replaces them with the generic and concurrent collections (https://learn.microsoft.com/dotnet/standard/collections/thread-safe/).
+T:System.Collections.ArrayList;Use List<T>, or a System.Collections.Concurrent collection for shared writes (STY-009)
+T:System.Collections.Hashtable;Use Dictionary<TKey,TValue>, or ConcurrentDictionary for shared writes (STY-009)
+T:System.Collections.Queue;Use Queue<T>, or ConcurrentQueue<T> for shared writes (STY-009)
+T:System.Collections.Stack;Use Stack<T>, or ConcurrentStack<T> for shared writes (STY-009)

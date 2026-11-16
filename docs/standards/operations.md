@@ -34,21 +34,24 @@ rules:
     scope: core
     paths: ["**/Program.cs", "**/*ServiceDefaults*/**", "**/*Infrastructure*/**"]
   - id: OPS-003
-    statement: "Every HttpClient gets the standard resilience handler (timeouts, retries with backoff, circuit breaker) from the ServiceDefaults project, retrying only safe methods; a client that needs other settings removes the default handler (RemoveAllResilienceHandlers, experimental: suppress EXTEXP0001 with a reason) before adding its own."
-    why: "A call to another service without a timeout can hang a request forever, and a retry without backoff can overload a service that is already struggling (GAP-007)."
+    statement: "Every HttpClient comes from IHttpClientFactory and gets the standard resilience handler (timeouts, retries with backoff, circuit breaker) from the ServiceDefaults project, retrying only safe methods; a client that needs other settings removes the default handler (RemoveAllResilienceHandlers, experimental: suppress EXTEXP0001 with a reason) before adding its own. An app that needs cookies, which the factory's pooled handlers would share, keeps one long-lived HttpClient over a SocketsHttpHandler with a PooledConnectionLifetime instead, decided by ADR."
+    why: "A call to another service without a timeout can hang a request forever, and a retry without backoff can overload a service that is already struggling (GAP-007). A client built and disposed per request exhausts sockets and never sees a DNS change, and CA2000's fix for an undisposed client is that very pattern, so the constructors are banned (.NET best-practices pass, owner 2026-11-16)."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["ADR-0037", "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-08", "owner, 2026-11-09"]
+    sources: ["ADR-0037", "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-08", "owner, 2026-11-09", "owner, 2026-11-16", "https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
         in: [kit]
         how: "ci: the sample's FunctionalTests check that a client from IHttpClientFactory has the resilience handler and doesn't retry a failed POST"
+      - kind: gate
+        in: [kit, app]
+        how: "build: BannedSymbols.txt bans HttpClient's constructors (RS0030), so a client comes from the factory or, for the cookie case, from a suppression that names its ADR (CRF-001); tools/tests/BuildConfig.Tests.ps1 has a failing fixture"
       - kind: advisory
         in: [app]
         how: "until the app follows the sample"
     scope: core
-    paths: ["**/*ServiceDefaults*/**"]
+    paths: ["**/*ServiceDefaults*/**", "**/*.cs", "BannedSymbols.txt"]
   - id: OPS-004
     statement: "Every app keeps a runbook at docs/runbook.md, started from the kit's template: a Status line (Draft or In use), a Last reviewed date, a reference section on where it runs, and one how-to guide each for deploying a release, rolling one back, checking its health, reading its telemetry, restoring its data and responding to an incident; before the app's first production deployment every placeholder is filled in and the status set to In use, and the runbook is reviewed whenever how the app is deployed, hosted or stores data changes."
     why: "Under pressure, whoever is on call follows written, tested steps instead of improvising; the Well-Architected Framework asks for version-controlled runbooks with review dates, a rollback to the last known good release, and a documented incident process (GAP-017)."
@@ -113,7 +116,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: CA1849 (a blocking call where an async one exists), CA2016 (cancellation tokens) and CA1848 (LoggerMessage-based logging), which AnalysisLevel latest-all turns on"
+        how: "build: CA1849 (a blocking call where an async one exists), BannedSymbols.txt's bans of blocking waits (STY-011) and of HttpClient's constructors (OPS-003), CA2016 (cancellation tokens) and CA1848 (LoggerMessage-based logging), which AnalysisLevel latest-all turns on"
       - kind: advisory
         in: [kit, app]
         how: "code review checks the rest with the analyzing-dotnet-performance skill, and TST-009's benchmarks and load test measure it"
