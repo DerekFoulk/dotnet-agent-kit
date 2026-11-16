@@ -24,6 +24,7 @@ public sealed class ArgumentTests
         { "NullForgivingRule.Check", () => _ = NullForgivingRule.Check(null!).ToList() },
         { "GeneratedMarkerRule.Check", () => _ = GeneratedMarkerRule.Check(null!).ToList() },
         { "EfCoreMigrations.Contains", () => EfCoreMigrations.Contains(null!) },
+        { "EfCoreMigrations.Contains projectFolder", () => EfCoreMigrations.Contains("A.cs", null!) },
     };
 
     [Theory]
