@@ -46,7 +46,7 @@ rules:
         how: "ci: the sample's FunctionalTests check that a client from IHttpClientFactory has the resilience handler and doesn't retry a failed POST"
       - kind: gate
         in: [kit, app]
-        how: "build: BannedSymbols.txt bans HttpClient's constructors (RS0030), so a client comes from the factory or, for the cookie case, from a suppression that names its ADR (CRF-010); tools/tests/BuildConfig.Tests.ps1 has a failing fixture"
+        how: "build: BannedSymbols.txt bans HttpClient's constructors (RS0030), so a client comes from the factory or, for the cookie case, from the ADR that lifts the ban at that client (CRF-010); tools/tests/BuildConfig.Tests.ps1 has a failing fixture"
       - kind: advisory
         in: [app]
         how: "until the app follows the sample"
