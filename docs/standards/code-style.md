@@ -33,11 +33,11 @@ rules:
     layer: owner
     basis: preference
     status: accepted
-    sources: ["ADR-0009", "ADR-0043", "ADR-0049", "https://learn.microsoft.com/dotnet/core/project-sdk/msbuild-props#analysislevel, retrieved 2026-11-13"]
+    sources: ["ADR-0009", "ADR-0043", "ADR-0049", "owner, 2026-11-16", "https://learn.microsoft.com/dotnet/core/project-sdk/msbuild-props#analysislevel, retrieved 2026-11-13", "https://learn.microsoft.com/dotnet/standard/base-types/best-practices-regex, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/native-interop/best-practices, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: AnalysisLevel latest-all, and the root .globalconfig for every rule latest-all leaves off, with Directory.Build.props declaring ComVisible(false) on every assembly for CA1017 (ADR-0043) and CLSCompliant(false) for CA1014 (ADR-0049); tools/tests/BuildConfig.Tests.ps1 (the CatchAll fixture; one fixture per family of rules latest-all turns on that Microsoft's .NET best-practices pages rely on: strings and culture, CA1305, CA1307, CA1309, CA1310, CA1311; dispose, CA2000, CA1063, CA1816, CA1001; async, CA2008, CA2016, CA1849, CA2012, and CS4014, a compiler warning; logging, CA1848, CA2254, CA1727, CA1873; throwing, CA2200, CA2201, CA1510 to CA1513; and fixtures that cover every rule .globalconfig turns on)"
+        how: "build: AnalysisLevel latest-all, and the root .globalconfig for every rule latest-all leaves off, SYSLIB1045 ([GeneratedRegex]) and SYSLIB1054 ([LibraryImport]) among them, which the SDK leaves at info, with Directory.Build.props declaring ComVisible(false) on every assembly for CA1017 (ADR-0043) and CLSCompliant(false) for CA1014 (ADR-0049); tools/tests/BuildConfig.Tests.ps1 (the CatchAll fixture; one fixture per family of rules latest-all turns on that Microsoft's .NET best-practices pages rely on: strings and culture, CA1305, CA1307, CA1309, CA1310, CA1311; dispose, CA2000, CA1063, CA1816, CA1001; async, CA2008, CA2016, CA1849, CA2012, and CS4014, a compiler warning; logging, CA1848, CA2254, CA1727, CA1873; throwing, CA2200, CA2201, CA1510 to CA1513; and fixtures that cover every rule .globalconfig turns on)"
     scope: core
     paths: ["**/*.cs", "Directory.Build.props", ".globalconfig"]
   - id: STY-004
@@ -83,19 +83,19 @@ rules:
     scope: core
     paths: [".editorconfig"]
   - id: STY-007
-    statement: "Code follows Microsoft's C# coding conventions and identifier names: PascalCase for types, namespaces, members, local functions and local constants, camelCase for parameters and locals; simple using declarations; collection expressions; a target-typed new() where the type is apparent; a primary constructor where a constructor only assigns its parameters; and parentheses wherever operators of different precedence meet."
+    statement: "Code follows Microsoft's C# coding conventions and identifier names: PascalCase for types, namespaces, members, local functions and local constants, camelCase for parameters and locals; simple using declarations; collection expressions; a target-typed new() where the type is apparent; a primary constructor where a constructor only assigns its parameters; parentheses wherever operators of different precedence meet; and a dedicated System.Threading.Lock for a lock statement."
     why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12: \"adhere to all of the guidance provided by Microsoft Learn\"); the rules audit mapped both pages recommendation by recommendation and made every one an analyzer can check a gate."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/identifier-names, retrieved 2026-11-12"]
+    sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-12", "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/identifier-names, retrieved 2026-11-12", "owner, 2026-11-16", "ADR-0076", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/task-based-asynchronous-pattern-tap, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/standard/threading/managed-threading-best-practices, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: .editorconfig's naming rules with IDE1006 at warning (the build reports a naming rule only at IDE1006's own severity), and IDE0063, IDE0300 to IDE0305, IDE0090, IDE0290, IDE0047 and IDE0048 at warning; tools/tests/BuildConfig.Tests.ps1 has a failing fixture for each"
+        how: "build: .editorconfig's naming rules with IDE1006 at warning (the build reports a naming rule only at IDE1006's own severity), and IDE0063, IDE0300 to IDE0305, IDE0090, IDE0290, IDE0047, IDE0048 and IDE0330 at warning; tools/tests/BuildConfig.Tests.ps1 has a failing fixture for each"
       - kind: advisory
         in: [kit, app]
-        how: "the recommendations no analyzer checks, checked by code review: meaningful names without abbreviations or single letters, no double underscore, t_ for thread-static fields, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
+        how: "the recommendations no analyzer checks, checked by code review: an Async suffix on a method that returns an awaitable, async or not (the TAP and C# async pages), except where a framework or the pages say otherwise: an event handler, a controller action (MVC trims the suffix, so nameof() in CreatedAtAction would name a missing action), middleware's Invoke and a test method (ADR-0076: a naming rule tripped these, so the owner's decision keeps it advisory); meaningful names without abbreviations or single letters, no double underscore, t_ for thread-static fields, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
     scope: core
     paths: ["**/*.cs", ".editorconfig"]
   - id: STY-008
@@ -141,21 +141,24 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: STY-011
-    statement: "Code awaits a task instead of blocking on it: no Task.Wait, Task.WaitAll, Task.WaitAny, Task<T>.Result or Thread.Sleep; where await can't reach, such as a synchronous interface the code must implement, it blocks with GetAwaiter().GetResult() and a comment saying why."
-    why: "Blocking on a task can deadlock under a synchronization context and ties up a thread the pool needs; Wait and Result also wrap the exception in an AggregateException. Microsoft's C# async page replaces each blocking call with an await, and lists GetAwaiter().GetResult() first where blocking can't be avoided, because it keeps the original exception (.NET best-practices and C# guidance passes, owner 2026-11-16: \"Yes, accept them\"). CA1849 flags a blocking call only inside an async method, so a ban covers the rest. Thread.Sleep is in the page's table too: a pause is awaited, with Task.Delay."
+    statement: "Code awaits a task instead of blocking on it: no Task.Wait, Task.WaitAll, Task.WaitAny, Task<T>.Result or Thread.Sleep; where await can't reach, such as a synchronous interface the code must implement, it blocks with GetAwaiter().GetResult() and a comment saying why. No method or lambda is async void, except an event handler, which suppresses the rule where it lives with that reason: VSTHRD100 on a method, VSTHRD101 on a lambda (with #pragma warning disable, since a SuppressMessage attribute on a lambda compiles but doesn't suppress it)."
+    why: "Blocking on a task can deadlock under a synchronization context and ties up a thread the pool needs; Wait and Result also wrap the exception in an AggregateException. Microsoft's C# async page replaces each blocking call with an await, and lists GetAwaiter().GetResult() first where blocking can't be avoided, because it keeps the original exception (.NET best-practices and C# guidance passes, owner 2026-11-16: \"Yes, accept them\"). CA1849 flags a blocking call only inside an async method, so a ban covers the rest. Thread.Sleep is in the page's table too: a pause is awaited, with Task.Delay. An async void method or lambda can't be awaited, so its caller can't catch its exception (the C# async page), which is likely to bring the app down (the async return types page); event handlers are the page's one exception, and the threading analyzers flag them too, so each says why where it lives (ADR-0076)."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-16", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/consuming-the-task-based-asynchronous-pattern, retrieved 2026-11-15"]
+    sources: ["owner, 2026-11-16", "ADR-0076", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-return-types, retrieved 2026-11-16", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/consuming-the-task-based-asynchronous-pattern, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
         in: [kit, app]
         how: "build: BannedSymbols.txt bans every overload of Task.Wait, Task.WaitAll and Task.WaitAny, Task<T>.Result and Thread.Sleep (RS0030), and CA1849 flags a blocking call inside an async method; tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each banned call, a test that every public overload is listed, and a fixture that builds with GetAwaiter().GetResult(), the way out that needs no suppression; RS0030 is never suppressed without an ADR (CRF-010)"
+      - kind: gate
+        in: [kit, app]
+        how: "build: Microsoft.VisualStudio.Threading.Analyzers, a global package reference, reports async void (VSTHRD100) and an async lambda passed as a void delegate (VSTHRD101), with its other rules off (ADR-0076); tools/tests/BuildConfig.Tests.ps1 has a failing fixture for each"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks that each GetAwaiter().GetResult() is where await can't reach, with its reason"
+        how: "code review checks that each GetAwaiter().GetResult() is where await can't reach, with its reason, and that a VSTHRD100 or VSTHRD101 suppression is on an event handler"
     scope: core
-    paths: ["**/*.cs", "BannedSymbols.txt"]
+    paths: ["**/*.cs", "BannedSymbols.txt", ".editorconfig", "Directory.Packages.props"]
 ---
 
 # Code style

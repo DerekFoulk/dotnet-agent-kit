@@ -107,6 +107,13 @@ BeforeDiscovery {
         @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1513'; Description = 'a hand-written disposed check where ObjectDisposedException.ThrowIf does (STY-003)' }
         @{ Fixture = 'RecordStructNotReadonly'; Diagnostic = 'IDE0250'; Description = 'a record struct whose members are all read-only but isn''t declared readonly (STY-009)' }
         @{ Fixture = 'InternalExceptionInLibrary'; Diagnostic = 'CA1064'; Description = 'an internal exception in a class library (STY-009)' }
+        # The .NET best-practices and C# passes (owner, 2026-11-16): the modern APIs Microsoft's pages ask for, and async void,
+        # which only the threading analyzers see (ADR-0076).
+        @{ Fixture = 'RegexConstructed'; Diagnostic = 'SYSLIB1045'; Description = 'a regex built at run time, where [GeneratedRegex] does, a rule latest-all leaves at info (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'DllImportUsed'; Diagnostic = 'SYSLIB1054'; Description = 'a [DllImport], where [LibraryImport] does, a rule latest-all leaves at info (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'LockOnObject'; Diagnostic = 'IDE0330'; Description = 'a lock on an object, where System.Threading.Lock does (STY-007)' }
+        @{ Fixture = 'AsyncVoid'; Diagnostic = 'VSTHRD100'; Description = 'an async void method (STY-011)' }
+        @{ Fixture = 'AsyncVoid'; Diagnostic = 'VSTHRD101'; Description = 'an async lambda passed as a void delegate (STY-011)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
@@ -415,6 +422,22 @@ Describe 'Repo build configuration' -Tag 'Build' {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'PublicExceptionInLibrary')
 
             $build.Output | Should -Not -Match 'CA1064|CA1515|CA1032'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
+    # STY-011 (ADR-0076): of the threading analyzers, only VSTHRD100 and VSTHRD101 are on, so the names a framework fixes
+    # or documents (an async Main, middleware's InvokeAsync and async Invoke, a Razor Pages OnGetAsync) and a test method named for its
+    # behavior (TST-010) build, where VSTHRD200 would ask for or against an Async suffix.
+    Context 'the threading analyzers'' other rules stay off' {
+        It 'allows <Description>' -ForEach @(
+            @{ Project = 'Console'; Description = 'an async Main' }
+            @{ Project = 'Web'; Description = 'middleware''s InvokeAsync and async Invoke, and a Razor Pages handler''s OnGetAsync' }
+            @{ Project = 'Widgets.Tests'; Description = 'a test method with no Async suffix' }
+        ) {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'AsyncNamingAllowed') -Project $Project
+
+            $build.Output | Should -Not -Match 'IDE1006|VSTHRD'
             $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
