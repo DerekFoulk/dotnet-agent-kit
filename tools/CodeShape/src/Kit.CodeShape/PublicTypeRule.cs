@@ -10,11 +10,16 @@ namespace Kit.CodeShape;
 /// type over the limit. A file's exception marker covers it (<see cref="LimitExemption"/>).</summary>
 internal static class PublicTypeRule
 {
-    /// <summary>Checks one file.</summary>
-    public static IEnumerable<Finding> Check(SourceFile file)
+    /// <summary>Checks each of one project's hand-written files.</summary>
+    public static IEnumerable<Finding> Check(IReadOnlyList<SourceFile> files)
     {
-        ArgumentNullException.ThrowIfNull(file);
+        ArgumentNullException.ThrowIfNull(files);
 
+        return files.Where(file => !file.Generated).SelectMany(CheckFile);
+    }
+
+    private static IEnumerable<Finding> CheckFile(SourceFile file)
+    {
         CompilationUnitSyntax root = file.Parse().GetCompilationUnitRoot();
         SyntaxToken[] names = [.. TopLevel(root.Members)
             .Where(type => type.Declaration.Modifiers.Any(SyntaxKind.PublicKeyword))

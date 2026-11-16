@@ -5,7 +5,7 @@ public sealed class PublicTypeRuleTests
     // Every kind of type counts: class, struct, interface, record, enum and delegate.
     [Fact]
     public void ASecondPublicTypeIsReportedAtItsName() =>
-        PublicTypeRule.Check(new SourceFile("Many.cs", """
+        PublicTypeRule.Check([new SourceFile("Many.cs", """
             namespace App;
 
             public class First { }
@@ -16,7 +16,7 @@ public sealed class PublicTypeRuleTests
             public interface IFourth { }
             public enum Fifth { A }
             public delegate void Sixth();
-            """)).Should().ContainSingle().Which.Should().BeEquivalentTo(new
+            """)]).Should().ContainSingle().Which.Should().BeEquivalentTo(new
         {
             Path = "Many.cs",
             Line = 5,
@@ -27,14 +27,14 @@ public sealed class PublicTypeRuleTests
     // Only a public top-level type counts: a nested one belongs to the type that holds it.
     [Fact]
     public void OnePublicTypeBesideNestedAndNonPublicOnesIsWithinTheLimit() =>
-        PublicTypeRule.Check(new SourceFile("One.cs", """
+        PublicTypeRule.Check([new SourceFile("One.cs", """
             namespace App;
 
             public class Only { public class Nested { } public enum Kind { A } }
             internal class Helper { }
             file class Local { }
             delegate void Handler();
-            """)).Should().BeEmpty();
+            """)]).Should().BeEmpty();
 
     // Two parts of one partial type are one type; the same name in another namespace, or with type parameters, isn't.
     [Theory]
@@ -43,10 +43,15 @@ public sealed class PublicTypeRuleTests
     [InlineData("namespace N { public class A { } } namespace M { public class A { } }", 1)]
     [InlineData("public class Box { } public class Box<T> { }", 1)]
     public void APartialTypesPartsInOneFileAreOneType(string text, int findings) =>
-        PublicTypeRule.Check(new SourceFile("Parts.cs", text)).Should().HaveCount(findings);
+        PublicTypeRule.Check([new SourceFile("Parts.cs", text)]).Should().HaveCount(findings);
 
     // A file's top-level statements aren't types.
     [Fact]
     public void TopLevelStatementsBesideOnePublicTypeAreWithinTheLimit() =>
-        PublicTypeRule.Check(new SourceFile("Program.cs", "System.Console.WriteLine(); public class Only { }")).Should().BeEmpty();
+        PublicTypeRule.Check([new SourceFile("Program.cs", "System.Console.WriteLine(); public class Only { }")]).Should().BeEmpty();
+
+    // What a generator writes isn't reported on: nobody arranges its files by hand.
+    [Fact]
+    public void AGeneratedFileIsNotReported() =>
+        PublicTypeRule.Check([new SourceFile("Made.g.cs", "public class A { } public class B { }") { Generated = true }]).Should().BeEmpty();
 }
