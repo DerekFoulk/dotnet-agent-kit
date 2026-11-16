@@ -41,12 +41,12 @@ If you find nothing, say so.
   - an enum, not Booleans, where a member would take two or more Boolean parameters or a Boolean might later need a third value; a constructor's Boolean that only sets a Boolean property is fine;
   - events typed `EventHandler<TEventArgs>`, with an `EventArgs` subclass for their data;
   - operator overloads only on types that behave like primitives, such as a money or vector type.
-- Microsoft's .NET best-practices and C# guidance that no analyzer checks (STY-012; the analyzers, bans and rules STY-012 names gate the rest). Rank each **Consider**, or higher where it causes a defect:
+- Microsoft's .NET best-practices and C# guidance that no analyzer checks (STY-012; the analyzers, bans and rules STY-012 names gate the rest). Rank each **Consider**, or higher where it causes a defect, and **Blocking** where it's a security or privacy problem (a secret or personal data in a message, untrusted input in a pattern or matched with no timeout):
   - **Exceptions.**
-    - A Try method or a check comes before a failure callers expect often, and state is restored when an operation fails partway.
+    - State is restored when an operation fails partway (STY-010 covers the Try pattern).
     - Messages are full sentences that end in a period, with no secret or personal data (SEC-012).
     - Catch `OperationCanceledException`, not `TaskCanceledException`.
-    - An argument check in a task-returning method throws before the first `await`, so it throws synchronously: a wrapper method, then a local async function.
+    - An argument check in a task-returning method throws synchronously, so the check sits in a method that isn't `async` and the work in a local async function: in an `async` method, even a throw before the first `await` lands in the returned task.
     - A hand-written guard with its own message where a `ThrowIf` helper would do: CA1510 to CA1513 see only guards with no message.
   - **Culture.**
     - What users see is formatted and compared in the current culture.
@@ -60,11 +60,12 @@ If you find nothing, say so.
   - **Async.**
     - A cancelable operation takes a `CancellationToken` and passes it on.
     - `Task` unless measurements call for `ValueTask`.
-    - Async is for I/O-bound work.
+    - I/O-bound work is awaited directly, not wrapped in `Task.Run`; CPU-bound work is offloaded with `await Task.Run` where a UI thread must stay free.
+    - An Async suffix on a method that returns an awaitable, except an event handler, a controller action, middleware's `Invoke` and a test method (STY-007).
     - Tasks a LINQ query creates are started with `ToArray()` or `ToList()` before `Task.WhenAll` or `Task.WhenAny`.
     - Every `TaskCompletionSource` is completed.
     - Each `GetAwaiter().GetResult()` is where `await` can't reach, with its reason (STY-011).
-    - Each VSTHRD100 suppression is on an event handler (ADR-0076).
+    - Each VSTHRD100 or VSTHRD101 suppression is on an event handler (STY-011, ADR-0076).
   - **Equality.**
     - A record compares a collection member by reference, so two records holding equal lists aren't equal: implement `IEquatable<T>` with `SequenceEqual`, or design around it.
     - `is null` and `ReferenceEquals` test identity.
@@ -79,7 +80,7 @@ If you find nothing, say so.
     - Each `IMemoryOwner<T>` is disposed or handed on, never both.
   - **Options.**
     - Related settings are read through an options class, not `IConfiguration` lookups.
-    - Nested options are validated too (`[ValidateObjectMembers]`, `[ValidateEnumeratedItems]`, or the options validation source generator; OPS-006).
+    - Nested options are validated too, with `[ValidateObjectMembers]` and `[ValidateEnumeratedItems]`, which the options validation source generator honors too (OPS-006).
   - **Regex.**
     - No pattern is built from untrusted input.
     - Matching untrusted input sets a timeout or uses `RegexOptions.NonBacktracking`.
