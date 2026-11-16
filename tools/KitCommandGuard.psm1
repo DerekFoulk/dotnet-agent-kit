@@ -120,7 +120,7 @@ function New-BashReader {
 function Read-BashList {
     param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [AllowEmptyString()] [string] $Close)
 
-    $builder = [pscustomobject]@{ Words = [Collections.Generic.List[string]]::new(); Word = [Text.StringBuilder]::new(); InWord = $false; Quoted = $false; Redirect = $null; Depth = 0 }
+    $builder = [pscustomobject]@{ Words = [Collections.Generic.List[string]]::new(); Word = [Text.StringBuilder]::new(); InWord = $false; Quoted = $false; Redirect = $null; Depth = 0; CaseDepth = 0; InPattern = $false }
     $text = $Reader.Text
     while ($Reader.Index -lt $text.Length) {
         $c = $text[$Reader.Index]
@@ -148,9 +148,20 @@ function Read-BashList {
         elseif ($c -in '<', '>' -and $next -eq '(') { Add-BashText -Builder $builder -Text (Read-BashSubstitution -Reader $Reader) }
         elseif ($c -in '<', '>') { Read-BashRedirect -Reader $Reader -Builder $builder }
         elseif ($c -eq '&' -and $next -eq '>') { Add-BashWord -Reader $Reader -Builder $builder; $Reader.Index++; Read-BashRedirect -Reader $Reader -Builder $builder }
+        elseif ($builder.InPattern -and $c -in '|', '(', ')') {
+            # In a case statement's pattern list, '|' separates patterns and ')' ends the list.
+            Add-BashWord -Reader $Reader -Builder $builder
+            if ($c -eq ')') { $builder.InPattern = $false }
+            $Reader.Index++
+        }
         elseif ($c -in '&', '|', ';') {
             Complete-BashCommand -Reader $Reader -Builder $builder
-            $Reader.Index += if ("$c$next" -in '&&', '||', '|&', ';;', ';&') { 2 } else { 1 }
+            $operator = foreach ($candidate in ';;&', '&&', '||', '|&', ';;', ';&', [string] $c) {
+                if ($text.Substring($Reader.Index).StartsWith($candidate, [StringComparison]::Ordinal)) { $candidate; break }
+            }
+            $Reader.Index += $operator.Length
+            # ";;", ";&" and ";;&" end a case item; the next pattern list follows.
+            if ($operator -like ';[;&]*' -and $builder.CaseDepth -gt 0) { $builder.InPattern = $true }
         }
         elseif ($c -eq '(') { Complete-BashCommand -Reader $Reader -Builder $builder; $builder.Depth++; $Reader.Index++ }
         elseif ($c -eq ')') {
@@ -183,11 +194,31 @@ function Add-BashWord {
     if ($Builder.Redirect -like 'heredoc*') {
         $Reader.Heredocs.Add([pscustomobject]@{ Delimiter = $word; Quoted = $Builder.Quoted; StripTabs = $Builder.Redirect -eq 'heredoc-strip' })
     }
-    elseif (-not $Builder.Redirect) { $Builder.Words.Add($word) }
+    elseif (-not $Builder.Redirect) { Add-BashCommandWord -Reader $Reader -Builder $Builder -Word $word }
     $Builder.Redirect = $null
     [void] $Builder.Word.Clear()
     $Builder.InWord = $false
     $Builder.Quoted = $false
+}
+
+# Adds a word to the command being read, except where a case statement makes it something else: "case WORD in" ends
+# a command of its own and starts the patterns, a pattern isn't a command's word, and "esac" ends the statement.
+function Add-BashCommandWord {
+    param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder, [Parameter(Mandatory)] [AllowEmptyString()] [string] $Word)
+
+    $keyword = -not $Builder.Quoted -and $Builder.Words.Count -eq 0
+    if ($keyword -and $Word -ceq 'esac' -and $Builder.CaseDepth -gt 0) {
+        $Builder.CaseDepth--
+        $Builder.InPattern = $false
+        return
+    }
+    if ($Builder.InPattern) { return }
+    $Builder.Words.Add($Word)
+    if ($Builder.Words.Count -eq 3 -and $Builder.Words[0] -ceq 'case' -and $Word -ceq 'in' -and -not $Builder.Quoted) {
+        Add-BashCommand -Reader $Reader -Builder $Builder
+        $Builder.CaseDepth++
+        $Builder.InPattern = $true
+    }
 }
 
 function Complete-BashCommand {
@@ -195,6 +226,13 @@ function Complete-BashCommand {
 
     Add-BashWord -Reader $Reader -Builder $Builder
     $Builder.Redirect = $null
+    Add-BashCommand -Reader $Reader -Builder $Builder
+}
+
+# Moves the words read so far, if any, into a command of their own.
+function Add-BashCommand {
+    param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder)
+
     if ($Builder.Words.Count) {
         $Reader.Commands.Add([pscustomobject]@{ Words = $Builder.Words.ToArray(); Native = $true; Nested = $null })
         $Builder.Words.Clear()
@@ -242,7 +280,7 @@ function Read-BashDoubleQuoted {
         if ($c -eq '"' -and -not $Heredoc) { $Reader.Index++; return $value.ToString() }
         if ($c -eq '\' -and ($next -in '$', '`', '\' -or ($next -eq '"' -and -not $Heredoc))) { [void] $value.Append($next); $Reader.Index += 2 }
         elseif ($c -eq '\' -and $next -eq "`n") { $Reader.Index += 2 }
-        elseif ($c -eq '$') { [void] $value.Append((Read-BashDollar -Reader $Reader)) }
+        elseif ($c -eq '$') { [void] $value.Append((Read-BashDollar -Reader $Reader -Quoted)) }
         elseif ($c -eq '`') { $Reader.Index++; [void] $value.Append((Read-BashBackquote -Reader $Reader)) }
         else { [void] $value.Append($c); $Reader.Index++ }
     }
@@ -250,16 +288,16 @@ function Read-BashDoubleQuoted {
     $value.ToString()
 }
 
-# What a '$' starts: $'...' and $"..." quoting (resolved), $( ) (its commands read, its text kept), and $((...)),
-# ${...} and $name (kept as written).
+# What a '$' starts: $'...' and $"..." quoting (resolved; inside double quotes or a heredoc, -Quoted, they're a
+# literal '$'), $( ) (its commands read, its text kept), and $((...)), ${...} and $name (kept as written).
 function Read-BashDollar {
-    param([Parameter(Mandatory)] [pscustomobject] $Reader)
+    param([Parameter(Mandatory)] [pscustomobject] $Reader, [switch] $Quoted)
 
     $text = $Reader.Text
     $start = $Reader.Index
     $next = if ($start + 1 -lt $text.Length) { $text[$start + 1] } else { [char] 0 }
-    if ($next -eq "'") { $Reader.Index += 2; return Read-BashAnsiC -Reader $Reader }
-    if ($next -eq '"') { $Reader.Index += 2; return Read-BashDoubleQuoted -Reader $Reader }
+    if ($next -eq "'" -and -not $Quoted) { $Reader.Index += 2; return Read-BashAnsiC -Reader $Reader }
+    if ($next -eq '"' -and -not $Quoted) { $Reader.Index += 2; return Read-BashDoubleQuoted -Reader $Reader }
     if ($next -eq '(' -and $start + 2 -lt $text.Length -and $text[$start + 2] -eq '(') { return Read-BashBracketed -Reader $Reader -Open '(' -Close ')' }
     if ($next -eq '(') { return Read-BashSubstitution -Reader $Reader }
     if ($next -eq '{') { return Read-BashBracketed -Reader $Reader -Open '{' -Close '}' }
