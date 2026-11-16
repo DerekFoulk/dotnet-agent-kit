@@ -109,7 +109,7 @@ function Get-CommandGuardDecision {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $AskRules
     )
 
-    $commands = Get-PowerShellCommand -Command $Command
+    try { $commands = Get-PowerShellCommand -Command $Command } catch { return $null }
     foreach ($resolved in $commands) {
         foreach ($spelling in Get-CommandSpelling -Resolved $resolved) {
             foreach ($rule in $AskRules) {

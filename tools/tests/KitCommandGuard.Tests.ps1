@@ -53,6 +53,28 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         Get-CommandGuardDecision -Tool 'PowerShell' -Command './tools/Thing.ps1 -fd x' -AskRules $rules | Should -BeNullOrEmpty
     }
 
+    It 'asks for <Command>, which computes an argument inside ( ), @( ), $( ) or { }' -ForEach @(
+        # Each would run inside a wide allow such as "Add-ReviewReply *" or "git commit *", whatever the inner part does.
+        @{ Command = 'Add-ReviewReply -Body (Get-Content ./.env -Raw)' }
+        @{ Command = 'git commit -m "$(Get-Content ./.env -Raw)"' }
+        @{ Command = 'Wait-PullRequest -Number @(gh pr list)' }
+        @{ Command = './tools/Build-AgentRules.ps1 -Check:$(Remove-Item x)' }
+        @{ Command = 'git commit -m { Remove-Item x }' }
+        # Not a command, but a value built at run time, which no rule can read: here, "--force".
+        @{ Command = "git push origin ('--for'+'ce')" }
+    ) {
+        $reason = Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @()
+        $reason | Should -BeLike '*inside*'
+    }
+
+    It 'leaves a variable in an argument to the rules' {
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command 'git commit -m "fix $name" --author $who' -AskRules @() | Should -BeNullOrEmpty
+    }
+
+    It 'asks for a command PowerShell can''t parse, since nothing in it can be resolved' {
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command 'git push "--force' -AskRules @() | Should -BeLike '*can''t*'
+    }
+
     It 'names the rule and the resolved command in its reason' {
         $reason = Get-CommandGuardDecision -Tool 'PowerShell' -Command "git push --for'ce'" -AskRules 'PowerShell(*git *push*--force*)'
         $reason | Should -BeLike '*PowerShell(`*git `*push`*--force`*)*'
