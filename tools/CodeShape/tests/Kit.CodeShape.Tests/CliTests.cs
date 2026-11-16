@@ -52,7 +52,7 @@ public sealed class CliTests : IDisposable
         (int exitCode, string output) = Run(new { name = "App.csproj", defines = Array.Empty<string>(), files = new[] { tidy } });
 
         exitCode.Should().Be(0);
-        output.Should().Be($"Code shape (CRF-011): 1 project, 1 file, no findings.{Environment.NewLine}");
+        output.Should().Be($"Code shape (CRF-011, STY-005): 1 project, 1 file, no findings.{Environment.NewLine}");
     }
 
     // Test-Duplication.ps1 hands the duplicate finder the same hand-written files, so generated code is skipped by
@@ -105,7 +105,7 @@ public sealed class CliTests : IDisposable
             new { name = "B.csproj", defines = Array.Empty<string>(), files = new[] { two } });
 
         exitCode.Should().Be(0);
-        output.Should().Be($"Code shape (CRF-011): 2 projects, 2 files, no findings.{Environment.NewLine}");
+        output.Should().Be($"Code shape (CRF-011, STY-005): 2 projects, 2 files, no findings.{Environment.NewLine}");
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public sealed class CliTests : IDisposable
         int exitCode = Cli.Run([manifest], output);
 
         exitCode.Should().Be(0);
-        output.ToString().Should().Be($"Code shape (CRF-011): 0 projects, 0 files, no findings.{Environment.NewLine}");
+        output.ToString().Should().Be($"Code shape (CRF-011, STY-005): 0 projects, 0 files, no findings.{Environment.NewLine}");
     }
 
     private string Write(string name, string text)

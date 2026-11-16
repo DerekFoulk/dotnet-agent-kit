@@ -17,6 +17,15 @@ public sealed class NullableDirectiveRuleTests
                 Message = "#nullable changes the nullable context the project sets; nullable stays on in every file (STY-005).",
             });
 
+    // Review 1: EF Core writes #nullable disable into every migration it generates, marking only the designer
+    // file and the snapshot as generated (CSharpMigrationsGenerator), so the migration itself must be allowed it.
+    [Fact]
+    public void AnEfCoreMigrationMayDisableNullable() =>
+        NullableDirectiveRule.Check(new SourceFile(
+            Path.Join("src", "App", "Migrations", "20261116000000_Initial.cs"),
+            "using Microsoft.EntityFrameworkCore.Migrations;\n\n#nullable disable\n\nnamespace App.Migrations\n{\n    public partial class Initial : Migration\n    {\n    }\n}\n"))
+            .Should().BeEmpty();
+
     [Fact]
     public void AFileWithNoDirectiveHasNoFinding() =>
         NullableDirectiveRule.Check(new SourceFile("Tidy.cs", "// #nullable disable, in a comment\nclass Tidy { }\n")).Should().BeEmpty();

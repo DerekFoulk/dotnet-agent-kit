@@ -9,7 +9,7 @@ public sealed class NullForgivingRuleTests
     [Fact]
     public void AnUnlabelledOperatorIsReportedAtTheOperator() =>
         NullForgivingRule.Check(new SourceFile("Name.cs", "class Name\n{\n    string? _text;\n    int Length() => _text!.Length;\n}\n"))
-            .Should().ContainSingle().Which.Should().BeEquivalentTo(new { Path = "Name.cs", Line = 4, Column = 21, Message });
+            .Should().ContainSingle().Which.Should().BeEquivalentTo(new { Path = "Name.cs", Line = 4, Column = 26, Message });
 
     [Fact]
     public void ANullOrDefaultInitializerIsReportedToo() =>
@@ -25,6 +25,25 @@ public sealed class NullForgivingRuleTests
     [Fact]
     public void AnotherCommentDoesNotCoverIt() =>
         NullForgivingRule.Check(new SourceFile("Name.cs", "class Name\n{\n    string? _text;\n    // never null here\n    int Length() => _text!.Length;\n}\n"))
+            .Should().ContainSingle();
+
+    // Review 1: in a chain over several lines, the label goes on the operator's line or the one above it.
+    [Fact]
+    public void TheLabelIsLookedForAroundTheOperatorNotTheStartOfItsOperand() =>
+        NullForgivingRule.Check(new SourceFile("Chain.cs", string.Join('\n',
+            "class Chain",
+            "{",
+            "    int Length(Chain c) => c",
+            "        .Find()",
+            "        // CRF-001 safety net: Find never returns null for a chain it built.",
+            "        .ToString()!.Length;",
+            "    object? Find() => this;",
+            "}"))).Should().BeEmpty();
+
+    // Review 1: only a comment is a label, not the same text in a string.
+    [Fact]
+    public void TheLabelsTextInAStringIsNoLabel() =>
+        NullForgivingRule.Check(new SourceFile("Text.cs", "class Text { string? _t; string Show() => \"// CRF-001 safety net: x\" + _t!.Length; }"))
             .Should().ContainSingle();
 
     [Fact]

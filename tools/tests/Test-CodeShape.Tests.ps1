@@ -54,7 +54,7 @@ Describe 'Test-CodeShape.ps1' {
             $result = Invoke-CodeShapeCheck -Solution (Join-Path $script:fixtures 'Tidy.slnx') -KitRoot $script:kitRoot
 
             $result.ExitCode | Should -Be 0
-            $result.Output | Should -Be 'Code shape (CRF-011): 1 project, 1 file, no findings.'
+            $result.Output | Should -Be 'Code shape (CRF-011, STY-005): 1 project, 1 file, no findings.'
         }
 
         # Review 1 of GAP-019: a tool that doesn't build is a broken check, not a finding in the code.
