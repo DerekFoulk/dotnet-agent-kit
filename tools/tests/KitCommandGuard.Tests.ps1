@@ -19,7 +19,7 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         # Quotes and backtick escapes removed: what git or the script receives.
         @{ Command = "git push --for'ce' origin x" }
         @{ Command = 'git push "--de`lete" origin x' }
-        @{ Command = 'git push --rece''ive-pack=x origin' }
+        @{ Command = 'git push --rece''ive''-pack=x origin' }
         @{ Command = "./tools/New-Kit'App'.ps1 -Name X" }
         @{ Command = '.\tools\New-Kit`App.ps1 -Name X' }
         @{ Command = "& ./tools/New-Kit'App'.ps1 -Name X" }

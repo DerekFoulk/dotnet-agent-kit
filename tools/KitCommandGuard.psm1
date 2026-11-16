@@ -34,6 +34,57 @@ function Test-PermissionRuleMatch {
     [regex]::IsMatch($Command, $regex, $options)
 }
 
+# One argument of a PowerShell command as the command receives it: a string with its quotes and backtick escapes
+# resolved, a parameter by its name (and ":value"), anything computed at run time (a variable, an expression) as
+# written.
+function ConvertTo-PowerShellWord {
+    param([Parameter(Mandatory)] [Management.Automation.Language.Ast] $Element)
+
+    if ($Element -is [Management.Automation.Language.StringConstantExpressionAst] -or
+        $Element -is [Management.Automation.Language.ExpandableStringExpressionAst]) {
+        return $Element.Value
+    }
+    if ($Element -is [Management.Automation.Language.CommandParameterAst]) {
+        # The parser keeps a backtick inside a parameter's name ("-Mo`de"); PowerShell binds it without one.
+        $word = '-' + ($Element.ParameterName -replace '`(.)', '$1')
+        if ($Element.Argument) { $word += ':' + (ConvertTo-PowerShellWord -Element $Element.Argument) }
+        return $word
+    }
+    $Element.Extent.Text
+}
+
+# Each command in a PowerShell command line, from PowerShell's own parser: Words holds the command as it will run
+# ("&" or "." first when it's invoked with one). Throws when the text doesn't parse, since PowerShell won't run it
+# either and nothing it holds can be resolved.
+function Get-PowerShellCommand {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Command)
+
+    $tokens = $null
+    $errors = $null
+    $ast = [Management.Automation.Language.Parser]::ParseInput($Command, [ref] $tokens, [ref] $errors)
+    if ($errors.Count) { throw "PowerShell can't parse it: $($errors[0].Message)" }
+
+    foreach ($commandAst in $ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] }, $true)) {
+        $words = [Collections.Generic.List[string]]::new()
+        switch ($commandAst.InvocationOperator) {
+            'Ampersand' { $words.Add('&') }
+            'Dot' { $words.Add('.') }
+        }
+        foreach ($element in $commandAst.CommandElements) { $words.Add((ConvertTo-PowerShellWord -Element $element)) }
+        [pscustomobject]@{ Words = $words.ToArray() }
+    }
+}
+
+# The spellings of one resolved command that the ask rules are matched against: its words joined by spaces.
+function Get-CommandSpelling {
+    param([Parameter(Mandatory)] [pscustomobject] $Resolved)
+
+    $Resolved.Words -join ' '
+}
+
+# Why the command guard asks before a command runs, or $null when it leaves the command to Claude Code's own rules.
+# It resolves the command as the shell will and asks when an ask rule covers the result, so a spelling the rule's
+# text misses ("git push --for'ce'") still prompts.
 function Get-CommandGuardDecision {
     param(
         [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool,
@@ -41,6 +92,16 @@ function Get-CommandGuardDecision {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $AskRules
     )
 
+    $commands = Get-PowerShellCommand -Command $Command
+    foreach ($resolved in $commands) {
+        foreach ($spelling in Get-CommandSpelling -Resolved $resolved) {
+            foreach ($rule in $AskRules) {
+                if (Test-PermissionRuleMatch -Rule $rule -Tool $Tool -Command $spelling -IgnoreCase:($Tool -eq 'PowerShell')) {
+                    return "The command guard (ADR-0076) resolved this command to ""$spelling"", which the ask rule ""$rule"" covers."
+                }
+            }
+        }
+    }
     $null
 }
 
