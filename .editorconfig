@@ -219,6 +219,47 @@ dotnet_code_quality.CA2208.api_surface = all
 dotnet_code_quality.CA1815.api_surface = public, internal
 dotnet_code_quality.CA1819.api_surface = public, internal
 
+# (kit) STY-007: Microsoft's managed threading page: a dedicated System.Threading.Lock with the lock statement (.NET 9+).
+csharp_prefer_system_threading_lock = true:warning
+dotnet_diagnostic.IDE0330.severity = warning
+
+# (kit) STY-011, ADR-0076: Microsoft.VisualStudio.Threading.Analyzers is here for VSTHRD100 (async void) and VSTHRD101
+# (an async lambda passed as a void delegate) only, as the owner chose (2026-11-16). Of its other rules, most concern
+# Visual Studio's JoinableTaskFactory; some repeat a rule the kit already has from one source (CRF-003): VSTHRD002 is
+# BannedSymbols.txt's (STY-011), VSTHRD103 CA1849's, VSTHRD105 CA2008's, VSTHRD111 CA2007's and VSTHRD200 the Async
+# suffix, which stays advisory (STY-007). Two catch what nothing else does and are off by that choice, a scorecard gap
+# (GAP-045): VSTHRD107 (a Task in a using, disposed instead of awaited) and VSTHRD110 (a Task dropped in a method that
+# isn't async, where CS4014 doesn't look).
+# https://github.com/microsoft/vs-threading/tree/main/docfx/analyzers  retrieved 2026-11-16
+dotnet_diagnostic.VSTHRD001.severity = none
+dotnet_diagnostic.VSTHRD002.severity = none
+dotnet_diagnostic.VSTHRD003.severity = none
+dotnet_diagnostic.VSTHRD004.severity = none
+dotnet_diagnostic.VSTHRD010.severity = none
+dotnet_diagnostic.VSTHRD011.severity = none
+dotnet_diagnostic.VSTHRD012.severity = none
+dotnet_diagnostic.VSTHRD013.severity = none
+dotnet_diagnostic.VSTHRD102.severity = none
+dotnet_diagnostic.VSTHRD103.severity = none
+dotnet_diagnostic.VSTHRD104.severity = none
+dotnet_diagnostic.VSTHRD105.severity = none
+dotnet_diagnostic.VSTHRD106.severity = none
+dotnet_diagnostic.VSTHRD107.severity = none
+dotnet_diagnostic.VSTHRD108.severity = none
+dotnet_diagnostic.VSTHRD109.severity = none
+dotnet_diagnostic.VSTHRD110.severity = none
+dotnet_diagnostic.VSTHRD111.severity = none
+dotnet_diagnostic.VSTHRD112.severity = none
+dotnet_diagnostic.VSTHRD113.severity = none
+dotnet_diagnostic.VSTHRD114.severity = none
+dotnet_diagnostic.VSTHRD115.severity = none
+dotnet_diagnostic.VSTHRD116.severity = none
+dotnet_diagnostic.VSTHRD117.severity = none
+dotnet_diagnostic.VSTHRD200.severity = none
+dotnet_diagnostic.VSTHRD202.severity = none
+dotnet_diagnostic.VSTHRD100.severity = warning
+dotnet_diagnostic.VSTHRD101.severity = warning
+
 # (kit) ADR-0029: CA2007 (ConfigureAwait) applies to class libraries only. Microsoft advises suppressing it
 # for application code: https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007
 dotnet_code_quality.CA2007.output_kind = DynamicallyLinkedLibrary
