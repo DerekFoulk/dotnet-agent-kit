@@ -502,6 +502,7 @@ Describe 'BannedSymbols.txt' {
         @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task})' }
         @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.Collections.Generic.IEnumerable{System.Threading.Tasks.Task},System.Threading.CancellationToken)' }
         @{ Id = 'P:System.Threading.Tasks.Task`1.Result' }
+        @{ Id = 'M:System.Collections.Generic.List`1.Add(`0)' }
     ) {
         Test-DocumentationId -Id $Id | Should -BeTrue
     }
@@ -510,6 +511,11 @@ Describe 'BannedSymbols.txt' {
         @{ Id = 'M:System.Net.Http.HttpClient.#ctor(System.String)' }
         @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.String})' }
         @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task)' }
+        # Review 1 of this PR: a static constructor is #cctor, so #ctor must name an instance constructor.
+        @{ Id = 'M:System.Environment.#ctor' }
+        @{ Id = 'M:System.AttributeUsageAttribute.#ctor' }
+        # A generic type's own parameter is `0, and an ID that leaves it out names nothing.
+        @{ Id = 'M:System.Collections.Generic.List`1.Add' }
     ) {
         Test-DocumentationId -Id $Id | Should -BeFalse
     }
