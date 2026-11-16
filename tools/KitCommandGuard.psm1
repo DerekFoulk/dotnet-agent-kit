@@ -408,7 +408,7 @@ function Get-CommandGuardDecision {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $AskRules
     )
 
-    try { $commands = @(Get-PowerShellCommand -Command $Command) }
+    try { $commands = if ($Tool -eq 'Bash') { @(Get-BashCommand -Command $Command) } else { @(Get-PowerShellCommand -Command $Command) } }
     catch { return "The command guard (ADR-0076) can't resolve this command, so it asks: $($_.Exception.Message)" }
     foreach ($resolved in $commands) {
         if ($resolved.Nested) {
