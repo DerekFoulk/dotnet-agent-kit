@@ -1,4 +1,4 @@
-# ADR-0078: A project marks itself pure with an MSBuild property that adds a second banned-symbols file
+# ADR-0080: A project marks itself pure with an MSBuild property that adds a second banned-symbols file
 
 - **Status:** Accepted
 - **Date:** 2026-11-16

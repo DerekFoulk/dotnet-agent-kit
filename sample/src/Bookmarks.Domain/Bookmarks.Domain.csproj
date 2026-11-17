@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <!-- The core business logic, marked pure (ARC-008, ADR-0078): BannedSymbols.Pure.txt bans randomness, file, network,
+    <!-- The core business logic, marked pure (ARC-008, ADR-0080): BannedSymbols.Pure.txt bans randomness, file, network,
          environment and process access here, so it gets them only through what its callers pass in. -->
     <PureAssembly>true</PureAssembly>
   </PropertyGroup>

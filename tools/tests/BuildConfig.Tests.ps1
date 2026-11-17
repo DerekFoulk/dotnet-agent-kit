@@ -437,7 +437,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 
-    # ARC-008, ADR-0078: the pure list bans what reaches outside the program and no more. Each row names a call in a Pure*
+    # ARC-008, ADR-0080: the pure list bans what reaches outside the program and no more. Each row names a call in a Pure*
     # fixture that must build. RS0030 names a banned type alone ('Path'), not the member called on it, so each row checks
     # its type too, and a ban widened to a whole type (Path, Environment, StreamReader) shows here (review 2 of this PR).
     Context 'what an assembly marked pure keeps' {
