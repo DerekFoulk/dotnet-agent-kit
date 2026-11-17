@@ -109,6 +109,10 @@ areas:
         gap: "No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted."
         status: proposed
         needs: "a kit check and a CI change"
+      - id: GAP-047
+        gap: "When a project uses Playwright, the shared CI runs every test project inside the Playwright image (ADR-0061's update of 2026-11-16), so an app with a web UI and a database (Testcontainers by default, DAT-002) runs its Testcontainers tests there. The container shares the runner's Docker socket and network and sets TESTCONTAINERS_HOST_OVERRIDE=localhost, but no kit test starts a container inside the image, so nothing proves it works."
+        status: proposed
+        needs: "a kit test that starts a Testcontainers container from a project that also uses Playwright, such as in the web UI fixture, with the package Testcontainers adds"
   - id: security
     name: Security
     perfect: "A threat model for anything touching data or sign-in; authentication and authorization by default; validated input; no secrets in code; dependencies, code and history all scanned."
@@ -321,7 +325,7 @@ Each area in the front matter above has:
 | Craft | 13 | 7 | 6 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 14 | 11 | 3 | 0 | 0 |
-| Tests | 8 | 4 | 4 | 2 | 3 |
+| Tests | 8 | 4 | 4 | 2 | 4 |
 | Security | 13 | 9 | 4 | 4 | 3 |
 | Reliability | 7 | 4 | 3 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 1 |
@@ -333,7 +337,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 1 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 94 rules in force, 60 checked by a tool and 34 advisory; 25 proposed; 21 open gaps.
+**Overall:** 94 rules in force, 60 checked by a tool and 34 advisory; 25 proposed; 22 open gaps.
 
 Open gaps:
 
@@ -345,6 +349,7 @@ Open gaps:
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-037** (Tests, proposed; needs test projects in the app template or a shared check, and a CI change): 24 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001, OPS-002, OPS-003's resilience handler (its constructor ban is a build gate), OPS-005, OPS-006, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
+- **GAP-047** (Tests, proposed; needs a kit test that starts a Testcontainers container from a project that also uses Playwright, such as in the web UI fixture, with the package Testcontainers adds): When a project uses Playwright, the shared CI runs every test project inside the Playwright image (ADR-0061's update of 2026-11-16), so an app with a web UI and a database (Testcontainers by default, DAT-002) runs its Testcontainers tests there. The container shares the runner's Docker socket and network and sets TESTCONTAINERS_HOST_OVERRIDE=localhost, but no kit test starts a container inside the image, so nothing proves it works.
 - **GAP-040** (Security, proposed; needs a script that reads the licenses of the packages in the lock files, an allowlist, and a CI step): SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12).
 - **GAP-041** (Security, proposed; needs a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR): Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
 - **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12). Microsoft's logging pages offer redaction (Microsoft.Extensions.Compliance.Redaction, with [LoggerMessage] parameters classified as sensitive) as the way to keep such data out; it would be a new dependency, chosen with the test (.NET best-practices pass, 2026-11-16).
