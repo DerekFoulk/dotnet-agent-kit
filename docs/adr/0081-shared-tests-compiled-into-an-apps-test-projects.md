@@ -91,7 +91,7 @@ Accepted (auto mode, 2026-11-16): the owner asked for the free gaps to be finish
 
 **Next:** the host checks follow in their own PR, with the same pattern for `*.FunctionalTests`. GAP-037 stays open until then.
 
-**An app that already copied the sample's architecture tests** has to do three things at its next sync. Its build fails until it does them.
+**An app that already copied the sample's architecture tests** has to do three things at its next sync. Its build fails until it does the last two, and the first keeps each check from running twice.
 - Delete its copies.
 - Drop its own `TngTech.ArchUnitNET.xUnitV3` reference, which `tests/Directory.Build.props` now adds (NU1504 otherwise).
 - Add its `AppLayers.cs`, as the sample's.
@@ -105,7 +105,7 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 ## Pillars affected
 
 - **Reliability and Operational Excellence:** an app gets the kit's architecture gates from its first Architecture.Tests project, in its own `dotnet test`, and keeps them current through the sync.
-- **Security:** SEC-013's endpoint check now runs in every app, so a domain type can't leak through an endpoint unseen.
+- **Security:** SEC-013's endpoint check now runs in every app, so a domain type can't leak through an endpoint class unseen; endpoints mapped elsewhere stay code review's.
 - **Cost Optimization:** free; the tests take about a second.
 - **Performance Efficiency:** not affected.
 

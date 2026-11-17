@@ -345,8 +345,8 @@ Describe 'Export-KitApp' {
 
             # Builds and tests the copy's solution, and returns the exit code and output. The copy isn't a git repo, so
             # MinVer is skipped; it has no lock files, so restore isn't locked, even in CI.
-            function Invoke-AppTest {
-                Push-Location -LiteralPath $script:layered
+            function Invoke-AppTest([string] $Path = $script:layered) {
+                Push-Location -LiteralPath $Path
                 try {
                     $build = dotnet build Contoso.Orders.slnx -p:MinVerSkip=true -p:RestoreLockedMode=false 2>&1 | Out-String
                     if ($LASTEXITCODE -ne 0) { return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $build } }
@@ -376,6 +376,19 @@ Describe 'Export-KitApp' {
             $result.Output | Should -Match 'EveryLayerProjectTheTestsReferenceIsDeclared'
             $result.Output | Should -Match 'AnApisEndpointsUseNoDomainType\(api: "Contoso\.Orders\.Api"\)'
             $result.ExitCode | Should -Not -Be 0 -Because $result.Output
+        }
+
+        # An assembly in two layers would follow two sets of rules; the other tests read it by name, once (review 2).
+        It 'fail an assembly declared in two layers, and only that' {
+            $twice = Join-Path $TestDrive 'app-twice'
+            Copy-Item -LiteralPath $app -Destination $twice -Recurse
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTests/*') -Destination $twice -Recurse -Force
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTestsTwice/*') -Destination $twice -Recurse -Force
+
+            $result = Invoke-AppTest -Path $twice
+
+            $result.Output | Should -Match 'NoAssemblyIsDeclaredInTwoLayers'
+            $result.Output | Should -Match 'failed: 1\b'
         }
     }
 

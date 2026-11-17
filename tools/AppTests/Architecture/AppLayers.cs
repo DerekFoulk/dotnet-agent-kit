@@ -37,8 +37,11 @@ internal static partial class AppLayers
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> s_architecture =
         new(() => new ArchLoader().LoadAssemblies([.. All]).Build());
 
-    /// <summary>The declared assembly with this name.</summary>
-    public static Assembly Named(string name) => All.Single(assembly => assembly.GetName().Name == name);
+    /// <summary>
+    /// The declared assembly with this name. The first, if it's declared twice: DeclarationTests fails that, and the
+    /// rest check the assembly once.
+    /// </summary>
+    public static Assembly Named(string name) => All.First(assembly => assembly.GetName().Name == name);
 
     /// <summary>The names of the assemblies one assembly references.</summary>
     public static IEnumerable<string> ReferencedNames(string name) =>
