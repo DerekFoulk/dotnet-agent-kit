@@ -188,10 +188,35 @@ Describe 'Get-CommandGuardDecision for Bash' {
         @{ Command = 'git push -u origin feat/x' }
         @{ Command = 'git status -sb' }
         @{ Command = "gh pr view 91 --json state --jq '.state'" }
+        # A substitution whose output is fixed text: cat reading a heredoc whose quoted delimiter stops expansion.
         @{ Command = "git commit -m ""`$(cat <<'EOF'`nfix: don't stop (yet)`n`nCo-Authored-By: A <a@b.c>`nEOF`n)""" }
-        @{ Command = 'echo "$(git status)"' }
+        @{ Command = 'gh pr view $n --json state' }
+        @{ Command = 'echo ${HOME} {a} {} x,y' }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
+    }
+
+    # Review round 1: these words take their value only when Bash runs the command, so no rule can read them.
+    It 'asks for <Command>, which builds an argument when it runs' -ForEach @(
+        @{ Command = 'git push origin {x,-f}' }
+        @{ Command = 'git {clean,} -fd' }
+        @{ Command = 'git push origin -{f,q}' }
+        @{ Command = 'git push origin x{1..2}' }
+        @{ Command = 'git push origin ${u:--f}' }
+        @{ Command = "git commit -m ""`${x:-`$(git status)}""" }
+        @{ Command = 'git commit -m $((git status) )' }
+        @{ Command = 'git push "$(printf -- --for)ce"' }
+        @{ Command = 'git push `printf -- -f`' }
+        @{ Command = 'echo "$(git status)"' }
+    ) {
+        Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument*'
+    }
+
+    It 'asks for <Command>, which an ask rule covers once its expansions are taken out (an unset one is empty)' -ForEach @(
+        @{ Command = 'git push --for${X}ce' }
+        @{ Command = 'git push "--for$X"ce' }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -Not -BeNullOrEmpty
     }
 
     It 'asks for a command Bash can''t read, since nothing in it can be resolved' {
@@ -244,6 +269,8 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         @{ Command = "git status; git clean' -fd'" }
         # Dot-sourcing runs the script too, and the asks name it without the "." (review round 1).
         @{ Command = ". ./tools/New-Kit'App'.ps1 -Name X" }
+        # An expansion in a string that's empty when it runs (review round 1).
+        @{ Command = 'git push "--for${null}ce"' }
     ) {
         Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -Not -BeNullOrEmpty
     }
@@ -278,7 +305,7 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         @{ Command = "git push origin ('--for'+'ce')" }
     ) {
         $reason = Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @()
-        $reason | Should -BeLike '*inside*'
+        $reason | Should -BeLike '*builds an argument*'
     }
 
     It 'leaves a variable in an argument to the rules' {
