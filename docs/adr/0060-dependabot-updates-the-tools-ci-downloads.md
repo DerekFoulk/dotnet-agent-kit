@@ -64,6 +64,21 @@ Option 1, decided in auto mode (ADR-0035) on 2026-11-11, at the owner's request.
 
 - Merging a PMD or gitleaks update stays the owner's: ADR-0041 lets agents merge only NuGet, .NET tool and SDK updates.
 - Option 4 waits, as GAP-029: today's guarantee is kept, not lowered, and the signature check adds a third party's key to pin and rotate. Revisit it if a PMD release key is published somewhere the kit already trusts, or if a pin ever has to be taken from an unverified source.
+- **Update (2026-11-16): Option 4 added, closing GAP-029** (in auto mode; owner, 2026-11-16: "Finish the free gaps"). The details follow.
+  - **The key.** PMD's documentation publishes its release key: "PMD Release Signing Key <releases@pmd-code.org>", primary fingerprint `2EFA55D0785C31F956F2F87EA0B5CA1A4E086838`, signing subkey `1E046C19ED2873D8C08AF7B8A0632691B78E3422`. That page is on docs.pmd-code.org, not on GitHub, where the zip and its `.asc` are.
+    - The public key came from keys.openpgp.org and keyserver.ubuntu.com, which gave the same key with that fingerprint. It is committed, in a minimal export, as `.config/pmd/pmd-release-key.asc`, and the fingerprint is pinned beside it in `pmd-release-key.fingerprint`. Its self-signature runs to 2028-01-04.
+    - The 7.29.0 zip pinned today verified against it: a good signature by the subkey, with that primary key, and the zip's SHA-256 equal to the committed pin.
+  - **The check.** The pin job downloads the zip and its `.asc`. `Set-PmdPin` then verifies them with the runner's gpg, in a keyring of its own that holds only the committed key.
+    - It accepts exactly one signature result, a good one (not bad, expired or revoked), whose primary key is the pinned fingerprint. Then it requires the zip's own SHA-256 to equal GitHub's digest, and pins it.
+    - The 7-day wait stays. CI's downloads still check the committed SHA-256, which now comes from a zip whose signature verified, so the Windows leg needs no gpg.
+  - **A key change.** When PMD extends its key's expiry or replaces its key, the pin job fails, saying the zip isn't signed by the pinned key. A person then makes a pull request:
+    1. Read PMD's signed-releases page for the new fingerprint, and the GitHub advisory if the change follows a compromise, as the earlier key's revocation did (GHSA-88m4-h43f-wx84).
+    2. Fetch the key by that fingerprint from keys.openpgp.org and keyserver.ubuntu.com, and compare the two.
+    3. Export it with `gpg --export --armor --export-options export-minimal <fingerprint>` over `pmd-release-key.asc`, and write the fingerprint file.
+    4. Rerun the pin job.
+
+    A key fetched from GitHub's release page is never trusted on its own. An expiry extension keeps the fingerprint, so only the key file changes.
+  - Option 4's risk, a key to manage, is that procedure. The fixtures in `tools/tests/fixtures/PmdSignature/` are signed with two test keys made for the tests, not PMD's.
 
 ## Consequences
 
@@ -86,4 +101,7 @@ Option 1, decided in auto mode (ADR-0035) on 2026-11-11, at the owner's request.
 - https://github.com/pmd/pmd/releases/tag/pmd_releases%2F7.29.0, retrieved 2026-11-11 (the zip, its digest and its signature)
 - https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference, retrieved 2026-11-11 (cooldown: semver-*-days not supported for Docker)
 - https://docs.github.com/en/rest/releases/releases#get-a-release-by-tag-name, retrieved 2026-11-11
+- https://docs.pmd-code.org/latest/pmd_userdocs_signed_releases.html, retrieved 2026-11-16 (PMD's release key, its fingerprints, the keyservers, and the earlier key's revocation)
+- https://keys.openpgp.org/vks/v1/by-fingerprint/2EFA55D0785C31F956F2F87EA0B5CA1A4E086838, retrieved 2026-11-16
+- https://www.gnupg.org/documentation/manuals/gnupg/Automated-signature-checking.html, retrieved 2026-11-16 (gpg's status lines, GOODSIG and VALIDSIG)
 - ADR-0024, ADR-0041, ADR-0045, ADR-0051

@@ -33,6 +33,7 @@ Accepted as recommended (owner, 2026-11-01).
 
 - A repo declares itself commercial; CI then fails on any package whose license isn't free for commercial use, naming its swap (for example AwesomeAssertions for FluentAssertions).
 - Built after v0.1, with the `dotnet new` template and the sync step (brief §9). Until then the rule is advisory.
+- **Update (2026-11-16):** built before v0.1.0 instead, as ADR-0079. A repo declares itself commercial with `"commercial": true` in `.config/package-licenses.json`; `tools/Test-PackageLicenses.ps1` runs in the shared .NET CI and names AwesomeAssertions when a commercial repo uses FluentAssertions 8.
 
 ## Pillars affected
 

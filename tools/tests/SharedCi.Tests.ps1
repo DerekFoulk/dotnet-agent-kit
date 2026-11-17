@@ -499,6 +499,18 @@ Describe 'Shared CI for app repos' {
             $windows['run'] | Should -Match 'Test-CodeShape\.ps1" -Solution \$env:SOLUTION'
         }
 
+        # GAP-040 (SEC-005): the license check reads every project's lock file and each package's .nuspec in the global
+        # packages folder, so it runs where the whole solution was restored: on Linux without UI projects, on Windows
+        # with them, as code shape does. It reads the kit's policy beside it and the repo's own .config one.
+        It 'checks package licenses on Linux only without UI projects, and on Windows over the whole solution with them' {
+            $linux = Get-JobStep $jobs['dotnet'] 'Package licenses'
+            $linux['if'] | Should -Be "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'"
+            $linux['run'] | Should -Match 'Test-PackageLicenses\.ps1" -Solution \$env:SOLUTION'
+            $windows = Get-JobStep $jobs['ui'] 'Package licenses'
+            $windows['if'] | Should -Be "runner.os == 'Windows'"
+            $windows['run'] | Should -Match 'Test-PackageLicenses\.ps1" -Solution \$env:SOLUTION'
+        }
+
         # The duplicate code check (CRF-003) lists each project's files through the same MSBuild evaluation, so it
         # follows code shape: on Windows with UI projects, on Linux without. One PMD release and digest for both.
         It 'checks duplicate code on Linux only without UI projects, and on Windows over the whole solution with them' {
