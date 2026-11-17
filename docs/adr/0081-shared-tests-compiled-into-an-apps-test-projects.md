@@ -74,10 +74,10 @@ Accepted (auto mode, 2026-11-16): the owner asked for the free gaps to be finish
 
 - `tools/AppTests/Architecture` holds them: `LayerTests`, `SharedLibraryTests`, `EndpointTests`, `NamespaceCycleTests` with its fixtures, and `DeclarationTests`.
 - `sample/Directory.Build.props`, which an app gets as `tests/Directory.Build.props`, compiles them into every `*.Architecture.Tests` project and adds ArchUnitNET. It reads them from `.kit/tools/AppTests` when that folder exists, otherwise from `tools/AppTests`.
-- The sample's Architecture.Tests keeps only its `AppLayers.cs`. Its LayerTests, SharedLibraryTests and NamespaceCycleTests moved into the shared source, with ArchUnitNET's checks unchanged.
-- Two changes from the sample's copies:
-  - Layer dependencies are read from each assembly's references, since the compiler records a reference only to an assembly whose code it uses.
-  - Each theory runs once per declared assembly, so a module added later is checked without a new test.
+- The sample's Architecture.Tests keeps only its `AppLayers.cs`. Its LayerTests, SharedLibraryTests and NamespaceCycleTests moved into the shared source. SharedLibraryTests and NamespaceCycleTests check what they did. The rest changed:
+  - **Layer dependencies** are read from each assembly's references, not from ArchUnitNET's type dependencies. The compiler records a reference only to an assembly whose code it uses, so this is as strict between assemblies.
+  - **Each theory runs once per declared assembly**, so a module added later is checked without a new test.
+  - **The endpoint check** looks at classes named `...Endpoints` or `...Controller`. In an API (an assembly named `.Api`) it fails when it finds none, as the sample's did, so endpoints moved under another name don't pass unchecked. In another front end, such as a web UI, it checks whatever it finds, which may be nothing. Endpoints mapped in another class, or in `Program.cs`, aren't seen. Code review checks those, and so does the OpenAPI part of SEC-013 (the ContractTests).
 
 **Rules:**
 
@@ -90,6 +90,15 @@ Accepted (auto mode, 2026-11-16): the owner asked for the free gaps to be finish
 - `docs/standards/testing.md` ("Shared tests") and the app's AGENTS.md describe it.
 
 **Next:** the host checks follow in their own PR, with the same pattern for `*.FunctionalTests`. GAP-037 stays open until then.
+
+**An app that already copied the sample's architecture tests** has to do three things at its next sync. Its build fails until it does them.
+- Delete its copies.
+- Drop its own `TngTech.ArchUnitNET.xUnitV3` reference, which `tests/Directory.Build.props` now adds (NU1504 otherwise).
+- Add its `AppLayers.cs`, as the sample's.
+
+The sync PR's CI build fails until then, so the change shows on that PR.
+
+**One Architecture.Tests project per app**, as TST-003 says. A second one would compile the same `.kit` files again, and the duplicate code check would report each one as a copy of itself.
 
 **What gets harder:** the shared source must stay within the kit's analyzers and limits in every app. Its tests run in each app's own test run, so a breaking change in it fails every app's CI at its next sync. The sample's CI is the first to see one.
 
