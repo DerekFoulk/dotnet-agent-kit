@@ -114,7 +114,7 @@ T:System.IO.Pipes.NamedPipeServerStream;Take a Stream from the caller, or reach 
 T:System.IO.Pipes.AnonymousPipeClientStream;Take a Stream from the caller, or reach other processes through an injected abstraction (ARC-008)
 T:System.IO.Pipes.AnonymousPipeServerStream;Take a Stream from the caller, or reach other processes through an injected abstraction (ARC-008)
 P:System.TimeZoneInfo.Local;The machine's time zone; take it from an injected TimeProvider (LocalTimeZone), which a test can set (ARC-008)
-M:System.DateTime.ToLocalTime;Reads the machine's time zone; use TimeZoneInfo.ConvertTime with an injected TimeProvider's LocalTimeZone (ARC-008)
+M:System.DateTime.ToLocalTime;Reads the machine's time zone; use TimeZoneInfo.ConvertTime(time, sourceZone, destinationZone) with an injected TimeProvider's LocalTimeZone (ARC-008)
 M:System.DateTime.ToUniversalTime;Reads the machine's time zone for a local or unspecified time; use TimeZoneInfo.ConvertTimeToUtc with the zone you mean (ARC-008)
 M:System.DateTimeOffset.ToLocalTime;Reads the machine's time zone; use TimeZoneInfo.ConvertTime with an injected TimeProvider's LocalTimeZone (ARC-008)
 M:System.TimeZoneInfo.ConvertTimeToUtc(System.DateTime);Reads the machine's time zone for a local or unspecified time; pass the zone you mean (ARC-008)
