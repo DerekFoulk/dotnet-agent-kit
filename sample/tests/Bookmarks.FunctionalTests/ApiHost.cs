@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using Kit.AppTests.Functional;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -11,7 +12,7 @@ namespace Bookmarks.FunctionalTests;
 /// Hosts the API in memory with its own in-memory SQLite database. Its <see cref="Client"/> signs in as "alice"
 /// with a token from <see cref="TestTokens"/>; <see cref="CreateClient"/> makes a client with any other token, or none.
 /// </summary>
-internal sealed class ApiHost : IDisposable
+internal sealed class ApiHost : IAppUnderTest
 {
     private readonly SqliteConnection _keepAlive;
     private readonly WebApplicationFactory<Program> _baseFactory = new ApiFactory();
@@ -76,6 +77,9 @@ internal sealed class ApiHost : IDisposable
 
         return client;
     }
+
+    /// <summary>A client signed in as "alice", or with no token, for the kit's shared host checks.</summary>
+    public HttpClient CreateClient(bool signedIn) => CreateClient(signedIn ? TestTokens.For() : null);
 
     public void Dispose()
     {
