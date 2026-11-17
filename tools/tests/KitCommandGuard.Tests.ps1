@@ -212,6 +212,17 @@ Describe 'Get-CommandGuardDecision for Bash' {
         Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument*'
     }
 
+    # Review round 1: the shell keeps no variables between calls, so one set in the same input holds a value the
+    # command line chose, which no rule can read.
+    It 'asks for <Command>, which uses a variable the same input sets' -ForEach @(
+        @{ Command = 'f=-f; git push origin $f' }
+        @{ Command = 'for f in -f; do git push origin "$f"; done' }
+        @{ Command = 'read f; git push origin ${f}' }
+        @{ Command = 'export F=--force && git push origin $F' }
+    ) {
+        Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument*'
+    }
+
     It 'asks for <Command>, which an ask rule covers once its expansions are taken out (an unset one is empty)' -ForEach @(
         @{ Command = 'git push --for${X}ce' }
         @{ Command = 'git push "--for$X"ce' }
@@ -306,6 +317,15 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
     ) {
         $reason = Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @()
         $reason | Should -BeLike '*builds an argument*'
+    }
+
+    It 'asks for <Command>, which uses a variable the same input sets' -ForEach @(
+        # Review round 1: the PowerShell tool keeps no variables between calls, so this one's value was chosen here.
+        @{ Command = "`$f = '--for' + 'ce'; git push origin `$f" }
+        @{ Command = "foreach (`$f in '--force') { git push origin `$f }" }
+        @{ Command = "`$F = '-f'; git push origin ""x`$f""" }
+    ) {
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @() | Should -BeLike '*builds an argument*'
     }
 
     It 'leaves a variable in an argument to the rules' {
