@@ -15,6 +15,10 @@ version: 2
 updates:
   - package-ecosystem: nuget
     directory: /
+    # .kit is the kit's: its copy of the kit's package versions builds the kit's code shape tool, and the kit's
+    # releases move it (the kit's ADR-0078).
+    exclude-paths:
+      - .kit/**
     schedule:
       interval: weekly
     commit-message:
