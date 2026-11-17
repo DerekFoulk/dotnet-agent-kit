@@ -236,13 +236,12 @@ dotnet_code_quality.CA1819.api_surface = public, internal
 csharp_prefer_system_threading_lock = true:warning
 dotnet_diagnostic.IDE0330.severity = warning
 
-# (kit) STY-011, ADR-0076: Microsoft.VisualStudio.Threading.Analyzers is here for VSTHRD100 (async void) and VSTHRD101
-# (an async lambda passed as a void delegate) only, as the owner chose (2026-11-16). Of its other rules, most concern
-# Visual Studio's JoinableTaskFactory; some repeat a rule the kit already has from one source (CRF-003): VSTHRD002 is
-# BannedSymbols.txt's (STY-011), VSTHRD103 CA1849's, VSTHRD105 CA2008's, VSTHRD111 CA2007's and VSTHRD200 the Async
-# suffix, which stays advisory (STY-007). Two catch what nothing else does and are off by that choice, a scorecard gap
-# (GAP-045): VSTHRD107 (a Task in a using, disposed instead of awaited) and VSTHRD110 (a Task dropped in a method that
-# isn't async, where CS4014 doesn't look).
+# (kit) STY-011, ADR-0076: Microsoft.VisualStudio.Threading.Analyzers is here for VSTHRD100 (async void), VSTHRD101 (an
+# async lambda passed as a void delegate), VSTHRD107 (a using statement over a Task, which disposes the task instead of
+# awaiting it) and VSTHRD110 (a Task dropped in a method that isn't async, where CS4014 doesn't look), as the owner chose
+# (2026-11-16; the last two closed GAP-045). Of its other rules, most concern Visual Studio's JoinableTaskFactory; some
+# repeat a rule the kit already has from one source (CRF-003): VSTHRD002 is BannedSymbols.txt's (STY-011), VSTHRD103
+# CA1849's, VSTHRD105 CA2008's, VSTHRD111 CA2007's and VSTHRD200 the Async suffix, which stays advisory (STY-007).
 # https://github.com/microsoft/vs-threading/tree/main/docfx/analyzers  retrieved 2026-11-16
 dotnet_diagnostic.VSTHRD001.severity = none
 dotnet_diagnostic.VSTHRD002.severity = none

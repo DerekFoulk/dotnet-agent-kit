@@ -82,6 +82,7 @@ Accepted as recommended (owner, 2026-11-16, "Yes, accept them": best-practices d
   - the fixture that builds with `GetAwaiter().GetResult()`, which shows VSTHRD002 is off.
 - **Event handlers.** Where a handler must be async, such as MAUI code-behind, it suppresses the rule where it lives with the reason: VSTHRD100 on a method, VSTHRD101 on a lambda with `#pragma warning disable`, since a SuppressMessage attribute on a lambda compiles but doesn't suppress it. A MAUI app keeps its logic in view models (ARC-010), whose async commands return a `Task`, so most apps rarely need it.
 - **The gap.** VSTHRD107 and VSTHRD110 are off by the owner's choice of 100 and 101 only. GAP-045 records them, for the owner to turn on.
+  - **Update (2026-11-16):** the owner turned them on ("Get it done"), which closed GAP-045. Each has a failing fixture in `tools/tests/BuildConfig.Tests.ps1`, and STY-011 names both. VSTHRD107 checks only a `using` statement: a `using` declaration over a Task, the form IDE0063 asks for, builds, so code review checks it (STY-011's advisory part).
 - **Lock files.** Every project's `packages.lock.json` lists the new package.
 - **Existing apps.** An app that syncs this kit release gets the package and the `.editorconfig` block, so an `async void` method or lambda in it fails its next build until it's changed or suppressed with its reason.
 - **New VSTHRD rules.** A Dependabot update that adds a VSTHRD rule adds analyzer behavior, which makes it the owner's to merge (ADR-0041). Its review sets the new rule to `none` or argues for it.
@@ -103,3 +104,4 @@ Reliability: an `async void` method or lambda, whose exception the caller can't 
 - https://github.com/microsoft/vs-threading/blob/main/docfx/analyzers/VSTHRD100.md, retrieved 2026-11-16
 - https://github.com/microsoft/vs-threading/blob/main/docfx/analyzers/VSTHRD101.md, retrieved 2026-11-16
 - https://github.com/microsoft/vs-threading/blob/main/docfx/analyzers/VSTHRD110.md, retrieved 2026-11-16
+- https://github.com/microsoft/vs-threading/blob/main/docfx/analyzers/VSTHRD107.md, retrieved 2026-11-16
