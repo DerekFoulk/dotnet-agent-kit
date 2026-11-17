@@ -48,3 +48,24 @@ M:System.IO.StreamWriter.#ctor(System.String,System.Boolean,System.Text.Encoding
 M:System.IO.StreamWriter.#ctor(System.String,System.Boolean,System.Text.Encoding,System.Int32);Opens a file; take a Stream or TextWriter from the caller (ARC-008)
 M:System.IO.StreamWriter.#ctor(System.String,System.IO.FileStreamOptions);Opens a file; take a Stream or TextWriter from the caller (ARC-008)
 M:System.IO.StreamWriter.#ctor(System.String,System.Text.Encoding,System.IO.FileStreamOptions);Opens a file; take a Stream or TextWriter from the caller (ARC-008)
+
+// Network access: another machine is state outside the program. Each type's members are banned with it, so a pure
+// assembly can't call an HttpClient its caller passes in either: it takes an interface of its own, which the
+// infrastructure implements. WebClient and WebRequest need no ban: they're obsolete (SYSLIB0014), an error under STY-004.
+T:System.Net.Http.HttpMessageInvoker;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Http.HttpClient;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Http.HttpClientHandler;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Http.SocketsHttpHandler;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.Socket;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.TcpClient;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.TcpListener;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.UdpClient;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.NetworkStream;Take a Stream from the caller, or reach the network through an injected abstraction (ARC-008)
+T:System.Net.Dns;Resolve names through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.HttpListener;Serve requests outside the pure assembly, and call into it (ARC-008)
+T:System.Net.NetworkInformation.Ping;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.NetworkInformation.NetworkInterface;Read the machine's network through an injected abstraction, which a test can fake (ARC-008)
+T:System.Net.Mail.SmtpClient;Send mail through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.WebSockets.ClientWebSocket;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Quic.QuicConnection;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Quic.QuicListener;Serve connections outside the pure assembly, and call into it (ARC-008)
