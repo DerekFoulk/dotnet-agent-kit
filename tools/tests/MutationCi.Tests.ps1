@@ -175,29 +175,32 @@ Describe 'Mutation testing in CI' {
 
             $run | Should -Match '\$env:KIT/\.config/dotnet-tools\.json'
             $run | Should -Match 'dotnet tool install dotnet-stryker --version \$version '
-            $run | Should -Match '--config-file "\$KIT/\.config/stryker-config\.json"'
-            $run | Should -Match '--solution "\$SOLUTION"'
+            $run | Should -Match '--config-file "\$env:KIT/\.config/stryker-config\.json"'
+            $run | Should -Match '--solution \$env:SOLUTION'
             $run | Should -Not -Match '--version \d|--test-runner|--break-at|--threshold|--reporter|"stryker-config"' -Because 'the settings live in the kit''s files, not in the workflow'
         }
 
-        # GAP-004 (ADR-0061): Stryker runs every test project, the Playwright ones too, so their browser must be there
-        # first. The install reads each Playwright project's Release build, so the solution is built before it.
-        It 'builds in Release and installs Playwright''s browser with the kit''s script, before Stryker, once there are projects' {
+        # GAP-004, GAP-033 (ADR-0061): Stryker runs every test project, the Playwright ones too, so with any it runs in
+        # the pinned Playwright image, whose browser the digest names; without any, on the runner. The script reads each
+        # project's restore graph to tell, so the solution is restored first. The pin is the repo's own: an app's
+        # Playwright version is its own, in its Directory.Packages.props.
+        It 'restores, then runs Stryker through the kit''s Playwright image script, with the repo''s pin, once there are projects' {
             $steps = @($reusable.Yaml['jobs']['stryker']['steps'])
             $names = @($steps | ForEach-Object { $_['name'] })
-            $build = @($steps | Where-Object { $_['name'] -eq 'Build' })
-            $install = @($steps | Where-Object { $_['name'] -eq 'Playwright browser' })
+            $restore = @($steps | Where-Object { $_['name'] -eq 'Restore' })
+            $mutate = @($steps | Where-Object { $_['name'] -eq 'Mutation test' })
 
-            $build | Should -HaveCount 1
-            $build[0]['run'] | Should -Be 'dotnet build "$SOLUTION" --configuration Release'
-            $install | Should -HaveCount 1
-            $install[0]['shell'] | Should -Be 'pwsh'
-            $install[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
-            $install[0]['run'] | Should -Be '& "$env:KIT/tools/Install-PlaywrightBrowser.ps1" -Solution $env:SOLUTION -Configuration Release -WithDependencies'
-            foreach ($step in $build[0], $install[0]) { $step['if'] | Should -Be "steps.projects.outputs.count != '0'" }
-            $names.IndexOf('Build') | Should -BeGreaterThan $names.IndexOf('Count projects')
-            $names.IndexOf('Playwright browser') | Should -BeGreaterThan $names.IndexOf('Build')
-            $names.IndexOf('Playwright browser') | Should -BeLessThan $names.IndexOf('Mutation test')
+            $restore | Should -HaveCount 1
+            $restore[0]['run'] | Should -Be 'dotnet restore "$SOLUTION"'
+            $mutate | Should -HaveCount 1
+            $mutate[0]['shell'] | Should -Be 'pwsh'
+            $mutate[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+            $mutate[0]['run'] | Should -BeLike '& "$env:KIT/tools/Invoke-WithPlaywrightImage.ps1" -Solution $env:SOLUTION -Pin "$env:GITHUB_WORKSPACE/.config/playwright/Dockerfile" -Share $env:RUNNER_TEMP, $env:KIT -- "$env:RUNNER_TEMP/stryker/dotnet-stryker" *'
+            foreach ($step in $restore[0], $mutate[0]) { $step['if'] | Should -Be "steps.projects.outputs.count != '0'" }
+            $names.IndexOf('Restore') | Should -BeGreaterThan $names.IndexOf('Count projects')
+            $names.IndexOf('Restore') | Should -BeLessThan $names.IndexOf('Mutation test')
+            $names | Should -Not -Contain 'Playwright browser' -Because 'no browser is downloaded unchecked (GAP-033)'
+            $reusable.Text | Should -Not -Match 'Install-PlaywrightBrowser|playwright\.ps1'
         }
     }
 

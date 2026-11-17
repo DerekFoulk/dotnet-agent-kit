@@ -334,6 +334,17 @@ Describe 'Export-KitApp' {
         @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain 'Directory.Packages.props'
     }
 
+    # GAP-033 (ADR-0061): the shared CI runs an app's browser tests in the Playwright image its own pin names, and the
+    # pin follows the app's own Microsoft.Playwright version, so the app starts with the kit's pin and owns it.
+    It 'gives the app the kit''s Playwright image pin, as a file of its own' {
+        $path = Join-Path $app '.config/playwright/Dockerfile'
+        Test-Path -LiteralPath $path | Should -BeTrue -Because 'an app with browser tests needs the pin'
+
+        [IO.File]::ReadAllText($path) | Should -BeExactly ([IO.File]::ReadAllText((Join-Path $checkout '.config/playwright/Dockerfile')))
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain '.config/playwright/Dockerfile'
+    }
+
     # Review 1 of PR 36: a global package reference reaches every project, and the banned-API analyzer is the
     # one that reads BannedSymbols.txt (CRF-010). Without it an app's build would ignore the bans and still pass.
     It 'gives the app every global package reference outside the sample app''s group, the banned-API analyzer included' {
