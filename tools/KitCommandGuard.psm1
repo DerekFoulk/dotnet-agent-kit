@@ -598,28 +598,81 @@ function Get-BashInnerWord {
 
 # The forms of one resolved command's words that the ask rules are matched against: as resolved, and past what Claude
 # Code strips before matching, which is Bash's wrappers, assignments and reserved words (Get-BashInnerWord), or
-# PowerShell's "&" or "." invocation operator.
+# PowerShell's "&" or "." invocation operator; and each of those with its paths and program name in their plain form
+# (Get-PlainPathWord).
 function Get-CommandWordForm {
-    param([Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool)
+    param(
+        [Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool,
+        [string] $WorkingDirectory
+    )
 
     $bases = [Collections.Generic.List[string[]]]::new()
     $bases.Add($Resolved.Words)
     # With its expansions taken out too: an unset variable, or PowerShell's ${null}, is empty when it runs.
     if (($Resolved.PlainWords -join "`0") -cne ($Resolved.Words -join "`0")) { $bases.Add($Resolved.PlainWords) }
     foreach ($words in $bases) {
-        , $words
         $inner = @(if ($Tool -eq 'Bash') { Get-BashInnerWord -Words $words } else { $words | Select-Object -Skip ([int] ($words[0] -cin '&', '.')) })
-        if ($inner.Count -and $inner.Count -ne $words.Count) { , [string[]] $inner }
+        $forms = @(, $words) + @(if ($inner.Count -and $inner.Count -ne $words.Count) { , [string[]] $inner })
+        foreach ($form in $forms) {
+            , $form
+            $plain = @(Get-PlainPathWord -Words $form -WorkingDirectory $WorkingDirectory)
+            if (($plain -join "`0") -cne ($form -join "`0")) { , [string[]] $plain }
+        }
     }
+}
+
+# A command's words with each path in one plain spelling, as the file system reads it: "\" as "/", and "/./" and "//"
+# as "/" (./tools/./New-KitApp.ps1 runs ./tools/New-KitApp.ps1). A path with a glob in its last part is expanded
+# against the working directory, as the shell expands it, and left as it is when nothing matches. A program named by
+# its path or with ".exe" (C:\Git\cmd\git.exe, /usr/bin/git) is also named by its bare name, as the rules name it.
+function Get-PlainPathWord {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words, [string] $WorkingDirectory)
+
+    for ($i = 0; $i -lt $Words.Count; $i++) {
+        $word = $Words[$i]
+        if ($word -match '[/\\]') {
+            $word = $word.Replace('\', '/')
+            while ($word.Contains('/./')) { $word = $word.Replace('/./', '/') }
+            $word = [regex]::Replace($word, '(?<=.)/{2,}', '/')
+        }
+        if ($word.Contains('/') -and $WorkingDirectory) {
+            $expanded = @(Expand-PathGlob -Path $word -WorkingDirectory $WorkingDirectory)
+            if ($expanded.Count) { $expanded; continue }
+        }
+        if ($i -eq 0) {
+            $leaf = [regex]::Match($word.Substring($word.LastIndexOf('/') + 1), '^(?<name>[^.]+)(?<exe>\.exe)?$', 'IgnoreCase')
+            if ($leaf.Success -and ($leaf.Value -ne $word -or $leaf.Groups['exe'].Success)) { $leaf.Groups['name'].Value; continue }
+        }
+        $word
+    }
+}
+
+# The files a path with a glob (*, ? or [) in its last part names, relative to the working directory and spelled with
+# the path's own folder, sorted; nothing when its last part has no glob or no file matches.
+function Expand-PathGlob {
+    param([Parameter(Mandatory)] [string] $Path, [Parameter(Mandatory)] [string] $WorkingDirectory)
+
+    $folder = $Path.Substring(0, $Path.LastIndexOf('/') + 1)
+    $leaf = $Path.Substring($folder.Length)
+    if ($leaf -notmatch '[*?[]' -or $folder -match '[*?[]') { return }
+    $directory = Join-Path $WorkingDirectory $folder
+    try {
+        $pattern = [Management.Automation.WildcardPattern]::new($leaf, [Management.Automation.WildcardOptions]::IgnoreCase)
+        Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop | Where-Object { $pattern.IsMatch($_.Name) } | Sort-Object Name | ForEach-Object { $folder + $_.Name }
+    }
+    catch { return }
 }
 
 # The spellings of one resolved command that the ask rules are matched against: each of its word forms joined by
 # spaces, and for a native command also with each cluster of short options split up ("-qf" as "-q -f"), as git's and
 # gh's option parsers read it. Both are kept, so a rule written for the cluster ("-uf") still matches.
 function Get-CommandSpelling {
-    param([Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool)
+    param(
+        [Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool,
+        [string] $WorkingDirectory
+    )
 
-    foreach ($words in Get-CommandWordForm -Resolved $Resolved -Tool $Tool) {
+    foreach ($words in Get-CommandWordForm -Resolved $Resolved -Tool $Tool -WorkingDirectory $WorkingDirectory) {
         $words -join ' '
         if ($Resolved.Native) {
             $split = foreach ($word in $words) {
@@ -632,7 +685,8 @@ function Get-CommandSpelling {
 
 # Why the command guard asks before a command runs, or $null when it leaves the command to Claude Code's own rules.
 # It resolves the command as the shell will and asks when an ask rule covers the result, so a spelling the rule's
-# text misses ("git push --for'ce'") still prompts.
+# text misses ("git push --for'ce'") still prompts. It matches without regard to case, for both shells: Windows opens
+# ./tools/new-kitapp.ps1 and runs GIT as readily as their usual spellings. WorkingDirectory is where a glob expands.
 function Get-CommandGuardDecision {
     param(
         [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool,
@@ -647,9 +701,9 @@ function Get-CommandGuardDecision {
         if ($resolved.Computed) {
             return "The command guard (ADR-0077) asks because this command builds an argument when it runs, which no rule can read: $($resolved.Computed)"
         }
-        foreach ($spelling in Get-CommandSpelling -Resolved $resolved -Tool $Tool) {
+        foreach ($spelling in Get-CommandSpelling -Resolved $resolved -Tool $Tool -WorkingDirectory $WorkingDirectory | Select-Object -Unique) {
             foreach ($rule in $AskRules) {
-                if (Test-PermissionRuleMatch -Rule $rule -Tool $Tool -Command $spelling -IgnoreCase:($Tool -eq 'PowerShell')) {
+                if (Test-PermissionRuleMatch -Rule $rule -Tool $Tool -Command $spelling -IgnoreCase) {
                     return "The command guard (ADR-0077) resolved this command to ""$spelling"", which the ask rule ""$rule"" covers."
                 }
             }
