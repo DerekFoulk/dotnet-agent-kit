@@ -297,13 +297,20 @@ Describe 'Invoke-WithPlaywrightImage.ps1' {
         (Get-PlaywrightImagePin -Path (Join-Path $root '.config/playwright/Dockerfile')).Version | Should -Be $version
     }
 
+    # CI calls the script from a pwsh step, where "--" ends its parameters, so the command's own options (-NoProfile
+    # here, --no-build in CI) reach the command. GitHub ends every pwsh step with "exit $LASTEXITCODE", as the step
+    # file here does.
     It 'exits with the command''s exit code when run as a script, as CI runs it' {
         Test-Path $scriptPath | Should -BeTrue
         $repo = Join-Path $TestDrive 'script'
         New-Project $repo 'Api' -Libraries 'xunit.v3/4.0.3'
         $solution = New-Solution $repo 'Api'
+        $marker = Join-Path $repo 'ran.txt'
+        $step = Join-Path $repo 'step.ps1'
+        "& '$scriptPath' -Solution '$solution' -Pin '$(Join-Path $repo 'none')' -- pwsh -NoProfile -Command `"Set-Content -LiteralPath '$marker' -Value ran; exit 5`"", 'exit $LASTEXITCODE' |
+            Set-Content -LiteralPath $step
 
-        & pwsh -NoProfile -File $scriptPath -Solution $solution -Pin (Join-Path $repo 'none') -- @(New-HostCommand $repo -ExitCode 5) *> $null
+        & pwsh -NoProfile -File $step *> $null
 
         $LASTEXITCODE | Should -Be 5
         Test-Path -LiteralPath (Join-Path $repo 'ran.txt') | Should -BeTrue
