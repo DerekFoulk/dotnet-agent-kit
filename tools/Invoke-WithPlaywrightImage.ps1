@@ -128,8 +128,8 @@ function Test-SharedPath {
 # and writes shared at the same paths. Tests that start containers of their own (Testcontainers) reach the runner's
 # Docker through its socket; on the runner's network, those containers' ports are on localhost, which
 # TESTCONTAINERS_HOST_OVERRIDE tells Testcontainers, since inside a container it would look for them at a network
-# gateway. With -KeepTestcontainersHost, the runner's own value is passed on instead. No kit test runs Testcontainers in
-# the image yet (GAP-047).
+# gateway. With -KeepTestcontainersHost, the runner's own value is passed on instead. The web UI fixture's ContainerTests
+# proves it in the kit's CI (GAP-047).
 function Get-PlaywrightContainerArgument {
     param(
         [Parameter(Mandatory)] [string] $Image,

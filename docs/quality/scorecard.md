@@ -109,9 +109,8 @@ areas:
         status: proposed
         needs: "a kit check and a CI change"
       - id: GAP-047
-        gap: "When a project uses Playwright, the shared CI runs every test project inside the Playwright image (ADR-0061's update of 2026-11-16), so an app with a web UI and a database (Testcontainers by default, DAT-002) runs its Testcontainers tests there. The container shares the runner's Docker socket and network and sets TESTCONTAINERS_HOST_OVERRIDE=localhost, but no kit test starts a container inside the image, so nothing proves it works."
-        status: proposed
-        needs: "a kit test that starts a Testcontainers container from a project that also uses Playwright, such as in the web UI fixture, with the package Testcontainers adds"
+        gap: "When a project uses Playwright, the shared CI runs every test project inside the Playwright image (ADR-0061's update of 2026-11-16), so an app with a web UI and a database (Testcontainers by default, DAT-002) runs its Testcontainers tests there. The container shares the runner's Docker socket and network and sets TESTCONTAINERS_HOST_OVERRIDE=localhost, but no kit test starts a container inside the image, so nothing proves it works. Closed by ADR-0061's second update of 2026-11-16: the web UI fixture's E2E project, which uses Playwright, has ContainerTests, which starts Testcontainers' helloworld image, pinned by tag and digest, and reads its port through IHttpClientFactory; CI runs it inside the Playwright image, so it proves the socket, the resource reaper and the localhost override there."
+        status: closed
   - id: security
     name: Security
     perfect: "A threat model for anything touching data or sign-in; authentication and authorization by default; validated input; no secrets in code; dependencies, code and history all scanned."
@@ -321,7 +320,7 @@ Each area in the front matter above has:
 | Craft | 13 | 7 | 6 | 1 | 0 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 14 | 11 | 3 | 0 | 0 |
-| Tests | 8 | 4 | 4 | 2 | 4 |
+| Tests | 8 | 4 | 4 | 2 | 3 |
 | Security | 13 | 10 | 3 | 4 | 2 |
 | Reliability | 7 | 4 | 3 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 1 |
@@ -333,7 +332,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 1 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 94 rules in force, 61 checked by a tool and 33 advisory; 25 proposed; 17 open gaps.
+**Overall:** 94 rules in force, 61 checked by a tool and 33 advisory; 25 proposed; 16 open gaps.
 
 Open gaps:
 
@@ -343,7 +342,6 @@ Open gaps:
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-037** (Tests, proposed; needs shared checks of the OpenAPI document and of SEC-008's key-free token rejections, and a second host in the app's AppHost part (ADR-0081)): Some rules are gated only by the kit's sample, so in an app they're advisory: parts a shared check could still take on, with a hook in the app's part of AppHost. The OpenAPI document's checks: API-002's declared errors as Problem Details, API-003's snapshot and SEC-013's schemas. SEC-008's token rejections that need no app key, and its bearer scheme in the document. A second host, such as a web UI beside an API, which the host checks don't start. Narrowed by ADR-0081's update of 2026-11-16: the architecture tests (part 1) and tools/AppTests/Functional's host checks, compiled into every *.FunctionalTests project, gate ARC-001, ARC-003, CRF-006, CRF-007, CRF-014, SEC-013's endpoint part, API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 and SEC-011 in apps. The app's own behavior (API-004, API-006, API-007, SEC-009, SEC-010, OPS-006), SEC-011's rate limit and /health's database check stay with the app's own tests by design; TST-003 is GAP-027's and UI-001 is UI-002's.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
-- **GAP-047** (Tests, proposed; needs a kit test that starts a Testcontainers container from a project that also uses Playwright, such as in the web UI fixture, with the package Testcontainers adds): When a project uses Playwright, the shared CI runs every test project inside the Playwright image (ADR-0061's update of 2026-11-16), so an app with a web UI and a database (Testcontainers by default, DAT-002) runs its Testcontainers tests there. The container shares the runner's Docker socket and network and sets TESTCONTAINERS_HOST_OVERRIDE=localhost, but no kit test starts a container inside the image, so nothing proves it works.
 - **GAP-041** (Security, proposed; needs a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR): Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
 - **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12). Microsoft's logging pages offer redaction (Microsoft.Extensions.Compliance.Redaction, with [LoggerMessage] parameters classified as sensitive) as the way to keep such data out; it would be a new dependency, chosen with the test (.NET best-practices pass, 2026-11-16).
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
