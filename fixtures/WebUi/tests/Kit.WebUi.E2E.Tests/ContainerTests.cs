@@ -17,9 +17,10 @@ public sealed class ContainerTests
     // whose /uuid answers with a new GUID.
     private const string Image = "testcontainers/helloworld:1.3.0@sha256:0583316c97e9ce0b4e2e5029c2c5efb4895e0cfdb412c69474ae38a7ab7815d6";
     private const ushort HttpPort = 8080;
+    private const string UuidPath = "uuid";
 
     [Fact]
-    public async Task ATestStartsAContainerAndReachesItsPort()
+    public async Task AContainerTheTestStartsAnswersOnItsMappedPort()
     {
         await using IContainer container = new ContainerBuilder(Image)
             .WithPortBinding(HttpPort, assignRandomHostPort: true)
@@ -28,7 +29,7 @@ public sealed class ContainerTests
         await container.StartAsync(TestContext.Current.CancellationToken);
         await using ServiceProvider services = new ServiceCollection().AddHttpClient().BuildServiceProvider();
         using HttpClient client = services.GetRequiredService<IHttpClientFactory>().CreateClient();
-        Uri uuid = new UriBuilder(Uri.UriSchemeHttp, container.Hostname, container.GetMappedPublicPort(HttpPort), "uuid").Uri;
+        Uri uuid = new UriBuilder(Uri.UriSchemeHttp, container.Hostname, container.GetMappedPublicPort(HttpPort), UuidPath).Uri;
 
         string answer = await client.GetStringAsync(uuid, TestContext.Current.CancellationToken);
 
