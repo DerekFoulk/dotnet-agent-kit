@@ -147,7 +147,7 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 - **Updates:** Dependabot moves Microsoft.Playwright (nuget) and the image (docker) in separate PRs, and CI fails each until both move. Bring the two into one PR: push the image's change to the package's PR branch, then close the image's PR. Image bumps are the owner's to merge, as gitleaks' are (`.github/dependabot.yml`), so a Microsoft.Playwright update is now the owner's too.
   - **The better design that waits:** Dependabot's multi-ecosystem groups would open one PR for both. GitHub's page doesn't say what happens to the NuGet entry's other packages, those outside the group's patterns, so adopting it could change every NuGet update. It waits for that to be checked (GAP-046).
 - **Trade-offs:**
-  - Pulling the image (about 2 GB) costs CI time, an estimate of a minute or so until a run measures it, but only where browser tests exist.
+  - Pulling the image costs CI time, but only where browser tests exist: 22 seconds in PR 102's required job (run 43994753335), and 23 in its mutation run. The whole "Test with coverage" step took 53 seconds, all 339 tests included.
   - Chromium runs without its sandbox, as it did on the runner (Playwright's default). The tests load only the app's own pages, which Playwright's Docker page counts as the trusted case.
   - Locally nothing changes: the owner installs the browser with `playwright.ps1`, so local runs still use Playwright's unchecked download (the owner's step, "Always ask").
 - **Left as it is:** `.claude/settings.json` still asks before `tools/Install-PlaywrightBrowser*`, which this change removes. Those rules can never fire now, and dropping them is a guardrail change, left for a PR of its own.
