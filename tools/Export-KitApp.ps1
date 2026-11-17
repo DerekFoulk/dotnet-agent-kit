@@ -52,8 +52,19 @@ $script:KitTools = @(
     'Test-DeprecatedPackages.ps1', 'KitReview.psm1', 'Initialize-DevMachine.ps1', 'Build-AgentRules.ps1',
     'KitFrontMatter.psm1', 'Set-AgentMode.ps1', 'Test-Runbook.ps1', 'Test-ArchitectureDiagram.ps1',
     'Test-EmptyProjects.ps1', 'Test-SafeMigrations.ps1', 'Get-UiProject.ps1', 'KitSolution.psm1',
-    'Test-BenchmarkBudget.ps1', 'Test-LoadBudget.ps1'
+    'Test-BenchmarkBudget.ps1', 'Test-LoadBudget.ps1', 'Test-CodeShape.ps1', 'Test-Duplication.ps1'
 )
+
+# Kit tool source an app builds on its own machine, kept under .kit at its kit path: Kit.CodeShape, which the code
+# shape and duplicate code checks build and run (GAP-022). Its tests stay in the kit.
+$script:KitToolSources = @('tools/CodeShape/src/')
+
+# The kit's build files, copied again into .kit, so the tools above build there with the kit's settings, as they do from
+# the kit's download in CI: MSBuild takes the Directory.Build.props and Directory.Packages.props nearest a project, so a
+# project under .kit finds these before the app's own. Directory.Packages.props whole, since the app's copy leaves out
+# the kit tools' packages. Directory.Build.props too, with the two files it points to, though the app's root has the
+# same three: an app may add its own lines to its root copy (ADR-0044), and those mustn't reach the kit's tool.
+$script:KitBuildRoot = @('Directory.Build.props', 'Directory.Packages.props', 'CodeMetricsConfig.txt', 'BannedSymbols.txt')
 
 # Templates the app owns from the start: the sync job never changes them. The app fills in its runbook (OPS-004) and
 # its architecture diagram (ARC-013), and
@@ -109,6 +120,11 @@ function Get-KitAppFileMap {
     }
     foreach ($tool in $script:KitTools) {
         [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = "tools/$tool"; Target = ".kit/tools/$tool" }
+    }
+    $sources = @(git -C $KitRoot ls-tree -r --name-only $Commit -- @($script:KitToolSources | ForEach-Object { $_.TrimEnd('/') }))
+    if ($LASTEXITCODE -ne 0) { throw "git ls-tree failed for $Commit in $KitRoot." }
+    foreach ($file in $sources + $script:KitBuildRoot) {
+        [pscustomobject]@{ Kind = 'Copy'; Owner = 'Kit'; Source = $file; Target = ".kit/$file" }
     }
 
     # Claude Code's permission rules, without those for kit scripts the app doesn't get.
@@ -232,8 +248,9 @@ function Get-KitAppSettingsText {
 }
 
 # Drops the package groups that are only the kit's, each with the comment line above it, from Directory.Packages.props:
-# "Sample app" (the kit's sample's packages) and "Kit tools" (its own checking tools', which CI builds from the kit's
-# download with the kit's own props, so an app never needs them; transitive pinning would force them on its packages).
+# "Sample app" (the kit's sample's packages) and "Kit tools" (its own checking tools', which build with the kit's own
+# props: from the kit's download in CI, and from the copy in .kit on an app's machine (GAP-022), so the app's own
+# projects never need them; transitive pinning would force them on its packages).
 # Every kit commit has a "Sample app" group; one from before the kit tools had none of the other.
 function Remove-KitSamplePackage {
     param([Parameter(Mandatory)] [string] $PropsText)

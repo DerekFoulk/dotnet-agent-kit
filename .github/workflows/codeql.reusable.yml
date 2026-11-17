@@ -27,8 +27,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # A new app has no C# yet, and CodeQL fails on a language with no source, so C# joins once it exists. The
-      # whole list is read, not piped into grep -q: under bash -o pipefail, git can die of SIGPIPE on a big repo.
+      # CodeQL fails on a language with no source, so C# joins once it exists. An app has C# from its first commit: the
+      # kit's code shape tool, in .kit (ADR-0078). The whole list is read, not piped into grep -q: under bash -o
+      # pipefail, git can die of SIGPIPE on a big repo.
       - name: Find the languages to scan
         id: detect
         shell: bash
