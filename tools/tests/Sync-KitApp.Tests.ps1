@@ -103,8 +103,9 @@ Describe 'Sync-KitApp' {
         Edit-FileText (Join-Path $kit 'Directory.Packages.props') '<PackageVersion Include="FluentAssertions"' "<PackageVersion Include=""Kit.Fixture.Test"" Version=""4.5.6"" />`n    <PackageVersion Include=""FluentAssertions"""
         # v0.2.0 moves the SDK pin one patch past the kit's own, whatever that is today, so a Dependabot SDK bump doesn't break the fixture.
         $globalJson = Join-Path $kit 'global.json'
-        $kitSdk = [version](Get-Content -Raw -LiteralPath $globalJson | ConvertFrom-Json).sdk.version
-        $v2Sdk = '{0}.{1}.{2}' -f $kitSdk.Major, $kitSdk.Minor, ($kitSdk.Build + 1)
+        $kitSdk = (Get-Content -Raw -LiteralPath $globalJson | ConvertFrom-Json).sdk.version
+        $kitSdkRelease = [version]($kitSdk -split '-', 2)[0] # a preview pin such as 10.0.100-rc.2 bumps from its 10.0.100
+        $v2Sdk = '{0}.{1}.{2}' -f $kitSdkRelease.Major, $kitSdkRelease.Minor, ($kitSdkRelease.Build + 1)
         Edit-FileText $globalJson """version"": ""$kitSdk""" """version"": ""$v2Sdk"""
         Edit-FileText (Join-Path $kit 'docs/standards/git.md') 'squash and rebase merges are disabled.' 'squash and rebase merges are disabled (kit-v2-rule-marker).'
         Edit-FileText (Join-Path $kit 'AGENTS.md') '## Talking to the owner' "## Talking to the owner`n`nkit-v2-agents-marker"
