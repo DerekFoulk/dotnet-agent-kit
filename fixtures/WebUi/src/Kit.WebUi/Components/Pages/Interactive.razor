@@ -11,14 +11,12 @@
     </p>
     @* Disabled until the component is interactive, as Microsoft's render modes page shows: a click on the prerendered
        button would do nothing, and a test or a person would never know. *@
-    <button type="button" @onclick="AddOne" disabled="@(!RendererInfo.IsInteractive)">Add one</button>
+    <button type="button" @onclick="_clicks.Add" disabled="@(!RendererInfo.IsInteractive)">Add one</button>
     @* role="status" makes a screen reader announce the new count after each click (UI-001). *@
-    <p role="status">Clicked @_clicks @(_clicks == 1 ? "time" : "times")</p>
+    <p role="status">@_clicks.Status</p>
     <p><a href="">Back to the start</a></p>
 </main>
 
 @code {
-    private int _clicks;
-
-    private void AddOne() => _clicks++;
+    private readonly ClickCount _clicks = new();
 }

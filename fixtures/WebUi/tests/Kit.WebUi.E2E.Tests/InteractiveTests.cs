@@ -20,11 +20,13 @@ public sealed class InteractiveTests
         await using AppUnderTest app = await AppUnderTest.StartAsync();
         await app.OpenAsync(Path);
         ILocator button = app.Page.GetByRole(AriaRole.Button, new() { Name = ButtonName });
+        ILocator status = app.Page.GetByRole(AriaRole.Status);
         await Assertions.Expect(button).ToBeEnabledAsync();
+        await Assertions.Expect(status).ToHaveTextAsync("Clicked 0 times");
 
         await button.ClickAsync();
 
-        await Assertions.Expect(app.Page.GetByRole(AriaRole.Status)).ToHaveTextAsync("Clicked 1 time");
+        await Assertions.Expect(status).ToHaveTextAsync("Clicked 1 time");
     }
 
     // What the wait above rests on: the prerendered page, before any script runs, already has the button disabled.
