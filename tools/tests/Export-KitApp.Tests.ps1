@@ -333,6 +333,65 @@ Describe 'Export-KitApp' {
         }
     }
 
+    # GAP-037: the kit's shared tests reach an app's own test projects, so the rules the sample's tests gate are gated in
+    # the app too. tests/Directory.Build.props compiles the kit's architecture tests into any *.Architecture.Tests
+    # project, from .kit/tools/AppTests. A copy of the app gets a domain and an infrastructure project, and an
+    # Architecture.Tests project with no tests of its own.
+    Context 'the kit''s shared architecture tests in the app' {
+        BeforeAll {
+            $script:layered = Join-Path $TestDrive 'app-layered'
+            Copy-Item -LiteralPath $app -Destination $script:layered -Recurse
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTests/*') -Destination $script:layered -Recurse -Force
+
+            # Builds and tests the copy's solution, and returns the exit code and output. The copy isn't a git repo, so
+            # MinVer is skipped; it has no lock files, so restore isn't locked, even in CI.
+            function Invoke-AppTest([string] $Path = $script:layered) {
+                Push-Location -LiteralPath $Path
+                try {
+                    $build = dotnet build Contoso.Orders.slnx -p:MinVerSkip=true -p:RestoreLockedMode=false 2>&1 | Out-String
+                    if ($LASTEXITCODE -ne 0) { return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $build } }
+                    $test = dotnet test --solution Contoso.Orders.slnx --no-build 2>&1 | Out-String
+                    [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $test }
+                }
+                finally { Pop-Location }
+            }
+        }
+
+        It 'pass for an app whose layers depend only inward' {
+            $result = Invoke-AppTest
+
+            $result.Output | Should -Match 'succeeded: [1-9]'
+            $result.ExitCode | Should -Be 0 -Because $result.Output
+        }
+
+        # SharedAppTestsBroken/README.md lists the four breaks. Each failing test is named, so a build error that only
+        # mentions the projects can't pass for a failing test (review 1).
+        It 'fail each broken rule, naming the test and the assemblies' {
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTestsBroken/*') -Destination $script:layered -Recurse -Force
+
+            $result = Invoke-AppTest
+
+            $result.Output | Should -Match 'AnInnerLayerReferencesNoOuterLayer\(inner: "Contoso\.Orders\.Domain", outer: "Contoso\.Orders\.Infrastructure"\)'
+            $result.Output | Should -Match 'TheDomainKnowsNothingOfPersistence\(domain: "Contoso\.Orders\.Domain"\)'
+            $result.Output | Should -Match 'EveryLayerProjectTheTestsReferenceIsDeclared'
+            $result.Output | Should -Match 'AnApisEndpointsUseNoDomainType\(api: "Contoso\.Orders\.Api"\)'
+            $result.ExitCode | Should -Not -Be 0 -Because $result.Output
+        }
+
+        # An assembly in two layers would follow two sets of rules; the other tests read it by name, once (review 2).
+        It 'fail an assembly declared in two layers, and only that' {
+            $twice = Join-Path $TestDrive 'app-twice'
+            Copy-Item -LiteralPath $app -Destination $twice -Recurse
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTests/*') -Destination $twice -Recurse -Force
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTestsTwice/*') -Destination $twice -Recurse -Force
+
+            $result = Invoke-AppTest -Path $twice
+
+            $result.Output | Should -Match 'NoAssemblyIsDeclaredInTwoLayers'
+            $result.Output | Should -Match 'failed: 1\b'
+        }
+    }
+
     # ADR-0062: the performance workflow runs them in CI; an app runs them too, against a local benchmark or load run.
     # GAP-040: the license check and the kit's policy it reads, which the shared CI runs too (SEC-005).
     It 'gets the <Script> check, which its AGENTS.md lists' -ForEach @(

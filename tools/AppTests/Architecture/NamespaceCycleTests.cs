@@ -5,7 +5,7 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.xUnitV3;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
-namespace Bookmarks.Architecture.Tests;
+namespace Kit.AppTests.Architecture;
 
 /// <summary>No two namespaces depend on each other, directly or through others (CRF-007, acyclic dependencies).</summary>
 public sealed class NamespaceCycleTests
@@ -13,32 +13,40 @@ public sealed class NamespaceCycleTests
     private static readonly ArchUnitNET.Domain.Architecture s_fixtures =
         new ArchLoader().LoadAssemblies(typeof(NamespaceCycleTests).Assembly).Build();
 
-    [Fact]
-    public void TheSamplesNamespacesFormNoCycle() =>
-        NamespaceCycles.Rule("Bookmarks").Check(SampleArchitecture.Value);
+    /// <summary>
+    /// Gets each root namespace the app's assemblies share, taken from their names without the layer: Contoso.Orders
+    /// for Contoso.Orders.Domain. Each project's root namespace is its name unless it sets another.
+    /// </summary>
+    public static TheoryData<string> Roots =>
+        [.. AppLayers.All.Select(assembly => assembly.GetName().Name!)
+            .Select(name => name.Contains('.', StringComparison.Ordinal) ? name[..name.LastIndexOf('.')] : name)
+            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+
+    [Theory(SkipTestWithoutData = true)]
+    [MemberData(nameof(Roots))]
+    public void TheAppsNamespacesFormNoCycle(string root) =>
+        NamespaceCycles.Rule(root).Check(AppLayers.Architecture);
 
     [Fact]
     public void TheRuleCatchesACycleBetweenTwoNamespaces() =>
-        NamespaceCycles.CycleRule("Bookmarks.Architecture.Tests.CycleFixture").HasNoViolations(s_fixtures)
+        NamespaceCycles.CycleRule("Kit.AppTests.Architecture.CycleFixture").HasNoViolations(s_fixtures)
             .Should().BeFalse("Left and Right depend on each other");
 
     [Fact]
     public void TheRuleCatchesACycleThroughATypeInTheRootNamespace() =>
-        NamespaceCycles.CycleRule("Bookmarks.Architecture.Tests.RootTypeCycle").HasNoViolations(s_fixtures)
+        NamespaceCycles.CycleRule("Kit.AppTests.Architecture.RootTypeCycle").HasNoViolations(s_fixtures)
             .Should().BeFalse("RootEnd, in the root namespace itself, and ChildEnd depend on each other");
 
     [Fact]
     public void TheRuleAcceptsARootWhoseOnlyTypesSitInTheRootItself() =>
-        NamespaceCycles.Rule("Bookmarks.Architecture.Tests.RootOnly").HasNoViolations(s_fixtures)
-            .Should().BeTrue("the root's own types are checked, so the guard counts them (review 2 of PR 36)");
+        NamespaceCycles.Rule("Kit.AppTests.Architecture.RootOnly").HasNoViolations(s_fixtures)
+            .Should().BeTrue("the root's own types are checked, so the guard counts them");
 
+    // A mistyped root would otherwise check nothing and pass.
     [Fact]
-    public void TheRuleFailsWhenNoNamespaceSitsUnderTheRoot()
-    {
-        // A mistyped root would otherwise check nothing and pass.
-        NamespaceCycles.Rule("Bookmarks.NoSuchNamespace").HasNoViolations(SampleArchitecture.Value)
+    public void TheRuleFailsWhenNoNamespaceSitsUnderTheRoot() =>
+        NamespaceCycles.Rule("Kit.AppTests.NoSuchNamespace").HasNoViolations(s_fixtures)
             .Should().BeFalse("no slice means nothing was checked");
-    }
 }
 
 /// <summary>The rule that namespaces under a root form no cycle.</summary>

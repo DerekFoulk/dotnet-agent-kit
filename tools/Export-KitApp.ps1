@@ -57,8 +57,9 @@ $script:KitTools = @(
 )
 
 # Kit tool source an app builds on its own machine, kept under .kit at its kit path: Kit.CodeShape, which the code
-# shape and duplicate code checks build and run (GAP-022). Its tests stay in the kit.
-$script:KitToolSources = @('tools/CodeShape/src/')
+# shape and duplicate code checks build and run (GAP-022), without its tests; and the kit's shared tests, which the
+# app's tests/Directory.Build.props compiles into its test projects (GAP-037).
+$script:KitToolSources = @('tools/CodeShape/src/', 'tools/AppTests/')
 
 # The kit's build files, copied again into .kit, so the tools above build there with the kit's settings, as they do from
 # the kit's download in CI: MSBuild takes the Directory.Build.props and Directory.Packages.props nearest a project, so a

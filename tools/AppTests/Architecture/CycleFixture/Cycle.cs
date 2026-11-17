@@ -1,5 +1,5 @@
 // Two namespaces that call into each other: the cycle NamespaceCycleTests must catch. Nothing else uses them.
-namespace Bookmarks.Architecture.Tests.CycleFixture.Left
+namespace Kit.AppTests.Architecture.CycleFixture.Left
 {
     internal static class LeftEnd
     {
@@ -9,7 +9,7 @@ namespace Bookmarks.Architecture.Tests.CycleFixture.Left
     }
 }
 
-namespace Bookmarks.Architecture.Tests.CycleFixture.Right
+namespace Kit.AppTests.Architecture.CycleFixture.Right
 {
     internal static class RightEnd
     {
