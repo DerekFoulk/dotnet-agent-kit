@@ -7,10 +7,11 @@
     Claude Code runs this before each Bash or PowerShell call, with the call as JSON on stdin (its hooks page). It
     resolves the command the way the shell will (PowerShell's own parser; a POSIX tokenizer for Bash) and applies the
     ask rules of .claude/settings.json and .claude/settings.local.json to what it resolved, so a quoted spelling, joined
-    short options or a parent segment still prompts. It also asks for a PowerShell argument computed inside ( ), @( ),
-    $( ) or { }. When it asks, it prints the decision as JSON; otherwise it prints nothing and the call goes through
-    Claude Code's own rules. It reads the project from CLAUDE_PROJECT_DIR, or the input's cwd. It exits 0 either way:
-    a failure inside the guard asks, and only a guard that can't start leaves the call to the rules alone.
+    short options, a wrapper or another spelling of a path still prompts. It also asks when an argument is built only
+    as the command runs (ADR-0077 says when). When it asks, it prints the decision as JSON; otherwise it prints
+    nothing and the call goes through Claude Code's own rules. It reads the project from CLAUDE_PROJECT_DIR, or the
+    input's cwd. It exits 0 either way: a failure inside the guard asks, and only a guard that can't start leaves the
+    call to the rules alone.
 
 .EXAMPLE
     '{"tool_name":"Bash","tool_input":{"command":"git push --for''ce''"}}' | pwsh -NoProfile -File ./tools/Invoke-CommandGuard.ps1
