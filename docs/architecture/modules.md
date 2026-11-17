@@ -44,6 +44,6 @@ flowchart LR
     Api --> Contracts["Bookmarks.Contracts"]
     Api --> ServiceDefaults["Bookmarks.ServiceDefaults"]
     Infrastructure --> Application
-    Application --> Domain["Bookmarks.Domain"]
+    Application --> Domain["Bookmarks.Domain<br/>(pure: ARC-008)"]
     Application --> Contracts
 ```

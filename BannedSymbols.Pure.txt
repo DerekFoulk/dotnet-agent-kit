@@ -1,0 +1,120 @@
+// APIs an assembly marked pure may not call (ARC-008, ADR-0080), on top of BannedSymbols.txt's, which every project
+// gets. A project marks itself pure with <PureAssembly>true</PureAssembly> in its .csproj, and Directory.Build.props then
+// adds this file to its banned-API check (RS0030). Pure code is core business logic: it gets randomness, files, the
+// network, the environment and other processes only through abstractions injected into it, so its tests are
+// deterministic. Same format as BannedSymbols.txt, and tools/tests/BuildConfig.Tests.ps1 checks that every ID resolves
+// and that none repeats one of BannedSymbols.txt's. Lifting a ban here, even for one member, needs an ADR (CRF-010).
+
+// Randomness: a value a test can't predict. Random's members are banned with the type, and CA5394 already fails its
+// use for security everywhere. A UUID version 7 is random apart from its time, so a pure assembly takes its ids from
+// its caller.
+T:System.Random;Take randomness from an injected abstraction, which a test can fake (ARC-008)
+T:System.Security.Cryptography.RandomNumberGenerator;Take randomness from an injected abstraction, which a test can fake (ARC-008)
+M:System.Guid.NewGuid;Take the id from the caller, or from an injected abstraction, so a test can predict it (ARC-008)
+M:System.Guid.CreateVersion7;Take the id from the caller, or from an injected abstraction, so a test can predict it (ARC-008)
+M:System.Guid.CreateVersion7(System.DateTimeOffset);Its bits after the time are random; take the id from the caller, or from an injected abstraction, so a test can predict it (ARC-008)
+
+// File access: the file system is state outside the program. Each type's members are banned with it. StreamReader and
+// StreamWriter stay open over a stream the caller passes in; only their constructors that open a path are banned. Path's
+// string work (Combine, GetFileName and the rest) stays open; its members that touch the disk or read the current or
+// temporary folder are banned, and so is any other route to a path on disk the analyzer can name: archives, folder
+// listings, the app's and an assembly's own location.
+T:System.IO.File;Read and write files through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.Directory;Reach folders through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.FileSystemInfo;Reach the file system through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.FileInfo;Reach the file system through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.DirectoryInfo;Reach the file system through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.DriveInfo;Reach the file system through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.FileStream;Take a Stream from the caller, or open files through an injected abstraction (ARC-008)
+T:System.IO.FileSystemWatcher;Watch files through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.RandomAccess;Read and write files through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.MemoryMappedFiles.MemoryMappedFile;Reach files through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.Compression.ZipFile;Take a Stream from the caller and use ZipArchive over it, or reach files through an injected abstraction (ARC-008)
+T:System.IO.IsolatedStorage.IsolatedStorageFile;Reach storage through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.Compression.ZipFileExtensions;Reads and writes files; take a Stream from the caller, or reach files through an injected abstraction (ARC-008)
+T:System.Formats.Tar.TarFile;Reads and writes files; use TarReader or TarWriter over a Stream the caller passes in (ARC-008)
+T:System.IO.Enumeration.FileSystemEnumerable`1;Lists folders; reach the file system through an injected abstraction (ARC-008)
+T:System.IO.Enumeration.FileSystemEnumerator`1;Lists folders; reach the file system through an injected abstraction (ARC-008)
+P:System.AppContext.BaseDirectory;The app's folder on disk; take paths from the caller (ARC-008)
+P:System.Reflection.Assembly.Location;An assembly's path on disk; take paths from the caller (ARC-008)
+M:System.IO.Path.GetTempPath;Reads the machine's temporary folder; reach the file system through an injected abstraction (ARC-008)
+M:System.IO.Path.GetTempFileName;Makes a file; reach the file system through an injected abstraction (ARC-008)
+M:System.IO.Path.GetRandomFileName;A random name; take it from an injected abstraction, which a test can fake (ARC-008)
+M:System.IO.Path.GetFullPath(System.String);Reads the current directory; use GetFullPath(path, basePath) with a base the caller passes in (ARC-008)
+M:System.IO.Path.Exists(System.String);Reads the file system; reach it through an injected abstraction (ARC-008)
+M:System.IO.StreamReader.#ctor(System.String);Opens a file; take a Stream or TextReader from the caller (ARC-008)
+M:System.IO.StreamReader.#ctor(System.String,System.Boolean);Opens a file; take a Stream or TextReader from the caller (ARC-008)
+M:System.IO.StreamReader.#ctor(System.String,System.Text.Encoding);Opens a file; take a Stream or TextReader from the caller (ARC-008)
+M:System.IO.StreamReader.#ctor(System.String,System.Text.Encoding,System.Boolean);Opens a file; take a Stream or TextReader from the caller (ARC-008)
+M:System.IO.StreamReader.#ctor(System.String,System.Text.Encoding,System.Boolean,System.Int32);Opens a file; take a Stream or TextReader from the caller (ARC-008)
+M:System.IO.StreamReader.#ctor(System.String,System.IO.FileStreamOptions);Opens a file; take a Stream or TextReader from the caller (ARC-008)
+M:System.IO.StreamReader.#ctor(System.String,System.Text.Encoding,System.Boolean,System.IO.FileStreamOptions);Opens a file; take a Stream or TextReader from the caller (ARC-008)
+M:System.IO.StreamWriter.#ctor(System.String);Opens a file; take a Stream or TextWriter from the caller (ARC-008)
+M:System.IO.StreamWriter.#ctor(System.String,System.Boolean);Opens a file; take a Stream or TextWriter from the caller (ARC-008)
+M:System.IO.StreamWriter.#ctor(System.String,System.Boolean,System.Text.Encoding);Opens a file; take a Stream or TextWriter from the caller (ARC-008)
+M:System.IO.StreamWriter.#ctor(System.String,System.Boolean,System.Text.Encoding,System.Int32);Opens a file; take a Stream or TextWriter from the caller (ARC-008)
+M:System.IO.StreamWriter.#ctor(System.String,System.IO.FileStreamOptions);Opens a file; take a Stream or TextWriter from the caller (ARC-008)
+M:System.IO.StreamWriter.#ctor(System.String,System.Text.Encoding,System.IO.FileStreamOptions);Opens a file; take a Stream or TextWriter from the caller (ARC-008)
+
+// Network access: another machine is state outside the program. Each type's members are banned with it, so a pure
+// assembly can't call an HttpClient its caller passes in either: it takes an interface of its own, which the
+// infrastructure implements. WebClient and WebRequest need no ban: they're obsolete (SYSLIB0014), an error under STY-004.
+T:System.Net.Http.HttpMessageInvoker;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Http.HttpClient;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Http.HttpClientHandler;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Http.SocketsHttpHandler;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.Socket;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.TcpClient;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.TcpListener;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.UdpClient;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Sockets.NetworkStream;Take a Stream from the caller, or reach the network through an injected abstraction (ARC-008)
+T:System.Net.Dns;Resolve names through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.HttpListener;Serve requests outside the pure assembly, and call into it (ARC-008)
+T:System.Net.NetworkInformation.Ping;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.NetworkInformation.NetworkInterface;Read the machine's network through an injected abstraction, which a test can fake (ARC-008)
+T:System.Net.Mail.SmtpClient;Send mail through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.WebSockets.ClientWebSocket;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Quic.QuicConnection;Reach the network through an injected abstraction of your own, which a test can fake (ARC-008)
+T:System.Net.Quic.QuicListener;Serve connections outside the pure assembly, and call into it (ARC-008)
+
+// The environment and other processes: the machine a test runs on is state outside the program too, and so are the
+// console, the clocks Environment and Stopwatch read, the local time zone and the conversions that read it, and pipes to
+// other processes. What only describes the platform stays open, such as Environment.NewLine and ProcessorCount, and so
+// does CultureInfo, whose current culture CA1305 and the other culture rules already keep out of formatting and
+// comparison.
+M:System.Environment.GetEnvironmentVariable(System.String);Take settings from the caller or from injected options, which a test can set (ARC-008)
+M:System.Environment.GetEnvironmentVariable(System.String,System.EnvironmentVariableTarget);Take settings from the caller or from injected options, which a test can set (ARC-008)
+M:System.Environment.GetEnvironmentVariables;Take settings from the caller or from injected options, which a test can set (ARC-008)
+M:System.Environment.GetEnvironmentVariables(System.EnvironmentVariableTarget);Take settings from the caller or from injected options, which a test can set (ARC-008)
+M:System.Environment.SetEnvironmentVariable(System.String,System.String);Change the environment outside the pure assembly (ARC-008)
+M:System.Environment.SetEnvironmentVariable(System.String,System.String,System.EnvironmentVariableTarget);Change the environment outside the pure assembly (ARC-008)
+M:System.Environment.ExpandEnvironmentVariables(System.String);Reads environment variables; take settings from the caller or from injected options (ARC-008)
+M:System.Environment.GetCommandLineArgs;Take the arguments from the caller (ARC-008)
+P:System.Environment.CommandLine;Take the arguments from the caller (ARC-008)
+P:System.Environment.CurrentDirectory;Take paths from the caller, or reach the file system through an injected abstraction (ARC-008)
+M:System.Environment.GetFolderPath(System.Environment.SpecialFolder);Take paths from the caller, or reach the file system through an injected abstraction (ARC-008)
+M:System.Environment.GetFolderPath(System.Environment.SpecialFolder,System.Environment.SpecialFolderOption);Take paths from the caller, or reach the file system through an injected abstraction (ARC-008)
+M:System.Environment.GetLogicalDrives;Reach the file system through an injected abstraction (ARC-008)
+P:System.Environment.MachineName;Take it from the caller or from injected options (ARC-008)
+P:System.Environment.UserName;Take the user from the caller (ARC-008)
+P:System.Environment.UserDomainName;Take the user from the caller (ARC-008)
+P:System.Environment.ProcessId;Take it from the caller (ARC-008)
+P:System.Environment.ProcessPath;Take paths from the caller (ARC-008)
+P:System.Environment.TickCount;A clock; take the time from an injected TimeProvider (ARC-008)
+P:System.Environment.TickCount64;A clock; take the time from an injected TimeProvider (ARC-008)
+M:System.Environment.Exit(System.Int32);End the process outside the pure assembly: throw, or return a result (ARC-008)
+P:System.Environment.ExitCode;Set the exit code outside the pure assembly: return a result (ARC-008)
+M:System.Environment.FailFast(System.String);End the process outside the pure assembly: throw (ARC-008)
+M:System.Environment.FailFast(System.String,System.Exception);End the process outside the pure assembly: throw (ARC-008)
+T:System.Console;Read and write through a TextReader or TextWriter the caller passes in (ARC-008)
+T:System.Diagnostics.Stopwatch;A clock; take the time from an injected TimeProvider (GetTimestamp, GetElapsedTime) (ARC-008)
+T:System.Diagnostics.Process;Start and read processes through an injected abstraction, which a test can fake (ARC-008)
+T:System.IO.Pipes.NamedPipeClientStream;Take a Stream from the caller, or reach other processes through an injected abstraction (ARC-008)
+T:System.IO.Pipes.NamedPipeServerStream;Take a Stream from the caller, or reach other processes through an injected abstraction (ARC-008)
+T:System.IO.Pipes.AnonymousPipeClientStream;Take a Stream from the caller, or reach other processes through an injected abstraction (ARC-008)
+T:System.IO.Pipes.AnonymousPipeServerStream;Take a Stream from the caller, or reach other processes through an injected abstraction (ARC-008)
+P:System.TimeZoneInfo.Local;The machine's time zone; take it from an injected TimeProvider (LocalTimeZone), which a test can set (ARC-008)
+M:System.DateTime.ToLocalTime;Reads the machine's time zone; use TimeZoneInfo.ConvertTime(time, sourceZone, destinationZone) with an injected TimeProvider's LocalTimeZone (ARC-008)
+M:System.DateTime.ToUniversalTime;Reads the machine's time zone for a local or unspecified time; use TimeZoneInfo.ConvertTimeToUtc with the zone you mean (ARC-008)
+M:System.DateTimeOffset.ToLocalTime;Reads the machine's time zone; use TimeZoneInfo.ConvertTime with an injected TimeProvider's LocalTimeZone (ARC-008)
+M:System.TimeZoneInfo.ConvertTimeToUtc(System.DateTime);Reads the machine's time zone for a local or unspecified time; pass the zone you mean (ARC-008)
