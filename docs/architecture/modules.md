@@ -27,6 +27,7 @@ flowchart LR
     tools -->|New-KitApp and Export-KitApp copy| templates
     templates --> apps
     tools -->|.kit/tools| apps
+    codeshape -->|source, built in .kit| apps
     ci -->|reusable workflows| apps
 ```
 
@@ -41,6 +42,6 @@ flowchart LR
     Api --> Contracts["Bookmarks.Contracts"]
     Api --> ServiceDefaults["Bookmarks.ServiceDefaults"]
     Infrastructure --> Application
-    Application --> Domain["Bookmarks.Domain"]
+    Application --> Domain["Bookmarks.Domain<br/>(pure: ARC-008)"]
     Application --> Contracts
 ```

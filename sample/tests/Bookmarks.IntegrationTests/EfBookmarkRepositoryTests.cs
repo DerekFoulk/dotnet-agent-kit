@@ -24,7 +24,7 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     [Fact]
     public async Task AddThenFindReturnsTheSameBookmark()
     {
-        Bookmark bookmark = Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now);
+        Bookmark bookmark = Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now);
         await SaveAsync(bookmark);
 
         await using BookmarksDbContext db = new(_options);
@@ -40,7 +40,7 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     [Fact]
     public async Task FindByUrlFindsTheSavedUrl()
     {
-        Bookmark bookmark = Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now);
+        Bookmark bookmark = Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now);
         await SaveAsync(bookmark);
 
         await using BookmarksDbContext db = new(_options);
@@ -53,8 +53,8 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     [Fact]
     public async Task FindPicksTheRightBookmarkAmongSeveral()
     {
-        Bookmark first = Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now);
-        Bookmark second = Bookmark.Create(Owner, new Uri("https://example.com/b"), "B", s_now);
+        Bookmark first = Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now);
+        Bookmark second = Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/b"), "B", s_now);
         await SaveAsync(first);
         await SaveAsync(second);
 
@@ -68,8 +68,8 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     [Fact]
     public async Task FindByUrlPicksTheRightBookmarkAmongSeveral()
     {
-        await SaveAsync(Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now));
-        await SaveAsync(Bookmark.Create(Owner, new Uri("https://example.com/b"), "B", s_now));
+        await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now));
+        await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/b"), "B", s_now));
 
         await using BookmarksDbContext db = new(_options);
         EfBookmarkRepository repository = new(db);
@@ -85,7 +85,7 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         // default stores Uri.ToString(), which unescapes (a%20b becomes "a b") and so differs from what was measured.
         // Review 4: the lookup matches that stored text exactly, so it's given the URL in that form, as the service
         // does with the bookmark's own URL.
-        Bookmark bookmark = Bookmark.Create(Owner, new Uri("https://example.com?q=a%20b"), "A", s_now);
+        Bookmark bookmark = Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com?q=a%20b"), "A", s_now);
         await SaveAsync(bookmark);
 
         await using BookmarksDbContext db = new(_options);
@@ -103,8 +103,8 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         // SEC-009: the filter is in the query, so no caller reaches another user's bookmark by its id or its URL, and
         // two users can save the same URL.
         Uri url = new("https://example.com/a");
-        Bookmark mine = Bookmark.Create(Owner, url, "Mine", s_now);
-        Bookmark theirs = Bookmark.Create("bob", url, "Theirs", s_now.AddMinutes(1));
+        Bookmark mine = Bookmark.Create(Guid.CreateVersion7(s_now), Owner, url, "Mine", s_now);
+        Bookmark theirs = Bookmark.Create(Guid.CreateVersion7(s_now.AddMinutes(1)), "bob", url, "Theirs", s_now.AddMinutes(1));
         await SaveAsync(mine);
         await SaveAsync(theirs);
 
@@ -122,8 +122,8 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     [Fact]
     public async Task ListReturnsEverySavedBookmark()
     {
-        await SaveAsync(Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now));
-        await SaveAsync(Bookmark.Create(Owner, new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
+        await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now));
+        await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now.AddMinutes(1)), Owner, new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
 
         await using BookmarksDbContext db = new(_options);
         IReadOnlyList<Bookmark> all = await new EfBookmarkRepository(db).ListAsync(Owner, 0, 10, TestContext.Current.CancellationToken);
@@ -137,7 +137,7 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         // API-004: paging happens in the database, in a deterministic order, so no bookmark is skipped or repeated.
         for (int i = 0; i < 3; i++)
         {
-            await SaveAsync(Bookmark.Create(Owner, new Uri($"https://example.com/{i}"), $"{i}", s_now));
+            await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri($"https://example.com/{i}"), $"{i}", s_now));
         }
 
         await using BookmarksDbContext db = new(_options);
@@ -157,9 +157,9 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     {
         // Review 1 of PR 22: saved in creation order, rows came back in that order even without the OrderBy. Saved
         // out of order, only the key order puts them right.
-        await SaveAsync(Bookmark.Create(Owner, new Uri("https://example.com/c"), "C", s_now.AddMinutes(2)));
-        await SaveAsync(Bookmark.Create(Owner, new Uri("https://example.com/a"), "A", s_now));
-        await SaveAsync(Bookmark.Create(Owner, new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
+        await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now.AddMinutes(2)), Owner, new Uri("https://example.com/c"), "C", s_now.AddMinutes(2)));
+        await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now));
+        await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now.AddMinutes(1)), Owner, new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
 
         await using BookmarksDbContext db = new(_options);
         EfBookmarkRepository repository = new(db);

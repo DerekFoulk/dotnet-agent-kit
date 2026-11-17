@@ -14,7 +14,10 @@ public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider
     {
         ArgumentNullException.ThrowIfNull(request);
         // The domain checks the request before anything uses it (CRF-006); the lookup then uses the checked URL.
-        Bookmark bookmark = Bookmark.Create(ownerId, request.Url, request.Title, _timeProvider.GetUtcNow());
+        // A UUID version 7 starts with its creation time (to the millisecond), so on SQLite ordering by Id is creation
+        // order. Its other bits are random, so it's made here, not in the pure domain (ARC-008).
+        DateTimeOffset createdAt = _timeProvider.GetUtcNow();
+        Bookmark bookmark = Bookmark.Create(Guid.CreateVersion7(createdAt), ownerId, request.Url, request.Title, createdAt);
         Bookmark? existing = await _repository.FindByUrlAsync(ownerId, bookmark.Url, cancellationToken).ConfigureAwait(false);
         if (existing is not null)
         {

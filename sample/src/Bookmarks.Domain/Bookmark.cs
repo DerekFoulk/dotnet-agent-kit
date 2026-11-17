@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+
 namespace Bookmarks.Domain;
 
 /// <summary>A link a user saved, with its title: the sample's one aggregate. Make one with <see cref="Create"/>.</summary>
@@ -43,15 +45,28 @@ public sealed class Bookmark
     public DateTimeOffset CreatedAt { get; }
 
     /// <summary>Checks a new bookmark's parts and makes the bookmark.</summary>
+    /// <param name="id">
+    /// Its id, <c>Guid.CreateVersion7(createdAt)</c>: the caller makes it,
+    /// since its other bits are random and this assembly is pure (ARC-008).
+    /// </param>
     /// <param name="ownerId">The saving user's id from the identity provider, at most <see cref="MaxOwnerIdLength"/> characters.</param>
     /// <param name="url">An absolute http or https URL, at most <see cref="MaxUrlLength"/> characters once escaped.</param>
     /// <param name="title">The title, at most <see cref="MaxTitleLength"/> characters once trimmed.</param>
     /// <param name="createdAt">When it's saved, from <see cref="TimeProvider"/>.</param>
     /// <returns>The new bookmark.</returns>
-    /// <exception cref="ArgumentException">A part is missing, too long, or not an absolute http or https URL.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="createdAt"/> is before 1970.</exception>
-    public static Bookmark Create(string ownerId, Uri url, string title, DateTimeOffset createdAt)
+    /// <exception cref="ArgumentException">
+    /// A part is missing, too long, or not an absolute http or https URL, or <paramref name="id"/> isn't a UUID version 7
+    /// of <paramref name="createdAt"/>.
+    /// </exception>
+    public static Bookmark Create(Guid id, string ownerId, Uri url, string title, DateTimeOffset createdAt)
     {
+        // A UUID version 7 starts with its creation time (to the millisecond), so on SQLite ordering by Id is creation
+        // order (API-004).
+        if (id.Version != 7 || MillisecondsOf(id) != createdAt.ToUnixTimeMilliseconds())
+        {
+            throw new ArgumentException("A bookmark's id is a UUID version 7 made from its creation time.", nameof(id));
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (ownerId.Length > MaxOwnerIdLength)
         {
@@ -84,8 +99,9 @@ public sealed class Bookmark
             throw new ArgumentException($"A bookmark's title has at most {MaxTitleLength} characters.", nameof(title));
         }
 
-        // A UUID version 7 starts with its creation time (to the millisecond), so on SQLite ordering by Id is creation
-        // order. It needs a time from 1970 on; createdAt comes from TimeProvider.
-        return new Bookmark(Guid.CreateVersion7(createdAt), ownerId, stored, trimmed, createdAt);
+        return new Bookmark(id, ownerId, stored, trimmed, createdAt);
     }
+
+    // The id's first 48 bits, in RFC 9562's big-endian order: its time in milliseconds since 1970.
+    private static long MillisecondsOf(Guid id) => BinaryPrimitives.ReadInt64BigEndian(id.ToByteArray(bigEndian: true)) >>> 16;
 }

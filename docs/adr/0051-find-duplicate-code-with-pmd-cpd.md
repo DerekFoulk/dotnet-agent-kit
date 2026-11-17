@@ -27,7 +27,7 @@ Measured on the kit's own solution in CI on PR 49: see "Measurement" below.
 - **Trade-offs:** the C#-aware tokenizer and ignore options fit what CRF-003 asks.
   - The pinned, hash-checked download adds no package to the solution. But Dependabot can't see the version, so a newer PMD is a manual bump of two lines.
   - The tokenizer doesn't know some newer C#: a raw string literal (`"""..."""`, C# 11) stops it with a lexical error. CPD runs with `--no-fail-on-error`, so it skips such a file, and the script prints a warning for each one at the place CPD stopped. Those files aren't checked; the reviewer covers them.
-  - Apps can't run it locally without Java and PMD (GAP-022).
+  - Apps can't run it locally without Java and PMD (GAP-022). **Update (2026-11-16):** with ADR-0078, an app runs it locally with its developer's own Java and PMD.
 - **Reversibility:** easy. Two CI steps and one script.
 - **Risk:** low. A false finding goes between `CPD-OFF` and `CPD-ON` with its reason.
 
@@ -78,7 +78,7 @@ The first run, before `--no-fail-on-error`, stopped with exit code 5 on the same
 - **Amended by ADR-0060 (2026-11-11):** PMD's version sits in `.config/pmd/pom.xml`, where Dependabot's maven updater moves it, and the zip's SHA-256 in `.config/pmd/pmd-dist-bin.zip.sha256`. On Dependabot's PR, `dependabot-lockfiles.yml` pins the new hash from the release's asset digest; both "Download PMD" steps, on Linux and on Windows, read both from the kit and check the zip against that hash. GAP-023 is closed.
 - CPD finds repeated code, not repeated knowledge. A rule stated in two shapes passes, and so does duplication in docs, config and scripts. The reviewer agent still checks those (CRF-003's enforcement says so).
 - A file CPD can't read isn't checked: the CI log and the PR name each one, and the reviewer covers it. A later PMD release may read raw string literals; bumping PMD is the time to look.
-- GAP-020 is closed. GAP-022 now also covers running this check on an app's own machine.
+- GAP-020 is closed. GAP-022 now also covers running this check on an app's own machine. **Update (2026-11-16):** ADR-0078 closed GAP-022: an app runs `.kit/tools/Test-Duplication.ps1` with its developer's own Java and PMD.
 
 ## Pillars affected
 

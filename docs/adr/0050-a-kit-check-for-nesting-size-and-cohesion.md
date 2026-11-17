@@ -108,12 +108,12 @@ How each limit is measured (the kit's own choices, each with tests in `tools/Cod
 
 - `dotnet-ci.reusable.yml` runs the check after the tests, in the kit and in every app.
   - It runs from the repo root, so the repo's own global.json picks the SDK.
-  - It builds the tool from the kit's download with the safety nets above. MinVer is skipped too, since the download isn't a git checkout.
+  - It builds the tool from the kit's download (in an app's CI) or from `.kit` (on an app's machine, ADR-0078) with the safety nets above. MinVer is skipped too, since the download isn't a git checkout.
   - A tool that doesn't build stops the check with its errors, so it never reads as a finding in the app's code.
 - `Directory.Packages.props` adds Microsoft.CodeAnalysis.CSharp 5.9.0 and pins Microsoft.CodeAnalysis.Analyzers 5.9.0. The C# package asks for a preview of the analyzers, and the pin takes the stable release.
   - Both are in the "Kit tools" group, which `Export-KitApp` now leaves out of an app, as it does the sample app's.
-  - An app never needs them: CI builds the tool with the kit's own props. Transitive pinning would otherwise force them on an app's own Roslyn packages.
-- **An app can't yet run the check on its own machine:** the tool's source isn't in `.kit/tools`. It runs only in the app's CI (GAP-022). This waits for the kit's move to a .NET tool (v0.2.0), so it isn't solved twice.
+  - An app's own projects never need them: the tool builds with the kit's own props, from the kit's download in CI or from the copy in `.kit` (ADR-0078). Transitive pinning would otherwise force them on an app's own Roslyn packages.
+- **An app can't yet run the check on its own machine:** the tool's source isn't in `.kit/tools`. It runs only in the app's CI (GAP-022). This waits for the kit's move to a .NET tool (v0.2.0), so it isn't solved twice. **Update (2026-11-16):** ADR-0078 didn't wait: the export puts the tool's source and the kit's build files in `.kit`, so an app runs the check on its own machine; the .NET tool can replace that later.
 - **EF Core migrations:** EF Core marks the model snapshot and `.Designer.cs` files as generated, so they're skipped. A migration file itself may not be, and a very large one may need the exception comment. Not measured: the sample has no migrations.
 - GAP-019 is closed. CRF-008's enforcement points to CRF-011 (update, 2026-11-13: no longer; CRF-008 leaves these numbers to CRF-011 entirely, as the Decision's update says). `tools/CodeShape/src/Kit.CodeShape/Limits.cs` is the one source of the numbers, and `tools/tests/Test-CodeShape.Tests.ps1` fails if CRF-011's statement and `Limits.cs` disagree.
 - **Update (2026-11-15):** ADR-0071 takes the owner's tighter ceiling (2026-11-12): nesting 3, 30 statements per member and 400 lines per file, and two new counts, 20 members per type and one public type per file. A type's exception comment now covers its member count too, and a file's its public types.
@@ -123,7 +123,7 @@ How each limit is measured (the kit's own choices, each with tests in `tools/Cod
 
 - **Operational excellence:** four more limits checked in CI, annotated on the PR.
 - **Reliability:** smaller, more cohesive members and types are where fewer defects collect (CRF-008's reason).
-- **Security:** the tool runs only in CI and reads code. NuGet's audit of its packages runs in the kit's CI, not in an app's.
+- **Security:** the tool reads code. It ran only in CI until ADR-0078 let an app build it on its own machine too. NuGet's audit of its packages runs in the kit's CI, not in an app's CI or on its machine (the check passes `-p:NuGetAudit=false`).
 - **Cost:** a few seconds of CI per run to build and run the tool (not measured on a runner yet); no licence.
 - **Performance:** none.
 
