@@ -246,7 +246,6 @@ dotnet_diagnostic.VSTHRD105.severity = none
 dotnet_diagnostic.VSTHRD106.severity = none
 dotnet_diagnostic.VSTHRD108.severity = none
 dotnet_diagnostic.VSTHRD109.severity = none
-dotnet_diagnostic.VSTHRD110.severity = none
 dotnet_diagnostic.VSTHRD111.severity = none
 dotnet_diagnostic.VSTHRD112.severity = none
 dotnet_diagnostic.VSTHRD113.severity = none
@@ -259,6 +258,7 @@ dotnet_diagnostic.VSTHRD202.severity = none
 dotnet_diagnostic.VSTHRD100.severity = warning
 dotnet_diagnostic.VSTHRD101.severity = warning
 dotnet_diagnostic.VSTHRD107.severity = warning
+dotnet_diagnostic.VSTHRD110.severity = warning
 
 # (kit) ADR-0029: CA2007 (ConfigureAwait) applies to class libraries only. Microsoft advises suppressing it
 # for application code: https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007
