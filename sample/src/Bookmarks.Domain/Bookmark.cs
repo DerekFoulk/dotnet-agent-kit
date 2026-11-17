@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+
 namespace Bookmarks.Domain;
 
 /// <summary>A link a user saved, with its title: the sample's one aggregate. Make one with <see cref="Create"/>.</summary>
@@ -52,9 +54,19 @@ public sealed class Bookmark
     /// <param name="title">The title, at most <see cref="MaxTitleLength"/> characters once trimmed.</param>
     /// <param name="createdAt">When it's saved, from <see cref="TimeProvider"/>.</param>
     /// <returns>The new bookmark.</returns>
-    /// <exception cref="ArgumentException">A part is missing, too long, or not an absolute http or https URL.</exception>
+    /// <exception cref="ArgumentException">
+    /// A part is missing, too long, or not an absolute http or https URL, or <paramref name="id"/> isn't a UUID version 7
+    /// of <paramref name="createdAt"/>.
+    /// </exception>
     public static Bookmark Create(Guid id, string ownerId, Uri url, string title, DateTimeOffset createdAt)
     {
+        // A UUID version 7 starts with its creation time (to the millisecond), so on SQLite ordering by Id is creation
+        // order (API-004).
+        if (id.Version != 7 || MillisecondsOf(id) != createdAt.ToUnixTimeMilliseconds())
+        {
+            throw new ArgumentException("A bookmark's id is a UUID version 7 made from its creation time.", nameof(id));
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (ownerId.Length > MaxOwnerIdLength)
         {
@@ -89,4 +101,7 @@ public sealed class Bookmark
 
         return new Bookmark(id, ownerId, stored, trimmed, createdAt);
     }
+
+    // The id's first 48 bits, in RFC 9562's big-endian order: its time in milliseconds since 1970.
+    private static long MillisecondsOf(Guid id) => BinaryPrimitives.ReadInt64BigEndian(id.ToByteArray(bigEndian: true)) >>> 16;
 }
