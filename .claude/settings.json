@@ -246,6 +246,7 @@
       "Read(~/.microsoft/usersecrets/**)"
     ]
   },
+  "disableAllHooks": false,
   "hooks": {
     "PreToolUse": [
       {

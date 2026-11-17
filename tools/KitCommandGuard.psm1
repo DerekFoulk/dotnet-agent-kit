@@ -754,8 +754,11 @@ function Invoke-CommandGuard {
         if ($tool -cnotin 'Bash', 'PowerShell') { return $null }
         $command = if ($hookInput['tool_input'] -is [Collections.IDictionary]) { $hookInput['tool_input']['command'] }
         if ($command -isnot [string]) { throw "the $tool call's tool_input.command isn't a string." }
-        $directory = if ($ProjectDir) { $ProjectDir } else { [string] $hookInput['cwd'] }
-        $reason = Get-CommandGuardDecision -Tool $tool -Command $command -AskRules @(Get-ProjectAskRule -ProjectDir $directory)
+        $cwd = [string] $hookInput['cwd']
+        $directory = if ($ProjectDir) { $ProjectDir } else { $cwd }
+        # A glob expands where the shell runs the command: the input's cwd, or the project when there's none.
+        $workingDirectory = if ($cwd) { $cwd } else { $directory }
+        $reason = Get-CommandGuardDecision -Tool $tool -Command $command -AskRules @(Get-ProjectAskRule -ProjectDir $directory) -WorkingDirectory $workingDirectory
     }
     catch {
         $reason = "The command guard (ADR-0077) failed, so it asks: $($_.Exception.Message)"
