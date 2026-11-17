@@ -179,13 +179,16 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's FunctionalTests host the app with ValidateScopes and ValidateOnBuild on in every environment they run it in (ApiHost), and DependencyInjectionTests prove the tests catch a captured scoped service and a root-resolved one in Production"
+        how: "ci: the sample's FunctionalTests host the app with ValidateScopes and ValidateOnBuild on in every environment they run it in (ApiHost)"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): DependencyInjectionTests checks that the host the checks start catches a singleton that captures a scoped service, and a scoped service resolved from the root, in Production; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: gate
         in: [kit, app]
         how: "build, in ASP.NET Core projects: ASP0000 (no BuildServiceProvider while registering services), an ASP.NET Core analyzer at warning, which STY-004 makes an error; a worker or console app without ASP.NET Core doesn't get it, so code review checks there"
       - kind: advisory
         in: [app]
-        how: "until it has functional tests of its own, following the sample's ApiHost"
+        how: "that every other host the app's tests start validates too, which code review checks"
       - kind: advisory
         in: [kit, app]
         how: "code review checks the rest of the guidelines: no service locator, no factory that resolves dependencies at run time, no static access to services, and singletons only for shared or costly state"
@@ -247,7 +250,7 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 | Duplicate code (CRF-003) | `tools/Test-Duplication.ps1`, which runs PMD's copy-paste detector (CPD) in `dotnet-ci.reusable.yml` | a run of tokens repeated in hand-written C#, ignoring using directives, attributes and runs of literals; ADR-0051 sets the length |
 | Nesting, statements per member, file length, members per type, public types per file and LCOM4 (CRF-011, proposed) | `tools/Test-CodeShape.ps1`, which runs the kit's Kit.CodeShape tool in `dotnet-ci.reusable.yml` | a member nested too deep or with too many statements, a file too long or with more than one public type, a type with too many members, or a type whose methods form more than one group that shares no state; it also reports STY-005's nullable rules (a `#nullable` directive, an unlabelled `!` outside a test project, a file marked generated outside `Migrations` that isn't a `.resx` file's designer) as `STY005` |
 | Namespace cycles | the kit's shared `NamespaceCycleTests` (ArchUnitNET, tools/AppTests), compiled into the sample's and every app's Architecture.Tests (ADR-0081) | a cycle among each root namespace the app's assemblies share and the namespaces under it |
-| Dependency injection validation (CRF-013) | the sample's FunctionalTests: `ApiHost` turns on ValidateScopes and ValidateOnBuild, and `DependencyInjectionTests` proves they're on | a singleton that captures a scoped service, or a scoped service resolved from the root, in any environment the tests run the app in |
+| Dependency injection validation (CRF-013) | the sample's FunctionalTests: `ApiHost` turns on ValidateScopes and ValidateOnBuild, and the kit's shared `DependencyInjectionTests` (tools/AppTests/Functional), compiled into the sample's and every app's FunctionalTests, proves they're on (ADR-0081) | a singleton that captures a scoped service, or a scoped service resolved from the root, in any environment the tests run the app in |
 | ASP0000 (CRF-013) | ASP.NET Core's analyzers, at warning, in ASP.NET Core projects | a call to `BuildServiceProvider` while services are being registered |
 | Persistence ignorance (CRF-014) | the kit's shared `SharedLibraryTests` (tools/AppTests), in the sample's and every app's Architecture.Tests | a domain assembly that references EF Core or ADO.NET |
 | CA1051, CA1002, CA2227 (CRF-014) | `AnalysisLevel latest-all` | a visible instance field or a `List<T>` in a member's signature (property, return type, parameter), on public and internal types; a settable collection property, on public types only |

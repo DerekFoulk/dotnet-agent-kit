@@ -25,9 +25,12 @@ rules:
       - kind: gate
         in: [kit]
         how: "ci: the sample's FunctionalTests check that a 400, 404, 409, 415 and 500 are Problem Details, that malformed input is a 400 in Development, that a 500 in Production hides the exception, and that every error the OpenAPI document declares is Problem Details"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): ErrorTests checks that a route that doesn't exist is a 404 Problem, and that an unhandled exception is a 500 Problem without its message in Production; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until the app follows the sample"
+        how: "the app's own errors (malformed input a 400 in Development too, its other 4xx, and the errors its OpenAPI document declares), until its own FunctionalTests check them, as the sample's do"
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*Error*.cs"]
   - id: API-003
@@ -40,10 +43,13 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's ContractTests compare the document with its snapshot and check it isn't served in Production"
+        how: "ci: the sample's ContractTests compare the document with its snapshot"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): OpenApiTests checks that the document is served in Development, to an anonymous caller too, and not in Production; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until the app follows the sample"
+        how: "the snapshot of the document and typed results, until the app's own ContractTests snapshot it, as the sample's do"
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/Contract/**"]
   - id: API-004
