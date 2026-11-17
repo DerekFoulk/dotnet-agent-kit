@@ -197,6 +197,33 @@ Describe 'Get-CommandGuardDecision for Bash' {
     It 'asks for a command Bash can''t read, since nothing in it can be resolved' {
         Get-CommandGuardDecision -Tool 'Bash' -Command "git push 'x" -AskRules @() | Should -BeLike '*can''t*'
     }
+
+    # Claude Code's permissions page: before matching, it strips the wrappers timeout, time, nice, nohup, stdbuf,
+    # command, builtin, noglob and bare xargs, and an ask rule matches past any leading assignment. A rule that starts
+    # with the command's name ("git clean *") then sees the inner command, so the guard must too (review round 1).
+    It 'asks for <Command>, whose inner command, past a wrapper, an assignment or a reserved word, an ask rule covers' -ForEach @(
+        @{ Command = "timeout 60 pwsh -NoProfile -File ./tools/New-Kit'App'.ps1 -Name X" }
+        @{ Command = "timeout -s KILL 5m git cl'ean' -fd" }
+        @{ Command = "FOO=1 BAR='a b' git cl'ean' -fd" }
+        @{ Command = "command pwsh -NoProfile -File ./tools/Install-Playwright'Browser'.ps1" }
+        @{ Command = "nice -n 5 nohup stdbuf -o L time -p git cl'ean' -fd" }
+        @{ Command = "builtin noglob xargs git cl'ean' -fd" }
+        @{ Command = "if true; then git cl'ean' -fd; fi" }
+        @{ Command = "for x in a; do git cl'ean' -fd; done" }
+        @{ Command = "{ git cl'ean' -fd; }" }
+        @{ Command = "! git cl'ean' -fd" }
+        @{ Command = "while false; do :; done; until true; do git reset --ha'rd' x; done" }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -Not -BeNullOrEmpty
+    }
+
+    It 'doesn''t strip a wrapper Claude Code keeps: <Command>' -ForEach @(
+        # "command -v" looks a command up rather than running it, and xargs with options is matched as xargs.
+        @{ Command = 'command -v git clean -fd' }
+        @{ Command = 'xargs -n1 git clean -fd' }
+    ) {
+        Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules 'Bash(git clean *)' | Should -BeNullOrEmpty
+    }
 }
 
 Describe 'Get-CommandGuardDecision for PowerShell' {
@@ -215,6 +242,8 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         @{ Command = ".\tools\zz\'..'\x.ps1" }
         # Each command of a compound one is resolved on its own.
         @{ Command = "git status; git clean' -fd'" }
+        # Dot-sourcing runs the script too, and the asks name it without the "." (review round 1).
+        @{ Command = ". ./tools/New-Kit'App'.ps1 -Name X" }
     ) {
         Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -Not -BeNullOrEmpty
     }
