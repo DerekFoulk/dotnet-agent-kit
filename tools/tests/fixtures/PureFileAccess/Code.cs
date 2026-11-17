@@ -22,4 +22,17 @@ internal static class Code
     internal static string Full(string path) => Path.GetFullPath(path);
 
     internal static string Combined(string folder, string file) => Path.Combine(folder, file);
+
+    internal static TextReader FromStream(Stream stream) => new StreamReader(stream);
+
+    internal static void Unzip(System.IO.Compression.ZipArchive zip, string folder) => System.IO.Compression.ZipFileExtensions.ExtractToDirectory(zip, folder);
+
+    internal static void Untar(string archive, string folder) => System.Formats.Tar.TarFile.ExtractToDirectory(archive, folder, overwriteFiles: false);
+
+    internal static IEnumerable<string> List(string folder) =>
+        new System.IO.Enumeration.FileSystemEnumerable<string>(folder, (ref System.IO.Enumeration.FileSystemEntry entry) => entry.ToFullPath());
+
+    internal static string Home() => AppContext.BaseDirectory;
+
+    internal static string Location() => typeof(Code).Assembly.Location;
 }

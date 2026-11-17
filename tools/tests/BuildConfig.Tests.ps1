@@ -86,6 +86,11 @@ BeforeDiscovery {
         @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'StreamWriter.StreamWriter(string)'; Description = 'a StreamWriter that opens a path, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Path.GetTempFileName()'; Description = 'Path.GetTempFileName, which makes a file, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Path.GetFullPath(string)'; Description = 'Path.GetFullPath, which reads the current directory, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'ZipFileExtensions'; Description = 'ZipArchive''s extensions that read and write files, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'TarFile'; Description = 'TarFile, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'FileSystemEnumerable'; Description = 'FileSystemEnumerable, which lists a folder, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'AppContext.BaseDirectory'; Description = 'the app''s own folder, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Assembly.Location'; Description = 'an assembly''s path on disk, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'HttpClient'''; Description = 'an HttpClient, even one passed in, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'Socket'''; Description = 'Socket, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'TcpClient'; Description = 'TcpClient, in an assembly marked pure (ARC-008)' }
@@ -96,6 +101,8 @@ BeforeDiscovery {
         @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Stopwatch'''; Description = 'Stopwatch, a clock, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Console'''; Description = 'the console, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Process'''; Description = 'another process, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'AnonymousPipeServerStream'; Description = 'an anonymous pipe to another process, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'TimeZoneInfo.Local'; Description = 'the machine''s time zone, where TimeProvider.LocalTimeZone does, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
@@ -423,6 +430,27 @@ Describe 'Repo build configuration' -Tag 'Build' {
             if ($_['Symbol']) {
                 $build.Output | Should -Match ([regex]::Escape("error ${Diagnostic}: The symbol '$($_['Symbol'])")) -Because "the ban on $($_['Symbol']) should fire"
             }
+        }
+    }
+
+    # ARC-008, ADR-0078: the pure list bans what reaches outside the program and no more. Each row names a call in a Pure*
+    # fixture that must build, so a ban widened to a whole type (Path, Environment, StreamReader) shows here.
+    Context 'what an assembly marked pure keeps' {
+        BeforeAll { $builds = @{} }
+
+        It 'allows <Symbol>' -ForEach @(
+            @{ Fixture = 'PureFileAccess'; Symbol = 'Path.Combine' }
+            @{ Fixture = 'PureFileAccess'; Symbol = 'StreamReader.StreamReader(Stream)' }
+            @{ Fixture = 'PureEnvironmentAccess'; Symbol = 'Environment.NewLine' }
+            @{ Fixture = 'PureEnvironmentAccess'; Symbol = 'Environment.ProcessorCount' }
+        ) {
+            if (-not $builds.ContainsKey($Fixture)) {
+                $builds[$Fixture] = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
+            }
+            $build = $builds[$Fixture]
+
+            $build.Output | Should -Match 'error RS0030' -Because 'the fixture''s banned calls show the pure list was applied'
+            $build.Output | Should -Not -Match ([regex]::Escape("The symbol '$Symbol")) -Because "$Symbol only works in memory"
         }
     }
 

@@ -19,4 +19,10 @@ internal static class Code
     internal static long Elapsed() => Stopwatch.GetTimestamp();
 
     internal static string NewLine() => Environment.NewLine;
+
+    internal static int Processors() => Environment.ProcessorCount;
+
+    internal static Stream Pipe() => new System.IO.Pipes.AnonymousPipeServerStream();
+
+    internal static TimeZoneInfo Zone() => TimeZoneInfo.Local;
 }
