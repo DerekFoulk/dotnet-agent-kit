@@ -1,0 +1,15 @@
+// APIs an assembly marked pure may not call (ARC-008, ADR-0077), on top of BannedSymbols.txt's, which every project
+// gets. A project marks itself pure with <PureAssembly>true</PureAssembly> in its .csproj, and Directory.Build.props then
+// adds this file to its banned-API check (RS0030). Pure code is core business logic: it gets randomness, files, the
+// network, the environment and other processes only through abstractions injected into it, so its tests are
+// deterministic. Same format as BannedSymbols.txt, and tools/tests/BuildConfig.Tests.ps1 checks that every ID resolves
+// and that none repeats one of BannedSymbols.txt's. Lifting a ban here, even for one member, needs an ADR (CRF-010).
+
+// Randomness: a value a test can't predict. Random's members are banned with the type, and CA5394 already fails its
+// use for security everywhere. A UUID version 7 is random apart from its time, so a pure assembly takes its ids from
+// its caller.
+T:System.Random;Take randomness from an injected abstraction, which a test can fake (ARC-008)
+T:System.Security.Cryptography.RandomNumberGenerator;Take randomness from an injected abstraction, which a test can fake (ARC-008)
+M:System.Guid.NewGuid;Take the id from the caller, or from an injected abstraction, so a test can predict it (ARC-008)
+M:System.Guid.CreateVersion7;Take the id from the caller, or from an injected abstraction, so a test can predict it (ARC-008)
+M:System.Guid.CreateVersion7(System.DateTimeOffset);Its bits after the time are random; take the id from the caller, or from an injected abstraction, so a test can predict it (ARC-008)
