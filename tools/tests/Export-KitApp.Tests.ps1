@@ -282,12 +282,18 @@ Describe 'Export-KitApp' {
     }
 
     # ADR-0062: the performance workflow runs them in CI; an app runs them too, against a local benchmark or load run.
+    # GAP-040: the license check and the kit's policy it reads, which the shared CI runs too (SEC-005).
     It 'gets the <Script> check, which its AGENTS.md lists' -ForEach @(
         @{ Script = 'Test-BenchmarkBudget.ps1' }
         @{ Script = 'Test-LoadBudget.ps1' }
+        @{ Script = 'Test-PackageLicenses.ps1' }
     ) {
         Test-Path -LiteralPath (Join-Path $app '.kit/tools' $Script) | Should -BeTrue
         Get-Content -Raw -LiteralPath (Join-Path $app 'AGENTS.md') | Should -Match ([regex]::Escape("./.kit/tools/$Script"))
+    }
+
+    It "gets the kit's license policy beside the license check" {
+        Test-Path -LiteralPath (Join-Path $app '.kit/tools/package-licenses.json') | Should -BeTrue
     }
 
     It 'gets the database guide that DAT-001 and the plan checklist point to' {
