@@ -371,7 +371,7 @@ Describe 'Export-KitApp' {
 
         $versions = @{}
         foreach ($node in $props.SelectNodes('//PackageVersion')) { $versions[$node.Include] = $node.Version }
-        # The sample app's packages and the kit's own tools' (built from the kit's download in CI) aren't the app's.
+        # The sample app's packages and the kit's own tools' (built with the kit's own props, from its download or .kit) aren't the app's.
         foreach ($kitOnly in $kitProps.SelectNodes('//ItemGroup[@Label="Sample app" or @Label="Kit tools"]/PackageVersion')) {
             $versions.ContainsKey($kitOnly.Include) | Should -BeFalse -Because "$($kitOnly.Include) is only the kit's"
         }
