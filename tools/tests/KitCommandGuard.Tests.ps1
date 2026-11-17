@@ -266,6 +266,8 @@ Describe 'Get-CommandGuardDecision for Bash' {
         @{ Command = "id=`$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') && gh run view `$id --log-failed" }
         @{ Command = 'echo "$(git status)" {a,b}' }
         @{ Command = 'for f in a b; do git add "$f"; done' }
+        # "--repo" isn't gh's repo subcommand: a subcommand is a whole word.
+        @{ Command = 'r=a/b; gh pr view 8 --repo $r --json state' }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
     }
