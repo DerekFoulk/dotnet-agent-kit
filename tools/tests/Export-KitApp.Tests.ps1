@@ -364,13 +364,17 @@ Describe 'Export-KitApp' {
             $result.ExitCode | Should -Be 0 -Because $result.Output
         }
 
-        It 'fail when the domain uses its infrastructure, naming both' {
-            $leak = "namespace Contoso.Orders.Domain;`n`n/// <summary>A domain type that reads infrastructure.</summary>`npublic static class Leak`n{`n    /// <summary>Gets the store's name.</summary>`n    public static string StoreName => Infrastructure.OrderStore.Name;`n}`n"
-            [IO.File]::WriteAllText((Join-Path $script:layered 'src/Contoso.Orders.Domain/Leak.cs'), $leak)
+        # SharedAppTestsBroken/README.md lists the four breaks. Each failing test is named, so a build error that only
+        # mentions the projects can't pass for a failing test (review 1).
+        It 'fail each broken rule, naming the test and the assemblies' {
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTestsBroken/*') -Destination $script:layered -Recurse -Force
 
             $result = Invoke-AppTest
 
-            $result.Output | Should -Match 'Contoso\.Orders\.Domain.*Contoso\.Orders\.Infrastructure'
+            $result.Output | Should -Match 'AnInnerLayerReferencesNoOuterLayer\(inner: "Contoso\.Orders\.Domain", outer: "Contoso\.Orders\.Infrastructure"\)'
+            $result.Output | Should -Match 'TheDomainKnowsNothingOfPersistence\(domain: "Contoso\.Orders\.Domain"\)'
+            $result.Output | Should -Match 'EveryLayerProjectTheTestsReferenceIsDeclared'
+            $result.Output | Should -Match 'AnApisEndpointsUseNoDomainType\(api: "Contoso\.Orders\.Api"\)'
             $result.ExitCode | Should -Not -Be 0 -Because $result.Output
         }
     }
