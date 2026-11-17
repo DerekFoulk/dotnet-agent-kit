@@ -2,10 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using Bookmarks.Contracts;
 using Bookmarks.Domain;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.FunctionalTests;
 

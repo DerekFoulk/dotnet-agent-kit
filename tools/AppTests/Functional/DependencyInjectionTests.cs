@@ -36,7 +36,7 @@ public sealed class DependencyInjectionTests
     }
 
     /// <summary>A scoped service, such as a DbContext.</summary>
-    [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "The container creates it, or refuses to; CA1812 can't see that.")]
+    [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Only the container would create it, and the tests check it refuses to; CA1812 can't see that.")]
     private sealed class ScopedProbe;
 
     /// <summary>A singleton that would hold its scoped dependency for the app's lifetime.</summary>

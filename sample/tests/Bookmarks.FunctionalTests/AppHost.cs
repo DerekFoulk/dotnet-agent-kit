@@ -12,4 +12,8 @@ internal static partial class AppHost
     // Probes call the health endpoints without a token, and a developer or client generator reads the Development
     // OpenAPI document before it has one (SEC-007).
     public static partial IReadOnlyCollection<string> AnonymousRoutes => ["/health", "/alive", "/openapi/{documentName}.json"];
+
+    public static partial string SignedInRoute => "/bookmarks";
+
+    public static partial bool ServesHttpApi => true;
 }

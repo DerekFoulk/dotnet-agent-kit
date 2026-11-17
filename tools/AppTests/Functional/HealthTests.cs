@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Net;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Timeouts;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -14,14 +16,16 @@ namespace Kit.AppTests.Functional;
 public sealed class HealthTests
 {
     private const string Healthy = "Healthy";
-    private static readonly Uri s_health = new("/health", UriKind.Relative);
-    private static readonly Uri s_alive = new("/alive", UriKind.Relative);
+    private const string Health = "/health";
+    private const string Alive = "/alive";
+    private static readonly Uri s_health = new(Health, UriKind.Relative);
+    private static readonly Uri s_alive = new(Alive, UriKind.Relative);
 
     // Probes call without a token, and need the endpoints in production; details would tell an attacker what the app
     // depends on.
     [Theory]
-    [InlineData("/alive")]
-    [InlineData("/health")]
+    [InlineData(Alive)]
+    [InlineData(Health)]
     public async Task AHealthEndpointAnswersAnAnonymousProbeWithTheStatusOnlyInProduction(string path)
     {
         using IAppUnderTest app = AppHost.Start(Environments.Production);
@@ -35,8 +39,8 @@ public sealed class HealthTests
 
     // An anonymous endpoint that runs every check on each call needs a short output cache, so probes can't overload it.
     [Theory]
-    [InlineData("/alive")]
-    [InlineData("/health")]
+    [InlineData(Alive)]
+    [InlineData(Health)]
     public async Task ASecondProbeWithinTheCacheWindowIsServedFromTheCache(string path)
     {
         using IAppUnderTest app = AppHost.Start(Environments.Production);
@@ -46,6 +50,20 @@ public sealed class HealthTests
         using HttpResponseMessage second = await probe.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
 
         second.Headers.Age.Should().NotBeNull("the second probe within the cache window is served from the output cache");
+    }
+
+    // Each endpoint carries a request timeout; the test below sees it cut a slow check off, through /health.
+    [Theory]
+    [InlineData(Alive)]
+    [InlineData(Health)]
+    public void AHealthEndpointIsTimeBoxed(string path)
+    {
+        using IAppUnderTest app = AppHost.Start(Environments.Production);
+
+        Endpoint endpoint = app.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .Single(candidate => (candidate as RouteEndpoint)?.RoutePattern.RawText == path);
+
+        endpoint.Metadata.GetMetadata<RequestTimeoutAttribute>().Should().NotBeNull("an anonymous endpoint probes call often is time-boxed");
     }
 
     // A check that waits 30 seconds meets every request timeout policy shortened to 100 ms, so the test stays fast
@@ -92,5 +110,7 @@ public sealed class HealthTests
         {
             options.AddPolicy(name, TimeSpan.FromMilliseconds(100));
         }
+
+        options.DefaultPolicy = options.DefaultPolicy is null ? null : new RequestTimeoutPolicy { Timeout = TimeSpan.FromMilliseconds(100) };
     }
 }

@@ -15,14 +15,16 @@ namespace Kit.AppTests.Functional;
 public sealed class ErrorTests
 {
     private const string ProblemJson = "application/problem+json";
+    private const string NoSuchRoute = "/kit-no-such-route";
 
     [Fact]
     public async Task ARouteThatDoesNotExistIsANotFoundProblem()
     {
+        Assert.SkipUnless(AppHost.ServesHttpApi, AppHost.NoHttpApi);
         using IAppUnderTest app = AppHost.Start(Environments.Production);
         using HttpClient client = app.CreateClient(signedIn: true);
 
-        using HttpResponseMessage response = await client.GetAsync(new Uri("/kit-no-such-route", UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await client.GetAsync(new Uri(NoSuchRoute, UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         (response.Content.Headers.ContentType?.MediaType).Should().Be(ProblemJson);
@@ -31,6 +33,7 @@ public sealed class ErrorTests
     [Fact]
     public async Task AnUnhandledErrorIsAProblemWithoutItsDetailsInProduction()
     {
+        Assert.SkipUnless(AppHost.ServesHttpApi, AppHost.NoHttpApi);
         using IAppUnderTest app = AppHost.Start(Environments.Production, services => services.AddSingleton<IStartupFilter>(new ThrowingRoute()));
         using HttpClient client = app.CreateClient(signedIn: true);
 

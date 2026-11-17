@@ -16,6 +16,7 @@ public sealed class OpenApiTests
     [InlineData("Production", true, HttpStatusCode.NotFound)]
     public async Task TheDocumentIsServedInDevelopmentOnly(string environment, bool signedIn, HttpStatusCode expected)
     {
+        Assert.SkipUnless(AppHost.ServesHttpApi, AppHost.NoHttpApi);
         using IAppUnderTest app = AppHost.Start(environment);
         using HttpClient client = app.CreateClient(signedIn);
 

@@ -14,14 +14,15 @@ namespace Kit.AppTests.Functional;
 public sealed class HostingSecurityTests
 {
     private const string AllowedHost = "kit-app.example";
+    private const string OtherHost = "attacker.example";
 
     [Fact]
     public async Task ARequestForAnotherHostIsRejectedInProduction()
     {
         using IAppUnderTest app = AppHost.Start(Environments.Production);
         using HttpClient client = app.CreateClient(signedIn: true);
-        using HttpRequestMessage request = new(HttpMethod.Get, "/");
-        request.Headers.Host = "attacker.example";
+        using HttpRequestMessage request = new(HttpMethod.Get, AppHost.SignedInRoute);
+        request.Headers.Host = OtherHost;
 
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -34,7 +35,7 @@ public sealed class HostingSecurityTests
     {
         using IAppUnderTest app = AppHost.Start(Environments.Production, new Dictionary<string, string> { ["AllowedHosts"] = AllowedHost });
         using HttpClient client = app.CreateClient(signedIn: true);
-        using HttpRequestMessage request = new(HttpMethod.Get, new Uri($"https://{AllowedHost}/"));
+        using HttpRequestMessage request = new(HttpMethod.Get, new Uri($"https://{AllowedHost}{AppHost.SignedInRoute}"));
 
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -46,8 +47,8 @@ public sealed class HostingSecurityTests
     {
         using IAppUnderTest app = AppHost.Start(Environments.Production);
         using HttpClient client = app.CreateClient(signedIn: true);
-        using HttpRequestMessage preflight = new(HttpMethod.Options, "/");
-        preflight.Headers.Add("Origin", "https://attacker.example");
+        using HttpRequestMessage preflight = new(HttpMethod.Options, AppHost.SignedInRoute);
+        preflight.Headers.Add("Origin", $"https://{OtherHost}");
         preflight.Headers.Add("Access-Control-Request-Method", "POST");
 
         using HttpResponseMessage response = await client.SendAsync(preflight, TestContext.Current.CancellationToken);
