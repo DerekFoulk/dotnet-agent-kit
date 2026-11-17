@@ -146,6 +146,14 @@ jobs:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
 
+      # SEC-005 (GAP-040), over the whole solution, which this leg restored: every locked package's license, from its
+      # .nuspec, against the kit's policy and the repo's .config/package-licenses.json.
+      - name: Package licenses
+        if: runner.os == 'Windows'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-PackageLicenses.ps1" -Solution $env:SOLUTION'
+
       # CRF-003, over the whole solution, for the same reason as code shape: it lists each project's files through
       # MSBuild. The release is the one the kit pins (ADR-0060), checked against the same committed SHA-256 as on
       # Linux. The runner's Java runs PMD's Windows launcher.
@@ -332,6 +340,16 @@ jobs:
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
+
+      # SEC-005 (GAP-040, ADR-0079): every package the lock files resolve, transitive ones too, has a license the kit's
+      # policy (tools/package-licenses.json) or the repo's .config/package-licenses.json allows, read from its .nuspec
+      # in the global packages folder. With UI projects, which this job doesn't restore, the ui job runs it on Windows.
+      - name: Package licenses
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-PackageLicenses.ps1" -Solution $env:SOLUTION'
 
       # CRF-003: the same code in more than one place, found by PMD's copy-paste detector, CPD (BSD-style licence;
       # ADR-0051). The kit pins the release (ADR-0060): its version in .config/pmd/pom.xml, which Dependabot moves, and

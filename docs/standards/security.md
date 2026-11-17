@@ -71,13 +71,16 @@ rules:
     layer: floor
     basis: preference
     status: accepted
-    sources: ["ADR-0004"]
+    sources: ["ADR-0004", "ADR-0079"]
     enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "ci: dotnet-ci.reusable.yml runs tools/Test-PackageLicenses.ps1, which reads every locked package's license from its .nuspec and fails one that the kit's tools/package-licenses.json, or the repo's own .config/package-licenses.json, doesn't allow; a package free only for non-commercial use, such as FluentAssertions 8, fails once the repo's file sets commercial to true, naming its swap (ADR-0079); tools/tests/Test-PackageLicenses.Tests.ps1 checks it"
       - kind: advisory
         in: [app]
-        how: "until the license check for commercial repos (after v0.1)"
+        how: "a repo marks itself commercial in .config/package-licenses.json; no tool can tell whether an app is sold or paid for, so its owner sets it, and whoever adds an entry to that file gives the reason the license allows the app's use"
     scope: core
-    paths: ["Directory.Packages.props", "**/*.csproj"]
+    paths: ["Directory.Packages.props", "**/*.csproj", ".config/package-licenses.json"]
   - id: SEC-006
     statement: "Every public repo runs CodeQL code scanning on its pull requests and on main, over its GitHub Actions workflows and its C#."
     why: "Code scanning finds injection, unsafe deserialization and similar flaws that analyzers and tests miss, and it's free on public repos (GAP-005)."

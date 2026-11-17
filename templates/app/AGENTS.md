@@ -22,6 +22,7 @@ This repo follows dotnet-agent-kit {{KitVersion}} (commit `{{KitCommit}}`): the 
 | Every C# project in the solution holds code of its own, and none keeps the class library template's empty `Class1` (ARC-009) | `./.kit/tools/Test-EmptyProjects.ps1 -Solution {{Name}}.slnx` |
 | Nesting, statements per member, file length, members per type, public types per file and LCOM4 within CRF-011's limits, and STY-005's nullable rules (kit ADR-0050). It builds the kit's checking tool from `.kit/tools/CodeShape` first; run it from the repo root | `./.kit/tools/Test-CodeShape.ps1 -Solution {{Name}}.slnx` |
 | No duplicate code (CRF-003, kit ADR-0051). It needs Java and PMD, which are the developer's own install (installing them is the owner's call, "Always ask"); CI downloads the PMD release the kit pins | `./.kit/tools/Test-Duplication.ps1 -Solution {{Name}}.slnx -Pmd <PMD folder>/bin/pmd` (`pmd.bat` on Windows) |
+| Every locked package's license is one the kit's policy or `.config/package-licenses.json` allows; that file also marks the app commercial (SEC-005). Restore first | `./.kit/tools/Test-PackageLicenses.ps1 -Solution {{Name}}.slnx` |
 | Every ADR has its required sections | `./.kit/tools/Test-AdrSections.ps1 -AdrPath ./docs/adr` |
 | The runbook has every section, and no placeholder once it's In use (OPS-004) | `./.kit/tools/Test-Runbook.ps1 -Path ./docs/runbook.md` |
 | The architecture diagram is there (ARC-013) | `./.kit/tools/Test-ArchitectureDiagram.ps1 -Path ./docs/architecture/modules.md` |

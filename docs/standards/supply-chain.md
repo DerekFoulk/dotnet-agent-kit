@@ -114,7 +114,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "settings: the kit repo requires actions pinned to a full-length commit SHA (GitHub's Actions setting, on since 2026-11-09), and .github/dependabot.yml updates the pins; Pester tests also check the pins in the release, Dependabot lock-file and shared app workflows, and Dependabot.Tests.ps1 checks the waits in the kit's and the app template's dependabot.yml, and that it watches the manifests pinning the two tools the shared .NET CI downloads, PMD and the gitleaks image (SharedCi.Tests.ps1 checks the CI reads only those pins), and the Playwright image pin in .config/playwright, in the kit and the app template (GAP-033: Invoke-WithPlaywrightImage.Tests.ps1 checks the kit's pin matches its Microsoft.Playwright version)"
+        how: "settings: the kit repo requires actions pinned to a full-length commit SHA (GitHub's Actions setting, on since 2026-11-09), and .github/dependabot.yml updates the pins; Pester tests also check the pins in the release, Dependabot lock-file and shared app workflows, and Dependabot.Tests.ps1 checks the waits in the kit's and the app template's dependabot.yml, and that it watches the manifests pinning the two tools the shared .NET CI downloads, PMD and the gitleaks image (SharedCi.Tests.ps1 checks the CI reads only those pins), and the Playwright image pin in .config/playwright, in the kit and the app template (GAP-033: Invoke-WithPlaywrightImage.Tests.ps1 checks the kit's pin matches its Microsoft.Playwright version); PMD's pin is the SHA-256 of a zip whose signature verified against PMD's release key, pinned by fingerprint in .config/pmd (KitPmd.Tests.ps1, ADR-0060)"
       - kind: gate
         in: [app]
         how: "settings: New-KitApp turns the same setting on for every app (templates/github/actions.json)"
@@ -176,9 +176,9 @@ rules:
       - kind: gate
         in: [kit, app]
         how: "ci, on macOS: dotnet-ci.reusable.yml's macOS restore isn't verified, but tools/Test-LockFileSubset.ps1 holds its lock files to the committed ones, hashes included, and those packages were verified by the Windows and Linux restores of the same commit (SUP-001, ADR-0059)"
-      - kind: advisory
-        in: [kit, app]
-        how: "when nuget.org rotates its repository certificate, dotnet nuget trust sync nuget.org updates the list; nothing yet notices a rotation before a restore fails (ADR-0066, a scorecard gap)"
+      - kind: gate
+        in: [kit]
+        how: "schedule: nuget-trust.yml runs tools/Test-NuGetTrustedSigners.ps1 daily, which compares nuget.config's nuget.org certificates with the ones nuget.org's service index announces, and opens an issue when they differ, so the kit syncs (dotnet nuget trust sync nuget.org) before a restore fails; an app gets the synced nuget.config with the next kit release (ADR-0066); tools/tests/Test-NuGetTrustedSigners.Tests.ps1 checks the script and the workflow"
     scope: core
     paths: ["nuget.config"]
 ---

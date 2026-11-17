@@ -161,6 +161,14 @@ Describe 'dependabot-lockfiles.yml' {
             $checkout['with']['persist-credentials'] | Should -BeFalse
         }
 
+        # GAP-029: Set-PmdPin checks the zip's signature against the kit's pinned PMD key before it pins the zip's hash.
+        It "downloads the zip of the pom's version and its signature, and pins them through Set-PmdPin" {
+            $pinRun | Should -Match '\$download = Get-PmdDownload -Path \.config/pmd'
+            $pinRun | Should -Match 'curl --fail --silent --show-error --location --output \$zip \$download\.Url'
+            $pinRun | Should -Match 'curl --fail --silent --show-error --location --output \$signature \$download\.SignatureUrl'
+            $pinRun | Should -Match 'Set-PmdPin -Path \.config/pmd -Release \$release -Zip \$zip -Signature \$signature'
+        }
+
         It "pins GitHub's digest for the release of the pom's version, through KitPmd.psm1, stopping on any failure" {
             $step = @($pin['steps'] | Where-Object { "$($_['run'])" -match 'Set-PmdPin' })
 
@@ -169,9 +177,7 @@ Describe 'dependabot-lockfiles.yml' {
             $step[0]['env']['GH_TOKEN'] | Should -Be '${{ github.token }}'
             $pinRun | Should -Match '\$PSNativeCommandUseErrorActionPreference = \$true'
             $pinRun | Should -Match 'Import-Module \./tools/KitPmd\.psm1'
-            $pinRun | Should -Match '\$version = Get-PmdVersion -Path \.config/pmd'
-            $pinRun | Should -Match 'gh api "repos/pmd/pmd/releases/tags/pmd_releases%2F\$version"'
-            $pinRun | Should -Match 'Set-PmdPin -Path \.config/pmd -Release \$release'
+            $pinRun | Should -Match 'gh api "repos/pmd/pmd/releases/tags/pmd_releases%2F\$\(\$download\.Version\)"'
         }
 
         It 'uploads only the pin file, and says whether it changed' {

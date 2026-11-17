@@ -121,9 +121,8 @@ areas:
     rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-012, SEC-013, SEC-014, SEC-015, ARC-006, DAT-010]
     gaps:
       - id: GAP-040
-        gap: "SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12)."
-        status: proposed
-        needs: "a script that reads the licenses of the packages in the lock files, an allowlist, and a CI step"
+        gap: "SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12). Closed by ADR-0079: the shared .NET CI runs tools/Test-PackageLicenses.ps1, which reads every locked package's license from its .nuspec (an SPDX expression, or a license file or URL that a package entry must pin) against tools/package-licenses.json and the repo's .config/package-licenses.json, where a repo marks itself commercial; there, FluentAssertions 8 fails, naming AwesomeAssertions."
+        status: closed
       - id: GAP-041
         gap: "Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12)."
         status: proposed
@@ -222,9 +221,8 @@ areas:
         gap: "PMD, which the duplicate code check downloads in CI (ADR-0051), is pinned by version and SHA-256 in dotnet-ci.reusable.yml, where Dependabot can't see it: nothing tells the kit when PMD releases a new version or has a security advisory. The gitleaks image the secret scan runs had the same problem. Closed by ADR-0060: PMD's version sits in .config/pmd/pom.xml and the gitleaks image's tag and digest in .config/gitleaks/Dockerfile, both watched by Dependabot with the usual 7-day wait; on Dependabot's PMD PRs a workflow pins the new zip's SHA-256 from GitHub's digest, and CI checks every download against the committed pin, as before."
         status: closed
       - id: GAP-029
-        gap: "PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too."
-        status: proposed
-        needs: "a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change"
+        gap: "PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too. Closed by ADR-0060's update of 2026-11-16: the pin job checks the zip's .asc with gpg against PMD's release key, committed in .config/pmd with its fingerprint (2EFA55D0785C31F956F2F87EA0B5CA1A4E086838, as PMD publishes it), before Set-PmdPin pins the zip's SHA-256; ADR-0060 says how to handle a key change."
+        status: closed
       - id: GAP-033
         gap: "Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3). Closed by ADR-0061's update of 2026-11-16: when a project uses Playwright, the shared CI's tests and the mutation run's Stryker run inside that image, pinned by tag and digest in the repo's own .config/playwright/Dockerfile, which Dependabot watches with the usual 7-day wait and whose version CI checks against Microsoft.Playwright's (tools/Invoke-WithPlaywrightImage.ps1). The container runs the SDK actions/setup-dotnet installed on the runner, since the image's own is the 10.0.1xx band."
         status: closed
@@ -233,9 +231,8 @@ areas:
         status: proposed
         needs: "a test of multi-ecosystem groups on a scratch repo (nuget and docker entries, one shared group), then the kit's and the app template's dependabot.yml"
       - id: GAP-038
-        gap: "Nothing notices nuget.org rotating its repository certificate before a restore fails: SUP-012's trust policy lists the certificates nuget.org's service index announced on 2026-11-13, and a package signed with a new one fails NU3004 in the kit and every app until someone runs dotnet nuget trust sync nuget.org (ADR-0066). A scheduled check that compares nuget.config with the service index, and opens a PR or issue when they differ, would catch it first."
-        status: proposed
-        needs: "a scheduled workflow and a kit script"
+        gap: "Nothing notices nuget.org rotating its repository certificate before a restore fails: SUP-012's trust policy lists the certificates nuget.org's service index announced on 2026-11-13, and a package signed with a new one fails NU3004 in the kit and every app until someone runs dotnet nuget trust sync nuget.org (ADR-0066). A scheduled check that compares nuget.config with the service index, and opens a PR or issue when they differ, would catch it first. Closed by ADR-0066's update of 2026-11-16: nuget-trust.yml runs tools/Test-NuGetTrustedSigners.ps1 daily and opens an issue when nuget.config's certificates differ from the ones the service index announces."
+        status: closed
   - id: delivery
     name: Delivery
     perfect: "Every merge builds a release candidate; deploys go to staging, then production, with a tested rollback and no downtime; infrastructure is code."
@@ -325,18 +322,18 @@ Each area in the front matter above has:
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 14 | 11 | 3 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 4 |
-| Security | 13 | 9 | 4 | 4 | 3 |
+| Security | 13 | 10 | 3 | 4 | 2 |
 | Reliability | 7 | 4 | 3 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 1 |
 | API design | 4 | 4 | 0 | 3 | 0 |
 | Performance | 3 | 1 | 2 | 1 | 0 |
-| Supply chain and build | 9 | 9 | 0 | 3 | 3 |
+| Supply chain and build | 9 | 9 | 0 | 3 | 1 |
 | Delivery | 1 | 1 | 0 | 2 | 3 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 2 | 1 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 94 rules in force, 60 checked by a tool and 34 advisory; 25 proposed; 20 open gaps.
+**Overall:** 94 rules in force, 61 checked by a tool and 33 advisory; 25 proposed; 17 open gaps.
 
 Open gaps:
 
@@ -347,14 +344,11 @@ Open gaps:
 - **GAP-037** (Tests, proposed; needs test projects in the app template or a shared check, and a CI change): 24 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001, OPS-002, OPS-003's resilience handler (its constructor ban is a build gate), OPS-005, OPS-006, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
 - **GAP-047** (Tests, proposed; needs a kit test that starts a Testcontainers container from a project that also uses Playwright, such as in the web UI fixture, with the package Testcontainers adds): When a project uses Playwright, the shared CI runs every test project inside the Playwright image (ADR-0061's update of 2026-11-16), so an app with a web UI and a database (Testcontainers by default, DAT-002) runs its Testcontainers tests there. The container shares the runner's Docker socket and network and sets TESTCONTAINERS_HOST_OVERRIDE=localhost, but no kit test starts a container inside the image, so nothing proves it works.
-- **GAP-040** (Security, proposed; needs a script that reads the licenses of the packages in the lock files, an allowlist, and a CI step): SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12).
 - **GAP-041** (Security, proposed; needs a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR): Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
 - **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12). Microsoft's logging pages offer redaction (Microsoft.Extensions.Compliance.Redaction, with [LoggerMessage] parameters classified as sensitive) as the way to keep such data out; it would be a new dependency, chosen with the test (.NET best-practices pass, 2026-11-16).
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
 - **GAP-043** (Observability, proposed; needs an SLO per app in its plan or runbook, and alert rules in its hosting's infrastructure code): No service level objectives or alerts: an app sends telemetry (OPS-001) but nothing says what good service is (an availability and latency objective) or who is told when it's missed. They belong with the deployment pipeline and its hosting (GAP-015) (rules audit, 2026-11-12).
-- **GAP-029** (Supply chain and build, proposed; needs a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change): PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too.
 - **GAP-046** (Supply chain and build, proposed; needs a test of multi-ecosystem groups on a scratch repo (nuget and docker entries, one shared group), then the kit's and the app template's dependabot.yml): Dependabot moves Microsoft.Playwright (nuget) and the Playwright image pin (docker) in separate PRs, and CI fails each until both move, so a person brings the two into one PR by hand (ADR-0061's update of 2026-11-16). Dependabot's multi-ecosystem groups would open one PR for both, but GitHub's page doesn't say what happens to the NuGet entry's packages outside the group's patterns, so adopting it could change every NuGet update.
-- **GAP-038** (Supply chain and build, proposed; needs a scheduled workflow and a kit script): Nothing notices nuget.org rotating its repository certificate before a restore fails: SUP-012's trust policy lists the certificates nuget.org's service index announced on 2026-11-13, and a package signed with a new one fails NU3004 in the kit and every app until someone runs dotnet nuget trust sync nuget.org (ADR-0066). A scheduled check that compares nuget.config with the service index, and opens a PR or issue when they differ, would catch it first.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0054, Option 4).
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 - **GAP-024** (Delivery, proposed; needs infrastructure as code first (GAP-016)): No check that an app's cloud database keeps its free-tier guard on (DAT-006): the guard is a setting in infrastructure code, which apps don't have yet (GAP-016).
