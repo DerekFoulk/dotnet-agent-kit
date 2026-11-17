@@ -123,7 +123,7 @@ How each limit is measured (the kit's own choices, each with tests in `tools/Cod
 
 - **Operational excellence:** four more limits checked in CI, annotated on the PR.
 - **Reliability:** smaller, more cohesive members and types are where fewer defects collect (CRF-008's reason).
-- **Security:** the tool runs only in CI and reads code. NuGet's audit of its packages runs in the kit's CI, not in an app's.
+- **Security:** the tool reads code. It ran only in CI until ADR-0078 let an app build it on its own machine too. NuGet's audit of its packages runs in the kit's CI, not in an app's CI or on its machine (the check passes `-p:NuGetAudit=false`).
 - **Cost:** a few seconds of CI per run to build and run the tool (not measured on a runner yet); no licence.
 - **Performance:** none.
 

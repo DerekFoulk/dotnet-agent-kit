@@ -27,7 +27,7 @@ Measured on the kit's own solution in CI on PR 49: see "Measurement" below.
 - **Trade-offs:** the C#-aware tokenizer and ignore options fit what CRF-003 asks.
   - The pinned, hash-checked download adds no package to the solution. But Dependabot can't see the version, so a newer PMD is a manual bump of two lines.
   - The tokenizer doesn't know some newer C#: a raw string literal (`"""..."""`, C# 11) stops it with a lexical error. CPD runs with `--no-fail-on-error`, so it skips such a file, and the script prints a warning for each one at the place CPD stopped. Those files aren't checked; the reviewer covers them.
-  - Apps can't run it locally without Java and PMD (GAP-022).
+  - Apps can't run it locally without Java and PMD (GAP-022). **Update (2026-11-16):** with ADR-0078, an app runs it locally with its developer's own Java and PMD.
 - **Reversibility:** easy. Two CI steps and one script.
 - **Risk:** low. A false finding goes between `CPD-OFF` and `CPD-ON` with its reason.
 

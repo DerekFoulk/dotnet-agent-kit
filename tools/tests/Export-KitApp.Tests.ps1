@@ -305,8 +305,10 @@ Describe 'Export-KitApp' {
             $exit | Should -Be 1 -Because $output
         }
 
-        It 'runs the duplicate code check over the same files, with the PMD it''s given' {
-            $env:KIT_FAKE_CPD_REPORT = Join-Path $root 'tools/tests/fixtures/Duplication/cpd-report.xml'
+        # A stand-in for PMD with a report that finds nothing, so the summary's count shows the kit's tool listed the
+        # project's one file.
+        It 'runs the duplicate code check over the project''s files, with the PMD it''s given' {
+            $env:KIT_FAKE_CPD_REPORT = Join-Path $root 'tools/tests/fixtures/Duplication/cpd-empty.xml'
             $env:KIT_FAKE_CPD_EXIT = '0'
             Push-Location -LiteralPath $script:withCode
             try {
@@ -318,8 +320,8 @@ Describe 'Export-KitApp' {
                 Remove-Item Env:KIT_FAKE_CPD_REPORT, Env:KIT_FAKE_CPD_EXIT -ErrorAction Ignore
             }
 
-            $output | Should -Match 'error CRF003: '
-            $exit | Should -Be 1 -Because $output
+            $output | Should -Match 'Duplicate code \(CRF-003\): 1 file checked'
+            $exit | Should -Be 0 -Because $output
         }
 
         It 'lists both checks in its AGENTS.md, with Java and PMD as the developer''s own install' {

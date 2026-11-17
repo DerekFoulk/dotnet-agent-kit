@@ -59,10 +59,11 @@ $script:KitTools = @(
 # shape and duplicate code checks build and run (GAP-022). Its tests stay in the kit.
 $script:KitToolSources = @('tools/CodeShape/src/')
 
-# The kit's build files, copied again into .kit, so the tools above build there exactly as they do in the kit and from
-# its download in CI: MSBuild takes the Directory.Build.props and Directory.Packages.props nearest a project, so a
+# The kit's build files, copied again into .kit, so the tools above build there with the kit's settings, as they do from
+# the kit's download in CI: MSBuild takes the Directory.Build.props and Directory.Packages.props nearest a project, so a
 # project under .kit finds these before the app's own. Directory.Packages.props whole, since the app's copy leaves out
-# the kit tools' packages; Directory.Build.props with the two files it points to.
+# the kit tools' packages. Directory.Build.props too, with the two files it points to, though the app's root has the
+# same three: an app may add its own lines to its root copy (ADR-0044), and those mustn't reach the kit's tool.
 $script:KitBuildRoot = @('Directory.Build.props', 'Directory.Packages.props', 'CodeMetricsConfig.txt', 'BannedSymbols.txt')
 
 # Templates the app owns from the start: the sync job never changes them. The app fills in its runbook (OPS-004) and
@@ -247,8 +248,9 @@ function Get-KitAppSettingsText {
 }
 
 # Drops the package groups that are only the kit's, each with the comment line above it, from Directory.Packages.props:
-# "Sample app" (the kit's sample's packages) and "Kit tools" (its own checking tools', which CI builds from the kit's
-# download with the kit's own props, so an app never needs them; transitive pinning would force them on its packages).
+# "Sample app" (the kit's sample's packages) and "Kit tools" (its own checking tools', which build with the kit's own
+# props: from the kit's download in CI, and from the copy in .kit on an app's machine (GAP-022), so the app's own
+# projects never need them; transitive pinning would force them on its packages).
 # Every kit commit has a "Sample app" group; one from before the kit tools had none of the other.
 function Remove-KitSamplePackage {
     param([Parameter(Mandatory)] [string] $PropsText)
