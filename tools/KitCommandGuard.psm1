@@ -64,6 +64,16 @@ function Get-PowerShellCommand {
     $ast = [Management.Automation.Language.Parser]::ParseInput($Command, [ref] $tokens, [ref] $errors)
     if ($errors.Count) { throw "PowerShell can't parse it: $($errors[0].Message)" }
 
+    # The PowerShell tool keeps no variables between calls, so one the input assigns or loops over holds a value the
+    # input chose; a command that uses it builds an argument no rule can read.
+    $setHere = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($node in $ast.FindAll({ param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] }, $true)) {
+        $target = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable } else { $node.Left }
+        foreach ($variable in $target.FindAll({ param($v) $v -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
+            [void] $setHere.Add((Get-PowerShellVariableName -Variable $variable))
+        }
+    }
+
     foreach ($commandAst in $ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] }, $true)) {
         $words = [Collections.Generic.List[string]]::new()
         switch ($commandAst.InvocationOperator) {
@@ -78,6 +88,9 @@ function Get-PowerShellCommand {
         }
         $name = $words[$words.Count - $commandAst.CommandElements.Count]
         $inner = $commandAst.Find({ param($node) $node.GetType() -in $script:ComputedArgumentAst }, $true)
+        if (-not $inner) {
+            $inner = $commandAst.Find({ param($node) $node -is [Management.Automation.Language.VariableExpressionAst] -and $setHere.Contains((Get-PowerShellVariableName -Variable $node)) }, $true)
+        }
         [pscustomobject]@{
             Words      = $words.ToArray()
             PlainWords = $plainWords.ToArray()
@@ -85,6 +98,13 @@ function Get-PowerShellCommand {
             Computed   = if ($inner) { $inner.Extent.Text } else { $null }
         }
     }
+}
+
+# A variable's name without its scope ($script:f is f); a drive-qualified one keeps its drive ($env:F).
+function Get-PowerShellVariableName {
+    param([Parameter(Mandatory)] [Management.Automation.Language.VariableExpressionAst] $Variable)
+
+    $Variable.VariablePath.UserPath -replace '^(?i:global|local|script|private|using|variable):', ''
 }
 
 # One argument of a PowerShell command with its variables taken out, as if each were empty: a string's nested
@@ -130,7 +150,31 @@ function Get-BashCommand {
 
     $reader = New-BashReader -Text $Command -Commands ([Collections.Generic.List[object]]::new())
     Read-BashList -Reader $reader -Close ''
+    # The Bash tool keeps no variables between calls, so one the input sets holds a value the input chose; a command
+    # that uses it builds an argument no rule can read.
+    $setHere = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($resolved in $reader.Commands) { foreach ($name in Get-BashAssignedName -Words $resolved.Words) { [void] $setHere.Add($name) } }
+    foreach ($resolved in $reader.Commands) {
+        $used = @($resolved.Variables | Where-Object { $setHere.Contains($_) })
+        if ($used.Count -and -not $resolved.Computed) { $resolved.Computed = "`$$($used[0])" }
+    }
     $reader.Commands
+}
+
+# The variables a Bash command sets: its leading NAME=value assignments, a for loop's variable, read's names, and the
+# names export, declare, local, readonly and typeset give.
+function Get-BashAssignedName {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words)
+
+    $name = '^([A-Za-z_][A-Za-z0-9_]*)(\+?=|$)'
+    $i = 0
+    while ($i -lt $Words.Count -and $Words[$i] -match '^([A-Za-z_][A-Za-z0-9_]*)\+?=') { $Matches[1]; $i++ }
+    if ($i -ge $Words.Count) { return }
+    $operands = @($Words | Select-Object -Skip ($i + 1) | Where-Object { -not $_.StartsWith('-') })
+    if ($Words[$i] -ceq 'for' -and $operands.Count) { $operands[0] }
+    elseif ($Words[$i] -cin 'read', 'export', 'declare', 'local', 'readonly', 'typeset') {
+        foreach ($operand in $operands) { if ($operand -match $name) { $Matches[1] } }
+    }
 }
 
 function New-BashReader {
@@ -206,6 +250,7 @@ function Read-BashList {
 function New-BashBuilder {
     [pscustomobject]@{
         Words = [Collections.Generic.List[string]]::new(); PlainWords = [Collections.Generic.List[string]]::new(); Computed = $null
+        Variables = [Collections.Generic.List[string]]::new(); WordVariables = [Collections.Generic.List[string]]::new()
         Word = [Text.StringBuilder]::new(); PlainWord = [Text.StringBuilder]::new(); Unquoted = [Text.StringBuilder]::new()
         InWord = $false; Quoted = $false; WordComputed = $null; Redirect = $null; Depth = 0; CaseDepth = 0; InPattern = $false
     }
@@ -222,14 +267,15 @@ function Add-BashText {
 }
 
 # An expansion in the current word, kept as written and left out of its plain form. -Computed marks a value Bash
-# builds when it runs, which no rule can read.
+# builds when it runs, which no rule can read; -Variable names the variable a $name or ${name} expands.
 function Add-BashExpansion {
-    param([Parameter(Mandatory)] [pscustomobject] $Builder, [Parameter(Mandatory)] [string] $Text, [switch] $Computed)
+    param([Parameter(Mandatory)] [pscustomobject] $Builder, [Parameter(Mandatory)] [string] $Text, [switch] $Computed, [string] $Variable)
 
     [void] $Builder.Word.Append($Text)
     [void] $Builder.Unquoted.Append("`0")
     $Builder.InWord = $true
     if ($Computed -and -not $Builder.WordComputed) { $Builder.WordComputed = $Text }
+    if ($Variable) { $Builder.WordVariables.Add($Variable) }
 }
 
 # Ends the current word: a command's word, a redirection's target (dropped), or a heredoc's delimiter. An unquoted
@@ -249,6 +295,7 @@ function Add-BashWord {
     $Builder.InWord = $false
     $Builder.Quoted = $false
     $Builder.WordComputed = $null
+    $Builder.WordVariables.Clear()
 }
 
 # Adds a word to the command being read, except where a case statement makes it something else: "case WORD in" ends
@@ -268,6 +315,7 @@ function Add-BashCommandWord {
     if ($Builder.InPattern) { return }
     $Builder.Words.Add($Word)
     $Builder.PlainWords.Add($PlainWord)
+    $Builder.Variables.AddRange($Builder.WordVariables)
     if ($Builder.WordComputed -and -not $Builder.Computed) { $Builder.Computed = $Builder.WordComputed }
     if ($Builder.Words.Count -eq 3 -and $Builder.Words[0] -ceq 'case' -and $Word -ceq 'in' -and -not $Builder.Quoted) {
         Add-BashCommand -Reader $Reader -Builder $Builder
@@ -289,9 +337,13 @@ function Add-BashCommand {
     param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder)
 
     if ($Builder.Words.Count) {
-        $Reader.Commands.Add([pscustomobject]@{ Words = $Builder.Words.ToArray(); PlainWords = $Builder.PlainWords.ToArray(); Native = $true; Computed = $Builder.Computed })
+        $Reader.Commands.Add([pscustomobject]@{
+                Words = $Builder.Words.ToArray(); PlainWords = $Builder.PlainWords.ToArray(); Native = $true
+                Computed = $Builder.Computed; Variables = $Builder.Variables.ToArray()
+            })
         $Builder.Words.Clear()
         $Builder.PlainWords.Clear()
+        $Builder.Variables.Clear()
     }
     $Builder.Computed = $null
 }
@@ -367,13 +419,14 @@ function Read-BashDollar {
     }
     if ($next -eq '{') {
         $parameter = Read-BashBracketed -Reader $Reader -Open '{' -Close '}'
-        Add-BashExpansion -Builder $Builder -Text $parameter -Computed:($parameter -notmatch '^\$\{[A-Za-z_][A-Za-z0-9_]*\}$')
+        $plain = $parameter -match '^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$'
+        Add-BashExpansion -Builder $Builder -Text $parameter -Computed:(-not $plain) -Variable $(if ($plain) { $Matches[1] })
         return
     }
     $name = [regex]::Match($text.Substring($start + 1), '^(?:[A-Za-z_][A-Za-z0-9_]*|[0-9#?@*!$-])')
     if ($name.Success) {
         $Reader.Index += 1 + $name.Length
-        Add-BashExpansion -Builder $Builder -Text "`$$($name.Value)"
+        Add-BashExpansion -Builder $Builder -Text "`$$($name.Value)" -Variable $name.Value
         return
     }
     $Reader.Index++
