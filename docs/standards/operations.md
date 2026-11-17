@@ -10,9 +10,6 @@ rules:
     sources: ["ADR-0037", "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel, retrieved 2026-11-08", "owner, 2026-11-09"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's Bookmarks.ServiceDefaults project, in dotnet-ci.reusable.yml"
-      - kind: gate
         in: [kit, app]
         how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): TelemetryTests checks that OpenTelemetry collects traces, metrics and logs, keeps each log's message and scopes, leaves the health probes out of traces, and exports a trace over OTLP only when an endpoint is set; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
@@ -82,9 +79,6 @@ rules:
     status: accepted
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown, retrieved 2026-11-15"]
     enforcement:
-      - kind: gate
-        in: [kit]
-        how: "ci: the sample's ServiceDefaults sets HostOptions.ShutdownTimeout to 25 seconds"
       - kind: gate
         in: [kit, app]
         how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): ShutdownTests checks that the shutdown timeout is positive and ends before 30 seconds, in Production; an app without that project isn't checked until TST-003's check (GAP-027)"

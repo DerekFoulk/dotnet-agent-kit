@@ -177,7 +177,7 @@ rules:
         how: "ci: the sample's FunctionalTests (HostingSecurityTests) check that a flood from one caller gets 429 with Retry-After as Problem Details, whether the caller has a valid token, no token or a forged one, that the health probes are never limited, and that a rate limit below one stops the app at startup"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): HostingSecurityTests checks that another host gets a 400 and an HTTPS response carries HSTS in Production, that a cross-origin preflight gets no permission, and that Kestrel sends no Server header and caps the request body at 1 MB; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): HostingSecurityTests checks that another host gets a 400 and an HTTPS response carries HSTS in Production, that a cross-origin preflight to a route the app names gets no permission, and that Kestrel sends no Server header and caps the request body at 1 MB or less; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
         how: "the rate limit, whose settings are the app's own, until its own FunctionalTests check it, as the sample's do"

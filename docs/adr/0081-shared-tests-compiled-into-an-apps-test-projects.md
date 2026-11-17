@@ -90,12 +90,6 @@ Accepted (auto mode, 2026-11-16): the owner asked for the free gaps to be finish
 - `docs/standards/testing.md` ("Shared tests") and the app's AGENTS.md describe it.
 
 **Next:** the host checks follow in their own PR, with the same pattern for `*.FunctionalTests`. GAP-037 stays open until then.
-  - **Update (2026-11-16): the host checks (GAP-037 closed).** `tools/AppTests/Functional` holds them, and `tests/Directory.Build.props` compiles them into every `*.FunctionalTests` project.
-    - **The app's part:** `AppHost.Start(environment, settings, services)` starts the app with its own test database and sign-in, with ValidateScopes and ValidateOnBuild on, and returns it as an `IAppUnderTest`: its `Services`, and `CreateClient(signedIn)`. `AppHost.AnonymousRoutes` lists the routes that may be called anonymously. The sample's `AppHost.cs` starts it through its `ApiHost`.
-    - **The checks:** `HealthTests` (OPS-002), `ErrorTests` (API-002: a route that doesn't exist, and an unhandled exception, thrown by a branch a startup filter adds after the app's pipeline, so it passes through the app's own exception handler), `OpenApiTests` (API-003), `DependencyInjectionTests` (CRF-013, with probe services of its own), `TelemetryTests` (OPS-001), `ResilienceTests` (OPS-003), `ShutdownTests` (OPS-005), `AuthorizationTests` (SEC-007: the fallback policy, and the anonymous routes against the app's list) and `HostingSecurityTests` (SEC-011: host filtering, HSTS, CORS, the Server header and the body cap). The sample's copies of these went (CRF-003), and it keeps its own: its database and live checks, its health timeout, its rate limit, its errors and its tokens.
-    - **Rules:** nine rules gain a gate in apps (`in: [kit, app]`), each for the parts above: API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 and SEC-011. SEC-008, the tenth in the host group above, stays advisory: its token checks need tokens signed with the app's own test key. What stays advisory for an app is its own: the third group above (API-004, API-006, API-007, SEC-009, SEC-010, OPS-006), and SEC-008's token checks, SEC-011's rate limit and API-003's snapshot, which need the app's own endpoints, data, signing key or settings. No shared test can check those, so they're its own tests' to check, as the sample's do, and code review's; GAP-027's check will require the projects. TST-003 is GAP-027's, and UI-001 is UI-002's.
-    - **Packages:** the checks use OpenTelemetry's and Microsoft.Extensions.Http.Resilience's types, which an app's FunctionalTests gets through its API's ServiceDefaults project (OPS-001). An app without one doesn't build its FunctionalTests until it has one.
-    - **Proof:** `tools/tests/SharedHostChecks.Tests.ps1` checks that every shared check compiles into the sample's FunctionalTests, which runs them in the kit's CI. **Not verified:** an exported app's FunctionalTests, which needs a whole web app with ServiceDefaults and sign-in; the export copies `tools/AppTests` whole, as for the architecture tests, whose export test covers that path.
 
 **An app that already copied the sample's architecture tests** has to do three things at its next sync. Its build fails until it does the last two, and the first keeps each check from running twice.
 - Delete its copies.
@@ -103,6 +97,41 @@ Accepted (auto mode, 2026-11-16): the owner asked for the free gaps to be finish
 - Add its `AppLayers.cs`, as the sample's.
 
 The sync PR's CI build fails until then, so the change shows on that PR.
+
+**Update (2026-11-16): the host checks.** `tools/AppTests/Functional` holds them, and `tests/Directory.Build.props` compiles them into every `*.FunctionalTests` project.
+
+- **The app's part of `AppHost`:**
+  - `Start(environment, settings, services)` starts the app with its own test database and sign-in, with ValidateScopes and ValidateOnBuild on, and returns it as an `IAppUnderTest`: its `Services`, and `CreateClient(signedIn)`.
+  - `AnonymousRoutes` lists the routes that may be called anonymously.
+  - `SignedInRoute` names a route a signed-in user may GET. The hosting checks send their requests there, since a route with no endpoint would pass a CORS check whatever the app's endpoints allow.
+  - `ServesHttpApi` says whether the app serves an HTTP API. `ErrorTests` and `OpenApiTests` skip when it doesn't, as in a Blazor web app with no API of its own, since API-002 and API-003 cover HTTP APIs.
+  - The sample's `AppHost.cs` starts it through its `ApiHost`.
+- **The checks:**
+  - `HealthTests` (OPS-002).
+  - `ErrorTests` (API-002): a route that doesn't exist, and an unhandled exception. The exception is thrown by a branch a startup filter adds after the app's pipeline, so it passes through the app's own exception handler.
+  - `OpenApiTests` (API-003).
+  - `DependencyInjectionTests` (CRF-013), with probe services of its own.
+  - `TelemetryTests` (OPS-001) and `ResilienceTests` (OPS-003).
+  - `ShutdownTests` (OPS-005).
+  - `AuthorizationTests` (SEC-007): the fallback policy, and the anonymous routes against the app's list.
+  - `HostingSecurityTests` (SEC-011): host filtering, HSTS, CORS, the Server header and the body cap.
+  - The sample's copies of these went (CRF-003). It keeps its own: its database and live checks, its health timeout, its rate limit, its errors and its tokens.
+- **Rules:** nine rules gain a gate in apps (`in: [kit, app]`), each for the parts above: API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 and SEC-011.
+- **What stays advisory, and why:**
+  - **The app's own behavior** (API-004, API-006, API-007, SEC-009, SEC-010, OPS-006), SEC-011's rate limit and `/health`'s database check need the app's own endpoints, data or settings. They're its own tests' to check, as the sample's do, and code review's. GAP-027's check will require the projects.
+  - **TST-003 and UI-001:** TST-003 is GAP-027's, and UI-001 is UI-002's.
+- **GAP-037 stays open, narrowed** to what a shared check could still take on:
+  - the OpenAPI document's checks: API-002's declared errors as Problem Details, API-003's snapshot, and SEC-013's schemas;
+  - SEC-008's token rejections that need no app key (an unsigned token, one signed with another key) and its bearer scheme in the document;
+  - a second host, such as a web UI beside an API, which the checks don't start.
+  - They wait because each needs another hook in the app's part (its document's path and snapshot folder, its Contracts assembly, a second host), and the owner asked for this part to land quickly.
+- **Packages:** the checks use OpenTelemetry's and Microsoft.Extensions.Http.Resilience's types. An app's FunctionalTests gets them through its API's ServiceDefaults project (OPS-001). An app without one doesn't build its FunctionalTests until it has one.
+- **Proof:** `tools/tests/SharedHostChecks.Tests.ps1` checks that every shared check compiles into the sample's FunctionalTests, which runs them in the kit's CI.
+  - **Not verified:** an exported app's FunctionalTests, which would need a whole web app with ServiceDefaults and sign-in. The export copies `tools/AppTests` whole, the path the architecture tests' export test covers.
+
+**An app that already has a FunctionalTests project** has to do two things at its next sync. Its build fails until it adds the part, so the change shows on the sync PR.
+- Add its `AppHost.cs`, as the sample's, starting the app through its own host.
+- Delete any copies of the sample's tests that the shared checks now run, so none runs twice and the duplicate code check doesn't report them.
 
 **One Architecture.Tests project per app**, as TST-003 says. A second one would compile the same `.kit` files again, and the duplicate code check would report each one as a copy of itself.
 
