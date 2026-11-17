@@ -333,6 +333,48 @@ Describe 'Export-KitApp' {
         }
     }
 
+    # GAP-037: the kit's shared tests reach an app's own test projects, so the rules the sample's tests gate are gated in
+    # the app too. tests/Directory.Build.props compiles the kit's architecture tests into any *.Architecture.Tests
+    # project, from .kit/tools/AppTests. A copy of the app gets a domain and an infrastructure project, and an
+    # Architecture.Tests project with no tests of its own.
+    Context 'the kit''s shared architecture tests in the app' {
+        BeforeAll {
+            $script:layered = Join-Path $TestDrive 'app-layered'
+            Copy-Item -LiteralPath $app -Destination $script:layered -Recurse
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTests/*') -Destination $script:layered -Recurse -Force
+
+            # Builds and tests the copy's solution, and returns the exit code and output. The copy isn't a git repo, so
+            # MinVer is skipped; it has no lock files, so restore isn't locked, even in CI.
+            function Invoke-AppTest {
+                Push-Location -LiteralPath $script:layered
+                try {
+                    $build = dotnet build Contoso.Orders.slnx -p:MinVerSkip=true -p:RestoreLockedMode=false 2>&1 | Out-String
+                    if ($LASTEXITCODE -ne 0) { return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $build } }
+                    $test = dotnet test --solution Contoso.Orders.slnx --no-build 2>&1 | Out-String
+                    [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $test }
+                }
+                finally { Pop-Location }
+            }
+        }
+
+        It 'pass for an app whose layers depend only inward' {
+            $result = Invoke-AppTest
+
+            $result.Output | Should -Match 'succeeded: [1-9]'
+            $result.ExitCode | Should -Be 0 -Because $result.Output
+        }
+
+        It 'fail when the domain uses its infrastructure, naming both' {
+            $leak = "namespace Contoso.Orders.Domain;`n`n/// <summary>A domain type that reads infrastructure.</summary>`npublic static class Leak`n{`n    /// <summary>Gets the store's name.</summary>`n    public static string StoreName => Infrastructure.OrderStore.Name;`n}`n"
+            [IO.File]::WriteAllText((Join-Path $script:layered 'src/Contoso.Orders.Domain/Leak.cs'), $leak)
+
+            $result = Invoke-AppTest
+
+            $result.Output | Should -Match 'Contoso\.Orders\.Domain.*Contoso\.Orders\.Infrastructure'
+            $result.ExitCode | Should -Not -Be 0 -Because $result.Output
+        }
+    }
+
     # ADR-0062: the performance workflow runs them in CI; an app runs them too, against a local benchmark or load run.
     It 'gets the <Script> check, which its AGENTS.md lists' -ForEach @(
         @{ Script = 'Test-BenchmarkBudget.ps1' }
