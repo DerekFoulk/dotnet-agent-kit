@@ -145,7 +145,6 @@ public sealed class BookmarkTests
         create.Should().Throw<ArgumentException>().WithParameterName("url");
     }
 
-
     [Fact]
     public void CreateRejectsAnIdThatIsNotAUuidVersion7()
     {

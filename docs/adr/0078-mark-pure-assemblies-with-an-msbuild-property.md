@@ -51,19 +51,21 @@ Accepted as recommended, in auto mode (owner's task brief for GAP-039, 2026-11-1
 
 - **The ban list.** `BannedSymbols.Pure.txt` bans four families.
   - **Randomness:** `Random`, `RandomNumberGenerator`, `Guid.NewGuid` and both `Guid.CreateVersion7` overloads.
-  - **File access:** `File`, `Directory`, the `FileSystemInfo` types, `FileStream` and the other file types, and `Path`'s members that touch the disk or read the current or temporary folder. Also the `StreamReader` and `StreamWriter` constructors that open a path.
-  - **Network access:** `HttpClient` and its handlers, even when passed in, plus `Socket`, `TcpClient`, `Dns` and the other network types.
-  - **The environment and other processes:** environment variables, the command line and current directory, the machine's and user's names and folders, `Environment`'s tick counts, `Stopwatch` (clocks), `Console`, `Process`, named pipes, and ending the process.
+  - **File access:** `File`, `Directory`, the `FileSystemInfo` types, `FileStream` and the other file types, and `Path`'s members that touch the disk or read the current or temporary folder. Also the `StreamReader` and `StreamWriter` constructors that open a path, zip and tar files (`ZipFile`, `ZipFileExtensions`, `TarFile`), folder listings (`FileSystemEnumerable`), and the app's and an assembly's own location.
+  - **Network access:** `HttpClient` and its handlers, even when passed in, plus `Socket`, `TcpClient`, `Dns` and the other network types. A pure assembly takes an interface of its own, which the infrastructure implements over `HttpClient`.
+  - **The environment and other processes:** environment variables, the command line and current directory, the machine's and user's names and folders, `Environment`'s tick counts, `Stopwatch` (clocks), the local time zone (`TimeProvider.LocalTimeZone` replaces it), `Console`, `Process`, named and anonymous pipes, and ending the process.
 
   ARC-008's statement now names the fourth family. Its reason, deterministic tests, covers it as it covers the other three.
-- **What stays open.**
+- **What stays open.** `tools/tests/BuildConfig.Tests.ps1` shows the first three build in a marked project:
   - `Path`'s string work.
   - Streams, readers and writers the caller passes in.
   - What only describes the platform, such as `Environment.NewLine` and `ProcessorCount`.
+  - `CultureInfo.CurrentCulture`: CA1305 and the other culture rules, which every project has, already keep the current culture out of formatting and comparison.
   - `HashCode` and `string.GetHashCode`, whose per-process seed changes no result a test should assert.
 - **What the list can't reach.** Some APIs take a path or a URL through a general-purpose overload, such as `XDocument.Load(string)` or `XmlReader.Create(string)`. Code review checks these (ARC-008's advisory part).
 - **Tests.** `tools/tests/BuildConfig.Tests.ps1` has:
   - a failing fixture for each family, with one row per banned symbol it proves, including one that shows a marked project keeps `BannedSymbols.txt`'s bans;
+  - rows that show a marked project keeps what the list leaves open, so a ban widened to a whole type shows;
   - a clean fixture that shows an unmarked project may use them;
   - checks that every ID in the new file resolves and repeats none of `BannedSymbols.txt`'s, and that every path constructor of the stream reader and writer is listed;
   - a test that every `*.Domain` project in the sample gets the file.
