@@ -223,9 +223,12 @@ areas:
         status: proposed
         needs: "a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change"
       - id: GAP-033
-        gap: "Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3)."
+        gap: "Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3). Closed by ADR-0061's update of 2026-11-16: when a project uses Playwright, the shared CI's tests and the mutation run's Stryker run inside that image, pinned by tag and digest in the repo's own .config/playwright/Dockerfile, which Dependabot watches with the usual 7-day wait and whose version CI checks against Microsoft.Playwright's (tools/Invoke-WithPlaywrightImage.ps1). The container runs the SDK actions/setup-dotnet installed on the runner, since the image's own is the 10.0.1xx band."
+        status: closed
+      - id: GAP-046
+        gap: "Dependabot moves Microsoft.Playwright (nuget) and the Playwright image pin (docker) in separate PRs, and CI fails each until both move, so a person brings the two into one PR by hand (ADR-0061's update of 2026-11-16). Dependabot's multi-ecosystem groups would open one PR for both, but GitHub's page doesn't say what happens to the NuGet entry's packages outside the group's patterns, so adopting it could change every NuGet update."
         status: proposed
-        needs: "a CI change to run the browser tests in a pinned container, and an ADR"
+        needs: "a test of multi-ecosystem groups on a scratch repo (nuget and docker entries, one shared group), then the kit's and the app template's dependabot.yml"
       - id: GAP-038
         gap: "Nothing notices nuget.org rotating its repository certificate before a restore fails: SUP-012's trust policy lists the certificates nuget.org's service index announced on 2026-11-13, and a package signed with a new one fails NU3004 in the kit and every app until someone runs dotnet nuget trust sync nuget.org (ADR-0066). A scheduled check that compares nuget.config with the service index, and opens a PR or issue when they differ, would catch it first."
         status: proposed
@@ -279,9 +282,8 @@ areas:
         status: proposed
         needs: "a native UI test tool (an ADR and packages), and CI runners with emulators or devices"
       - id: GAP-036
-        gap: "The kit's web UI fixture uses static server rendering with enhanced navigation only, so nothing shows how to test a page with an interactive render mode (Server, WebAssembly or Auto), where a click made before the component is interactive is lost, nor proves it in CI (ADR-0061)."
-        status: proposed
-        needs: "an interactive page in the fixture and a documented way to wait for interactivity"
+        gap: "The kit's web UI fixture uses static server rendering with enhanced navigation only, so nothing shows how to test a page with an interactive render mode (Server, WebAssembly or Auto), where a click made before the component is interactive is lost, nor proves it in CI (ADR-0061). Closed by ADR-0061's update of 2026-11-16: the fixture's /interactive page (Interactive Server) keeps its button disabled until RendererInfo.IsInteractive, as Microsoft's render modes page shows; its Playwright test waits for the button to be enabled before it clicks, another checks the prerendered page sends it disabled, and axe checks the page; docs/standards/testing.md documents the pattern for every interactive render mode."
+        status: closed
   - id: process
     name: Process
     perfect: "Short-lived branches merged by pull request with a merge commit, readable commit history, an independent review before the owner's, and an agent that reports with evidence and asks before risky steps."
@@ -328,10 +330,10 @@ Each area in the front matter above has:
 | Supply chain and build | 9 | 9 | 0 | 3 | 3 |
 | Delivery | 1 | 1 | 0 | 2 | 3 |
 | Docs and decisions | 3 | 2 | 1 | 1 | 0 |
-| UI and accessibility | 3 | 1 | 2 | 2 | 2 |
+| UI and accessibility | 3 | 1 | 2 | 2 | 1 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 94 rules in force, 60 checked by a tool and 34 advisory; 25 proposed; 22 open gaps.
+**Overall:** 94 rules in force, 60 checked by a tool and 34 advisory; 25 proposed; 21 open gaps.
 
 Open gaps:
 
@@ -349,13 +351,12 @@ Open gaps:
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
 - **GAP-043** (Observability, proposed; needs an SLO per app in its plan or runbook, and alert rules in its hosting's infrastructure code): No service level objectives or alerts: an app sends telemetry (OPS-001) but nothing says what good service is (an availability and latency objective) or who is told when it's missed. They belong with the deployment pipeline and its hosting (GAP-015) (rules audit, 2026-11-12).
 - **GAP-029** (Supply chain and build, proposed; needs a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change): PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too.
-- **GAP-033** (Supply chain and build, proposed; needs a CI change to run the browser tests in a pinned container, and an ADR): Playwright's installer downloads the browser its package version pins (Chromium, over HTTPS from Playwright's CDN) and checks no hash, so a download replaced there would run in an app's CI. ADR-0060 checks PMD against a committed SHA-256; this download has no such check. Microsoft's Playwright .NET container image, pinned by tag and digest where Dependabot moves it, would close it, once its .NET SDK can match global.json (ADR-0061, Option 3).
+- **GAP-046** (Supply chain and build, proposed; needs a test of multi-ecosystem groups on a scratch repo (nuget and docker entries, one shared group), then the kit's and the app template's dependabot.yml): Dependabot moves Microsoft.Playwright (nuget) and the Playwright image pin (docker) in separate PRs, and CI fails each until both move, so a person brings the two into one PR by hand (ADR-0061's update of 2026-11-16). Dependabot's multi-ecosystem groups would open one PR for both, but GitHub's page doesn't say what happens to the NuGet entry's packages outside the group's patterns, so adopting it could change every NuGet update.
 - **GAP-038** (Supply chain and build, proposed; needs a scheduled workflow and a kit script): Nothing notices nuget.org rotating its repository certificate before a restore fails: SUP-012's trust policy lists the certificates nuget.org's service index announced on 2026-11-13, and a package signed with a new one fails NU3004 in the kit and every app until someone runs dotnet nuget trust sync nuget.org (ADR-0066). A scheduled check that compares nuget.config with the service index, and opens a PR or issue when they differ, would catch it first.
 - **GAP-015** (Delivery, proposed; needs cloud resources and cost): No deployment pipeline: ADR-0023 decided on manual promotion to production, but nothing deploys an app yet. When it does, it applies migrations with a bundle before the new version takes traffic (DAT-004), and should run the previous release's tests against the new schema (ADR-0054, Option 4).
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 - **GAP-024** (Delivery, proposed; needs infrastructure as code first (GAP-016)): No check that an app's cloud database keeps its free-tier guard on (DAT-006): the guard is a setting in infrastructure code, which apps don't have yet (GAP-016).
 - **GAP-032** (UI and accessibility, proposed; needs a native UI test tool (an ADR and packages), and CI runners with emulators or devices): No automated UI tests for MAUI or desktop apps: UI-001 and its accessibility checks stay manual there, with each platform's tools, and nothing drives a native UI the way Playwright drives a browser (Appium for MAUI, or a Windows UI Automation driver for desktop). See also GAP-031: the intake offers a MAUI app browser test tools (ADR-0061).
-- **GAP-036** (UI and accessibility, proposed; needs an interactive page in the fixture and a documented way to wait for interactivity): The kit's web UI fixture uses static server rendering with enhanced navigation only, so nothing shows how to test a page with an interactive render mode (Server, WebAssembly or Auto), where a click made before the component is interactive is lost, nor proves it in CI (ADR-0061).
 - **GAP-044** (Process, proposed; needs a hook script with Pester tests, a hooks entry in .claude/settings.json, and an ADR): The asks in .claude/settings.json match a command's text, so a quoted or escaped spelling, joined short options such as git push -qf, or a command inside ( ), @( ) or $( ) gets past them (ADR-0075, Known limits). A PreToolUse hook that resolves each command with PowerShell's own parser (and Bash's) before it runs, and asks for what the rules would ask for, would close them; so would Claude Code's sandbox, once it supports the PowerShell tool on Windows.
 <!-- scorecard-table:end -->
 

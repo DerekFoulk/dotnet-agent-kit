@@ -30,7 +30,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: the shared .NET CI installs Playwright's browser and runs every E2E test an app writes (dotnet-ci.reusable.yml, tools/Install-PlaywrightBrowser.ps1, ADR-0061), and the kit's web UI fixture proves the pattern in the kit's own CI, where tools/tests/WebUiFixture.Tests.ps1 holds its axe call to the tags named here"
+        how: "ci: the shared .NET CI runs every E2E test an app writes, inside Microsoft's Playwright image pinned by tag and digest in the repo's .config/playwright/Dockerfile (dotnet-ci.reusable.yml, tools/Invoke-WithPlaywrightImage.ps1, ADR-0061), and the kit's web UI fixture proves the pattern in the kit's own CI, where tools/tests/WebUiFixture.Tests.ps1 holds its axe call to the tags named here"
       - kind: advisory
         in: [kit, app]
         how: "no check finds a page without its test, so code review checks that, once the rule is accepted"
@@ -86,7 +86,7 @@ Don't rely on color alone to carry meaning (1.4.1): an error is red *and* says s
   - consistent help and redundant entry (WCAG 2.2's new level A criteria), and accessible authentication;
   - what a screen reader says;
   - anything behind an interaction a test didn't make, such as a menu that's never opened.
-- **Interactive Blazor:** the fixture uses static server rendering with enhanced navigation. Pages with interactive render modes, where a click before the circuit connects is lost, have no kit pattern yet (GAP-036).
+- **Interactive Blazor:** on a page with an interactive render mode, a click made before the component is interactive is lost. Render each such control disabled until `RendererInfo.IsInteractive`, and have its test wait for it to be enabled before clicking (`docs/standards/testing.md`, "Browser and accessibility tests"; the fixture's `/interactive` page).
 - **Native UI:** there's no CI check, and no automated UI test yet (GAP-032). Test with each platform's tools (Accessibility Insights for Windows and Android, Accessibility Inspector for iOS and macOS) and its screen reader (Narrator, TalkBack, VoiceOver). Microsoft's MAUI guide says manual testing on devices is the most reliable check.
 - **Plans:** the plan-checklist skill's Accessibility heading points here.
 
