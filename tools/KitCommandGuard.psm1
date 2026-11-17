@@ -1,5 +1,5 @@
 #Requires -Version 7.6
-# The command guard (ADR-0076): a Claude Code PreToolUse hook that resolves each Bash or PowerShell command the way the
+# The command guard (ADR-0077): a Claude Code PreToolUse hook that resolves each Bash or PowerShell command the way the
 # shell will, then applies the ask rules of .claude/settings.json to what it resolved.
 
 Set-StrictMode -Version Latest
@@ -447,15 +447,15 @@ function Get-CommandGuardDecision {
     )
 
     try { $commands = if ($Tool -eq 'Bash') { @(Get-BashCommand -Command $Command) } else { @(Get-PowerShellCommand -Command $Command) } }
-    catch { return "The command guard (ADR-0076) can't resolve this command, so it asks: $($_.Exception.Message)" }
+    catch { return "The command guard (ADR-0077) can't resolve this command, so it asks: $($_.Exception.Message)" }
     foreach ($resolved in $commands) {
         if ($resolved.Nested) {
-            return "The command guard (ADR-0076) asks because this command computes an argument inside ( ), @( ), `$( ) or { }, which Claude Code's rules may not check: $($resolved.Nested)"
+            return "The command guard (ADR-0077) asks because this command computes an argument inside ( ), @( ), `$( ) or { }, which Claude Code's rules may not check: $($resolved.Nested)"
         }
         foreach ($spelling in Get-CommandSpelling -Resolved $resolved) {
             foreach ($rule in $AskRules) {
                 if (Test-PermissionRuleMatch -Rule $rule -Tool $Tool -Command $spelling -IgnoreCase:($Tool -eq 'PowerShell')) {
-                    return "The command guard (ADR-0076) resolved this command to ""$spelling"", which the ask rule ""$rule"" covers."
+                    return "The command guard (ADR-0077) resolved this command to ""$spelling"", which the ask rule ""$rule"" covers."
                 }
             }
         }
@@ -509,7 +509,7 @@ function Invoke-CommandGuard {
         $reason = Get-CommandGuardDecision -Tool $tool -Command $command -AskRules @(Get-ProjectAskRule -ProjectDir $directory)
     }
     catch {
-        $reason = "The command guard (ADR-0076) failed, so it asks: $($_.Exception.Message)"
+        $reason = "The command guard (ADR-0077) failed, so it asks: $($_.Exception.Message)"
     }
     if ($reason) { ConvertTo-AskDecision -Reason $reason }
 }

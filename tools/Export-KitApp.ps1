@@ -203,7 +203,7 @@ function Test-KitOnlyRule {
 }
 
 # Points each command hook that runs a kit script, "${CLAUDE_PROJECT_DIR}/tools/<script>" in its command or args, at
-# the app's copy in .kit/tools, where Get-KitAppFileMap puts the kit's tools (ADR-0076). Throws for a script the app
+# the app's copy in .kit/tools, where Get-KitAppFileMap puts the kit's tools (ADR-0077). Throws for a script the app
 # doesn't get, since the hook would then fail on every call. Settings of another shape are left as they are.
 function Update-KitAppHookPath {
     param([Parameter(Mandatory)] [Collections.IDictionary] $Settings, [Parameter(Mandatory)] [string[]] $AppTools)

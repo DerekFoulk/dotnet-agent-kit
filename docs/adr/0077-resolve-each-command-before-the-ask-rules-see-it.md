@@ -1,4 +1,4 @@
-# ADR-0076: Resolve each command before the ask rules see it, with a PreToolUse hook
+# ADR-0077: Resolve each command before the ask rules see it, with a PreToolUse hook
 
 - **Status:** Accepted
 - **Date:** 2026-11-15

@@ -293,7 +293,7 @@ areas:
     rules: [GIT-001, GIT-002, GIT-003, GIT-004, GIT-005, COM-001, COM-002, COM-003, COM-004, COM-005, COM-006, COM-007, DOD-002, DOD-003, DOD-004, DOD-005, DOD-006]
     gaps:
       - id: GAP-044
-        gap: "The asks in .claude/settings.json match a command's text, so a quoted or escaped spelling, joined short options such as git push -qf, or a command inside ( ), @( ) or $( ) gets past them (ADR-0075, Known limits). Closed by ADR-0076: a PreToolUse hook, tools/Invoke-CommandGuard.ps1, resolves each Bash or PowerShell command with PowerShell's own parser or a POSIX tokenizer before it runs. It asks when an ask rule covers the resolved command or its split short options, and when a PowerShell argument is computed inside ( ), @( ), $( ) or { }. Claude Code's sandbox doesn't run on native Windows."
+        gap: "The asks in .claude/settings.json match a command's text, so a quoted or escaped spelling, joined short options such as git push -qf, or a command inside ( ), @( ) or $( ) gets past them (ADR-0075, Known limits). Closed by ADR-0077: a PreToolUse hook, tools/Invoke-CommandGuard.ps1, resolves each Bash or PowerShell command with PowerShell's own parser or a POSIX tokenizer before it runs. It asks when an ask rule covers the resolved command or its split short options, and when a PowerShell argument is computed inside ( ), @( ), $( ) or { }. Claude Code's sandbox doesn't run on native Windows."
         status: closed
 ---
 

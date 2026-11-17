@@ -12,7 +12,7 @@ flowchart LR
     tools["tools/<br/>(PowerShell checks and generators)"]
     codeshape["tools/CodeShape<br/>(Kit.CodeShape)"]
     settings[".claude/settings.json<br/>(permission rules and hooks)"]
-    guard["the command guard<br/>(tools/Invoke-CommandGuard.ps1, ADR-0076)"]
+    guard["the command guard<br/>(tools/Invoke-CommandGuard.ps1, ADR-0077)"]
     ci[".github/workflows<br/>(kit-checks, app-checks, dotnet-ci)"]
     templates["templates/app"]
     sample["sample/<br/>(the Bookmarks app)"]

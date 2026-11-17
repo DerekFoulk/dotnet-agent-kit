@@ -590,7 +590,7 @@ Describe 'Export-KitApp' {
         $raw.EndsWith("`n") | Should -BeTrue
     }
 
-    It 'runs the command guard in the app from its copy in .kit/tools (ADR-0076)' {
+    It 'runs the command guard in the app from its copy in .kit/tools (ADR-0077)' {
         $appSettings = Get-Content -Raw -LiteralPath (Join-Path $app '.claude/settings.json') | ConvertFrom-Json -AsHashtable
         $guard = @($appSettings['hooks']['PreToolUse'] | ForEach-Object { $_['hooks'] } | Where-Object { $_['command'] -ceq 'pwsh' })
         $guard.Count | Should -Be 1
@@ -660,7 +660,7 @@ Describe 'Export-KitApp' {
             Should -Match '"ask": \[\]'
     }
 
-    # ADR-0076: the command guard is a kit script, which an app keeps under .kit/tools.
+    # ADR-0077: the command guard is a kit script, which an app keeps under .kit/tools.
     It 'points a hook that runs a kit script at the app''s copy in .kit/tools, and keeps the rest of it' {
         $kit = [ordered]@{
             permissions = [ordered]@{ allow = @() }

@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
-# The command guard (ADR-0076) closes the gaps ADR-0075's Known limits name: the ask rules in .claude/settings.json
+# The command guard (ADR-0077) closes the gaps ADR-0075's Known limits name: the ask rules in .claude/settings.json
 # match a command's text, so a quoted spelling, joined short options or a command nested in another got past them.
 
 BeforeAll {

@@ -1,7 +1,7 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    The command guard (ADR-0076): Claude Code's PreToolUse hook for the Bash and PowerShell tools.
+    The command guard (ADR-0077): Claude Code's PreToolUse hook for the Bash and PowerShell tools.
 
 .DESCRIPTION
     Claude Code runs this before each Bash or PowerShell call, with the call as JSON on stdin (its hooks page). It

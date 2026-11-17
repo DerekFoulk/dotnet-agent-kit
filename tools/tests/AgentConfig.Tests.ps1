@@ -21,7 +21,7 @@ Describe 'Agent configuration' {
         }
 
         # Whether a rule of the given kind (ask by default) catches a command, matched as Claude Code's permissions
-        # page describes, by the command guard's own matcher (KitCommandGuard.psm1, ADR-0076). By default the match is
+        # page describes, by the command guard's own matcher (KitCommandGuard.psm1, ADR-0077). By default the match is
         # case-sensitive, the stricter reading for a test that a rule asks. -IgnoreCase is the stricter reading for a
         # test that a rule doesn't ask, and the real one for PowerShell, whose matching the permissions page calls
         # case-insensitive (on 2026-11-11 a scan of the session transcripts found 38 prompts for PowerShell commands
@@ -71,13 +71,13 @@ Describe 'Agent configuration' {
             @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' },
             # An app's kit-managed scripts and manifest (ADR-0032): the sync job changes them, not a hand edit.
             @{ Path = './.kit/**' }
-            # The command guard (ADR-0076), which an edit could turn off as surely as one to the settings.
+            # The command guard (ADR-0077), which an edit could turn off as surely as one to the settings.
             @{ Path = './tools/KitCommandGuard.psm1' }, @{ Path = './tools/Invoke-CommandGuard.ps1' }
         ) {
             (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
         }
 
-        # ADR-0076: before every Bash or PowerShell call, the command guard applies the ask rules to the command as the
+        # ADR-0077: before every Bash or PowerShell call, the command guard applies the ask rules to the command as the
         # shell resolves it. Exec form (args), so the project path needs no quoting; pwsh, the kit's PowerShell 7.
         It 'runs the command guard before every Bash or PowerShell call' {
             $groups = @(if ($settings.ContainsKey('hooks') -and $settings['hooks'].ContainsKey('PreToolUse')) { $settings['hooks']['PreToolUse'] })
