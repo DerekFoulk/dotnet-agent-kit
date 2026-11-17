@@ -78,7 +78,7 @@ The first run, before `--no-fail-on-error`, stopped with exit code 5 on the same
 - **Amended by ADR-0060 (2026-11-11):** PMD's version sits in `.config/pmd/pom.xml`, where Dependabot's maven updater moves it, and the zip's SHA-256 in `.config/pmd/pmd-dist-bin.zip.sha256`. On Dependabot's PR, `dependabot-lockfiles.yml` pins the new hash from the release's asset digest; both "Download PMD" steps, on Linux and on Windows, read both from the kit and check the zip against that hash. GAP-023 is closed.
 - CPD finds repeated code, not repeated knowledge. A rule stated in two shapes passes, and so does duplication in docs, config and scripts. The reviewer agent still checks those (CRF-003's enforcement says so).
 - A file CPD can't read isn't checked: the CI log and the PR name each one, and the reviewer covers it. A later PMD release may read raw string literals; bumping PMD is the time to look.
-- GAP-020 is closed. GAP-022 now also covers running this check on an app's own machine.
+- GAP-020 is closed. GAP-022 now also covers running this check on an app's own machine. **Update (2026-11-16):** ADR-0078 closed GAP-022: an app runs `.kit/tools/Test-Duplication.ps1` with its developer's own Java and PMD.
 
 ## Pillars affected
 
