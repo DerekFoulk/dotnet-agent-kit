@@ -421,18 +421,69 @@ function Read-BashHeredocBody {
     $Reader.Heredocs.Clear()
 }
 
-# The spellings of one resolved command that the ask rules are matched against: its words joined by spaces, and for a
-# native command also with each cluster of short options split up ("-qf" as "-q -f"), as git's and gh's option
-# parsers read it. Both are kept, so a rule written for the cluster ("-uf") still matches.
-function Get-CommandSpelling {
-    param([Parameter(Mandatory)] [pscustomobject] $Resolved)
+# The words of a Bash command past what Claude Code's permissions page says it strips before matching a rule: the
+# wrappers timeout, time, nice, nohup, stdbuf, command (not "command -v", a lookup), builtin, noglob and bare xargs
+# (not xargs with options), each with its own options; any leading NAME=value assignment, which an ask rule matches
+# past; and a reserved word that opens a control-flow body or group ("then", "do", "{", "!"), whose body Claude Code
+# checks too.
+function Get-BashInnerWord {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Words)
 
-    $Resolved.Words -join ' '
-    if ($Resolved.Native) {
-        $split = foreach ($word in $Resolved.Words) {
-            if ($word -cmatch '^-[A-Za-z][A-Za-z0-9]+$') { ($word.Substring(1).ToCharArray() | ForEach-Object { "-$_" }) -join ' ' } else { $word }
+    $reserved = '!', '{', '}', 'if', 'then', 'else', 'elif', 'fi', 'do', 'done', 'while', 'until'
+    # Each wrapper's options that take the next word as their value, and whether a bare operand (timeout's duration)
+    # follows them.
+    $wrappers = @{
+        timeout = @{ Valued = '-s', '--signal', '-k', '--kill-after'; Operand = $true }
+        time    = @{ Valued = @(); Operand = $false }
+        nice    = @{ Valued = '-n', '--adjustment'; Operand = $false }
+        nohup   = @{ Valued = @(); Operand = $false }
+        stdbuf  = @{ Valued = '-i', '-o', '-e'; Operand = $false }
+        command = @{ Valued = @(); Operand = $false }
+        builtin = @{ Valued = @(); Operand = $false }
+        noglob  = @{ Valued = @(); Operand = $false }
+        xargs   = @{ Valued = @(); Operand = $false }
+    }
+    $i = 0
+    while ($i -lt $Words.Count) {
+        $word = $Words[$i]
+        $next = if ($i + 1 -lt $Words.Count) { $Words[$i + 1] } else { '' }
+        if ($word -cin $reserved -or $word -match '^[A-Za-z_][A-Za-z0-9_]*\+?=') { $i++; continue }
+        if (-not $wrappers.ContainsKey($word) -or ($word -ceq 'command' -and $next -cin '-v', '-V') -or ($word -ceq 'xargs' -and $next.StartsWith('-'))) { break }
+        $wrapper = $wrappers[$word]
+        $i++
+        while ($i -lt $Words.Count -and $Words[$i].StartsWith('-') -and $Words[$i] -ne '-') {
+            $i += if ($Words[$i] -cin $wrapper.Valued) { 2 } else { 1 }
         }
-        $split -join ' '
+        if ($wrapper.Operand) { $i++ }
+    }
+    @($Words | Select-Object -Skip $i)
+}
+
+# The forms of one resolved command's words that the ask rules are matched against: as resolved, and past what Claude
+# Code strips before matching, which is Bash's wrappers, assignments and reserved words (Get-BashInnerWord), or
+# PowerShell's "&" or "." invocation operator.
+function Get-CommandWordForm {
+    param([Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool)
+
+    , $Resolved.Words
+    $inner = @(if ($Tool -eq 'Bash') { Get-BashInnerWord -Words $Resolved.Words } else { $Resolved.Words | Select-Object -Skip ([int] ($Resolved.Words[0] -cin '&', '.')) })
+    if ($inner.Count -and $inner.Count -ne $Resolved.Words.Count) { , [string[]] $inner }
+}
+
+# The spellings of one resolved command that the ask rules are matched against: each of its word forms joined by
+# spaces, and for a native command also with each cluster of short options split up ("-qf" as "-q -f"), as git's and
+# gh's option parsers read it. Both are kept, so a rule written for the cluster ("-uf") still matches.
+function Get-CommandSpelling {
+    param([Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool)
+
+    foreach ($words in Get-CommandWordForm -Resolved $Resolved -Tool $Tool) {
+        $words -join ' '
+        if ($Resolved.Native) {
+            $split = foreach ($word in $words) {
+                if ($word -cmatch '^-[A-Za-z][A-Za-z0-9]+$') { ($word.Substring(1).ToCharArray() | ForEach-Object { "-$_" }) -join ' ' } else { $word }
+            }
+            $split -join ' '
+        }
     }
 }
 
@@ -452,7 +503,7 @@ function Get-CommandGuardDecision {
         if ($resolved.Nested) {
             return "The command guard (ADR-0077) asks because this command computes an argument inside ( ), @( ), `$( ) or { }, which Claude Code's rules may not check: $($resolved.Nested)"
         }
-        foreach ($spelling in Get-CommandSpelling -Resolved $resolved) {
+        foreach ($spelling in Get-CommandSpelling -Resolved $resolved -Tool $Tool) {
             foreach ($rule in $AskRules) {
                 if (Test-PermissionRuleMatch -Rule $rule -Tool $Tool -Command $spelling -IgnoreCase:($Tool -eq 'PowerShell')) {
                     return "The command guard (ADR-0077) resolved this command to ""$spelling"", which the ask rule ""$rule"" covers."
