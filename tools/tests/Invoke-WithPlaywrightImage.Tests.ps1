@@ -93,7 +93,7 @@ Describe 'Invoke-WithPlaywrightImage.ps1' {
             $script:dockerArguments[0] | Should -Be 'run'
             $at = [array]::IndexOf([string[]] $script:dockerArguments, $image)
             $at | Should -BeGreaterThan 0 -Because 'docker runs the pinned image'
-            $script:dockerArguments[($at + 1)..($script:dockerArguments.Count - 1)] | Should -Be @('dotnet', 'test', '--no-build')
+            $script:dockerArguments[($at + 5)..($script:dockerArguments.Count - 1)] | Should -Be @('dotnet', 'test', '--no-build')
         }
 
         # Playwright finds only its own version's browsers in the image, so a pin for another version fails here, with
@@ -238,10 +238,12 @@ Describe 'Invoke-WithPlaywrightImage.ps1' {
             ($arguments -join ' ') | Should -Match '--network host'
             ($arguments -join ' ') | Should -Match '--user 1001:1002'
             ($arguments -join ' ') | Should -Match '-w /home/runner/work/app/app'
-            $arguments[-3..-1] | Should -Be @($image, 'dotnet', 'test')
+            $arguments[-7..-1] | Should -Be @($image, 'sh', '-c', 'PATH="$DOTNET_ROOT:$PATH" exec "$@"', 'sh', 'dotnet', 'test')
         }
 
-        It 'shares the home folder and the runner''s .NET SDK, read-only, at the same paths, and puts the SDK first on PATH' {
+        # Review round 1: the SDK goes first on the image's own PATH, inside the container, so the kit keeps no copy of
+        # the image's PATH that a new image could make wrong.
+        It 'shares the home folder and the runner''s .NET SDK, read-only, at the same paths, and puts the SDK first on the image''s PATH' {
             Get-Command Get-PlaywrightContainerArgument -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
 
             $arguments = @(Get-PlaywrightContainerArgument @common)
@@ -250,7 +252,22 @@ Describe 'Invoke-WithPlaywrightImage.ps1' {
             $arguments | Should -Contain '/usr/share/dotnet:/usr/share/dotnet:ro'
             $arguments | Should -Contain 'HOME=/home/runner'
             $arguments | Should -Contain 'DOTNET_ROOT=/usr/share/dotnet'
-            @($arguments | Where-Object { $_ -like 'PATH=*' }) | Should -Be @('PATH=/usr/share/dotnet:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin')
+            @($arguments | Where-Object { $_ -like 'PATH=*' }) | Should -BeNullOrEmpty
+            $arguments | Should -Contain 'PATH="$DOTNET_ROOT:$PATH" exec "$@"'
+        }
+
+        # Review round 1: inside a container, Testcontainers looks for Docker's ports at a network gateway. With the
+        # runner's network, its containers' ports are on localhost, which TESTCONTAINERS_HOST_OVERRIDE ("the host that
+        # exposes Docker's ports") says. A value the repo sets itself is passed on instead.
+        It 'tells Testcontainers its containers'' ports are on localhost, unless the repo sets that itself' {
+            Get-Command Get-PlaywrightContainerArgument -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+
+            $default = @(Get-PlaywrightContainerArgument @common)
+            $own = @(Get-PlaywrightContainerArgument @common -KeepTestcontainersHost)
+
+            $default | Should -Contain 'TESTCONTAINERS_HOST_OVERRIDE=localhost'
+            $own | Should -Contain 'TESTCONTAINERS_HOST_OVERRIDE'
+            $own | Should -Not -Contain 'TESTCONTAINERS_HOST_OVERRIDE=localhost'
         }
 
         It 'shares a folder outside the home folder once, and none already inside a shared one' {
