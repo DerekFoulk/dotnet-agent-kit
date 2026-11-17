@@ -103,6 +103,10 @@ BeforeDiscovery {
         @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Process'''; Description = 'another process, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'AnonymousPipeServerStream'; Description = 'an anonymous pipe to another process, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'TimeZoneInfo.Local'; Description = 'the machine''s time zone, where TimeProvider.LocalTimeZone does, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'DateTime.ToLocalTime()'; Description = 'DateTime.ToLocalTime, which reads the machine''s time zone, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'DateTime.ToUniversalTime()'; Description = 'DateTime.ToUniversalTime, which reads the machine''s time zone, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.ToLocalTime()'; Description = 'DateTimeOffset.ToLocalTime, which reads the machine''s time zone, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'TimeZoneInfo.ConvertTimeToUtc(DateTime)'; Description = 'TimeZoneInfo.ConvertTimeToUtc with no zone, which reads the machine''s, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
@@ -434,15 +438,17 @@ Describe 'Repo build configuration' -Tag 'Build' {
     }
 
     # ARC-008, ADR-0078: the pure list bans what reaches outside the program and no more. Each row names a call in a Pure*
-    # fixture that must build, so a ban widened to a whole type (Path, Environment, StreamReader) shows here.
+    # fixture that must build. RS0030 names a banned type alone ('Path'), not the member called on it, so each row checks
+    # its type too, and a ban widened to a whole type (Path, Environment, StreamReader) shows here (review 2 of this PR).
     Context 'what an assembly marked pure keeps' {
         BeforeAll { $builds = @{} }
 
         It 'allows <Symbol>' -ForEach @(
-            @{ Fixture = 'PureFileAccess'; Symbol = 'Path.Combine' }
-            @{ Fixture = 'PureFileAccess'; Symbol = 'StreamReader.StreamReader(Stream)' }
-            @{ Fixture = 'PureEnvironmentAccess'; Symbol = 'Environment.NewLine' }
-            @{ Fixture = 'PureEnvironmentAccess'; Symbol = 'Environment.ProcessorCount' }
+            @{ Fixture = 'PureFileAccess'; Type = 'Path'; Symbol = 'Path.Combine' }
+            @{ Fixture = 'PureFileAccess'; Type = 'StreamReader'; Symbol = 'StreamReader.StreamReader(Stream)' }
+            @{ Fixture = 'PureFileAccess'; Type = 'StreamWriter'; Symbol = 'StreamWriter.StreamWriter(Stream)' }
+            @{ Fixture = 'PureEnvironmentAccess'; Type = 'Environment'; Symbol = 'Environment.NewLine' }
+            @{ Fixture = 'PureEnvironmentAccess'; Type = 'Environment'; Symbol = 'Environment.ProcessorCount' }
         ) {
             if (-not $builds.ContainsKey($Fixture)) {
                 $builds[$Fixture] = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
@@ -451,6 +457,7 @@ Describe 'Repo build configuration' -Tag 'Build' {
 
             $build.Output | Should -Match 'error RS0030' -Because 'the fixture''s banned calls show the pure list was applied'
             $build.Output | Should -Not -Match ([regex]::Escape("The symbol '$Symbol")) -Because "$Symbol only works in memory"
+            $build.Output | Should -Not -Match ([regex]::Escape("The symbol '$Type'")) -Because "a ban on all of $Type would ban $Symbol too"
         }
     }
 

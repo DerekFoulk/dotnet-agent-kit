@@ -25,6 +25,8 @@ internal static class Code
 
     internal static TextReader FromStream(Stream stream) => new StreamReader(stream);
 
+    internal static TextWriter ToStream(Stream stream) => new StreamWriter(stream);
+
     internal static void Unzip(System.IO.Compression.ZipArchive zip, string folder) => System.IO.Compression.ZipFileExtensions.ExtractToDirectory(zip, folder);
 
     internal static void Untar(string archive, string folder) => System.Formats.Tar.TarFile.ExtractToDirectory(archive, folder, overwriteFiles: false);

@@ -25,4 +25,12 @@ internal static class Code
     internal static Stream Pipe() => new System.IO.Pipes.AnonymousPipeServerStream();
 
     internal static TimeZoneInfo Zone() => TimeZoneInfo.Local;
+
+    internal static DateTime Local(DateTime utc) => utc.ToLocalTime();
+
+    internal static DateTime Universal(DateTime local) => local.ToUniversalTime();
+
+    internal static DateTimeOffset LocalOffset(DateTimeOffset at) => at.ToLocalTime();
+
+    internal static DateTime ToUtc(DateTime local) => TimeZoneInfo.ConvertTimeToUtc(local);
 }
