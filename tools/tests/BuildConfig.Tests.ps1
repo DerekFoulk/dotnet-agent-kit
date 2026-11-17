@@ -115,6 +115,7 @@ BeforeDiscovery {
         @{ Fixture = 'AsyncVoid'; Diagnostic = 'VSTHRD100'; Description = 'an async void method (STY-011)' }
         @{ Fixture = 'AsyncVoid'; Diagnostic = 'VSTHRD101'; Description = 'an async lambda passed as a void delegate (STY-011)' }
         @{ Fixture = 'TaskInUsing'; Diagnostic = 'VSTHRD107'; Description = 'a using statement over a Task, which disposes the task instead of awaiting it (STY-011)' }
+        @{ Fixture = 'TaskDropped'; Diagnostic = 'VSTHRD110'; Description = 'a Task dropped in a method that isn''t async, where CS4014 doesn''t look (STY-011)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
