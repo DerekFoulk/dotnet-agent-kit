@@ -16,8 +16,10 @@ BeforeAll {
 
     $script:hash = 'd27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179'
 
-    # A stand-in for a PMD zip, signed with a test key made for these tests (key A), whose public key and fingerprint
-    # New-PinFolder pins; signed-by-another-key.asc is the same zip signed with a second test key (key B).
+    # A stand-in for a PMD zip, signed with a test key made for these tests, whose public key and primary fingerprint
+    # New-PinFolder pins. Like PMD's key, it signs with a subkey, so only a check of the primary key in gpg's VALIDSIG
+    # line passes it. signed-by-another-key.asc is the same zip signed with a second test key (key B), and
+    # two-signatures.asc holds both signatures.
     $script:signed = Join-Path $PSScriptRoot 'fixtures' 'PmdSignature'
     $script:zip = Join-Path $signed 'pmd-dist-7.30.0-bin.zip'
     $script:signature = Join-Path $signed 'pmd-dist-7.30.0-bin.zip.asc'
@@ -162,6 +164,11 @@ Describe 'Set-PmdPin' {
                     [IO.File]::WriteAllBytes($case.Zip, $bytes)
                     $case.Release = New-Release -Digest "sha256:$((Get-FileHash -LiteralPath $case.Zip -Algorithm SHA256).Hash.ToLowerInvariant())"
                 }
+                'TwoSignatures' {
+                    # Both good, from two keys in the key file: one of them is the pinned key, but only one may sign.
+                    $case.Signature = Join-Path $signed 'two-signatures.asc'
+                    Get-Content -Raw -LiteralPath (Join-Path $signed 'another-key.asc') | Add-Content -LiteralPath (Join-Path $Folder 'pmd-release-key.asc')
+                }
                 'OtherDigest' { $case.Release = New-Release -Digest "sha256:$('aa' * 32)" }
                 'BadFingerprint' { [IO.File]::WriteAllText((Join-Path $Folder 'pmd-release-key.fingerprint'), "7db3 1375`n") }
             }
@@ -209,10 +216,11 @@ Describe 'Set-PmdPin' {
 
         It 'refuses <Case>, leaving the pin as it was' -ForEach @(
             # Key B isn't in the keyring at all, so gpg can't check the signature.
-            @{ Case = 'a signature by a key the kit does not pin'; Setup = 'OtherSignature'; Message = '*7DB313753A04F657E6B794D7EC2F75A6ED2C6BC4*' }
+            @{ Case = 'a signature by a key the kit does not pin'; Setup = 'OtherSignature'; Message = '*886F1C32C2FA876051F9EB0B28171CA6BD473A64*' }
             # Key B is in the key file and its signature is good, but it isn't the pinned key.
-            @{ Case = 'a good signature by another key in the key file'; Setup = 'OtherKeyInFile'; Message = '*7DB313753A04F657E6B794D7EC2F75A6ED2C6BC4*' }
-            @{ Case = 'a zip changed after it was signed'; Setup = 'ChangedZip'; Message = '*7DB313753A04F657E6B794D7EC2F75A6ED2C6BC4*' }
+            @{ Case = 'a good signature by another key in the key file'; Setup = 'OtherKeyInFile'; Message = '*886F1C32C2FA876051F9EB0B28171CA6BD473A64*' }
+            @{ Case = 'a zip changed after it was signed'; Setup = 'ChangedZip'; Message = '*886F1C32C2FA876051F9EB0B28171CA6BD473A64*' }
+            @{ Case = 'a signature file with a second signature'; Setup = 'TwoSignatures'; Message = '*886F1C32C2FA876051F9EB0B28171CA6BD473A64*' }
             @{ Case = 'a signed zip whose SHA-256 is not GitHub''s digest'; Setup = 'OtherDigest'; Message = "*GitHub's digest*" }
             @{ Case = 'a fingerprint file that is not 40 uppercase hex digits'; Setup = 'BadFingerprint'; Message = '*pmd-release-key.fingerprint*' }
         ) {

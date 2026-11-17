@@ -159,6 +159,36 @@ Describe 'Test-PackageLicenses' {
         $result.Text | Should -Match 'Contoso\.Asserts 8\.0\.0.*commercial.*Fabrikam\.Asserts'
     }
 
+    It 'fails a non-commercial package with no swap in a repo marked commercial, without naming an empty swap' {
+        $policy = @{ licenses = @('MIT'); packages = @(@{ id = 'Contoso.Asserts'; license = "file LICENSE sha256:$licenseHash"; commercialUse = $false; reason = 'free for non-commercial use' }) }
+        $repo = New-LicenseRepo -Package @{ Id = 'Contoso.Asserts'; Version = '8.0.0'; File = 'LICENSE' } -Policy $policy -RepoPolicy @{ commercial = $true }
+
+        $result = Invoke-Check $repo
+
+        $result.ExitCode | Should -Be 1
+        $result.Text | Should -Not -Match 'use\s+instead'
+        $result.Text | Should -Match 'Contoso\.Asserts 8\.0\.0.*commercial'
+    }
+
+    # Review 1: only the repo's own file says whether it's commercial (ADR-0004); the kit's policy can't.
+    It "ignores commercial in the kit's policy" {
+        $policy = @{ licenses = @('MIT'); commercial = $true; packages = @(@{ id = 'Contoso.Asserts'; license = "file LICENSE sha256:$licenseHash"; commercialUse = $false; swap = 'Fabrikam.Asserts'; reason = 'free for non-commercial use' }) }
+        $repo = New-LicenseRepo -Package @{ Id = 'Contoso.Asserts'; Version = '8.0.0'; File = 'LICENSE' } -Policy $policy
+
+        (Invoke-Check $repo).ExitCode | Should -Be 0
+    }
+
+    # Review 1: a license file outside the package's own folder isn't the package's license, whatever its hash.
+    It 'fails a license file whose path leaves the package folder, even when an entry pins its hash' {
+        $policy = @{ licenses = @('MIT'); packages = @(@{ id = 'Contoso.Tools'; license = "file ../LICENSE sha256:$licenseHash"; reason = 'MIT, in a file' }) }
+        $repo = New-LicenseRepo -Package @{ Id = 'Contoso.Tools'; Version = '1.0.0'; File = '../LICENSE' } -Policy $policy
+
+        $result = Invoke-Check $repo
+
+        $result.ExitCode | Should -Be 1
+        $result.Text | Should -Match 'Contoso\.Tools 1\.0\.0: file \.\./LICENSE sha256:missing'
+    }
+
     It "adds the repo's own licenses and package entries to the kit's" {
         $repoPolicy = @{ licenses = @('LGPL-2.1-only'); packages = @(@{ id = 'Contoso.Legacy'; license = 'url https://contoso.example/license'; reason = 'free for any use' }) }
         $repo = New-LicenseRepo -Package @{ Id = 'Contoso.Lgpl'; Version = '1.0.0'; Expression = 'LGPL-2.1-only' }, @{ Id = 'Contoso.Legacy'; Version = '1.0.0'; Url = 'https://contoso.example/license' } -RepoPolicy $repoPolicy

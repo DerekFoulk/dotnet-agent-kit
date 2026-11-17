@@ -120,10 +120,15 @@ Describe 'nuget-trust.yml' {
         $check['outputs']['differs'] | Should -Not -BeNullOrEmpty
     }
 
-    It 'opens one issue when they differ, never from a pull request, and not when one is already open' {
+    # Review 1: a check that couldn't run (nuget.org down, a malformed index) opens an issue too, with its own title, or
+    # a scheduled failure would reach only whoever last edited the schedule.
+    It 'opens one issue when they differ or the check fails, never from a pull request, and not when one is already open' {
         @($report['needs']) | Should -Be @('check')
-        "$($report['if'])" | Should -Match "needs\.check\.outputs\.differs == 'true'"
+        "$($report['if'])" | Should -Match "needs\.check\.result == 'failure'"
         "$($report['if'])" | Should -Match "github\.event_name != 'pull_request'"
+        $report['steps'][0]['env']['DIFFERS'] | Should -Be '${{ needs.check.outputs.differs }}'
+        $text | Should -Match "title=""nuget\.org's repository certificates changed"""
+        $text | Should -Match 'title="The nuget\.org certificate check failed"'
         $text | Should -Match 'gh issue list'
         $text | Should -Match 'gh issue create'
     }
