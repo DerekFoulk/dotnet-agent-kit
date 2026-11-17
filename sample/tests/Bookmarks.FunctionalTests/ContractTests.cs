@@ -107,17 +107,6 @@ public sealed class ContractTests : IDisposable
         (properties["url"]?["maxLength"]?.GetValue<int>()).Should().Be(CreateBookmarkRequest.MaxUrlLength, "the URL's limit is in the document");
     }
 
-    [Fact]
-    public async Task TheOpenApiDocumentIsNotServedInProduction()
-    {
-        // API-003: the document maps the whole API, so outside Development it isn't published.
-        using ApiHost production = new("Production");
-
-        using HttpResponseMessage response = await production.Client.GetAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken);
-
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
-    }
-
     public void Dispose() => _host.Dispose();
 
     // Every operation in the document, with its HTTP method and path. Only operations: a path item can also hold

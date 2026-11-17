@@ -1,13 +1,14 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 
-namespace Bookmarks.FunctionalTests;
+namespace Kit.AppTests.Functional;
 
-/// <summary>The resilience every HttpClient gets from the service defaults (OPS-003, ADR-0037).</summary>
+/// <summary>The resilience every HttpClient gets from the app's service defaults (OPS-003, ADR-0037).</summary>
 public sealed class ResilienceTests : IDisposable
 {
-    private readonly ApiHost _host = new();
+    private readonly IAppUnderTest _host = AppHost.Start(Environments.Development);
 
     [Fact]
     public void EveryHttpClientGetsTheStandardResilienceHandler()
@@ -31,7 +32,7 @@ public sealed class ResilienceTests : IDisposable
         // Review 1 of PR 21: the standard handler retries every method by default, so a payment POST could be
         // sent twice. The defaults retry only safe methods.
         using FailingHandler server = new();
-        using ApiHost host = new(services: services => services.AddHttpClient("payments").ConfigurePrimaryHttpMessageHandler(() => server));
+        using IAppUnderTest host = AppHost.Start(Environments.Development, services => services.AddHttpClient("payments").ConfigurePrimaryHttpMessageHandler(() => server));
         using HttpClient client = host.Services.GetRequiredService<IHttpClientFactory>().CreateClient("payments");
 
         using HttpResponseMessage response = await client.PostAsync(new Uri("https://payments.example/charge"), null, TestContext.Current.CancellationToken);

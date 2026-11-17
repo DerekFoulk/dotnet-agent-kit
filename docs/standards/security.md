@@ -107,10 +107,13 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's FunctionalTests check that every bookmarks endpoint answers 401 without a valid token, that only /health, /alive and the OpenAPI document allow anonymous callers, and that probes and the Development document answer without a token"
+        how: "ci: the sample's FunctionalTests check that every bookmarks endpoint answers 401 without a valid token"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): AuthorizationTests checks that the fallback policy requires a signed-in user, and that only the routes the app lists in AppHost allow anonymous callers; HealthTests and OpenApiTests check that the probes and the Development document answer without a token; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until the app follows the sample"
+        how: "each opt-out's comment saying why, which code review checks"
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*ServiceDefaults*/**", "**/*Security*.cs"]
   - id: SEC-008
@@ -171,10 +174,13 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's FunctionalTests (HostingSecurityTests) check that another host gets a 400, an HTTPS response carries HSTS in Production, a flood from one caller gets 429 with Retry-After as Problem Details, whether the caller has a valid token, no token or a forged one, the health probes are never limited, a rate limit below one stops the app at startup, a cross-origin preflight gets no permission, and Kestrel sends no Server header and caps the request body"
+        how: "ci: the sample's FunctionalTests (HostingSecurityTests) check that a flood from one caller gets 429 with Retry-After as Problem Details, whether the caller has a valid token, no token or a forged one, that the health probes are never limited, and that a rate limit below one stops the app at startup"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): HostingSecurityTests checks that another host gets a 400 and an HTTPS response carries HSTS in Production, that a cross-origin preflight to a route the app names gets no permission, and that Kestrel sends no Server header and caps the request body at 1 MB or less; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until the app follows the sample"
+        how: "the rate limit, whose settings are the app's own, until its own FunctionalTests check it, as the sample's do"
       - kind: advisory
         in: [kit, app]
         how: "the plan names where the app is hosted, and code review checks the rest for that hosting: AllowedHosts set to the deployment's hosts, including the Host header its probes send, HTTPS only with TLS 1.2 or later at the edge, forwarded headers with KnownProxies behind a proxy, and no ASPNETCORE_FORWARDEDHEADERS_ENABLED in any Dockerfile or deployment"

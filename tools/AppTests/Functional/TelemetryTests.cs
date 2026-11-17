@@ -11,15 +11,15 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
-namespace Bookmarks.FunctionalTests;
+namespace Kit.AppTests.Functional;
 
-/// <summary>The OpenTelemetry logs, metrics and traces the service defaults set up (OPS-001, ADR-0037).</summary>
+/// <summary>The OpenTelemetry logs, metrics and traces the app's service defaults set up (OPS-001, ADR-0037).</summary>
 public sealed class TelemetryTests : IDisposable
 {
     // The HttpClient names the OTLP exporter documents for its trace, metric and log exporters.
     private static readonly string[] s_otlpClients = ["OtlpTraceExporter", "OtlpMetricExporter", "OtlpLogExporter"];
 
-    private readonly ApiHost _host = new();
+    private readonly IAppUnderTest _host = AppHost.Start(Environments.Development);
 
     [Fact]
     public void OpenTelemetryCollectsTracesMetricsAndLogs()
@@ -49,7 +49,7 @@ public sealed class TelemetryTests : IDisposable
 
         // Metrics and logs go to the recorder too, through their own documented client names, so nothing reaches the
         // network.
-        using ApiHost host = new(settings: settings, services: services =>
+        using IAppUnderTest host = AppHost.Start(Environments.Development, settings, services =>
         {
             foreach (string client in s_otlpClients)
             {
@@ -81,7 +81,7 @@ public sealed class TelemetryTests : IDisposable
     [Theory]
     [InlineData("/health", false)]
     [InlineData("/alive", false)]
-    [InlineData("/bookmarks", true)]
+    [InlineData("/kit-any-other-path", true)]
     public void HealthProbesAreNotTracedButOtherRequestsAre(string path, bool traced)
     {
         // Review 1 of PR 21: probes call the health endpoints often, so the trace filter leaves them out.
