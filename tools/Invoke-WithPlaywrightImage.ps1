@@ -38,8 +38,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
 
-# The PATH the image sets, after the runner's SDK.
-$script:ImagePath = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+# Puts the runner's SDK first on the image's own PATH, inside the container, then runs the command (its arguments
+# follow, after the "sh" that becomes $0), so the kit keeps no copy of the image's PATH.
+$script:SdkFirst = @('sh', '-c', 'PATH="$DOTNET_ROOT:$PATH" exec "$@"', 'sh')
 
 # CI's own variables, passed on by name: the tests and the SDK read them (CI turns on locked restore, GITHUB_ACTIONS
 # GitHub's test reporting).
@@ -123,8 +124,12 @@ function Test-SharedPath {
 }
 
 # docker's arguments: run the image with Playwright's recommended --init and --ipc=host (Chromium runs out of shared
-# memory without it), the runner's network (tests that start their own containers reach them on localhost) and user,
-# the runner's SDK first on PATH, and the folders the command reads and writes shared at the same paths.
+# memory without it), the runner's network and user, the runner's SDK first on PATH, and the folders the command reads
+# and writes shared at the same paths. Tests that start containers of their own (Testcontainers) reach the runner's
+# Docker through its socket; on the runner's network, those containers' ports are on localhost, which
+# TESTCONTAINERS_HOST_OVERRIDE tells Testcontainers, since inside a container it would look for them at a network
+# gateway. With -KeepTestcontainersHost, the runner's own value is passed on instead. No kit test runs Testcontainers in
+# the image yet (GAP-047).
 function Get-PlaywrightContainerArgument {
     param(
         [Parameter(Mandatory)] [string] $Image,
@@ -134,7 +139,8 @@ function Get-PlaywrightContainerArgument {
         [Parameter(Mandatory)] [string] $DotnetRoot,
         [Parameter(Mandatory)] [string] $User,
         [string[]] $Share = @(),
-        [string] $DockerSocketGroup
+        [string] $DockerSocketGroup,
+        [switch] $KeepTestcontainersHost
     )
 
     $shared = [Collections.Generic.List[string]]::new()
@@ -142,14 +148,15 @@ function Get-PlaywrightContainerArgument {
         if (-not (Test-SharedPath -Path $folder -Shared $shared)) { $shared.Add($folder) }
     }
     'run', '--rm', '--init', '--ipc=host', '--network', 'host', '--user', $User
-    # Tests that start containers of their own (Testcontainers) reach the runner's Docker through its socket.
     if ($DockerSocketGroup) { '--group-add', $DockerSocketGroup, '-v', '/var/run/docker.sock:/var/run/docker.sock' }
     foreach ($folder in $shared) { '-v', "${folder}:${folder}" }
     if (-not (Test-SharedPath -Path $DotnetRoot -Shared $shared)) { '-v', "${DotnetRoot}:${DotnetRoot}:ro" }
     '-w', $WorkingDirectory
-    '-e', "HOME=$HomePath", '-e', "DOTNET_ROOT=$DotnetRoot", '-e', "PATH=${DotnetRoot}:$script:ImagePath"
+    '-e', "HOME=$HomePath", '-e', "DOTNET_ROOT=$DotnetRoot"
+    '-e', $(if ($KeepTestcontainersHost) { 'TESTCONTAINERS_HOST_OVERRIDE' } else { 'TESTCONTAINERS_HOST_OVERRIDE=localhost' })
     foreach ($name in $script:PassedVariables) { '-e', $name }
     $Image
+    $script:SdkFirst
     $Command
 }
 
@@ -187,7 +194,8 @@ function Invoke-WithPlaywrightImage {
     $identity = Get-RunnerIdentity
     "Running in $($image.Image), for Playwright $version, with the .NET SDK in $env:DOTNET_ROOT."
     $arguments = Get-PlaywrightContainerArgument -Image $image.Image -Command $Command -WorkingDirectory (Get-Location).Path `
-        -HomePath $HOME -DotnetRoot $env:DOTNET_ROOT -User $identity.User -Share $Share -DockerSocketGroup $identity.DockerSocketGroup
+        -HomePath $HOME -DotnetRoot $env:DOTNET_ROOT -User $identity.User -Share $Share -DockerSocketGroup $identity.DockerSocketGroup `
+        -KeepTestcontainersHost:([bool] $env:TESTCONTAINERS_HOST_OVERRIDE)
     & docker @arguments
 }
 

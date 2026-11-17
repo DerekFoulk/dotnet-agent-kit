@@ -252,7 +252,7 @@ Describe 'Invoke-WithPlaywrightImage.ps1' {
             $arguments | Should -Contain '/usr/share/dotnet:/usr/share/dotnet:ro'
             $arguments | Should -Contain 'HOME=/home/runner'
             $arguments | Should -Contain 'DOTNET_ROOT=/usr/share/dotnet'
-            @($arguments | Where-Object { $_ -like 'PATH=*' }) | Should -BeNullOrEmpty
+            ($arguments -join ' ') | Should -Not -Match '-e PATH=' -Because 'the image keeps its own PATH'
             $arguments | Should -Contain 'PATH="$DOTNET_ROOT:$PATH" exec "$@"'
         }
 
