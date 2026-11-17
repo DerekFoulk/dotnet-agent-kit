@@ -94,6 +94,19 @@ dotnet_naming_symbols.constant_fields.applicable_kinds   = field
 dotnet_naming_symbols.constant_fields.required_modifiers = const
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
+# (kit) STY-007: a static readonly field that isn't private is PascalCase, as a public one is in the Framework Design
+# Guidelines. CA1707 fails an underscore in a static readonly field, and it checks internal APIs here (STY-009), so the
+# s_ prefix the identifier names page gives an internal static field can't build on a readonly one. An internal static
+# field that isn't readonly keeps s_, since CA1707 doesn't check it; CA1051 fails a visible instance field. A naming
+# rule with more modifiers comes first, so this one wins over the s_ rule below.
+# https://learn.microsoft.com/dotnet/standard/design-guidelines/names-of-type-members#names-of-fields  retrieved 2026-11-16
+dotnet_naming_rule.visible_static_readonly_fields_should_be_pascal_case.severity = warning
+dotnet_naming_rule.visible_static_readonly_fields_should_be_pascal_case.symbols  = visible_static_readonly_fields
+dotnet_naming_rule.visible_static_readonly_fields_should_be_pascal_case.style    = pascal_case_style
+dotnet_naming_symbols.visible_static_readonly_fields.applicable_kinds   = field
+dotnet_naming_symbols.visible_static_readonly_fields.required_modifiers = static, readonly
+dotnet_naming_symbols.visible_static_readonly_fields.applicable_accessibilities = public, internal, protected, protected_internal, private_protected
+
 # Static fields have an s_ prefix
 dotnet_naming_rule.static_fields_should_have_prefix.severity = warning
 dotnet_naming_rule.static_fields_should_have_prefix.symbols  = static_fields
