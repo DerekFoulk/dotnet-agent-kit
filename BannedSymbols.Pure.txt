@@ -1,4 +1,4 @@
-// APIs an assembly marked pure may not call (ARC-008, ADR-0077), on top of BannedSymbols.txt's, which every project
+// APIs an assembly marked pure may not call (ARC-008, ADR-0078), on top of BannedSymbols.txt's, which every project
 // gets. A project marks itself pure with <PureAssembly>true</PureAssembly> in its .csproj, and Directory.Build.props then
 // adds this file to its banned-API check (RS0030). Pure code is core business logic: it gets randomness, files, the
 // network, the environment and other processes only through abstractions injected into it, so its tests are

@@ -12,9 +12,8 @@ areas:
     rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, ARC-010, ARC-011, ARC-012, ARC-013, CRF-006, CRF-007, DAT-001, DAT-002]
     gaps:
       - id: GAP-039
-        gap: "ARC-008 says assemblies marked pure use no randomness, file or network access except through injected abstractions, but nothing says how an assembly is marked pure, and no ban list holds the APIs it may not call (Random, File, the network classes and the rest), so that part of the rule has no check. A BannedSymbols file that only pure assemblies add, proved by a fixture, would make it a gate (rules audit, 2026-11-12). The clock is done: BannedSymbols.txt bans reading it directly in every project (.NET best-practices pass, 2026-11-16)."
-        status: proposed
-        needs: "a way to mark an assembly pure, its ban list, and a fixture that proves the ban"
+        gap: "ARC-008 says assemblies marked pure use no randomness, file or network access except through injected abstractions, but nothing says how an assembly is marked pure, and no ban list holds the APIs it may not call (Random, File, the network classes and the rest), so that part of the rule has no check. A BannedSymbols file that only pure assemblies add, proved by a fixture, would make it a gate (rules audit, 2026-11-12). The clock is done: BannedSymbols.txt bans reading it directly in every project (.NET best-practices pass, 2026-11-16). Closed by ADR-0078: a project sets PureAssembly in its .csproj, Directory.Build.props then adds BannedSymbols.Pure.txt (randomness, file, network, environment and process access), each family has a failing fixture in tools/tests/BuildConfig.Tests.ps1, and the samples Bookmarks.Domain is marked pure."
+        status: closed
       - id: GAP-001
         gap: "No architecture rules for MAUI and desktop apps yet: ARC-001 covers web apps only. Closed by ADR-0059: ARC-010 and ARC-011 (proposed), a UI build job on Windows and macOS in the shared .NET CI, and the coverage gate's exemption for UI projects."
         status: closed
@@ -315,7 +314,7 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 10 | 7 | 3 | 4 | 4 |
+| Architecture | 10 | 7 | 3 | 4 | 3 |
 | Craft | 13 | 7 | 6 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 14 | 11 | 3 | 0 | 0 |
@@ -331,11 +330,10 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 94 rules in force, 60 checked by a tool and 34 advisory; 25 proposed; 22 open gaps.
+**Overall:** 94 rules in force, 60 checked by a tool and 34 advisory; 25 proposed; 21 open gaps.
 
 Open gaps:
 
-- **GAP-039** (Architecture, proposed; needs a way to mark an assembly pure, its ban list, and a fixture that proves the ban): ARC-008 says assemblies marked pure use no randomness, file or network access except through injected abstractions, but nothing says how an assembly is marked pure, and no ban list holds the APIs it may not call (Random, File, the network classes and the rest), so that part of the rule has no check. A BannedSymbols file that only pure assemblies add, proved by a fixture, would make it a gate (rules audit, 2026-11-12). The clock is done: BannedSymbols.txt bans reading it directly in every project (.NET best-practices pass, 2026-11-16).
 - **GAP-026** (Architecture, proposed; needs a CI change): Nightly mutation testing (mutation.reusable.yml) and the Dependabot lock-file refresh (dependabot-lockfiles.yml) run on Linux against the whole solution, so they can't build one with MAUI or desktop projects; they need the solution filter the .NET CI uses, or a Windows runner for the lock files (ADR-0059).
 - **GAP-028** (Architecture, proposed; needs a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change): No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, the runners' Android SDK, and the checks that move to Windows (code shape, duplicate code with PMD's batch launcher, the SBOM) are untested (ADR-0059).
 - **GAP-031** (Architecture, proposed): The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059).
