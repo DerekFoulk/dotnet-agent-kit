@@ -203,7 +203,7 @@ rules:
         how: "ci: the sample's ContractTests check that every schema in the OpenAPI document is a Contracts type or one of ASP.NET Core's Problem Details types"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0079): EndpointTests fails when a presentation type whose name ends in Endpoints uses a domain type; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): EndpointTests fails when a presentation type whose name ends in Endpoints uses a domain type; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
         how: "the OpenAPI document's schemas, until the app follows the sample's ContractTests"

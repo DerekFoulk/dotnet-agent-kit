@@ -79,7 +79,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0079): LayerTests and SharedLibraryTests fail when business code depends on infrastructure, UI or the API (ARC-001, ARC-003); an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): LayerTests and SharedLibraryTests fail when business code depends on infrastructure, UI or the API (ARC-001, ARC-003); an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
         how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests once it's accepted"
@@ -95,7 +95,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0079): NamespaceCycleTests (ArchUnitNET slices) fails on a cycle among each root namespace the app's assemblies share (Bookmarks in the sample) and the namespaces under it; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): NamespaceCycleTests (ArchUnitNET slices) fails on a cycle among each root namespace the app's assemblies share (Bookmarks in the sample) and the namespaces under it; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
         how: "stable dependencies and component cohesion, checked by code review"
@@ -201,7 +201,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0079): SharedLibraryTests fails if a domain assembly references EF Core or ADO.NET; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): SharedLibraryTests fails if a domain assembly references EF Core or ADO.NET; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: gate
         in: [kit, app]
         how: "build: CA1051 (no visible instance fields) and CA1002 (no List<T> in a member's signature: property, return type or parameter), on internal types too (STY-009), and CA2227 (collection properties are read-only), on public types only, all on through AnalysisLevel latest-all"
@@ -246,7 +246,7 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 | RS0030, banned APIs | `BannedSymbols.txt`, read by `Microsoft.CodeAnalysis.BannedApiAnalyzers`, and `BannedSymbols.Pure.txt` too in a project that sets `PureAssembly` (ARC-008, ADR-0080) | `BindingFlags.NonPublic`, `[UnsafeAccessor]`, and the other routes into non-public members found so far; the file's other sections ban APIs for other rules, each naming its own (SEC-014, ARC-008, OPS-003, STY-011, STY-009); the pure file bans randomness, file, network, environment and process access |
 | Duplicate code (CRF-003) | `tools/Test-Duplication.ps1`, which runs PMD's copy-paste detector (CPD) in `dotnet-ci.reusable.yml` | a run of tokens repeated in hand-written C#, ignoring using directives, attributes and runs of literals; ADR-0051 sets the length |
 | Nesting, statements per member, file length, members per type, public types per file and LCOM4 (CRF-011, proposed) | `tools/Test-CodeShape.ps1`, which runs the kit's Kit.CodeShape tool in `dotnet-ci.reusable.yml` | a member nested too deep or with too many statements, a file too long or with more than one public type, a type with too many members, or a type whose methods form more than one group that shares no state; it also reports STY-005's nullable rules (a `#nullable` directive, an unlabelled `!` outside a test project, a file marked generated outside `Migrations` that isn't a `.resx` file's designer) as `STY005` |
-| Namespace cycles | the kit's shared `NamespaceCycleTests` (ArchUnitNET, tools/AppTests), compiled into the sample's and every app's Architecture.Tests (ADR-0079) | a cycle among each root namespace the app's assemblies share and the namespaces under it |
+| Namespace cycles | the kit's shared `NamespaceCycleTests` (ArchUnitNET, tools/AppTests), compiled into the sample's and every app's Architecture.Tests (ADR-0081) | a cycle among each root namespace the app's assemblies share and the namespaces under it |
 | Dependency injection validation (CRF-013) | the sample's FunctionalTests: `ApiHost` turns on ValidateScopes and ValidateOnBuild, and `DependencyInjectionTests` proves they're on | a singleton that captures a scoped service, or a scoped service resolved from the root, in any environment the tests run the app in |
 | ASP0000 (CRF-013) | ASP.NET Core's analyzers, at warning, in ASP.NET Core projects | a call to `BuildServiceProvider` while services are being registered |
 | Persistence ignorance (CRF-014) | the kit's shared `SharedLibraryTests` (tools/AppTests), in the sample's and every app's Architecture.Tests | a domain assembly that references EF Core or ADO.NET |

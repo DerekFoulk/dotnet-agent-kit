@@ -45,7 +45,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 
 | Path | What |
 |---|---|
-| `src/`, `tests/` | This app's projects and their tests, created with the first feature. `tests/Directory.Build.props` sets up every `*Tests` project (xUnit v3, coverage) and every `*.Benchmarks` project (BenchmarkDotNet, kit ADR-0062), and compiles the kit's shared tests into an `*.Architecture.Tests` project (kit ADR-0079): that project names this app's assemblies by layer in its own `AppLayers.cs`, as the kit's sample does in `sample/tests/Bookmarks.Architecture.Tests/AppLayers.cs`, and builds only once it does; a load test lives in `tests/load/` |
+| `src/`, `tests/` | This app's projects and their tests, created with the first feature. `tests/Directory.Build.props` sets up every `*Tests` project (xUnit v3, coverage) and every `*.Benchmarks` project (BenchmarkDotNet, kit ADR-0062), and compiles the kit's shared tests into an `*.Architecture.Tests` project (kit ADR-0081): that project names this app's assemblies by layer in its own `AppLayers.cs`, as the kit's sample does in `sample/tests/Bookmarks.Architecture.Tests/AppLayers.cs`, and builds only once it does; a load test lives in `tests/load/` |
 | `docs/app-profile.md` | What this app is, as the owner chose at the new-app intake: app type, data, database, sign-in, hosting and test tools, with their costs (kit ADR-0058). An app made before the intake has none. Where it exists, plans start from it, and changing an answer takes an ADR in `docs/adr/` |
 | `docs/adr/` | This app's decisions, numbered from ADR-0001 |
 | `docs/standards/` | The kit's rules, in full (managed by the kit) |

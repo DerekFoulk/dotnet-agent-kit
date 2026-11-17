@@ -18,7 +18,7 @@
     <Using Include="FluentAssertions" />
   </ItemGroup>
 
-  <!-- The kit's shared tests (GAP-037, ADR-0079): tools/AppTests in the kit, .kit/tools/AppTests in an app, where this
+  <!-- The kit's shared tests (GAP-037, ADR-0081): tools/AppTests in the kit, .kit/tools/AppTests in an app, where this
        file is tests/Directory.Build.props. An Architecture.Tests project compiles the kit's architecture tests, and
        names the app's assemblies, layer by layer, in its own part of their AppLayers class. -->
   <PropertyGroup>

@@ -35,7 +35,7 @@ flowchart LR
 
 ## The sample's layers
 
-The sample is one ARC-001 module. Each arrow is a project reference; `sample/tests/Bookmarks.Architecture.Tests`, which compiles the kit's shared architecture tests (`tools/AppTests`, ADR-0079), fails if a layer depends outward.
+The sample is one ARC-001 module. Each arrow is a project reference; `sample/tests/Bookmarks.Architecture.Tests`, which compiles the kit's shared architecture tests (`tools/AppTests`, ADR-0081), fails if a layer depends outward.
 
 ```mermaid
 flowchart LR
