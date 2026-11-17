@@ -86,6 +86,10 @@ BeforeDiscovery {
         @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'StreamWriter.StreamWriter(string)'; Description = 'a StreamWriter that opens a path, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Path.GetTempFileName()'; Description = 'Path.GetTempFileName, which makes a file, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Path.GetFullPath(string)'; Description = 'Path.GetFullPath, which reads the current directory, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'HttpClient'''; Description = 'an HttpClient, even one passed in, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'Socket'''; Description = 'Socket, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'TcpClient'; Description = 'TcpClient, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'Dns'''; Description = 'Dns, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
