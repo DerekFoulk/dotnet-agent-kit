@@ -101,7 +101,12 @@ Describe 'Sync-KitApp' {
         Set-FileText (Join-Path $kit '.claude/skills/app-skill/SKILL.md') "# The kit's skill of the same name`n"
         Edit-FileText (Join-Path $kit 'Directory.Packages.props') '<GlobalPackageReference Include="MinVer"' "<GlobalPackageReference Include=""Kit.Fixture.Analyzer"" Version=""1.2.3"" />`n    <GlobalPackageReference Include=""MinVer"""
         Edit-FileText (Join-Path $kit 'Directory.Packages.props') '<PackageVersion Include="FluentAssertions"' "<PackageVersion Include=""Kit.Fixture.Test"" Version=""4.5.6"" />`n    <PackageVersion Include=""FluentAssertions"""
-        Edit-FileText (Join-Path $kit 'global.json') '"version": "10.0.403"' '"version": "10.0.404"'
+        # v0.2.0 moves the SDK pin one patch past the kit's own, whatever that is today, so a Dependabot SDK bump doesn't break the fixture.
+        $globalJson = Join-Path $kit 'global.json'
+        $kitSdk = (Get-Content -Raw -LiteralPath $globalJson | ConvertFrom-Json).sdk.version
+        $kitSdkRelease = [version]($kitSdk -split '-', 2)[0] # a preview pin such as 10.0.100-rc.2 bumps from its 10.0.100
+        $v2Sdk = '{0}.{1}.{2}' -f $kitSdkRelease.Major, $kitSdkRelease.Minor, ($kitSdkRelease.Build + 1)
+        Edit-FileText $globalJson """version"": ""$kitSdk""" """version"": ""$v2Sdk"""
         Edit-FileText (Join-Path $kit 'docs/standards/git.md') 'squash and rebase merges are disabled.' 'squash and rebase merges are disabled (kit-v2-rule-marker).'
         Edit-FileText (Join-Path $kit 'AGENTS.md') '## Talking to the owner' "## Talking to the owner`n`nkit-v2-agents-marker"
         Edit-FileText (Join-Path $kit 'templates/app/.github/workflows/mutation.yml') 'name: Mutation testing' "# kit-v2-workflow-marker`nname: Mutation testing"
@@ -598,7 +603,7 @@ Describe 'Sync-KitApp' {
 
             # Among them: the SDK pin, and the permission rules made again with v0.2.0's tools (ADR-0032), so a rule
             # for a script apps don't get stays out.
-            Get-Content -Raw (Join-Path $app 'global.json') | Should -Match '"version": "10\.0\.404"'
+            Get-Content -Raw (Join-Path $app 'global.json') | Should -Match ('"version": "{0}"' -f [regex]::Escape($v2Sdk))
             $settings = Get-Content -Raw (Join-Path $app '.claude/settings.json') | ConvertFrom-Json
             $settings.permissions.allow | Should -Contain 'PowerShell(dotnet --info)'
             $settings.permissions.ask | Should -Not -Contain 'PowerShell(./tools/Kit-OnlyFixture.ps1*)'
