@@ -9,8 +9,9 @@ BeforeAll {
     # The kit's own ask rules, so each test shows the guard closing a gap in the rules that are in force.
     $settingsPath = Join-Path $PSScriptRoot '..' '..' '.claude' 'settings.json'
     $script:KitAskRules = @((Get-Content -Path $settingsPath -Raw | ConvertFrom-Json -AsHashtable)['permissions']['ask'])
+    $script:KitRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
     function Get-KitDecision([string] $Tool, [string] $Command) {
-        Get-CommandGuardDecision -Tool $Tool -Command $Command -AskRules $script:KitAskRules
+        Get-CommandGuardDecision -Tool $Tool -Command $Command -AskRules $script:KitAskRules -WorkingDirectory $script:KitRoot
     }
 }
 
@@ -164,6 +165,31 @@ Describe 'Get-BashCommand' {
         @{ Command = "echo 'abc" }, @{ Command = 'echo "abc' }, @{ Command = 'echo $(ls' }, @{ Command = 'echo `ls' }, @{ Command = 'a )' }
     ) {
         { InModuleScope KitCommandGuard -Parameters @{ Command = $Command } { param($Command) Get-BashCommand -Command $Command } } | Should -Throw '*Bash*'
+    }
+}
+
+Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
+    # Review round 1: each of these runs the asked script or program, yet its spelling matched no ask rule.
+    It 'asks for <Tool> command <Command>, which names an asked script or program another way' -ForEach @(
+        @{ Tool = 'PowerShell'; Command = './tools/./New-KitApp.ps1 -Name x' }
+        @{ Tool = 'PowerShell'; Command = './tools/.\New-KitApp.ps1 -Name x' }
+        @{ Tool = 'PowerShell'; Command = './tools/./Install-PlaywrightBrowser.ps1' }
+        @{ Tool = 'PowerShell'; Command = 'git.exe push --force' }
+        @{ Tool = 'PowerShell'; Command = '& "C:\Program Files\Git\cmd\git.exe" push --force' }
+        @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools//New-KitApp.ps1 -Name x' }
+        # NTFS opens a file whatever its case, and Bash's rules match case-sensitively.
+        @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/new-kitapp.ps1 -Name x' }
+        @{ Tool = 'Bash'; Command = 'GIT push --force' }
+        @{ Tool = 'Bash'; Command = '/usr/bin/git push --force' }
+        # A glob the shell expands, against the working directory, to an asked script.
+        @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/New-K*.ps1 -Name x' }
+        @{ Tool = 'PowerShell'; Command = './tools/New-K*.ps1 -Name x' }
+    ) {
+        Get-KitDecision -Tool $Tool -Command $Command | Should -Not -BeNullOrEmpty
+    }
+
+    It 'leaves a glob that expands to no asked script to the rules' {
+        Get-KitDecision -Tool 'Bash' -Command 'ls ./tools/*.ps1' | Should -BeNullOrEmpty
     }
 }
 

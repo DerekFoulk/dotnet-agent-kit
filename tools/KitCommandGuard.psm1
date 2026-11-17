@@ -637,7 +637,8 @@ function Get-CommandGuardDecision {
     param(
         [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool,
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Command,
-        [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $AskRules
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $AskRules,
+        [string] $WorkingDirectory
     )
 
     try { $commands = if ($Tool -eq 'Bash') { @(Get-BashCommand -Command $Command) } else { @(Get-PowerShellCommand -Command $Command) } }
