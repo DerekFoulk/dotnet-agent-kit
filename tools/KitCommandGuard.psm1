@@ -62,8 +62,9 @@ function Get-AskedCommand {
 }
 
 # Whether a resolved command could be one the ask rules name (Get-AskedCommand): its program, by any of its spellings
-# (Get-PlainPathWord), matches an asked program, and the rule names no subcommand, or one of the command's words
-# holds it, or the word after the program is built when the command runs. A program that is itself built could be
+# (Get-PlainPathWord), matches an asked program, and the rule names no subcommand, or one of the command's words is
+# that subcommand (a path by its last part: .../playwright.ps1), or the word after the program is built when the
+# command runs. A program that is itself built could be
 # anything.
 function Test-AskedCommand {
     param([Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool, [AllowEmptyCollection()] [object[]] $Asked)
@@ -77,7 +78,8 @@ function Test-AskedCommand {
     foreach ($command in $Asked) {
         if (-not @($names | Where-Object { Test-WildcardMatch -Pattern $command.Program -Text $_ -IgnoreCase }).Count) { continue }
         if (-not $command.Subcommand -or ($start + 1 -lt $words.Count -and $Resolved.Built[$start + 1])) { return $true }
-        if (@($rest | Where-Object { $_.IndexOf($command.Subcommand, [StringComparison]::OrdinalIgnoreCase) -ge 0 }).Count) { return $true }
+        $leaves = $rest | ForEach-Object { $_.Substring($_.Replace('\', '/').LastIndexOf('/') + 1) }
+        if (@($leaves | Where-Object { [string]::Equals($_, $command.Subcommand, [StringComparison]::OrdinalIgnoreCase) }).Count) { return $true }
     }
     $false
 }
