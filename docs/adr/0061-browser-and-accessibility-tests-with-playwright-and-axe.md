@@ -80,6 +80,8 @@ Option 1, hosted by WebApplicationFactory on Kestrel. It's the documented route,
 
 Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) on 2026-11-12, closing GAP-004.
 
+**Update (2026-11-16):** Option 3 replaces Option 1 in CI, decided in auto mode, closing GAP-033. The SDK mismatch is solved by running the runner's own SDK inside the image. See "Update (2026-11-16): the pinned Playwright image" under Consequences.
+
 ## Consequences
 
 **Packages.** Both are named by ADR-0003. Both sit in the Tests group of `Directory.Packages.props`, so every app gets them:
@@ -126,7 +128,38 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 - **For the owner (a guardrail):** installing a browser locally is the owner's step (AGENTS.md, testing.md). Since 2026-11-12, `.claude/settings.json` asks before it, in both modes, when a command runs `playwright.ps1 install` (by `pwsh`, `&`, `./`, `.\`, or any path through `bin`, bare or not), `npx … playwright … install`, or the kit's `Install-PlaywrightBrowser.ps1`. A command that only names them (git, grep, a commit message, Pester) doesn't ask, unless it quotes the full path through `bin` with `install` after it, or starts with `pwsh`, `./`, `.\` or `&` and quotes `playwright.ps1 install` later: then it asks too, because a missed install is worse than an extra prompt. Not caught, and left to "Always ask" and the reviewer (ADR-0026): an install run through a variable or a pipeline, a quoted path, a wrapper such as `bash -c`, and the kit script by an absolute path, without `./` or `.\` in some forms (such as `pwsh tools/…`, `tools\…` or `& tools/…`), by `pwsh` with `.\` or with flags other than `-File` and `-NoProfile`, or dot-sourced and then called. Whether Claude Code checks each command of a compound line on its own isn't verified. `tools/tests/AgentConfig.Tests.ps1` pins both sides.
 - **Solution reading:** the kit's scripts read a solution in two ways. Six read the `.slnx` XML, and Test-CodeShape uses `dotnet sln list`. The new script adds one more XML reader, and repeats Test-CodeShape's first-framework fallback. Putting both in one module is a follow-up (CRF-003).
   - **Update (2026-11-12):** done. `tools/KitSolution.psm1` lists a `.slnx`'s projects for seven scripts (the count above was one too many) and the performance workflow's benchmarks step, and picks the first framework for the two scripts that need it.
-- **Updates:** agents may merge Playwright's minor updates (ADR-0041), and each one moves the browser build. That's intended.
+- **Updates:** agents may merge Playwright's minor updates (ADR-0041), and each one moves the browser build. That's intended. (Changed on 2026-11-16: a Playwright update now moves the image too, so it's the owner's; see below.)
+
+**Update (2026-11-16): the pinned Playwright image (GAP-033).** CI no longer downloads a browser. When a project uses Playwright, the tests run inside Microsoft's Playwright .NET image, pinned by tag and digest. Docker checks every layer against the digest, so the browser, and the system libraries `--with-deps` used to fetch from the runner's Ubuntu archive, are the ones the pin names.
+- **The SDK mismatch:**
+  - **The problem:** the image is built `FROM mcr.microsoft.com/dotnet/sdk:10.0-noble`, so its SDK is that image's 10.0.1xx band. `global.json` pins 10.0.403 with `latestPatch`, which only a 10.0.4xx SDK at patch 403 or later satisfies, so the image's own SDK can't run the kit's build.
+  - **How Playwright handles it:** its Docker page installs another SDK into the image with Microsoft's `dotnet-install.sh`. `actions/setup-dotnet` already runs that script on the runner, for the SDK `global.json` names.
+  - **The fix:** the container gets the runner's install, shared read-only at the same path (`DOTNET_ROOT`), and puts it first on `PATH`. There's still one SDK download per run, and the SDK that built the code runs the tests.
+- **The pin:** `.config/playwright/Dockerfile`, in the repo that runs CI, as for the gitleaks image (ADR-0060). One `FROM mcr.microsoft.com/playwright/dotnet:v<version>-noble@sha256:<digest>` line. Dependabot's docker updater watches it with the same 7-day cooldown, in the kit and in the app template.
+  - **Why it's the repo's own, not the kit's:** the image must hold the browsers of the repo's own Microsoft.Playwright version, since Playwright finds only its own version's browsers. An app owns that version, in its `Directory.Packages.props`.
+  - **Apps:** `Export-KitApp` gives a new app the kit's pin as an app-owned file. An app made earlier gets it from the kit sync, as an app-owned file it lacks (`Add-KitAppOwnedFile`). Its `dependabot.yml` is its own, so it adds the docker entry itself.
+- **How:** `tools/Invoke-WithPlaywrightImage.ps1` replaces `tools/Install-PlaywrightBrowser.ps1`. "Test with coverage" in `dotnet-ci.reusable.yml`, and the Stryker step in `mutation.reusable.yml`, run their command through it.
+  - **Which projects:** like the old script, it reads each project's restore graph to find the ones that use Playwright.
+  - **Without any:** the command runs on the runner, as before, so an app without browser tests pulls nothing.
+  - **With some:** it fails, naming what to fix, when the projects use more than one Playwright version, when there's no pin, when the pin isn't one FROM line with a tag and a digest, or when the pin's version isn't the projects'.
+  - **The container:** `docker run` with `--init` and `--ipc=host`, as Playwright's Docker page recommends: Chromium runs out of shared memory without the latter. It also gets the runner's network and its user and group, so what it writes stays the runner's. The home, working, temp and kit folders are shared at the same paths, so the build's absolute paths, the NuGet folder and the results folder mean the same inside. The runner's SDK goes first on the image's own `PATH`, inside the container (`sh -c`), so the kit keeps no copy of the image's `PATH`.
+  - **Tests that start containers of their own:** an app with a database uses Testcontainers by default (DAT-002), and with a web UI too, its integration tests now run in the image. They reach the runner's Docker through its socket, shared with its group. Inside a container, Testcontainers looks for its containers' ports at a network gateway. On the runner's network they're on localhost, so the container gets `TESTCONTAINERS_HOST_OVERRIDE=localhost`, unless the repo sets its own.
+- **Updates:** Dependabot moves Microsoft.Playwright (nuget) and the image (docker) in separate PRs, and CI fails each until both move. Bring the two into one PR: push the image's change to the package's PR branch, then close the image's PR. Image bumps are the owner's to merge, as gitleaks' are (`.github/dependabot.yml`), so a Microsoft.Playwright update is now the owner's too.
+  - **The better design that waits:** Dependabot's multi-ecosystem groups would open one PR for both. GitHub's page doesn't say what happens to the NuGet entry's other packages, those outside the group's patterns, so adopting it could change every NuGet update. It waits for that to be checked (GAP-046).
+- **Trade-offs:**
+  - Pulling the image costs CI time, but only where browser tests exist: 22 seconds in PR 102's required job (run 43994753335), and 23 in its mutation run. The whole "Test with coverage" step took 53 seconds, all 339 tests included.
+  - Chromium runs without its sandbox, as it did on the runner (Playwright's default). The tests load only the app's own pages, which Playwright's Docker page counts as the trusted case.
+  - Locally nothing changes: the owner installs the browser with `playwright.ps1`, so local runs still use Playwright's unchecked download (the owner's step, "Always ask").
+- **Left as it is:** `.claude/settings.json` still asks before `tools/Install-PlaywrightBrowser*`, which this change removes. Those rules can never fire now, and dropping them is a guardrail change, left for a PR of its own.
+- **Not verified:** Testcontainers inside the image. No kit test starts a container of its own, so nothing proves it yet (GAP-047).
+- **Apps made earlier:** an app whose Microsoft.Playwright version differs from the kit's gets a red "Test with coverage" on the kit update's PR until its pin matches its own version, with CI's message saying so. Its `dependabot.yml` gains no docker entry, so the pin moves only when someone moves it.
+
+**Update (2026-11-16): interactive render modes (GAP-036).** The fixture gains `/interactive`, an Interactive Server page whose "Add one" button counts clicks. The server prerenders it, so the button shows before Blazor's circuit is up, and a click then would be lost.
+- **The page:** it renders the button `disabled` until `RendererInfo.IsInteractive`, the pattern Microsoft's render modes page shows.
+- **The test:** it asserts the button is enabled (`Expect(button).ToBeEnabledAsync()`) before it clicks, which is the actionability wait Playwright makes before a click anyway, and then checks the count, which a `role="status"` paragraph announces.
+- **Pinned behavior:** a second test checks that the prerendered HTML sends the button disabled, and axe checks the page as it does every page.
+- **Probed:** with the attribute removed, both tests fail. The click is lost, and the prerendered button isn't disabled.
+- **WebAssembly and Auto:** they need a `.Client` project, which the fixture doesn't have. The same pattern applies to them, since `RendererInfo.IsInteractive` reports interactivity in every render mode.
 
 ## Pillars affected
 
@@ -146,6 +179,10 @@ Option 1 with WebApplicationFactory on Kestrel, decided in auto mode (ADR-0035) 
 - https://github.com/dotnet/aspnetcore/issues/67340, https://github.com/dotnet/aspnetcore/pull/67714 and https://github.com/dotnet/aspnetcore/pull/70520, retrieved 2026-11-14 (the UseKestrel(port) race, and its fix after .NET 10)
 - https://github.com/dotnet/aspnetcore/blob/v10.0.0/src/Mvc/Mvc.Testing/src/WebApplicationFactory.cs and https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/Microsoft.Extensions.HostFactoryResolver/src/HostFactoryResolver.cs, retrieved 2026-11-14 (TryConfigureServerPort; the entry point running on its own thread)
 - https://playwright.dev/dotnet/docs/ci, retrieved 2026-11-12
+- https://playwright.dev/dotnet/docs/docker, retrieved 2026-11-16 (the image's tags, --init and --ipc=host, the image's version must match the package's, installing another SDK with dotnet-install.sh, root and the sandbox)
+- https://github.com/microsoft/playwright-dotnet/blob/main/utils/docker/Dockerfile.noble, retrieved 2026-11-16 (the image is built FROM mcr.microsoft.com/dotnet/sdk:10.0-noble; browsers in /ms-playwright)
+- https://docs.github.com/en/code-security/dependabot/working-with-dependabot/configuring-multi-ecosystem-updates, retrieved 2026-11-16 (multi-ecosystem groups; patterns required on each entry)
+- https://learn.microsoft.com/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0, retrieved 2026-11-16 (prerendering; RendererInfo.IsInteractive; disabling a button until the component is interactive)
 - https://github.com/dequelabs/axe-core/blob/develop/doc/API.md, retrieved 2026-11-12 (the WCAG tags; no wcag22a)
 - https://github.com/dequelabs/axe-core-nuget/blob/develop/packages/playwright/README.md, retrieved 2026-11-12 (RunAxe, RunOnly, the MIT and MPL licenses)
 - https://www.nuget.org/packages/Microsoft.Playwright/1.64.1, https://www.nuget.org/packages/Deque.AxeCore.Playwright/4.14.0, retrieved 2026-11-12
