@@ -20,6 +20,7 @@ This repo follows dotnet-agent-kit {{KitVersion}} (commit `{{KitCommit}}`): the 
 | List the solution's MAUI and desktop (UI) projects, which CI builds on Windows and macOS and the coverage gate exempts (ARC-010) | `./.kit/tools/Get-UiProject.ps1 -Solution {{Name}}.slnx` |
 | No deprecated NuGet packages | `./.kit/tools/Test-DeprecatedPackages.ps1 -Path {{Name}}.slnx` |
 | Every C# project in the solution holds code of its own, and none keeps the class library template's empty `Class1` (ARC-009) | `./.kit/tools/Test-EmptyProjects.ps1 -Solution {{Name}}.slnx` |
+| Every locked package's license is one the kit's policy or `.config/package-licenses.json` allows; that file also marks the app commercial (SEC-005). Restore first | `./.kit/tools/Test-PackageLicenses.ps1 -Solution {{Name}}.slnx` |
 | Every ADR has its required sections | `./.kit/tools/Test-AdrSections.ps1 -AdrPath ./docs/adr` |
 | The runbook has every section, and no placeholder once it's In use (OPS-004) | `./.kit/tools/Test-Runbook.ps1 -Path ./docs/runbook.md` |
 | The architecture diagram is there (ARC-013) | `./.kit/tools/Test-ArchitectureDiagram.ps1 -Path ./docs/architecture/modules.md` |
