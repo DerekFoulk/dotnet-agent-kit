@@ -90,6 +90,12 @@ BeforeDiscovery {
         @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'Socket'''; Description = 'Socket, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'TcpClient'; Description = 'TcpClient, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'Dns'''; Description = 'Dns, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Environment.GetEnvironmentVariable(string)'; Description = 'an environment variable, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Environment.CurrentDirectory'; Description = 'the current directory, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Environment.TickCount64'; Description = 'Environment.TickCount64, a clock, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Stopwatch'''; Description = 'Stopwatch, a clock, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Console'''; Description = 'the console, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Process'''; Description = 'another process, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
