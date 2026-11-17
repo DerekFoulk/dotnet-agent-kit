@@ -53,10 +53,10 @@ Accepted as recommended, in auto mode (owner's task brief for GAP-039, 2026-11-1
   - **Randomness:** `Random`, `RandomNumberGenerator`, `Guid.NewGuid` and both `Guid.CreateVersion7` overloads.
   - **File access:** `File`, `Directory`, the `FileSystemInfo` types, `FileStream` and the other file types, and `Path`'s members that touch the disk or read the current or temporary folder. Also the `StreamReader` and `StreamWriter` constructors that open a path, zip and tar files (`ZipFile`, `ZipFileExtensions`, `TarFile`), folder listings (`FileSystemEnumerable`), and the app's and an assembly's own location.
   - **Network access:** `HttpClient` and its handlers, even when passed in, plus `Socket`, `TcpClient`, `Dns` and the other network types. A pure assembly takes an interface of its own, which the infrastructure implements over `HttpClient`.
-  - **The environment and other processes:** environment variables, the command line and current directory, the machine's and user's names and folders, `Environment`'s tick counts, `Stopwatch` (clocks), the local time zone (`TimeProvider.LocalTimeZone` replaces it), `Console`, `Process`, named and anonymous pipes, and ending the process.
+  - **The environment and other processes:** environment variables, the command line and current directory, the machine's and user's names and folders, `Environment`'s tick counts, `Stopwatch` (clocks), the local time zone and the conversions that read it, such as `DateTime.ToLocalTime` (`TimeProvider.LocalTimeZone` replaces it), `Console`, `Process`, named and anonymous pipes, and ending the process.
 
   ARC-008's statement now names the fourth family. Its reason, deterministic tests, covers it as it covers the other three.
-- **What stays open.** `tools/tests/BuildConfig.Tests.ps1` shows the first three build in a marked project:
+- **What stays open.** `tools/tests/BuildConfig.Tests.ps1` shows the first three build in a marked project, and that neither their members nor their types are banned:
   - `Path`'s string work.
   - Streams, readers and writers the caller passes in.
   - What only describes the platform, such as `Environment.NewLine` and `ProcessorCount`.
