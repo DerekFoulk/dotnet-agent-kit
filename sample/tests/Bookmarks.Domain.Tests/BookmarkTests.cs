@@ -146,6 +146,25 @@ public sealed class BookmarkTests
     }
 
 
+    [Fact]
+    public void CreateRejectsAnIdThatIsNotAUuidVersion7()
+    {
+        // Lists are ordered by Id (API-004), which is creation order only for a UUID version 7 made from createdAt.
+        Action create = () => Bookmark.Create(Guid.NewGuid(), Owner, new Uri("https://example.com/"), "Title", s_now);
+
+        create.Should().Throw<ArgumentException>().WithParameterName("id");
+    }
+
+    [Fact]
+    public void CreateRejectsAnIdMadeFromAnotherTime()
+    {
+        Guid aMillisecondLater = Guid.CreateVersion7(s_now.AddMilliseconds(1));
+
+        Action create = () => Bookmark.Create(aMillisecondLater, Owner, new Uri("https://example.com/"), "Title", s_now);
+
+        create.Should().Throw<ArgumentException>().WithParameterName("id");
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
