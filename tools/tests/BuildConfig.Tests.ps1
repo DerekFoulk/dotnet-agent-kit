@@ -732,6 +732,21 @@ Describe 'BannedSymbols.txt' {
     }
 }
 
+# ARC-008, GAP-039: the sample's domain is its core business logic, so it's marked pure; reading the evaluated items shows
+# that Directory.Build.props, imported before the .csproj sets PureAssembly, still hands it BannedSymbols.Pure.txt.
+Describe 'The sample''s pure assemblies' -Tag 'Build' {
+    It '<Name> gets BannedSymbols.Pure.txt' -ForEach @(
+        Get-ChildItem -Path (Join-Path $PSScriptRoot '..' '..' 'sample' 'src') -Filter '*.Domain.csproj' -Recurse |
+            ForEach-Object { @{ Name = $_.BaseName; Project = $_.FullName } }
+    ) {
+        $PSNativeCommandUseErrorActionPreference = $false
+        $items = dotnet msbuild $Project -getItem:AdditionalFiles 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $items
+        @(($items | ConvertFrom-Json).Items.AdditionalFiles.Identity | Split-Path -Leaf) | Should -Contain 'BannedSymbols.Pure.txt'
+    }
+}
+
 # CodeMetricsConfig.txt is the one source of the metric limits; CRF-008 states them for readers, so the two must agree
 # (CRF-003, review 1 of PR 36).
 Describe 'CodeMetricsConfig.txt' {
