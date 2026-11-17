@@ -69,6 +69,44 @@ BeforeDiscovery {
         @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.Now'; Description = 'DateTimeOffset.Now (ARC-008)' }
         @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.UtcNow'; Description = 'DateTimeOffset.UtcNow (ARC-008)' }
         @{ Fixture = 'ObsoleteTimeZone'; Diagnostic = 'CS0618'; Description = 'TimeZone, obsolete in favor of TimeZoneInfo, so it needs no ban (ARC-008)' }
+        # GAP-039: a project marked pure (<PureAssembly>true</PureAssembly>) gets BannedSymbols.Pure.txt as well, so it
+        # keeps every project's bans and adds randomness, file, network, environment and process access (ARC-008).
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Random'''; Description = 'Random, shared or seeded, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'RandomNumberGenerator'; Description = 'RandomNumberGenerator, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Guid.NewGuid()'; Description = 'Guid.NewGuid, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Guid.CreateVersion7()'; Description = 'Guid.CreateVersion7, which reads the clock and random bits, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Guid.CreateVersion7(DateTimeOffset)'; Description = 'Guid.CreateVersion7 from a given time, whose other bits are random, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'DateTime.Now'; Description = 'DateTime.Now in an assembly marked pure, which keeps every project''s bans (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'File'''; Description = 'File, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Directory'''; Description = 'Directory, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'FileInfo'; Description = 'FileInfo, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'DirectoryInfo'; Description = 'DirectoryInfo, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'FileStream'; Description = 'FileStream, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'StreamReader.StreamReader(string)'; Description = 'a StreamReader that opens a path, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'StreamWriter.StreamWriter(string)'; Description = 'a StreamWriter that opens a path, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Path.GetTempFileName()'; Description = 'Path.GetTempFileName, which makes a file, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Path.GetFullPath(string)'; Description = 'Path.GetFullPath, which reads the current directory, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'ZipFileExtensions'; Description = 'ZipArchive''s extensions that read and write files, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'TarFile'; Description = 'TarFile, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'FileSystemEnumerable'; Description = 'FileSystemEnumerable, which lists a folder, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'AppContext.BaseDirectory'; Description = 'the app''s own folder, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Assembly.Location'; Description = 'an assembly''s path on disk, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'HttpClient'''; Description = 'an HttpClient, even one passed in, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'Socket'''; Description = 'Socket, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'TcpClient'; Description = 'TcpClient, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureNetworkAccess'; Diagnostic = 'RS0030'; Symbol = 'Dns'''; Description = 'Dns, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Environment.GetEnvironmentVariable(string)'; Description = 'an environment variable, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Environment.CurrentDirectory'; Description = 'the current directory, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Environment.TickCount64'; Description = 'Environment.TickCount64, a clock, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Stopwatch'''; Description = 'Stopwatch, a clock, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Console'''; Description = 'the console, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'Process'''; Description = 'another process, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'AnonymousPipeServerStream'; Description = 'an anonymous pipe to another process, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'TimeZoneInfo.Local'; Description = 'the machine''s time zone, where TimeProvider.LocalTimeZone does, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'DateTime.ToLocalTime()'; Description = 'DateTime.ToLocalTime, which reads the machine''s time zone, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'DateTime.ToUniversalTime()'; Description = 'DateTime.ToUniversalTime, which reads the machine''s time zone, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.ToLocalTime()'; Description = 'DateTimeOffset.ToLocalTime, which reads the machine''s time zone, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureEnvironmentAccess'; Diagnostic = 'RS0030'; Symbol = 'TimeZoneInfo.ConvertTimeToUtc(DateTime)'; Description = 'TimeZoneInfo.ConvertTimeToUtc with no zone, which reads the machine''s, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
@@ -149,7 +187,7 @@ BeforeDiscovery {
 Describe 'Repo build configuration' -Tag 'Build' {
     BeforeAll {
         $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
-        $configFiles = 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig', 'nuget.config', '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt'
+        $configFiles = 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig', 'nuget.config', '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt', 'BannedSymbols.Pure.txt'
 
         function New-FixtureWorkspace {
             param([Parameter(Mandatory)] [string] $Fixture)
@@ -399,6 +437,41 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 
+    # ARC-008, ADR-0080: the pure list bans what reaches outside the program and no more. Each row names a call in a Pure*
+    # fixture that must build. RS0030 names a banned type alone ('Path'), not the member called on it, so each row checks
+    # its type too, and a ban widened to a whole type (Path, Environment, StreamReader) shows here (review 2 of this PR).
+    Context 'what an assembly marked pure keeps' {
+        BeforeAll { $builds = @{} }
+
+        It 'allows <Symbol>' -ForEach @(
+            @{ Fixture = 'PureFileAccess'; Type = 'Path'; Symbol = 'Path.Combine' }
+            @{ Fixture = 'PureFileAccess'; Type = 'StreamReader'; Symbol = 'StreamReader.StreamReader(Stream)' }
+            @{ Fixture = 'PureFileAccess'; Type = 'StreamWriter'; Symbol = 'StreamWriter.StreamWriter(Stream)' }
+            @{ Fixture = 'PureEnvironmentAccess'; Type = 'Environment'; Symbol = 'Environment.NewLine' }
+            @{ Fixture = 'PureEnvironmentAccess'; Type = 'Environment'; Symbol = 'Environment.ProcessorCount' }
+        ) {
+            if (-not $builds.ContainsKey($Fixture)) {
+                $builds[$Fixture] = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
+            }
+            $build = $builds[$Fixture]
+
+            $build.Output | Should -Match 'error RS0030' -Because 'the fixture''s banned calls show the pure list was applied'
+            $build.Output | Should -Not -Match ([regex]::Escape("The symbol '$Symbol")) -Because "$Symbol only works in memory"
+            $build.Output | Should -Not -Match ([regex]::Escape("The symbol '$Type'")) -Because "a ban on all of $Type would ban $Symbol too"
+        }
+    }
+
+    # ARC-008, GAP-039: only a project that sets PureAssembly gets BannedSymbols.Pure.txt, so randomness, files, the
+    # network, the environment and the console stay open everywhere else (the Pure* rows show they're shut in one that does).
+    Context 'a project not marked pure' {
+        It 'may use what an assembly marked pure may not' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'UnmarkedProjectAccess')
+
+            $build.Output | Should -Not -Match 'RS0030'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
     # STY-011: the C# async page lists GetAwaiter().GetResult() first among the ways to block where await can't reach,
     # because it keeps the original exception; the ban on Wait and Result leaves it open.
     Context 'blocking where await can''t reach' {
@@ -554,9 +627,10 @@ Describe 'BannedSymbols.txt' {
             # Roslyn finds only members declared on the named type, so an inherited member mustn't count, and it compares
             # with case. An instance constructor is #ctor (a static one is #cctor), a generic parameter type is its name
             # without the arity and its type arguments in braces (System.ReadOnlySpan{System.Threading.Tasks.Task}), and a
-            # generic type's own parameter is `0, `1 and so on. A generic method's parameters (``0), ref or out parameters
-            # (@), multi-dimensional arrays ([0:,0:]) and nested types (. where FullName has +) aren't parsed; such an entry
-            # fails here until this function learns them.
+            # generic type's own parameter is `0, `1 and so on. A nested type in a parameter list is joined with . where
+            # FullName has + (System.Environment.SpecialFolder). A generic method's parameters (``0), ref or out parameters
+            # (@), multi-dimensional arrays ([0:,0:]) and a banned symbol that is or sits on a nested type aren't parsed;
+            # such an entry fails here until this function learns them.
             $declared = [Reflection.BindingFlags]'Public, NonPublic, Static, Instance, DeclaredOnly'
             $owner = Find-KitType ($name.Substring(0, $name.LastIndexOf('.')))
             $member = $name.Substring($name.LastIndexOf('.') + 1)
@@ -584,7 +658,7 @@ Describe 'BannedSymbols.txt' {
             if ($Type.IsGenericParameter) { return $(if ($Type.DeclaringMethod) { $unparsed } else { '`' + $Type.GenericParameterPosition }) }
             if ($Type.IsArray) { return $(if ($Type.GetArrayRank() -gt 1) { $unparsed } else { (Get-DocumentationTypeName $Type.GetElementType()) + '[]' }) }
             if ($Type.IsByRef) { return $unparsed }
-            if (-not $Type.IsGenericType) { return $Type.FullName }
+            if (-not $Type.IsGenericType) { return $Type.FullName.Replace('+', '.') }
             $arguments = @($Type.GenericTypeArguments | ForEach-Object { Get-DocumentationTypeName $_ }) -join ','
             ($Type.GetGenericTypeDefinition().FullName -replace '`\d+$', '') + "{$arguments}"
         }
@@ -644,13 +718,67 @@ Describe 'BannedSymbols.txt' {
         }
     }
 
-    It 'names only symbols that exist' {
-        $ids = @(Get-Content -LiteralPath $bannedPath | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
+    It '<File> names only symbols that exist' -ForEach @(
+        @{ File = 'BannedSymbols.txt' }
+        @{ File = 'BannedSymbols.Pure.txt' }
+    ) {
+        $ids = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' $File) | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
 
         $ids.Count | Should -BeGreaterThan 0
         foreach ($id in $ids) {
             Test-DocumentationId -Id $id | Should -BeTrue -Because "'$id' should name a real symbol, or the ban does nothing"
         }
+    }
+
+    # GAP-039: the pure list bans types whose assembly isn't named after their namespace (Ping is in System.Net.Ping,
+    # ZipFile in System.IO.Compression.ZipFile), and a method that takes a nested type (Environment.SpecialFolder).
+    It 'resolves <Id>, whose type is in an assembly named otherwise or nested' -ForEach @(
+        @{ Id = 'T:System.Net.NetworkInformation.Ping' }
+        @{ Id = 'T:System.IO.Compression.ZipFile' }
+        @{ Id = 'M:System.Environment.GetFolderPath(System.Environment.SpecialFolder)' }
+    ) {
+        Test-DocumentationId -Id $Id | Should -BeTrue
+    }
+
+    # A project marked pure gets both files, so an ID in both would be one ban stated twice (CRF-003).
+    It 'BannedSymbols.Pure.txt repeats no ID of BannedSymbols.txt' {
+        $read = { param($Name) @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' $Name) | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() }) }
+        $everywhere = & $read 'BannedSymbols.txt'
+        $pure = & $read 'BannedSymbols.Pure.txt'
+
+        $pure.Count | Should -BeGreaterThan 0
+        @($pure | Where-Object { $_ -cin $everywhere }) | Should -BeNullOrEmpty
+    }
+
+    # ARC-008: a pure assembly may read a stream its caller passes in, so only the constructors that open a path are
+    # banned; a row that goes missing, or a path overload a later .NET adds, fails here.
+    It 'BannedSymbols.Pure.txt bans every public <Type> constructor that opens a path' -ForEach @(
+        @{ Type = 'System.IO.StreamReader' }
+        @{ Type = 'System.IO.StreamWriter' }
+    ) {
+        $ids = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'BannedSymbols.Pure.txt') | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
+        $paths = @((Find-KitType $Type).GetConstructors() | Where-Object { $_.GetParameters()[0].ParameterType -eq [string] })
+
+        $paths.Count | Should -BeGreaterThan 0
+        foreach ($constructor in $paths) {
+            $id = "M:$Type.#ctor(" + (@($constructor.GetParameters() | ForEach-Object { Get-DocumentationTypeName $_.ParameterType }) -join ',') + ')'
+            $ids | Should -Contain $id -Because "every $Type constructor that opens a path is banned"
+        }
+    }
+}
+
+# ARC-008, GAP-039: the sample's domain is its core business logic, so it's marked pure; reading the evaluated items shows
+# that Directory.Build.props, imported before the .csproj sets PureAssembly, still hands it BannedSymbols.Pure.txt.
+Describe 'The sample''s pure assemblies' -Tag 'Build' {
+    It '<Name> gets BannedSymbols.Pure.txt' -ForEach @(
+        Get-ChildItem -Path (Join-Path $PSScriptRoot '..' '..' 'sample' 'src') -Filter '*.Domain.csproj' -Recurse |
+            ForEach-Object { @{ Name = $_.BaseName; Project = $_.FullName } }
+    ) {
+        $PSNativeCommandUseErrorActionPreference = $false
+        $items = dotnet msbuild $Project -getItem:AdditionalFiles 2>&1 | Out-String
+
+        $LASTEXITCODE | Should -Be 0 -Because $items
+        @(($items | ConvertFrom-Json).Items.AdditionalFiles.Identity | Split-Path -Leaf) | Should -Contain 'BannedSymbols.Pure.txt'
     }
 }
 

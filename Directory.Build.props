@@ -54,6 +54,14 @@
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
   </ItemGroup>
 
+  <!-- Pure assemblies (ARC-008, ADR-0080): a project that sets <PureAssembly>true</PureAssembly> in its .csproj also gets
+       BannedSymbols.Pure.txt, which bans randomness, file, network, environment and process access; the analyzer reads
+       every BannedSymbols.*.txt it's given, on top of BannedSymbols.txt. MSBuild evaluates items after every property,
+       the project's own included, so this condition sees the .csproj's value though this file is imported first. -->
+  <ItemGroup Condition="'$(PureAssembly)' == 'true'">
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.Pure.txt" />
+  </ItemGroup>
+
   <!-- Packages: lock files everywhere, locked restore in CI, and vulnerability audit of direct and transitive packages. -->
   <PropertyGroup>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
