@@ -682,12 +682,51 @@ Describe 'BannedSymbols.txt' {
         }
     }
 
-    It 'names only symbols that exist' {
-        $ids = @(Get-Content -LiteralPath $bannedPath | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
+    It '<File> names only symbols that exist' -ForEach @(
+        @{ File = 'BannedSymbols.txt' }
+        @{ File = 'BannedSymbols.Pure.txt' }
+    ) {
+        $ids = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' $File) | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
 
         $ids.Count | Should -BeGreaterThan 0
         foreach ($id in $ids) {
             Test-DocumentationId -Id $id | Should -BeTrue -Because "'$id' should name a real symbol, or the ban does nothing"
+        }
+    }
+
+    # GAP-039: the pure list bans types whose assembly isn't named after their namespace (Ping is in System.Net.Ping,
+    # ZipFile in System.IO.Compression.ZipFile), and a method that takes a nested type (Environment.SpecialFolder).
+    It 'resolves <Id>, whose type is in an assembly named otherwise or nested' -ForEach @(
+        @{ Id = 'T:System.Net.NetworkInformation.Ping' }
+        @{ Id = 'T:System.IO.Compression.ZipFile' }
+        @{ Id = 'M:System.Environment.GetFolderPath(System.Environment.SpecialFolder)' }
+    ) {
+        Test-DocumentationId -Id $Id | Should -BeTrue
+    }
+
+    # A project marked pure gets both files, so an ID in both would be one ban stated twice (CRF-003).
+    It 'BannedSymbols.Pure.txt repeats no ID of BannedSymbols.txt' {
+        $read = { param($Name) @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' $Name) | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() }) }
+        $everywhere = & $read 'BannedSymbols.txt'
+        $pure = & $read 'BannedSymbols.Pure.txt'
+
+        $pure.Count | Should -BeGreaterThan 0
+        @($pure | Where-Object { $_ -cin $everywhere }) | Should -BeNullOrEmpty
+    }
+
+    # ARC-008: a pure assembly may read a stream its caller passes in, so only the constructors that open a path are
+    # banned; a row that goes missing, or a path overload a later .NET adds, fails here.
+    It 'BannedSymbols.Pure.txt bans every public <Type> constructor that opens a path' -ForEach @(
+        @{ Type = 'System.IO.StreamReader' }
+        @{ Type = 'System.IO.StreamWriter' }
+    ) {
+        $ids = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'BannedSymbols.Pure.txt') | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
+        $paths = @((Find-KitType $Type).GetConstructors() | Where-Object { $_.GetParameters()[0].ParameterType -eq [string] })
+
+        $paths.Count | Should -BeGreaterThan 0
+        foreach ($constructor in $paths) {
+            $id = "M:$Type.#ctor(" + (@($constructor.GetParameters() | ForEach-Object { Get-DocumentationTypeName $_.ParameterType }) -join ',') + ')'
+            $ids | Should -Contain $id -Because "every $Type constructor that opens a path is banned"
         }
     }
 }
