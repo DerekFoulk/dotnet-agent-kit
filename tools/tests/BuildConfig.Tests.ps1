@@ -69,6 +69,14 @@ BeforeDiscovery {
         @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.Now'; Description = 'DateTimeOffset.Now (ARC-008)' }
         @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.UtcNow'; Description = 'DateTimeOffset.UtcNow (ARC-008)' }
         @{ Fixture = 'ObsoleteTimeZone'; Diagnostic = 'CS0618'; Description = 'TimeZone, obsolete in favor of TimeZoneInfo, so it needs no ban (ARC-008)' }
+        # GAP-039: a project marked pure (<PureAssembly>true</PureAssembly>) gets BannedSymbols.Pure.txt as well, so it
+        # keeps every project's bans and adds randomness, file, network, environment and process access (ARC-008).
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Random'''; Description = 'Random, shared or seeded, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'RandomNumberGenerator'; Description = 'RandomNumberGenerator, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Guid.NewGuid()'; Description = 'Guid.NewGuid, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Guid.CreateVersion7()'; Description = 'Guid.CreateVersion7, which reads the clock and random bits, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Guid.CreateVersion7(DateTimeOffset)'; Description = 'Guid.CreateVersion7 from a given time, whose other bits are random, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'DateTime.Now'; Description = 'DateTime.Now in an assembly marked pure, which keeps every project''s bans (ARC-008)' }
         @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
@@ -149,7 +157,7 @@ BeforeDiscovery {
 Describe 'Repo build configuration' -Tag 'Build' {
     BeforeAll {
         $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
-        $configFiles = 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig', 'nuget.config', '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt'
+        $configFiles = 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig', 'nuget.config', '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt', 'BannedSymbols.Pure.txt'
 
         function New-FixtureWorkspace {
             param([Parameter(Mandatory)] [string] $Fixture)
