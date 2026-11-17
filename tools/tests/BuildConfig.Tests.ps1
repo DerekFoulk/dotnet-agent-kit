@@ -77,6 +77,15 @@ BeforeDiscovery {
         @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Guid.CreateVersion7()'; Description = 'Guid.CreateVersion7, which reads the clock and random bits, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'Guid.CreateVersion7(DateTimeOffset)'; Description = 'Guid.CreateVersion7 from a given time, whose other bits are random, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'PureRandomness'; Diagnostic = 'RS0030'; Symbol = 'DateTime.Now'; Description = 'DateTime.Now in an assembly marked pure, which keeps every project''s bans (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'File'''; Description = 'File, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Directory'''; Description = 'Directory, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'FileInfo'; Description = 'FileInfo, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'DirectoryInfo'; Description = 'DirectoryInfo, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'FileStream'; Description = 'FileStream, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'StreamReader.StreamReader(string)'; Description = 'a StreamReader that opens a path, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'StreamWriter.StreamWriter(string)'; Description = 'a StreamWriter that opens a path, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Path.GetTempFileName()'; Description = 'Path.GetTempFileName, which makes a file, in an assembly marked pure (ARC-008)' }
+        @{ Fixture = 'PureFileAccess'; Diagnostic = 'RS0030'; Symbol = 'Path.GetFullPath(string)'; Description = 'Path.GetFullPath, which reads the current directory, in an assembly marked pure (ARC-008)' }
         @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
         @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
