@@ -51,6 +51,11 @@ Accepted as recommended, as part of the rules audit (owner, 2026-11-12).
 - A package already in a machine's global packages folder isn't checked again; CI's fresh runners extract every package.
 - **macOS is an exception** (Copilot's review of PR #69). .NET verifies signatures during a restore on Windows always, and on Linux by default from the .NET 8 SDK. On macOS it doesn't: Microsoft says the feature isn't supported there and to leave it disabled, so the kit doesn't set `DOTNET_NUGET_SIGNATURE_VERIFICATION` to turn it on. In CI the macOS restore is still held to the packages verified elsewhere: `Test-LockFileSubset.ps1` requires its lock files, hashes included, to match the committed ones, which the Windows and Linux restores of the same commit verified. A developer's own Mac gets the lock files' hash check, not the signature check. A test keeps any workflow from turning verification off where it runs.
 - **Not yet handled:** nothing notices a certificate rotation before a restore fails. Scorecard GAP-038 tracks a scheduled check that compares `nuget.config` with nuget.org's service index.
+  - **Update (2026-11-16): GAP-038 is closed** (in auto mode; owner, 2026-11-16: "Finish the free gaps").
+    - `tools/Test-NuGetTrustedSigners.ps1` reads the service index that nuget.config's nuget.org repository names. It takes the SHA-256 fingerprints (OID 2.16.840.1.101.3.4.2.1) of the certificates its newest `RepositorySignatures` resource lists, and compares them with the config's, as sets.
+    - `.github/workflows/nuget-trust.yml` runs it daily, by hand, and on pull requests that change it or `nuget.config`. When they differ, the check job fails, and a second job, which has `issues: write` alone and never runs from a pull request, opens one issue. The issue says to run `dotnet nuget trust sync nuget.org` and commit the result.
+    - The workflow is the kit's only: an app gets `nuget.config` from the kit, so the fix reaches it with the next kit release. On 2026-11-16 the config matched the index's three certificates.
+    - An issue, not a pull request, because a new certificate should be checked against nuget.org's announcement by a person before it's trusted. A pull request would also need a write token in a scheduled job.
 
 ## Pillars affected
 
@@ -64,3 +69,4 @@ Security: a package must come unchanged from nuget.org's signing pipeline. Relia
 - https://learn.microsoft.com/nuget/reference/cli-reference/cli-ref-trusted-signers, retrieved 2026-11-13
 - https://learn.microsoft.com/nuget/concepts/security-best-practices, retrieved 2026-11-12
 - https://learn.microsoft.com/dotnet/core/tools/nuget-signed-package-verification, retrieved 2026-11-13
+- https://learn.microsoft.com/nuget/api/repository-signatures-resource, retrieved 2026-11-16 (GAP-038)
