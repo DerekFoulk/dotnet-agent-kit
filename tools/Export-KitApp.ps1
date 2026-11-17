@@ -118,6 +118,10 @@ function Get-KitAppFileMap {
     # app adds its own packages, so the app owns the file.
     [pscustomobject]@{ Kind = 'Packages'; Owner = 'App'; Source = 'Directory.Packages.props'; Target = 'Directory.Packages.props' }
 
+    # The Playwright image the shared CI runs the app's browser tests in (GAP-033): its version follows the app's
+    # Microsoft.Playwright, above, so the app starts with the kit's pin and owns it; its Dependabot moves it.
+    [pscustomobject]@{ Kind = 'Copy'; Owner = 'App'; Source = '.config/playwright/Dockerfile'; Target = '.config/playwright/Dockerfile' }
+
     # The app's own files, rendered from templates/app. App.slnx takes the app's name.
     $templates = @(git -C $KitRoot ls-tree -r --name-only $Commit -- templates/app)
     if ($LASTEXITCODE -ne 0) { throw "git ls-tree failed for templates/app at $Commit." }

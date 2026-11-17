@@ -563,7 +563,7 @@ Describe 'Shared CI for app repos' {
             (Get-JobStep $required 'Restore (locked)')['run'] | Should -Be 'dotnet restore "$FILTER" --locked-mode'
             (Get-JobStep $required 'Build (zero warnings)')['run'] | Should -Match '^dotnet build "\$FILTER" '
             (Get-JobStep $required 'Format check')['run'] | Should -Match '^dotnet format "\$FILTER" '
-            (Get-JobStep $required 'Test with coverage')['run'] | Should -Match '^dotnet test --solution "\$FILTER" '
+            (Get-JobStep $required 'Test with coverage')['run'] | Should -Match ' -- dotnet test --solution \$env:FILTER '
             (Get-JobStep $required 'Coverage gate')['run'] | Should -Match '-Solution \$env:SOLUTION'
             (Get-JobStep $required 'Deprecated packages')['run'] | Should -Match '-Path \$env:FILTER'
         }
@@ -683,9 +683,11 @@ Describe 'Shared CI for app repos' {
             '{ "version": 3, "libraries": { "xunit.v3/4.0.3": { "type": "package" } } }' | Set-Content -LiteralPath (Join-Path $dir 'src/Api/obj/project.assets.json')
             '<Solution><Project Path="src/Api/Api.csproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $dir 'App.slnx')
             $script = Join-Path $dir 'step.ps1'
-            # MSBuild still reads the projects with the real dotnet; the step's own "dotnet test" meets this one.
-            $fake = 'function dotnet { if ($args[0] -eq ''test'') { "fake dotnet: $($args -join '' '')"; $global:LASTEXITCODE = 0 } else { & (Get-Command dotnet -CommandType Application)[0] @args } }'
-            Set-Content -LiteralPath $script -Value $fake, $test[0]['run'], 'exit $LASTEXITCODE'
+            # The script call as CI makes it; only the command after "--" is swapped for one that says it ran, since
+            # there's nothing to test here.
+            $run = $test[0]['run'] -replace ' -- dotnet test --solution .*$', ' -- pwsh -NoProfile -Command "''fake dotnet: test --solution''"'
+            $run | Should -Not -Be $test[0]['run']
+            Set-Content -LiteralPath $script -Value $run, 'exit $LASTEXITCODE'
             $env:KIT = $root; $env:SOLUTION = Join-Path $dir 'App.slnx'; $env:FILTER = Join-Path $dir 'App.slnx'
             try { $output = & pwsh -NoProfile -File $script 2>&1 | Out-String }
             finally { Remove-Item Env:KIT, Env:SOLUTION, Env:FILTER -ErrorAction SilentlyContinue }

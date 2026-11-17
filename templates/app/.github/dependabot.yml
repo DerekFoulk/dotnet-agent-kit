@@ -37,3 +37,17 @@ updates:
       dotnet-agent-kit:
         patterns:
           - DerekFoulk/dotnet-agent-kit*
+
+  # The Playwright image the kit's shared CI runs this app's browser tests in, pinned by tag and digest (the kit's
+  # GAP-033, ADR-0061). Docker takes no semver-*-days, so every update waits 7. Its version must be Microsoft.Playwright's
+  # in Directory.Packages.props, which the nuget entry moves in a PR of its own: CI fails each until both move, so
+  # bring the two into one PR (docs/standards/testing.md, "Browser and accessibility tests").
+  - package-ecosystem: docker
+    directory: /.config/playwright
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
