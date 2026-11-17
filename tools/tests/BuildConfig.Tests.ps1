@@ -592,9 +592,10 @@ Describe 'BannedSymbols.txt' {
             # Roslyn finds only members declared on the named type, so an inherited member mustn't count, and it compares
             # with case. An instance constructor is #ctor (a static one is #cctor), a generic parameter type is its name
             # without the arity and its type arguments in braces (System.ReadOnlySpan{System.Threading.Tasks.Task}), and a
-            # generic type's own parameter is `0, `1 and so on. A generic method's parameters (``0), ref or out parameters
-            # (@), multi-dimensional arrays ([0:,0:]) and nested types (. where FullName has +) aren't parsed; such an entry
-            # fails here until this function learns them.
+            # generic type's own parameter is `0, `1 and so on. A nested type in a parameter list is joined with . where
+            # FullName has + (System.Environment.SpecialFolder). A generic method's parameters (``0), ref or out parameters
+            # (@), multi-dimensional arrays ([0:,0:]) and a banned symbol that is or sits on a nested type aren't parsed;
+            # such an entry fails here until this function learns them.
             $declared = [Reflection.BindingFlags]'Public, NonPublic, Static, Instance, DeclaredOnly'
             $owner = Find-KitType ($name.Substring(0, $name.LastIndexOf('.')))
             $member = $name.Substring($name.LastIndexOf('.') + 1)
@@ -622,7 +623,7 @@ Describe 'BannedSymbols.txt' {
             if ($Type.IsGenericParameter) { return $(if ($Type.DeclaringMethod) { $unparsed } else { '`' + $Type.GenericParameterPosition }) }
             if ($Type.IsArray) { return $(if ($Type.GetArrayRank() -gt 1) { $unparsed } else { (Get-DocumentationTypeName $Type.GetElementType()) + '[]' }) }
             if ($Type.IsByRef) { return $unparsed }
-            if (-not $Type.IsGenericType) { return $Type.FullName }
+            if (-not $Type.IsGenericType) { return $Type.FullName.Replace('+', '.') }
             $arguments = @($Type.GenericTypeArguments | ForEach-Object { Get-DocumentationTypeName $_ }) -join ','
             ($Type.GetGenericTypeDefinition().FullName -replace '`\d+$', '') + "{$arguments}"
         }
