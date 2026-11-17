@@ -5,7 +5,8 @@ name: dependabot lock files and pins
 # (dependabot-core#13950). Locked restore in CI then fails. On Dependabot's NuGet PRs this workflow
 # refreshes every lock file and pushes them to the PR.
 # On Dependabot's maven PRs, which move PMD's version in .config/pmd/pom.xml (ADR-0060), it pins the new
-# release zip's SHA-256 beside it, from GitHub's digest for the asset, as a person did by hand before.
+# release zip's SHA-256 beside it, once the zip's signature verifies against PMD's release key pinned in
+# .config/pmd (GAP-029) and its hash equals GitHub's digest for the asset.
 #
 # The write token never shares a runner with code from the PR: "refresh" runs restore (which evaluates
 # the PR's MSBuild files) and "pin-pmd" runs the PR's copy of KitPmd.psm1, each with a read-only token,
@@ -98,7 +99,9 @@ jobs:
           persist-credentials: false
 
       # Set-PmdPin refuses a release without the zip, a zip GitHub gives no SHA-256 digest for, and one
-      # uploaded or changed under 7 days ago (ADR-0060).
+      # uploaded or changed under 7 days ago (ADR-0060). It checks the zip's .asc with the runner's gpg against
+      # PMD's release key, pinned in .config/pmd (GAP-029), and pins the signed zip's SHA-256 only if it equals
+      # GitHub's digest.
       - name: Pin the zip of the pom's version
         id: pin
         shell: pwsh
@@ -107,9 +110,13 @@ jobs:
         run: |
           $PSNativeCommandUseErrorActionPreference = $true
           Import-Module ./tools/KitPmd.psm1
-          $version = Get-PmdVersion -Path .config/pmd
-          $release = gh api "repos/pmd/pmd/releases/tags/pmd_releases%2F$version" | ConvertFrom-Json
-          Set-PmdPin -Path .config/pmd -Release $release
+          $download = Get-PmdDownload -Path .config/pmd
+          $release = gh api "repos/pmd/pmd/releases/tags/pmd_releases%2F$($download.Version)" | ConvertFrom-Json
+          $zip = Join-Path $env:RUNNER_TEMP $download.FileName
+          $signature = "$zip.asc"
+          curl --fail --silent --show-error --location --output $zip $download.Url
+          curl --fail --silent --show-error --location --output $signature $download.SignatureUrl
+          Set-PmdPin -Path .config/pmd -Release $release -Zip $zip -Signature $signature
           $changed = [bool] (git status --porcelain -- .config/pmd/pmd-dist-bin.zip.sha256)
           "Pin changed: $changed"
           "changed=$($changed.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
