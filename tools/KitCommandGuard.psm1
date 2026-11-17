@@ -70,15 +70,35 @@ function Get-PowerShellCommand {
             'Ampersand' { $words.Add('&') }
             'Dot' { $words.Add('.') }
         }
-        foreach ($element in $commandAst.CommandElements) { $words.Add((ConvertTo-PowerShellWord -Element $element)) }
+        $plainWords = [Collections.Generic.List[string]]::new($words)
+        foreach ($element in $commandAst.CommandElements) {
+            $words.Add((ConvertTo-PowerShellWord -Element $element))
+            $plain = ConvertTo-PowerShellPlainWord -Element $element
+            if ($null -ne $plain) { $plainWords.Add($plain) }
+        }
         $name = $words[$words.Count - $commandAst.CommandElements.Count]
         $inner = $commandAst.Find({ param($node) $node.GetType() -in $script:ComputedArgumentAst }, $true)
         [pscustomobject]@{
-            Words  = $words.ToArray()
-            Native = -not (Test-PowerShellCommandName -Name $name)
-            Nested = if ($inner) { $inner.Extent.Text } else { $null }
+            Words      = $words.ToArray()
+            PlainWords = $plainWords.ToArray()
+            Native     = -not (Test-PowerShellCommandName -Name $name)
+            Computed   = if ($inner) { $inner.Extent.Text } else { $null }
         }
     }
+}
+
+# One argument of a PowerShell command with its variables taken out, as if each were empty: a string's nested
+# expressions removed ("--for${null}ce" is "--force"), and $null for an argument that is only a variable.
+function ConvertTo-PowerShellPlainWord {
+    param([Parameter(Mandatory)] [Management.Automation.Language.Ast] $Element)
+
+    if ($Element -is [Management.Automation.Language.VariableExpressionAst]) { return $null }
+    if ($Element -is [Management.Automation.Language.ExpandableStringExpressionAst]) {
+        $value = $Element.Value
+        foreach ($nested in $Element.NestedExpressions) { $value = $value.Replace($nested.Extent.Text, '') }
+        return $value
+    }
+    ConvertTo-PowerShellWord -Element $Element
 }
 
 # The parts of a PowerShell command that compute a value when it runs: ( ), @( ), $( ) (in a string too) and { }.
@@ -100,8 +120,11 @@ function Test-PowerShellCommandName {
 # Each simple command in a Bash command line, with the words it receives: POSIX token recognition (XCU 2.3) and quote
 # removal (2.6.7), plus Bash's $'...' and $"..." quoting. The commands inside $( ), backquotes, <( ), >( ) and an
 # unquoted heredoc's body come out as commands of their own. Expansions ($x, ${x}, $((...)), a substitution's own
-# text) stay as written, since their values are known only when the command runs; redirections and heredoc bodies
-# aren't words. Throws when a quote, substitution or parenthesis isn't closed, since Bash won't run that either.
+# text) stay as written in Words, since their values are known only when the command runs, and are taken out in
+# PlainWords (an unset variable is empty). Computed names the first word whose value Bash builds when it runs: a brace
+# expansion, ${...} with an operator, $((...)), or a $( ) or backquote substitution other than cat reading a quoted
+# heredoc, whose output is fixed text. Redirections and heredoc bodies aren't words. Throws when a quote, substitution
+# or parenthesis isn't closed, since Bash won't run that either.
 function Get-BashCommand {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Command)
 
@@ -120,7 +143,7 @@ function New-BashReader {
 function Read-BashList {
     param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [AllowEmptyString()] [string] $Close)
 
-    $builder = [pscustomobject]@{ Words = [Collections.Generic.List[string]]::new(); Word = [Text.StringBuilder]::new(); InWord = $false; Quoted = $false; Redirect = $null; Depth = 0; CaseDepth = 0; InPattern = $false }
+    $builder = New-BashBuilder
     $text = $Reader.Text
     while ($Reader.Index -lt $text.Length) {
         $c = $text[$Reader.Index]
@@ -142,10 +165,11 @@ function Read-BashList {
             $Reader.Index += 2
         }
         elseif ($c -eq "'") { $Reader.Index++; Add-BashText -Builder $builder -Text (Read-BashSingleQuoted -Reader $Reader) -Quoted }
-        elseif ($c -eq '"') { $Reader.Index++; Add-BashText -Builder $builder -Text (Read-BashDoubleQuoted -Reader $Reader) -Quoted }
-        elseif ($c -eq '$') { Add-BashText -Builder $builder -Text (Read-BashDollar -Reader $Reader) -Quoted:($next -in "'", '"') }
-        elseif ($c -eq '`') { $Reader.Index++; Add-BashText -Builder $builder -Text (Read-BashBackquote -Reader $Reader) }
-        elseif ($c -in '<', '>' -and $next -eq '(') { Add-BashText -Builder $builder -Text (Read-BashSubstitution -Reader $Reader) }
+        elseif ($c -eq '"') { $Reader.Index++; Read-BashDoubleQuoted -Reader $Reader -Builder $builder }
+        elseif ($c -eq '$') { Read-BashDollar -Reader $Reader -Builder $builder }
+        elseif ($c -eq '`') { $Reader.Index++; Add-BashExpansion -Builder $builder -Text (Read-BashBackquote -Reader $Reader) -Computed }
+        # A process substitution's value is the name of a pipe, which no option can be.
+        elseif ($c -in '<', '>' -and $next -eq '(') { Add-BashExpansion -Builder $builder -Text (Read-BashSubstitution -Reader $Reader) }
         elseif ($c -in '<', '>') { Read-BashRedirect -Reader $Reader -Builder $builder }
         elseif ($c -eq '&' -and $next -eq '>') { Add-BashWord -Reader $Reader -Builder $builder; $Reader.Index++; Read-BashRedirect -Reader $Reader -Builder $builder }
         elseif ($builder.InPattern -and $c -in '|', '(', ')') {
@@ -177,34 +201,63 @@ function Read-BashList {
     Complete-BashCommand -Reader $Reader -Builder $builder
 }
 
+# What one list of commands is reading: the current word (as Bash resolves it, with its expansions taken out, and its
+# unquoted characters, where a quoted one is "\0"), the current command's words, and where a case statement stands.
+function New-BashBuilder {
+    [pscustomobject]@{
+        Words = [Collections.Generic.List[string]]::new(); PlainWords = [Collections.Generic.List[string]]::new(); Computed = $null
+        Word = [Text.StringBuilder]::new(); PlainWord = [Text.StringBuilder]::new(); Unquoted = [Text.StringBuilder]::new()
+        InWord = $false; Quoted = $false; WordComputed = $null; Redirect = $null; Depth = 0; CaseDepth = 0; InPattern = $false
+    }
+}
+
 function Add-BashText {
     param([Parameter(Mandatory)] [pscustomobject] $Builder, [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text, [switch] $Quoted)
 
     [void] $Builder.Word.Append($Text)
+    [void] $Builder.PlainWord.Append($Text)
+    [void] $Builder.Unquoted.Append($(if ($Quoted) { "`0" } else { $Text }))
     $Builder.InWord = $true
     if ($Quoted) { $Builder.Quoted = $true }
 }
 
-# Ends the current word: a command's word, a redirection's target (dropped), or a heredoc's delimiter.
+# An expansion in the current word, kept as written and left out of its plain form. -Computed marks a value Bash
+# builds when it runs, which no rule can read.
+function Add-BashExpansion {
+    param([Parameter(Mandatory)] [pscustomobject] $Builder, [Parameter(Mandatory)] [string] $Text, [switch] $Computed)
+
+    [void] $Builder.Word.Append($Text)
+    [void] $Builder.Unquoted.Append("`0")
+    $Builder.InWord = $true
+    if ($Computed -and -not $Builder.WordComputed) { $Builder.WordComputed = $Text }
+}
+
+# Ends the current word: a command's word, a redirection's target (dropped), or a heredoc's delimiter. An unquoted
+# brace expression with a comma or "..", such as {x,-f} or {1..3}, makes the word one Bash builds when it runs.
 function Add-BashWord {
     param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder)
 
     if (-not $Builder.InWord) { return }
     $word = $Builder.Word.ToString()
+    if (-not $Builder.WordComputed -and $Builder.Unquoted.ToString() -match '\{[^{}\s]*(,|\.\.)[^{}\s]*\}') { $Builder.WordComputed = $word }
     if ($Builder.Redirect -like 'heredoc*') {
         $Reader.Heredocs.Add([pscustomobject]@{ Delimiter = $word; Quoted = $Builder.Quoted; StripTabs = $Builder.Redirect -eq 'heredoc-strip' })
     }
-    elseif (-not $Builder.Redirect) { Add-BashCommandWord -Reader $Reader -Builder $Builder -Word $word }
+    elseif (-not $Builder.Redirect) { Add-BashCommandWord -Reader $Reader -Builder $Builder -Word $word -PlainWord $Builder.PlainWord.ToString() }
     $Builder.Redirect = $null
-    [void] $Builder.Word.Clear()
+    foreach ($part in $Builder.Word, $Builder.PlainWord, $Builder.Unquoted) { [void] $part.Clear() }
     $Builder.InWord = $false
     $Builder.Quoted = $false
+    $Builder.WordComputed = $null
 }
 
 # Adds a word to the command being read, except where a case statement makes it something else: "case WORD in" ends
 # a command of its own and starts the patterns, a pattern isn't a command's word, and "esac" ends the statement.
 function Add-BashCommandWord {
-    param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder, [Parameter(Mandatory)] [AllowEmptyString()] [string] $Word)
+    param(
+        [Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder,
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Word, [Parameter(Mandatory)] [AllowEmptyString()] [string] $PlainWord
+    )
 
     $keyword = -not $Builder.Quoted -and $Builder.Words.Count -eq 0
     if ($keyword -and $Word -ceq 'esac' -and $Builder.CaseDepth -gt 0) {
@@ -214,6 +267,8 @@ function Add-BashCommandWord {
     }
     if ($Builder.InPattern) { return }
     $Builder.Words.Add($Word)
+    $Builder.PlainWords.Add($PlainWord)
+    if ($Builder.WordComputed -and -not $Builder.Computed) { $Builder.Computed = $Builder.WordComputed }
     if ($Builder.Words.Count -eq 3 -and $Builder.Words[0] -ceq 'case' -and $Word -ceq 'in' -and -not $Builder.Quoted) {
         Add-BashCommand -Reader $Reader -Builder $Builder
         $Builder.CaseDepth++
@@ -234,9 +289,11 @@ function Add-BashCommand {
     param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder)
 
     if ($Builder.Words.Count) {
-        $Reader.Commands.Add([pscustomobject]@{ Words = $Builder.Words.ToArray(); Native = $true; Nested = $null })
+        $Reader.Commands.Add([pscustomobject]@{ Words = $Builder.Words.ToArray(); PlainWords = $Builder.PlainWords.ToArray(); Native = $true; Computed = $Builder.Computed })
         $Builder.Words.Clear()
+        $Builder.PlainWords.Clear()
     }
+    $Builder.Computed = $null
 }
 
 # A redirection operator ("2>&1", ">>", "<<-"): a file descriptor's digits before it aren't a word, and the word after
@@ -267,42 +324,68 @@ function Read-BashSingleQuoted {
     $value
 }
 
-# The text of a double-quoted string, after its opening quote, with its escapes resolved. A heredoc's body reads the
-# same way, except that '"' is literal there and the body ends with the text.
+# A double-quoted string, after its opening quote, added to the current word with its escapes resolved. A heredoc's
+# body reads the same way, except that '"' is literal there and the body ends with the text.
 function Read-BashDoubleQuoted {
-    param([Parameter(Mandatory)] [pscustomobject] $Reader, [switch] $Heredoc)
+    param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder, [switch] $Heredoc)
 
     $text = $Reader.Text
-    $value = [Text.StringBuilder]::new()
+    Add-BashText -Builder $Builder -Text '' -Quoted
     while ($Reader.Index -lt $text.Length) {
         $c = $text[$Reader.Index]
         $next = if ($Reader.Index + 1 -lt $text.Length) { $text[$Reader.Index + 1] } else { [char] 0 }
-        if ($c -eq '"' -and -not $Heredoc) { $Reader.Index++; return $value.ToString() }
-        if ($c -eq '\' -and ($next -in '$', '`', '\' -or ($next -eq '"' -and -not $Heredoc))) { [void] $value.Append($next); $Reader.Index += 2 }
+        if ($c -eq '"' -and -not $Heredoc) { $Reader.Index++; return }
+        if ($c -eq '\' -and ($next -in '$', '`', '\' -or ($next -eq '"' -and -not $Heredoc))) { Add-BashText -Builder $Builder -Text $next -Quoted; $Reader.Index += 2 }
         elseif ($c -eq '\' -and $next -eq "`n") { $Reader.Index += 2 }
-        elseif ($c -eq '$') { [void] $value.Append((Read-BashDollar -Reader $Reader -Quoted)) }
-        elseif ($c -eq '`') { $Reader.Index++; [void] $value.Append((Read-BashBackquote -Reader $Reader)) }
-        else { [void] $value.Append($c); $Reader.Index++ }
+        elseif ($c -eq '$') { Read-BashDollar -Reader $Reader -Builder $Builder -Quoted }
+        elseif ($c -eq '`') { $Reader.Index++; Add-BashExpansion -Builder $Builder -Text (Read-BashBackquote -Reader $Reader) -Computed }
+        else { Add-BashText -Builder $Builder -Text $c -Quoted; $Reader.Index++ }
     }
     if (-not $Heredoc) { throw "Bash can't read it: a double quote isn't closed." }
-    $value.ToString()
 }
 
-# What a '$' starts: $'...' and $"..." quoting (resolved; inside double quotes or a heredoc, -Quoted, they're a
-# literal '$'), $( ) (its commands read, its text kept), and $((...)), ${...} and $name (kept as written).
+# What a '$' starts, added to the current word: $'...' and $"..." quoting, resolved (inside double quotes or a heredoc,
+# -Quoted, they're a literal '$'); a $( ) substitution, its commands read; and $((...)), ${...} and $name. All but
+# the quoting are expansions. A substitution (except cat reading a quoted heredoc), $((...)) and ${...} with an
+# operator are values Bash builds when it runs.
 function Read-BashDollar {
-    param([Parameter(Mandatory)] [pscustomobject] $Reader, [switch] $Quoted)
+    param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder, [switch] $Quoted)
 
     $text = $Reader.Text
     $start = $Reader.Index
     $next = if ($start + 1 -lt $text.Length) { $text[$start + 1] } else { [char] 0 }
-    if ($next -eq "'" -and -not $Quoted) { $Reader.Index += 2; return Read-BashAnsiC -Reader $Reader }
-    if ($next -eq '"' -and -not $Quoted) { $Reader.Index += 2; return Read-BashDoubleQuoted -Reader $Reader }
-    if ($next -eq '(' -and $start + 2 -lt $text.Length -and $text[$start + 2] -eq '(') { return Read-BashBracketed -Reader $Reader -Open '(' -Close ')' }
-    if ($next -eq '(') { return Read-BashSubstitution -Reader $Reader }
-    if ($next -eq '{') { return Read-BashBracketed -Reader $Reader -Open '{' -Close '}' }
+    if ($next -eq "'" -and -not $Quoted) { $Reader.Index += 2; Add-BashText -Builder $Builder -Text (Read-BashAnsiC -Reader $Reader) -Quoted; return }
+    if ($next -eq '"' -and -not $Quoted) { $Reader.Index += 2; Read-BashDoubleQuoted -Reader $Reader -Builder $Builder; return }
+    if ($next -eq '(' -and $start + 2 -lt $text.Length -and $text[$start + 2] -eq '(') {
+        Add-BashExpansion -Builder $Builder -Text (Read-BashBracketed -Reader $Reader -Open '(' -Close ')') -Computed
+        return
+    }
+    if ($next -eq '(') {
+        $substitution = Read-BashSubstitution -Reader $Reader
+        Add-BashExpansion -Builder $Builder -Text $substitution -Computed:(-not (Test-BashFixedSubstitution -Text $substitution))
+        return
+    }
+    if ($next -eq '{') {
+        $parameter = Read-BashBracketed -Reader $Reader -Open '{' -Close '}'
+        Add-BashExpansion -Builder $Builder -Text $parameter -Computed:($parameter -notmatch '^\$\{[A-Za-z_][A-Za-z0-9_]*\}$')
+        return
+    }
+    $name = [regex]::Match($text.Substring($start + 1), '^(?:[A-Za-z_][A-Za-z0-9_]*|[0-9#?@*!$-])')
+    if ($name.Success) {
+        $Reader.Index += 1 + $name.Length
+        Add-BashExpansion -Builder $Builder -Text "`$$($name.Value)"
+        return
+    }
     $Reader.Index++
-    '$'
+    Add-BashText -Builder $Builder -Text '$' -Quoted:$Quoted
+}
+
+# Whether a $( ) substitution's output is fixed text: cat reading a heredoc whose delimiter is quoted, so nothing in
+# its body expands. This is how Claude Code writes a multi-line commit message.
+function Test-BashFixedSubstitution {
+    param([Parameter(Mandatory)] [string] $Text)
+
+    $Text -match '(?s)\A\$\(\s*cat\s+<<-?\s*(?:''(?<d>[^''\n]+)''|"(?<d>[^"\n]+)")[ \t]*\r?\n.*?\n[ \t]*\k<d>[ \t]*\r?\n\s*\)\z'
 }
 
 # $((...)) or ${...}, kept as written: from the '$' to the bracket that closes the first one.
@@ -414,8 +497,9 @@ function Read-BashHeredocBody {
             [void] $body.Append($line).Append("`n")
         }
         if (-not $heredoc.Quoted) {
+            # The body is the command's input, not a word, so only the commands its substitutions run matter.
             $bodyReader = New-BashReader -Text $body.ToString() -Commands $Reader.Commands
-            [void] (Read-BashDoubleQuoted -Reader $bodyReader -Heredoc)
+            Read-BashDoubleQuoted -Reader $bodyReader -Builder (New-BashBuilder) -Heredoc
         }
     }
     $Reader.Heredocs.Clear()
@@ -427,7 +511,7 @@ function Read-BashHeredocBody {
 # past; and a reserved word that opens a control-flow body or group ("then", "do", "{", "!"), whose body Claude Code
 # checks too.
 function Get-BashInnerWord {
-    param([Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Words)
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words)
 
     $reserved = '!', '{', '}', 'if', 'then', 'else', 'elif', 'fi', 'do', 'done', 'while', 'until'
     # Each wrapper's options that take the next word as their value, and whether a bare operand (timeout's duration)
@@ -465,9 +549,15 @@ function Get-BashInnerWord {
 function Get-CommandWordForm {
     param([Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool)
 
-    , $Resolved.Words
-    $inner = @(if ($Tool -eq 'Bash') { Get-BashInnerWord -Words $Resolved.Words } else { $Resolved.Words | Select-Object -Skip ([int] ($Resolved.Words[0] -cin '&', '.')) })
-    if ($inner.Count -and $inner.Count -ne $Resolved.Words.Count) { , [string[]] $inner }
+    $bases = [Collections.Generic.List[string[]]]::new()
+    $bases.Add($Resolved.Words)
+    # With its expansions taken out too: an unset variable, or PowerShell's ${null}, is empty when it runs.
+    if (($Resolved.PlainWords -join "`0") -cne ($Resolved.Words -join "`0")) { $bases.Add($Resolved.PlainWords) }
+    foreach ($words in $bases) {
+        , $words
+        $inner = @(if ($Tool -eq 'Bash') { Get-BashInnerWord -Words $words } else { $words | Select-Object -Skip ([int] ($words[0] -cin '&', '.')) })
+        if ($inner.Count -and $inner.Count -ne $words.Count) { , [string[]] $inner }
+    }
 }
 
 # The spellings of one resolved command that the ask rules are matched against: each of its word forms joined by
@@ -500,8 +590,8 @@ function Get-CommandGuardDecision {
     try { $commands = if ($Tool -eq 'Bash') { @(Get-BashCommand -Command $Command) } else { @(Get-PowerShellCommand -Command $Command) } }
     catch { return "The command guard (ADR-0077) can't resolve this command, so it asks: $($_.Exception.Message)" }
     foreach ($resolved in $commands) {
-        if ($resolved.Nested) {
-            return "The command guard (ADR-0077) asks because this command computes an argument inside ( ), @( ), `$( ) or { }, which Claude Code's rules may not check: $($resolved.Nested)"
+        if ($resolved.Computed) {
+            return "The command guard (ADR-0077) asks because this command builds an argument when it runs, which no rule can read: $($resolved.Computed)"
         }
         foreach ($spelling in Get-CommandSpelling -Resolved $resolved -Tool $Tool) {
             foreach ($rule in $AskRules) {
