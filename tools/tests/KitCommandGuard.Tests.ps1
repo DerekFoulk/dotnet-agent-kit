@@ -230,31 +230,44 @@ Describe 'Get-CommandGuardDecision for Bash' {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
     }
 
-    # Review round 1: these words take their value only when Bash runs the command, so no rule can read them.
-    It 'asks for <Command>, which builds an argument when it runs' -ForEach @(
+    # Review round 1: these words take their value only when Bash runs the command, so no rule can read them. Each is
+    # in a command whose program and subcommand an ask rule names (git push, git clean), so it could be an asked form.
+    It 'asks for <Command>, which builds an argument of an asked command when it runs' -ForEach @(
         @{ Command = 'git push origin {x,-f}' }
         @{ Command = 'git {clean,} -fd' }
         @{ Command = 'git push origin -{f,q}' }
         @{ Command = 'git push origin x{1..2}' }
         @{ Command = 'git push origin ${u:--f}' }
-        @{ Command = "git commit -m ""`${x:-`$(git status)}""" }
-        @{ Command = 'git commit -m $((git status) )' }
+        @{ Command = "git push origin ""`${x:-`$(git status)}""" }
+        @{ Command = 'git push origin $((git status) )' }
         @{ Command = 'git push "$(printf -- --for)ce"' }
         @{ Command = 'git push `printf -- -f`' }
-        @{ Command = 'echo "$(git status)"' }
+        @{ Command = 'git $(echo push) --force' }
+        @{ Command = 's=New-KitApp; pwsh -NoProfile -File ./tools/$s.ps1' }
     ) {
-        Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument*'
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*builds an argument*'
     }
 
     # Review round 1: the shell keeps no variables between calls, so one set in the same input holds a value the
     # command line chose, which no rule can read.
-    It 'asks for <Command>, which uses a variable the same input sets' -ForEach @(
+    It 'asks for <Command>, which uses a variable the same input sets in an asked command' -ForEach @(
         @{ Command = 'f=-f; git push origin $f' }
         @{ Command = 'for f in -f; do git push origin "$f"; done' }
         @{ Command = 'read f; git push origin ${f}' }
         @{ Command = 'export F=--force && git push origin $F' }
     ) {
-        Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument*'
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*builds an argument*'
+    }
+
+    # A built value matters only where it could make an asked command: replaying the kit's sessions showed these
+    # forms in routine work, and no ask rule names their program and subcommand.
+    It 'leaves <Command> to the rules: it builds a value, but no ask rule names its command' -ForEach @(
+        @{ Command = 'M=/tmp/msg.txt && cat > $M <<''EOF''' + "`nfix: x`nEOF`n" + 'git commit -F $M' }
+        @{ Command = "id=`$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') && gh run view `$id --log-failed" }
+        @{ Command = 'echo "$(git status)" {a,b}' }
+        @{ Command = 'for f in a b; do git add "$f"; done' }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
     }
 
     It 'asks for <Command>, which an ask rule covers once its expansions are taken out (an unset one is empty)' -ForEach @(
@@ -353,13 +366,28 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         $reason | Should -BeLike '*builds an argument*'
     }
 
-    It 'asks for <Command>, which uses a variable the same input sets' -ForEach @(
+    It 'asks for <Command>, which uses a variable the same input sets in an asked command' -ForEach @(
         # Review round 1: the PowerShell tool keeps no variables between calls, so this one's value was chosen here.
         @{ Command = "`$f = '--for' + 'ce'; git push origin `$f" }
         @{ Command = "foreach (`$f in '--force') { git push origin `$f }" }
         @{ Command = "`$F = '-f'; git push origin ""x`$f""" }
     ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*builds an argument*'
+    }
+
+    It 'asks for <Command>, which passes a command''s output through a variable, whatever the command it reaches' -ForEach @(
+        # Review round 1: the nested-command ask, moved one statement earlier.
+        @{ Command = "`$b = Get-Content ./.env -Raw; Add-ReviewReply -Body `$b" }
+        @{ Command = "foreach (`$line in (Get-Content ./.env)) { Add-ReviewReply -Body `$line }" }
+    ) {
         Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @() | Should -BeLike '*builds an argument*'
+    }
+
+    It 'leaves <Command> to the rules: its variable holds a value the input chose, and no ask rule names its command' -ForEach @(
+        @{ Command = "`$n = 92; Wait-PullRequest -Repository a/b -Number `$n -For Checks" }
+        @{ Command = "`$m = 'fix: x'; git commit -m `$m" }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeNullOrEmpty
     }
 
     It 'leaves a variable in an argument to the rules' {
