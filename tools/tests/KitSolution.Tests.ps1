@@ -126,8 +126,10 @@ Describe 'Test-BenchmarksProject' {
     # checks, so one that drifts fails here instead of dropping out (review 1).
     It 'agrees with sample/Directory.Build.props, an app''s tests/Directory.Build.props' -ForEach @(@{ Cases = $BenchmarksNames }) {
         $props = [xml] (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '..' '..' 'sample' 'Directory.Build.props'))
+        # A condition on a suffix that ends in Tests sets up test projects: all of them, or one kind, such as the
+        # .Architecture.Tests projects that compile the kit's shared tests (ADR-0079).
         $conditions = @($props.SelectNodes('//*[@Condition]') | ForEach-Object { $_.GetAttribute('Condition') } |
-                Where-Object { $_ -match 'MSBuildProjectName' -and $_ -ne "`$(MSBuildProjectName.EndsWith('Tests'))" })
+                Where-Object { $_ -match 'MSBuildProjectName' -and $_ -notmatch "EndsWith\('[^']*Tests'\)" })
 
         # Two: the PropertyGroup and the ItemGroup. A count also catches a condition that drifted out of this shape.
         $conditions.Count | Should -Be 2 -Because 'the file sets up benchmarks projects in a PropertyGroup and an ItemGroup'
