@@ -47,6 +47,14 @@ Describe 'Invoke-CommandGuard' {
         Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "gh pr mer'ge' 5") -ProjectDir $project | Should -BeLike '*"ask"*'
     }
 
+    It 'expands a glob against the input''s cwd, where the shell runs the command' {
+        $tools = Join-Path $project 'tools'
+        New-Item -ItemType Directory -Path $tools -Force | Out-Null
+        Set-Content -Path (Join-Path $tools 'New-KitApp.ps1') -Value '#'
+        Set-Content -Path (Join-Path $project '.claude' 'settings.json') -Value '{"permissions":{"ask":["PowerShell(./tools/New-KitApp*)"]}}'
+        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' './tools/New-K*.ps1') -ProjectDir $project | Should -BeLike '*"ask"*'
+    }
+
     It 'takes the project from the input''s cwd when it isn''t given one' {
         Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "git push --for'ce'") -ProjectDir '' | Should -BeLike '*"ask"*'
     }

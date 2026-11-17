@@ -88,6 +88,12 @@ Describe 'Agent configuration' {
             Join-Path $repoRoot 'tools' 'Invoke-CommandGuard.ps1' | Should -Exist
         }
 
+        # Claude Code's hooks page: a project's "disableAllHooks": false overrides a true in the user's own settings,
+        # which no rule here could ask about (review round 1).
+        It 'keeps hooks on whatever the user''s own settings say' {
+            $settings.ContainsKey('disableAllHooks') -and $settings['disableAllHooks'] -eq $false | Should -BeTrue
+        }
+
         # Auto mode is the default (ADR-0035): the rules review mode adds can't also be in the shared file, or
         # auto mode would ask too. Review mode adds them to the owner's .claude/settings.local.json.
         It 'leaves the review-mode rules out of the shared settings: <Rule>' -ForEach @(
