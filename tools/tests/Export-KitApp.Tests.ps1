@@ -281,6 +281,58 @@ Describe 'Export-KitApp' {
         $LASTEXITCODE | Should -Be 0 -Because $output
     }
 
+    # GAP-022: an app runs the code shape check (CRF-011) and the duplicate code check (CRF-003) on its own machine, as
+    # the shared CI does: the export puts the kit's Kit.CodeShape source in .kit/tools, with the kit's build files in
+    # .kit, so the tool builds there as it does from the kit's download. A copy of the app gets a project that nests
+    # too deep, so the export's own app stays as other tests expect.
+    Context 'the app''s own code checks' {
+        BeforeAll {
+            $script:withCode = Join-Path $TestDrive 'app-with-code'
+            Copy-Item -LiteralPath $app -Destination $script:withCode -Recurse
+            Copy-Item -LiteralPath (Join-Path $root 'tools/tests/fixtures/CodeShape/Deep') -Destination (Join-Path $script:withCode 'src') -Recurse
+            [IO.File]::WriteAllText((Join-Path $script:withCode 'Contoso.Orders.slnx'), "<Solution>`n  <Project Path=""src/Deep.csproj"" />`n</Solution>`n")
+        }
+
+        It 'fails a breach of a code shape limit, building the kit''s tool from .kit' {
+            Push-Location -LiteralPath $script:withCode
+            try {
+                $output = & pwsh -NoProfile -File (Join-Path $script:withCode '.kit/tools/Test-CodeShape.ps1') -Solution 'Contoso.Orders.slnx' 2>&1 | Out-String
+                $exit = $LASTEXITCODE
+            }
+            finally { Pop-Location }
+
+            $output | Should -Match 'Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep'
+            $exit | Should -Be 1 -Because $output
+        }
+
+        # A stand-in for PMD with a report that finds nothing, so the summary's count shows the kit's tool listed the
+        # project's one file.
+        It 'runs the duplicate code check over the project''s files, with the PMD it''s given' {
+            $env:KIT_FAKE_CPD_REPORT = Join-Path $root 'tools/tests/fixtures/Duplication/cpd-empty.xml'
+            $env:KIT_FAKE_CPD_EXIT = '0'
+            Push-Location -LiteralPath $script:withCode
+            try {
+                $output = & pwsh -NoProfile -File (Join-Path $script:withCode '.kit/tools/Test-Duplication.ps1') -Solution 'Contoso.Orders.slnx' -Pmd (Join-Path $root 'tools/tests/fixtures/Duplication/FakePmd.ps1') 2>&1 | Out-String
+                $exit = $LASTEXITCODE
+            }
+            finally {
+                Pop-Location
+                Remove-Item Env:KIT_FAKE_CPD_REPORT, Env:KIT_FAKE_CPD_EXIT -ErrorAction Ignore
+            }
+
+            $output | Should -Match 'Duplicate code \(CRF-003\): 1 file checked'
+            $exit | Should -Be 0 -Because $output
+        }
+
+        It 'lists both checks in its AGENTS.md, with Java and PMD as the developer''s own install' {
+            $agents = Get-Content -Raw -LiteralPath (Join-Path $app 'AGENTS.md')
+
+            $agents | Should -Match ([regex]::Escape('./.kit/tools/Test-CodeShape.ps1 -Solution Contoso.Orders.slnx'))
+            $agents | Should -Match ([regex]::Escape('./.kit/tools/Test-Duplication.ps1 -Solution Contoso.Orders.slnx -Pmd'))
+            $agents | Should -Not -Match 'run only in CI for now'
+        }
+    }
+
     # ADR-0062: the performance workflow runs them in CI; an app runs them too, against a local benchmark or load run.
     It 'gets the <Script> check, which its AGENTS.md lists' -ForEach @(
         @{ Script = 'Test-BenchmarkBudget.ps1' }
@@ -319,7 +371,7 @@ Describe 'Export-KitApp' {
 
         $versions = @{}
         foreach ($node in $props.SelectNodes('//PackageVersion')) { $versions[$node.Include] = $node.Version }
-        # The sample app's packages and the kit's own tools' (built from the kit's download in CI) aren't the app's.
+        # The sample app's packages and the kit's own tools' (built with the kit's own props, from its download or .kit) aren't the app's.
         foreach ($kitOnly in $kitProps.SelectNodes('//ItemGroup[@Label="Sample app" or @Label="Kit tools"]/PackageVersion')) {
             $versions.ContainsKey($kitOnly.Include) | Should -BeFalse -Because "$($kitOnly.Include) is only the kit's"
         }
@@ -535,7 +587,8 @@ Describe 'Export-KitApp' {
     # would fail only when that line runs.
     It 'includes every kit script that an exported kit script calls from its own folder' {
         $targets = @($map | ForEach-Object { $_.Target })
-        $tools = @($targets | Where-Object { $_ -like '.kit/tools/*' })
+        # The scripts, directly in .kit/tools; the folders under it hold the source of the kit's tools (GAP-022).
+        $tools = @($targets | Where-Object { $_ -like '.kit/tools/*' -and $_ -notlike '.kit/tools/*/*' })
         $called = foreach ($tool in $tools) {
             $text = Get-Content -Raw -LiteralPath (Join-Path $checkout 'tools' (Split-Path $tool -Leaf))
             [regex]::Matches($text, "Join-Path \`$PSScriptRoot '([^'/\\]+\.ps(?:m)?1)'") | ForEach-Object { $_.Groups[1].Value }

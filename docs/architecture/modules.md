@@ -27,6 +27,7 @@ flowchart LR
     tools -->|New-KitApp and Export-KitApp copy| templates
     templates --> apps
     tools -->|.kit/tools| apps
+    codeshape -->|source, built in .kit| apps
     ci -->|reusable workflows| apps
 ```
 
