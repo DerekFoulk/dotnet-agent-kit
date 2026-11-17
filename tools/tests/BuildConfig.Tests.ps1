@@ -21,6 +21,8 @@ BeforeDiscovery {
         @{ Fixture = 'VarForBuiltInType'; Diagnostic = 'IDE0008'; Description = 'var for a built-in type, even after a cast that names it (STY-002)' }
         # STY-007 (rules audit, owner 2026-11-12): Microsoft's C# coding conventions and identifier names pages, as gates.
         @{ Fixture = 'ParameterInPascalCase'; Diagnostic = 'IDE1006'; Description = 'a parameter in PascalCase, where the naming rules ask for camelCase (STY-007)' }
+        @{ Fixture = 'InternalStaticReadonlyPrefixed'; Diagnostic = 'IDE1006'; Description = 'an internal static readonly field with the s_ prefix, where the naming rules ask for PascalCase (STY-007)' }
+        @{ Fixture = 'PrivateStaticReadonlyUnprefixed'; Diagnostic = 'IDE1006'; Description = 'a private static readonly field without the s_ prefix (STY-007)' }
         @{ Fixture = 'UsingBlock'; Diagnostic = 'IDE0063'; Description = 'a using block where a simple using declaration does (STY-007)' }
         @{ Fixture = 'ArrayInitializer'; Diagnostic = 'IDE0300'; Description = 'an array creation where a collection expression does (STY-007)' }
         @{ Fixture = 'ExplicitNew'; Diagnostic = 'IDE0090'; Description = 'new with the type repeated where a target-typed new() does (STY-007)' }
@@ -114,6 +116,8 @@ BeforeDiscovery {
         @{ Fixture = 'LockOnObject'; Diagnostic = 'IDE0330'; Description = 'a lock on an object, where System.Threading.Lock does (STY-007)' }
         @{ Fixture = 'AsyncVoid'; Diagnostic = 'VSTHRD100'; Description = 'an async void method (STY-011)' }
         @{ Fixture = 'AsyncVoid'; Diagnostic = 'VSTHRD101'; Description = 'an async lambda passed as a void delegate (STY-011)' }
+        @{ Fixture = 'TaskInUsing'; Diagnostic = 'VSTHRD107'; Description = 'a using statement over a Task, which disposes the task instead of awaiting it (STY-011)' }
+        @{ Fixture = 'TaskDropped'; Diagnostic = 'VSTHRD110'; Description = 'a Task dropped in a method that isn''t async, where CS4014 doesn''t look (STY-011)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
@@ -422,6 +426,18 @@ Describe 'Repo build configuration' -Tag 'Build' {
             $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'PublicExceptionInLibrary')
 
             $build.Output | Should -Not -Match 'CA1064|CA1515|CA1032'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
+    # STY-007 and STY-009: CA1707, which checks internal APIs here, fails an underscore in a static readonly field, and
+    # Microsoft's identifier names page gives a private or internal static field the s_ prefix. A static readonly field
+    # that isn't private takes PascalCase, as a public one does in the Framework Design Guidelines; a private one keeps s_.
+    Context 'a static readonly field''s name' {
+        It 'is PascalCase wherever the field isn''t private' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'VisibleStaticReadonly')
+
+            $build.Output | Should -Not -Match 'IDE1006|CA1707'
             $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
