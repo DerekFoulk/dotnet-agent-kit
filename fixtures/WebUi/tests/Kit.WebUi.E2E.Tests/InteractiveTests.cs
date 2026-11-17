@@ -26,4 +26,18 @@ public sealed class InteractiveTests
 
         await Assertions.Expect(app.Page.GetByRole(AriaRole.Status)).ToHaveTextAsync("Clicked 1 time");
     }
+
+    // What the wait above rests on: the prerendered page, before any script runs, already has the button disabled.
+    // Without it, Playwright would click the prerendered button at once and the click would be lost.
+    [Fact]
+    public async Task ThePrerenderedPageSendsTheButtonDisabled()
+    {
+        await using AppFactory factory = new();
+        factory.StartServer();
+        using HttpClient client = factory.CreateClient();
+
+        string html = await client.GetStringAsync(new Uri(Path, UriKind.Relative), TestContext.Current.CancellationToken);
+
+        html.Should().MatchRegex($"<button[^>]*\\sdisabled(?:[\\s=][^>]*)?>{ButtonName}</button>");
+    }
 }
