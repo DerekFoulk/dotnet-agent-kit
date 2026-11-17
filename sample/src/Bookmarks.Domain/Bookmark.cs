@@ -46,7 +46,7 @@ public sealed class Bookmark
 
     /// <summary>Checks a new bookmark's parts and makes the bookmark.</summary>
     /// <param name="id">
-    /// Its id, <see cref="Guid.CreateVersion7(DateTimeOffset)"/> of <paramref name="createdAt"/>: the caller makes it,
+    /// Its id, <c>Guid.CreateVersion7(createdAt)</c>: the caller makes it,
     /// since its other bits are random and this assembly is pure (ARC-008).
     /// </param>
     /// <param name="ownerId">The saving user's id from the identity provider, at most <see cref="MaxOwnerIdLength"/> characters.</param>
