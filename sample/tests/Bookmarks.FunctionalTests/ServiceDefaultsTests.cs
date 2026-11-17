@@ -4,7 +4,8 @@ namespace Bookmarks.FunctionalTests;
 
 /// <summary>
 /// The service defaults' entry points (OPS-001 to OPS-003, ADR-0037). What they set up is tested by concern:
-/// <see cref="HealthEndpointTests"/>, <see cref="TelemetryTests"/> and <see cref="ResilienceTests"/>.
+/// <see cref="HealthEndpointTests"/>, and the kit's shared HealthTests, TelemetryTests and ResilienceTests
+/// (tools/AppTests/Functional).
 /// </summary>
 public sealed class ServiceDefaultsTests
 {
