@@ -3,12 +3,6 @@ using Bookmarks.Domain;
 
 namespace Bookmarks.Application.Features.Bookmarks;
 
-/// <summary>The outcome of adding a bookmark: the saved bookmark, or that its URL is already saved.</summary>
-public sealed record AddBookmarkResult(BookmarkResponse? Bookmark, bool AlreadyExists);
-
-/// <summary>One page of bookmarks, and whether another page follows it.</summary>
-public sealed record BookmarkListResult(IReadOnlyList<BookmarkResponse> Items, bool HasMore);
-
 /// <summary>Bookmark use cases.</summary>
 public sealed class BookmarkService(IBookmarkRepository repository, TimeProvider timeProvider)
 {

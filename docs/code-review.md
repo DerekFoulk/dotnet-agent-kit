@@ -26,6 +26,58 @@ If you find nothing, say so.
   - a dependency added with no source the kit's standards or ADRs name for it;
   - anything in `AGENTS.md`'s "Always ask" done without the owner's yes.
 - Craft (`docs/standards/craft.md`): any craft rule broken, a suppression or raised limit that doesn't meet its "Exceptions", and everything its "What the checks miss" lists, such as a copy with renamed variables, which the duplicate-code check can't see.
+- The Framework Design Guidelines that no analyzer checks (STY-010; STY-009 gates the rest), in a type's API, public or internal (the guidelines are written for public APIs; the kit applies them to internal ones too, as STY-009 does). Rank each **Consider**, or higher where it causes a defect:
+  - names that say what a thing is, with no abbreviations;
+  - exceptions, not error codes, for a member that can't do what its name says; a failure callers expect often goes through a Try method;
+  - a Try method returns only `bool`, with its result in an `out` parameter (`bool TryParse(string, out T)`), still throws for any other failure, and sits beside a member that throws;
+  - an empty collection or array, never `null`, from a method or property that returns one;
+  - get-only properties where callers shouldn't set them, remembering that a get-only property of a mutable type, such as a `List<T>`, can still be changed;
+  - an enum, not Booleans, where a member would take two or more Boolean parameters or a Boolean might later need a third value; a constructor's Boolean that only sets a Boolean property is fine;
+  - events typed `EventHandler<TEventArgs>`, with an `EventArgs` subclass for their data;
+  - operator overloads only on types that behave like primitives, such as a money or vector type.
+- Microsoft's .NET best-practices and C# guidance that no analyzer checks (STY-012; the analyzers, bans and rules STY-012 names gate the rest). Rank each **Consider**, or higher where it causes a defect, and **Blocking** where it's a security or privacy problem (a secret or personal data in a message, untrusted input in a pattern, or matched with neither a timeout nor `NonBacktracking`):
+  - **Exceptions.**
+    - State is restored when an operation fails partway, and a check comes first, such as a state test, where a failure callers expect often would otherwise throw (STY-010 covers the Try pattern).
+    - Messages are full sentences that end in a period, with no secret or personal data (SEC-012).
+    - Catch `OperationCanceledException`, not `TaskCanceledException`.
+    - An argument check in a task-returning method throws synchronously, so the check sits in a method that isn't `async` and the work in a local async function: in an `async` method, even a throw before the first `await` lands in the returned task.
+    - A hand-written guard with its own message where a `ThrowIf` helper would do: CA1510 to CA1513 see only guards with no message.
+  - **Culture.**
+    - What users see is formatted and compared in the current culture.
+    - What's stored or exchanged uses the invariant culture and a round-trip format (`"O"` for dates).
+    - An interpolated or concatenated number or date is a culture choice CA1305 can't see: use `FormattableString.Invariant` or `string.Create(CultureInfo.InvariantCulture, ...)` for storage.
+    - A sorted set or dictionary of strings is given its comparer.
+  - **Time.**
+    - `DateTimeOffset` for a point in time, `DateOnly` and `TimeOnly` for a date or a time of day.
+    - Arithmetic is done in UTC.
+    - A wait a test should control takes the injected `TimeProvider` (ARC-008).
+  - **Async.**
+    - A cancelable operation takes a `CancellationToken` and passes it on.
+    - `Task` unless measurements call for `ValueTask`.
+    - I/O-bound work is awaited directly, not wrapped in `Task.Run`; CPU-bound work is offloaded with `await Task.Run` where a UI thread must stay free.
+    - An Async suffix on a method that returns an awaitable, except an event handler, a controller action, middleware's `Invoke` and a test method (STY-007).
+    - Tasks a LINQ query creates are started with `ToArray()` or `ToList()` before `Task.WhenAll` or `Task.WhenAny`.
+    - Every `TaskCompletionSource` is completed.
+    - Each `GetAwaiter().GetResult()` is where `await` can't reach, with its reason (STY-011).
+    - Each VSTHRD100 or VSTHRD101 suppression is on an event handler (STY-011, ADR-0076).
+  - **Equality.**
+    - A record compares a collection member by reference, so two records holding equal lists aren't equal: implement `IEquatable<T>` with `SequenceEqual`, or design around it.
+    - `is null` and `ReferenceEquals` test identity.
+  - **Dispose.**
+    - `Dispose` can be called twice.
+    - A `SafeHandle` wraps an unmanaged resource instead of a finalizer.
+    - An `IAsyncDisposable` type is also `IDisposable` when callers may call `Dispose`.
+    - An unsealed type has a `protected virtual` `DisposeAsyncCore`.
+  - **Memory.**
+    - `Span<T>` in synchronous code.
+    - No `Memory<T>` is kept after the call or task that was given it ends.
+    - Each `IMemoryOwner<T>` is disposed or handed on, never both.
+  - **Options.**
+    - Related settings are read through an options class, not `IConfiguration` lookups.
+    - Nested options are validated too, with `[ValidateObjectMembers]` and `[ValidateEnumeratedItems]`, which the options validation source generator honors too (OPS-006).
+  - **Regex.**
+    - No pattern is built from untrusted input.
+    - Matching untrusted input sets a timeout or uses `RegexOptions.NonBacktracking`.
 - A rule or doc that contradicts the ADR it cites, or another rule (CRF-003: each fact has one source).
 - A new or changed rule in `docs/standards/` (ADR-0063):
   - its `basis` matches its sources. An authority's rule cites the authority by URL. Microsoft, standards bodies and tool vendors are authorities. Practitioners such as Kent Beck, Martin Fowler, Robert C. Martin and William Durand are not, so a rule resting on them is a preference;

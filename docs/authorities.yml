@@ -99,6 +99,12 @@ sources:
     covers: the axe accessibility engine and its Playwright package for .NET
     match:
       - https://github.com/dequelabs/
+  - name: Microsoft's threading analyzers
+    publisher: Microsoft (the vs-threading team)
+    class: project
+    covers: the Microsoft.VisualStudio.Threading.Analyzers rules the kit turns on
+    match:
+      - https://github.com/microsoft/vs-threading/
   - name: CycloneDX for .NET
     publisher: OWASP CycloneDX
     class: project

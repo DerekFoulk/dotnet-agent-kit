@@ -41,6 +41,14 @@ public sealed class ExceptionTests
         "// CRF-011 exception: one table of every country code.\n\n" + string.Join('\n', Enumerable.Repeat("// a line", 800))))
         .Should().BeEmpty();
 
+    [Fact]
+    public void AnExceptionAtTheTopOfAFileExemptsItsPublicTypes() => PublicTypeRule.Check([new SourceFile("Pair.cs", """
+        // CRF-011 exception: the generic type and its non-generic helper are read together.
+
+        public class Box<T> { }
+        public static class Box { }
+        """)]).Should().BeEmpty();
+
     // Review 1 of GAP-019: what each placement covers. A file's marker stands apart, a blank line below it; a
     // member's or type's sits right before it; a property's covers its accessors.
     [Fact]
@@ -80,6 +88,16 @@ public sealed class ExceptionTests
             int P { get { int a = 0; {{FiveIfs}} return a; } }
         }
         """)).Should().BeEmpty();
+
+    // A type's marker covers its member count too; on any part of a partial type, it covers the whole type.
+    [Fact]
+    public void AnExceptionBeforeATypeExemptsItsMemberCount() => MemberCountRule.Check([
+        new SourceFile("Wide.A.cs", $"partial class Wide {{ {string.Concat(Enumerable.Range(0, 11).Select(i => $"void A{i}() {{ }} "))}}}"),
+        new SourceFile("Wide.B.cs", $$"""
+            // CRF-011 exception: the generated client's facade mirrors the service's 21 operations.
+            partial class Wide { {{string.Concat(Enumerable.Range(0, 10).Select(i => $"void B{i}() {{ }} "))}} }
+            """),
+    ]).Should().BeEmpty();
 
     [Fact]
     public void AnExceptionBeforeATypeExemptsItsCohesion() => CohesionRule.Check([new SourceFile("Ledger.cs", """

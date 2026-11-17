@@ -21,6 +21,8 @@ BeforeDiscovery {
         @{ Fixture = 'VarForBuiltInType'; Diagnostic = 'IDE0008'; Description = 'var for a built-in type, even after a cast that names it (STY-002)' }
         # STY-007 (rules audit, owner 2026-11-12): Microsoft's C# coding conventions and identifier names pages, as gates.
         @{ Fixture = 'ParameterInPascalCase'; Diagnostic = 'IDE1006'; Description = 'a parameter in PascalCase, where the naming rules ask for camelCase (STY-007)' }
+        @{ Fixture = 'InternalStaticReadonlyPrefixed'; Diagnostic = 'IDE1006'; Description = 'an internal static readonly field with the s_ prefix, where the naming rules ask for PascalCase (STY-007)' }
+        @{ Fixture = 'PrivateStaticReadonlyUnprefixed'; Diagnostic = 'IDE1006'; Description = 'a private static readonly field without the s_ prefix (STY-007)' }
         @{ Fixture = 'UsingBlock'; Diagnostic = 'IDE0063'; Description = 'a using block where a simple using declaration does (STY-007)' }
         @{ Fixture = 'ArrayInitializer'; Diagnostic = 'IDE0300'; Description = 'an array creation where a collection expression does (STY-007)' }
         @{ Fixture = 'ExplicitNew'; Diagnostic = 'IDE0090'; Description = 'new with the type repeated where a target-typed new() does (STY-007)' }
@@ -40,6 +42,82 @@ BeforeDiscovery {
         @{ Fixture = 'ReadonlyStructNotDeclared'; Diagnostic = 'IDE0250'; Description = 'a struct whose members are all read-only but isn''t declared readonly (STY-009)' }
         # DAT-010: a caller's value interpolated into a Raw method of EF Core is SQL injection (EF1002).
         @{ Fixture = 'RawSqlInterpolation'; Diagnostic = 'EF1002'; Description = 'a value interpolated into SqlQueryRaw or ExecuteSqlRaw (DAT-010)' }
+        # SEC-014 (Secure Coding Guidelines pass): the security analyzers latest-all turns on, and the SYSLIB obsoletions, fail
+        # the build. The first eleven pin rules that are on already; the last six are BannedSymbols entries for what they miss.
+        @{ Fixture = 'BrokenHash'; Diagnostic = 'CA5351'; Description = 'MD5, a broken hash (SEC-014)' }
+        @{ Fixture = 'WeakHash'; Diagnostic = 'CA5350'; Description = 'SHA-1, a weak hash (SEC-014)' }
+        @{ Fixture = 'UnsafeCipherMode'; Diagnostic = 'CA5358'; Description = 'CFB, an unsafe cipher mode (SEC-014)' }
+        @{ Fixture = 'HardcodedKey'; Diagnostic = 'CA5390'; Description = 'an encryption key written in the code (SEC-014)' }
+        @{ Fixture = 'InsecureRandom'; Diagnostic = 'CA5394'; Description = 'Random for a value that should be unguessable (SEC-014)' }
+        @{ Fixture = 'DeprecatedTls'; Diagnostic = 'CA5397'; Description = 'TLS 1.1 (SEC-014)' }
+        @{ Fixture = 'DisabledCertificateCheck'; Diagnostic = 'CA5359'; Description = 'a certificate check that accepts everything (SEC-014)' }
+        @{ Fixture = 'DsaFactory'; Diagnostic = 'CA5384'; Description = 'DSA through its factory, which CA5384 reports, so it needs no ban (SEC-014)' }
+        @{ Fixture = 'BinaryFormatterUse'; Diagnostic = 'SYSLIB0011'; Description = 'BinaryFormatter (SEC-014)' }
+        @{ Fixture = 'ObsoleteCryptoType'; Diagnostic = 'SYSLIB0021'; Description = 'an obsolete cryptography type, AesManaged (SEC-014)' }
+        @{ Fixture = 'UnsafeDataSetRead'; Diagnostic = 'CA2351'; Description = 'DataSet.ReadXml on untrusted input (SEC-014)' }
+        @{ Fixture = 'AesCreate'; Diagnostic = 'RS0030'; Description = 'Aes.Create, whose CBC needs an HMAC nothing checks for (SEC-014)' }
+        @{ Fixture = 'CryptoConfigByName'; Diagnostic = 'RS0030'; Description = 'an algorithm picked by name at run time (SEC-014)' }
+        @{ Fixture = 'XmlResolverUse'; Diagnostic = 'RS0030'; Description = 'XmlUrlResolver, which fetches what the input names (SEC-014)' }
+        @{ Fixture = 'LegacyXmlReader'; Diagnostic = 'RS0030'; Description = 'the legacy XmlTextReader (SEC-014)' }
+        @{ Fixture = 'AcceptAnyCertificate'; Diagnostic = 'RS0030'; Description = 'the accept-any-certificate validator (SEC-014)' }
+        @{ Fixture = 'DtdParse'; Diagnostic = 'RS0030'; Description = 'DTD parsing in XmlReaderSettings (SEC-014)' }
+        # The .NET best-practices and C# passes (owner, 2026-11-16): BannedSymbols.txt bans what no analyzer flags. One
+        # fixture holds a family's banned calls, and each row names the symbol its RS0030 must be about.
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTime.Now'; Description = 'DateTime.Now, where TimeProvider gives the time (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTime.UtcNow'; Description = 'DateTime.UtcNow (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTime.Today'; Description = 'DateTime.Today (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.Now'; Description = 'DateTimeOffset.Now (ARC-008)' }
+        @{ Fixture = 'ClockRead'; Diagnostic = 'RS0030'; Symbol = 'DateTimeOffset.UtcNow'; Description = 'DateTimeOffset.UtcNow (ARC-008)' }
+        @{ Fixture = 'ObsoleteTimeZone'; Diagnostic = 'CS0618'; Description = 'TimeZone, obsolete in favor of TimeZoneInfo, so it needs no ban (ARC-008)' }
+        @{ Fixture = 'HttpClientConstructed'; Diagnostic = 'RS0030'; Symbol = 'HttpClient.HttpClient('; Description = 'an HttpClient built by hand, not by IHttpClientFactory (OPS-003)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.Wait('; Description = 'Task.Wait (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task<TResult>.Result'; Description = 'Task<T>.Result (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.WaitAll('; Description = 'Task.WaitAll (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Task.WaitAny('; Description = 'Task.WaitAny (STY-011)' }
+        @{ Fixture = 'BlockingWait'; Diagnostic = 'RS0030'; Symbol = 'Thread.Sleep('; Description = 'Thread.Sleep (STY-011)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'ArrayList'; Description = 'ArrayList (STY-009)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'Hashtable'; Description = 'Hashtable (STY-009)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'Queue'''; Description = 'the non-generic Queue (STY-009)' }
+        @{ Fixture = 'NonGenericCollection'; Diagnostic = 'RS0030'; Symbol = 'Stack'''; Description = 'the non-generic Stack (STY-009)' }
+        # STY-003 (.NET best-practices pass, owner 2026-11-16): one fixture per family of rules latest-all turns on, plus
+        # CS4014, a compiler warning, so each is proved, not assumed. Two limits the fixtures found: CA1305 doesn't see an
+        # interpolated or concatenated number, and CA1510 to CA1513 fire only on a check that passes no message of its own
+        # (CA1511 only with an empty one); both stay code review's.
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1305'; Description = 'a number formatted in the current culture (STY-003)' }
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1307'; Description = 'a string call that doesn''t say its comparison (STY-003)' }
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1309'; Description = 'an invariant-culture comparison where ordinal is meant (STY-003)' }
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1310'; Description = 'a culture-sensitive comparison by default (STY-003)' }
+        @{ Fixture = 'StringCulture'; Diagnostic = 'CA1311'; Description = 'a case change with no culture (STY-003)' }
+        @{ Fixture = 'DisposePattern'; Diagnostic = 'CA2000'; Description = 'a disposable that''s never disposed (STY-003)' }
+        @{ Fixture = 'DisposePattern'; Diagnostic = 'CA1063'; Description = 'a Dispose that doesn''t follow the dispose pattern (STY-003)' }
+        @{ Fixture = 'DisposePattern'; Diagnostic = 'CA1816'; Description = 'a Dispose that doesn''t call GC.SuppressFinalize (STY-003)' }
+        @{ Fixture = 'DisposePattern'; Diagnostic = 'CA1001'; Description = 'a type that owns a disposable field but isn''t disposable (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CA2008'; Description = 'a continuation with no TaskScheduler (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CA2016'; Description = 'a cancellation token not passed on (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CA1849'; Description = 'a blocking call in an async method where an async one exists (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CA2012'; Description = 'a ValueTask thrown away (STY-003)' }
+        @{ Fixture = 'AsyncMisuse'; Diagnostic = 'CS4014'; Description = 'a task started and not awaited (STY-003)' }
+        @{ Fixture = 'LoggingMisuse'; Diagnostic = 'CA1848'; Description = 'a logger extension method where a [LoggerMessage] method does (STY-003)' }
+        @{ Fixture = 'LoggingMisuse'; Diagnostic = 'CA2254'; Description = 'a log template that varies between calls (STY-003)' }
+        @{ Fixture = 'LoggingMisuse'; Diagnostic = 'CA1727'; Description = 'a log placeholder that isn''t PascalCase (STY-003)' }
+        @{ Fixture = 'LoggingMisuse'; Diagnostic = 'CA1873'; Description = 'a log argument computed even when the level is off, a rule new in .NET 10 (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA2200'; Description = 'a caught exception rethrown with throw e (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA2201'; Description = 'a reserved, too general exception type (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1510'; Description = 'a hand-written null check where ThrowIfNull does (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1511'; Description = 'a hand-written empty check where ThrowIfNullOrEmpty does (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1512'; Description = 'a hand-written range check where ThrowIfNegative does (STY-003)' }
+        @{ Fixture = 'ThrowPattern'; Diagnostic = 'CA1513'; Description = 'a hand-written disposed check where ObjectDisposedException.ThrowIf does (STY-003)' }
+        @{ Fixture = 'RecordStructNotReadonly'; Diagnostic = 'IDE0250'; Description = 'a record struct whose members are all read-only but isn''t declared readonly (STY-009)' }
+        @{ Fixture = 'InternalExceptionInLibrary'; Diagnostic = 'CA1064'; Description = 'an internal exception in a class library (STY-009)' }
+        # The .NET best-practices and C# passes (owner, 2026-11-16): the modern APIs Microsoft's pages ask for, and async void,
+        # which only the threading analyzers see (ADR-0076).
+        @{ Fixture = 'RegexConstructed'; Diagnostic = 'SYSLIB1045'; Description = 'a regex built at run time, where [GeneratedRegex] does, a rule latest-all leaves at info (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'DllImportUsed'; Diagnostic = 'SYSLIB1054'; Description = 'a [DllImport], where [LibraryImport] does, a rule latest-all leaves at info (STY-003)'; GlobalConfig = $true }
+        @{ Fixture = 'LockOnObject'; Diagnostic = 'IDE0330'; Description = 'a lock on an object, where System.Threading.Lock does (STY-007)' }
+        @{ Fixture = 'AsyncVoid'; Diagnostic = 'VSTHRD100'; Description = 'an async void method (STY-011)' }
+        @{ Fixture = 'AsyncVoid'; Diagnostic = 'VSTHRD101'; Description = 'an async lambda passed as a void delegate (STY-011)' }
+        @{ Fixture = 'TaskInUsing'; Diagnostic = 'VSTHRD107'; Description = 'a using statement over a Task, which disposes the task instead of awaiting it (STY-011)' }
+        @{ Fixture = 'TaskDropped'; Diagnostic = 'VSTHRD110'; Description = 'a Task dropped in a method that isn''t async, where CS4014 doesn''t look (STY-011)' }
         @{ Fixture = 'NullableViolation'; Diagnostic = 'CS8600'; Description = 'a null assigned to a non-nullable type' }
         @{ Fixture = 'CatchAll'; Diagnostic = 'CA1031'; Description = 'catching Exception, a rule only AnalysisLevel latest-all turns on' }
         @{ Fixture = 'MsBuildWarning'; Diagnostic = 'KIT0001'; Description = 'a warning from an MSBuild task, which TreatWarningsAsErrors alone misses' }
@@ -303,11 +381,80 @@ Describe 'Repo build configuration' -Tag 'Build' {
     }
 
     Context 'violations fail the build' {
+        # A fixture that backs several rows (one per rule in its family) is built once, in a workspace of its own, and
+        # each row reads that build.
+        BeforeAll { $builds = @{} }
+
         It 'rejects <Description> (<Diagnostic>)' -ForEach $violations {
-            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
+            if (-not $builds.ContainsKey($Fixture)) {
+                $builds[$Fixture] = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture $Fixture)
+            }
+            $build = $builds[$Fixture]
 
             $build.ExitCode | Should -Not -Be 0 -Because $build.Output
             $build.Output | Should -Match "error $Diagnostic"
+            if ($_['Symbol']) {
+                $build.Output | Should -Match ([regex]::Escape("error ${Diagnostic}: The symbol '$($_['Symbol'])")) -Because "the ban on $($_['Symbol']) should fire"
+            }
+        }
+    }
+
+    # STY-011: the C# async page lists GetAwaiter().GetResult() first among the ways to block where await can't reach,
+    # because it keeps the original exception; the ban on Wait and Result leaves it open.
+    Context 'blocking where await can''t reach' {
+        It 'allows GetAwaiter().GetResult()' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'BlockingEscape')
+
+            $build.Output | Should -Not -Match 'RS0030'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
+    # C# guidance pass (owner 2026-11-16): CA1064 asks for public exceptions, and CA1515 asks an Exe's types to be
+    # internal. In an Exe, an internal exception builds: CA1064's page names no exception for an Exe, so this pins what the
+    # analyzer does. In a class library, such as a module's Domain project, CA1064 fails an internal exception (the
+    # InternalExceptionInLibrary row) and CA1515 doesn't apply, so a library's exception is public.
+    Context 'an app''s own exception' {
+        It 'builds as an internal type in an Exe project' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'InternalCustomException')
+
+            $build.Output | Should -Not -Match 'CA1064|CA1515|CA1032'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+
+        It 'builds as a public type in a class library' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'PublicExceptionInLibrary')
+
+            $build.Output | Should -Not -Match 'CA1064|CA1515|CA1032'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
+    # STY-007 and STY-009: CA1707, which checks internal APIs here, fails an underscore in a static readonly field, and
+    # Microsoft's identifier names page gives a private or internal static field the s_ prefix. A static readonly field
+    # that isn't private takes PascalCase, as a public one does in the Framework Design Guidelines; a private one keeps s_.
+    Context 'a static readonly field''s name' {
+        It 'is PascalCase wherever the field isn''t private' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'VisibleStaticReadonly')
+
+            $build.Output | Should -Not -Match 'IDE1006|CA1707'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
+    # STY-011 (ADR-0076): of the threading analyzers, only VSTHRD100 and VSTHRD101 are on, so the names a framework fixes
+    # or documents (an async Main, middleware's InvokeAsync and async Invoke, a Razor Pages OnGetAsync) and a test method named for its
+    # behavior (TST-010) build, where VSTHRD200 would ask for or against an Async suffix.
+    Context 'the threading analyzers'' other rules stay off' {
+        It 'allows <Description>' -ForEach @(
+            @{ Project = 'Console'; Description = 'an async Main' }
+            @{ Project = 'Web'; Description = 'middleware''s InvokeAsync and async Invoke, and a Razor Pages handler''s OnGetAsync' }
+            @{ Project = 'Widgets.Tests'; Description = 'a test method with no Async suffix' }
+        ) {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'AsyncNamingAllowed') -Project $Project
+
+            $build.Output | Should -Not -Match 'IDE1006|VSTHRD'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
         }
     }
 
@@ -405,8 +552,11 @@ Describe 'BannedSymbols.txt' {
             if ($Matches['kind'] -eq 'T') { return $null -ne (Find-KitType $name) }
 
             # Roslyn finds only members declared on the named type, so an inherited member mustn't count, and it compares
-            # with case. Generic methods (`0), ref or out parameters (@), nested types (. where FullName has +) and
-            # generic type arguments ({...}) aren't parsed; such an entry fails here until this function learns them.
+            # with case. An instance constructor is #ctor (a static one is #cctor), a generic parameter type is its name
+            # without the arity and its type arguments in braces (System.ReadOnlySpan{System.Threading.Tasks.Task}), and a
+            # generic type's own parameter is `0, `1 and so on. A generic method's parameters (``0), ref or out parameters
+            # (@), multi-dimensional arrays ([0:,0:]) and nested types (. where FullName has +) aren't parsed; such an entry
+            # fails here until this function learns them.
             $declared = [Reflection.BindingFlags]'Public, NonPublic, Static, Instance, DeclaredOnly'
             $owner = Find-KitType ($name.Substring(0, $name.LastIndexOf('.')))
             $member = $name.Substring($name.LastIndexOf('.') + 1)
@@ -415,12 +565,28 @@ Describe 'BannedSymbols.txt' {
                 'F' { return $null -ne $owner.GetField($member, $declared) }
                 'P' { return $null -ne $owner.GetProperty($member, $declared) }
                 'M' {
-                    $wanted = if ($Matches['params']) { $Matches['params'].Split(',') } else { @() }
-                    return [bool]($owner.GetMethods($declared) | Where-Object {
-                        $_.Name -ceq $member -and ((@($_.GetParameters() | ForEach-Object { $_.ParameterType.FullName }) -join ',') -ceq ($wanted -join ','))
+                    $wanted = [string] $Matches['params']
+                    $candidates = if ($member -ceq '#ctor') { $owner.GetConstructors($declared) | Where-Object { -not $_.IsStatic } } else { $owner.GetMethods($declared) | Where-Object Name -CEQ $member }
+                    return [bool]($candidates | Where-Object {
+                        (@($_.GetParameters() | ForEach-Object { Get-DocumentationTypeName $_.ParameterType }) -join ',') -ceq $wanted
                     })
                 }
             }
+        }
+
+        # A type as a documentation comment ID names it in a parameter list: generic types as Name{Argument,...}, and a
+        # generic type's own parameter by its position. The forms it doesn't parse come back as text no ID contains, so an
+        # entry with one never resolves.
+        function Get-DocumentationTypeName {
+            param([Parameter(Mandatory)] [Type] $Type)
+
+            $unparsed = '<not parsed>'
+            if ($Type.IsGenericParameter) { return $(if ($Type.DeclaringMethod) { $unparsed } else { '`' + $Type.GenericParameterPosition }) }
+            if ($Type.IsArray) { return $(if ($Type.GetArrayRank() -gt 1) { $unparsed } else { (Get-DocumentationTypeName $Type.GetElementType()) + '[]' }) }
+            if ($Type.IsByRef) { return $unparsed }
+            if (-not $Type.IsGenericType) { return $Type.FullName }
+            $arguments = @($Type.GenericTypeArguments | ForEach-Object { Get-DocumentationTypeName $_ }) -join ','
+            ($Type.GetGenericTypeDefinition().FullName -replace '`\d+$', '') + "{$arguments}"
         }
     }
 
@@ -428,6 +594,54 @@ Describe 'BannedSymbols.txt' {
     It 'rejects an ID that differs from the symbol only in case' {
         Test-DocumentationId -Id 'M:System.Reflection.Module.gettypes' | Should -BeFalse
         Test-DocumentationId -Id 'M:System.Reflection.Module.FindTypes(System.Reflection.typefilter,System.object)' | Should -BeFalse
+    }
+
+    # The .NET best-practices pass bans HttpClient's constructors and Task.WaitAll's overloads, so the IDs name a
+    # constructor (#ctor) and generic parameter types ({...}), as documentation comment IDs do.
+    It 'resolves <Id>' -ForEach @(
+        @{ Id = 'M:System.Net.Http.HttpClient.#ctor' }
+        @{ Id = 'M:System.Net.Http.HttpClient.#ctor(System.Net.Http.HttpMessageHandler,System.Boolean)' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task})' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.Collections.Generic.IEnumerable{System.Threading.Tasks.Task},System.Threading.CancellationToken)' }
+        @{ Id = 'P:System.Threading.Tasks.Task`1.Result' }
+        @{ Id = 'M:System.Collections.Generic.List`1.Add(`0)' }
+    ) {
+        Test-DocumentationId -Id $Id | Should -BeTrue
+    }
+
+    It 'rejects <Id>, which names no symbol' -ForEach @(
+        @{ Id = 'M:System.Net.Http.HttpClient.#ctor(System.String)' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.String})' }
+        @{ Id = 'M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task)' }
+        # Review 1 of this PR: a static constructor is #cctor, so #ctor must name an instance constructor.
+        @{ Id = 'M:System.Environment.#ctor' }
+        @{ Id = 'M:System.AttributeUsageAttribute.#ctor' }
+        # A generic type's own parameter is `0, and an ID that leaves it out names nothing.
+        @{ Id = 'M:System.Collections.Generic.List`1.Add' }
+    ) {
+        Test-DocumentationId -Id $Id | Should -BeFalse
+    }
+
+    # Review 1 of PR 94: STY-011 and OPS-003 ban these in every overload, and the fixtures call one each, so a row that
+    # goes missing, or an overload a later .NET adds, fails here instead of going unbanned.
+    It 'bans every public overload of <Member>' -ForEach @(
+        @{ Member = 'System.Threading.Tasks.Task.Wait' }
+        @{ Member = 'System.Threading.Tasks.Task.WaitAll' }
+        @{ Member = 'System.Threading.Tasks.Task.WaitAny' }
+        @{ Member = 'System.Threading.Thread.Sleep' }
+        @{ Member = 'System.Net.Http.HttpClient.#ctor' }
+    ) {
+        $ids = @(Get-Content -LiteralPath $bannedPath | Where-Object { $_ -and $_ -notmatch '^\s*//' } | ForEach-Object { $_.Split(';')[0].Trim() })
+        $type = Find-KitType $Member.Substring(0, $Member.LastIndexOf('.'))
+        $name = $Member.Substring($Member.LastIndexOf('.') + 1)
+        $overloads = if ($name -ceq '#ctor') { $type.GetConstructors() } else { $type.GetMethods() | Where-Object { $_.Name -ceq $name -and $_.DeclaringType -eq $type } }
+
+        @($overloads).Count | Should -BeGreaterThan 0
+        foreach ($overload in $overloads) {
+            $parameters = @($overload.GetParameters() | ForEach-Object { Get-DocumentationTypeName $_.ParameterType }) -join ','
+            $id = "M:$Member" + $(if ($parameters) { "($parameters)" } else { '' })
+            $ids | Should -Contain $id -Because "every overload of $Member is banned"
+        }
     }
 
     It 'names only symbols that exist' {

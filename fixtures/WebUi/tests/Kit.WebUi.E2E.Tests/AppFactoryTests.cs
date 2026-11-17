@@ -33,7 +33,7 @@ public sealed class AppFactoryTests
     {
         await using MisledFactory factory = new();
         factory.StartServer();
-        using HttpClient client = new() { BaseAddress = factory.ClientOptions.BaseAddress };
+        using HttpClient client = factory.CreateClient();
 
         using HttpResponseMessage home = await client.GetAsync(new Uri("/", UriKind.Relative), TestContext.Current.CancellationToken);
 
@@ -54,7 +54,7 @@ public sealed class AppFactoryTests
         Action start = factory.StartServer;
 
         start.Should().NotThrow();
-        using HttpClient client = new() { BaseAddress = factory.ClientOptions.BaseAddress };
+        using HttpClient client = factory.CreateClient();
         using HttpResponseMessage home = await client.GetAsync(new Uri("/", UriKind.Relative), TestContext.Current.CancellationToken);
         home.StatusCode.Should().Be(HttpStatusCode.OK);
     }

@@ -146,7 +146,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "no analyzer checks a test's shape; code review checks, the nightly mutation score (TST-004) exposes tests that assert too little, and the tdd-cycle skill names these practices"
+        how: "no analyzer checks a test's shape; code review checks, the nightly mutation score (TST-004) exposes tests that assert too little, and the tdd-cycle skill names these practices; ARC-008's ban gates the clock"
     scope: core
     paths: ["**/*Tests*/**"]
 ---

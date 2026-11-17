@@ -20,6 +20,11 @@ public sealed class ArgumentTests
         { "ProjectCheck.Check", () => _ = ProjectCheck.Check(null!).ToList() },
         { "ProjectCheck.HandWritten", () => _ = ProjectCheck.HandWritten(null!).ToList() },
         { "StatementRule.Check", () => _ = StatementRule.Check(null!).ToList() },
+        { "NullableDirectiveRule.Check", () => _ = NullableDirectiveRule.Check(null!).ToList() },
+        { "NullForgivingRule.Check", () => _ = NullForgivingRule.Check(null!).ToList() },
+        { "GeneratedMarkerRule.Check", () => _ = GeneratedMarkerRule.Check(null!).ToList() },
+        { "EfCoreMigrations.Contains", () => EfCoreMigrations.Contains(null!) },
+        { "EfCoreMigrations.Contains projectFolder", () => EfCoreMigrations.Contains("A.cs", null!) },
     };
 
     [Theory]

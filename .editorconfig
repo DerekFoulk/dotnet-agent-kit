@@ -94,6 +94,19 @@ dotnet_naming_symbols.constant_fields.applicable_kinds   = field
 dotnet_naming_symbols.constant_fields.required_modifiers = const
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
+# (kit) STY-007: a static readonly field that isn't private is PascalCase, as a public one is in the Framework Design
+# Guidelines. CA1707 fails an underscore in a static readonly field, and it checks internal APIs here (STY-009), so the
+# s_ prefix the identifier names page gives an internal static field can't build on a readonly one. An internal static
+# field that isn't readonly keeps s_, since CA1707 doesn't check it; CA1051 fails a visible instance field. A naming
+# rule with more modifiers comes first, so this one wins over the s_ rule below.
+# https://learn.microsoft.com/dotnet/standard/design-guidelines/names-of-type-members#names-of-fields  retrieved 2026-11-16
+dotnet_naming_rule.visible_static_readonly_fields_should_be_pascal_case.severity = warning
+dotnet_naming_rule.visible_static_readonly_fields_should_be_pascal_case.symbols  = visible_static_readonly_fields
+dotnet_naming_rule.visible_static_readonly_fields_should_be_pascal_case.style    = pascal_case_style
+dotnet_naming_symbols.visible_static_readonly_fields.applicable_kinds   = field
+dotnet_naming_symbols.visible_static_readonly_fields.required_modifiers = static, readonly
+dotnet_naming_symbols.visible_static_readonly_fields.applicable_accessibilities = public, internal, protected, protected_internal, private_protected
+
 # Static fields have an s_ prefix
 dotnet_naming_rule.static_fields_should_have_prefix.severity = warning
 dotnet_naming_rule.static_fields_should_have_prefix.symbols  = static_fields
@@ -218,6 +231,46 @@ dotnet_code_quality.CA2208.api_surface = all
 # CA1815 (override Equals on value types) and CA1819 (properties don't return arrays) are Performance rules.
 dotnet_code_quality.CA1815.api_surface = public, internal
 dotnet_code_quality.CA1819.api_surface = public, internal
+
+# (kit) STY-007: Microsoft's managed threading page: a dedicated System.Threading.Lock with the lock statement (.NET 9+).
+csharp_prefer_system_threading_lock = true:warning
+dotnet_diagnostic.IDE0330.severity = warning
+
+# (kit) STY-011, ADR-0076: Microsoft.VisualStudio.Threading.Analyzers is here for VSTHRD100 (async void), VSTHRD101 (an
+# async lambda passed as a void delegate), VSTHRD107 (a using statement over a Task, which disposes the task instead of
+# awaiting it) and VSTHRD110 (a Task dropped in a method that isn't async, where CS4014 doesn't look), as the owner chose
+# (2026-11-16; the last two closed GAP-045). Of its other rules, most concern Visual Studio's JoinableTaskFactory; some
+# repeat a rule the kit already has from one source (CRF-003): VSTHRD002 is BannedSymbols.txt's (STY-011), VSTHRD103
+# CA1849's, VSTHRD105 CA2008's, VSTHRD111 CA2007's and VSTHRD200 the Async suffix, which stays advisory (STY-007).
+# https://github.com/microsoft/vs-threading/tree/main/docfx/analyzers  retrieved 2026-11-16
+dotnet_diagnostic.VSTHRD001.severity = none
+dotnet_diagnostic.VSTHRD002.severity = none
+dotnet_diagnostic.VSTHRD003.severity = none
+dotnet_diagnostic.VSTHRD004.severity = none
+dotnet_diagnostic.VSTHRD010.severity = none
+dotnet_diagnostic.VSTHRD011.severity = none
+dotnet_diagnostic.VSTHRD012.severity = none
+dotnet_diagnostic.VSTHRD013.severity = none
+dotnet_diagnostic.VSTHRD102.severity = none
+dotnet_diagnostic.VSTHRD103.severity = none
+dotnet_diagnostic.VSTHRD104.severity = none
+dotnet_diagnostic.VSTHRD105.severity = none
+dotnet_diagnostic.VSTHRD106.severity = none
+dotnet_diagnostic.VSTHRD108.severity = none
+dotnet_diagnostic.VSTHRD109.severity = none
+dotnet_diagnostic.VSTHRD111.severity = none
+dotnet_diagnostic.VSTHRD112.severity = none
+dotnet_diagnostic.VSTHRD113.severity = none
+dotnet_diagnostic.VSTHRD114.severity = none
+dotnet_diagnostic.VSTHRD115.severity = none
+dotnet_diagnostic.VSTHRD116.severity = none
+dotnet_diagnostic.VSTHRD117.severity = none
+dotnet_diagnostic.VSTHRD200.severity = none
+dotnet_diagnostic.VSTHRD202.severity = none
+dotnet_diagnostic.VSTHRD100.severity = warning
+dotnet_diagnostic.VSTHRD101.severity = warning
+dotnet_diagnostic.VSTHRD107.severity = warning
+dotnet_diagnostic.VSTHRD110.severity = warning
 
 # (kit) ADR-0029: CA2007 (ConfigureAwait) applies to class libraries only. Microsoft advises suppressing it
 # for application code: https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007

@@ -47,14 +47,14 @@ Describe 'Test-CodeShape.ps1' {
             $result = Invoke-CodeShapeCheck -Solution (Join-Path $script:fixtures 'Deep.slnx') -KitRoot $script:kitRoot
 
             $result.ExitCode | Should -Be 1
-            $result.Output | Should -Match '[\\/]Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep; the limit is 4 \(CRF-011\)\. \[.*Deep\.csproj\]$'
+            $result.Output | Should -Match '[\\/]Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep; the limit is 3 \(CRF-011\)\. \[.*Deep\.csproj\]$'
         }
 
         It 'passes a solution within every limit' {
             $result = Invoke-CodeShapeCheck -Solution (Join-Path $script:fixtures 'Tidy.slnx') -KitRoot $script:kitRoot
 
             $result.ExitCode | Should -Be 0
-            $result.Output | Should -Be 'Code shape (CRF-011): 1 project, 1 file, no findings.'
+            $result.Output | Should -Be 'Code shape (CRF-011, STY-005): 1 project, 1 file, no findings.'
         }
 
         # Review 1 of GAP-019: a tool that doesn't build is a broken check, not a finding in the code.
@@ -70,11 +70,13 @@ Describe 'Test-CodeShape.ps1' {
             $craft = Get-Content -Raw (Join-Path $script:kitRoot 'docs/standards/craft.md')
             $statement = [regex]::Match($craft, '(?m)^  - id: CRF-011\r?\n    statement: "(?<s>[^"]+)"').Groups['s'].Value
 
-            $enforced = 'NestingDepth', 'StatementsPerMember', 'LinesPerFile', 'Lcom4' | ForEach-Object {
-                [regex]::Match($limits, "const int $_ = (\d+);").Groups[1].Value
-            }
-            $stated = 'nesting to (\d+) levels', '(\d+) statements per member', '(\d+) lines per file', 'LCOM4 of (\d+)' |
-                ForEach-Object { [regex]::Match($statement, $_).Groups[1].Value }
+            $enforced = 'NestingDepth', 'StatementsPerMember', 'LinesPerFile', 'MembersPerType', 'PublicTypesPerFile', 'Lcom4' |
+                ForEach-Object { [regex]::Match($limits, "const int $_ = (\d+);").Groups[1].Value }
+            # The statement spells out one, as prose does; any other number is in digits.
+            $stated = 'nesting to (\d+) levels', '(\d+) statements per member', '(\d+) lines per file', '(\d+) members per type',
+                '(\w+) public types? per file', 'LCOM4 of (\d+)' |
+                ForEach-Object { [regex]::Match($statement, $_).Groups[1].Value } |
+                ForEach-Object { $_ -eq 'one' ? '1' : $_ }
 
             $stated | Should -Be $enforced
             $enforced | Should -Not -Contain ''

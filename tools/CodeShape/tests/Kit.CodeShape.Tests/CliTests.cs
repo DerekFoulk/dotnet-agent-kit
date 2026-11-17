@@ -28,7 +28,20 @@ public sealed class CliTests : IDisposable
 
         exitCode.Should().Be(1);
         output.Should().Be(
-            $"{deep}(5,74): error CRF011: Run nests 5 levels deep; the limit is 4 (CRF-011). [{project}]{Environment.NewLine}");
+            $"{deep}(5,74): error CRF011: Run nests 5 levels deep; the limit is 3 (CRF-011). [{project}]{Environment.NewLine}");
+    }
+
+    // A finding names the rule it breaks in the error code, so STY-005's findings aren't reported as CRF-011's.
+    [Fact]
+    public void AFindingCarriesItsOwnRulesCode()
+    {
+        string legacy = Write("Legacy.cs", "#nullable disable\nclass Legacy { }\n");
+        string project = Path.Join(_folder.FullName, "App.csproj");
+
+        (int exitCode, string output) = Run(new { name = project, defines = Array.Empty<string>(), files = new[] { legacy } });
+
+        exitCode.Should().Be(1);
+        output.Should().StartWith($"{legacy}(1,1): error STY005: #nullable changes");
     }
 
     [Fact]
@@ -39,7 +52,7 @@ public sealed class CliTests : IDisposable
         (int exitCode, string output) = Run(new { name = "App.csproj", defines = Array.Empty<string>(), files = new[] { tidy } });
 
         exitCode.Should().Be(0);
-        output.Should().Be($"Code shape (CRF-011): 1 project, 1 file, no findings.{Environment.NewLine}");
+        output.Should().Be($"Code shape (CRF-011, STY-005): 1 project, 1 file, no findings.{Environment.NewLine}");
     }
 
     // Test-Duplication.ps1 hands the duplicate finder the same hand-written files, so generated code is skipped by
@@ -92,7 +105,7 @@ public sealed class CliTests : IDisposable
             new { name = "B.csproj", defines = Array.Empty<string>(), files = new[] { two } });
 
         exitCode.Should().Be(0);
-        output.Should().Be($"Code shape (CRF-011): 2 projects, 2 files, no findings.{Environment.NewLine}");
+        output.Should().Be($"Code shape (CRF-011, STY-005): 2 projects, 2 files, no findings.{Environment.NewLine}");
     }
 
     [Fact]
@@ -105,7 +118,7 @@ public sealed class CliTests : IDisposable
         int exitCode = Cli.Run([manifest], output);
 
         exitCode.Should().Be(0);
-        output.ToString().Should().Be($"Code shape (CRF-011): 0 projects, 0 files, no findings.{Environment.NewLine}");
+        output.ToString().Should().Be($"Code shape (CRF-011, STY-005): 0 projects, 0 files, no findings.{Environment.NewLine}");
     }
 
     private string Write(string name, string text)

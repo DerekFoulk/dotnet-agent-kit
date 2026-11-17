@@ -12,7 +12,7 @@ areas:
     rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, ARC-010, ARC-011, ARC-012, ARC-013, CRF-006, CRF-007, DAT-001, DAT-002]
     gaps:
       - id: GAP-039
-        gap: "ARC-008 says assemblies marked pure use no clock, randomness, file or network access except through injected abstractions, but nothing says how an assembly is marked pure, and no ban list holds the APIs it may not call (DateTime.Now, Random, File, HttpClient and the rest), so the rule has no check. A BannedSymbols file that only pure assemblies add, proved by a fixture, would make it a gate (rules audit, 2026-11-12)."
+        gap: "ARC-008 says assemblies marked pure use no randomness, file or network access except through injected abstractions, but nothing says how an assembly is marked pure, and no ban list holds the APIs it may not call (Random, File, the network classes and the rest), so that part of the rule has no check. A BannedSymbols file that only pure assemblies add, proved by a fixture, would make it a gate (rules audit, 2026-11-12). The clock is done: BannedSymbols.txt bans reading it directly in every project (.NET best-practices pass, 2026-11-16)."
         status: proposed
         needs: "a way to mark an assembly pure, its ban list, and a fixture that proves the ban"
       - id: GAP-001
@@ -40,7 +40,7 @@ areas:
     rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010, CRF-011, CRF-012, CRF-013, CRF-014]
     gaps:
       - id: GAP-019
-        gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-011 (proposed) states the four as limits."
+        gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-011 (proposed) states them as limits; ADR-0071 adds members per type and public types per file."
         status: closed
       - id: GAP-022
         gap: "An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request."
@@ -70,12 +70,16 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
-    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, STY-008, STY-009, CRF-008, CRF-010]
+    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, STY-008, STY-009, STY-010, STY-011, STY-012, CRF-008, CRF-010]
     gaps:
       - id: GAP-021
         gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version. Closed by ADR-0049, which found the 48 counted each diagnostic twice (24 places then, 32 by the time it was decided): CA1014 is on, and Directory.Build.props declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be; a library published for other .NET languages declares CLSCompliant(true) instead."
         status: closed
         needs: "an ADR, and a change to every project or a recorded opt-out"
+      - id: GAP-045
+        gap: "Two async defects have no check: a Task dropped in a method that isn't async (CS4014 looks only inside async methods, CA2012 only at ValueTask), and a Task used in a using statement, which disposes the task instead of awaiting it. The threading analyzers' VSTHRD110 and VSTHRD107 catch them, but they're off, since the owner chose VSTHRD100 and VSTHRD101 only (ADR-0076; .NET best-practices and C# passes, reviews of 2026-11-16). Closed by the owner's choice (2026-11-16) and ADR-0076's update: both are on, each with a failing fixture, and STY-011 names them; VSTHRD107 checks only the using statement, so code review checks a using declaration over a Task."
+        status: closed
+        needs: "the owner's choice to turn VSTHRD107 and VSTHRD110 on, each with a failing fixture"
   - id: tests
     name: Tests
     perfect: "Test-first; fast unit tests, integration tests against a real database, API tests in memory, plus contract, browser and accessibility tests; mutation testing that proves the tests catch bugs; deterministic tests, with no sleeps or real clocks."
@@ -98,7 +102,7 @@ areas:
         status: proposed
         needs: "packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests"
       - id: GAP-037
-        gap: "24 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, OPS-005, OPS-006, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them."
+        gap: "24 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001, OPS-002, OPS-003's resilience handler (its constructor ban is a build gate), OPS-005, OPS-006, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them."
         status: proposed
         needs: "test projects in the app template or a shared check, and a CI change"
       - id: GAP-027
@@ -111,7 +115,7 @@ areas:
     sources:
       - "https://asvs.owasp.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/azure/well-architected/security/, retrieved 2026-11-07"
-    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-012, SEC-013, ARC-006, DAT-010]
+    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-012, SEC-013, SEC-014, SEC-015, ARC-006, DAT-010]
     gaps:
       - id: GAP-040
         gap: "SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12)."
@@ -122,7 +126,7 @@ areas:
         status: proposed
         needs: "a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR"
       - id: GAP-042
-        gap: "SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12)."
+        gap: "SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12). Microsoft's logging pages offer redaction (Microsoft.Extensions.Compliance.Redaction, with [LoggerMessage] parameters classified as sensitive) as the way to keep such data out; it would be a new dependency, chosen with the test (.NET best-practices pass, 2026-11-16)."
         status: proposed
         needs: "a log-capturing test in the sample, and a deployment that uses Key Vault"
       - id: GAP-005
@@ -310,12 +314,12 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 10 | 6 | 4 | 4 | 4 |
+| Architecture | 10 | 7 | 3 | 4 | 4 |
 | Craft | 13 | 7 | 6 | 1 | 1 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
-| Code | 11 | 10 | 1 | 0 | 0 |
+| Code | 14 | 11 | 3 | 0 | 0 |
 | Tests | 8 | 4 | 4 | 2 | 3 |
-| Security | 11 | 8 | 3 | 4 | 3 |
+| Security | 13 | 9 | 4 | 4 | 3 |
 | Reliability | 7 | 4 | 3 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 1 |
 | API design | 4 | 4 | 0 | 3 | 0 |
@@ -326,21 +330,21 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 2 |
 | Process | 17 | 6 | 11 | 0 | 0 |
 
-**Overall:** 89 rules in force, 57 checked by a tool and 32 advisory; 25 proposed; 21 open gaps.
+**Overall:** 94 rules in force, 60 checked by a tool and 34 advisory; 25 proposed; 21 open gaps.
 
 Open gaps:
 
-- **GAP-039** (Architecture, proposed; needs a way to mark an assembly pure, its ban list, and a fixture that proves the ban): ARC-008 says assemblies marked pure use no clock, randomness, file or network access except through injected abstractions, but nothing says how an assembly is marked pure, and no ban list holds the APIs it may not call (DateTime.Now, Random, File, HttpClient and the rest), so the rule has no check. A BannedSymbols file that only pure assemblies add, proved by a fixture, would make it a gate (rules audit, 2026-11-12).
+- **GAP-039** (Architecture, proposed; needs a way to mark an assembly pure, its ban list, and a fixture that proves the ban): ARC-008 says assemblies marked pure use no randomness, file or network access except through injected abstractions, but nothing says how an assembly is marked pure, and no ban list holds the APIs it may not call (Random, File, the network classes and the rest), so that part of the rule has no check. A BannedSymbols file that only pure assemblies add, proved by a fixture, would make it a gate (rules audit, 2026-11-12). The clock is done: BannedSymbols.txt bans reading it directly in every project (.NET best-practices pass, 2026-11-16).
 - **GAP-026** (Architecture, proposed; needs a CI change): Nightly mutation testing (mutation.reusable.yml) and the Dependabot lock-file refresh (dependabot-lockfiles.yml) run on Linux against the whole solution, so they can't build one with MAUI or desktop projects; they need the solution filter the .NET CI uses, or a Windows runner for the lock files (ADR-0059).
 - **GAP-028** (Architecture, proposed; needs a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change): No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, the runners' Android SDK, and the checks that move to Windows (code shape, duplicate code with PMD's batch launcher, the SBOM) are untested (ADR-0059).
 - **GAP-031** (Architecture, proposed): The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059).
 - **GAP-022** (Craft, proposed; needs the check shipped as a .NET tool the app restores, or its source exported with the kit's files): An app can't run the code shape check (CRF-011, ADR-0050) or the duplicate code check (CRF-003, ADR-0051) on its own machine: both need the kit's Kit.CodeShape source, which isn't in .kit/tools, and the duplicate check needs Java and PMD too, so they run only in the app's CI and a breach shows up on the pull request.
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
-- **GAP-037** (Tests, proposed; needs test projects in the app template or a shared check, and a CI change): 24 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001 to OPS-003, OPS-005, OPS-006, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them.
+- **GAP-037** (Tests, proposed; needs test projects in the app template or a shared check, and a CI change): 24 rules are gated only by the kit's sample app or web UI fixture, so in an app they're advisory until it copies the sample's tests: API-002, API-003, API-004, API-006, API-007, ARC-001, ARC-003, CRF-006, CRF-007, CRF-013, CRF-014, OPS-001, OPS-002, OPS-003's resilience handler (its constructor ban is a build gate), OPS-005, OPS-006, SEC-007 to SEC-011, SEC-013, TST-003 and UI-001. Each says so in an advisory app part (ADR-0063). Apps need those tests from the template, or a shared check that runs them.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
 - **GAP-040** (Security, proposed; needs a script that reads the licenses of the packages in the lock files, an allowlist, and a CI step): SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12).
 - **GAP-041** (Security, proposed; needs a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR): Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
-- **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
+- **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12). Microsoft's logging pages offer redaction (Microsoft.Extensions.Compliance.Redaction, with [LoggerMessage] parameters classified as sensitive) as the way to keep such data out; it would be a new dependency, chosen with the test (.NET best-practices pass, 2026-11-16).
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).
 - **GAP-043** (Observability, proposed; needs an SLO per app in its plan or runbook, and alert rules in its hosting's infrastructure code): No service level objectives or alerts: an app sends telemetry (OPS-001) but nothing says what good service is (an availability and latency objective) or who is told when it's missed. They belong with the deployment pipeline and its hosting (GAP-015) (rules audit, 2026-11-12).
 - **GAP-029** (Supply chain and build, proposed; needs a pinned PMD release-key fingerprint, gpg in the pin job, and a way to handle a key change): PMD's zip is checked against a SHA-256 taken from GitHub's digest for the same release asset it downloads (ADR-0060), so a zip replaced 7 or more days before the pin is taken, or bad from its first upload, would be pinned as it is (Set-PmdPin refuses one changed more recently). Checking PMD's signature (the .asc beside each zip) against a pinned PMD release key would catch that too.
