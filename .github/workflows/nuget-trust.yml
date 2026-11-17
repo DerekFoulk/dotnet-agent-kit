@@ -40,27 +40,37 @@ jobs:
           "differs=$($differs.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           exit $LASTEXITCODE
 
+  # Also when the check couldn't run (nuget.org down, a malformed index): a failed scheduled run otherwise reaches only
+  # whoever last edited the schedule.
   report:
     name: Open an issue
     needs: check
-    if: ${{ always() && needs.check.outputs.differs == 'true' && github.event_name != 'pull_request' }}
+    if: ${{ always() && needs.check.result == 'failure' && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     permissions:
       issues: write
     steps:
-      # One open issue at a time: a later run that finds the same difference adds nothing.
+      # One open issue per title at a time: a later run that finds the same thing adds nothing.
       - name: Open an issue unless one is open
         env:
           GH_TOKEN: ${{ github.token }}
+          DIFFERS: ${{ needs.check.outputs.differs }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          title="nuget.org's repository certificates changed"
+          if [ "$DIFFERS" = "true" ]; then
+            title="nuget.org's repository certificates changed"
+            body="nuget.config's trusted certificates for nuget.org differ from the ones nuget.org's service index announces: $RUN_URL
+
+          Until they match, a package signed with a certificate nuget.config doesn't trust fails its restore (NU3004), in the kit and in every app. Run \`dotnet nuget trust sync nuget.org --configfile nuget.config\`, check the new certificate against nuget.org's announcement, and commit it in a pull request (SUP-012, ADR-0066). Apps get it with the next kit release."
+          else
+            title="The nuget.org certificate check failed"
+            body="The check that compares nuget.config's trusted certificates with nuget.org's service index couldn't finish: $RUN_URL
+
+          Read the run's log. If nuget.org was unreachable, run the workflow again by hand; close this issue once a run passes (SUP-012, ADR-0066)."
+          fi
           open="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq 'length')"
           if [ "$open" -gt 0 ]; then
             echo "An issue is already open."
             exit 0
           fi
-          body="nuget.config's trusted certificates for nuget.org differ from the ones nuget.org's service index announces: $RUN_URL
-
-          Until they match, a package signed with a certificate nuget.config doesn't trust fails its restore (NU3004), in the kit and in every app. Run \`dotnet nuget trust sync nuget.org --configfile nuget.config\`, check the new certificate against nuget.org's announcement, and commit it in a pull request (SUP-012, ADR-0066). Apps get it with the next kit release."
           gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"

@@ -58,7 +58,7 @@ Option 1, decided in auto mode (ADR-0035) on 2026-11-16, to close GAP-040 (owner
 ## Consequences
 
 - SEC-005's enforcement becomes a gate in the kit and in apps: `dotnet-ci.reusable.yml` runs the check in the Linux job when there are no UI projects, and in the Windows ui job when there are, as it does the code shape check. Export-KitApp gives an app the script and the kit's policy in `.kit/tools`, and the app's AGENTS.md lists the command. The repo's own `.config/package-licenses.json` stays the app's: the kit sync never writes it.
-- A commercial app sets `"commercial": true`; its CI then fails on FluentAssertions 8, naming AwesomeAssertions. Code review checks that a commercial app has set it (SEC-005's advisory part).
+- A commercial app sets `"commercial": true`; its CI then fails on FluentAssertions 8, naming AwesomeAssertions. No tool can tell whether an app is sold, so setting it is the app owner's step (SEC-005's advisory part).
 - When Dependabot bumps a package that carries a license file, and the file's text changed, the check fails and names both hashes. Someone reads the new license and re-pins the entry, in the kit's policy for the kit's toolset or in the app's file for the app's own packages. A bump that leaves the file alone passes.
 - The check needs a restore first: it reads `.nuspec` files from the global packages folder, which `dotnet nuget locals global-packages --list` names.
 - Not checked: a package's own dependencies' licenses beyond what NuGet resolves, which are all in the lock files anyway, and licenses of tools CI downloads outside NuGet (PMD, gitleaks), which ADR-0051 and ADR-0024 chose by their licenses.

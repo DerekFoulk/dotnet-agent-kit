@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     Fails when a package the solution's lock files resolve has a license the license policy doesn't allow (SEC-005,
-    ADR-0004, ADR-0077).
+    ADR-0004, ADR-0079).
 
 .DESCRIPTION
     Reads the packages.lock.json beside every project the .slnx lists, takes every package it resolves (transitive
@@ -147,7 +147,8 @@ function Get-LicenseProblem([object] $Package, [object] $Policy, [string] $Packa
     $commercialUse = @($matched | Where-Object { -not $_.ContainsKey('commercialUse') -or $_['commercialUse'] })
     if ($matched.Count -gt 0 -and ($commercialUse.Count -gt 0 -or -not $Policy.Commercial)) { return }
     if ($matched.Count -gt 0) {
-        return "$name`: $($license.Identity) is free only for non-commercial use ($($matched[0]['reason'])), and this repo is marked commercial in .config/package-licenses.json; use $swap instead (ADR-0004)."
+        $replace = if ($swap) { "use $swap instead" } else { 'replace it with a package free for commercial use' }
+        return "$name`: $($license.Identity) is free only for non-commercial use ($($matched[0]['reason'])), and this repo is marked commercial in .config/package-licenses.json; $replace (ADR-0004)."
     }
     if ($license.Expression -and (Test-LicenseExpression -Expression $license.Expression -Allowed $Policy.Licenses)) { return }
     $changed = if ($entries.Count -gt 0) { "; the policy pins $(($entries | ForEach-Object { $_['license'] }) -join ' or ') for it, so its license changed: read the new one before you pin it" } else { '' }
@@ -202,7 +203,7 @@ function Invoke-PackageLicenseCheck {
 
     foreach ($problem in $problems) { Write-Host "  $problem" -ForegroundColor Red }
     if ($problems.Count -gt 0) {
-        Write-Host "`n$($problems.Count) license problem(s). Every package needs a license free for commercial use, or a reasoned entry in .config/package-licenses.json (SEC-005, ADR-0077)." -ForegroundColor Red
+        Write-Host "`n$($problems.Count) license problem(s). Every package needs a license free for commercial use, or a reasoned entry in .config/package-licenses.json (SEC-005, ADR-0079)." -ForegroundColor Red
         return 1
     }
     Write-Host "$($packages.Count) package(s) in $lockFiles lock file(s): every license is allowed." -ForegroundColor Green

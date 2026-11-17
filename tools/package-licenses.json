@@ -1,5 +1,5 @@
 {
-  "about": "The kit's license policy (SEC-005, ADR-0004, ADR-0077), read by Test-PackageLicenses.ps1. 'licenses' are SPDX ids free for commercial use; 'packages' allow one package under one license each, pinned, with the reason. A repo adds its own, or sets \"commercial\": true, in .config/package-licenses.json.",
+  "about": "The kit's license policy (SEC-005, ADR-0004, ADR-0079), read by Test-PackageLicenses.ps1. 'licenses' are SPDX ids free for commercial use; 'packages' allow one package under one license each, pinned, with the reason. A repo adds its own, or sets \"commercial\": true, in .config/package-licenses.json.",
   "licenses": [
     "0BSD",
     "Apache-2.0",

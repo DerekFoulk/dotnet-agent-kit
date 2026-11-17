@@ -340,7 +340,7 @@ jobs:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
 
-      # SEC-005 (GAP-040, ADR-0077): every package the lock files resolve, transitive ones too, has a license the kit's
+      # SEC-005 (GAP-040, ADR-0079): every package the lock files resolve, transitive ones too, has a license the kit's
       # policy (tools/package-licenses.json) or the repo's .config/package-licenses.json allows, read from its .nuspec
       # in the global packages folder. With UI projects, which this job doesn't restore, the ui job runs it on Windows.
       - name: Package licenses

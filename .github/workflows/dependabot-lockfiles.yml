@@ -5,7 +5,8 @@ name: dependabot lock files and pins
 # (dependabot-core#13950). Locked restore in CI then fails. On Dependabot's NuGet PRs this workflow
 # refreshes every lock file and pushes them to the PR.
 # On Dependabot's maven PRs, which move PMD's version in .config/pmd/pom.xml (ADR-0060), it pins the new
-# release zip's SHA-256 beside it, from GitHub's digest for the asset, as a person did by hand before.
+# release zip's SHA-256 beside it, once the zip's signature verifies against PMD's release key pinned in
+# .config/pmd (GAP-029) and its hash equals GitHub's digest for the asset.
 #
 # The write token never shares a runner with code from the PR: "refresh" runs restore (which evaluates
 # the PR's MSBuild files) and "pin-pmd" runs the PR's copy of KitPmd.psm1, each with a read-only token,

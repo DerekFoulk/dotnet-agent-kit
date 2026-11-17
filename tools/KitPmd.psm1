@@ -97,7 +97,7 @@ function Assert-PmdSignature {
     $fingerprint = Get-PmdReleaseKeyFingerprint $Path
     # gpg's exit code is read below, with its status lines; the pin job's own setting would throw before that.
     $PSNativeCommandUseErrorActionPreference = $false
-    $keyring =Join-Path ([IO.Path]::GetTempPath()) "kit-pmd-gpg-$([guid]::NewGuid().ToString('n'))"
+    $keyring = Join-Path ([IO.Path]::GetTempPath()) "kit-pmd-gpg-$([guid]::NewGuid().ToString('n'))"
     New-Item -ItemType Directory -Path $keyring | Out-Null
     try {
         $import = gpg --batch --homedir $keyring --import (Join-Path $Path $script:KeyFileName) 2>&1
