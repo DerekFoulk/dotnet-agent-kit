@@ -16,6 +16,11 @@ public sealed class DeclarationTests
     public void TheAppDeclaresAtLeastOneAssembly() =>
         AppLayers.All.Should().NotBeEmpty("an Architecture.Tests project checks the app's layers, so it names them in AppLayers");
 
+    [Fact]
+    public void NoAssemblyIsDeclaredInTwoLayers() =>
+        AppLayers.All.GroupBy(assembly => assembly.GetName().Name, StringComparer.Ordinal).Where(group => group.Count() > 1)
+            .Select(group => group.Key).Should().BeEmpty("each assembly is in one layer, whose rules it follows");
+
     // The test project's .deps.json lists the projects it references, directly or through others, with "type":
     // "project"; packages, whose names can end the same way (Microsoft.AspNetCore.Components.Web), are "package".
     [Fact]
