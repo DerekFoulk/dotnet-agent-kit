@@ -30,7 +30,7 @@ rules:
         how: "ci: the sample's FunctionalTests check its database check, its live check and its 5-second timeout"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): HealthTests checks that /health and /alive answer an anonymous probe with the status only in Production, that a second probe is served from the cache, that a slow check is cut off with a 504, and that /alive stays healthy while a readiness check fails; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): HealthTests checks that /health and /alive answer an anonymous probe with the status only in Production, that a second probe is served from the cache, that both are time-boxed and a slow check is cut off with a 504, and that /alive stays healthy while a readiness check fails; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
         how: "that /health includes the app's database, until its own FunctionalTests check it, as the sample's do"

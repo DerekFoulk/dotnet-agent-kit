@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace Kit.AppTests.Functional;
 
@@ -52,7 +53,8 @@ public sealed class HealthTests
         second.Headers.Age.Should().NotBeNull("the second probe within the cache window is served from the output cache");
     }
 
-    // Each endpoint carries a request timeout; the test below sees it cut a slow check off, through /health.
+    // Each endpoint is time-boxed, by any of the ways ASP.NET Core documents (a named or inline timeout, a policy, or
+    // the default policy); the test below sees a timeout cut a slow check off, through /health.
     [Theory]
     [InlineData(Alive)]
     [InlineData(Health)]
@@ -63,7 +65,8 @@ public sealed class HealthTests
         Endpoint endpoint = app.Services.GetRequiredService<EndpointDataSource>().Endpoints
             .Single(candidate => (candidate as RouteEndpoint)?.RoutePattern.RawText == path);
 
-        endpoint.Metadata.GetMetadata<RequestTimeoutAttribute>().Should().NotBeNull("an anonymous endpoint probes call often is time-boxed");
+        IsTimeBoxed(endpoint, app.Services.GetRequiredService<IOptions<RequestTimeoutOptions>>().Value)
+            .Should().BeTrue("an anonymous endpoint that probes call often is time-boxed");
     }
 
     // A check that waits 30 seconds meets every request timeout policy shortened to 100 ms, so the test stays fast
@@ -103,6 +106,12 @@ public sealed class HealthTests
         health.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         alive.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    private static bool IsTimeBoxed(Endpoint endpoint, RequestTimeoutOptions options) =>
+        endpoint.Metadata.GetMetadata<DisableRequestTimeoutAttribute>() is null
+        && (endpoint.Metadata.GetMetadata<RequestTimeoutAttribute>() is not null
+            || endpoint.Metadata.GetMetadata<RequestTimeoutPolicy>() is not null
+            || options.DefaultPolicy is not null);
 
     private static void ShortenEveryPolicy(RequestTimeoutOptions options)
     {
