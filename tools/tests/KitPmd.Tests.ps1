@@ -5,10 +5,23 @@
 # release zip's SHA-256 in pmd-dist-bin.zip.sha256 beside it, in sha256sum's format. The shared .NET CI reads both
 # through Get-PmdPin; on Dependabot's PMD PRs, dependabot-lockfiles.yml writes the new hash with Set-PmdPin.
 
+# GAP-029: the pin job checks the zip's signature with gpg, which CI's Linux runners have. A Windows machine without gpg on
+# its PATH skips the tests that run it; CI never does.
+BeforeDiscovery {
+    $script:skipGpg = -not (Get-Command -Name gpg -ErrorAction SilentlyContinue) -and -not $env:CI
+}
+
 BeforeAll {
     Import-Module (Join-Path $PSScriptRoot '..' 'KitPmd.psm1') -Force
 
     $script:hash = 'd27177c185b837fa57f097e482d1253468aa035379c5eb2671fa0a279109b179'
+
+    # A stand-in for a PMD zip, signed with a test key made for these tests (key A), whose public key and fingerprint
+    # New-PinFolder pins; signed-by-another-key.asc is the same zip signed with a second test key (key B).
+    $script:signed = Join-Path $PSScriptRoot 'fixtures' 'PmdSignature'
+    $script:zip = Join-Path $signed 'pmd-dist-7.30.0-bin.zip'
+    $script:signature = Join-Path $signed 'pmd-dist-7.30.0-bin.zip.asc'
+    $script:zipHash = 'c20c20e6c9be6dcd78a4293bc77d27a599cf6e3c3d8ecb711f9357b65b2c584b'
 
     # A pin folder like .config/pmd, with the pom's version and the pin file's text given.
     function New-PinFolder([string] $Version, [string] $Pin) {
@@ -35,6 +48,9 @@ BeforeAll {
         if ($null -ne $Pin) {
             [IO.File]::WriteAllText((Join-Path $folder 'pmd-dist-bin.zip.sha256'), $Pin)
         }
+        foreach ($file in 'pmd-release-key.asc', 'pmd-release-key.fingerprint') {
+            Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'fixtures' 'PmdSignature' $file) -Destination $folder
+        }
         $folder
     }
 }
@@ -46,6 +62,21 @@ Describe 'Get-PmdVersion' {
 
         Get-Command -Module KitPmd -Name Get-PmdVersion -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         Get-PmdVersion -Path $folder | Should -Be '7.30.0'
+    }
+}
+
+# The pin job downloads the zip and its signature before it pins anything, while the pin file still names the old zip.
+Describe 'Get-PmdDownload' {
+    It "gives the GitHub release URLs of the pom's version's zip and its signature" {
+        $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
+
+        Get-Command -Module KitPmd -Name Get-PmdDownload -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $download = Get-PmdDownload -Path $folder
+
+        $download.Version | Should -Be '7.30.0'
+        $download.FileName | Should -Be 'pmd-dist-7.30.0-bin.zip'
+        $download.Url | Should -Be 'https://github.com/pmd/pmd/releases/download/pmd_releases%2F7.30.0/pmd-dist-7.30.0-bin.zip'
+        $download.SignatureUrl | Should -Be 'https://github.com/pmd/pmd/releases/download/pmd_releases%2F7.30.0/pmd-dist-7.30.0-bin.zip.asc'
     }
 }
 
@@ -95,15 +126,15 @@ Describe 'Get-PmdPin' {
     }
 }
 
-# On Dependabot's PMD PRs the workflow passes the release as `gh api repos/pmd/pmd/releases/tags/...` returns it.
+# On Dependabot's PMD PRs the workflow passes the release as `gh api repos/pmd/pmd/releases/tags/...` returns it, with
+# the zip and its .asc signature, downloaded from the release.
 Describe 'Set-PmdPin' {
     BeforeAll {
         $script:now = [datetimeoffset]'2026-11-20T00:00:00Z'
-        $script:newHash = 'aa' * 32
 
         # The fields of GitHub's release JSON that Set-PmdPin reads.
         function New-Release([string] $Tag = 'pmd_releases/7.30.0', [string] $Asset = 'pmd-dist-7.30.0-bin.zip',
-            [AllowNull()] [string] $Digest = "sha256:$newHash", [string] $UpdatedAt = '2026-11-12T09:31:00Z') {
+            [AllowNull()] [string] $Digest = "sha256:$zipHash", [string] $UpdatedAt = '2026-11-12T09:31:00Z') {
             [pscustomobject]@{
                 tag_name = $Tag
                 assets   = @(
@@ -112,24 +143,30 @@ Describe 'Set-PmdPin' {
                 )
             }
         }
-    }
 
-    It "pins the pom's version with GitHub's digest for the zip, in sha256sum's format: LF, no BOM" {
-        $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
-
-        Set-PmdPin -Path $folder -Release (New-Release) -Now $now
-
-        $bytes = [IO.File]::ReadAllBytes((Join-Path $folder 'pmd-dist-bin.zip.sha256'))
-        $bytes | Should -Be ([Text.Encoding]::ASCII.GetBytes("$newHash  pmd-dist-7.30.0-bin.zip`n"))
-        (Get-PmdPin -Path $folder).Sha256 | Should -Be $newHash
-    }
-
-    It 'pins a zip exactly 7 days old: the wait matches Dependabot''s cooldown, no longer' {
-        $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
-
-        Set-PmdPin -Path $folder -Release (New-Release -UpdatedAt '2026-11-13T00:00:00Z') -Now $now
-
-        (Get-PmdPin -Path $folder).Sha256 | Should -Be $newHash
+        # The release, zip and signature for one way a signature check must fail, changing the pin folder as it needs.
+        function Get-SignatureCase([string] $Setup, [string] $Folder) {
+            $case = [pscustomobject]@{ Release = (New-Release); Zip = $zip; Signature = $signature }
+            $otherSignature = Join-Path $signed 'signed-by-another-key.asc'
+            switch ($Setup) {
+                'OtherSignature' { $case.Signature = $otherSignature }
+                'OtherKeyInFile' {
+                    $case.Signature = $otherSignature
+                    Get-Content -Raw -LiteralPath (Join-Path $signed 'another-key.asc') | Add-Content -LiteralPath (Join-Path $Folder 'pmd-release-key.asc')
+                }
+                'ChangedZip' {
+                    # One bit changed, and GitHub's digest made to match the changed zip, so only the signature can tell.
+                    $case.Zip = Join-Path $Folder 'pmd-dist-7.30.0-bin.zip'
+                    $bytes = [IO.File]::ReadAllBytes($zip)
+                    $bytes[10] = $bytes[10] -bxor 1
+                    [IO.File]::WriteAllBytes($case.Zip, $bytes)
+                    $case.Release = New-Release -Digest "sha256:$((Get-FileHash -LiteralPath $case.Zip -Algorithm SHA256).Hash.ToLowerInvariant())"
+                }
+                'OtherDigest' { $case.Release = New-Release -Digest "sha256:$('aa' * 32)" }
+                'BadFingerprint' { [IO.File]::WriteAllText((Join-Path $Folder 'pmd-release-key.fingerprint'), "7db3 1375`n") }
+            }
+            $case
+        }
     }
 
     It 'refuses <Case>, leaving the pin as it was' -ForEach @(
@@ -143,8 +180,71 @@ Describe 'Set-PmdPin' {
         $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
         $pinFile = Join-Path $folder 'pmd-dist-bin.zip.sha256'
 
-        { Set-PmdPin -Path $folder -Release (New-Release @Release) -Now $now } | Should -Throw $Message
+        { Set-PmdPin -Path $folder -Release (New-Release @Release) -Zip $zip -Signature $signature -Now $now } | Should -Throw $Message
 
         [IO.File]::ReadAllText($pinFile) | Should -Be "$hash  pmd-dist-7.29.0-bin.zip`n"
+    }
+
+    # GAP-029: GitHub's digest comes from the server the zip comes from, so a zip replaced there before the pin, or bad from
+    # its first upload, would match it. The signature, checked against the key the kit pins, catches that.
+    Context 'with gpg' -Skip:$skipGpg {
+        It "pins the zip's SHA-256 once its signature verifies against the pinned key, in sha256sum's format: LF, no BOM" {
+            $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
+            (Get-Command -Name Set-PmdPin).Parameters.Keys | Should -Contain 'Signature'
+
+            Set-PmdPin -Path $folder -Release (New-Release) -Zip $zip -Signature $signature -Now $now
+
+            $bytes = [IO.File]::ReadAllBytes((Join-Path $folder 'pmd-dist-bin.zip.sha256'))
+            $bytes | Should -Be ([Text.Encoding]::ASCII.GetBytes("$zipHash  pmd-dist-7.30.0-bin.zip`n"))
+            (Get-PmdPin -Path $folder).Sha256 | Should -Be $zipHash
+        }
+
+        It 'pins a zip exactly 7 days old: the wait matches Dependabot''s cooldown, no longer' {
+            $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
+
+            Set-PmdPin -Path $folder -Release (New-Release -UpdatedAt '2026-11-13T00:00:00Z') -Zip $zip -Signature $signature -Now $now
+
+            (Get-PmdPin -Path $folder).Sha256 | Should -Be $zipHash
+        }
+
+        It 'refuses <Case>, leaving the pin as it was' -ForEach @(
+            # Key B isn't in the keyring at all, so gpg can't check the signature.
+            @{ Case = 'a signature by a key the kit does not pin'; Setup = 'OtherSignature'; Message = '*7DB313753A04F657E6B794D7EC2F75A6ED2C6BC4*' }
+            # Key B is in the key file and its signature is good, but it isn't the pinned key.
+            @{ Case = 'a good signature by another key in the key file'; Setup = 'OtherKeyInFile'; Message = '*7DB313753A04F657E6B794D7EC2F75A6ED2C6BC4*' }
+            @{ Case = 'a zip changed after it was signed'; Setup = 'ChangedZip'; Message = '*7DB313753A04F657E6B794D7EC2F75A6ED2C6BC4*' }
+            @{ Case = 'a signed zip whose SHA-256 is not GitHub''s digest'; Setup = 'OtherDigest'; Message = "*GitHub's digest*" }
+            @{ Case = 'a fingerprint file that is not 40 uppercase hex digits'; Setup = 'BadFingerprint'; Message = '*pmd-release-key.fingerprint*' }
+        ) {
+            $folder = New-PinFolder -Version '7.30.0' -Pin "$hash  pmd-dist-7.29.0-bin.zip`n"
+            $pinFile = Join-Path $folder 'pmd-dist-bin.zip.sha256'
+            $case = Get-SignatureCase -Setup $Setup -Folder $folder
+
+            { Set-PmdPin -Path $folder -Release $case.Release -Zip $case.Zip -Signature $case.Signature -Now $now } | Should -Throw $Message
+
+            [IO.File]::ReadAllText($pinFile) | Should -Be "$hash  pmd-dist-7.29.0-bin.zip`n"
+        }
+    }
+}
+
+# The key itself (ADR-0060, GAP-029): PMD's "PMD Release Signing Key <releases@pmd-code.org>", whose fingerprint PMD
+# publishes on https://docs.pmd-code.org/latest/pmd_userdocs_signed_releases.html. A key change is a reviewed PR that
+# replaces both files.
+Describe "The kit's PMD release key" -Skip:$skipGpg {
+    BeforeAll {
+        $script:config = Join-Path $PSScriptRoot '..' '..' '.config' 'pmd'
+    }
+
+    It 'pins the primary key fingerprint PMD publishes' {
+        [IO.File]::ReadAllText((Join-Path $config 'pmd-release-key.fingerprint')).TrimEnd() | Should -Be '2EFA55D0785C31F956F2F87EA0B5CA1A4E086838'
+    }
+
+    It 'holds that one key and nothing else' {
+        $lines = @(gpg --batch --show-keys --with-colons (Join-Path $config 'pmd-release-key.asc'))
+        $primary = @($lines | Where-Object { $_ -like 'pub:*' })
+        $firstFingerprint = @($lines | Where-Object { $_ -like 'fpr:*' })[0]
+
+        $primary | Should -HaveCount 1
+        $firstFingerprint.Split(':')[9] | Should -Be '2EFA55D0785C31F956F2F87EA0B5CA1A4E086838'
     }
 }
