@@ -428,6 +428,18 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 
+    # STY-007 and STY-009: CA1707, which checks internal APIs here, fails an underscore in a static readonly field, and
+    # Microsoft's identifier names page gives a private or internal static field the s_ prefix. A static readonly field
+    # that isn't private takes PascalCase, as a public one does in the Framework Design Guidelines; a private one keeps s_.
+    Context 'a static readonly field''s name' {
+        It 'is PascalCase wherever the field isn''t private' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'VisibleStaticReadonly')
+
+            $build.Output | Should -Not -Match 'IDE1006|CA1707'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
     # STY-011 (ADR-0076): of the threading analyzers, only VSTHRD100 and VSTHRD101 are on, so the names a framework fixes
     # or documents (an async Main, middleware's InvokeAsync and async Invoke, a Razor Pages OnGetAsync) and a test method named for its
     # behavior (TST-010) build, where VSTHRD200 would ask for or against an Async suffix.
