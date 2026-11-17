@@ -426,6 +426,17 @@ Describe 'Repo build configuration' -Tag 'Build' {
         }
     }
 
+    # ARC-008, GAP-039: only a project that sets PureAssembly gets BannedSymbols.Pure.txt, so randomness, files, the
+    # network, the environment and the console stay open everywhere else (the Pure* rows show they're shut in one that does).
+    Context 'a project not marked pure' {
+        It 'may use what an assembly marked pure may not' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'UnmarkedProjectAccess')
+
+            $build.Output | Should -Not -Match 'RS0030'
+            $build.ExitCode | Should -Be 0 -Because $build.Output
+        }
+    }
+
     # STY-011: the C# async page lists GetAwaiter().GetResult() first among the ways to block where await can't reach,
     # because it keeps the original exception; the ban on Wait and Result leaves it open.
     Context 'blocking where await can''t reach' {
