@@ -28,12 +28,14 @@ flowchart LR
     templates --> apps
     tools -->|.kit/tools| apps
     codeshape -->|source, built in .kit| apps
+    apptests["tools/AppTests<br/>(shared tests)"] -->|compiled into Architecture.Tests| sample
+    apptests -->|.kit/tools/AppTests| apps
     ci -->|reusable workflows| apps
 ```
 
 ## The sample's layers
 
-The sample is one ARC-001 module. Each arrow is a project reference; `sample/tests/Bookmarks.Architecture.Tests` fails if a layer depends outward.
+The sample is one ARC-001 module. Each arrow is a project reference; `sample/tests/Bookmarks.Architecture.Tests`, which compiles the kit's shared architecture tests (`tools/AppTests`, ADR-0079), fails if a layer depends outward.
 
 ```mermaid
 flowchart LR

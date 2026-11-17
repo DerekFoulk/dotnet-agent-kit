@@ -78,11 +78,8 @@ rules:
     sources: ["owner, 2026-11-08", "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10", "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html, retrieved 2026-11-13"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's LayerTests and SharedLibraryTests (ArchUnitNET) fail when business code depends on infrastructure, UI or the API (ARC-001, ARC-003)"
-      - kind: advisory
-        in: [app]
-        how: "until the app's Architecture.Tests carries the same tests, following the sample"
+        in: [kit, app]
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0079): LayerTests and SharedLibraryTests fail when business code depends on infrastructure, UI or the API (ARC-001, ARC-003); an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
         how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests once it's accepted"
@@ -97,11 +94,8 @@ rules:
     sources: ["owner, 2026-11-08", "ADR-0043", "https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod, retrieved 2026-11-10", "https://en.wikipedia.org/wiki/Acyclic_dependencies_principle, retrieved 2026-11-10"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's NamespaceCycleTests (ArchUnitNET slices) fail on a cycle among the Bookmarks namespace and the namespaces under it, in the five production assemblies that hold them"
-      - kind: advisory
-        in: [app]
-        how: "until its own Architecture.Tests (TST-003) carries the same test, following the sample"
+        in: [kit, app]
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0079): NamespaceCycleTests (ArchUnitNET slices) fails on a cycle among each root namespace the app's assemblies share (Bookmarks in the sample) and the namespaces under it; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
         how: "stable dependencies and component cohesion, checked by code review"
@@ -206,14 +200,11 @@ rules:
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's Architecture.Tests (LayerTests) fail if the domain assembly references EF Core or ADO.NET"
+        in: [kit, app]
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0079): SharedLibraryTests fails if a domain assembly references EF Core or ADO.NET; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: gate
         in: [kit, app]
         how: "build: CA1051 (no visible instance fields) and CA1002 (no List<T> in a member's signature: property, return type or parameter), on internal types too (STY-009), and CA2227 (collection properties are read-only), on public types only, all on through AnalysisLevel latest-all"
-      - kind: advisory
-        in: [app]
-        how: "until it has architecture tests of its own, following the sample"
       - kind: advisory
         in: [kit, app]
         how: "code review checks what the analyzers can't: no setter that lets a caller break an invariant, a settable collection property on an internal type (CA2227 checks public types only), and no persistence attributes or constructors only the database needs in domain types"
@@ -255,10 +246,10 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 | RS0030, banned APIs | `BannedSymbols.txt`, read by `Microsoft.CodeAnalysis.BannedApiAnalyzers` | `BindingFlags.NonPublic`, `[UnsafeAccessor]`, and the other routes into non-public members found so far; the file's other sections ban APIs for other rules, each naming its own (SEC-014, ARC-008, OPS-003, STY-011, STY-009) |
 | Duplicate code (CRF-003) | `tools/Test-Duplication.ps1`, which runs PMD's copy-paste detector (CPD) in `dotnet-ci.reusable.yml` | a run of tokens repeated in hand-written C#, ignoring using directives, attributes and runs of literals; ADR-0051 sets the length |
 | Nesting, statements per member, file length, members per type, public types per file and LCOM4 (CRF-011, proposed) | `tools/Test-CodeShape.ps1`, which runs the kit's Kit.CodeShape tool in `dotnet-ci.reusable.yml` | a member nested too deep or with too many statements, a file too long or with more than one public type, a type with too many members, or a type whose methods form more than one group that shares no state; it also reports STY-005's nullable rules (a `#nullable` directive, an unlabelled `!` outside a test project, a file marked generated outside `Migrations` that isn't a `.resx` file's designer) as `STY005` |
-| Namespace cycles | the sample's `NamespaceCycleTests` (ArchUnitNET) | a cycle among the root namespace and the namespaces under it; an app copies the test into its own Architecture.Tests |
+| Namespace cycles | the kit's shared `NamespaceCycleTests` (ArchUnitNET, tools/AppTests), compiled into the sample's and every app's Architecture.Tests (ADR-0079) | a cycle among each root namespace the app's assemblies share and the namespaces under it |
 | Dependency injection validation (CRF-013) | the sample's FunctionalTests: `ApiHost` turns on ValidateScopes and ValidateOnBuild, and `DependencyInjectionTests` proves they're on | a singleton that captures a scoped service, or a scoped service resolved from the root, in any environment the tests run the app in |
 | ASP0000 (CRF-013) | ASP.NET Core's analyzers, at warning, in ASP.NET Core projects | a call to `BuildServiceProvider` while services are being registered |
-| Persistence ignorance (CRF-014) | the sample's `LayerTests` | a domain assembly that references EF Core or ADO.NET |
+| Persistence ignorance (CRF-014) | the kit's shared `SharedLibraryTests` (tools/AppTests), in the sample's and every app's Architecture.Tests | a domain assembly that references EF Core or ADO.NET |
 | CA1051, CA1002, CA2227 (CRF-014) | `AnalysisLevel latest-all` | a visible instance field or a `List<T>` in a member's signature (property, return type, parameter), on public and internal types; a settable collection property, on public types only |
 
 `CodeMetricsConfig.txt` is the one source of the limits; CRF-008 states them for readers, and a Pester test fails if the two disagree. `tools/CodeShape/src/Kit.CodeShape/Limits.cs` is the one source of CRF-011's six, checked against its statement the same way. `.globalconfig` is the one list of the rules `latest-all` leaves off and the kit turns on; each has a fixture in `tools/tests/BuildConfig.Tests.ps1`. CA1509 can only be turned on in a global config, which is why these rules live there and not in `.editorconfig`. All of them are on; for CA1014, `Directory.Build.props` declares every assembly not CLS-compliant (ADR-0049). ADR-0043 records the limits and why each is where it is.

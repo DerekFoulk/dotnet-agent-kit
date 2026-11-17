@@ -10,11 +10,8 @@ rules:
     sources: ["ADR-0008", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-13"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: sample/tests/Bookmarks.Architecture.Tests (LayerTests, ArchUnitNET) fails when a layer depends outward"
-      - kind: advisory
-        in: [app]
-        how: "until the app's Architecture.Tests carries the same test, following the sample"
+        in: [kit, app]
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0079): LayerTests fails when a domain, contracts, application or infrastructure assembly references one in a layer outside it; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
         how: "the module's project set and grouping by feature, checked by code review"
@@ -42,11 +39,8 @@ rules:
     sources: ["ADR-0008", "https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-12"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: sample/tests/Bookmarks.Architecture.Tests (SharedLibraryTests) fails when Domain, Contracts or Application references an ASP.NET Core, EF Core, MAUI or WPF assembly"
-      - kind: advisory
-        in: [app]
-        how: "until the app's Architecture.Tests carries the same test, following the sample"
+        in: [kit, app]
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0079): SharedLibraryTests fails when a domain, contracts or application assembly references an ASP.NET Core, EF Core, MAUI or WPF assembly; an app without that project isn't checked until TST-003's check (GAP-027)"
     scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-004

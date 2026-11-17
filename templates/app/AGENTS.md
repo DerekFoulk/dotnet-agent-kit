@@ -45,7 +45,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 
 | Path | What |
 |---|---|
-| `src/`, `tests/` | This app's projects and their tests, created with the first feature. `tests/Directory.Build.props` sets up every `*Tests` project (xUnit v3, coverage) and every `*.Benchmarks` project (BenchmarkDotNet, kit ADR-0062); a load test lives in `tests/load/` |
+| `src/`, `tests/` | This app's projects and their tests, created with the first feature. `tests/Directory.Build.props` sets up every `*Tests` project (xUnit v3, coverage) and every `*.Benchmarks` project (BenchmarkDotNet, kit ADR-0062), and compiles the kit's shared tests into an `*.Architecture.Tests` project (kit ADR-0079): that project names this app's assemblies by layer in its own `AppLayers.cs`, as the kit's sample does in `sample/tests/Bookmarks.Architecture.Tests/AppLayers.cs`, and builds only once it does; a load test lives in `tests/load/` |
 | `docs/app-profile.md` | What this app is, as the owner chose at the new-app intake: app type, data, database, sign-in, hosting and test tools, with their costs (kit ADR-0058). An app made before the intake has none. Where it exists, plans start from it, and changing an answer takes an ADR in `docs/adr/` |
 | `docs/adr/` | This app's decisions, numbered from ADR-0001 |
 | `docs/standards/` | The kit's rules, in full (managed by the kit) |
@@ -53,7 +53,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 | `docs/corrections-log.md` | Every owner correction and what it became |
 | `docs/architecture/modules.md` | A Mermaid diagram of this app's modules and their dependencies (ARC-013); update it with any change that adds a module, a project or a dependency |
 | `.claude/skills/`, `.claude/agents/reviewer.md`, `docs/code-review.md` | The kit's workflow skills, its independent reviewer, and what the reviewer checks on every branch. Some skills are curated .NET skills that the kit copies unchanged from Microsoft's dotnet/skills at a pinned commit (kit ADR-0042): where one disagrees with a kit rule, the kit rule wins |
-| `.kit/` | The kit's checking scripts (`.kit/tools/`) and the manifest of kit-managed files (`.kit/manifest.json`) |
+| `.kit/` | The kit's checking scripts (`.kit/tools/`), the source of its code shape tool and shared tests, with the kit's build files that build them, and the manifest of kit-managed files (`.kit/manifest.json`) |
 
 **Kit ADRs:** "ADR-NNNN" inside a kit-managed file (`docs/standards/`, the skills, the reviewer agent, `docs/code-review.md`, the kit sections of this file) means the kit's ADR, at https://github.com/DerekFoulk/dotnet-agent-kit/tree/{{KitCommit}}/docs/adr. This app's own ADRs are in `docs/adr/`. Likewise, a path under `tools/` or `sample/` in `docs/standards/` describes how the kit enforces a rule in its own repo; this repo's commands are the Commands table above.
 
