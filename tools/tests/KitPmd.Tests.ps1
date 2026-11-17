@@ -5,10 +5,10 @@
 # release zip's SHA-256 in pmd-dist-bin.zip.sha256 beside it, in sha256sum's format. The shared .NET CI reads both
 # through Get-PmdPin; on Dependabot's PMD PRs, dependabot-lockfiles.yml writes the new hash with Set-PmdPin.
 
-# GAP-029: the pin job checks the zip's signature with gpg, which CI's Linux runners have. A Windows machine without gpg on
-# its PATH skips the tests that run it; CI never does.
+# GAP-029: the pin job checks the zip's signature with gpg, on a Linux runner. Off CI, a Windows machine skips the tests
+# that run gpg (Git for Windows' gpg can't read Windows paths), as does a machine without gpg; CI never skips them.
 BeforeDiscovery {
-    $script:skipGpg = -not (Get-Command -Name gpg -ErrorAction SilentlyContinue) -and -not $env:CI
+    $script:skipGpg = ($IsWindows -or -not (Get-Command -Name gpg -ErrorAction SilentlyContinue)) -and -not $env:CI
 }
 
 BeforeAll {
