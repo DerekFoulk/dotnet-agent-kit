@@ -585,7 +585,8 @@ Describe 'Export-KitApp' {
     # would fail only when that line runs.
     It 'includes every kit script that an exported kit script calls from its own folder' {
         $targets = @($map | ForEach-Object { $_.Target })
-        $tools = @($targets | Where-Object { $_ -like '.kit/tools/*' })
+        # The scripts, directly in .kit/tools; the folders under it hold the source of the kit's tools (GAP-022).
+        $tools = @($targets | Where-Object { $_ -like '.kit/tools/*' -and $_ -notlike '.kit/tools/*/*' })
         $called = foreach ($tool in $tools) {
             $text = Get-Content -Raw -LiteralPath (Join-Path $checkout 'tools' (Split-Path $tool -Leaf))
             [regex]::Matches($text, "Join-Path \`$PSScriptRoot '([^'/\\]+\.ps(?:m)?1)'") | ForEach-Object { $_.Groups[1].Value }
