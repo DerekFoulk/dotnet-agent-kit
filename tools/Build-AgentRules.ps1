@@ -54,11 +54,13 @@ function ConvertTo-RuleBody {
     ($lines -join "`n") + "`n"
 }
 
+function Get-AppProjectType { param([string] $RepoRoot, [string[]] $Known) }
+
 # Builds every generated rule file in memory: for each standard, its accepted rules split into always-on
 # rules (paths include **) and path-scoped rules, written once for Claude Code (.claude/rules, paths:)
 # and once for Copilot (.github/instructions, applyTo:). Proposed and retired rules aren't in force.
 function Get-AgentRuleFile {
-    param([Parameter(Mandatory)] [string] $StandardsPath)
+    param([Parameter(Mandatory)] [string] $StandardsPath, [string[]] $ProjectType)
 
     foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
         # A standard that lost its front matter or rules key is an editing mistake, not "no rules": skipping
