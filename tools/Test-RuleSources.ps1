@@ -87,8 +87,39 @@ function Get-BasisProblem {
     if ($Basis -eq 'authority' -and -not ($sources -match '^https?://')) {
         return "basis 'authority' needs a URL source for the authority"
     }
+    # ADR-0082: an authority rule says only what its pages say. An owner's decision or an ADR among its sources means
+    # part of it is the kit's, which is a preference rule of its own; the owner accepting the rule is 'ratified'.
+    if ($Basis -eq 'authority') {
+        foreach ($source in @($sources | Where-Object { $_ -match '^(owner, |ADR-\d{4}$)' })) {
+            "basis 'authority' cites pages only, not '$source': split what the owner or ADR adds into a preference rule, or move the owner's acceptance to ratified (ADR-0082)"
+        }
+    }
     if ($Basis -eq 'preference' -and -not ($sources -match '^(owner, |ADR-\d{4}$)')) {
         return "basis 'preference' needs an 'owner, YYYY-MM-DD' or ADR source"
+    }
+}
+
+# ADR-0082: layer says whose rule it is. An authority's rule is the outside layer and a preference is the owner's;
+# a floor rule (law, safety, security, privacy, licenses) can be either.
+$script:LayersForBasis = @{ authority = @('outside', 'floor'); preference = @('owner', 'floor') }
+
+function Get-RatifiedProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
+
+    $hasRatified = $Rule.Contains('ratified') -and "$($Rule['ratified'])" -match '\S'
+    if ("$($Rule['basis'])" -ne 'authority') {
+        if ($hasRatified) { "ratified is for an authority rule; a preference's sources already name the owner or the ADR" }
+        return
+    }
+    if (-not $hasRatified) {
+        if ("$($Rule['status'])" -eq 'accepted') {
+            "an accepted authority rule needs ratified: 'owner, YYYY-MM-DD' or 'ADR-NNNN', who accepted it"
+        }
+        return
+    }
+    $ratified = "$($Rule['ratified'])"
+    if ($ratified -notmatch '^(owner, |ADR-\d{4}$)') {
+        return "ratified '$ratified' must read 'owner, YYYY-MM-DD' or 'ADR-NNNN'"
     }
 }
 
@@ -212,10 +243,17 @@ function Get-RuleSourceProblem {
                     (Test-Present $_) -and -not (Get-SourceProblem -Source "$_" -AdrPath $AdrPath)
                 })
             if ($rule.Contains('basis') -and $validSources -and "$($rule['basis'])" -in $script:AllowedValues['basis']) {
-                $message = Get-BasisProblem -Basis "$($rule['basis'])" -Sources $validSources
-                if ($message) {
+                foreach ($message in @(Get-BasisProblem -Basis "$($rule['basis'])" -Sources $validSources)) {
                     New-Problem -File $file.Name -RuleId $ruleId -Message $message
                 }
+            }
+            $basis = "$($rule['basis'])"
+            if ($script:LayersForBasis.ContainsKey($basis) -and "$($rule['layer'])" -in $script:AllowedValues['layer'] -and
+                "$($rule['layer'])" -notin $script:LayersForBasis[$basis]) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message "basis '$basis' can't have layer '$($rule['layer'])': use $($script:LayersForBasis[$basis] -join ' or ') (ADR-0082)"
+            }
+            foreach ($message in @(Get-RatifiedProblem -Rule $rule)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
             }
             foreach ($message in @(Get-QuoteProblem -Rule $rule)) {
                 New-Problem -File $file.Name -RuleId $ruleId -Message $message
