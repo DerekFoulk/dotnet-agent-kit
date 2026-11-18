@@ -105,8 +105,12 @@ function Invoke-CodeShapeCheck {
     }
 }
 
+# The rule a Kit.CodeShape error code names: CRF011 is CRF-011 (tools/CodeShape/src/Kit.CodeShape/RuleCodes.cs).
 function ConvertTo-CodeShapeRuleId {
     param([Parameter(Mandatory)] [string] $Code)
+
+    if ($Code -cnotmatch '^(?<letters>[A-Z]+)(?<number>\d+)$') { throw "'$Code' isn't a Kit.CodeShape error code, such as CRF011." }
+    "$($Matches['letters'])-$($Matches['number'])"
 }
 
 # Prints Kit.CodeShape's output and returns the check's exit code (ADR-0089). Each finding names its rule in its error
@@ -119,12 +123,12 @@ function Write-CodeShapeResult {
     $counted = 0
     $warned = 0
     foreach ($line in $Output -split '\r?\n' | Where-Object { $_ }) {
-        $finding = [regex]::Match($line, '^.+\(\d+,\d+\): error (?<code>[A-Z]+)(?<number>\d+): ')
+        $finding = [regex]::Match($line, '^.+\(\d+,\d+\): error (?<code>[A-Z]+\d+): ')
         if (-not $finding.Success) {
             Write-Host $line
             continue
         }
-        $rule = "$($finding.Groups['code'].Value)-$($finding.Groups['number'].Value)"
+        $rule = ConvertTo-CodeShapeRuleId -Code $finding.Groups['code'].Value
         if (Write-RuleFinding -Id $rule -Message $line -Path $RuleStatusPath) { $counted++ } else { $warned++ }
     }
 
