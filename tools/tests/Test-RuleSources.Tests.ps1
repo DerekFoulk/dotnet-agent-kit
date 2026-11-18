@@ -245,6 +245,8 @@ types:
         It 'reports an accepted authority rule with ratified <Case>' -ForEach @(
             @{ Case = 'missing'; Ratified = $null; Expected = "*accepted*authority*ratified*" }
             @{ Case = 'not an owner date or an ADR'; Ratified = 'the owner'; Expected = "*ratified 'the owner'*owner, YYYY-MM-DD*ADR*" }
+            @{ Case = 'an owner with no real date'; Ratified = 'owner, 2026-13-45'; Expected = "*ratified*owner, YYYY-MM-DD*" }
+            @{ Case = 'an ADR that doesn''t exist'; Ratified = 'ADR-9999'; Expected = "*ratified*ADR-9999*not found*" }
         ) {
             $url = 'https://example.com/guide, retrieved 2026-11-01'
             $rule = New-Rule -Override @{ basis = 'authority'; layer = 'outside'; status = 'accepted'; sources = @($url); quotes = New-QuotesFor $url }
