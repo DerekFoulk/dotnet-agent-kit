@@ -13,7 +13,8 @@
     because Visual Studio reads that file but doesn't document reading AGENTS.md. It also fills each
     "rules from docs/standards/<file>.md" block in AGENTS.md and templates/app/AGENTS.md with that standard's
     rules, leaving the rest of those files alone (ADR-0065). Proposed and retired rules aren't in force, so they're
-    left out. Generated files carry a marker; generated files no standard produces any more are removed.
+    left out. It writes every rule's status to tools/rule-status.json (.kit/tools in an app), which the checks read to
+    warn, not fail, on a proposed rule's findings (ADR-0089). Generated files carry a marker; generated files no standard produces any more are removed.
     ADR-0084: an app gets only the core ruleset (rules with scope core) and the rulesets of the app types on the
     "App types:" line of its docs/app-profile.md; a repo with no such line, such as the kit, gets every rule. Each "<!-- ruleset: <type> -->" block in docs/adr is filled with that ruleset's rules.
 
@@ -235,6 +236,30 @@ function Update-RuleBlock {
     $result.ToString()
 }
 
+# ADR-0089: every rule's status, as JSON, so a check can tell whether the rule it enforces is in force: a proposed
+# rule's findings are warnings, an accepted rule's fail. JSON because the shared CI that runs the checks has no YAML
+# module, and ConvertFrom-Json is built in. Every rule, whatever an app's types, since a status doesn't depend on them.
+# The file sits beside the scripts that read it (KitRuleStatus.psm1): tools/ in the kit, .kit/tools/ in an app.
+function Get-RuleStatusFile {
+    param([Parameter(Mandatory)] [string] $RepoRoot, [Parameter(Mandatory)] [string] $StandardsPath)
+
+    $status = @{}
+    foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
+        foreach ($rule in @((Read-FrontMatter -Path $file.FullName)['rules'])) {
+            $id = "$($rule['id'])"
+            if ($status.ContainsKey($id)) { throw "Rule $id is in docs/standards more than once; each id names one rule." }
+            $status[$id] = "$($rule['status'])"
+        }
+    }
+    [string[]] $ids = @($status.Keys)
+    [Array]::Sort($ids, [StringComparer]::Ordinal)
+    $sorted = [ordered]@{}
+    foreach ($id in $ids) { $sorted[$id] = $status[$id] }
+
+    $folder = if (Test-Path -LiteralPath (Join-Path $RepoRoot '.kit' 'tools') -PathType Container) { '.kit/tools' } else { 'tools' }
+    [pscustomobject]@{ Path = "$folder/rule-status.json"; Content = ((ConvertTo-Json -InputObject $sorted) -replace "`r`n", "`n") + "`n" }
+}
+
 # Visual Studio reads .github/copilot-instructions.md but doesn't document reading AGENTS.md, so the
 # repository instructions are a generated copy of AGENTS.md: one source, no drift.
 # -Text is AGENTS.md with its rule blocks already filled, so the copy matches what the build writes.
@@ -293,6 +318,7 @@ function Invoke-AgentRuleBuild {
             if ($relative -eq 'AGENTS.md') { $agentsText = $filled }
         }
         $expected += Get-CopilotInstructionsFile -Text $agentsText
+        $expected += Get-RuleStatusFile -RepoRoot $RepoRoot -StandardsPath $standardsPath
         # An app made before ADR-0064 has no docs/code-review.md until the kit sync brings it.
         $codeReview = Join-Path $RepoRoot 'docs' 'code-review.md'
         if (Test-Path -LiteralPath $codeReview) { $expected += Get-CodeReviewInstructionsFile -SourcePath $codeReview }

@@ -426,6 +426,13 @@ Describe 'Export-KitApp' {
         Test-Path -LiteralPath (Join-Path $app '.kit/tools/package-licenses.json') | Should -BeTrue
     }
 
+    # ADR-0089: the checks read whether their rule is in force from the file beside them, which the app's own rule
+    # build writes the same as the kit's.
+    It "gets the kit's rule statuses beside the checks" {
+        Test-Path -LiteralPath (Join-Path $app '.kit/tools/rule-status.json') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $app 'tools/rule-status.json') | Should -BeFalse
+    }
+
     It 'gets the database guide that DAT-001 and the plan checklist point to' {
         Test-Path -LiteralPath (Join-Path $app 'docs/database-guide.md') | Should -BeTrue
         Get-Content -Raw -LiteralPath (Join-Path $app 'docs/standards/data.md') | Should -Match 'docs/database-guide\.md'
