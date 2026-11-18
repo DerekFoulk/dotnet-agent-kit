@@ -19,7 +19,14 @@ function Get-RuleStatus {
     param([Parameter(Mandatory)] [string] $Id, [string] $Path)
 
     if (-not $Path) { $Path = $script:DefaultPath }
-    $statuses = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "The rule statuses file $Path doesn't exist, so no check can tell whether its rule is in force. Run Build-AgentRules.ps1."
+    }
+    $text = Get-Content -Raw -LiteralPath $Path
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        throw "The rule statuses file $Path is empty, so no check can tell whether its rule is in force. Run Build-AgentRules.ps1."
+    }
+    $statuses = $text | ConvertFrom-Json
     $entry = $statuses.PSObject.Properties | Where-Object { $_.Name -ceq $Id }
     if (-not $entry) {
         throw "Rule $Id isn't in $Path, so its check can't tell whether it's in force. Check the id, or run Build-AgentRules.ps1."
