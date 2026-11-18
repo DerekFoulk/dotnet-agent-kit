@@ -751,3 +751,49 @@ Describe 'Sync-KitApp' {
         }
     }
 }
+
+# ADR-0084, review of the branch: a sync exported both kit versions without the app's profile, so a typed app's
+# filtered rule files read as changed on every sync. The export gets the profile whenever that version's exporter
+# takes one.
+Describe 'Export-KitAppAt' {
+    BeforeAll {
+        . (Join-Path $PSScriptRoot '..' 'Sync-KitApp.ps1')
+        Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+        $script:savedGitAt = Set-TestGitEnvironment
+
+        # A kit whose exporter records what it was given in the manifest.
+        function New-StubKit([switch] $TakesProfile) {
+            $kit = Join-Path $TestDrive "kit-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $kit 'tools') | Out-Null
+            $param = if ($TakesProfile) { 'param([string] $Name, [string] $Destination, [string] $KitRef, [string] $KitRoot, [string] $AppProfile)' }
+            else { 'param([string] $Name, [string] $Destination, [string] $KitRef, [string] $KitRoot)' }
+            $body = @'
+New-Item -ItemType Directory -Force -Path (Join-Path $Destination '.kit') | Out-Null
+$given = if (Get-Variable -Name AppProfile -ErrorAction SilentlyContinue) { $AppProfile } else { $null }
+@{ appName = $Name; files = @(); given = $given } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Destination '.kit/manifest.json')
+'@
+            Set-Content -LiteralPath (Join-Path $kit 'tools' 'Export-KitApp.ps1') -Value "$param`n$body"
+            git -C $kit init -q -b main
+            git -C $kit add -A
+            git -C $kit commit -q -m 'chore: stub kit'
+            $kit
+        }
+    }
+    AfterAll { Restore-TestGitEnvironment -Saved $script:savedGitAt }
+
+    It 'hands the app''s profile to an exporter that takes one' {
+        $kit = New-StubKit -TakesProfile
+
+        $manifest = Export-KitAppAt -KitRoot $kit -KitRef 'main' -Name 'Contoso.Notes' -Destination (Join-Path $TestDrive "out-$(New-Guid)") -AppProfile "App types: maui`n"
+
+        $manifest['given'] | Should -Be "App types: maui`n"
+    }
+
+    It 'exports without it at a kit version whose exporter takes none' {
+        $kit = New-StubKit
+
+        $manifest = Export-KitAppAt -KitRoot $kit -KitRef 'main' -Name 'Contoso.Notes' -Destination (Join-Path $TestDrive "out-$(New-Guid)") -AppProfile "App types: maui`n"
+
+        $manifest['given'] | Should -BeNullOrEmpty
+    }
+}

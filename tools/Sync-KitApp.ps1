@@ -102,7 +102,8 @@ function Export-KitAppAt {
         [Parameter(Mandatory)] [string] $KitRoot,
         [Parameter(Mandatory)] [string] $KitRef,
         [Parameter(Mandatory)] [string] $Name,
-        [Parameter(Mandatory)] [string] $Destination
+        [Parameter(Mandatory)] [string] $Destination,
+        [string] $AppProfile
     )
 
     $checkout = Join-Path ([IO.Path]::GetTempPath()) "kit-sync-$([guid]::NewGuid().ToString('N'))"
