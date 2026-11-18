@@ -7,3 +7,4 @@ paths:
 # Architecture
 
 - ARC-005: Record significant technical decisions as ADRs in docs/adr from the template, with options, trade-offs, a recommendation and the pillars affected.
+- ARC-015: Maintain an architecture decision record (ADR) that captures the context, consequences, and justifications for architectural decisions, and document tradeoffs and rejected options.

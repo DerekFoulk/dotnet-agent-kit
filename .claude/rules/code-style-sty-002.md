@@ -7,5 +7,7 @@ paths:
 # Code style
 
 - STY-002: Use var only where the type is named on the right side of the assignment (a new or a cast), as dotnet/runtime does, and never for a built-in type such as int or string; everywhere else, write the type.
-- STY-010: Code follows the Framework Design Guidelines where no analyzer checks them; code review checks the themes docs/code-review.md lists.
+- STY-010: Follow the Framework Design Guidelines when developing classes and components that extend .NET; each guideline binds at its own prefix (Do, Consider, Avoid, Do not). Code review checks the themes docs/code-review.md lists (exceptions, collections, parameters, naming, properties, events and operator overloads). The page warns that some of the information may be out of date. STY-009 gates the guidelines an analyzer checks.
 - STY-012: Code follows Microsoft's .NET best-practices and C# guidance pages where no analyzer checks them; code review checks the themes docs/code-review.md lists.
+- STY-016: Code review applies STY-010's Framework Design Guidelines themes to internal APIs too.
+- STY-017: Await a task instead of blocking on it: write code that awaits the result in a nonblocking manner, replacing Task.Wait or Task.Result with await, Task.WaitAny with await Task.WhenAny, Task.WaitAll with await Task.WhenAll and Thread.Sleep with await Task.Delay. Synchronous blocking should be avoided whenever possible; where you must block, GetAwaiter().GetResult() is generally the preferred approach, and Wait() and Result are discouraged. Return async void only from event handlers; other methods that don't return a value should return a Task. Await the Task a method returns, or assign it to a variable for observation later, and put the await inside a using expression.

@@ -79,7 +79,7 @@ public sealed class ProjectCheckTests : IDisposable
     }
 
     // The owner, 2026-11-16 ("exempt tests"): a test's ! follows an assertion that checked the value, or passes null on
-    // purpose to test a guard, so a test project (a name ending in Tests, as STY-008 and CA2007 have it) needs no label.
+    // purpose to test a guard, so a test project (a name ending in Tests, as STY-015 and CA2007 have it) needs no label.
     // A #nullable directive is still reported there.
     [Fact]
     public void ATestProjectMayUseTheNullForgivingOperatorUnlabelledButNotNullableDirectives()

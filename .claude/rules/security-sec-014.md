@@ -8,3 +8,4 @@ paths:
 # Security
 
 - SEC-014: The security analyzers stay on and fail the build: every CA2xxx, CA3xxx and CA5xxx security rule that AnalysisLevel latest-all turns on, the SYSLIB obsoletions of unsafe APIs (BinaryFormatter, obsolete cryptography and TLS types), and BannedSymbols.txt's bans of the APIs those rules miss (Aes.Create, whose CBC needs an HMAC nothing checks for, algorithms named at run time, the accept-any-certificate validator, DTD parsing and the legacy XML resolver and reader); a suppression of one names its reason where it lives.
+- SEC-024: Don't use binary formatters, and stop using BinaryFormatter as soon as possible, even if the data seems trustworthy. If you disable a security analyzer rule, clearly mark the reason in code and inform the designated security officer for your development project.
