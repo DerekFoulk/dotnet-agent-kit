@@ -105,6 +105,10 @@ function Invoke-CodeShapeCheck {
     }
 }
 
+function ConvertTo-CodeShapeRuleId {
+    param([Parameter(Mandatory)] [string] $Code)
+}
+
 # Prints Kit.CodeShape's output and returns the check's exit code (ADR-0089). Each finding names its rule in its error
 # code, CRF011 for CRF-011: a proposed rule's finding is a warning that doesn't fail the check, an accepted rule's is
 # printed as it is, in MSBuild's error format, and fails it (KitRuleStatus.psm1). Any other exit code than 1 is the

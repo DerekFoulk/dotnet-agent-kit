@@ -121,6 +121,26 @@ Describe 'Test-CodeShape.ps1' {
             Write-CodeShapeResult -ExitCode 1 -Output 'Unhandled exception.' -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 1
         }
 
+        It 'reads a finding''s rule from its error code: <Code> is <Rule>' -ForEach @(
+            @{ Code = 'CRF011'; Rule = 'CRF-011' }
+            @{ Code = 'STY005'; Rule = 'STY-005' }
+            @{ Code = 'ABC123'; Rule = 'ABC-123' }
+        ) {
+            ConvertTo-CodeShapeRuleId -Code $Code | Should -BeExactly $Rule
+        }
+
+        # Review of the branch: a new error code in Kit.CodeShape needs a rule the statuses list, or the check throws.
+        It 'maps every error code Kit.CodeShape prints to a rule in the kit''s rule-status.json' {
+            $codes = Get-Content -Raw -LiteralPath (Join-Path $script:kitRoot 'tools/CodeShape/src/Kit.CodeShape/RuleCodes.cs')
+            $listed = @([regex]::Matches($codes, 'const string \w+ = "(?<code>[A-Z]+\d+)";') | ForEach-Object { $_.Groups['code'].Value })
+            $statuses = Get-Content -Raw -LiteralPath (Join-Path $script:kitRoot 'tools/rule-status.json') | ConvertFrom-Json
+
+            $listed.Count | Should -BeGreaterThan 1
+            foreach ($code in $listed) {
+                $statuses.PSObject.Properties.Name | Should -Contain (ConvertTo-CodeShapeRuleId -Code $code) -Because "Kit.CodeShape prints $code"
+            }
+        }
+
         It 'exits 0 as a script, with the warning annotation, on a CRF-011 breach while CRF-011 is proposed' {
             $script = Join-Path $PSScriptRoot '..' 'Test-CodeShape.ps1'
 
