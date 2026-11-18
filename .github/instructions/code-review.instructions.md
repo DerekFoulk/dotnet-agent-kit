@@ -41,7 +41,7 @@ If you find nothing, say so.
   - an enum, not Booleans, where a member would take two or more Boolean parameters or a Boolean might later need a third value; a constructor's Boolean that only sets a Boolean property is fine;
   - events typed `EventHandler<TEventArgs>`, with an `EventArgs` subclass for their data;
   - operator overloads only on types that behave like primitives, such as a money or vector type.
-- Microsoft's .NET best-practices and C# guidance that no analyzer checks (STY-012; the analyzers, bans and rules STY-012 names gate the rest). Rank each **Consider**, or higher where it causes a defect, and **Blocking** where it's a security or privacy problem (a secret or personal data in a message, untrusted input in a pattern, or matched with neither a timeout nor `NonBacktracking`):
+- The kit's checklist of .NET best-practices and C# guidance that no analyzer checks (STY-012, a preference; the quoted rules it draws on, such as the CS- and NET- rules, say what Microsoft's pages say, and the analyzers, bans and rules STY-012 names gate the rest). Rank each **Consider**, or higher where it causes a defect, and **Blocking** where it's a security or privacy problem (a secret or personal data in a message, untrusted input in a pattern, or matched with neither a timeout nor `NonBacktracking`):
   - **Exceptions.**
     - State is restored when an operation fails partway, and a check comes first, such as a state test, where a failure callers expect often would otherwise throw (STY-010 covers the Try pattern).
     - Messages are full sentences that end in a period, with no secret or personal data (SEC-012).
@@ -85,7 +85,12 @@ If you find nothing, say so.
     - No pattern is built from untrusted input.
     - Matching untrusted input sets a timeout or uses `RegexOptions.NonBacktracking`.
 - A rule or doc that contradicts the ADR it cites, or another rule (CRF-003: each fact has one source).
-- A new or changed rule in `docs/standards/` (ADR-0063):
+- A new or changed rule in `docs/standards/` (ADR-0063, ADR-0082). Compare it with each of its stored quotes, and refuse any rule worded more strongly than its quote (**Blocking**):
+  - **Its words match its quotes.** The statement and the `why` say only what the quotes say, at the quotes' strength. DO and must are the imperative; DON'T stays "never" or "don't"; we recommend and should are "prefer", "is recommended" or "should"; CONSIDER is "consider"; AVOID is "avoid". A page that only allows or shows an example supports no rule. A rule that says "must" where the page says "consider", or claims what no quote says, is **Blocking**.
+  - **Its quotes are real.** Each is one contiguous passage that the page shows. Read the page for any quote that looks paraphrased, and say whether `Test-RuleQuotes.ps1` passed on the branch (the Rule quotes workflow runs it on the PR).
+  - **Its additions are split out.** Anything stricter than the quotes, or any owner decision, is its own `basis: preference` rule, citing the owner or the ADR. A mixed rule is **Blocking**.
+  - **Its status is the owner's.** No rule turns from proposed to accepted without the owner's words saying so.
+  - **Its project types are honest.** `[all]` fits a WPF app, a MAUI app, a console app and a class library alike. A rule with web assumptions (HTTP, middleware, Program.cs hosting, Problem Details, server databases) under `[all]` is **Should fix**.
   - its `basis` matches its sources. An authority's rule cites the authority by URL. Microsoft, standards bodies and tool vendors are authorities. Practitioners such as Kent Beck, Martin Fowler, Robert C. Martin and William Durand are not, so a rule resting on them is a preference;
   - an authority's rule is a gate wherever a tool can check it;
   - each enforcement part's `kind` and `in` are true: a gate fails the change, and it runs where `in` says (kit, app or both);
