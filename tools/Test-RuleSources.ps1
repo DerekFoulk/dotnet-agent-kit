@@ -108,7 +108,7 @@ function Get-BasisProblem {
 $script:LayersForBasis = @{ authority = @('outside', 'floor'); preference = @('owner', 'floor') }
 
 function Get-RatifiedProblem {
-    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [Parameter(Mandatory)] [string] $AdrPath)
 
     $hasRatified = $Rule.Contains('ratified') -and "$($Rule['ratified'])" -match '\S'
     if ("$($Rule['basis'])" -ne 'authority') {
@@ -122,9 +122,12 @@ function Get-RatifiedProblem {
         return
     }
     $ratified = "$($Rule['ratified'])"
-    if ($ratified -notmatch '^(owner, |ADR-\d{4}$)') {
+    if ($ratified -notmatch '^(owner|ADR-\d{4}$)') {
         return "ratified '$ratified' must read 'owner, YYYY-MM-DD' or 'ADR-NNNN'"
     }
+    # The same form as an owner or ADR source: a real date, or an ADR that exists.
+    $problem = Get-SourceProblem -Source $ratified -AdrPath $AdrPath
+    if ($problem) { "ratified: $problem" }
 }
 
 # ADR-0082: a quote is the page's own words, with the page and the day they were read, so the rule can be compared
@@ -316,7 +319,7 @@ function Get-RuleSourceProblem {
             foreach ($message in @(Get-ScopeProblem -Rule $rule -Known $appTypes.Ids)) {
                 New-Problem -File $file.Name -RuleId $ruleId -Message $message
             }
-            foreach ($message in @(Get-RatifiedProblem -Rule $rule)) {
+            foreach ($message in @(Get-RatifiedProblem -Rule $rule -AdrPath $AdrPath)) {
                 New-Problem -File $file.Name -RuleId $ruleId -Message $message
             }
             foreach ($message in @(Get-QuoteProblem -Rule $rule)) {
