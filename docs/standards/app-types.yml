@@ -1,0 +1,18 @@
+# The app types a rule's scope names (ADR-0084): the types the new-app intake offers (templates/app-intake.json). One
+# list, read by Test-RuleSources.ps1, Build-AgentRules.ps1, Test-Scorecard.ps1 and the intake. A rule's scope is core,
+# for every app type, or a list of these ids. Each type's ruleset has its own ADR, which lists its rules and the
+# framework's own Microsoft guidance. WPF, Windows Forms, WinUI 3, Blazor Hybrid, Razor Pages and MVC, and workers
+# aren't supported types yet.
+types:
+  - id: web-api
+    name: ASP.NET Core Web API
+    docs: https://learn.microsoft.com/aspnet/core/fundamentals/apis
+    adr: ADR-0086
+  - id: blazor
+    name: Blazor Web App
+    docs: https://learn.microsoft.com/aspnet/core/blazor/
+    adr: ADR-0087
+  - id: maui
+    name: .NET MAUI
+    docs: https://learn.microsoft.com/dotnet/maui/what-is-maui
+    adr: ADR-0088
