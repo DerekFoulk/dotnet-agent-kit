@@ -25,12 +25,14 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Solution
+    [string] $Solution,
+    [string] $RuleStatusPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
 
 # The C# projects in a solution, each with its preprocessor symbols and source files, as Kit.CodeShape's manifest
 # lists them.
@@ -99,6 +101,10 @@ function Invoke-CodeShapeCheck {
     finally {
         Remove-Item -LiteralPath $manifest -ErrorAction Ignore
     }
+}
+
+function Write-CodeShapeResult {
+    param([int] $ExitCode, [AllowEmptyString()] [string] $Output, [string] $RuleStatusPath)
 }
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
