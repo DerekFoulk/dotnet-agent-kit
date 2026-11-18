@@ -20,12 +20,14 @@
 param(
     [string] $Solution,
     [string] $FilterPath,
-    [string] $Runner
+    [string] $Runner,
+    [string] $RuleStatusPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
 
 # The MSBuild property that makes a project a UI project, its kind, and the GitHub runners that build it.
 $script:UiKinds = @(
@@ -36,7 +38,7 @@ $script:UiKinds = @(
 )
 
 function Get-UiProject {
-    param([Parameter(Mandatory)] [string] $Solution, [string] $FilterPath, [string] $Runner)
+    param([Parameter(Mandatory)] [string] $Solution, [string] $FilterPath, [string] $Runner, [string] $RuleStatusPath)
 
     $projects = foreach ($listed in Get-SolutionProject -Solution $Solution) {
         $path = $listed.Path
