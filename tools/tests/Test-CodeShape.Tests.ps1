@@ -141,6 +141,17 @@ Describe 'Test-CodeShape.ps1' {
             }
         }
 
+        # Review of the branch: a mutant that always exits 0 survived this file. The script's exit code is the gate.
+        It 'exits 1 as a script on a CRF-011 breach once CRF-011 is accepted' {
+            $script = Join-Path $PSScriptRoot '..' 'Test-CodeShape.ps1'
+
+            $output = pwsh -NoProfile -File $script -Solution (Join-Path $script:fixtures 'Deep.slnx') -RuleStatusPath (New-StatusFile 'accepted') 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1 -Because $output
+            $output | Should -Match '(?m)^.*Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep'
+            $output | Should -Not -Match '::warning'
+        }
+
         It 'exits 0 as a script, with the warning annotation, on a CRF-011 breach while CRF-011 is proposed' {
             $script = Join-Path $PSScriptRoot '..' 'Test-CodeShape.ps1'
 
