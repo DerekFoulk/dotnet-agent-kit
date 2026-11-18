@@ -380,12 +380,12 @@ Describe 'Test-Scorecard.ps1' {
         }
 
         # ADR-0084: an app gets the common ruleset and its types' rulesets, so the scorecard shows what each type gets.
-        It 'counts the rules an app of each project type gets, in force and proposed' {
-            $web = New-Rule -Id 'STY-002'; $web['projectTypes'] = @('web-api')
-            $maui = New-Rule -Id 'STY-003' -Status 'proposed'; $maui['projectTypes'] = @('maui')
-            $common = New-Rule -Id 'STY-001'; $common['projectTypes'] = @('all')
+        It 'counts the rules an app of each app type gets, in force and proposed' {
+            $web = New-Rule -Id 'STY-002'; $web['scope'] = @('web-api')
+            $maui = New-Rule -Id 'STY-003' -Status 'proposed'; $maui['scope'] = @('maui')
+            $common = New-Rule -Id 'STY-001'; $common['scope'] = 'core'
             $paths = New-Fixture -Rules @($common, $web, $maui) -Areas @(New-Area -Override @{ rules = @('STY-001', 'STY-002', 'STY-003') }) -Body "`n$start`n$end`n"
-            Set-Content -LiteralPath (Join-Path $paths.Standards 'project-types.yml') -Value @'
+            Set-Content -LiteralPath (Join-Path $paths.Standards 'app-types.yml') -Value @'
 types:
   - { id: web-api, name: ASP.NET Core Web API, docs: 'https://learn.microsoft.com/aspnet/core/web-api/' }
   - { id: maui, name: .NET MAUI, docs: 'https://learn.microsoft.com/dotnet/maui/' }
@@ -395,7 +395,7 @@ types:
             $lines = (Get-Content -Raw -LiteralPath $paths.Scorecard) -split "`r?`n"
 
             $lines | Should -Contain '| Ruleset | Rules in force | Proposed rules |'
-            $lines | Should -Contain '| Common (every type) | 1 | 0 |'
+            $lines | Should -Contain '| Core (every app type) | 1 | 0 |'
             $lines | Should -Contain '| ASP.NET Core Web API | 2 | 0 |'
             $lines | Should -Contain '| .NET MAUI | 1 | 1 |'
         }

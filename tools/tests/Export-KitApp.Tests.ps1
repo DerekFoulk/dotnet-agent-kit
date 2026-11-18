@@ -252,10 +252,10 @@ Describe 'Export-KitApp' {
     }
 
     # ADR-0084: New-KitApp hands the export the app's profile, so its first rule files hold only the common ruleset and
-    # its project types' rulesets, and the manifest lists exactly those.
+    # its app types' rulesets, and the manifest lists exactly those.
     It 'writes the app profile it''s given before generating the rule files, so a MAUI app gets no web-only rule' {
         $mauiApp = Join-Path $TestDrive 'maui-app'
-        $profileText = "# App profile: Contoso.Notes`n`n## Project types`n`nProject types: maui`n"
+        $profileText = "# App profile: Contoso.Notes`n`n## App types`n`nApp types: maui`n"
 
         & $script -Name 'Contoso.Notes' -Destination $mauiApp -KitRef $commit -KitRoot $kit -AppProfile $profileText
 
