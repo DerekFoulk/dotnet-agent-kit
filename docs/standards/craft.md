@@ -209,7 +209,7 @@ rules:
         how: "build: CA1051 (no visible instance fields) and CA1002 (no List<T> in a member's signature: property, return type or parameter), on internal types too (STY-009), and CA2227 (collection properties are read-only), on public types only, all on through AnalysisLevel latest-all"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks what the analyzers can't: no setter that lets a caller break an invariant, a settable collection property on an internal type (CA2227 checks public types only)"
+        how: "code review checks what the analyzers can't: an outside actor that reaches an object's private state other than through a function or property setter, such as a mutable field or collection handed out by a getter"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-015
@@ -393,8 +393,8 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-021
-    statement: "The domain is persistence-ignorant, its code unaffected by the choice of persistence technology: a domain assembly references no persistence library (EF Core, ADO.NET), and its types carry no persistence attributes and no constructor only the database needs."
-    why: "A domain that references a persistence library, or is shaped for one, can't be tested, or its storage changed, without it. Microsoft's architectural principles call persistence ignorance valuable, because the same business model can then be persisted in multiple ways, and list a required parameterless constructor and persistence-specific required attributes among its violations; the page states a principle, not a requirement, so this rule is the owner's (2026-11-12). CRF-014 is the page's encapsulation."
+    statement: "Types keep their state behind members that keep it valid (encapsulation, CRF-014), and the domain is persistence-ignorant, its code unaffected by the choice of persistence technology: a domain assembly references no persistence library (EF Core, ADO.NET), and its types carry no persistence attributes and no constructor only the database needs."
+    why: "A type that guards its own state can't be put into an invalid one by a caller; Microsoft's page asks only that state be changed through a function or property setter, so keeping it valid is the owner's tightening (2026-11-12). A domain that references a persistence library, or is shaped for one, can't be tested, or its storage changed, without it. Microsoft's architectural principles call persistence ignorance valuable, because the same business model can then be persisted in multiple ways, and list a required parameterless constructor and persistence-specific required attributes among its violations; the page states a principle, not a requirement, so this rule is the owner's (2026-11-12). CRF-014 is the page's encapsulation, which the analyzers gate."
     layer: owner
     basis: preference
     status: accepted
@@ -436,7 +436,7 @@ rules:
         how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): SharedLibraryTests fails if a domain assembly references EF Core or ADO.NET; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks what the check misses: it sees only the assemblies the domain's compiled code references, and only EF Core's and ADO.NET; persistence attributes and a constructor only the database needs, in domain types, are code review's alone"
+        how: "code review checks what the check misses: it sees only the assemblies the domain's compiled code references, and only EF Core's and ADO.NET; persistence attributes and a constructor only the database needs, in domain types, a setter that lets a caller break an invariant, and a settable collection property on an internal type (CA2227 checks public types only), are code review's alone"
     scope: core
     paths: ["**/*.cs", "**/*.csproj"]
 ---

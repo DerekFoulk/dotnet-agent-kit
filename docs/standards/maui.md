@@ -2,7 +2,7 @@
 topic: maui
 rules:
   - id: MAU-001
-    statement: "When a .NET MAUI app uses SQLite-net for a local SQLite database, as Microsoft's MAUI local database page does, use the sqlite-net-pcl NuGet package, despite the package name."
+    statement: "When a .NET MAUI app uses SQLite-net for a local SQLite database, use the sqlite-net-pcl NuGet package, despite the package name."
     why: "Several NuGet packages have similar names, and the page's example is built on sqlite-net-pcl."
     layer: outside
     basis: authority

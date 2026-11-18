@@ -529,7 +529,7 @@ rules:
         how: "code review checks for binary formatters and that a suppressed security rule names its reason; SEC-014's analyzers and bans gate what a tool can see"
     paths: ["**/*.cs", "BannedSymbols.txt"]
   - id: SEC-025
-    statement: "Prefer the algorithms the .NET cryptography page recommends by application: Aes for data privacy; HMACSHA256 or HMACSHA512 for data integrity; ECDsa or RSA for digital signatures; RandomNumberGenerator.GetBytes or RandomNumberGenerator.Fill for random number generation; and Rfc2898DeriveBytes.Pbkdf2 for generating a key from a password. To use padded CBC block ciphers safely, you must combine them with an HMAC or other data integrity check that you validate with a constant time comparison before decrypting. User input should be treated with the same precautions as malicious code calling your code with strange parameters."
+    statement: "Prefer these algorithms by application: Aes for data privacy; HMACSHA256 or HMACSHA512 for data integrity; ECDsa or RSA for digital signatures; RandomNumberGenerator.GetBytes or RandomNumberGenerator.Fill for random number generation; and Rfc2898DeriveBytes.Pbkdf2 for generating a key from a password. To use padded CBC block ciphers safely, you must combine them with an HMAC or other data integrity check that you validate with a constant time comparison before decrypting. User input should be treated with the same precautions as malicious code calling your code with strange parameters."
     why: "Unauthenticated CBC leaks plaintext through padding oracles, and user input is a gateway for bad data into other code (Secure Coding Guidelines pass, 2026-11-15)."
     layer: outside
     basis: authority

@@ -176,7 +176,7 @@ rules:
     scope: [maui]
     paths: ["**/*.csproj"]
   - id: ARC-014
-    statement: "A new general-purpose Windows desktop app is recommended to use WinUI 3, the native UI framework delivered with the Windows App SDK; a team expecting to target several platforms should start with .NET MAUI (Microsoft names React Native for Desktop beside it), which uses WinUI 3 when running on Windows."
+    statement: "A new general-purpose Windows desktop app is recommended to use WinUI 3, the native UI framework delivered with the Windows App SDK; a team expecting to target several platforms should start with .NET MAUI or React Native for Desktop; .NET MAUI uses WinUI 3 when running on Windows."
     why: "The UI framework is the hardest choice to undo in a desktop app: asked whether a WinUI 3 app can later integrate .NET MAUI for cross-platform scenarios, Microsoft's FAQ answers \"Not at this time.\" ARC-011 holds the kit's own rule, which keeps desktop apps on .NET MAUI while WinUI 3 isn't a supported app type."
     layer: outside
     basis: authority
