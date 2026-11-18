@@ -12,7 +12,7 @@ rules:
       - kind: gate
         in: [kit, app]
         how: "ruleset: main protection allows merge commits only (pull_request rule, allowed_merge_methods merge)"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: GIT-002
     statement: "Work on short-lived branches from main (GitHub Flow); every change reaches main through a pull request, never a direct push."
@@ -25,7 +25,7 @@ rules:
       - kind: gate
         in: [kit, app]
         how: "ruleset: main protection requires a pull request"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: GIT-003
     statement: "Nobody force-pushes main or deletes it (GIT-002 keeps direct pushes out); agents merge a PR only as the working mode allows (in review mode, when the owner says so for that PR), never a release PR, and a change to the guardrails only on the owner's yes for that PR at its head commit."
@@ -41,7 +41,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "merging by mode, backed in review mode by the gh pr merge ask rule Set-AgentMode.ps1 adds to .claude/settings.local.json"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: GIT-004
     statement: "Commit subjects and PR titles are Conventional Commits, with type feat, fix, docs, style, refactor, perf, test, build, ci, chore or revert; ! or BREAKING CHANGE marks a major change. git revert's own 'Revert \"<subject>\"' form is accepted when the reverted subject is."
@@ -60,7 +60,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "early feedback, not a gate: the commit-msg hook (.githooks, ADR-0027) applies the same rule before each commit; CI is the gate"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: GIT-005
     statement: "A test-first commit carries the trailer 'TDD: red' and the commit that makes it pass carries 'TDD: green', in the message's final paragraph."
@@ -76,7 +76,7 @@ rules:
       - kind: gate
         in: [app]
         how: "ci: app-checks.reusable.yml runs tools/Test-RedGreenOrder.ps1 the same way"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
 ---
 

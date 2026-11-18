@@ -2,12 +2,116 @@
 topic: ui
 rules:
   - id: UI-001
-    statement: "Every UI an app ships meets WCAG 2.2 level AA: web UI (Blazor, Razor) as written, native UI (MAUI, desktop) as W3C's WCAG2ICT note applies it. Building UI, an agent checks at least that: everything works by keyboard alone, in a logical order, with no trap; every control and meaningful image has an accessible name and every input a visible label; text contrasts at least 4.5:1 (3:1 for large text), and what identifies a control or its state, such as a focus indicator, at least 3:1; keyboard focus is visible and never fully hidden; pointer targets are at least 24 by 24 CSS pixels (dp, pt or epx natively) or spaced to match; and content reflows at 320 CSS pixels wide and text scales to 200% without loss. Each check keeps WCAG's own exceptions, such as a link inside a sentence or a data table that needs two dimensions."
-    why: "WCAG is the global accessibility standard and legal benchmark for web and mobile, and Microsoft's MAUI guidance points apps at it; level AA means every level A and AA criterion. 2.2 is W3C's current Recommendation and adds six level A and AA criteria to 2.1, among them focus not obscured, target size and accessible authentication (GAP-018)."
+    statement: "Every UI an app ships meets WCAG 2.2 level AA: web UI (Blazor, Razor) as written, native UI (MAUI, desktop) as W3C's WCAG2ICT note applies it. Building UI, an agent checks at least the success criteria UI-003 lists, keeping each one's own exceptions, such as a link inside a sentence or a data table that needs two dimensions."
+    why: "The owner chose level AA of WCAG 2.2, W3C's current Recommendation, for every UI (ADR-0046, GAP-018). WCAG defines level AA as satisfying all the level A and AA criteria, WCAG2ICT says how to apply them to software that isn't web content, and Microsoft's MAUI checklist tells apps to follow WCAG. 2.2 adds six level A and AA criteria to 2.1, among them focus not obscured, target size and accessible authentication."
+    layer: owner
+    basis: preference
+    status: proposed
+    sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "For Level AA conformance, the web page satisfies all the Level A and Level AA success criteria, or a Level AA conforming alternate version is provided."
+      - source: "https://www.w3.org/TR/wcag2ict-22/"
+        retrieved: "2026-11-17"
+        text: "This document is intended to help clarify how to use WCAG 2 to make non-web documents and software more accessible to people with disabilities."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Ensure your app is perceivable, operable, understandable, and robust for all by following the Web Content Accessibility Guidelines (WCAG)."
+    projectTypes: [blazor, razor-pages-mvc, maui, blazor-hybrid, winui3, wpf, winforms]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review reviews UI changes against this rule and UI-003 once it's accepted, and the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing)"
+    paths: ["**/*.razor", "**/*.razor.cs", "**/*.cshtml", "**/*.css", "**/*.html", "**/*.xaml", "**/*.xaml.cs"]
+  - id: UI-002
+    statement: "Every page of a web UI (Blazor, Razor) has a Playwright test in the app's E2E.Tests project that opens it, checks it loaded, and runs axe's WCAG 2.2 level A and AA rules (the tags wcag2a, wcag2aa, wcag21a, wcag21aa and wcag22aa), failing on any violation; what a person does that axe can't see, such as where focus goes after a link or the first Tab, gets its own Playwright test."
+    why: "axe finds, in a real browser, on every pull request and for free, the WCAG failures a tool can find in a rendered page: missing names and labels, text contrast, the page's language and title, autocomplete values, target size. A test must check the page loaded first, because axe passes an error page. Keyboard order, focus movement and whether names make sense need a test written for them or a person (ADR-0061, GAP-004)."
+    layer: owner
+    basis: preference
+    status: proposed
+    sources: ["ADR-0061", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://github.com/dequelabs/axe-core/blob/develop/doc/API.md, retrieved 2026-11-17", "https://github.com/dequelabs/axe-core-nuget/blob/develop/packages/playwright/README.md, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/test?view=aspnetcore-10.0, retrieved 2026-11-12"]
+    projectTypes: [blazor, razor-pages-mvc]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the shared .NET CI runs every E2E test an app writes, inside Microsoft's Playwright image pinned by tag and digest in the repo's .config/playwright/Dockerfile (dotnet-ci.reusable.yml, tools/Invoke-WithPlaywrightImage.ps1, ADR-0061), and the kit's web UI fixture proves the pattern in the kit's own CI, where tools/tests/WebUiFixture.Tests.ps1 holds its axe call to the tags named here"
+      - kind: advisory
+        in: [kit, app]
+        how: "no check finds a page without its test, so code review checks that, once the rule is accepted"
+    paths: ["**/*.razor", "**/*.cshtml", "**/*E2E.Tests/**"]
+  - id: UI-003
+    statement: "To meet WCAG 2.2 level AA, a UI must meet, among all the other level A and AA success criteria: a text alternative for non-text content, and a name for every control (1.1.1); structure and relationships that can be programmatically determined (1.3.1); color not as the only visual means of conveying information (1.4.1); a contrast ratio of at least 4.5:1 for text, 3:1 for large text (1.4.3); text resizable to 200 percent without loss of content or functionality (1.4.4); content that reflows at a width equivalent to 320 CSS pixels (1.4.10); a contrast ratio of at least 3:1 for the visual information that identifies user interface components and states (1.4.11); all functionality operable through a keyboard interface (2.1.1) with no keyboard trap (2.1.2); a focus order that preserves meaning and operability (2.4.3); a visible keyboard focus indicator (2.4.7) that isn't entirely hidden by author-created content (2.4.11); pointer targets at least 24 by 24 CSS pixels unless an exception applies (2.5.8); labels or instructions where content requires input (3.3.2); no cognitive function test in authentication unless an alternative or a mechanism is offered (3.3.8); and a programmatically determinable name and role for every user interface component (4.1.2). For native UI, W3C's WCAG2ICT note says how each criterion applies."
+    why: "WCAG is the global accessibility standard and legal benchmark for web and mobile (Microsoft's MAUI page says so); these are the criteria a UI most often fails, not the whole standard, and each keeps the exceptions its page lists (GAP-018)."
     layer: outside
     basis: authority
     status: proposed
-    sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-11", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-11", "https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/routing#focus-an-element-on-navigation, retrieved 2026-11-11"]
+    sources: ["https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "All non-text content that is presented to the user has a text alternative that serves the equivalent purpose, except for the situations listed below."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "If non-text content is a control or accepts user input, then it has a name that describes its purpose."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "Information, structure, and relationships conveyed through presentation can be programmatically determined or are available in text."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "Color is not used as the only visual means of conveying information, indicating an action, prompting a response, or distinguishing a visual element."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "The visual presentation of text and images of text has a contrast ratio of at least 4.5:1, except for the following:"
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "Large-scale text and images of large-scale text have a contrast ratio of at least 3:1;"
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "Except for captions and images of text, text can be resized without assistive technology up to 200 percent without loss of content or functionality."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "Content can be presented without loss of information or functionality, and without requiring scrolling in two dimensions for:"
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "Vertical scrolling content at a width equivalent to 320 CSS pixels;"
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "The visual presentation of the following have a contrast ratio of at least 3:1 against adjacent color(s):"
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "Visual information required to identify user interface components and states, except for inactive components or where the appearance of the component is determined by the user agent and not modified by the author;"
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "All functionality of the content is operable through a keyboard interface without requiring specific timings for individual keystrokes, except where the underlying function requires input that depends on the path of the user's movement and not just the endpoints."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "If keyboard focus can be moved to a component of the page using a keyboard interface, then focus can be moved away from that component using only a keyboard interface, and, if it requires more than unmodified arrow or tab keys or other standard exit methods, the user is advised of the method for moving focus away."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "If a web page can be navigated sequentially and the navigation sequences affect meaning or operation, focusable components receive focus in an order that preserves meaning and operability."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "Any keyboard operable user interface has a mode of operation where the keyboard focus indicator is visible."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "When a user interface component receives keyboard focus, the component is not entirely hidden due to author-created content."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "The size of the target for pointer inputs is at least 24 by 24 CSS pixels, except when:"
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "Labels or instructions are provided when content requires user input."
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "A cognitive function test (such as remembering a password or solving a puzzle) is not required for any step in an authentication process unless that step provides at least one of the following:"
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "For all user interface components (including but not limited to: form elements, links and components generated by scripts), the name and role can be programmatically determined; states, properties, and values that can be set by the user can be programmatically set; and notification of changes to these items is available to user agents, including assistive technologies."
+      - source: "https://www.w3.org/TR/wcag2ict-22/"
+        retrieved: "2026-11-17"
+        text: "This document is intended to help clarify how to use WCAG 2 to make non-web documents and software more accessible to people with disabilities."
+    projectTypes: [blazor, razor-pages-mvc, maui, blazor-hybrid, winui3, wpf, winforms]
     enforcement:
       - kind: gate
         in: [kit]
@@ -17,25 +121,61 @@ rules:
         how: "an app's axe tests run in the shared .NET CI only once the app writes them (UI-002)"
       - kind: advisory
         in: [kit, app]
-        how: "the rest stays with the person building and code review, which reviews UI changes against this rule once it's accepted, and the plan-checklist skill's Accessibility heading points here (a Pester test keeps it pointing); native UI stays a manual check with each platform's tools (GAP-032)"
-    scope: core
+        how: "the rest stays with the person building and code review, which reviews UI changes against this rule once it's accepted; native UI stays a manual check with each platform's tools (GAP-032)"
     paths: ["**/*.razor", "**/*.razor.cs", "**/*.cshtml", "**/*.css", "**/*.html", "**/*.xaml", "**/*.xaml.cs"]
-  - id: UI-002
-    statement: "Every page of a web UI (Blazor, Razor) has a Playwright test in the app's E2E.Tests project that opens it, checks it loaded, and runs axe's WCAG 2.2 level A and AA rules (the tags wcag2a, wcag2aa, wcag21a, wcag21aa and wcag22aa), failing on any violation; what a person does that axe can't see, such as where focus goes after a link or the first Tab, gets its own Playwright test."
-    why: "axe finds, in a real browser, on every pull request and for free, the WCAG failures a tool can find in a rendered page: missing names and labels, text contrast, the page's language and title, autocomplete values, target size. A test must check the page loaded first, because axe passes an error page. Keyboard order, focus movement and whether names make sense need a test written for them or a person (ADR-0061, GAP-004)."
+  - id: UI-004
+    statement: "A .NET MAUI app uses semantic properties, the recommended approach, for accessibility values, and not the superseded automation properties; AutomationProperties.Name and HelpText are deprecated since .NET 8. Set Description on elements that have a meaning that's important for understanding the content or interacting with the interface; avoid setting it on a Label, or on an Entry or Editor on Android. Ensure images and icons have alternate text descriptions, support large fonts and high contrast (avoid hardcoding control dimensions, prefer layouts that resize, test color schemes in high-contrast mode), design the visual tree with navigation in mind, don't rely on audio or color cues alone, and test the accessibility features on each platform the app targets."
+    why: "Semantic properties rely on each platform's own accessibility experience, and a Description on the wrong control stops the platform's screen reader from speaking the control's own text or from working at all (Microsoft's MAUI accessibility page)."
     layer: outside
     basis: authority
     status: proposed
-    sources: ["ADR-0061", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-12", "https://github.com/dequelabs/axe-core/blob/develop/doc/API.md, retrieved 2026-11-12", "https://github.com/dequelabs/axe-core-nuget/blob/develop/packages/playwright/README.md, retrieved 2026-11-12", "https://learn.microsoft.com/aspnet/core/blazor/test?view=aspnetcore-10.0, retrieved 2026-11-12"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Semantic properties are the .NET MAUI approach to providing accessibility values in apps, and are the recommended approach."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "This property should be set for elements that have a meaning that's important for understanding the content or interacting with the user interface."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Avoid setting the Description attached property on a Label."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Avoid setting the Description attached property on an Entry or Editor on Android."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "The Name attached property has been deprecated in .NET 8."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "The HelpText attached property has been deprecated in .NET 8."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Ensure that images and icons have alternate text descriptions."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Support large fonts and high contrast."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Avoid hardcoding control dimensions, and instead prefer layouts that resize to accommodate larger font sizes."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Test color schemes in high-contrast mode to ensure they are readable."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Design the visual tree with navigation in mind."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Don't rely on audio or color cues alone."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Test the accessibility features of your app on each platform it targets."
+    projectTypes: [maui]
     enforcement:
-      - kind: gate
-        in: [kit, app]
-        how: "ci: the shared .NET CI runs every E2E test an app writes, inside Microsoft's Playwright image pinned by tag and digest in the repo's .config/playwright/Dockerfile (dotnet-ci.reusable.yml, tools/Invoke-WithPlaywrightImage.ps1, ADR-0061), and the kit's web UI fixture proves the pattern in the kit's own CI, where tools/tests/WebUiFixture.Tests.ps1 holds its axe call to the tags named here"
       - kind: advisory
         in: [kit, app]
-        how: "no check finds a page without its test, so code review checks that, once the rule is accepted"
-    scope: core
-    paths: ["**/*.razor", "**/*.cshtml", "**/*E2E.Tests/**"]
+        how: "code review checks MAUI UI changes against this rule; native UI stays a manual check on each platform with its tools and screen reader (GAP-032)"
+    paths: ["**/*.xaml", "**/*.xaml.cs"]
 ---
 
 # UI and accessibility
@@ -46,7 +186,7 @@ WCAG is written for web content. For a MAUI or desktop app, W3C's WCAG2ICT note 
 
 ## The checks to apply while building UI
 
-The rule names six. They're the criteria a UI most often fails, not the whole standard; the full list is on the WCAG 2.2 page. Each criterion has exceptions, listed with it there, and they still apply: the table names the common ones.
+UI-003 names the criteria below. They're the criteria a UI most often fails, not the whole standard; the full list is on the WCAG 2.2 page. Each criterion has exceptions, listed with it there, and they still apply: the table names the common ones.
 
 | Check | WCAG 2.2 criteria | In practice |
 |---|---|---|
@@ -62,15 +202,15 @@ Don't rely on color alone to carry meaning (1.4.1): an error is red *and* says s
 ## Blazor and Razor
 
 - **Labels:** give each input component a `<label for="...">` that matches its `id`, or wrap the input in its `<label>`. Show validation messages as text next to the field, not only as a red border.
-- **Navigation:** keep `<FocusOnNavigate RouteData="routeData" Selector="h1" />` in the router, so a screen reader announces each new page; give every page one `<h1>`.
+- **Navigation:** keep `<FocusOnNavigate RouteData="routeData" Selector="h1" />` in the router, so a screen reader announces each new page; give every page one `<h1>`. This is the kit's advice (UI-001): Microsoft's routing page calls it a common strategy for ensuring a page navigation is announced, not a requirement.
 - **Icon buttons:** add `aria-label` when there's no visible text. Use ARIA only where no native element does the job.
 
 ## MAUI and desktop
 
-- **Names:** set `SemanticProperties.Description` on images, `ImageButton`s and other controls without text, and `SemanticProperties.HeadingLevel` on headings. Use `SemanticProperties.Hint` for extra context. Microsoft's warnings apply: don't set `Description` on a `Label`, on an `Entry` or `Editor` on Android, or on a container on iOS.
+- **Names:** set `SemanticProperties.Description` on images, `ImageButton`s and other controls without text, and `SemanticProperties.HeadingLevel` on headings. Use `SemanticProperties.Hint` for extra context. Microsoft's warnings apply: avoid setting `Description` on a `Label`, or on an `Entry` or `Editor` on Android, and on iOS a `Description` on a control with children leaves the screen reader unable to reach the children.
 - **Order:** the accessibility order is the order controls appear in XAML and the layout, so lay out the visual tree in reading order.
 - **Text size and contrast:** don't hard-code control sizes; let layouts grow with large fonts, and test high-contrast mode.
-- `AutomationProperties.Name`, `HelpText` and `LabeledBy` are deprecated since .NET 8; use the semantic properties instead.
+- `AutomationProperties.Name` and `HelpText` are deprecated since .NET 8, and Microsoft's MAUI page says automation properties have been superseded by semantic properties; use the semantic properties instead (UI-004).
 - UI built in C# rather than XAML (C# markup, a page class) falls under the rule too, though the rule file loads automatically only for XAML and its code-behind.
 
 ## How it's checked
@@ -92,4 +232,4 @@ Don't rely on color alone to carry meaning (1.4.1): an error is red *and* says s
 
 ## Pending ratification
 
-UI-001 and UI-002 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them. A proposed rule isn't in force, and `Build-AgentRules.ps1` writes no rule file for it; once accepted, the file it generates loads only for UI files.
+UI-001 to UI-004 are `proposed` until you accept them: UI-001 and UI-002 were added in auto mode (ADR-0035), and UI-003 and UI-004 hold what the WCAG, WCAG2ICT and Microsoft MAUI pages say, split out of UI-001 on 2026-11-17 so that UI-001 and UI-002 are the owner's decisions (level AA for every UI; the axe test on every page) and the others are the pages' words. A proposed rule isn't in force, and `Build-AgentRules.ps1` writes no rule file for it; once accepted, the file it generates loads only for UI files.

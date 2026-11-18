@@ -1,0 +1,130 @@
+---
+topic: hosting
+rules:
+  - id: HST-001
+    statement: "Don't auto-activate services with a scoped or transient lifetime, and keep what an auto-activated service does at startup fast. For longer-running initialization, consider background services or hosted services."
+    why: "Microsoft's auto-activation page gives these as best practices for services the host creates at startup."
+    layer: outside
+    basis: authority
+    status: proposed
+    sources: ["https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation"
+        retrieved: "2026-11-17"
+        text: "Services with shorter lifetimes (scoped or transient) should not be auto-activated."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation"
+        retrieved: "2026-11-17"
+        text: "Keep startup fast: Auto-activated services should complete their initialization quickly to avoid delaying application startup."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation"
+        retrieved: "2026-11-17"
+        text: "For longer-running initialization, consider using background services or hosted services."
+    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks what is auto-activated and how long its startup work takes"
+    paths: ["**/*.cs"]
+  - id: HST-002
+    statement: "Don't cache an HttpClient that IHttpClientFactory created for a long time, and don't inject a typed client into a singleton service: request a client in a timely manner or each time you need one. Don't cache scope-related information (such as data from HttpContext) inside HttpMessageHandler instances or their dependencies. Don't register a typed client separately, because AddHttpClient already registers it. Don't start a large number of HTTP/1.1 requests at once without specifying limits."
+    why: "Microsoft's IHttpClientFactory troubleshooting page lists these as DO NOT items: a long-lived client keeps one handler and misses DNS and network changes, scope data in a shared handler can leak sensitive information, and a separate registration overwrites the typed client's own. OPS-003 covers using the factory at all, and its cookie exception."
+    layer: outside
+    basis: authority
+    status: proposed
+    sources: ["https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
+        retrieved: "2026-11-17"
+        text: "DO NOT cache HttpClient instances created by IHttpClientFactory for prolonged periods of time."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
+        retrieved: "2026-11-17"
+        text: "DO NOT inject typed client instances into Singleton services."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
+        retrieved: "2026-11-17"
+        text: "CONSIDER requesting a client from IHttpClientFactory in a timely manner or each time you need one."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
+        retrieved: "2026-11-17"
+        text: "DO NOT cache any scope-related information (such as data from HttpContext) inside HttpMessageHandler instances or its dependencies to avoid leaking sensitive information."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
+        retrieved: "2026-11-17"
+        text: "DO NOT register the typed client separately — it is already registered automatically by the AddHttpClient call."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
+        retrieved: "2026-11-17"
+        text: "DO NOT start a large number of HTTP/1.1 requests concurrently at the same time without specifying the limits."
+    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker, maui, blazor-hybrid]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks how typed clients are registered and injected, and that concurrent request volume has a limit; BannedSymbols.txt's ban of HttpClient's constructors (OPS-003) keeps clients coming from the factory"
+    paths: ["**/*.cs"]
+  - id: HST-003
+    statement: "Name a log category after the fully qualified class that writes the message (an ILogger<T> does it), and use log message template formatting, not string interpolation. If a logging data store is slow, don't write to it directly from a logger."
+    why: "Microsoft's logging pages recommend the category name so logs relate back to their code, say interpolation can cause performance issues, and advise against writing to a slow store directly. OPS-007 covers the generated, high-performance logger."
+    layer: outside
+    basis: authority
+    status: proposed
+    sources: ["https://learn.microsoft.com/dotnet/core/extensions/logging/overview, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/logging/overview"
+        retrieved: "2026-11-17"
+        text: "The recommended practice for choosing a log category name is to use the fully qualified name of the class that's creating the log message."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/logging/overview"
+        retrieved: "2026-11-17"
+        text: "In most cases, you should use log message template formatting when logging. Use of string interpolation can cause performance issues."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/logging/overview"
+        retrieved: "2026-11-17"
+        text: "If a logging datastore is slow, don't write to it directly."
+    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker, maui, blazor-hybrid]
+    enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "build: CA2254 (a log message template must be a static expression), which AnalysisLevel latest-all turns on"
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks the category and that logging doesn't write straight to a slow store"
+    paths: ["**/*.cs"]
+  - id: HST-004
+    statement: "Use AddDistributedMemoryCache only in development or testing; it isn't a viable production implementation of IDistributedCache."
+    why: "Microsoft's caching page says so in a caution. It is an in-process cache that doesn't share entries across servers."
+    layer: outside
+    basis: authority
+    status: proposed
+    sources: ["https://learn.microsoft.com/dotnet/core/extensions/caching, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/caching"
+        retrieved: "2026-11-17"
+        text: "AddDistributedMemoryCache should only be used in development or testing scenarios and is not a viable production implementation."
+    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks that production registrations of IDistributedCache aren't the in-memory one"
+    paths: ["**/*.cs"]
+  - id: HST-005
+    statement: "A library that adds registration extension methods must not use the Microsoft.Extensions.DependencyInjection namespace unless it is an official Microsoft package, and must not use names that are already part of the .NET ecosystem from official Microsoft packages."
+    why: "Microsoft's options guidance for library authors gives both as DO NOT items, so a library's extensions don't collide with or pose as Microsoft's."
+    layer: outside
+    basis: authority
+    status: proposed
+    sources: ["https://learn.microsoft.com/dotnet/core/extensions/options-library-authors, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/options-library-authors"
+        retrieved: "2026-11-17"
+        text: "DO NOT use the Microsoft.Extensions.DependencyInjection namespace for non-official Microsoft packages."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/options-library-authors"
+        retrieved: "2026-11-17"
+        text: "DO NOT use names that are already part of the .NET ecosystem from official Microsoft packages."
+    projectTypes: [class-library]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks the namespace and names of a library's registration extensions"
+    paths: ["**/*.cs"]
+---
+
+# Hosting and background services
+
+Rules for apps built on the .NET generic host and the Microsoft.Extensions libraries: dependency injection, logging, caching, the HTTP client factory, and options for libraries. The generic host runs web apps, Worker Services and console apps built with it, so these rules name those project types, plus MAUI where its builder offers the same API (`AddHttpClient`, `builder.Logging`).
+
+Every rule here is proposed, and stays proposed until the owner accepts it. Each states only what its cited Microsoft page says, at the page's own strength.
+
+Other pages on this topic already have a rule: the DI guidelines are CRF-013 and CRF-009, options validation is OPS-006, HttpClient through the factory and its resilience defaults are OPS-003, and the generated logger is OPS-007.

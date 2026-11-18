@@ -12,7 +12,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: COM-002
     statement: "On first use, explain any term, tool or document the owner hasn't used himself, in plain words with an example; refer to documents by path, never by a nickname."
@@ -25,7 +25,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: COM-003
     statement: "When the owner answers a batch of questions, restate them with his answers as a table."
@@ -38,7 +38,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: COM-004
     statement: "Say in one line what a command or script does before running it, and run it yourself whenever you can instead of handing it to the owner."
@@ -51,7 +51,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: COM-005
     statement: "Point to a button, setting or screen only after confirming it exists (current docs or a screenshot); otherwise say you're not sure, do the step yourself, or say how to check."
@@ -64,7 +64,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "conversation can't be checked by a tool; scored on every practice task (practice/)"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: COM-006
     statement: "Make an improvement now when it is cheap, instead of deferring it."
@@ -77,7 +77,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "a judgment call; code review flags deferred cheap fixes"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: COM-007
     statement: "Ask the owner every question that needs his answer in the chat where he works, never only in a pull request or another document; never merge past an unanswered question the pull request depends on."
@@ -90,7 +90,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "conversation can't be checked by a tool; finish-work steps 4 and 5 ask in the chat and hold the merge until the question is answered"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
 ---
 

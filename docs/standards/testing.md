@@ -18,7 +18,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "a change committed with no marker, and a red that crashed instead of failing an assertion, still pass, so test-first itself is advisory"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: TST-002
     statement: "Every plan includes a test list; turn one item at a time into a failing test, never the whole list up front."
@@ -31,7 +31,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the start-work and plan-checklist skills require a test list, and start-work's plan review checks the plan has one before any code; no tool can judge a plan"
-    scope: core
+    projectTypes: [all]
     paths: ["**"]
   - id: TST-003
     statement: "Each part of an app gets the test kinds in the brief's test matrix (unit, integration, functional, UI, architecture, contract, mutation), in one test project per production project plus the shared IntegrationTests, FunctionalTests, E2E.Tests and Architecture.Tests projects."
@@ -50,7 +50,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "the matrix itself: the shared .NET CI runs the test projects an app has, but nothing notices one it lacks. A check that fails the build when a production project lacks the test projects the matrix requires is planned (GAP-027); it waits for ARC-009, which settles which projects an app has"
-    scope: core
+    projectTypes: [all]
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
     statement: "Coverage gates: 100% line coverage for pure domain assemblies, 95% for application assemblies, 90% overall; mutation score 85% (nightly)."
@@ -58,7 +58,11 @@ rules:
     layer: owner
     basis: preference
     status: accepted
-    sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-13"]
+    sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Setting an overly ambitious code coverage percentage goal can be counterproductive."
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -66,7 +70,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "mutation.reusable.yml runs Stryker.NET nightly and fails below a mutation score of 85% (ADR-0039, tools/tests/MutationCi.Tests.ps1); it isn't a required check, so a low score shows as a failed nightly run, not a blocked pull request"
-    scope: core
+    projectTypes: [all]
     paths: ["**/*Tests*/**"]
   - id: TST-005
     statement: "Use the kit's test toolset: in the kit, the tools templates/app-intake.json lists for each test type (TST-007 keeps that list); in an app, the ones its docs/app-profile.md chose from it. A different tool needs an ADR."
@@ -79,7 +83,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "no check stops a project from adding another test package; central package management keeps versions in one reviewed file, where code review checks for the ADR. (tools/tests/KitIntake.Tests.ps1 checks the intake list is complete, which is TST-007's gate, not this rule's)"
-    scope: core
+    projectTypes: [all]
     paths: ["Directory.Packages.props", "**/*.csproj"]
   - id: TST-006
     statement: "Every kit script and check has Pester tests, written first."
@@ -92,7 +96,7 @@ rules:
       - kind: advisory
         in: [kit]
         how: "CI runs every Pester test (kit-checks.reusable.yml), but no check shows that each script has tests or that they were written first"
-    scope: core
+    projectTypes: [all]
     paths: ["tools/**"]
   - id: TST-007
     statement: "The kit's list of test tools lives only in templates/app-intake.json: each kind of test, its tools, each tool's license and its cost label (Free, Free tier or Paid, with the price, its source and the date checked unless Free); every default is Free, or free for a non-commercial app (FluentAssertions 8, ADR-0004; ARC-012, the cost rule), and anything else that names test tools is checked against it or points to it."
@@ -105,7 +109,7 @@ rules:
       - kind: gate
         in: [kit]
         how: "check: tools/tests/KitIntake.Tests.ps1 fails when a tool TST-005 or ADR-0003 names is missing from the list, when a tool has no license or cost label, when a non-Free one has no price, source or date, or when a default is neither Free nor free for a non-commercial app"
-    scope: core
+    projectTypes: [all]
     paths: ["templates/app-intake.json", "docs/standards/testing.md"]
   - id: TST-008
     statement: "A check fails an app's build when a production project lacks the test projects TST-003's matrix requires for it."
@@ -118,7 +122,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "not built yet; it waits for ARC-009, which settles which projects an app has, to be accepted (scorecard GAP-027)"
-    scope: core
+    projectTypes: [all]
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-009
     statement: "Each hot path gets a benchmark, and each app with an HTTP endpoint a load test, each with a budget kept beside it (benchmark-budget.json, load-budget.json) and checked by the kit's shared performance workflow; the tools are the intake's defaults for the performance and load kinds of test (TST-007)."
@@ -134,20 +138,88 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "which paths are hot and whether an app has its load test"
-    scope: core
+    projectTypes: [all]
     paths: ["**/*.Benchmarks/**", "**/tests/load/**", "**/benchmark-budget.json", "**/load-budget.json"]
   - id: TST-010
-    statement: "Unit tests follow Microsoft's unit-testing best practices: each name says the method, the scenario and the expected behavior, written without underscores (AddRejectsAMissingRequestByName); each test arranges, acts once and asserts; a test holds no logic (no if, loop or try) and no magic strings; shared setup is a helper method, not a constructor every test runs; private code is tested through the public method that uses it; and time, randomness and other outside state come in through seams such as TimeProvider."
-    why: "Microsoft lists these as what makes a unit test fast, isolated, repeatable, self-checking and readable. The kit keeps its names without underscores, the owner's choice (owner, 2026-11-09) and what CA1707 asks of every name, in place of Microsoft's Method_Scenario_ExpectedBehavior."
+    statement: "Unit tests follow Microsoft's unit-testing best practices. Name each test for the method, the scenario and the expected behavior. Try to include only one Act task per test. Avoid logic in a test (string concatenation, if, while, for, switch) and avoid magic strings. Keep a test's input to the simplest information needed. Try not to introduce infrastructure dependencies into unit tests; reserve them for integration tests. Create the objects a test needs in the test or in a helper method, in preference to Setup and Teardown attributes when tests have different setup requirements; where every test needs the same initialization, per-test setup is appropriate, and for synchronous initialization prefer the constructor. In most cases don't test a private method: test the public method that calls it. Where production code calls a static reference such as DateTime.Now, introduce a seam so the test has full control."
+    why: "Microsoft lists these as what makes a unit test fast, isolated, repeatable, self-checking and readable: tests that don't depend on outside state or hide logic can be trusted."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-09", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-13"]
+    ratified: "owner, 2026-11-12"
+    sources: ["https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "The name of your test should consist of three parts:"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "When you write your tests, try to include only one Act task per test."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "When you write your unit tests, avoid manual string concatenation, logical conditions, such as if, while, for, and switch, and other conditions."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Rather than using magic strings, assign any hard-coded values to constants."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "The input for a unit test should be the simplest information needed to verify the behavior you're currently testing."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Try not to introduce dependencies on infrastructure when writing unit tests. The dependencies make the tests slow and brittle and should be reserved for integration tests."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "To keep test-specific setup visible, create the objects you need in each test method or call a helper method from the test. Prefer this approach over Setup and Teardown attributes when tests have different setup requirements:"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Common per-test setup can still be appropriate when every test in a class needs the same initialization."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "For synchronous initialization, prefer the constructor."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "In most cases, you don't need to test a private method in your code."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "When you encounter a private method, locate the public method that calls the private method, and write your tests against the public method."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "To solve these problems, you need to introduce a seam into your production code."
+    projectTypes: [all]
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "no analyzer checks a test's shape; code review checks, the nightly mutation score (TST-004) exposes tests that assert too little, and the tdd-cycle skill names these practices; ARC-008's ban gates the clock"
-    scope: core
+        how: "no analyzer checks a test's shape; code review checks, the nightly mutation score (TST-004) exposes tests that assert too little, and the tdd-cycle skill names these practices"
+    paths: ["**/*Tests*/**"]
+  - id: TST-011
+    statement: "The kit's additions to its unit tests, beyond Microsoft's best practices (TST-010): write each test name as the method, the scenario and the expected behavior without underscores (AddRejectsAMissingRequestByName); arrange, act and assert; keep try out of a test; and bring time, randomness and other outside state in through seams such as TimeProvider."
+    why: "The kit keeps names without underscores, the owner's choice (owner, 2026-11-09) and what CA1707 asks of every name, in place of Microsoft's Method_Scenario_ExpectedBehavior; the other points tighten TST-010 in the same spirit, so a test reads the same in every repo."
+    layer: owner
+    basis: preference
+    status: accepted
+    sources: ["owner, 2026-11-09", "owner, 2026-11-12"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "no analyzer checks a test's shape; code review checks, and ARC-008's ban gates the clock"
+    projectTypes: [all]
+    paths: ["**/*Tests*/**"]
+  - id: TST-012
+    statement: "Avoid ordering unit tests: the order in which they run should not matter."
+    why: "Tests that depend on each other fail for reasons the failing test doesn't show, and can't run alone or in parallel."
+    layer: outside
+    basis: authority
+    status: proposed
+    sources: ["https://learn.microsoft.com/dotnet/core/testing/order-unit-tests, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/testing/order-unit-tests"
+        retrieved: "2026-11-17"
+        text: "Ideally, the order in which unit tests run should not matter, and it is best practice to avoid ordering unit tests."
+    projectTypes: [all]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks that no test relies on another's side effects or on run order"
     paths: ["**/*Tests*/**"]
 ---
 
