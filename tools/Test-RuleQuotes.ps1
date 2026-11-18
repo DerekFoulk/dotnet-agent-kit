@@ -58,7 +58,8 @@ function ConvertTo-ComparableText {
     # Emoji, variation selectors and zero-width characters, which no stored quote carries.
     $t = $t -replace '[\u2600-\u27BF\uFE0F\u200B-\u200D\u2060]|\p{Cs}', ''
     $t = $t -replace '\s+', ' '
-    ($t -replace ' (?=[.,;:!?)\]])', '' -replace '(?<=[(\[]) ', '').Trim()
+    # A space before punctuation that ends a word group goes; one before ".NET" or ".cs" stays.
+    ($t -replace ' (?=[.,;:!?)\]](?:\s|$))', '' -replace '(?<=[(\[]) ', '').Trim()
 }
 
 # A page's visible text: scripts, styles and comments removed, tags dropped (a block element's tag leaves a space,
