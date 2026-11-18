@@ -182,8 +182,9 @@ function Get-QuoteProblem {
                 }
             }
         }
-        # One contiguous passage, so the scheduled re-read (ADR-0083) can find it on the page as written.
-        if ($quote.Contains('text') -and "$($quote['text'])" -match '\.\.\.|…') {
+        # One contiguous passage, so the scheduled re-read (ADR-0083) can find it on the page as written. An ellipsis that
+        # stands for left-out words stands alone or in brackets; dots inside the page's code, as in Task.Run(...), stay.
+        if ($quote.Contains('text') -and "$($quote['text'])" -match '\[(\.\.\.|…)\]|(^|\s)(\.\.\.|…)(\s|$)') {
             "a quote of $page has an ellipsis: store one contiguous passage, and another quote for another passage"
         }
     }
