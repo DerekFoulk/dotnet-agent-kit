@@ -251,6 +251,49 @@ Describe 'Test-RuleSources.ps1' {
             (Get-Problem | ForEach-Object Message) | Should -BeLike '*quote*source, retrieved and text*'
         }
 
+        It 'reports a quote whose page the rule doesn''t cite' {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{
+                    quotes = @((New-Quote), (New-Quote -Override @{ source = 'https://learn.microsoft.com/ef/core/other' }))
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*quote*https://learn.microsoft.com/ef/core/other*not one of the rule's sources*"
+        }
+
+        It 'reports a quote read on another day than its source says' {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @(New-Quote -Override @{ retrieved = '2026-11-16' }) })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*quote*2026-11-16*source*2026-11-17*"
+        }
+
+        It 'reports an authority rule that cites a page it doesn''t quote' {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{
+                    sources = @('https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17', 'https://learn.microsoft.com/ef/core/other, retrieved 2026-11-17')
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*https://learn.microsoft.com/ef/core/other*no quote*"
+        }
+
+        It 'reports a quote that skips words with <Mark>' -ForEach @(
+            @{ Mark = '...' }
+            @{ Mark = '…' }
+        ) {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @(New-Quote -Override @{ text = "We recommend testing $Mark in production." }) })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike '*quote*ellipsis*one contiguous passage*'
+        }
+
         It 'accepts a preference rule that also stores a quote' {
             New-StandardsFile -Rules @(New-Rule -Override @{
                     sources = @('owner, 2026-10-26', 'https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17'); quotes = @(New-Quote)
