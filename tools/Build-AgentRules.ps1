@@ -260,6 +260,15 @@ function Get-RuleStatusFile {
     [pscustomobject]@{ Path = "$folder/rule-status.json"; Content = ((ConvertTo-Json -InputObject $sorted) -replace "`r`n", "`n") + "`n" }
 }
 
+function Get-BuildGateDiagnostic {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
+}
+
+function Update-GlobalConfigBlock {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Text, [Parameter(Mandatory)] [string] $StandardsPath)
+    $Text
+}
+
 # Visual Studio reads .github/copilot-instructions.md but doesn't document reading AGENTS.md, so the
 # repository instructions are a generated copy of AGENTS.md: one source, no drift.
 # -Text is AGENTS.md with its rule blocks already filled, so the copy matches what the build writes.
