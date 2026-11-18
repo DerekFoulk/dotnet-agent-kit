@@ -6,10 +6,11 @@
 .DESCRIPTION
     An authority rule in docs/standards stores the sentence on each cited page that says what the rule says
     (ADR-0082). Pages change. This script reads each quoted page once, turns its HTML into text, and looks for each
-    quote in it. Both sides are compared as the words a reader sees: tags, scripts and styles removed, entities
-    decoded, curly quotes and dashes made plain, emoji and whitespace dropped, case ignored.
-    Each quote ends Found, Missing (the page loaded and no longer says it) or Unreachable (the page didn't load).
-    A page that failed to load is never reported as a missing quote.
+    quote in it, as whole words. Both sides are compared as the words a reader sees: tags, scripts and styles removed,
+    entities decoded, curly quotes and dashes made plain, emoji dropped and runs of spaces made one. Case counts, so a
+    page that turns "Use X" into "Don't use X" no longer matches.
+    Each quote ends Found, Missing (the page no longer says it, or answers 404 or 410) or Unreachable (the page
+    didn't load for another reason, such as a timeout). A page that failed to load is never a missing quote.
     Exit code: 0 when every quote was found, 1 when any is missing, 2 when none is missing but a page didn't load.
     rule-quotes.yml runs it weekly and opens an issue; it also runs, not required, on a pull request that changes
     docs/standards. To fix a missing quote, read the page, update the quote and the rule to what the page says now,
@@ -46,36 +47,66 @@ function Get-RuleQuote {
 }
 
 # The words a reader sees, made comparable: Learn renders a sentence with inline markup, curly quotes, non-breaking
-# spaces and emoji that a stored quote, written as plain text, leaves out.
+# spaces and emoji that a stored quote, written as plain text, leaves out. Case and the spaces between words stay, so
+# a page that turns "Use X" into "Don't use X" no longer matches; spaces a link or tag leaves before punctuation go.
 function ConvertTo-ComparableText {
     param([AllowEmptyString()] [string] $Text)
 
     $t = $Text.Normalize([Text.NormalizationForm]::FormKC)
-    $t = $t -replace "[‘’‚‛′]", "'" -replace '[“”„‟″]', '"'
-    $t = $t -replace '[‐-―−]', '-'
+    $t = $t -replace "[\u2018\u2019\u201A\u201B\u2032]", "'" -replace '[\u201C\u201D\u201E\u201F\u2033]', '"'
+    $t = $t -replace '[\u2010-\u2015\u2212]', '-'
     # Emoji, variation selectors and zero-width characters, which no stored quote carries.
-    $t = $t -replace '[☀-➿️​-‍⁠]|\p{Cs}', ''
-    ($t -replace '\s+', '').ToLowerInvariant()
+    $t = $t -replace '[\u2600-\u27BF\uFE0F\u200B-\u200D\u2060]|\p{Cs}', ''
+    $t = $t -replace '\s+', ' '
+    ($t -replace ' (?=[.,;:!?)\]])', '' -replace '(?<=[(\[]) ', '').Trim()
 }
 
-# A page's visible text: scripts, styles and tags removed, entities decoded.
+# A page's visible text: scripts, styles and comments removed, tags dropped (a block element's tag leaves a space,
+# an inline one nothing, so a word split by markup stays whole), entities decoded.
 function ConvertFrom-Html {
     param([AllowEmptyString()] [string] $Html)
 
-    $text = $Html -replace '(?is)<(script|style|noscript|template)\b.*?</\1\s*>', ' ' -replace '(?s)<!--.*?-->', ' '
-    $text = $text -replace '<[^>]+>', ' '
+    $text = $Html -replace '(?is)<(script|style|noscript|template)\b.*?</\1\s*>', ' ' -replace '(?s)<!--.*?-->', ''
+    $block = 'p|div|li|ul|ol|br|hr|h[1-6]|td|th|tr|table|thead|tbody|pre|section|article|header|footer|nav|main|aside|dt|dd|dl|blockquote|figure|figcaption|summary|details'
+    $text = $text -replace "(?i)</?(?:$block)\b[^>]*>", ' '
+    $text = $text -replace '<[^>]+>', ''
     [System.Net.WebUtility]::HtmlDecode($text)
 }
 
-# The page as HTML, in English, the way a reader's browser asks for it. Learn redirects to its /en-us/ copy.
+# The page as HTML, in English, the way a reader's browser asks for it. Learn redirects to its /en-us/ copy. A page
+# that answers 404 or 410 is gone, which is a missing quote, not an outage.
 function Get-PageHtml {
     param([Parameter(Mandatory)] [string] $Url)
 
     $headers = @{ 'Accept-Language' = 'en-US,en;q=0.9'; 'Accept' = 'text/html' }
-    (Invoke-WebRequest -Uri $Url -Headers $headers -UserAgent 'dotnet-agent-kit rule-quote check' -TimeoutSec 60 -MaximumRedirection 5).Content
+    try {
+        (Invoke-WebRequest -Uri $Url -Headers $headers -UserAgent 'dotnet-agent-kit rule-quote check' -TimeoutSec 60 -MaximumRedirection 5).Content
+    }
+    catch [Microsoft.PowerShell.Commands.HttpResponseException] {
+        $code = [int] $_.Exception.Response.StatusCode
+        if ($code -in 404, 410) { throw [System.IO.FileNotFoundException]::new("$code ($($_.Exception.Response.ReasonPhrase))") }
+        throw
+    }
 }
 
-# Looks for each quote on its page, reading each page once. -GetPage takes a URL and returns its HTML, or throws.
+# Whether the page's text holds the quote as whole words: the character before it and, when the quote ends in a letter
+# or digit, the one after it aren't letters or digits, so "a cache" isn't found in "acache".
+function Test-QuoteOnPage {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Page, [Parameter(Mandatory)] [string] $Quote)
+
+    $index = 0
+    while (($index = $Page.IndexOf($Quote, $index, [StringComparison]::Ordinal)) -ge 0) {
+        $before = $index -eq 0 -or -not [char]::IsLetterOrDigit($Page[$index - 1])
+        $endIndex = $index + $Quote.Length
+        $after = $endIndex -ge $Page.Length -or -not [char]::IsLetterOrDigit($Quote[-1]) -or -not [char]::IsLetterOrDigit($Page[$endIndex])
+        if ($before -and $after) { return $true }
+        $index++
+    }
+    $false
+}
+
+# Looks for each quote on its page, reading each page once. -GetPage takes a URL and returns its HTML, or throws: a
+# FileNotFoundException when the page is gone, anything else when it couldn't be read.
 function Test-RuleQuote {
     param(
         [Parameter(Mandatory)] [object[]] $Quote,
@@ -86,15 +117,19 @@ function Test-RuleQuote {
     foreach ($q in $Quote) {
         if (-not $pages.ContainsKey($q.Source)) {
             try {
-                $pages[$q.Source] = [pscustomobject]@{ Text = ConvertTo-ComparableText (ConvertFrom-Html (& $GetPage $q.Source)); Error = $null }
+                $pages[$q.Source] = [pscustomobject]@{ Text = ConvertTo-ComparableText (ConvertFrom-Html (& $GetPage $q.Source)); Error = $null; Gone = $false }
+            }
+            catch [System.IO.FileNotFoundException] {
+                $pages[$q.Source] = [pscustomobject]@{ Text = $null; Error = $_.Exception.Message; Gone = $true }
             }
             catch {
-                $pages[$q.Source] = [pscustomobject]@{ Text = $null; Error = $_.Exception.Message }
+                $pages[$q.Source] = [pscustomobject]@{ Text = $null; Error = $_.Exception.Message; Gone = $false }
             }
         }
         $page = $pages[$q.Source]
-        $state, $detail = if ($null -ne $page.Error) { 'Unreachable', $page.Error }
-        elseif ($page.Text.Contains((ConvertTo-ComparableText $q.Text), [StringComparison]::Ordinal)) { 'Found', '' }
+        $state, $detail = if ($page.Gone) { 'Missing', "the page is gone: $($page.Error)" }
+        elseif ($null -ne $page.Error) { 'Unreachable', $page.Error }
+        elseif (Test-QuoteOnPage -Page $page.Text -Quote (ConvertTo-ComparableText $q.Text)) { 'Found', '' }
         else { 'Missing', 'the page no longer has this text' }
         [pscustomobject]@{ RuleId = $q.RuleId; File = $q.File; Source = $q.Source; Text = $q.Text; State = $state; Detail = $detail }
     }
