@@ -1,0 +1,873 @@
+url	checked	score	skipped	candidate
+https://learn.microsoft.com/aspnet/core/blazor/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/advanced-scenarios	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/blazor-ef-core	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/blazor-with-dotnet-on-web-workers	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/call-web-api	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/	2026-11-17	15		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/ai-components	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/components/built-in-components	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/components/cascading-values-and-parameters	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/class-libraries	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/components/class-libraries-and-static-server-side-rendering	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/component-disposal	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/control-head-content	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/components/css-isolation	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/data-binding	2026-11-17	12		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/dynamiccomponent	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/components/element-component-model-relationships	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/components/event-handling	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/generic-type-support	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/components/httpcontext	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/components/integration	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/integration-hosted-webassembly	2026-11-17	12		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/js-spa-frameworks	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/layouts	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/lifecycle	2026-11-17	10		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/overwriting-parameters	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/prerender	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/components/quickgrid	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/render-components-outside-of-aspnetcore	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/components/render-modes	2026-11-17	11		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/rendering	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/return-component-html-from-a-web-api	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/components/sections	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/components/splat-attributes-and-arbitrary-parameters	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/components/synchronization-context	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/components/templated-components	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/components/virtualization	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/blazor/debug	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/file-downloads	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/blazor/file-uploads	2026-11-17	23		yes
+https://learn.microsoft.com/aspnet/core/blazor/forms/	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/blazor/forms/binding	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/forms/input-components	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/forms/troubleshoot	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/forms/validation	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/forms/validation-advanced	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/forms/validation-client-side	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/	2026-11-17	10		yes
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/configuration	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/dependency-injection	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/environments	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/handle-errors	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/logging	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/navigation	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/routing	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/signalr	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/startup	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/fundamentals/static-files	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/blazor/globalization-localization	2026-11-17	9		yes
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/app-base-path	2026-11-17	12		yes
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/configure-linker	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/configure-trimmer	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/server/	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/server/memory-management	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/apache	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/azure-static-web-apps	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/azure-storage	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/bundle-caching-and-integrity-check-failures	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/deployment-layout	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/github-pages	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/http-caching-issues	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/iis	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/multiple-hosted-webassembly	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/nginx	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/hosting-models	2026-11-17	48		yes
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/class-libraries	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/class-libraries-best-practices	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/developer-tools	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/publish/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/reuse-razor-components	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/root-component-parameters	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/routing	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/	2026-11-17	22		yes
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/maui-blazor-web-identity	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/static-files	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/troubleshoot	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/tutorials/	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/tutorials/maui-blazor-web-app	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/tutorials/windows-forms	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/blazor/hybrid/tutorials/wpf	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/blazor/images-and-documents	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/	2026-11-17	11		yes
+https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-dotnet-from-javascript	2026-11-17	13		yes
+https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-javascript-from-dotnet	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/import-export-interop	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/location-of-javascript	2026-11-17	8		yes
+https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/static-server-rendering	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/blazor/performance/	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/performance/app-download-size	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/blazor/performance/javascript-interoperability	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/performance/rendering	2026-11-17	12		yes
+https://learn.microsoft.com/aspnet/core/blazor/performance/webassembly-browser-developer-tools-diagnostics	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/performance/webassembly-event-pipe-diagnostics	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/performance/webassembly-runtime-performance	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/progressive-web-app/	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/progressive-web-app/push-notifications	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/project-structure	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/security/	2026-11-17	11		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/account-confirmation-and-password-recovery	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/additional-scenarios	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/security/authentication-state	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/security/blazor-web-app-with-entra	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/blazor-web-app-with-oidc	2026-11-17	11		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/blazor-web-app-with-windows-authentication	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/security/content-security-policy	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/gdpr	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering	2026-11-17	19		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/qrcodes-for-authenticator-apps	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/security/static-server-side-rendering	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/	2026-11-17	8		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/additional-scenarios	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/graph-api	2026-11-17	15		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/hosted-with-azure-active-directory-b2c	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/hosted-with-identity-server	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/hosted-with-microsoft-entra-id	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/microsoft-entra-id-groups-and-roles	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/microsoft-entra-id-groups-and-roles-net-5-to-7	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/standalone-with-authentication-library	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/standalone-with-azure-active-directory-b2c	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/standalone-with-identity/	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/standalone-with-identity/account-confirmation-and-password-recovery	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/standalone-with-identity/qrcodes-for-authenticator-apps	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/standalone-with-microsoft-accounts	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/standalone-with-microsoft-entra-id	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/blazor/state-management/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/state-management/prerendered-state-persistence	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/state-management/protected-browser-storage	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/state-management/server	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/blazor/state-management/webassembly	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/supported-platforms	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/test	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/tooling	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/build-a-blazor-app	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/movie-database-app/	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/movie-database-app/part-1	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/movie-database-app/part-2	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/movie-database-app/part-3	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/movie-database-app/part-4	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/movie-database-app/part-5	2026-11-17	5	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/movie-database-app/part-6	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/movie-database-app/part-7	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/movie-database-app/part-8	2026-11-17	5	path	no
+https://learn.microsoft.com/aspnet/core/blazor/tutorials/signalr-blazor	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/blazor/webassembly-build-tools-and-aot	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/blazor/webassembly-lazy-load-assemblies	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/blazor/webassembly-native-dependencies	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/apidescription-client-deprecated	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/cookie-authentication-api-endpoints	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/exception-handler-diagnostics-suppressed	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/iactioncontextaccessor-obsolete	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/ipnetwork-knownnetworks-obsolete	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/openapi-analyzers-deprecated	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/overview	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/razor-runtime-compilation-obsolete	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/webhostbuilder-deprecated	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/10/withopenapi-deprecated	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/blazor-custom-event-name-collision	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/blazor-enhanced-nav-preloading-disabled	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/blazor-obsolete-apis-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/blazor-server-side-rendering-deferred-cross-site-request-forgery-protection	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/concurrencylimiter-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/http-activity-otel-semconv	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/identity-login-ordinal-equality	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/image-tag-helper-obsolete-members-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/kestrel-strict-protocol-compliance	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/microsoft-openapi-3x	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/modelmetadataidentity-forproperty-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/mvc-compatibility-options-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/openapi-multiple-produces-per-status	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/openapi-server-url-trailing-slash	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/openapi-version-default-3-2	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/openid-connect-max-age-validates-auth-time	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/overview	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/passkey-signin-enforces-confirmation-lockout	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/quickgrid-controls-render-as-links	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/response-compression-always-vary	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/sqlclient-azure-extensions-required	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/11/wasm-env-vars-in-configuration	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/12/forwarded-headers-non-ip-transports	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/12/overview	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/authentication-aad-packages-obsolete	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/authorization-resource-in-endpoint-routing	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/azure-integration-packages-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/blazor-browser-support-updated	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/blazor-components-trim-insignificant-whitespace	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/blazor-jsobjectreference-to-internal	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/blazor-packages-target-framework-changed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/blazor-protectedbrowserstorage-moved	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/blazor-rendertreeframe-fields-become-properties	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/blazor-routing-logic-changed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/blazor-static-web-assets-validation-logic-updated	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/extensions-package-reference-changes	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/http-badhttprequestexception-obsolete	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/http-httpclient-instances-log-integer-status-codes	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/httpsys-client-certificate-renegotiation-disabled-by-default	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/iis-urlrewrite-middleware-query-strings-are-preserved	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/kestrel-configuration-changes-at-run-time-detected-by-default	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/kestrel-default-supported-tls-protocol-versions-changed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/kestrel-disables-http2-over-tls	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/kestrel-libuv-transport-obsolete	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/localization-members-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/localization-pubternal-apis-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/localization-requestlocalizationmiddleware-constructor-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/middleware-database-error-page-obsolete	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/middleware-exception-handler-throws-original-exception	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/mvc-objectmodelvalidator-calls-new-overload	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/overview	2026-11-17	72	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/security-cookie-name-encoding-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/security-identitymodel-nuget-package-versions-updated	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/signalr-messagepack-hub-protocol-options-changed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/signalr-messagepack-package	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/signalr-usesignalr-useconnections-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/5/static-files-csv-content-type-changed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/actionresult-statuscode	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/adddataannotationsvalidation-obsolete	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/assemblies-removed-from-shared-framework	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/blazor-eventargstype-property-replaced	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/blazor-parameter-name-changed-in-method	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/byte-array-interop	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/clientcertificate-doesnt-trigger-renegotiation	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/endpointname-metadata	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/iasyncenumerable-not-buffered-by-mvc	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/identity-bootstrap4-to-5	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/kestrel-log-message-attributes-changed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/messagepack-library-change	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/microsoft-aspnetcore-http-features-package-split	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/middleware-ambiguous-https-ports-exception	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/middleware-new-use-overload	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/nullable-reference-type-annotations-changed	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/obsolete-removed-apis	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/overview	2026-11-17	50	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/preservecompilationcontext-not-set-by-default	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/razor-compiler-doesnt-produce-views-assembly	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/razor-engine-apis-obsolete	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/razor-pages-logging-ids	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/rc1-minimal-api-renames	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/rc2-minimal-api-renames	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/signalr-java-client-updated	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/6/tryparse-bindasync-validation	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/api-controller-action-parameters-di	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/authenticateasync-anonymous-request	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/default-authentication-scheme	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/environment-variable-precedence	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/fallback-file-endpoints	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/https-binding-kestrel	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/ihubclients-ihubcallerclients	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/libuv-transport-dll-removed	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/microsoft-aspnetcore-mvc-core-log-event-ids	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/microsoft-data-sqlclient-updated-to-4-0-1	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/middleware-null-requestdelegate	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/mvc-empty-body-model-binding	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/output-caching-renames	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/overview	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/signalr-hub-method-parameters-di	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/7/wasm-app-authentication	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/addratelimiter-requirement	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/antiforgery-checks	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/concurrencylimitermiddleware-obsolete	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/forwarded-headers-unknown-proxies	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/httplogging-addhttplogging-requirement	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/isystemclock-obsolete	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/overview	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/problemdetails-custom-converters	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/securitytoken-events	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/8/trimmode-full	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/9/certificate-export	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/9/hostbuilder-validation	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/9/key-resolution	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/9/legacy-apis	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/9/middleware-constructors	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/breaking-changes/9/overview	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/client-side/dotnet-interop/	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/client-side/dotnet-interop/wasm-browser-app	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/client-side/dotnet-on-webworkers	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/client-side/libman/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/client-side/libman/libman-cli	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/client-side/libman/libman-vs	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/client-side/spa-services	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/client-side/spa/angular	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/client-side/spa/intro	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/client-side/spa/react	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/client-side/using-browserlink	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/client-side/using-grunt	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/advanced	2026-11-17	0	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/complex-data-model	2026-11-17	2	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/concurrency	2026-11-17	3	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/crud	2026-11-17	5	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/inheritance	2026-11-17	0	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/intro	2026-11-17	2	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/migrations	2026-11-17	2	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/read-related-data	2026-11-17	0	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/sort-filter-page	2026-11-17	2	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-mvc/update-related-data	2026-11-17	1	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/data/ef-rp/complex-data-model	2026-11-17	10		yes
+https://learn.microsoft.com/aspnet/core/data/ef-rp/concurrency	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/data/ef-rp/crud	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/data/ef-rp/intro	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/data/ef-rp/migrations	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/data/ef-rp/read-related-data	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/data/ef-rp/sort-filter-page	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/data/ef-rp/update-related-data	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/data/entity-framework-6	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/data/scaffold_RP	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0000	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0001	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0003	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0004	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0005	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0006	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0007	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0008	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0009	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0010	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0011	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0012	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0013	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0014	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0015	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0016	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0017	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0018	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0019	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0020	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0021	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0022	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0023	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0024	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0025	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0026	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0027	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0028	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0033	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0034	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0035	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0036	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0037	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/asp0038	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/aspdepr-ids	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/aspdepr002	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/bl0001	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/bl0002	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/bl0003	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/bl0004	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/bl0005	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/bl0006	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/bl0007	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/diagnostics/bl0008	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/diagnostics/code-analysis	2026-11-17	9		yes
+https://learn.microsoft.com/aspnet/core/diagnostics/mvc1000	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/diagnostics/mvc1001	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/mvc1002	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/mvc1003	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/mvc1004	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/mvc1005	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/diagnostics/mvc1006	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/native-aot-tutorial	2026-11-17	0	topic:tutorial	no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg002	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg004	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg005	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg006	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg007	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg008	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg009	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg010	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg011	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg012	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/diagnostics/rdg013	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/rdg	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/aot/request-delegate-generator/rdg-ids	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/apis	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/app-state	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/best-practices	2026-11-17	18		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/change-tokens	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/configuration/	2026-11-17	11		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/configuration/options	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection	2026-11-17	16		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/environments	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/error-handling	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/error-handling-api	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/file-providers	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/host/generic-host	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/host/hosted-services	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/host/platform-specific-configuration	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/host/web-host	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/http-context	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/http-logging/	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/http-logging/http-log-enricher	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/http-requests	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/localization	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/localization-extensibility	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/localization/make-content-localizable	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/localization/provide-resources	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/localization/select-language-culture	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/logging/	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/metapackage	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/metapackage-app	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/middleware/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/middleware/extensibility	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/middleware/extensibility-third-party-container	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/middleware/request-decompression	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/middleware/request-response	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/middleware/write	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/min-api-filters	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/parameter-binding	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/responses	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/route-handlers	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/security	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/test-min-api	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/webapplication	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/native-aot	2026-11-17	24		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/openapi/aspnetcore-openapi	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/openapi/customize-openapi	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/openapi/include-metadata	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/openapi/openapi-comments	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/openapi/openapi-tools	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/openapi/overview	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/openapi/using-openapi-documents	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/owin	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/portable-object-localization	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/request-features	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/routing	2026-11-17	13		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/httpsys	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/connection-middleware	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/diagnostics	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/endpoints	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/host-filtering	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/http2	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/http3	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/memory-management	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/options	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/request-draining	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/when-to-use-a-reverse-proxy	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/ab-testing	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/authn-authz	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/config-files	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/config-filters	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/config-providers	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/cors	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/destination-resolvers	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/dests-health-checks	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/diagnosing-yarp-issues	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/direct-forwarding	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/distributed-tracing	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/extensibility	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/extensibility-transforms	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/getting-started	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/grpc	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/header-guidelines	2026-11-17	8		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/header-routing	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/http-client-config	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/http3	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/https-tls	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/httpsys-delegation	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/kubernetes-ingress	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/lets-encrypt	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/load-balancing	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/middleware	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/output-caching	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/queryparameter-routing	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/rate-limiting	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/service-fabric-int	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/session-affinity	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/timeouts	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/transforms	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/transforms-request	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/transforms-response	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/websockets	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/servers/yarp/yarp-overview	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/fundamentals/startup	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/static-files	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/target-aspnetcore	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/tools/dotnet-aspnet-codegenerator	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/fundamentals/troubleshoot-aspnet-core-localization	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/url-rewriting	2026-11-17	9		yes
+https://learn.microsoft.com/aspnet/core/fundamentals/use-http-context	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/validation	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/w3c-logger/	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/fundamentals/websockets	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/get-started	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/aspnetcore	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/authn-and-authz	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/grpc/basics	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/browser	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/client	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/grpc/clientfactory	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/code-first	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/comparison	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/configuration	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/grpc/deadlines-cancellation	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/diagnostics	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/grpc/dotnet-grpc	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/error-handling	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/grpc/grpcweb	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/health-checks	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/interceptors	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/interprocess	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/interprocess-namedpipes	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/grpc/interprocess-uds	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/json-transcoding	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/json-transcoding-binding	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/loadbalancing	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/grpc/migration	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/native-aot	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/netstandard	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/performance	2026-11-17	10		yes
+https://learn.microsoft.com/aspnet/core/grpc/protobuf	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/grpc/retries	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/grpc/security	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/grpc/services	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/supported-platforms	2026-11-17	15		yes
+https://learn.microsoft.com/aspnet/core/grpc/test-client	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/grpc/test-services	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/grpc/test-tools	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/grpc/troubleshoot	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/grpc/versioning	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/grpc/why-migrate-wcf-to-dotnet-grpc	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/aspnet-core-module	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/host-and-deploy/azure-apps/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/azure-iis-errors-reference	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/directory-structure	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/docker/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/docker/building-net-docker-images	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/advanced	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/development-time-iis-support	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/hosting-bundle	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/http3	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/in-process-hosting	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/logging-and-diagnostics	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/modules	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/out-of-process-hosting	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/protocols	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/transform-webconfig	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/web-config	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/host-and-deploy/proxy-load-balancer	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/scaling-aspnet-apps/scaling-aspnet-apps	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/visual-studio-publish-profiles	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/web-farm	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/host-and-deploy/windows-service	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/metrics/blazor	2026-11-17	0	topic:reference	no
+https://learn.microsoft.com/aspnet/core/metrics/built-in	2026-11-17	0	topic:reference	no
+https://learn.microsoft.com/aspnet/core/metrics/diagnostics	2026-11-17	0	topic:reference	no
+https://learn.microsoft.com/aspnet/core/metrics/http	2026-11-17	0	topic:reference	no
+https://learn.microsoft.com/aspnet/core/metrics/overview	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/metrics/security	2026-11-17	0	topic:reference	no
+https://learn.microsoft.com/aspnet/core/migration/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/100-to-110	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/1x-to-2x/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/1x-to-2x/identity-2x	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/20-to-21	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/21-to-22	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/migration/22-to-30	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/migration/30-to-31	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/31-to-50	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/migration/31-to-60	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/migration/50-to-60	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/migration/50-to-60-samples	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/60-to-70	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/migration/70-to-80	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/migration/80-to-90	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/90-to-100	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/authentication	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/claimsprincipal-current	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/hosting	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/http-context	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/http-handlers	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/http-modules	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/machine-key	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/membership	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/misc	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/owin	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/session	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/areas/webapi	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/examples/configuration	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/examples/identity	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/examples/overview	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/inc/ab-testing	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/inc/blazor	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/inc/remote-app-setup	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/inc/systemweb-adapters	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/start	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/migration/fx-to-core/tooling	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/migration/Logging-nonaspnetcore	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mobile/native-mobile-backend	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/advanced/app-parts	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/mvc/advanced/custom-model-binding	2026-11-17	12		yes
+https://learn.microsoft.com/aspnet/core/mvc/compatibility-version	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/mvc/controllers/actions	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/mvc/controllers/application-model	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/mvc/controllers/areas	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/controllers/dependency-injection	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/controllers/filters	2026-11-17	8		yes
+https://learn.microsoft.com/aspnet/core/mvc/controllers/routing	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/mvc/controllers/testing	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/mvc/models/file-uploads	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/mvc/models/model-binding	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/mvc/models/validation	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/mvc/overview	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/mvc/security/authorization/claims	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/mvc/security/authorization/custom-authorization-policies-with-iauthorizationrequirementdata-in-mvc	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/security/authorization/policies	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/security/authorization/resource-based	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/security/authorization/roles	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/security/authorization/simple	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/security/authorization/views	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/dependency-injection	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/mvc/views/display-templates	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/layout	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/overview	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/mvc/views/partial	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/mvc/views/razor	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/authoring	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/anchor-tag-helper	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/cache-tag-helper	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/component-tag-helper	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/distributed-cache-tag-helper	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/environment-tag-helper	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/image-tag-helper	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/link-tag-helper	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/partial-tag-helper	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/persist-component-state	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/built-in/script-tag-helper	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/intro	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/th-components	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/mvc/views/view-compilation	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/mvc/views/view-components	2026-11-17	8		yes
+https://learn.microsoft.com/aspnet/core/mvc/views/working-with-forms	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/overview	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/performance/caching/distributed	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/performance/caching/hybrid	2026-11-17	9		yes
+https://learn.microsoft.com/aspnet/core/performance/caching/memory	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/performance/caching/middleware	2026-11-17	10		yes
+https://learn.microsoft.com/aspnet/core/performance/caching/output	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/performance/caching/overview	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/performance/caching/response	2026-11-17	12		yes
+https://learn.microsoft.com/aspnet/core/performance/diagnostic-tools	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/performance/memory	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/performance/ObjectPool	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/performance/overview	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/performance/rate-limit	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/performance/rate-limit-samples	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/performance/response-compression	2026-11-17	9		yes
+https://learn.microsoft.com/aspnet/core/performance/timeouts	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/razor-pages/	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/razor-pages/filter	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/razor-pages/razor-pages-conventions	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/razor-pages/sdk	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/razor-pages/security/authorization/claims	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/razor-pages/security/authorization/conventions	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/razor-pages/security/authorization/policies	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/razor-pages/security/authorization/resource-based	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/razor-pages/security/authorization/roles	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/razor-pages/security/authorization/simple	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/razor-pages/ui-class	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/razor-pages/web-sdk	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-1.1	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-10.0	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-11	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-2.0	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-2.1	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-2.2	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-3.0	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-3.1	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-5.0	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-6.0	2026-11-17	7	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-7.0	2026-11-17	3	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-8.0	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-9.0	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/security/	2026-11-17	8		yes
+https://learn.microsoft.com/aspnet/core/security/anti-request-forgery	2026-11-17	14		yes
+https://learn.microsoft.com/aspnet/core/security/app-secrets	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/security/authentication/	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/security/authentication/accconfirm	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/security/authentication/add-user-data	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/api-endpoint-auth	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/azure-active-directory/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/azure-ad-b2c	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/certauth	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/security/authentication/claims	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/community	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/security/authentication/configure-oidc-web-authentication	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/security/authentication/cookie	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/customize-identity-model	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/identity	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/authentication/identity-api-authorization	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/authentication/identity-configuration	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/identity-custom-storage-providers	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/authentication/identity-enable-qrcodes	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/individual	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/jwt-authn	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/authentication/mfa	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/authentication/passkeys/	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/security/authentication/passkeys/blazor	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/authentication/policyschemes	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/scaffold-identity	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/security/authentication/social/	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/authentication/social/additional-claims	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/social/facebook-logins	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/authentication/social/google-logins	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/social/microsoft-logins	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/social/other-logins	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/social/social-without-identity	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/social/twitter-logins	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authentication/windowsauth	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/authentication/ws-federation	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authorization/authorize-with-a-specific-scheme	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/authorization/claims	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/authorization/custom-authorization-policies-with-iauthorizationrequirementdata	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authorization/custom-authorization-policy-providers	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/security/authorization/customizingauthorizationmiddlewareresponse	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authorization/dependencyinjection	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authorization/introduction	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authorization/policies	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/authorization/resource-based	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/authorization/roles	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/authorization/secure-data	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/authorization/simple	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/cookie-sharing	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/cors	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/cross-site-scripting	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/compatibility/	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/security/data-protection/compatibility/replacing-machinekey	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/default-settings	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/machine-wide-policy	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/non-di-scenarios	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/overview	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/dangerous-unprotect	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/limited-lifetime-payloads	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/overview	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/password-hashing	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/purpose-strings	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/purpose-strings-multitenancy	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/extensibility/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/extensibility/core-crypto	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/extensibility/key-management	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/extensibility/misc-apis	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/authenticated-encryption-details	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/context-headers	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-encryption-at-rest	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-immutability	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-management	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-storage-ephemeral	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-storage-format	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-storage-providers	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/subkeyderivation	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/introduction	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/security/data-protection/using-data-protection	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/docker-compose-https	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/docker-https	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/enforcing-ssl	2026-11-17	5		yes
+https://learn.microsoft.com/aspnet/core/security/gdpr	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/how-to-choose-identity-solution	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/identity-management-solutions	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/ip-safelist	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/key-vault-configuration	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/security/preventing-open-redirects	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/samesite	2026-11-17	7		yes
+https://learn.microsoft.com/aspnet/core/security/samesite/mvc21	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/samesite/rp21	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/security/samesite/rp31	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/api-design	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/authn-and-authz	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/background-services	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/client-features	2026-11-17	8		yes
+https://learn.microsoft.com/aspnet/core/signalr/configuration	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/signalr/diagnostics	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/signalr/dotnet-client	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/signalr/groups	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/httpcontext	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/signalr/hub-filters	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/signalr/hubcontext	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/hubs	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/signalr/introduction	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/java-client	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/javascript-client	2026-11-17	6		yes
+https://learn.microsoft.com/aspnet/core/signalr/messagepackhubprotocol	2026-11-17	8		yes
+https://learn.microsoft.com/aspnet/core/signalr/publish-to-azure-web-app	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/redis-backplane	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/signalr/scale	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/signalr/security	2026-11-17	3		yes
+https://learn.microsoft.com/aspnet/core/signalr/streaming	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/signalr/supported-platforms	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/swift-client	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/signalr/troubleshoot	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/signalr/version-differences	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/test/debug-aspnetcore-source	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/test/dev-tunnels	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/test/hot-reload	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/test/http-files	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/test/integration-tests	2026-11-17	2		no
+https://learn.microsoft.com/aspnet/core/test/load-tests	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/test/localhost-tld	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/test/middleware	2026-11-17	1		no
+https://learn.microsoft.com/aspnet/core/test/razor-pages-tests	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/test/troubleshoot	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/test/troubleshoot-azure-iis	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/tutorials/ai-powered-group-chat/ai-powered-group-chat	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/choose-web-ui	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/dotnet-watch	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mongo-app	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/adding-controller	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/adding-model	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/adding-view	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/controller-methods-views	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/details	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/new-field	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/search	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/start-mvc	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/validation	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-mvc-app/working-with-sql	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/first-web-api	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/getting-started-with-NSwag	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/getting-started-with-swashbuckle	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/grpc/grpc-start	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/min-web-api	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/publish-to-azure-api-management-using-vs	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/publish-to-azure-webapp-using-vs	2026-11-17	3	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/publish-to-iis	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/razor-pages/	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/razor-pages/da1	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/razor-pages/model	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/razor-pages/new-field	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/razor-pages/page	2026-11-17	1	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/razor-pages/razor-pages-start	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/razor-pages/search	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/razor-pages/sql	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/razor-pages/validation	2026-11-17	2	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/signalr	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/signalr-typescript-webpack	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/web-api-help-pages-using-swagger	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/tutorials/web-api-javascript	2026-11-17	0	path	no
+https://learn.microsoft.com/aspnet/core/web-api/	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/web-api/action-return-types	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/web-api/advanced/analyzers	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/web-api/advanced/conventions	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/web-api/advanced/custom-formatters	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/web-api/advanced/formatting	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/web-api/http-repl/	2026-11-17	4		yes
+https://learn.microsoft.com/aspnet/core/web-api/http-repl/telemetry	2026-11-17	0		no
+https://learn.microsoft.com/aspnet/core/web-api/jsonpatch	2026-11-17	1		no
