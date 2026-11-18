@@ -336,10 +336,10 @@ Each area in the front matter above has:
 
 | Ruleset | Rules in force | Proposed rules |
 |---|---|---|
-| Core (every app type) | 106 | 65 |
+| Core (every app type) | 104 | 64 |
 | ASP.NET Core Web API | 130 | 111 |
 | Blazor Web App | 128 | 132 |
-| .NET MAUI | 106 | 89 |
+| .NET MAUI | 104 | 88 |
 
 Open gaps:
 

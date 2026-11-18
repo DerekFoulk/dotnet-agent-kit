@@ -12,7 +12,7 @@ The page list for this set, with every page's guidance-wording score, is in `doc
 | https://learn.microsoft.com/dotnet/maui/deployment/performance | 2026-11-17 | new rules MAU-004, 005, 006, 007, 008, 009 (STY-011 covers the blocking and async void lines) |
 | https://learn.microsoft.com/dotnet/maui/deployment/visual-studio-properties | 2026-11-17 | out of scope: IDE how-to |
 | https://learn.microsoft.com/dotnet/maui/developer-tools/cli/apple-management | 2026-11-17 | out of scope: CLI tooling how-to |
-| https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility | 2026-11-17 | new rule MAU-003 (UI-001 cites it for WCAG) |
+| https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility | 2026-11-17 | covered by UI-004 (MAU-003 was removed as its duplicate; UI-001 cites the page for WCAG) |
 | https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings | 2026-11-17 | new rule MAU-002 |
 | https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter | 2026-11-17 | new rule MAU-015 |
 | https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation | 2026-11-17 | new rule MAU-014 |

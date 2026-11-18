@@ -1,6 +1,6 @@
 # Microsoft Learn inventory: ASP.NET Core and Blazor guidance
 
-Batches D-aspnetcore and D-blazor read this set, and batch R3 read its host-and-deploy pages. The AspNetCore.Docs table of contents lists 872 pages. 167 were candidates. They produced ASP-001 to ASP-024, BLZ-001 to BLZ-028 and OPS-013, OPS-014 and OPS-016. Pages are under https://learn.microsoft.com/aspnet/core/. Pages with no verdict row here were candidates that a batch folded into a neighbouring page's row. Every verdict was checked on 2026-11-17.
+Batches D-aspnetcore and D-blazor read this set, and batch R3 read its host-and-deploy pages. The AspNetCore.Docs table of contents lists 872 pages. 167 were candidates. They produced ASP-001 to ASP-024, BLZ-001 to BLZ-028 and OPS-013 and OPS-016 (OPS-014, for workers, was later removed). Pages are under https://learn.microsoft.com/aspnet/core/. Pages with no verdict row here were candidates that a batch folded into a neighbouring page's row. Every verdict was checked on 2026-11-17.
 
 Razor Pages and MVC apps, and Blazor Hybrid apps, aren't supported app types yet (`docs/standards/app-types.yml`, ADR-0084), so the rows for their pages (the `razor-pages/`, `mvc/views/` and `blazor/hybrid/` pages) were inventoried but their rules aren't in the kit: ASP-013, ASP-014, BLZ-027 and BLZ-028 name the rules a batch wrote, ready for when the type is supported. A page the supported types share, such as overposting, keeps its rule.
 
@@ -82,7 +82,7 @@ The page list for this set, with every page's guidance-wording score, is in `doc
 | https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication | 2026-11-17 | covered by SEC-008 |
 | https://learn.microsoft.com/aspnet/core/security/authentication/configure-oidc-web-authentication | 2026-11-17 | new rule ASP-021 |
 | https://learn.microsoft.com/aspnet/core/security/authentication/passkeys/ | 2026-11-17 | out of scope: optional feature; registration limits advice is niche |
-| https://learn.microsoft.com/aspnet/core/security/authentication/scaffold-identity | 2026-11-17 | new rule ASP-022 |
+| https://learn.microsoft.com/aspnet/core/security/authentication/scaffold-identity | 2026-11-17 | covered by BLZ-015 (ASP-022 was removed as its duplicate) |
 | https://learn.microsoft.com/aspnet/core/security/authorization/custom-authorization-policy-providers | 2026-11-17 | no guidance (niche API) |
 | https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/overview | 2026-11-17 | new rule ASP-023 |
 | https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/purpose-strings | 2026-11-17 | new rule ASP-023 |
@@ -168,6 +168,6 @@ The page list for this set, with every page's guidance-wording score, is in `doc
 | https://learn.microsoft.com/aspnet/core/blazor/tooling | 2026-11-17 | BLZ-024 |
 | https://learn.microsoft.com/aspnet/core/blazor/webassembly-lazy-load-assemblies | 2026-11-17 | out of scope (one rarely used feature) |
 | https://learn.microsoft.com/aspnet/core/host-and-deploy/aspnet-core-module | 2026-11-17 | out of scope: IIS module configuration how-to |
-| https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/ | 2026-11-17 | new rules OPS-013 (data protection key store) and OPS-014 (background-only app: Windows Service, not IIS); rest out of scope (IIS-specific configuration); web.config, app pools, bindings omitted |
-| https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/advanced | 2026-11-17 | covered by OPS-013 and OPS-014; rest IIS-specific, out of scope |
+| https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/ | 2026-11-17 | new rule OPS-013 (data protection key store); OPS-014 (a background-only app) was removed, since workers aren't a supported type yet; rest out of scope (IIS-specific configuration); web.config, app pools, bindings omitted |
+| https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/advanced | 2026-11-17 | covered by OPS-013; rest IIS-specific, out of scope |
 | https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx | 2026-11-17 | new rules OPS-013, OPS-016 (KillSignal); forwarded headers, HTTPS redirection and HSTS are covered by security.md rules (not my file, not quoted); nginx config how-to out of scope |

@@ -1,6 +1,6 @@
 # Microsoft Learn inventory: .NET guidance (C#, libraries, hosting, testing, deployment)
 
-Batches D-csharp, D-dotnet, R7 (hosting), R4 (testing) and R3 (deploy) read this set. The dotnet/docs table of contents lists 4,771 pages. 408 were candidates. The rows below give the verdicts the batches reported, 187 rows, some grouping several pages of one family (the code analysis rules). They produced CS-001 to CS-039, NET-001 to NET-003, HST-001 to HST-005, TST-012 and OPS-015. The excluded folders (install, porting, tools, compatibility, design-guidelines) hold candidates that no batch read: install, porting, tools and compatibility are how-to and migration pages, not guidance for code, and design-guidelines (Framework Design Guidelines) was covered by the owner's earlier 94-page audit. Paths in backticks are relative to https://learn.microsoft.com/dotnet/. Every verdict was checked on 2026-11-17.
+Batches D-csharp, D-dotnet, R7 (hosting), R4 (testing) and R3 (deploy) read this set. The dotnet/docs table of contents lists 4,771 pages. 408 were candidates. The rows below give the verdicts the batches reported, 187 rows, some grouping several pages of one family (the code analysis rules). They produced CS-001 to CS-039, NET-002 (NET-001 and NET-003 were later removed as duplicates of OPS-008), HST-001 to HST-005, TST-012 and OPS-015. The excluded folders (install, porting, tools, compatibility, design-guidelines) hold candidates that no batch read: install, porting, tools and compatibility are how-to and migration pages, not guidance for code, and design-guidelines (Framework Design Guidelines) was covered by the owner's earlier 94-page audit. Paths in backticks are relative to https://learn.microsoft.com/dotnet/. Every verdict was checked on 2026-11-17.
 
 The page list for this set, with every page's guidance-wording score, is in `docs/inventory/dotnet-pages.tsv`. Re-check with the `discover-guidance` skill.
 
@@ -59,7 +59,7 @@ The page list for this set, with every page's guidance-wording score, is in `doc
 | https://learn.microsoft.com/dotnet/standard/base-types/grouping-constructs-in-regular-expressions | 2026-11-17 | no guidance (syntax reference) |
 | https://learn.microsoft.com/dotnet/standard/base-types/how-to-verify-that-strings-are-in-valid-email-format | 2026-11-17 | new rule CS-024 |
 | https://learn.microsoft.com/dotnet/standard/base-types/regular-expression-source-generators | 2026-11-17 | new rule CS-023 |
-| https://learn.microsoft.com/dotnet/standard/commandline/design-guidance | 2026-11-17 | new rule CS-037 |
+| https://learn.microsoft.com/dotnet/standard/commandline/design-guidance | 2026-11-17 | not a supported type yet (console apps): CS-037 was removed |
 | https://learn.microsoft.com/dotnet/standard/commandline/migration-guide-2.0.0-beta5 | 2026-11-17 | out of scope (beta migration guide) |
 | https://learn.microsoft.com/dotnet/standard/data/xml/extending-the-dom | 2026-11-17 | out of scope (rarely used API, XmlNode derivation) |
 | https://learn.microsoft.com/dotnet/standard/datetime/converting-between-time-zones | 2026-11-17 | covered by STY-012 (choosing-between-datetime: UTC) |
@@ -122,9 +122,9 @@ The page list for this set, with every page's guidance-wording score, is in `doc
 | https://learn.microsoft.com/dotnet/standard/threading/managed-threading-best-practices | 2026-11-17 | covered by STY-012 (already a source) |
 | https://learn.microsoft.com/dotnet/standard/threading/spinlock | 2026-11-17 | out of scope (one rarely used API; its recommendation is "use SpinLock only when profiling shows it helps") |
 | https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices | 2026-11-17 | covered by STY-012 (already a source) |
-| https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines | 2026-11-17 | NET-001, NET-003 (OPS-003 cites it) |
+| https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines | 2026-11-17 | covered by OPS-008 (NET-001 and NET-003 were removed as its duplicates; OPS-003 cites the page) |
 | https://learn.microsoft.com/dotnet/core/resilience/http-resilience | 2026-11-17 | NET-002 (OPS-003 cites it) |
-| https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient | 2026-11-17 | covered by NET-001/OPS-003 (reuse); rest descriptive or one-API advice |
+| https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient | 2026-11-17 | covered by OPS-008 and OPS-003 (reuse); rest descriptive or one-API advice |
 | https://learn.microsoft.com/dotnet/fundamentals/networking/http/http-overview | 2026-11-17 | no guidance |
 | https://learn.microsoft.com/dotnet/fundamentals/networking/ipv6-overview | 2026-11-17 | no guidance |
 | `fundamentals/networking/telemetry/events, tracing` | 2026-11-17 | out of scope (event-listener API advice; tracing covered by OPS-001) |

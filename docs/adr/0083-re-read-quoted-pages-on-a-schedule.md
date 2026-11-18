@@ -16,9 +16,9 @@ The first run, on 2026-11-17, showed two more things a re-read must handle:
 
 ### Option 1: A script that reads each page's HTML and looks for each quote, run weekly and on rule changes
 
-`tools/Test-RuleQuotes.ps1` reads each quoted page once and turns its HTML into text: scripts, styles and tags removed, entities decoded. It then compares both sides as a reader sees the words: curly quotes and dashes made plain, emoji and whitespace dropped, case ignored. Each quote ends Found, Missing or Unreachable. A page that answers 404 or 410 is gone, so its quotes are Missing; any other failure to load is Unreachable.
+`tools/Test-RuleQuotes.ps1` reads each quoted page once and turns its HTML into text: scripts, styles and tags removed, entities decoded. It then looks for each quote as whole words, comparing both sides as a reader sees them: curly quotes and dashes made plain, emoji dropped, runs of spaces made one, and a space a link leaves before punctuation removed. Case counts, so a page that turns "Use X" into "Don't use X" no longer matches. Each quote ends Found, Missing or Unreachable. A page that answers 404 or 410 is gone, so its quotes are Missing; any other failure to load is Unreachable.
 
-- **Trade-offs:** about 300 requests a run, sequential; no dependency. The normalization can hide a change in punctuation or case, which doesn't change what a rule says. Page text never runs and never reaches a shell: the workflow passes only the script's exit code and the run's URL into the issue.
+- **Trade-offs:** about 300 requests a run, sequential; no dependency. The normalization can hide a change in quote marks, dashes or spacing, which doesn't change what a rule says. Page text never runs and never reaches a shell: the workflow passes only the script's exit code and the run's URL into the issue.
 - **Reversibility:** easy.
 - **Risk:** low. A page that blocks automated readers would show as Unreachable, not Missing.
 

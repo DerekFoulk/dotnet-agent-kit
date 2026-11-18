@@ -259,19 +259,19 @@ The rules cite 283 pages from 16 sources; 215 rules cite them.
 | <https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1707> | [STY-014](standards/code-style.md) |
 | <https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/security-warnings> | [SEC-024](standards/security.md) |
 | <https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines> | [OPS-003](standards/operations.md), [OPS-008](standards/operations.md) |
-| <https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite> | [MAU-001](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/deployment/nativeaot> | [MAU-016](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/deployment/performance> | [MAU-004](standards/maui.md) (proposed), [MAU-005](standards/maui.md) (proposed), [MAU-006](standards/maui.md) (proposed), [MAU-007](standards/maui.md) (proposed), [MAU-008](standards/maui.md) (proposed), [MAU-009](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility> | [UI-001](standards/ui.md) (proposed), [UI-003](standards/ui.md) (proposed), [UI-004](standards/ui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle> | [MAU-011](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings> | [MAU-002](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter> | [MAU-015](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation> | [MAU-014](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions> | [MAU-012](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication> | [MAU-013](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview> | [MAU-010](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/user-interface/layouts/> | [MAU-010](standards/maui.md) (proposed) |
-| <https://learn.microsoft.com/dotnet/maui/what-is-maui> | [ARC-014](standards/architecture.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite?view=net-maui-10.0> | [MAU-001](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/deployment/nativeaot?view=net-maui-10.0> | [MAU-016](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0> | [MAU-004](standards/maui.md) (proposed), [MAU-005](standards/maui.md) (proposed), [MAU-006](standards/maui.md) (proposed), [MAU-007](standards/maui.md) (proposed), [MAU-008](standards/maui.md) (proposed), [MAU-009](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0> | [UI-001](standards/ui.md) (proposed), [UI-003](standards/ui.md) (proposed), [UI-004](standards/ui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0> | [MAU-011](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings?view=net-maui-10.0> | [MAU-002](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter?view=net-maui-10.0> | [MAU-015](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation?view=net-maui-10.0> | [MAU-014](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions?view=net-maui-10.0> | [MAU-012](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication?view=net-maui-10.0> | [MAU-013](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview?view=net-maui-10.0> | [MAU-010](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/user-interface/layouts/?view=net-maui-10.0> | [MAU-010](standards/maui.md) (proposed) |
+| <https://learn.microsoft.com/dotnet/maui/what-is-maui?view=net-maui-10.0> | [ARC-014](standards/architecture.md) (proposed) |
 | <https://learn.microsoft.com/dotnet/standard/analyzers/platform-compat-analyzer> | [CS-020](standards/csharp.md) (proposed) |
 | <https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/async-wrappers-for-synchronous-methods> | [CS-021](standards/csharp.md) (proposed) |
 | <https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/complete-your-tasks> | [CS-022](standards/csharp.md) (proposed) |

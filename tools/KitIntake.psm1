@@ -176,7 +176,7 @@ function ConvertTo-KitAppProfile {
         "| $(Format-KitCell $kind['name']) | $(Format-KitCell $kind['checks']) | $(Format-KitCell $kind['runs']) | $($tools -join '<br>') |"
     }
 
-    # ADR-0084: the app's app types, on the line Build-AgentRules reads to give the app only the common ruleset and those
+    # ADR-0084: the app's app types, on the line Build-AgentRules reads to give the app only the core ruleset and those
     # types' rulesets. An Other app type has none until an ADR names them, so the app gets every rule.
     $appType = @($Resolved.Cards | Where-Object { $_.Card['id'] -eq 'appType' }) | Select-Object -First 1
     $types = @(if ($appType -and -not $appType.Other -and $appType.Option.Contains('appTypes')) { $appType.Option['appTypes'] })
