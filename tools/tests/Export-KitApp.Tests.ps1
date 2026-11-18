@@ -251,6 +251,25 @@ Describe 'Export-KitApp' {
         $listed | Should -Not -Contain '.github/copilot-instructions.md'
     }
 
+    # ADR-0084: New-KitApp hands the export the app's profile, so its first rule files hold only the common ruleset and
+    # its project types' rulesets, and the manifest lists exactly those.
+    It 'writes the app profile it''s given before generating the rule files, so a MAUI app gets no web-only rule' {
+        $mauiApp = Join-Path $TestDrive 'maui-app'
+        $profileText = "# App profile: Contoso.Notes`n`n## Project types`n`nProject types: maui`n"
+
+        & $script -Name 'Contoso.Notes' -Destination $mauiApp -KitRef $commit -KitRoot $kit -AppProfile $profileText
+
+        $LASTEXITCODE | Should -Be 0
+        $profilePath = Join-Path $mauiApp 'docs' 'app-profile.md'
+        Test-Path -LiteralPath $profilePath | Should -BeTrue -Because 'the export writes the profile it was given'
+        Get-Content -Raw $profilePath | Should -Be $profileText
+        $rules = (Get-ChildItem -LiteralPath (Join-Path $mauiApp '.claude/rules') -File | Get-Content -Raw) -join "`n"
+        $rules | Should -Match '(?m)^- GIT-001:'
+        $rules | Should -Not -Match '(?m)^- API-002:'
+        & pwsh -NoProfile -File (Join-Path $mauiApp '.kit/tools/Build-AgentRules.ps1') -RepoRoot $mauiApp -Check | Out-Null
+        $LASTEXITCODE | Should -Be 0
+    }
+
     It 'gets a Draft runbook that passes its own runbook check' {
         $runbook = Join-Path $app 'docs/runbook.md'
         Test-Path -LiteralPath $runbook | Should -BeTrue -Because 'every app starts with a runbook to fill in (OPS-004)'

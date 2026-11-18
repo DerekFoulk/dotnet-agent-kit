@@ -11,7 +11,9 @@
     there. The files come from a clean checkout of the commit (a temporary git worktree), never from the kit's
     working tree, so an unfinished local edit can't slip into an app.
 
-    New-KitApp (PR D2b) calls this, then creates the GitHub repo.
+    New-KitApp (PR D2b) calls this, then creates the GitHub repo. It passes -AppProfile, the intake's
+    docs/app-profile.md, which is written before the agent rule files are generated, so the app's first rule files
+    hold only the common ruleset and its project types' rulesets (ADR-0084).
 
 .EXAMPLE
     ./tools/Export-KitApp.ps1 -Name Contoso.Orders -Destination ../Contoso.Orders -KitRef v0.1.0
@@ -21,7 +23,8 @@ param(
     [string] $Name,
     [string] $Destination,
     [string] $KitRef,
-    [string] $KitRoot
+    [string] $KitRoot,
+    [string] $AppProfile
 )
 
 Set-StrictMode -Version Latest
