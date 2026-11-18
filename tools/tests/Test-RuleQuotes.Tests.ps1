@@ -56,6 +56,15 @@ Describe 'Test-RuleQuotes.ps1' {
             $result[0].State | Should -Be 'Found'
         }
 
+        # Fix round: dropping every space before a period joined a heading word to a quote that starts ".NET".
+        It 'finds a quote that starts with ".NET" after a heading' {
+            $quote = [pscustomobject]@{ RuleId = 'CS-025'; File = 'csharp.md'; Source = 'https://learn.microsoft.com/a'; Text = '.NET 8 and later use the new format.' }
+
+            $result = @(Test-RuleQuote -Quote $quote -GetPage { param($Url) '<h2>Warning</h2><p>.NET 8 and later use the new format.</p>' })
+
+            $result[0].State | Should -Be 'Found'
+        }
+
         It 'finds a quote written with straight quotes on a page with curly ones' {
             $quote = [pscustomobject]@{ RuleId = 'DAT-011'; File = 'data.md'; Source = 'https://learn.microsoft.com/a'; Text = "If you're using Migrations, don't use EnsureCreatedAsync." }
 
