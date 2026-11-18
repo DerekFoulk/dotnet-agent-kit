@@ -44,7 +44,7 @@ Describe 'Test-RuleQuotes.ps1' {
         It 'finds a quote the page renders <Case>' -ForEach @(
             @{ Case = 'with inline markup and line breaks'; Html = "<p>Avoid the <strong>in-memory</strong>`n provider for <a href='x'>testing</a> purposes.</p>" }
             @{ Case = 'with curly quotes and a non-breaking space'; Html = "<p>Avoid the in&#8209;memory provider&nbsp;for testing purposes.</p>" -replace 'in&#8209;memory', 'in-memory' }
-            @{ Case = 'with an HTML entity'; Html = '<p>Avoid the in-memory provider for testing purposes &amp; more.</p>' }
+            @{ Case = 'with an HTML entity'; Html = '<p>Avoid the in&#45;memory provider for testing&#x20;purposes.</p>' }
             @{ Case = 'with a check-mark emoji before it'; Html = '<p>✔️ Avoid the in-memory provider for testing purposes.</p>' }
         ) {
             $quote = [pscustomobject]@{ RuleId = 'DAT-012'; File = 'data.md'; Source = 'https://learn.microsoft.com/a'; Text = 'Avoid the in-memory provider for testing purposes.' }
