@@ -31,8 +31,27 @@ function Get-RuleStatus {
     $status
 }
 
+# Writes one finding of rule Id and returns whether it counts toward the check's failure; the rule's status alone
+# decides. A proposed rule's finding is a GitHub warning annotation ("::warning::<id>: <message>"), which the pull
+# request shows without failing, and doesn't count. An accepted rule's finding is written as it is, in red, as the
+# checks wrote their errors before, and counts: an MSBuild-format line stays readable by setup-dotnet's problem
+# matcher. A retired rule isn't in force and its check should be gone, so a finding for it throws.
 function Write-RuleFinding {
+    [OutputType([bool])]
     param([Parameter(Mandatory)] [string] $Id, [Parameter(Mandatory)] [string] $Message, [string] $Path)
+
+    $status = Get-RuleStatus -Id $Id -Path $Path
+    if ($status -ceq 'proposed') {
+        # GitHub ends a workflow command at the line's end, and decodes these three in its message.
+        $data = $Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+        Write-Host "::warning::${Id}: $data"
+        return $false
+    }
+    if ($status -ceq 'accepted') {
+        Write-Host $Message -ForegroundColor Red
+        return $true
+    }
+    throw "Rule $Id is $status, so it isn't in force and no check should report it; take its check out."
 }
 
 Export-ModuleMember -Function Get-RuleStatus, Write-RuleFinding
