@@ -228,7 +228,7 @@ types:
             $content | Should -Match 'DAT-003'
         }
 
-        It 'reads the app''s app types from its profile' {
+        It 'reads the app types from the app''s profile' {
             $root = Join-Path $TestDrive "repo-$(New-Guid)"
             New-Item -ItemType Directory -Path (Join-Path $root 'docs') | Out-Null
             Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value "# App profile: X`n`n## App types`n`nApp types: web-api, maui`n"

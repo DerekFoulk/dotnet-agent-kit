@@ -65,7 +65,7 @@ Describe 'Test-RuleQuotes.ps1' {
             $result[0].State | Should -Be 'Found'
         }
 
-        # Review round 3: a quote that ends in punctuation needs no word edge after it, since inline markup can join the next word on.
+        # A quote that ends in punctuation needs no word edge after it, since inline markup can join the next word on.
         It 'finds a quote that ends in a period when a word follows with no space' {
             $quote = [pscustomobject]@{ RuleId = 'CS-025'; File = 'csharp.md'; Source = 'https://learn.microsoft.com/a'; Text = 'Call Dispose.' }
 
