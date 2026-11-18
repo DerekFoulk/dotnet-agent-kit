@@ -27,6 +27,16 @@ Describe 'Test-RuleSources.ps1' {
             $rule
         }
 
+        # A quote for each URL source, so a test about something else has a well-formed authority rule (ADR-0082).
+        function New-QuotesFor {
+            param([string[]] $Sources)
+            , @(foreach ($source in $Sources) {
+                    if ($source -match '^(https?://\S+), retrieved (\S+)$') {
+                        [ordered]@{ source = $Matches[1]; retrieved = $Matches[2]; text = 'The page''s own words.' }
+                    }
+                })
+        }
+
         function New-StandardsFile {
             param([string] $Name = 'git', [object[]] $Rules = @(New-Rule))
 
@@ -91,7 +101,7 @@ Describe 'Test-RuleSources.ps1' {
             @{ Source = 'ADR-0007'; Basis = 'preference' }
             @{ Source = 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01'; Basis = 'authority' }
         ) {
-            New-StandardsFile -Rules @(New-Rule -Override @{ sources = @($Source); basis = $Basis })
+            New-StandardsFile -Rules @(New-Rule -Override @{ sources = @($Source); basis = $Basis; quotes = New-QuotesFor $Source })
 
             Get-Problem | Should -BeNullOrEmpty
         }
@@ -144,6 +154,7 @@ Describe 'Test-RuleSources.ps1' {
         It 'accepts an authority rule that cites a URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
                     basis = 'authority'; sources = @('https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01')
+                    quotes = New-QuotesFor 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01'
                 })
 
             Get-Problem | Should -BeNullOrEmpty
@@ -152,6 +163,7 @@ Describe 'Test-RuleSources.ps1' {
         It 'accepts an authority rule that cites an http URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
                     basis = 'authority'; sources = @('http://example.com/guide, retrieved 2026-11-01')
+                    quotes = New-QuotesFor 'http://example.com/guide, retrieved 2026-11-01'
                 })
 
             Get-Problem | Should -BeNullOrEmpty
@@ -160,7 +172,8 @@ Describe 'Test-RuleSources.ps1' {
         It 'reports an authority rule that cites no URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{ basis = 'authority'; sources = @('owner, 2026-10-26', 'ADR-0007') })
 
-            (Get-Problem | ForEach-Object Message) | Should -BeLike '*authority*URL*'
+            # It has no quote either, since it cites no page to quote; that's reported too.
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike '*authority*URL*'
         }
 
         It 'reports a preference that cites neither the owner nor an ADR' {

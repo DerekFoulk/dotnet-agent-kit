@@ -92,6 +92,45 @@ function Get-BasisProblem {
     }
 }
 
+# ADR-0082: a quote is the page's own words, with the page and the day they were read, so the rule can be compared
+# with them. Returns the date as text, whether YAML read it as a string or a date.
+function ConvertTo-DateText {
+    param($Value)
+    if ($Value -is [datetime]) { return $Value.ToString('yyyy-MM-dd', [cultureinfo]::InvariantCulture) }
+    "$Value"
+}
+
+function Get-QuoteProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
+
+    # Not "$quotes = if (...)": an if statement's output is enumerated, so a one-quote list would become the quote.
+    $quotes = $null
+    if ($Rule.Contains('quotes')) { $quotes = $Rule['quotes'] }
+    $isAuthority = "$($Rule['basis'])" -eq 'authority' -and "$($Rule['status'])" -ne 'retired'
+    if (-not (Test-Present $quotes)) {
+        if ($isAuthority) { "basis 'authority' needs quotes: the sentence on each cited page that says what the rule says (ADR-0082)" }
+        return
+    }
+    if ($quotes -is [string] -or $quotes -is [System.Collections.IDictionary]) {
+        return "quotes must be a list, each quote with source, retrieved and text"
+    }
+    foreach ($quote in @($quotes)) {
+        if ($quote -isnot [System.Collections.IDictionary]) {
+            "quote '$quote' must have source, retrieved and text"
+            continue
+        }
+        foreach ($field in 'source', 'retrieved', 'text') {
+            if (-not $quote.Contains($field) -or "$($quote[$field])" -notmatch '\S') {
+                "a quote has no '$field'"
+            }
+        }
+        if ($quote.Contains('retrieved') -and "$($quote['retrieved'])" -match '\S' -and
+            -not (Test-IsoDate (ConvertTo-DateText $quote['retrieved']))) {
+            "quote retrieved '$($quote['retrieved'])' must be a date, YYYY-MM-DD"
+        }
+    }
+}
+
 function New-Problem {
     param([string] $File, [string] $RuleId, [string] $Message)
     [pscustomobject]@{ File = $File; RuleId = $RuleId; Message = $Message }
@@ -149,6 +188,9 @@ function Get-RuleSourceProblem {
                 if ($message) {
                     New-Problem -File $file.Name -RuleId $ruleId -Message $message
                 }
+            }
+            foreach ($message in @(Get-QuoteProblem -Rule $rule)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
             }
             if ($rule.Contains('sources')) {
                 foreach ($source in @($rule['sources'])) {
