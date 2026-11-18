@@ -176,6 +176,19 @@ function ConvertTo-KitAppProfile {
         "| $(Format-KitCell $kind['name']) | $(Format-KitCell $kind['checks']) | $(Format-KitCell $kind['runs']) | $($tools -join '<br>') |"
     }
 
+    # ADR-0084: the app type's project types, on the line Build-AgentRules reads to give the app only the common ruleset
+    # and those types' rulesets. An Other app type has none until an ADR names them, so the app gets every rule.
+    $appType = @($Resolved.Cards | Where-Object { $_.Card['id'] -eq 'appType' }) | Select-Object -First 1
+    $types = @(if ($appType -and -not $appType.Other -and $appType.Option.Contains('projectTypes')) { $appType.Option['projectTypes'] })
+    $typeLines = if ($types) {
+        "The kit's rulesets this app gets (kit ADR-0084): the common ruleset, and one for each project type. The kit's ``Build-AgentRules.ps1`` reads the next line; change it only with an ADR."
+        ''
+        "Project types: $($types -join ', ')"
+    }
+    else {
+        "None chosen yet, so the app gets every kit rule. Name its project types from the kit's ``docs/standards/project-types.yml`` in an ADR, then add a line here that reads ``Project types: <id>, <id>`` (kit ADR-0084)."
+    }
+
     $lines = @(
         "# App profile: $Name"
         ''
@@ -188,6 +201,10 @@ function ConvertTo-KitAppProfile {
         '| Question | Answer | Cost |'
         '|---|---|---|'
         $cardRows
+        ''
+        '## Project types'
+        ''
+        $typeLines
         ''
         '## Test tools'
         ''

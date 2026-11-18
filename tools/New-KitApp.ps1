@@ -178,15 +178,12 @@ function New-KitApp {
     # The steps, in order. Each runs in this function's scope (dot-sourced), so later steps see what earlier
     # ones set. -WhatIf lists them instead.
     $steps = @(
-        [pscustomobject]@{ Description = "Export the kit's files at $commit"; Action = {
-                & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
-                if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
-            }
-        }
-        # App-owned: not in the manifest, so the kit sync never changes it.
-        [pscustomobject]@{ Description = 'Write the intake answers to docs/app-profile.md'; Action = {
+        # The intake answers go to docs/app-profile.md, app-owned and out of the manifest. The export writes it before
+        # it generates the rule files, which hold only the rulesets of the app's project types (ADR-0084).
+        [pscustomobject]@{ Description = "Export the kit's files at $commit, with the intake answers in docs/app-profile.md"; Action = {
                 $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name $Name -KitCommit $commit
-                [IO.File]::WriteAllText((Join-Path $Destination 'docs' 'app-profile.md'), $profileText, [Text.UTF8Encoding]::new($false))
+                & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot -AppProfile $profileText
+                if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
             }
         }
         [pscustomobject]@{ Description = 'Make the first commit'; Action = {

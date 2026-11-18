@@ -22,21 +22,25 @@
       "options": [
         {
           "id": "web-api-blazor",
+          "projectTypes": [ "web-api", "blazor" ],
           "label": "Web API and a Blazor web app",
           "description": "An ASP.NET Core API with a Blazor web front end. The API can serve a phone app later. Fits most apps people use in a browser."
         },
         {
           "id": "web-api",
+          "projectTypes": [ "web-api" ],
           "label": "Web API only",
           "description": "An ASP.NET Core HTTP API with no user interface of its own, for other apps or services to call."
         },
         {
           "id": "blazor",
+          "projectTypes": [ "blazor" ],
           "label": "Blazor web app only",
           "description": "A Blazor web app with no separate API: the pages read and write the data themselves."
         },
         {
           "id": "maui",
+          "projectTypes": [ "maui" ],
           "label": ".NET MAUI app (phone or desktop)",
           "description": "A native app for Android, iOS, Windows or macOS, built with .NET MAUI.",
           "cost": {

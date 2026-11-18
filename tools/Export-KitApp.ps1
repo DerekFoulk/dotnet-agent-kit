@@ -333,7 +333,8 @@ function Export-KitApp {
         [Parameter(Mandatory)] [string] $Name,
         [Parameter(Mandatory)] [string] $Destination,
         [Parameter(Mandatory)] [string] $KitRef,
-        [Parameter(Mandatory)] [string] $KitRoot
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [string] $AppProfile
     )
 
     # .NET file calls resolve a relative path against the process's directory, not PowerShell's location.
@@ -389,6 +390,11 @@ function Export-KitApp {
                 Copy-Item -LiteralPath $source -Destination $target
             }
         }
+        # App-owned, so not in the manifest; written first, because the app's Build-AgentRules reads its project types.
+        if ($AppProfile) {
+            New-Item -ItemType Directory -Force -Path (Join-Path $Destination 'docs') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $Destination 'docs' 'app-profile.md'), $AppProfile, [Text.UTF8Encoding]::new($false))
+        }
         $map += @(New-KitAgentRuleFile -Destination $Destination)
         Write-KitManifest -Destination $Destination -Map $map -Commit $commit -KitVersion $KitVersion -Name $Name
     }
@@ -406,7 +412,7 @@ function Export-KitApp {
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $KitRoot) { $KitRoot = Split-Path -Path $PSScriptRoot -Parent }
     try {
-        Export-KitApp -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
+        Export-KitApp -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot -AppProfile $AppProfile
     }
     catch {
         Write-Host $_.Exception.Message -ForegroundColor Red
