@@ -810,7 +810,7 @@ rules:
         text: "AVOID using classes to express complex native types through inheritance."
       - source: "https://learn.microsoft.com/dotnet/standard/native-interop/customize-struct-marshalling"
         retrieved: "2026-11-17"
-        text: "DO use InlineArrayAttribute to define fixed-size buffers in modern .NET (C# 12 and later)."
+        text: "DO use System.Runtime.CompilerServices.InlineArrayAttribute to define fixed-size buffers in modern .NET (C# 12 and later)."
     projectTypes: [all]
     enforcement:
       - kind: advisory

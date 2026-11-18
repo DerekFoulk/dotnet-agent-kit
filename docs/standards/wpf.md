@@ -51,7 +51,7 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/desktop/wpf/advanced/optimizing-performance-other-recommendations"
         retrieved: "2026-11-17"
-        text: "Whenever possible, avoid using the Auto value for the HorizontalScrollBarVisibility and VerticalScrollBarVisibility properties."
+        text: "Whenever possible, avoid using the ScrollBarVisibility.Auto value for the HorizontalScrollBarVisibility and VerticalScrollBarVisibility properties."
       - source: "https://learn.microsoft.com/dotnet/desktop/wpf/advanced/optimizing-performance-text"
         retrieved: "2026-11-17"
         text: "It is recommended that you do not use automatic hyphenation unless you need it."

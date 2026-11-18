@@ -163,22 +163,22 @@ rules:
     projectTypes: [maui, blazor-hybrid, winui3, wpf, winforms]
     paths: ["src/**", "**/*.csproj"]
   - id: ARC-011
-    statement: "A new Windows-only desktop app is recommended to use WinUI 3, the UI framework of the Windows App SDK; a team expecting to target several platforms should start with .NET MAUI (Microsoft names React Native for Desktop beside it), which builds its Windows app with WinUI 3."
+    statement: "A new general-purpose Windows desktop app is recommended to use WinUI 3, the native UI framework delivered with the Windows App SDK; a team expecting to target several platforms should start with .NET MAUI (Microsoft names React Native for Desktop beside it), which uses WinUI 3 when running on Windows."
     why: "The UI framework is the hardest choice to undo in a desktop app: Microsoft says a WinUI 3 app can't later add .NET MAUI for other platforms. The kit says \"WinUI 3\", never just \"WinUI\" (owner, 2026-11-17), because WinUI 2 is a different library, for UWP apps."
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq, retrieved 2026-11-17", "https://learn.microsoft.com/windows/apps/get-started/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/what-is-maui, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/what-is-maui, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"
         retrieved: "2026-11-17"
-        text: "If you're building a new Windows-only app, we recommend using WinUI."
+        text: "If you're building a new general-purpose Windows desktop app, we recommend using WinUI 3."
       - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"
         retrieved: "2026-11-17"
-        text: "Although .NET MAUI uses WinUI when running on Windows, teams expecting to target multiple platforms should start with .NET MAUI or React Native for Desktop."
-      - source: "https://learn.microsoft.com/windows/apps/get-started/"
+        text: "WinUI 3 is the native UI framework delivered with the Windows App SDK."
+      - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"
         retrieved: "2026-11-17"
-        text: "At the core are two SDKs: the Windows SDK, which gives you access to OS-level APIs, and the Windows App SDK, which provides a modern, decoupled set of APIs and tools — including WinUI 3, the recommended UI framework for new Windows apps."
+        text: "Although .NET MAUI uses WinUI 3 when running on Windows, teams expecting to target multiple platforms should start with .NET MAUI or React Native for Desktop."
       - source: "https://learn.microsoft.com/dotnet/maui/what-is-maui"
         retrieved: "2026-11-17"
         text: "Windows apps built using .NET MAUI use Windows UI 3 (WinUI 3) library to create native apps that target the Windows desktop."
@@ -189,7 +189,7 @@ rules:
     projectTypes: [maui, blazor-hybrid, winui3, wpf, winforms]
     paths: ["**/*.csproj"]
   - id: ARC-014
-    statement: "A new desktop app uses the framework ARC-011 names for its platforms (WinUI 3 for Windows only, .NET MAUI for several platforms); a new WPF or Windows Forms app needs an ADR that says why."
+    statement: "A new desktop app uses the framework ARC-011 names for its platforms (WinUI 3 for a Windows desktop app, .NET MAUI for several platforms); a new WPF or Windows Forms app needs an ADR that says why."
     why: "The kit's rules, CI and checks are built for the recommended frameworks; WPF and Windows Forms serve Windows alone and are the older stacks (ADR-0059). Before 2026-11-17 this rule sent every desktop app to .NET MAUI and asked an ADR for WinUI 3 too; the owner had it follow Microsoft's recommendation instead (ARC-011)."
     layer: owner
     basis: preference

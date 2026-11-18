@@ -46,7 +46,7 @@ rules:
         text: "DO NOT cache any scope-related information (such as data from HttpContext) inside HttpMessageHandler instances or its dependencies to avoid leaking sensitive information."
       - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
         retrieved: "2026-11-17"
-        text: "DO NOT register the typed client separately — it is already registered automatically by the AddHttpClient call."
+        text: "DO NOT register the typed client separately — it is already registered automatically by the AddHttpClient<T> call."
       - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
         retrieved: "2026-11-17"
         text: "DO NOT start a large number of HTTP/1.1 requests concurrently at the same time without specifying the limits."
