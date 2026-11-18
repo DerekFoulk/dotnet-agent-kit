@@ -172,6 +172,81 @@ Describe 'Test-RuleSources.ps1' {
         }
     }
 
+    # ADR-0082: an authority rule stores the sentence on each cited page that says what the rule says, so a reader
+    # and the reviewer can compare the two; a rule worded beyond its quote is the kit's, and says so (preference).
+    Context 'quotes' {
+        BeforeAll {
+            function New-Quote {
+                param([hashtable] $Override = @{}, [string[]] $Remove = @())
+                $quote = [ordered]@{
+                    source    = 'https://learn.microsoft.com/ef/core/testing/'
+                    retrieved = '2026-11-17'
+                    text      = 'We recommend testing against the same database system you use in production.'
+                }
+                foreach ($key in $Override.Keys) { $quote[$key] = $Override[$key] }
+                foreach ($key in $Remove) { $quote.Remove($key) }
+                $quote
+            }
+            function New-AuthorityRule {
+                param([hashtable] $Override = @{}, [string[]] $Remove = @())
+                $rule = New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; status = 'proposed'
+                    sources = @('https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17'); quotes = @(New-Quote)
+                }
+                foreach ($key in $Override.Keys) { $rule[$key] = $Override[$key] }
+                foreach ($key in $Remove) { $rule.Remove($key) }
+                $rule
+            }
+        }
+
+        It 'accepts an authority rule whose cited page has a quote' {
+            New-StandardsFile -Rules @(New-AuthorityRule)
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports an authority rule with quotes <Case>' -ForEach @(
+            @{ Case = 'missing'; Value = $null }
+            @{ Case = 'empty'; Value = @() }
+        ) {
+            $rule = if ($null -eq $Value) { New-AuthorityRule -Remove 'quotes' } else { New-AuthorityRule -Override @{ quotes = $Value } }
+            New-StandardsFile -Rules @($rule)
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].RuleId | Should -Be 'GIT-001'
+            $problems[0].Message | Should -BeLike "*authority*quote*"
+        }
+
+        It 'reports a quote whose <Field> is <Case>' -ForEach @(
+            @{ Field = 'source'; Case = 'missing'; Value = $null; Expected = "*quote*source*" }
+            @{ Field = 'retrieved'; Case = 'missing'; Value = $null; Expected = "*quote*retrieved*" }
+            @{ Field = 'text'; Case = 'missing'; Value = $null; Expected = "*quote*text*" }
+            @{ Field = 'text'; Case = 'blank'; Value = '   '; Expected = "*quote*text*" }
+            @{ Field = 'retrieved'; Case = 'not a date'; Value = 'last week'; Expected = "*quote*retrieved*YYYY-MM-DD*" }
+        ) {
+            $quote = if ($null -eq $Value) { New-Quote -Remove $Field } else { New-Quote -Override @{ $Field = $Value } }
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @($quote) })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike $Expected
+        }
+
+        It 'reports a quote written as a string, not a map' {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @('We recommend testing against production.') })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*quote*source, retrieved and text*'
+        }
+
+        It 'accepts a preference rule that also stores a quote' {
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    sources = @('owner, 2026-10-26', 'https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17'); quotes = @(New-Quote)
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+    }
+
     # ADR-0063: enforcement is a list of parts, each a gate (a tool fails the change) or advisory (a person or the
     # reviewer agent checks it), in the kit, in apps or both.
     Context 'enforcement parts' {
