@@ -8,4 +8,4 @@ paths:
 
 # Operations
 
-- OPS-009: An app with long-running operations that need to finish gracefully should subscribe to the host's ApplicationStopping event, which the host signals when it receives a shutdown signal such as SIGTERM.
+- OPS-009: When the host receives a shutdown signal (for example, Ctrl+C or StopAsync), it notifies the app by signaling ApplicationStopping; an app with long-running operations that need to finish gracefully should subscribe to that event.

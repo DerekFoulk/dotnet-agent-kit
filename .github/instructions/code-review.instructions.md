@@ -61,7 +61,7 @@ If you find nothing, say so.
     - A cancelable operation takes a `CancellationToken` and passes it on.
     - `Task` unless measurements call for `ValueTask`.
     - I/O-bound work is awaited directly, not wrapped in `Task.Run`; CPU-bound work is offloaded with `await Task.Run` where a UI thread must stay free.
-    - An Async suffix on a method that returns an awaitable, except an event handler, a controller action, middleware's `Invoke` and a test method (STY-007).
+    - An Async suffix on a method that returns an awaitable, except an event handler, a controller action, middleware's `Invoke` and a test method (STY-014).
     - Tasks a LINQ query creates are started with `ToArray()` or `ToList()` before `Task.WhenAll` or `Task.WhenAny`.
     - Every `TaskCompletionSource` is completed.
     - Each `GetAwaiter().GetResult()` is where `await` can't reach, with its reason (STY-011).
@@ -90,7 +90,7 @@ If you find nothing, say so.
   - **Its quotes are real.** Each is one contiguous passage that the page shows. Read the page for any quote that looks paraphrased, and say whether `Test-RuleQuotes.ps1` passed on the branch (the Rule quotes workflow runs it on the PR).
   - **Its additions are split out.** Anything stricter than the quotes, or any owner decision, is its own `basis: preference` rule, citing the owner or the ADR. A mixed rule is **Blocking**.
   - **Its status is the owner's.** No rule turns from proposed to accepted without the owner's words saying so.
-  - **Its project types are honest.** `[all]` fits a WPF app, a MAUI app, a console app and a class library alike. A rule with web assumptions (HTTP, middleware, Program.cs hosting, Problem Details, server databases) under `[all]` is **Should fix**.
+  - **Its scope is honest.** `core` fits a Web API, a Blazor app and a .NET MAUI app alike. A rule with web assumptions (HTTP, middleware, Program.cs hosting, Problem Details, server databases) under `core` is **Should fix**.
   - its `basis` matches its sources. An authority's rule cites the authority by URL. Microsoft, standards bodies and tool vendors are authorities. Practitioners such as Kent Beck, Martin Fowler, Robert C. Martin and William Durand are not, so a rule resting on them is a preference;
   - an authority's rule is a gate wherever a tool can check it;
   - each enforcement part's `kind` and `in` are true: a gate fails the change, and it runs where `in` says (kit, app or both);

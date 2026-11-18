@@ -7,4 +7,4 @@ paths:
 
 # Supply chain
 
-- SUP-014: When NuGet warns that a package your project uses has a known vulnerability, take action quickly: determine whether you are impacted and, if so, update to the latest version and security patch available.
+- SUP-014: When NuGet warns that a package your project uses has a known vulnerability, you should quickly take action; when a new security vulnerability is discovered, you must determine whether you are impacted and, if so, update to the latest version and security patch available.

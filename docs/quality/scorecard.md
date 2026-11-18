@@ -69,7 +69,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
-    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-013, STY-006, STY-007, STY-014, STY-008, STY-015, STY-009, STY-010, STY-016, STY-011, STY-017, STY-012, CRF-008, CRF-010, CRF-019]
+    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-013, STY-006, STY-007, STY-014, STY-008, STY-018, STY-015, STY-009, STY-010, STY-016, STY-011, STY-017, STY-012, CRF-008, CRF-010, CRF-019]
     gaps:
       - id: GAP-021
         gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version. Closed by ADR-0049, which found the 48 counted each diagnostic twice (24 places then, 32 by the time it was decided): CA1014 is on, and Directory.Build.props declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be; a library published for other .NET languages declares CLSCompliant(true) instead."
@@ -319,7 +319,7 @@ Each area in the front matter above has:
 | Architecture | 13 | 8 | 5 | 4 | 3 |
 | Craft | 20 | 11 | 9 | 1 | 0 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
-| Code | 20 | 15 | 5 | 0 | 0 |
+| Code | 21 | 15 | 6 | 0 | 0 |
 | Tests | 9 | 4 | 5 | 2 | 3 |
 | Security | 19 | 10 | 9 | 4 | 2 |
 | Reliability | 12 | 5 | 7 | 2 | 1 |
@@ -332,21 +332,14 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 1 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 129 rules in force, 70 checked by a tool and 59 advisory; 210 proposed; 16 open gaps.
+**Overall:** 130 rules in force, 70 checked by a tool and 60 advisory; 163 proposed; 16 open gaps.
 
 | Ruleset | Rules in force | Proposed rules |
 |---|---|---|
-| Common (every type) | 105 | 61 |
-| ASP.NET Core Web API | 129 | 106 |
-| Blazor Web App | 127 | 129 |
-| ASP.NET Core Razor Pages and MVC | 127 | 105 |
-| .NET MAUI | 105 | 88 |
-| Blazor Hybrid (.NET MAUI) | 105 | 94 |
-| WinUI 3 (Windows App SDK) | 105 | 93 |
-| WPF | 105 | 76 |
-| Windows Forms | 105 | 73 |
-| Console app or Worker Service | 108 | 73 |
-| Class library | 105 | 67 |
+| Core (every app type) | 106 | 65 |
+| ASP.NET Core Web API | 130 | 111 |
+| Blazor Web App | 128 | 132 |
+| .NET MAUI | 106 | 89 |
 
 Open gaps:
 

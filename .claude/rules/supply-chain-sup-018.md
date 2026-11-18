@@ -7,4 +7,4 @@ paths:
 
 # Supply chain
 
-- SUP-018: On macOS, leave NuGet signed-package verification disabled: Microsoft recommends not enabling it, and the functionality isn't currently supported there. Don't use signed-package verification with .NET SDK versions earlier than 6.0.400.
+- SUP-018: On macOS, where the functionality isn't currently supported, Microsoft recommends that you don't enable NuGet signed-package verification: leave it disabled by default. Don't use signed-package verification with .NET SDK versions earlier than 6.0.400.
