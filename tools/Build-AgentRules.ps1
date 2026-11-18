@@ -14,6 +14,9 @@
     "rules from docs/standards/<file>.md" block in AGENTS.md and templates/app/AGENTS.md with that standard's
     rules, leaving the rest of those files alone (ADR-0065). Proposed and retired rules aren't in force, so they're
     left out. Generated files carry a marker; generated files no standard produces any more are removed.
+    ADR-0084: an app gets only the common ruleset (rules with projectTypes [all]) and the rulesets of the project
+    types on the "Project types:" line of its docs/app-profile.md; a repo with no such line, such as the kit, gets
+    every rule. Each "<!-- ruleset: <type> -->" block in docs/adr is filled with that ruleset's rules.
 
     -Check writes nothing and exits 1 when any generated file is missing, hand-edited or stale (S3).
 
@@ -73,7 +76,38 @@ function Get-AppProjectType {
     $types
 }
 
-function Update-RulesetBlock { param([string] $Text, [string] $StandardsPath) $Text }
+# ADR-0084: a ruleset's ADR lists its rules in a block, filled from the standards so the list can't drift (CRF-003).
+# '<!-- ruleset: maui -->' lists every rule naming maui; '<!-- ruleset: all -->' the common ruleset, every rule with
+# [all]. Proposed rules are listed too, marked, since the ADR records the whole ruleset; retired ones aren't.
+# Takes and returns text with LF line endings.
+function Update-RulesetBlock {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text,
+        [Parameter(Mandatory)] [string] $StandardsPath
+    )
+
+    $pattern = '(?ms)^<!-- ruleset: (?<type>[\w-]+) -->\n.*?^<!-- end ruleset -->$'
+    if ($Text -notmatch $pattern) { return $Text }
+    $known = @(Get-KnownProjectType -StandardsPath $StandardsPath)
+    $rules = foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
+        foreach ($rule in @((Read-FrontMatter -Path $file.FullName)['rules'])) {
+            if ("$($rule['status'])" -eq 'retired') { continue }
+            $types = @(@(if ($rule.Contains('projectTypes')) { $rule['projectTypes'] }) | ForEach-Object { "$_" })
+            [pscustomobject]@{ Rule = $rule; File = $file.Name; Types = $(if ($types) { $types } else { @('all') }) }
+        }
+    }
+    [regex]::Replace($Text, $pattern, {
+            param($match)
+            $type = $match.Groups['type'].Value
+            if ($type -ne 'all' -and $type -notin $known) {
+                throw "A ruleset block names project type '$type', which docs/standards/project-types.yml doesn't list."
+            }
+            $lines = foreach ($entry in @($rules | Where-Object { $type -in $_.Types })) {
+                "- [$($entry.Rule['id'])](../standards/$($entry.File)) ($($entry.Rule['status'])): $($entry.Rule['statement'])"
+            }
+            (@("<!-- ruleset: $type -->") + @($lines) + '<!-- end ruleset -->') -join "`n"
+        })
+}
 
 # The ids docs/standards/project-types.yml lists, or nothing when it's missing (an app synced before ADR-0082).
 function Get-KnownProjectType {
@@ -250,6 +284,15 @@ function Invoke-AgentRuleBuild {
         # An app made before ADR-0064 has no docs/code-review.md until the kit sync brings it.
         $codeReview = Join-Path $RepoRoot 'docs' 'code-review.md'
         if (Test-Path -LiteralPath $codeReview) { $expected += Get-CodeReviewInstructionsFile -SourcePath $codeReview }
+        # Each ruleset's ADR lists its rules (ADR-0084); only the kit's ADRs have the blocks.
+        $adrPath = Join-Path $RepoRoot 'docs' 'adr'
+        if (Test-Path -LiteralPath $adrPath) {
+            foreach ($adr in Get-ChildItem -LiteralPath $adrPath -Filter '*.md' -File | Sort-Object Name) {
+                $text = (Get-Content -LiteralPath $adr.FullName -Raw) -replace "`r`n", "`n"
+                if ($text -notmatch '(?m)^<!-- ruleset: ') { continue }
+                $expected += [pscustomobject]@{ Path = "docs/adr/$($adr.Name)"; Content = (Update-RulesetBlock -Text $text -StandardsPath $standardsPath) }
+            }
+        }
     }
     catch {
         Write-Host "  $($_.Exception.Message)" -ForegroundColor Red
