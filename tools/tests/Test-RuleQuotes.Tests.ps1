@@ -112,7 +112,7 @@ Describe 'Test-RuleQuotes.ps1' {
             $result[0].Detail | Should -BeLike '*gone*404*'
         }
 
-        # Review round 2: the 404 and 410 mapping lives in Get-PageHtml, which the other tests stub out.
+        # The 404 and 410 mapping lives in Get-PageHtml, which the other tests stub out.
         It 'reads a page that answers <Code> as <State>' -ForEach @(
             @{ Code = 404; State = 'Missing' }
             @{ Code = 410; State = 'Missing' }
