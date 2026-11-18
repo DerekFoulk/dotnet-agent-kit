@@ -2,7 +2,9 @@
 <#
 .SYNOPSIS
     Fails when a C# project in the solution holds no code of its own, or keeps the class library template's empty
-    Class1 (ARC-009, ADR-0052).
+    Class1 (ARC-009, ADR-0052). While ARC-009 is proposed, each problem is a GitHub warning annotation and the check
+    passes; once it's accepted, the same problems fail it (ADR-0089). -RuleStatusPath names another rule-status.json
+    than the one beside this script.
 
 .EXAMPLE
     ./tools/Test-EmptyProjects.ps1 -Solution dotnet-agent-kit.slnx
@@ -16,6 +18,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
 
 # Where the build writes output and generated C# by default (BaseOutputPath and BaseIntermediateOutputPath): not the
 # project's own source.
@@ -87,18 +90,21 @@ function Get-EmptyProjectProblem {
     }
 }
 
-# Prints every problem and returns 0 when every project holds code of its own, otherwise 1.
+# Prints every problem and returns 0 when every project holds code of its own, otherwise 1. While ARC-009 is
+# proposed, each problem is a warning and the check passes (ADR-0089).
 function Invoke-EmptyProjectsCheck {
-    param([Parameter(Mandatory)] [string] $Solution)
+    param([Parameter(Mandatory)] [string] $Solution, [string] $RuleStatusPath)
 
     $problems = @(Get-EmptyProjectProblem -Solution $Solution)
-    foreach ($problem in $problems) {
-        Write-Host "  $($problem.Message)" -ForegroundColor Red
-    }
+    $counted = @($problems | Where-Object { Write-RuleFinding -Id 'ARC-009' -Message $_.Message -Path $RuleStatusPath }).Count
 
-    if ($problems) {
-        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red
+    if ($counted) {
+        Write-Host "`n$counted empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red
         return 1
+    }
+    if ($problems) {
+        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution, shown as warnings because ARC-009 is proposed; they'll fail the check once it's accepted." -ForegroundColor Yellow
+        return 0
     }
 
     Write-Host "Every project in $Solution holds code of its own." -ForegroundColor Green
@@ -107,5 +113,5 @@ function Invoke-EmptyProjectsCheck {
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
-    exit (Invoke-EmptyProjectsCheck -Solution $Solution)
+    exit (Invoke-EmptyProjectsCheck -Solution $Solution -RuleStatusPath $RuleStatusPath)
 }
