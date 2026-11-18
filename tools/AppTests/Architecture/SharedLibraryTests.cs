@@ -2,7 +2,7 @@ namespace Kit.AppTests.Architecture;
 
 /// <summary>
 /// Shared libraries reference no UI, web or platform package, so any front end can use them (ARC-003), and the domain
-/// knows nothing of how it's stored (CRF-014).
+/// knows nothing of how it's stored (CRF-021).
 /// </summary>
 public sealed class SharedLibraryTests
 {

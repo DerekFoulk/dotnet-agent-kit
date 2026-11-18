@@ -347,7 +347,7 @@ rules:
         how: "code review checks default interface methods"
     paths: ["**/*.cs"]
   - id: CS-019
-    statement: "You should annotate a method whose arguments could be null, and are known to be not null when the method returns true, the way the page annotates its TryGetMessage example: with NotNullWhen."
+    statement: "A method whose arguments could be null, and are known to be not null when it returns true, should be annotated with NotNullWhen."
     why: "The attributes state a null contract the type alone can't express."
     layer: outside
     basis: authority
@@ -430,7 +430,7 @@ rules:
         how: "code review checks every TaskCompletionSource and every task that outlives its caller"
     paths: ["**/*.cs"]
   - id: CS-023
-    statement: "Use the regular expression source generator if you can (the page's general guidance), and prefer it when you use Regex in C# with arguments known at compile time."
+    statement: "If you can use the regular expression source generator, use it; prefer it when you use Regex in C# with arguments known at compile time."
     why: "A source-generated regex is built at compile time instead of at run time."
     layer: outside
     basis: authority
@@ -756,8 +756,8 @@ rules:
         how: "code review checks a packable library's release against these compatibility rules"
     paths: ["**/*.csproj", "**/*.cs"]
   - id: CS-036
-    statement: "A library that targets .NET Standard should target .NET Standard 2.0 unless it needs to support an earlier version, shouldn't target .NET Standard 1.x, and, if it doesn't need to support .NET Framework, should skip .NET Standard 2.1 and go straight to the current .NET (the page names .NET 11)."
-    why: "The page's reach-against-features trade-off: .NET Standard 2.0 is supported by all modern platforms, and 1.x limits features for little extra reach."
+    statement: "A library that targets .NET Standard should target .NET Standard 2.0 unless it needs to support an earlier version, shouldn't target .NET Standard 1.x, and, if it doesn't need to support .NET Framework, should skip .NET Standard 2.1 and go straight to .NET."
+    why: "Microsoft's page names .NET 11 as the version to go to. Its reach-against-features trade-off: .NET Standard 2.0 is supported by all modern platforms, and 1.x limits features for little extra reach."
     layer: outside
     basis: authority
     status: proposed

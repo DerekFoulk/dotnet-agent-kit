@@ -288,7 +288,7 @@ rules:
         how: "code review checks the Scorecard workflow's permissions; SUP-010's SharedCi tests check them in the kit's shared workflow"
     paths: [".github/workflows/**"]
   - id: SUP-018
-    statement: "On macOS, where the functionality isn't currently supported, Microsoft recommends that you don't enable NuGet signed-package verification: leave it disabled by default. Don't use signed-package verification with .NET SDK versions earlier than 6.0.400."
+    statement: "On macOS, where it isn't currently supported, NuGet signed-package verification should not be enabled: leave it disabled by default. Don't use signed-package verification with .NET SDK versions earlier than 6.0.400."
     why: "Signed-package verification isn't supported on macOS, so SUP-012's trusted-signer rule can't apply to a macOS restore."
     layer: outside
     basis: authority

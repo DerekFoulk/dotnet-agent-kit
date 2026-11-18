@@ -230,8 +230,8 @@ rules:
         how: "code review checks that long-running work stops on the stopping token; OPS-005's checks cover the timeout and the cancellation tokens"
     paths: ["**/*ServiceDefaults*/**", "**/Program.cs", "**/*.cs"]
   - id: OPS-010
-    statement: "In some hosting scenarios, use a pair of health checks to distinguish two app states: readiness (the app is running normally but isn't ready to receive requests) and liveness (the app has crashed and must be restarted). In the page's example, an app that must download a large configuration file before it's ready to process requests uses a liveness probe to describe the liveness of the process, with no other checks run, and a readiness probe to indicate a \"not ready\" state until the download succeeds and the app is ready to receive requests."
-    why: "A liveness probe that ran the readiness checks would restart an app that is only waiting to become ready (GAP-007). The page calls separate readiness and liveness checks useful in an environment such as Kubernetes. The kit's endpoints and their details are OPS-002."
+    statement: "In some hosting scenarios, use a pair of health checks to distinguish two app states: readiness (the app is running normally but isn't ready to receive requests) and liveness (the app has crashed and must be restarted)."
+    why: "A liveness probe that ran the readiness checks would restart an app that is only waiting to become ready (GAP-007). Microsoft's example is an app that must download a large configuration file before it can process requests: its liveness probe runs no other checks, and its readiness probe reports \"not ready\" until the download succeeds. The page calls separate readiness and liveness checks useful in an environment such as Kubernetes. The kit's endpoints and their details are OPS-002."
     layer: outside
     basis: authority
     status: accepted

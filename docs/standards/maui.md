@@ -206,8 +206,8 @@ rules:
         how: "code review checks XAML for nested ScrollViews, AutoSize and bindable layouts over large collections"
     paths: ["**/*.xaml", "**/*.xaml.cs"]
   - id: MAU-011
-    statement: "In a MAUI window's lifecycle events: on Stopped, disconnect from any long running processes, or cancel any pending requests that might consume device resources, because there's no guarantee the app will resume (the operating system may terminate it). On Resumed, subscribe to any required events and refresh any content that's on the visible page. On Destroying, remove any event subscriptions attached to the native window. On iOS and Mac Catalyst, any string state should be persisted to the State property of the Backgrounding event's BackgroundingEventArgs. In an Android activity lifecycle method whose row on the page says so, such as OnPause and OnDestroy, always call the super class's implementation."
-    why: "The lifecycle page gives an action for each of these events; skipping them keeps work running in the background, leaves subscriptions behind or loses state the system would have kept."
+    statement: "In a MAUI window's lifecycle events: on Stopped, disconnect from any long running processes, or cancel any pending requests that might consume device resources, because there's no guarantee the app will resume (the operating system may terminate it). On Resumed, subscribe to any required events and refresh any content that's on the visible page. On Destroying, remove any event subscriptions attached to the native window. On iOS and Mac Catalyst, any string state should be persisted to the State property of the Backgrounding event's BackgroundingEventArgs. In the Android activity lifecycle overrides that need it, such as OnPause and OnDestroy, always call the super class's implementation."
+    why: "The lifecycle page gives an action for each of these events, and its table of Android methods marks the ones whose override must call the base implementation; skipping them keeps work running in the background, leaves subscriptions behind or loses state the system would have kept."
     layer: outside
     basis: authority
     status: proposed
@@ -267,7 +267,7 @@ rules:
         how: "code review checks where permission requests are made and that each has its manifest and plist entry"
     paths: ["**/*.cs", "**/Platforms/**"]
   - id: MAU-013
-    statement: "Using a web backend as a middle layer between a MAUI app and the authentication provider is the best practice. Older mobile-only authentication libraries and patterns that don't use a web backend in the authentication flow are strongly recommended against, due to their inherent lack of security for storing client secrets. According to Apple's review guidelines, as the page relays them, an Apple app that uses any social login service to authenticate must also offer Sign in with Apple as an option."
+    statement: "Using a web backend as a middle layer between a MAUI app and the authentication provider is the best practice. Older mobile-only authentication libraries and patterns that don't use a web backend in the authentication flow are strongly recommended against, due to their inherent lack of security for storing client secrets. An Apple app that uses any social login service to authenticate must also offer Sign in with Apple as an option (Apple's review guidelines)."
     why: "A client secret shipped inside a mobile app can be extracted; a web backend keeps it server-side."
     layer: outside
     basis: authority
