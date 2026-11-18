@@ -9,7 +9,7 @@ areas:
     sources:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-07"
       - "ADR-0008"
-    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, ARC-010, ARC-011, ARC-012, ARC-013, CRF-006, CRF-007, DAT-001, DAT-002]
+    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, ARC-018, ARC-010, ARC-011, ARC-012, ARC-013, CRF-006, CRF-018, CRF-017, CRF-007, DAT-001, DAT-002]
     gaps:
       - id: GAP-039
         gap: "ARC-008 says assemblies marked pure use no randomness, file or network access except through injected abstractions, but nothing says how an assembly is marked pure, and no ban list holds the APIs it may not call (Random, File, the network classes and the rest), so that part of the rule has no check. A BannedSymbols file that only pure assemblies add, proved by a fixture, would make it a gate (rules audit, 2026-11-12). The clock is done: BannedSymbols.txt bans reading it directly in every project (.NET best-practices pass, 2026-11-16). Closed by ADR-0080: a project sets PureAssembly in its .csproj, Directory.Build.props then adds BannedSymbols.Pure.txt (randomness, file, network, environment and process access), each family has a failing fixture in tools/tests/BuildConfig.Tests.ps1, and the sample's Bookmarks.Domain is marked pure."
@@ -36,7 +36,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"
       - "ADR-0043"
       - "ADR-0050"
-    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010, CRF-011, CRF-012, CRF-013, CRF-014]
+    rules: [CRF-001, CRF-002, CRF-003, CRF-015, CRF-004, CRF-005, CRF-016, CRF-006, CRF-018, CRF-017, CRF-007, CRF-008, CRF-009, CRF-010, CRF-019, CRF-011, CRF-012, CRF-013, CRF-020, CRF-014, CRF-021]
     gaps:
       - id: GAP-019
         gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-011 (proposed) states them as limits; ADR-0071 adds members per type and public types per file."
@@ -69,7 +69,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
-    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, STY-008, STY-009, STY-010, STY-011, STY-012, CRF-008, CRF-010]
+    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-013, STY-006, STY-007, STY-014, STY-008, STY-015, STY-009, STY-010, STY-016, STY-011, STY-017, STY-012, CRF-008, CRF-010, CRF-019]
     gaps:
       - id: GAP-021
         gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version. Closed by ADR-0049, which found the 48 counted each diagnostic twice (24 places then, 32 by the time it was decided): CA1014 is on, and Directory.Build.props declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be; a library published for other .NET languages declares CLSCompliant(true) instead."
@@ -86,7 +86,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-07"
       - "ADR-0003"
       - "ADR-0018"
-    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, TST-007, TST-010, GIT-005, DAT-005]
+    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, TST-007, TST-010, TST-011, GIT-005, DAT-005]
     gaps:
       - id: GAP-003
         gap: "Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1. Closed by ADR-0039: a shared nightly Stryker.NET workflow for the kit and every app, failing below 85%."
@@ -117,7 +117,7 @@ areas:
     sources:
       - "https://asvs.owasp.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/azure/well-architected/security/, retrieved 2026-11-07"
-    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-012, SEC-013, SEC-014, SEC-015, ARC-006, DAT-010]
+    rules: [SEC-001, SEC-016, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-021, SEC-012, SEC-022, SEC-013, SEC-023, SEC-014, SEC-024, SEC-015, SEC-025, ARC-006, DAT-010]
     gaps:
       - id: GAP-040
         gap: "SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12). Closed by ADR-0079: the shared .NET CI runs tools/Test-PackageLicenses.ps1, which reads every locked package's license from its .nuspec (an SPDX expression, or a license file or URL that a package entry must pin) against tools/package-licenses.json and the repo's .config/package-licenses.json, where a repo marks itself commercial; there, FluentAssertions 8 fails, naming AwesomeAssertions."
@@ -144,7 +144,7 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/reliability/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks, retrieved 2026-11-07"
-    rules: [ARC-006, OPS-002, OPS-003, OPS-005, OPS-006, DAT-003, DAT-004, DAT-007, DAT-008]
+    rules: [ARC-006, OPS-002, OPS-010, OPS-003, OPS-008, OPS-005, OPS-009, OPS-006, DAT-003, DAT-004, DAT-007, DAT-015, DAT-008, DAT-016]
     gaps:
       - id: GAP-007
         gap: "No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-002, OPS-003 (accepted 2026-11-09)."
@@ -181,7 +181,7 @@ areas:
       - "https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/aspnet/core/grpc/comparison, retrieved 2026-11-07"
       - "owner, 2026-11-06"
-    rules: [API-001, API-002, API-003, API-004, API-005, API-006, API-007]
+    rules: [API-001, API-002, API-010, API-003, API-009, API-004, API-011, API-005, API-006, API-007, API-013]
     gaps:
       - id: GAP-010
         gap: "No guidance on choosing an API style: when HTTP APIs, gRPC, SignalR or GraphQL fit. Closed by ADR-0038: API-001 (proposed) and the plan-checklist skill."
@@ -196,7 +196,7 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/, retrieved 2026-11-07"
       - "https://benchmarkdotnet.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/aspnet/core/test/load-tests?view=aspnetcore-10.0, retrieved 2026-11-12"
-    rules: [ARC-006, TST-009, DAT-009, OPS-007]
+    rules: [ARC-006, TST-009, DAT-009, OPS-007, OPS-011]
     gaps:
       - id: GAP-012
         gap: "No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions). Closed by ADR-0062: BenchmarkDotNet benchmarks and a Locust load test, each against a budget in the repo, run by the shared performance workflow off the required path (TST-009, proposed), proven on the sample. A load test of a deployed app waits for GAP-015."
@@ -208,7 +208,7 @@ areas:
       - "https://learn.microsoft.com/en-us/nuget/concepts/security-best-practices, retrieved 2026-11-07"
       - "https://slsa.dev/, retrieved 2026-11-07"
       - "ADR-0020"
-    rules: [SUP-001, SUP-002, SUP-003, SUP-004, SUP-005, SUP-006, SUP-007, SUP-008, SUP-009, SUP-010, SUP-011, SUP-012]
+    rules: [SUP-001, SUP-002, SUP-003, SUP-013, SUP-004, SUP-014, SUP-005, SUP-006, SUP-007, SUP-015, SUP-008, SUP-009, SUP-010, SUP-011, SUP-012, SUP-018]
     gaps:
       - id: GAP-013
         gap: "No SBOM is produced for an app's build. Closed by ADR-0055: the shared .NET CI writes a CycloneDX SBOM of each build's shipped projects, leaving out the projects MSBuild marks as tests, and uploads it as the 'sbom' artifact (SUP-009, proposed)."
@@ -259,7 +259,7 @@ areas:
     sources:
       - "https://diataxis.fr/, retrieved 2026-11-07"
       - "ADR-0016"
-    rules: [ARC-005, ARC-006, DOD-001, OPS-004]
+    rules: [ARC-005, ARC-015, ARC-006, DOD-001, OPS-004]
     gaps:
       - id: GAP-017
         gap: "No runbooks: nothing says how to operate, recover or roll back an app. Closed by ADR-0047: every app gets docs/runbook.md from a template, a how-to guide for each operating task, and the shared app checks run Test-Runbook.ps1 on it (OPS-004, proposed)."
@@ -316,23 +316,37 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 10 | 7 | 3 | 4 | 3 |
-| Craft | 13 | 7 | 6 | 1 | 0 |
+| Architecture | 13 | 8 | 5 | 4 | 3 |
+| Craft | 20 | 11 | 9 | 1 | 0 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
-| Code | 14 | 11 | 3 | 0 | 0 |
-| Tests | 8 | 4 | 4 | 2 | 3 |
-| Security | 13 | 10 | 3 | 4 | 2 |
-| Reliability | 7 | 4 | 3 | 2 | 1 |
+| Code | 20 | 15 | 5 | 0 | 0 |
+| Tests | 9 | 4 | 5 | 2 | 3 |
+| Security | 19 | 10 | 9 | 4 | 2 |
+| Reliability | 12 | 5 | 7 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 1 |
-| API design | 4 | 4 | 0 | 3 | 0 |
-| Performance | 3 | 1 | 2 | 1 | 0 |
-| Supply chain and build | 9 | 9 | 0 | 3 | 1 |
+| API design | 8 | 4 | 4 | 3 | 0 |
+| Performance | 4 | 2 | 2 | 1 | 0 |
+| Supply chain and build | 13 | 9 | 4 | 3 | 1 |
 | Delivery | 1 | 1 | 0 | 2 | 3 |
-| Docs and decisions | 3 | 2 | 1 | 1 | 0 |
+| Docs and decisions | 4 | 2 | 2 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 2 | 1 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 94 rules in force, 61 checked by a tool and 33 advisory; 25 proposed; 16 open gaps.
+**Overall:** 129 rules in force, 70 checked by a tool and 59 advisory; 210 proposed; 16 open gaps.
+
+| Ruleset | Rules in force | Proposed rules |
+|---|---|---|
+| Common (every type) | 105 | 61 |
+| ASP.NET Core Web API | 129 | 106 |
+| Blazor Web App | 127 | 129 |
+| ASP.NET Core Razor Pages and MVC | 127 | 105 |
+| .NET MAUI | 105 | 88 |
+| Blazor Hybrid (.NET MAUI) | 105 | 94 |
+| WinUI 3 (Windows App SDK) | 105 | 93 |
+| WPF | 105 | 76 |
+| Windows Forms | 105 | 73 |
+| Console app or Worker Service | 108 | 73 |
+| Class library | 105 | 67 |
 
 Open gaps:
 
