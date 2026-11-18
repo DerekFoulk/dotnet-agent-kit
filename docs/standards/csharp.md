@@ -15,7 +15,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/patterns/discards"
         retrieved: "2026-11-17"
         text: "Await the task so its completion and exceptions remain in the calling flow."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -35,7 +35,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/patterns/discards"
         retrieved: "2026-11-17"
         text: "Avoid declaring your own variables, constants, or types named _; use _ to communicate discard intent."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -52,7 +52,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/types/built-in-types"
         retrieved: "2026-11-17"
         text: "Raw string literals are easier to read and write, so prefer them for new code."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -69,7 +69,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/types/built-in-types"
         retrieved: "2026-11-17"
         text: "Avoid dynamic in most application code because you lose compile-time safety."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -86,7 +86,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general"
         retrieved: "2026-11-17"
         text: "The Obsolete attribute can be used without arguments, but including an explanation what to use instead is recommended."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -106,7 +106,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general"
         retrieved: "2026-11-17"
         text: "Library authors should use this attribute as a last resort when adding a new and better method overload."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -123,7 +123,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/enum"
         retrieved: "2026-11-17"
         text: "Almost always define a member with value 0 in your enums."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -140,7 +140,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/record"
         retrieved: "2026-11-17"
         text: "Computed properties in record types should be computed on access, not initialized when the instance is created."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -160,7 +160,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/struct"
         retrieved: "2026-11-17"
         text: "If you're focused on the behavior of a type, consider defining a class."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -180,7 +180,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/advanced-topics/performance/"
         retrieved: "2026-11-17"
         text: "The method might capture the parameter, or it might return the parameter by readonly reference. In those cases, you should use the ref readonly modifier. Otherwise, the in modifier offers more flexibility."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -200,7 +200,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/operators/stackalloc"
         retrieved: "2026-11-17"
         text: "Do not provide negative lengths to the stackalloc operator. If the length is derived from user input, ensure that the call site both forbids negative values and caps the maximum allowed value, as shown in the above examples."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -223,7 +223,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock"
         retrieved: "2026-11-17"
         text: "string instances, including string literals, as they might be interned."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -240,7 +240,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/static-constructors"
         retrieved: "2026-11-17"
         text: "To avoid the risk of deadlocks, don't block the current thread in static constructors and initializers. For example, don't wait on tasks, threads, wait handles or events, don't acquire locks, and don't execute blocking parallel operations such as parallel loops, Parallel.Invoke and Parallel LINQ queries."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -260,7 +260,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/programming-guide/events/how-to-subscribe-to-and-unsubscribe-from-events"
         retrieved: "2026-11-17"
         text: "In order to prevent resource leaks, you should unsubscribe from events before you dispose of a subscriber object."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -280,7 +280,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/linq/mixed-declarative-imperative-code-bugs"
         retrieved: "2026-11-17"
         text: "To avoid such problems, don't mix declarative and imperative code, even if you know exactly the semantics of your collections and the semantics of the methods that modify the XML tree."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -297,7 +297,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/extension-methods"
         retrieved: "2026-11-17"
         text: "For a class library that you implemented, you shouldn't use extension methods to avoid incrementing the version number of an assembly."
-    projectTypes: [class-library]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -314,7 +314,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/versioning-with-the-override-and-new-keywords"
         retrieved: "2026-11-17"
         text: "First, avoid declaring new methods with the same name as virtual methods."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -334,7 +334,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/advanced-topics/interface-implementation/mixins-with-default-interface-methods"
         retrieved: "2026-11-17"
         text: "You can usually avoid this situation by keeping interface definitions small and focused on one feature."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -351,7 +351,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/nullable-analysis"
         retrieved: "2026-11-17"
         text: "You should annotate similar methods in your codebase in the same way: the arguments could be null, and are known to be not null when the method returns true."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -368,7 +368,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/analyzers/platform-compat-analyzer"
         retrieved: "2026-11-17"
         text: "The recommended way to deal with these diagnostics is to make sure you only call platform-specific APIs when running on an appropriate platform."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -388,7 +388,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/synchronous-wrappers-for-asynchronous-methods"
         retrieved: "2026-11-17"
         text: "Don't expose a synchronous method that wraps an asynchronous implementation."
-    projectTypes: [class-library]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -408,7 +408,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/keep-async-methods-alive"
         retrieved: "2026-11-17"
         text: "If work must continue after the caller returns, transfer ownership explicitly."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -425,7 +425,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/base-types/regular-expression-source-generators"
         retrieved: "2026-11-17"
         text: "The general guidance is if you can use the source generator, use it."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -448,7 +448,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/base-types/how-to-verify-that-strings-are-in-valid-email-format"
         retrieved: "2026-11-17"
         text: "DON'T use a regular expression as the only way you validate an email."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -477,7 +477,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/base-types/character-encoding"
         retrieved: "2026-11-17"
         text: "They should not be used to store binary data in string form."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -500,7 +500,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/events/observer-design-pattern-best-practices"
         retrieved: "2026-11-17"
         text: "Although you can attach an observer to multiple providers, the recommended pattern is to attach an IObserver<T> instance to only one IObservable<T> instance."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -523,7 +523,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/threading/cancellation-in-managed-threads"
         retrieved: "2026-11-17"
         text: "If library code provides cancelable operations, it should also provide public methods that accept an external cancellation token so that user code can request cancellation."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -552,7 +552,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/parallel-programming/exception-handling-task-parallel-library"
         retrieved: "2026-11-17"
         text: "However, we recommend that you do not do this because it is analogous to catching the base Exception type in non-parallel scenarios."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -578,7 +578,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/garbage-collection/fundamentals"
         retrieved: "2026-11-17"
         text: "Your app should never make assumptions about or depend on a particular segment size, nor should it attempt to configure the amount of memory available for segment allocations."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -604,7 +604,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/io/zip-tar-best-practices"
         retrieved: "2026-11-17"
         text: "When creating encrypted entries, always prefer Aes256."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -630,7 +630,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/linq/linq-xml-security"
         retrieved: "2026-11-17"
         text: "Error messages shouldn't be exposed to callers that aren't trusted. You should catch all errors and report errors with your own custom error messages."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -650,7 +650,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/security/cryptographic-services"
         retrieved: "2026-11-17"
         text: "But the MD5 and SHA-1 algorithms have been found to be insecure, and SHA-2 is now recommended instead."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -667,7 +667,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/reflection-vs-source-generation"
         retrieved: "2026-11-17"
         text: "In addition, certain reflection APIs can't be used in Native AOT applications, so you must use source generation for those apps."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -693,7 +693,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/library-guidance/dependencies-net"
         retrieved: "2026-11-17"
         text: "AVOID using branching as a way to remove support for in-support frameworks as this approach removes the feature/support choice for users."
-    projectTypes: [class-library]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -725,7 +725,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/library-guidance/nuget-package-compatibility-rules"
         retrieved: "2026-11-17"
         text: "CONSIDER enabling Package Validation with a baseline version to automatically detect breaking changes."
-    projectTypes: [class-library]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -748,35 +748,12 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/net-standard"
         retrieved: "2026-11-17"
         text: "We recommend you skip .NET Standard 2.1 and go straight to .NET 11."
-    projectTypes: [class-library]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the target frameworks of a library meant for NuGet"
     paths: ["**/*.csproj", "**/Directory.Build.props"]
-  - id: CS-037
-    statement: "In a command-line app, make options provide parameters to commands rather than specify actions, avoid using the common .NET CLI aliases differently than their usual meaning, and be consistent in pluralization of option names."
-    why: "Users expect the .NET CLI's conventions."
-    layer: outside
-    basis: authority
-    status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/standard/commandline/design-guidance, retrieved 2026-11-17"]
-    quotes:
-      - source: "https://learn.microsoft.com/dotnet/standard/commandline/design-guidance"
-        retrieved: "2026-11-17"
-        text: "Options should provide parameters to commands, rather than specifying actions themselves."
-      - source: "https://learn.microsoft.com/dotnet/standard/commandline/design-guidance"
-        retrieved: "2026-11-17"
-        text: "In particular, avoid using any of the following aliases differently than their common usage in the .NET CLI and other .NET command-line apps:"
-      - source: "https://learn.microsoft.com/dotnet/standard/commandline/design-guidance"
-        retrieved: "2026-11-17"
-        text: "Within an app, be consistent in pluralization."
-    projectTypes: [console-worker]
-    enforcement:
-      - kind: advisory
-        in: [kit, app]
-        how: "code review checks the commands and options of a command-line app"
-    paths: ["**/*.cs"]
   - id: CS-038
     statement: "When you use System.IO.Pipelines, always complete the PipeReader and PipeWriter (including an exception where applicable), and always call AdvanceTo after ReadAsync."
     why: "An uncompleted reader or writer leaves its counterpart waiting."
@@ -791,7 +768,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/io/pipelines"
         retrieved: "2026-11-17"
         text: "Always call PipeReader.AdvanceTo after calling PipeReader.ReadAsync."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -811,7 +788,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/native-interop/customize-struct-marshalling"
         retrieved: "2026-11-17"
         text: "DO use System.Runtime.CompilerServices.InlineArrayAttribute to define fixed-size buffers in modern .NET (C# 12 and later)."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]

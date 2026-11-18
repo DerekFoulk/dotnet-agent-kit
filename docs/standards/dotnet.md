@@ -12,7 +12,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines"
         retrieved: "2026-11-17"
         text: "To summarize recommended HttpClient use in terms of lifetime management, you should use either long-lived clients and set PooledConnectionLifetime (.NET Core and .NET 5+) or short-lived clients created by IHttpClientFactory."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -32,7 +32,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/resilience/http-resilience"
         retrieved: "2026-11-17"
         text: "If you need to add multiple resilience handlers, you should consider using the AddResilienceHandler extension method, which allows you to customize the resilience strategies."
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -49,7 +49,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines"
         retrieved: "2026-11-17"
         text: "If your app requires cookies, it's recommended to avoid using IHttpClientFactory."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]

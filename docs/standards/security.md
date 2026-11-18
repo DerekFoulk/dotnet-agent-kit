@@ -8,7 +8,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0024"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -24,7 +24,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-01"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -40,7 +40,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-01", "owner, 2026-11-07", "owner, 2026-11-09", "ADR-0032", "ADR-0035"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -56,7 +56,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0017"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit]
@@ -72,7 +72,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0004", "ADR-0079"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -88,7 +88,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0036", "owner, 2026-11-09"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit]
@@ -104,7 +104,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0048"]
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit]
@@ -123,7 +123,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0048"]
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit]
@@ -139,7 +139,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0048"]
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit]
@@ -155,7 +155,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0048"]
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit]
@@ -171,7 +171,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-12"]
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit]
@@ -193,7 +193,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-12"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -206,7 +206,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-12"]
-    projectTypes: [web-api]
+    scope: [web-api]
     enforcement:
       - kind: gate
         in: [kit]
@@ -225,7 +225,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-12"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -241,7 +241,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-12"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -268,7 +268,7 @@ rules:
       - source: "https://docs.github.com/en/code-security/concepts/secret-security/secret-scanning"
         retrieved: "2026-11-17"
         text: "While you can also remove secrets from your Git history, this is time-intensive and often unnecessary if you've already revoked the credential."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -291,7 +291,7 @@ rules:
       - source: "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x17-V8-Authorization.md"
         retrieved: "2026-11-17"
         text: "Verify that the application ensures that function-level access is restricted to consumers with explicit permissions."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -341,7 +341,7 @@ rules:
       - source: "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x18-V9-Self-contained-Tokens.md"
         retrieved: "2026-11-17"
         text: "Verify that the service only accepts tokens which are intended for use with that service (audience)."
-    projectTypes: [web-api]
+    scope: [web-api]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -373,7 +373,7 @@ rules:
       - source: "https://learn.microsoft.com/entra/identity-platform/id-token-claims-reference"
         retrieved: "2026-11-17"
         text: "Your application mustn't use human-readable data to identify a user."
-    projectTypes: [web-api]
+    scope: [web-api]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -399,7 +399,7 @@ rules:
       - source: "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x11-V2-Validation-and-Business-Logic.md"
         retrieved: "2026-11-17"
         text: "Verify that the application is designed to enforce input validation at a trusted service layer."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -444,7 +444,7 @@ rules:
       - source: "https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption"
         retrieved: "2026-11-17"
         text: "Implement a limit on how often a client can interact with the API within a defined timeframe (rate limiting)."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -465,7 +465,7 @@ rules:
       - source: "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x03-What-is-the-ASVS.md"
         retrieved: "2026-11-17"
         text: "This level contains the minimum requirements to consider when securing an application and represents a critical starting point."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -495,7 +495,7 @@ rules:
       - source: "https://api-security.owasp.org/editions/2023/en/0xa3-broken-object-property-level-authorization"
         retrieved: "2026-11-17"
         text: "Keep returned data structures to the bare minimum, according to the business/functional requirements for the endpoint."
-    projectTypes: [web-api]
+    scope: [web-api]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -519,7 +519,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/security-warnings"
         retrieved: "2026-11-17"
         text: "If you disable any of these rules, you should clearly mark the reason in code and also inform the designated security officer for your development project."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -543,7 +543,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/security/security-and-user-input"
         retrieved: "2026-11-17"
         text: "This situation is analogous to malicious code calling your code with strange parameters, and the same precautions should be taken."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]

@@ -18,7 +18,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
         retrieved: "2026-11-17"
         text: "Ensure your app is perceivable, operable, understandable, and robust for all by following the Web Content Accessibility Guidelines (WCAG)."
-    projectTypes: [blazor, razor-pages-mvc, maui, blazor-hybrid, winui3, wpf, winforms]
+    scope: [blazor, maui]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -31,7 +31,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0061", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://github.com/dequelabs/axe-core/blob/develop/doc/API.md, retrieved 2026-11-17", "https://github.com/dequelabs/axe-core-nuget/blob/develop/packages/playwright/README.md, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/test?view=aspnetcore-10.0, retrieved 2026-11-12"]
-    projectTypes: [blazor, razor-pages-mvc]
+    scope: [blazor]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -111,7 +111,7 @@ rules:
       - source: "https://www.w3.org/TR/wcag2ict-22/"
         retrieved: "2026-11-17"
         text: "This document is intended to help clarify how to use WCAG 2 to make non-web documents and software more accessible to people with disabilities."
-    projectTypes: [blazor, razor-pages-mvc, maui, blazor-hybrid, winui3, wpf, winforms]
+    scope: [blazor, maui]
     enforcement:
       - kind: gate
         in: [kit]
@@ -170,7 +170,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
         retrieved: "2026-11-17"
         text: "Test the accessibility features of your app on each platform it targets."
-    projectTypes: [maui]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [kit, app]

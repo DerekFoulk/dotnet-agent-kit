@@ -18,7 +18,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation"
         retrieved: "2026-11-17"
         text: "For longer-running initialization, consider using background services or hosted services."
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -50,7 +50,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
         retrieved: "2026-11-17"
         text: "DO NOT start a large number of HTTP/1.1 requests concurrently at the same time without specifying the limits."
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker, maui, blazor-hybrid]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -73,7 +73,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/logging/overview"
         retrieved: "2026-11-17"
         text: "If a logging datastore is slow, don't write to it directly."
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker, maui, blazor-hybrid]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -93,7 +93,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/caching"
         retrieved: "2026-11-17"
         text: "AddDistributedMemoryCache should only be used in development or testing scenarios and is not a viable production implementation."
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -113,7 +113,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/options-library-authors"
         retrieved: "2026-11-17"
         text: "DO NOT use names that are already part of the .NET ecosystem from official Microsoft packages."
-    projectTypes: [class-library]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]

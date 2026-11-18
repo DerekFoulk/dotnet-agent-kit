@@ -8,7 +8,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0020"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -27,7 +27,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0020", "owner, 2026-11-09"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -40,7 +40,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -53,7 +53,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -66,7 +66,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0025"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -82,7 +82,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0019", "ADR-0022", "owner, 2026-11-04"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -95,7 +95,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0016"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -111,7 +111,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-11", "ADR-0041", "ADR-0060"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit]
@@ -127,7 +127,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0055"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -140,7 +140,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0056"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -156,7 +156,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0059"]
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -169,7 +169,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-12", "ADR-0066"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -199,7 +199,7 @@ rules:
       - source: "https://learn.microsoft.com/nuget/concepts/security-best-practices"
         retrieved: "2026-11-17"
         text: "Add a nuget.config file in the root of your project repository. This is considered a best practice as it promotes repeatability and ensures that different users have the same NuGet configuration. We recommend adding clear elements to ensure no user or machine specific configuration is applied."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -220,7 +220,7 @@ rules:
       - source: "https://learn.microsoft.com/nuget/concepts/security-best-practices"
         retrieved: "2026-11-17"
         text: "When a new security vulnerability is discovered, you must determine whether you are impacted, and if so, update to the latest version and security patch available."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -238,7 +238,7 @@ rules:
       - source: "https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals"
         retrieved: "2026-11-17"
         text: "Don't use deprecated components and carefully assess the risks of using preview features."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -255,7 +255,7 @@ rules:
       - source: "https://learn.microsoft.com/security/benchmark/azure/mcsb-v2-devops-security"
         retrieved: "2026-11-17"
         text: "Maintain Software Bill of Materials (SBOM) in industry-standard formats (SPDX, CycloneDX) for regulatory compliance and incident response readiness."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -278,7 +278,7 @@ rules:
       - source: "https://github.com/ossf/scorecard-action"
         retrieved: "2026-11-17"
         text: "The job should run on one of the Ubuntu hosted runners."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -302,7 +302,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/tools/nuget-signed-package-verification"
         retrieved: "2026-11-17"
         text: "Don't use signed-package verification with .NET SDK versions earlier than 6.0.400."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]

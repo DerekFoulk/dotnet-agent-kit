@@ -18,7 +18,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "a change committed with no marker, and a red that crashed instead of failing an assertion, still pass, so test-first itself is advisory"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: TST-002
     statement: "Every plan includes a test list; turn one item at a time into a failing test, never the whole list up front."
@@ -31,7 +31,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the start-work and plan-checklist skills require a test list, and start-work's plan review checks the plan has one before any code; no tool can judge a plan"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: TST-003
     statement: "Each part of an app gets the test kinds in the brief's test matrix (unit, integration, functional, UI, architecture, contract, mutation), in one test project per production project plus the shared IntegrationTests, FunctionalTests, E2E.Tests and Architecture.Tests projects."
@@ -50,7 +50,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "the matrix itself: the shared .NET CI runs the test projects an app has, but nothing notices one it lacks. A check that fails the build when a production project lacks the test projects the matrix requires is planned (GAP-027); it waits for ARC-009, which settles which projects an app has"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-004
     statement: "Coverage gates: 100% line coverage for pure domain assemblies, 95% for application assemblies, 90% overall; mutation score 85% (nightly)."
@@ -70,7 +70,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "mutation.reusable.yml runs Stryker.NET nightly and fails below a mutation score of 85% (ADR-0039, tools/tests/MutationCi.Tests.ps1); it isn't a required check, so a low score shows as a failed nightly run, not a blocked pull request"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-005
     statement: "Use the kit's test toolset: in the kit, the tools templates/app-intake.json lists for each test type (TST-007 keeps that list); in an app, the ones its docs/app-profile.md chose from it. A different tool needs an ADR."
@@ -83,7 +83,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "no check stops a project from adding another test package; central package management keeps versions in one reviewed file, where code review checks for the ADR. (tools/tests/KitIntake.Tests.ps1 checks the intake list is complete, which is TST-007's gate, not this rule's)"
-    projectTypes: [all]
+    scope: core
     paths: ["Directory.Packages.props", "**/*.csproj"]
   - id: TST-006
     statement: "Every kit script and check has Pester tests, written first."
@@ -96,7 +96,7 @@ rules:
       - kind: advisory
         in: [kit]
         how: "CI runs every Pester test (kit-checks.reusable.yml), but no check shows that each script has tests or that they were written first"
-    projectTypes: [all]
+    scope: core
     paths: ["tools/**"]
   - id: TST-007
     statement: "The kit's list of test tools lives only in templates/app-intake.json: each kind of test, its tools, each tool's license and its cost label (Free, Free tier or Paid, with the price, its source and the date checked unless Free); every default is Free, or free for a non-commercial app (FluentAssertions 8, ADR-0004; ARC-012, the cost rule), and anything else that names test tools is checked against it or points to it."
@@ -109,7 +109,7 @@ rules:
       - kind: gate
         in: [kit]
         how: "check: tools/tests/KitIntake.Tests.ps1 fails when a tool TST-005 or ADR-0003 names is missing from the list, when a tool has no license or cost label, when a non-Free one has no price, source or date, or when a default is neither Free nor free for a non-commercial app"
-    projectTypes: [all]
+    scope: core
     paths: ["templates/app-intake.json", "docs/standards/testing.md"]
   - id: TST-008
     statement: "A check fails an app's build when a production project lacks the test projects TST-003's matrix requires for it."
@@ -122,7 +122,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "not built yet; it waits for ARC-009, which settles which projects an app has, to be accepted (scorecard GAP-027)"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.csproj", "**/*Tests*/**"]
   - id: TST-009
     statement: "Each hot path gets a benchmark, and each app with an HTTP endpoint a load test, each with a budget kept beside it (benchmark-budget.json, load-budget.json) and checked by the kit's shared performance workflow; the tools are the intake's defaults for the performance and load kinds of test (TST-007)."
@@ -138,7 +138,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "which paths are hot and whether an app has its load test"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.Benchmarks/**", "**/tests/load/**", "**/benchmark-budget.json", "**/load-budget.json"]
   - id: TST-010
     statement: "Unit tests follow Microsoft's unit-testing best practices. Name each test for the method, the scenario and the expected behavior. Try to include only one Act task per test. Avoid logic in a test (string concatenation, if, while, for, switch) and avoid magic strings. Keep a test's input to the simplest information needed. Try not to introduce infrastructure dependencies into unit tests; reserve them for integration tests. Create the objects a test needs in the test or in a helper method, in preference to Setup and Teardown attributes when tests have different setup requirements; where every test needs the same initialization, per-test setup is appropriate, and for synchronous initialization prefer the constructor. In most cases don't test a private method: test the public method that calls it. Where production code calls a static reference such as DateTime.Now, introduce a seam so the test has full control."
@@ -185,7 +185,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
         retrieved: "2026-11-17"
         text: "To solve these problems, you need to introduce a seam into your production code."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -202,7 +202,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "no analyzer checks a test's shape; code review checks, and ARC-008's ban gates the clock"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-012
     statement: "Avoid ordering unit tests: the order in which they run should not matter."
@@ -215,7 +215,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/testing/order-unit-tests"
         retrieved: "2026-11-17"
         text: "Ideally, the order in which unit tests run should not matter, and it is best practice to avoid ordering unit tests."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]

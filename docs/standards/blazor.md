@@ -15,7 +15,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/class-libraries-and-static-server-side-rendering?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "In most cases, reusable component authors should not specify a render mode, even when interactivity is required."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -39,7 +39,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't use the required modifier or init accessor on component parameter properties."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -60,7 +60,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Therefore, specifying a culture with @bind:culture isn't recommended when using the date and number field types."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -81,7 +81,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/synchronization-context?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "In the event a component must be updated based on an external event, such as a timer or other notification, use the InvokeAsync method, which dispatches code execution to Blazor's synchronization context."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -102,7 +102,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/component-disposal?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "At a minimum, always dispose objects created on the .NET side to avoid leaking .NET managed memory."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -123,7 +123,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/fundamentals/handle-errors?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Use of manual render tree builder logic is considered an advanced and unsafe scenario, not recommended for general component development."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -144,7 +144,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/cascading-values-and-parameters?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Avoid creating a single large class representing the entire global application state."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -174,7 +174,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/performance/rendering?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Most Razor components don't require aggressive optimization efforts because most components don't repeat in the UI and don't rerender at high frequency."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -210,7 +210,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/performance/javascript-interoperability?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Avoid excessively fine-grained calls"
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -234,7 +234,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-javascript-from-dotnet?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "In server-side apps with server interactivity, JavaScript (JS) interop may fail due to networking errors and should be treated as unreliable."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -264,7 +264,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't make authorization decisions based on the state of the UI but only from component state."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -291,7 +291,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "For example, rendering HTML content directly from a database should be avoided."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -312,7 +312,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/content-security-policy?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Avoid setting the frame-ancestors directive value to 'null' when WebSocket compression is enabled (compression is the default) because it makes the app vulnerable to malicious script injection and clickjacking attacks."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -336,7 +336,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't store app secrets, connection strings, credentials, passwords, personal identification numbers (PINs), private .NET/C# code, or private keys/tokens in client-side code, which is always insecure."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -357,7 +357,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Building Razor components that directly handle Identity tasks is possible for several scenarios but isn't recommended or supported by Microsoft."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -378,7 +378,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Always replace the in-memory distributed token caches with a real token cache provider when deploying the app to a production environment."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -396,7 +396,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "If the component must call a server project-based API or transform a request to an external web API (one that's outside of the Blazor Web App) when running on the client, the recommended approach is to abstract that API call behind a service interface and implement client and server versions of the service:"
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -414,7 +414,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/fundamentals/dependency-injection?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Therefore, don't directly inject a scoped service into a component if you intend the service lifetime to match the lifetime of the component."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -435,7 +435,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/fundamentals/handle-errors?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "We recommend narrowly scoping error boundaries in most scenarios."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -456,7 +456,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/lifecycle?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "To improve the user experience, begin by implementing streaming rendering to avoid waiting for the asynchronous task to complete while prerendering."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -477,7 +477,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/forms/?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "To mitigate overposting, we recommend using a separate view model/data transfer object (DTO) for the form and database with create (insert) and update operations."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -501,7 +501,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/file-downloads?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't receive files from users or other untrusted sources and then make the files available for immediate download without performing security checks on the files."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -522,7 +522,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/bundle-caching-and-integrity-check-failures?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "In most cases, don't disable integrity checking."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -549,7 +549,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/blazor-web-app-with-oidc?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Server-side Blazor Web Apps hosted in a web farm or cluster of machines must adopt session affinity to maintain Blazor circuits for users of the app."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -567,7 +567,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Therefore, the recommended approach is to use a localization culture cookie."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -591,69 +591,13 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/class-libraries-best-practices?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Prefer interfaces over abstract classes for flexibility."
-    projectTypes: [blazor, blazor-hybrid]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the references of shared Razor class libraries"
     paths: ["**/*.csproj"]
 
-  - id: BLZ-027
-    statement: "In a Blazor Hybrid app, avoid authentication in the context of the Web View: don't implement the authentication workflow yourself, don't use the Web View control to perform authentication, and avoid passing tokens to the document context (JavaScript)."
-    why: "Tokens obtained in the Web View are open to third-party scripts; native apps can obtain tokens outside the browser context."
-    layer: outside
-    basis: authority
-    status: proposed
-    sources: ["https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/?view=aspnetcore-10.0, retrieved 2026-11-17"]
-    quotes:
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Avoid authentication in the context of the Web View."
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Avoid implementing the authentication workflow yourself."
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Avoid using the platform's Web View control to perform authentication."
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Avoid passing the tokens to the document context (JavaScript)."
-    projectTypes: [blazor-hybrid]
-    enforcement:
-      - kind: advisory
-        in: [kit, app]
-        how: "code review checks sign-in in Blazor Hybrid apps"
-    paths: ["**/*.razor", "**/*.cs"]
-
-  - id: BLZ-028
-    statement: "In a Blazor Hybrid app, treat code inside the Web View as untrusted and validate anything that comes from it (events, JS interop). Don't store credentials, security tokens or sensitive user data in the Web View's context, and avoid loading content from a third-party origin. Establishing a CSP is recommended."
-    why: "A compromised Web View exposes whatever it holds and can attack the host system through events and interop."
-    layer: outside
-    basis: authority
-    status: proposed
-    sources: ["https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0, retrieved 2026-11-17"]
-    quotes:
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Consider the code inside the Web View as untrusted in the same way that code running inside the browser for a web app isn't trusted."
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "For that reason, any content coming from the Web View (events, JS interop) must be treated as untrusted and validated in the same way as for other sensitive contexts, such as in a compromised Blazor Server app that can lead to malicious attacks on the host system."
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Don't store sensitive information, such as credentials, security tokens, or sensitive user data, in the context of the Web View, as it makes the information available to a cyberattacker if the Web View is compromised."
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "If possible, avoid loading content from a third-party origin."
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Establishing a CSP is recommended to reduce these security risks."
-    projectTypes: [blazor-hybrid]
-    enforcement:
-      - kind: advisory
-        in: [kit, app]
-        how: "code review checks what a Blazor Hybrid app loads and stores in its Web View"
-    paths: ["**/*.razor", "**/*.cs", "**/wwwroot/**"]
 ---
 
 # Blazor

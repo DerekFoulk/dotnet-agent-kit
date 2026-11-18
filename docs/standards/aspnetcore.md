@@ -24,7 +24,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Services resolved from the container should never be disposed by the developer."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -54,7 +54,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/security?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "We recommend against using environment variables to store a production connection string as it's not the most secure approach."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -78,7 +78,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/logging?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "For example, don't write log messages directly to a SQL Server data store in a Log method because Log methods are synchronous."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -108,7 +108,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Because the client can potentially tamper with the data, the app must always revalidate the data stored in hidden fields."
-    projectTypes: [blazor, razor-pages-mvc]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -132,7 +132,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't disable CSRF protection on browser-accessible endpoints that rely on cookies for authentication."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -162,7 +162,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/mvc/models/file-uploads?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "The uploaded file's extension should be checked against a list of permitted extensions."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -186,7 +186,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/static-files?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't rely on file extension filtering to protect private files."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -216,7 +216,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Do not cache user-specific data that may be retrieved by other user requests."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -237,7 +237,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/performance/caching/middleware?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Responses containing content for authenticated clients must be marked as not cacheable to prevent the middleware from storing and serving those responses."
-    projectTypes: [web-api, razor-pages-mvc]
+    scope: [web-api]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -264,7 +264,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/mvc/controllers/filters?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "However, avoid creating and using filters purely for logging purposes."
-    projectTypes: [web-api, razor-pages-mvc]
+    scope: [web-api]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -291,7 +291,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/mvc/advanced/custom-model-binding?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "We recommend creating a type converter or using TryParse for a string to SomeType conversion that doesn't require external resources or multiple inputs."
-    projectTypes: [web-api, razor-pages-mvc]
+    scope: [web-api]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -312,66 +312,12 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/web-api?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't use [FromRoute] when values might contain %2f (that is /)."
-    projectTypes: [web-api]
+    scope: [web-api]
     enforcement:
       - kind: advisory
         in: [kit, app]
         how: "code review checks API controllers' base class and [FromRoute] parameters that can hold a slash; API-001 keeps Minimal APIs the default style"
     paths: ["**/Controllers/**"]
-
-  - id: ASP-013
-    statement: "In MVC views, use POCO view models with little or no behavior (recommended). Avoid HtmlHelper.Raw with user input. Don't use partial views for common layout elements or where complex rendering logic or code execution is needed. Render partial views asynchronously: the synchronous Partial and RenderPartial helpers aren't recommended."
-    why: "The views, Razor syntax and partial views pages give these: Raw output isn't encoded, and the synchronous partial helpers can deadlock."
-    layer: outside
-    basis: authority
-    status: proposed
-    sources: ["https://learn.microsoft.com/aspnet/core/mvc/views/overview?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/mvc/views/razor?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/mvc/views/partial?view=aspnetcore-10.0, retrieved 2026-11-17"]
-    quotes:
-      - source: "https://learn.microsoft.com/aspnet/core/mvc/views/overview?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "We recommend using Plain Old CLR Object (POCO) viewmodels with little or no behavior (methods) defined."
-      - source: "https://learn.microsoft.com/aspnet/core/mvc/views/razor?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Avoid using HtmlHelper.Raw with user input."
-      - source: "https://learn.microsoft.com/aspnet/core/mvc/views/partial?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Partial views shouldn't be used to maintain common layout elements."
-      - source: "https://learn.microsoft.com/aspnet/core/mvc/views/partial?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Don't use a partial view where complex rendering logic or code execution is required to render the markup."
-      - source: "https://learn.microsoft.com/aspnet/core/mvc/views/partial?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "The synchronous equivalents aren't recommended because there are scenarios in which they deadlock."
-    projectTypes: [razor-pages-mvc]
-    enforcement:
-      - kind: advisory
-        in: [kit, app]
-        how: "code review checks views for ViewBag or ViewData in place of a view model, Html.Raw on user input, and Html.Partial or Html.RenderPartial"
-    paths: ["**/*.cshtml"]
-
-  - id: ASP-014
-    statement: "In Razor Pages apps, put the layout file in Pages/Shared, not Views/Shared (recommended). Avoid setting route Order in production apps, and avoid depending on an established route processing order where possible."
-    why: "The Razor Pages pages say Views/Shared is an MVC pattern, and that setting Order is a sign of a confusing routing scheme."
-    layer: outside
-    basis: authority
-    status: proposed
-    sources: ["https://learn.microsoft.com/aspnet/core/razor-pages?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/razor-pages/razor-pages-conventions?view=aspnetcore-10.0, retrieved 2026-11-17"]
-    quotes:
-      - source: "https://learn.microsoft.com/aspnet/core/razor-pages?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "We recommend you not put the layout file in the Views/Shared folder."
-      - source: "https://learn.microsoft.com/aspnet/core/razor-pages/razor-pages-conventions?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "If possible, avoid depending on an established route processing order."
-      - source: "https://learn.microsoft.com/aspnet/core/razor-pages/razor-pages-conventions?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "However, you should attempt to avoid the practice of setting route Order in production apps."
-    projectTypes: [razor-pages-mvc]
-    enforcement:
-      - kind: advisory
-        in: [kit, app]
-        how: "code review checks the layout's folder and any route Order convention"
-    paths: ["**/Pages/**"]
 
   - id: ASP-015
     statement: "Don't use route constraints for input validation: invalid input should produce a 400 Bad Request with an appropriate error message, not the 404 a failed constraint gives. SEC-010 and API-006 say how input is validated."
@@ -387,7 +333,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/routing?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Invalid input should produce a 400 Bad Request with an appropriate error message."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -426,7 +372,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/diagnostics/bl0006?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Using these types is not recommended in user code."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -456,7 +402,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/grpc/client?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "If calling gRPC services from an ASP.NET Core app, consider gRPC client factory integration."
-    projectTypes: [web-api]
+    scope: [web-api]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -480,7 +426,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/grpc/security?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "We recommend that gRPC services secured by client certificates use the Microsoft.AspNetCore.Authentication.Certificate package."
-    projectTypes: [web-api]
+    scope: [web-api]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -504,7 +450,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/signalr/hubs?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "However, you must ensure that the hub's methods don't execute concurrent database operations on the same context instance because DbContext isn't thread-safe."
-    projectTypes: [web-api, blazor]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -534,7 +480,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/signalr/security?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Exception messages should not be exposed to the client in production apps."
-    projectTypes: [web-api, blazor]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -567,7 +513,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/security/authentication/configure-oidc-web-authentication?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't deploy an app with IdentityModelEventSource.ShowPII to productive servers."
-    projectTypes: [blazor, razor-pages-mvc]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -585,7 +531,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/security/authentication/scaffold-identity?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "ASP.NET Core apps that use ASP.NET Core Identity for user management should use Razor Pages instead of Razor components for Identity-related UI, such as user registration, login, logout, and other user management tasks."
-    projectTypes: [blazor]
+    scope: [blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -615,7 +561,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/purpose-strings?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Components which consume IDataProtectionProvider must pass a unique purposes parameter to the CreateProtector method."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -633,7 +579,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "A delegating handler must be registered in DI as a transient service, rather than singleton or scoped."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]

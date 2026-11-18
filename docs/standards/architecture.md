@@ -19,7 +19,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the module's project set and grouping by feature, checked by code review"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["src/**", "sample/**"]
   - id: ARC-002
     statement: "Modules talk to each other only through their Contracts projects; a module never reads or writes another module's tables, and an app never shares its database with another app."
@@ -36,7 +36,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the sample has one module, so there's nothing to check yet; an ArchUnitNET test comes with the first app that has two, and code review checks that no module's Infrastructure maps another module's tables and that an app's connection strings name a database of its own"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["src/**", "sample/**"]
   - id: ARC-003
     statement: "Shared libraries (Domain, Application, Contracts, API client, validation, UI-independent presentation logic) reference no UI or platform package."
@@ -49,7 +49,7 @@ rules:
       - kind: gate
         in: [kit, app]
         how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): SharedLibraryTests fails when a domain, contracts or application assembly references an ASP.NET Core, EF Core, MAUI or WPF assembly; an app without that project isn't checked until TST-003's check (GAP-027)"
-    projectTypes: [all]
+    scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-004
     statement: "Microservices, Blazor Hybrid for MAUI, and a non-LTS .NET target each need an ADR."
@@ -66,7 +66,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "an architecture choice; code review checks for the ADR"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: ARC-005
     statement: "Record significant technical decisions as ADRs in docs/adr from the template, with options, trade-offs, a recommendation and the pillars affected."
@@ -82,7 +82,7 @@ rules:
       - kind: gate
         in: [app]
         how: "ci: app-checks.reusable.yml runs tools/Test-AdrSections.ps1"
-    projectTypes: [all]
+    scope: core
     paths: ["docs/adr/**"]
   - id: ARC-006
     statement: "Plans cover the five Well-Architected pillars (reliability, security with a short threat model where data or sign-in is touched, cost, operational excellence including observability, performance), plus accessibility, data and docs."
@@ -95,7 +95,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the plan-checklist skill lists the pillars, and start-work's plan review holds each plan against it before any code; no tool can judge a plan"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: ARC-007
     statement: "Proofs of concept live in spikes/ and are never merged into production code as-is."
@@ -108,7 +108,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "spikes/ holds only write-ups so far, nothing code can reference; a CI path check comes when a spike keeps code"
-    projectTypes: [all]
+    scope: core
     paths: ["spikes/**"]
   - id: ARC-008
     statement: "No code reads the clock directly: the time comes from an injected TimeProvider, and TimeProvider.System appears only where the app registers it, or where code must agree with a clock it can't inject, such as a test token the app checks against the system clock. Assemblies marked pure (core business logic, such as a module's Domain project, marked by setting the PureAssembly property to true in its .csproj) also use no randomness, file, network, environment or process access except through values, streams, readers and writers their callers pass in, or abstractions of their own that are injected (never an HttpClient, even one passed in), and BannedSymbols.Pure.txt lists the APIs they may not call."
@@ -128,7 +128,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks what the bans can't see: TimeProvider.System outside the places the statement allows, Stopwatch or Environment.TickCount64 used as a clock outside a pure assembly, Task.Delay or a Timer with no TimeProvider where a test should control the wait, a project of core business logic that isn't marked pure, and, in a pure assembly, a path or URL reached through a general-purpose overload the list can't ban, such as XDocument.Load(string), or the machine's time zone reached the same way, such as TimeZoneInfo.ConvertTime(DateTime, TimeZoneInfo) or a DateTimeOffset made from a local DateTime"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs", "**/*.csproj", "BannedSymbols.txt", "BannedSymbols.Pure.txt"]
   - id: ARC-009
     statement: "Give an app only the structure today's requirements need: a web app starts with one ARC-001 module and gets another only for a second distinct business area (its own language, data and rules), never one per entity or feature; a console tool, a standalone worker or a library is one project and its tests, its concerns kept apart by namespace, until code another app must share or a boundary the compiler must enforce needs a second project (ARC-010 settles MAUI and desktop apps); every project, each of a module's five included, is created with its first real type, never before; and inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository or an interface that inverts no dependency come only with the requirement the plan names for each."
@@ -144,7 +144,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the number of modules and the patterns inside them: the plan-checklist skill asks, and code review checks"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: ARC-010
     statement: "In MAUI and desktop apps, view models and all other logic live in UI-independent libraries (ARC-003); a UI project, one that sets UseMaui, UseWPF, UseWindowsForms or UseWinUI, holds only views, platform code and startup wiring, no other project references it, and the coverage gate exempts it."
@@ -160,7 +160,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "that a UI project holds no logic, checked by code review"
-    projectTypes: [maui, blazor-hybrid, winui3, wpf, winforms]
+    scope: [maui]
     paths: ["src/**", "**/*.csproj"]
   - id: ARC-011
     statement: "A new general-purpose Windows desktop app is recommended to use WinUI 3, the native UI framework delivered with the Windows App SDK; a team expecting to target several platforms should start with .NET MAUI (Microsoft names React Native for Desktop beside it), which uses WinUI 3 when running on Windows."
@@ -186,7 +186,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "an architecture choice in the plan; code review checks the framework against the app's platforms"
-    projectTypes: [maui, blazor-hybrid, winui3, wpf, winforms]
+    scope: [maui]
     paths: ["**/*.csproj"]
   - id: ARC-014
     statement: "A new desktop app uses the framework ARC-011 names for its platforms (WinUI 3 for a Windows desktop app, .NET MAUI for several platforms); a new WPF or Windows Forms app needs an ADR that says why."
@@ -199,7 +199,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "an architecture choice; code review checks for the ADR"
-    projectTypes: [maui, blazor-hybrid, winui3, wpf, winforms]
+    scope: [maui]
     paths: ["**/*.csproj"]
   - id: ARC-012
     statement: "Every tool, service and tier an app uses starts on the industry-standard option while it's free for the app's use; the new-app intake asks for a monthly budget, $0 when unanswered, and within that budget a plan picks the option that fits best; a paid option is always listed with its estimated price, the price's source and the date checked, never dropped; and spending money still needs the owner's OK (SEC-003)."
@@ -219,7 +219,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "picking the best option within the budget is the plan's: the plan-checklist skill's Cost heading points here and to the app profile's budget, and start-work's plan review checks it; spending stays the owner's call (SEC-003)"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: ARC-013
     statement: "Every repo keeps a Mermaid diagram of its modules and the dependencies between them in docs/architecture/modules.md, updated in the same PR as a change that adds a module, a project or a dependency."
@@ -239,7 +239,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the diagram matches the change: a new module, project or dependency is on it"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: ARC-015
     statement: "Maintain an architecture decision record (ADR) that captures the context, consequences, and justifications for architectural decisions, and document tradeoffs and rejected options."
@@ -257,7 +257,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks that a significant decision has its ADR; ARC-005's check covers the sections"
-    projectTypes: [all]
+    scope: core
     paths: ["docs/adr/**"]
   - id: ARC-016
     statement: "For a non-trivial monolithic ASP.NET Core application, Clean Architecture is the most appropriate way to structure it: the Application Core holds the business model and the abstractions for infrastructure, Infrastructure implements them, and the UI layer interacts with infrastructure strictly through interfaces defined in the Application Core."
@@ -277,7 +277,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the shape; ARC-001's architecture tests gate the layer references"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["src/**", "sample/**"]
   - id: ARC-017
     statement: "In a .NET MAUI app that uses MVVM, keep view models and views independent: don't reference view types, such as Button and ListView, from view models, and avoid enabling and disabling UI elements in the code-behind, binding them to view model properties instead."
@@ -297,7 +297,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks views and view models; ARC-010 keeps view models in libraries that can't reference a UI project"
-    projectTypes: [maui]
+    scope: [maui]
     paths: ["**/*ViewModel*.cs", "**/*.xaml.cs"]
   - id: ARC-018
     statement: "You should use TimeProvider or a similar type when retrieving the time."
@@ -315,7 +315,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks it; ARC-008's bans gate DateTime.Now and the like"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs"]
   - id: ARC-019
     statement: "Justify every design decision with a business requirement, and avoid over-engineering as well as under-engineering. Don't use CQRS and DDD patterns everywhere: many subsystems are simpler and can be implemented more easily with simple CRUD services."
@@ -338,7 +338,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the plan-checklist skill asks for the requirement behind each component, and code review checks"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
 ---
 

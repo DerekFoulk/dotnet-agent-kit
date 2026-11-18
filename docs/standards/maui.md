@@ -18,7 +18,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite"
         retrieved: "2026-11-17"
         text: "An alternative is to use the Microsoft.Data.Sqlite NuGet package, which is a lightweight ADO.NET provider for SQLite."
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -44,7 +44,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings"
         retrieved: "2026-11-17"
         text: "XC0022 and XC0023 warnings will always be suppressed unless the $(MauiStrictXamlCompilation) build property is set to true."
-    projectTypes: [maui]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -79,7 +79,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
         retrieved: "2026-11-17"
         text: "However, none of these tools can perfectly emulate the screen reader user experience, and the best way to test and troubleshoot your apps for accessibility will always be manually on physical devices with screen readers."
-    projectTypes: [maui]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -102,7 +102,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
         retrieved: "2026-11-17"
         text: "However, at a minimum, profiling should be performed on a device that has the lowest anticipated specification."
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -122,7 +122,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
         retrieved: "2026-11-17"
         text: "In addition, the app's activation logic should only perform work that's required to let the user start using the app."
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -145,7 +145,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
         retrieved: "2026-11-17"
         text: "If a resource is used by a page that's not the startup page, it should be placed in the resource dictionary for that page, therefore helping to reduce the XAML that's parsed when the app starts."
-    projectTypes: [maui]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -168,7 +168,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
         retrieved: "2026-11-17"
         text: "Use the lazy task pattern to avoid waiting for asynchronous operations to complete during app startup."
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -188,7 +188,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
         retrieved: "2026-11-17"
         text: "Avoid strong circular references on iOS and Mac Catalyst"
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -211,7 +211,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
         retrieved: "2026-11-17"
         text: "In addition, images should only be created when required and should be released as soon as the app no longer requires them."
-    projectTypes: [maui]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -234,7 +234,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/user-interface/layouts/"
         retrieved: "2026-11-17"
         text: "Bindable layouts should only be used when the collection of items to be displayed is small, and scrolling and selection isn't required."
-    projectTypes: [maui]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -266,7 +266,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle"
         retrieved: "2026-11-17"
         text: "Always call the super class's implementation."
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -292,7 +292,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions"
         retrieved: "2026-11-17"
         text: "Permissions must have a matching string in the Info.plist file."
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -315,7 +315,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication"
         retrieved: "2026-11-17"
         text: "According to Apple's review guidelines, if your Apple app uses any social login service to authenticate, it must also offer Apple Sign In as an option."
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -341,7 +341,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation"
         retrieved: "2026-11-17"
         text: "Setting an explicit AccessibilityLabel is recommended whenever IconOverride is set or TextOverride is hidden, because screen readers would otherwise announce a generic value or no value at all."
-    projectTypes: [maui]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -361,7 +361,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter"
         retrieved: "2026-11-17"
         text: "We recommend migrating to WeakReferenceMessenger from the CommunityToolkit.Mvvm package, or using events with weak references for simple scenarios."
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]
@@ -387,7 +387,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot"
         retrieved: "2026-11-17"
         text: "You should develop, debug, and test your application as usual and publish your final app with Native AOT as one of the last steps."
-    projectTypes: [maui, blazor-hybrid]
+    scope: [maui]
     enforcement:
       - kind: advisory
         in: [app]

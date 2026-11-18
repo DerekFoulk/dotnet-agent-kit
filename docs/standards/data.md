@@ -12,7 +12,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "the plan-checklist skill's Data heading asks for the choice and its price label, and start-work's plan review checks the plan names them"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**", "**/Directory.Packages.props"]
   - id: DAT-002
     statement: "An app with a server relational database reaches it through EF Core, and its schema changes only through EF Core code-first migrations kept in the repo, never EnsureCreated (tests apply the migrations too, DAT-005); a test fails when the model has changes no migration covers."
@@ -25,7 +25,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks for EnsureCreated and for a HasPendingModelChanges test, until the sample follows (GAP-025)"
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     paths: ["**/*Infrastructure*/**", "**/Migrations/**", "**/Program.cs"]
   - id: DAT-011
     statement: "Where EF Core manages a relational database whose data must be kept when the model changes, the schema is updated with migrations, which change it incrementally while preserving existing data; EnsureCreated (and EnsureDeleted) suit data that is transient and can be dropped when the schema changes, such as prototypes, tests or local caches, and an app that uses migrations doesn't use EnsureCreated to initialize the schema."
@@ -48,7 +48,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks for EnsureCreated in an app that has migrations; no analyzer reports it"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**", "**/Migrations/**", "**/Program.cs", "**/MauiProgram.cs"]
   - id: DAT-003
     statement: "Every migration of a database that more than one version of the app can reach (a server database, not one on the user's device) keeps working with the version still running: a schema change is split into expand (add, in one release), migrate (move data and code over) and contract (drop or rename, in a later release, once no running version uses the old shape); each call in a migration's Up that drops, renames or alters something, changes data or runs raw SQL carries a '// DAT-003: <reason>' comment, directly above it or at the end of the line it starts on, saying why the running version still works."
@@ -64,7 +64,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "whether the reason is true, and a tightened constraint (a new foreign key, unique or check constraint the running version's writes could break), which code review checks"
-    projectTypes: [all]
+    scope: core
     paths: ["**/Migrations/**"]
   - id: DAT-004
     statement: "Migrations are applied by the deployment, with a migration bundle (or an idempotent SQL script, where someone must review the SQL first), before the new version takes traffic; an app never migrates a server database at startup outside local development. A database on the user's device, which no deployment reaches, is migrated by the app at startup with Migrate."
@@ -77,7 +77,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "nothing deploys an app yet (GAP-015), so the production workflow will apply the bundle once it exists; until then code review checks Program.cs for Migrate against a server database outside development"
-    projectTypes: [all]
+    scope: core
     paths: ["**/Program.cs", ".github/workflows/**"]
   - id: DAT-005
     statement: "Integration and functional tests of an app with a server database, and its local development, run against the production database engine, in a container (Testcontainers for tests) or its official emulator (the Azure Cosmos DB emulator), with the app's migrations applied; never the EF Core in-memory provider, and never SQLite standing in for another engine."
@@ -90,7 +90,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the test projects' database setup and the app's local development setup (a container or the emulator, not SQLite or the in-memory provider), until the sample proves it (GAP-025)"
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     paths: ["**/*Tests*/**", "**/*AppHost*/**", "**/compose*.yaml", "**/docker-compose*.yml"]
   - id: DAT-012
     statement: "EF Core apps are recommended to have good test coverage running against their actual production database system; where a test double is needed, the repository pattern is recommended over a fake EF Core provider or a mocked DbSet, SQLite in-memory databases are to be considered if a repository isn't viable, and the EF Core in-memory provider is to be avoided for testing. In ASP.NET Core integration tests, the SQLite provider is the recommended choice for in-memory testing."
@@ -119,7 +119,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the test projects' database setup; no analyzer sees a test's provider choice"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Tests*/**"]
   - id: DAT-006
     statement: "A cloud database starts on its free offer where the guide names one, with the setting that keeps it inside the free amount (Azure SQL Database: the free limit with AutoPause, which stops billing; Azure Cosmos DB: the free tier with a total throughput limit of 1000 RU/s, which caps throughput but not storage past 25 GB), plus a Cost Management budget alert, the only signal for what a setting can't stop; turning a guard off or moving to a paid tier is the owner's call (ARC-012, the cost rule)."
@@ -132,7 +132,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "the guard is a setting in infrastructure code, which apps don't have yet (GAP-016), so its check waits (GAP-024); creating a cloud resource is the owner's call in any case (SEC-003)"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.bicep", "**/infra/**"]
   - id: DAT-007
     statement: "A connection to any cloud or server database, not only Azure SQL Database, retries transient failures with its provider's execution strategy (EnableRetryOnFailure for SQL Server and Azure SQL, or the provider's own), and where a retried commit could insert a row twice, keys are generated by the client."
@@ -145,7 +145,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the provider's registration and any explicit transaction; the sample's SQLite provider has no execution strategy, so the check waits for the sample's move to SQL Server (GAP-025)"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**"]
   - id: DAT-008
     statement: "An entity that two users or requests can change at the same time carries a concurrency token (a rowversion with IsRowVersion, or IsConcurrencyToken on a property the app changes), and a conflict is reported to the caller (a 409 in an HTTP API) or retried with fresh values, never silently overwritten."
@@ -158,7 +158,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks every entity that can be updated; the sample's bookmarks are only created, so it has none yet"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**", "**/*Domain*/**"]
   - id: DAT-009
     statement: "Data access with EF Core follows its efficient-querying guidance. It's important not to rush into optimization without data showing a problem. Limit the amount of data going back and forth on the wire: we should only load what's needed. A no-tracking query should be used when the entities retrieved don't need to be updated. Give thought to limiting the number of results, and consider keyset pagination instead of Skip and Take when users move one page at a time. For related data you know in advance you need, eager loading is always better, and it is recommended to avoid lazy loading. Avoid ToList or ToArray before another LINQ operator. Always use asynchronous APIs rather than synchronous ones, and avoid mixing the two in one application. Raw SQL should generally be a last resort."
@@ -209,7 +209,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks data access with the optimizing-ef-core-queries skill, since no analyzer sees a query's shape; CA1849 already gates a synchronous SaveChanges in async code and CA2016 an unforwarded cancellation token, but a synchronous ToList isn't flagged"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
   - id: DAT-010
     statement: "Raw SQL is parameterized: FromSql, SqlQuery and ExecuteSql with an interpolated string, which EF Core turns into parameters, should be used wherever possible, and their Raw forms take explicit parameters. Never concatenate or interpolate an untrusted value into the text of a Raw call, and never escape one by hand. Where a part can't be a parameter, such as a column name, map the caller's choice to a strict allow-list of fixed values the app owns, so no Raw call carries a caller's text."
@@ -242,7 +242,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks a Raw call built by concatenation (whether EF1002 also reports one isn't verified) and that a dynamic part comes from a fixed set of query texts"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
   - id: DAT-013
     statement: "Use expand -> migrate -> contract schema changes to keep old and new app versions compatible during a transition."
@@ -259,7 +259,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "code review checks that a breaking schema change is split across releases; Test-SafeMigrations.ps1 (DAT-003) fails each drop, rename, alter, data change or raw SQL in a migration's Up that has no DAT-003 reason"
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     paths: ["**/Migrations/**"]
   - id: DAT-014
     statement: "For automated deployment of EF Core migrations, use a migration bundle; use a SQL script instead when the SQL must be reviewed, modified, archived, or handed to a DBA before it is applied. Applying migrations at runtime needs careful consideration in production, and a bundle is preferred for automation and a SQL script where review and approval are required; don't make every application replica run migrations from its entrypoint. Use a separate identity for deployment that has permission to change the schema, so the identity the application uses at run time should normally have only the permissions to read and write data, and don't store production connection strings in source control or embed them in the bundle."
@@ -291,7 +291,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "nothing deploys an app yet (GAP-015), so the production workflow will apply the bundle once it exists; until then code review checks Program.cs for Migrate against a server database outside development"
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     paths: ["**/Program.cs", ".github/workflows/**"]
   - id: DAT-015
     statement: "An app that connects to Azure SQL Database implements retry logic for transient errors instead of surfacing them to users as application errors. EF Core supplies it as an execution strategy, and the SQL Server provider includes one tailored to SQL Server and Azure SQL. When code starts its own transaction under a retrying strategy, everything in the transaction runs inside the execution strategy as one unit; where a failed commit is simply allowed to fail, avoid store-generated keys and consider a client-generated GUID or value generator, so that a retry can't add a duplicate row."
@@ -324,7 +324,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the provider's registration and any explicit transaction; the sample's SQLite provider has no execution strategy, so the check waits for the sample's move to SQL Server (GAP-025)"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**"]
   - id: DAT-016
     statement: "To implement optimistic concurrency in EF Core, the application must properly handle the case where a concurrency conflict occurs and SaveChanges throws a DbUpdateConcurrencyException: it must catch and handle the exception appropriately, possibly by retrying the entire operation on the new data."
@@ -348,7 +348,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks that each SaveChanges on an entity with a concurrency token handles DbUpdateConcurrencyException; the sample's bookmarks are only created, so it has none yet"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**", "**/*Domain*/**"]
   - id: DAT-017
     statement: "Always inspect the generated migrations and test them before applying them to a production database, and always review a generated migration's code to make sure it corresponds to the desired change. Don't delete a migration that has been applied to a shared, test, or production database; usually keep it in the project and add a new corrective migration. Check for model changes that no migration covers by running dotnet ef migrations has-pending-model-changes in the CI/CD pipeline."
@@ -374,7 +374,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks that a migration was read and its model snapshot kept; no CI step runs has-pending-model-changes yet, and the HasPendingModelChanges test in DAT-002 waits for the sample (GAP-025)"
-    projectTypes: [all]
+    scope: core
     paths: ["**/Migrations/**", ".github/workflows/**"]
   - id: DAT-018
     statement: "In a platform-specific app that uses EF Core migrations (.NET MAUI or WinUI 3), store the migrations in a separate project, and don't use the platform-specific application project as the startup project for EF tools; prefer an AnyCPU migrations project."
@@ -397,7 +397,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "code review checks which project the app's EF tools use as startup project; no analyzer sees it"
-    projectTypes: [maui, blazor-hybrid, winui3]
+    scope: [maui]
     paths: ["**/Migrations/**", "**/*.csproj"]
   - id: DAT-019
     statement: "Seed initial data with UseSeeding and UseAsyncSeeding, the recommended way when working with EF Core, and always implement UseSeeding even if the app normally uses asynchronous APIs. Custom seeding code, for when those methods don't fit, shouldn't be part of the app's normal execution."
@@ -420,7 +420,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks how an app seeds data and that it doesn't seed in its normal startup; no analyzer sees it"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**", "**/Program.cs", "**/MauiProgram.cs"]
   - id: DAT-020
     statement: "Change a relationship in EF Core by manipulating navigations and let the foreign key values update automatically, the recommended way. Don't write code to manipulate all navigations and foreign key values each time a relationship changes, and avoid manipulating both navigations and foreign key values."
@@ -443,7 +443,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks code that changes a relationship; no analyzer sees it"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**", "**/*Domain*/**"]
   - id: DAT-021
     statement: "In an EF Core model with nullable reference types, collection navigations should always be non-nullable: an empty collection means that no related entities exist, and the list itself should never be null."
@@ -460,7 +460,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks entity types' collection navigations; no analyzer sees it"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Domain*/**", "**/*Infrastructure*/**"]
   - id: DAT-022
     statement: "It's highly recommended to avoid constant query recompilation in EF Core. Avoid constructing queries with the expression tree API unless you really need to."
@@ -480,7 +480,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks dynamically built queries with the optimizing-ef-core-queries skill; no analyzer sees it"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
   - id: DAT-023
     statement: "Diagnose an EF Core performance problem carefully before drawing conclusions, and avoid assuming where the root of the issue is. When benchmarking, it's strongly recommended to use the BenchmarkDotNet library, and always make sure to have data in the database that is similar to production data."
@@ -503,7 +503,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks a performance change for the measurement behind it; TST-009's benchmarks run in CI (ADR-0062), but they don't check the data they run on"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Benchmarks*/**", "**/*Infrastructure*/**"]
   - id: DAT-024
     statement: "Tests that run against a real database keep test isolation and parallelization in mind: a test that commits changes or manages its own transactions must clean the database back to its original state after each test, and parallelization must be disabled for these tests; creating and using many test databases isn't problematic and should be done whenever it's helpful."
@@ -526,7 +526,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the test projects' database fixtures; no analyzer sees test isolation"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*Tests*/**"]
 ---
 

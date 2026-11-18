@@ -12,7 +12,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/diagnostics/observability-with-otel"
         retrieved: "2026-11-17"
         text: "Probably the easiest way to configure OTel for ASP.NET projects is to use the Aspire Service Defaults project, even if not using the rest of Aspire such as the AppHost for orchestration."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -28,7 +28,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["ADR-0037", "https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0, retrieved 2026-11-17", "https://aspire.dev/fundamentals/health-checks/, retrieved 2026-11-17", "owner, 2026-11-09"]
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit]
@@ -51,7 +51,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/resilience/http-resilience"
         retrieved: "2026-11-17"
         text: "By default, the standard resilience handler is configured to make retries for all HTTP methods. For some applications, such behavior could be undesirable or even harmful."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -70,7 +70,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0047", "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/manage/ready-cloud-operations, retrieved 2026-11-11", "https://diataxis.fr/how-to-guides/, retrieved 2026-11-11"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [app]
@@ -86,7 +86,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown, retrieved 2026-11-17"]
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -109,7 +109,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/options#options-validation"
         retrieved: "2026-11-17"
         text: "The validation occurs at runtime, but you can configure it to occur at startup by instead chaining a call to ValidateOnStart:"
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit]
@@ -160,7 +160,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging"
         retrieved: "2026-11-17"
         text: "For high-performance logging scenarios in .NET 6 and later versions, use the LoggerMessageAttribute with compile-time source generation."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -190,7 +190,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/resilience/http-resilience"
         retrieved: "2026-11-17"
         text: "When adding resilience, you should only add one resilience handler and avoid stacking handlers."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -211,7 +211,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown"
         retrieved: "2026-11-17"
         text: "If the timeout expires, the pending connections and requests are aborted forcefully, which can cause errors in the logs and to the clients."
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -235,7 +235,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Using separate readiness and liveness checks is useful in an environment such as Kubernetes."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -248,7 +248,7 @@ rules:
     basis: preference
     status: accepted
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging, retrieved 2026-11-17"]
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -286,7 +286,7 @@ rules:
       - source: "https://learn.microsoft.com/azure/well-architected/operational-excellence/safe-deployments"
         retrieved: "2026-11-17"
         text: "Your SDP guidelines should provide clear instructions on how to deal with data changes according to the data estate design for your workload."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [app]
@@ -306,29 +306,12 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "If data protection isn't configured, the keys are held in memory and discarded when the app restarts."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [app]
         how: "code review checks that an app that signs users in or uses anti-forgery configures a persistent key store"
     paths: ["**/Program.cs", "**/*Extensions*.cs"]
-  - id: OPS-014
-    statement: "If an app only hosts background services, avoid IIS hosting and use a Windows Service to host it."
-    why: "Microsoft's IIS hosting page gives this as its advice for an app with no web endpoints to serve."
-    layer: outside
-    basis: authority
-    status: proposed
-    sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/?view=aspnetcore-10.0, retrieved 2026-11-17"]
-    quotes:
-      - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/iis/?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "If the app only hosts background services, avoid IIS hosting and use a Windows Service to host the ASP.NET Core app."
-    projectTypes: [console-worker]
-    enforcement:
-      - kind: advisory
-        in: [app]
-        how: "code review checks the hosting choice in the plan of an app that only runs background services"
-    paths: ["**/Program.cs", "**/*.csproj"]
   - id: OPS-015
     statement: "An app that uses trimming shouldn't produce any trim warnings. Don't suppress a trim warning with SuppressMessage or #pragma warning disable; always use UnconditionalSuppressMessage. Consider whether trimming is appropriate for the app. When publishing with Native AOT, it's recommended to develop, debug and test as usual and publish with Native AOT as one of the last steps."
     why: "The trimmer works on compiled assemblies, so a compiler-only suppression is invisible to it; an unfixed trim warning can change behavior or crash the app after trimming."
@@ -352,7 +335,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/deploying/native-aot/diagnostics"
         retrieved: "2026-11-17"
         text: "We recommend developing, debugging, and testing the applications as usual and publishing the working app with Native AOT as one of the last steps."
-    projectTypes: [all]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -369,7 +352,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Avoid setting KillSignal=SIGINT, as .NET lifetime integrations listen for SIGTERM to initiate graceful shutdown, and other signals might result in abrupt termination."
-    projectTypes: [web-api, blazor, razor-pages-mvc, console-worker]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [app]
@@ -386,7 +369,7 @@ rules:
       - source: "https://aspire.dev/fundamentals/health-checks/"
         retrieved: "2026-11-17"
         text: "If you need to enable them, its recommended to protect these endpoints with various routing features, such as host filtering and/or authorization."
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]

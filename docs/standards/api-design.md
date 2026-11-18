@@ -12,7 +12,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the plan-checklist skill asks for the API style; the sample is a Minimal API"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*.proto", "**/*Hub*.cs"]
   - id: API-008
     statement: "For a new ASP.NET Core HTTP API, Minimal APIs are recommended; consider controller-based APIs where the app needs what controllers provide, such as model binding extensibility, advanced validation, application parts or the application model, or OData. gRPC is well suited to microservices, point-to-point real-time communication, polyglot and network-constrained environments, and inter-process communication; other frameworks are recommended over gRPC for browser-accessible APIs and for broadcasting real-time messages, where SignalR is a useful framework."
@@ -41,7 +41,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the plan-checklist skill asks for the API style and the page that recommends it"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*.proto", "**/*Hub*.cs"]
   - id: API-002
     statement: "Every HTTP API error response is Problem Details (RFC 9457): AddProblemDetails, UseExceptionHandler and UseStatusCodePages; a client error such as malformed input stays a 400 in every environment, and outside Development a 500 never carries the exception's message or stack."
@@ -60,7 +60,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "the app's own errors (malformed input a 400 in Development too, its other 4xx, and the errors its OpenAPI document declares), until its own FunctionalTests check them, as the sample's do"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*Error*.cs"]
   - id: API-003
     statement: "An HTTP API describes itself with the built-in OpenAPI document (Microsoft.AspNetCore.OpenApi) and typed results; the document, and any UI for it such as Scalar or Swagger UI, is mapped in Development only; a contract test snapshots the document, so every change to the API shows in review."
@@ -83,7 +83,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "the snapshot of the document and typed results, until the app's own ContractTests snapshot it, as the sample's do"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/Contract/**"]
   - id: API-004
     statement: "Every HTTP endpoint that lists a collection pages it in the data store, in a deterministic order, with limit (default 25, at most 100) and offset (at most 10,000) query parameters, and answers an object with the page's items and a nextLink to the next page, null on the last page or the last one the offset cap allows."
@@ -99,7 +99,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "until the app follows the sample"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/*Endpoints*.cs", "**/*Repository*.cs", "**/*Contracts*/**"]
   - id: API-005
     statement: "An HTTP API isn't versioned until its first breaking change to a contract that another app or a released client depends on; that change gets an ADR that picks how versions are told apart (URI, query string or header) and the package, a new version, and the earlier version stays until its callers move."
@@ -116,7 +116,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the contract snapshot test (API-003) shows every change to the API in review, where a breaking one is caught; no tool can tell which change breaks a caller"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/*Endpoints*.cs", "**/Contract/**"]
   - id: API-006
     statement: "A Minimal API validates its inputs with the built-in validation (AddValidation and DataAnnotations attributes on parameters and request types), so invalid input gets a 400 validation problem before the handler runs; a domain rule (such as a bookmark's URL being http or https) stays in the domain, and the endpoint turns its exception into a 400 Problem."
@@ -132,7 +132,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "until the app follows the sample"
-    projectTypes: [web-api]
+    scope: [web-api]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*Contracts*/**"]
   - id: API-007
     statement: "An HTTP API follows HTTP's semantics as Azure's API design guidance sets them out: base resource URIs on nouns and not verbs where possible, and avoid verbs in URIs to represent operations; a POST that creates a resource synchronously should return 201 Created and identify the resource in the Location header; GET, HEAD, PUT and DELETE must be idempotent; and for work that takes time, consider an asynchronous method, which should return 202 Accepted with the status endpoint's URI in the Location header, whose status endpoint should return 303 See Other with the new resource's URI in a Location header once the work has created one."
@@ -174,7 +174,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the rest: nouns for resources, idempotent PUT and DELETE, and 202 with a status endpoint for long work (whose status endpoint answers 303 See Other with the new resource's Location once the work is done), none of which an analyzer sees"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs"]
   - id: API-009
     statement: "OpenAPI user interfaces (Swagger UI, ReDoc, Scalar) should only be enabled in development environments."
@@ -192,7 +192,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks that a UI for the document is mapped in Development only"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs"]
   - id: API-010
     statement: "In non-development environments, use the exception handler middleware to produce an error payload. Don't enable the Developer Exception Page unless the app is running in the Development environment, and don't share detailed exception information publicly when the app runs in production."
@@ -213,7 +213,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the handler and the Developer Exception Page; API-002's ErrorTests gate that a production 500 hides the exception"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Error*.cs"]
   - id: API-011
     statement: "Implement pagination for an endpoint that returns a collection: use limit and offset query parameters with meaningful defaults, such as limit=25 and offset=0, and consider an upper limit on the number of items returned. Apply pagination in the data store, not after loading the entire collection, with a deterministic sort order; include a next-page link or continuation token in the response, omitted or null on the last page; and for a large or frequently changing collection, evaluate cursor-based pagination."
@@ -243,7 +243,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks it; API-004's tests gate the kit's numbers, the page's next link and the paging in the data store"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/*Endpoints*.cs", "**/*Repository*.cs", "**/*Contracts*/**"]
   - id: API-012
     statement: "Support versioning in the API contract: when you introduce a breaking API change, introduce a new API version, continue to support the previous version, and let clients select which version to call. Make API changes backward compatible when possible."
@@ -263,7 +263,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the contract snapshot test (API-003) shows every change to the API in review, where a breaking one is caught; no tool can tell which change breaks a caller"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/*Endpoints*.cs", "**/Contract/**"]
   - id: API-013
     statement: "An HTTP API's URIs name a collection with a plural noun, and use a verb sparingly, only for an operation that isn't a resource."
@@ -276,7 +276,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the routes"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs"]
 ---
 

@@ -12,7 +12,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "no tool can tell a fix from a workaround; the plan-checklist skill asks for the root cause, and code review checks it"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: CRF-002
     statement: "Never ship a design known to be worse as good enough without saying so: name the better design and why it waits, and plan it in the same PR (a scorecard gap, or a follow-up PR or session)."
@@ -25,7 +25,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "only a person or code review can know a better design exists; the PR template's 'For the owner' and 'Not verified' sections carry it"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: CRF-003
     statement: "Every piece of knowledge has one authoritative source (DRY is about knowledge, not text): any other place that states a rule, value or behavior is generated from that source, checked against it or points to it, while code that only looks alike but changes for different reasons stays apart."
@@ -41,7 +41,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "checked by code review: each CPD-OFF region's reason, whether a repeat is knowledge or code that only looks alike, and duplication outside C# (docs, config, scripts) or in a file CPD can't read, or a copy with renamed variables or changed literals"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: CRF-004
     statement: "Build the simplest design that is fully correct for today's requirements (KISS, YAGNI): no speculative layer, option or abstraction and no big design up front, and never a simpler design that's less correct; how much structure an app gets is ARC-009's (proposed) to settle."
@@ -54,7 +54,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "no tool can judge what a requirement needs; the plan-checklist skill asks, and code review checks"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: CRF-005
     statement: "Classes follow SOLID: one reason to change (single responsibility), extended without being edited (open-closed), usable wherever their base type is (Liskov substitution), small interfaces shaped by their clients (interface segregation), and every dependency explicit, passed in as a constructor or method parameter, and pointing toward abstractions, never from business code to infrastructure details (dependency inversion, explicit dependencies)."
@@ -67,7 +67,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "CA1506 and CA1501 (CRF-008) fail the build on a class with too many collaborators or too deep a hierarchy, which often signals a broken principle, but only code review can judge the principles themselves"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs"]
   - id: CRF-006
     statement: "Keep concerns apart: business rules know nothing of UI, persistence or transport, and input is validated where it enters the system (a request, a message, a file, configuration), so the code inside can trust it; SEC-010 (proposed) says how an API validates a request."
@@ -83,7 +83,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests once it's accepted"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs"]
   - id: CRF-007
     statement: "Namespaces depend on each other without cycles; dependencies point toward the more stable, more abstract code; and each project holds classes that change together and are reused together (high cohesion, low coupling)."
@@ -99,7 +99,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "stable dependencies and component cohesion, checked by code review"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs", "**/*.csproj"]
   - id: CRF-008
     statement: "Stay within the metric limits: cyclomatic complexity 15 per method, class coupling 40 types per member and 95 per type, inheritance 5 levels deep, and a maintainability index of at least 10; raising a limit, or suppressing a metric rule for a whole project, needs an ADR."
@@ -112,7 +112,7 @@ rules:
       - kind: gate
         in: [kit, app]
         how: "build: .globalconfig turns on CA1501, CA1502, CA1505, CA1506 and CA1509 at warning, and CodeMetricsConfig.txt sets the limits, so a breach or a malformed limit fails the build (tools/tests/BuildConfig.Tests.ps1, which also checks this statement's numbers against the file)"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs", ".globalconfig", "CodeMetricsConfig.txt"]
   - id: CRF-009
     statement: "Avoid the STUPID anti-patterns (Singletons and other mutable global state, tight coupling, untestable code, premature optimization, names that don't say what a thing is, duplication), and design each part to be tested in isolation and each module separable enough to be deployed on its own later (ARC-001: one deployable app, with modules that can become services)."
@@ -125,7 +125,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "the coverage and mutation gates (TST-004) expose untestable code, CA1506 tight coupling, and the naming rules (CA17xx) some names, but no tool judges the design as a whole; code review checks"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: CRF-010
     statement: "Use every library, tool and service as its authors document for the version in use, through its public API and documented extension points; never reach into non-public members or rely on undocumented behavior; lifting a ban in BannedSymbols.txt, even for one member, needs an ADR."
@@ -141,7 +141,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "relying on undocumented behavior, checked by code review"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: CRF-011
     statement: "Keep nesting to 3 levels deep at most, 30 statements per member, 400 lines per file, 20 members per type, one public type per file, and classes whose methods all share state (LCOM4 of 1); a member, type or file that needs more carries the comment // CRF-011 exception: <reason>, where it lives."
@@ -154,7 +154,7 @@ rules:
       - kind: gate
         in: [kit, app]
         how: "ci: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml and fails on a breach outside generated code and outside a reasoned exception; tools/CodeShape/src/Kit.CodeShape/Limits.cs is the one source of the numbers, and tools/tests/Test-CodeShape.Tests.ps1 checks this statement against it"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs"]
   - id: CRF-012
     statement: "Aim for at most ten subfolders per folder, files per folder, types per file, members per type and lines per method (the rule of ten); more is a reason to look for a split, not a defect."
@@ -167,7 +167,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review reports a unit over ten as a Consider, with the split it suggests"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: CRF-013
     statement: "Wherever the tests run the app, the container validates scopes and its registrations (ValidateScopes, ValidateOnBuild) in every environment they use, not only in Development, so a singleton that captures a scoped service, and a scoped service resolved from the root, fail a test; the app's own setting is left as it is. CRF-020 holds Microsoft's dependency injection guidelines."
@@ -186,7 +186,7 @@ rules:
       - kind: advisory
         in: [app]
         how: "that every other host the app's tests start validates too, which code review checks"
-    projectTypes: [web-api, blazor, razor-pages-mvc]
+    scope: [web-api, blazor]
     paths: ["**/*.cs"]
   - id: CRF-014
     statement: "Types limit outside access to their state: outside code changes an object's state through a well-defined function or property setter, not direct access to its private state (encapsulation). Types that need to be persisted stay unaffected by the persistence technology (persistence ignorance): a required base class, a required interface implementation, classes that save themselves, a required parameterless constructor, properties that must be virtual and persistence-specific required attributes all violate it. CRF-021 adds the kit's check on what the domain references."
@@ -217,7 +217,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks what the analyzers can't: no setter that lets a caller break an invariant, a settable collection property on an internal type (CA2227 checks public types only), and no persistence attributes or constructors only the database needs in domain types"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs"]
   - id: CRF-015
     statement: "Avoid specifying behavior related to a particular concept in multiple places (DRY): encapsulate it in one programming construct that is the single authority over that behavior, and have every other part that needs it use that construct. Avoid binding together behavior that is only coincidentally repetitive."
@@ -244,7 +244,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks it; CRF-003's duplication check covers repeated C# tokens"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: CRF-016
     statement: "Objects have one responsibility and one reason to change (single responsibility). The direction of dependency is toward abstraction, not implementation details (dependency inversion). Methods and classes explicitly require the collaborating objects they need (explicit dependencies)."
@@ -268,7 +268,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "CA1506 and CA1501 (CRF-008) fail the build on a class with too many collaborators or too deep a hierarchy, which often signals a broken principle, but only code review can judge the principles themselves"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs"]
   - id: CRF-017
     statement: "Keep software separated by the kind of work it performs (separation of concerns): ideally business rules and logic reside in a separate project that doesn't depend on other projects in the application, and it helps if infrastructure concerns depend on abstractions defined in the business layer."
@@ -289,7 +289,7 @@ rules:
       - kind: gate
         in: [kit, app]
         how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), LayerTests and SharedLibraryTests, fail when business code depends on infrastructure, UI or the API (CRF-006, ARC-001, ARC-003)"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs"]
   - id: CRF-018
     statement: "Validate input before business processing or storage, and validate data from internal APIs, partner feeds, queues and stored records when it crosses a trust boundary."
@@ -310,7 +310,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests once it's accepted"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs"]
   - id: CRF-019
     statement: "Don't rely on the internal implementation details of the runtime and libraries, which .NET doesn't support, and don't assume that any nonpublic member of the BCL will always be present or have a specific shape."
@@ -331,7 +331,7 @@ rules:
       - kind: gate
         in: [kit, app]
         how: "build: Microsoft.CodeAnalysis.BannedApiAnalyzers rejects the APIs in BannedSymbols.txt with RS0030 (CRF-010)"
-    projectTypes: [all]
+    scope: core
     paths: ["**"]
   - id: CRF-020
     statement: "Follow Microsoft's dependency injection guidelines: avoid stateful, static classes and members; avoid instantiating dependent classes directly within services; avoid static access to services; avoid the service locator pattern and a factory that resolves dependencies at run time; avoid calling BuildServiceProvider while configuring services; enable scope validation so no singleton captures a scoped service; use the singleton lifetime only for services with their own state that is expensive to create or globally shared; and avoid the page's anti-patterns, a captive dependency and a scoped service retrieved outside a scope."
@@ -376,7 +376,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks the rest of the guidelines: no service locator, no factory that resolves dependencies at run time, no static access to services, and singletons only for shared or costly state"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs"]
   - id: CRF-021
     statement: "The domain's ignorance of persistence (CRF-014) holds in what it references: a domain assembly references no persistence library (EF Core, ADO.NET)."
@@ -392,7 +392,7 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks what the check misses: it sees only the assemblies the domain's compiled code references, and only EF Core's and ADO.NET"
-    projectTypes: [all]
+    scope: core
     paths: ["**/*.cs", "**/*.csproj"]
 ---
 
