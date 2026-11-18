@@ -73,6 +73,8 @@ function Get-AppProjectType {
     $types
 }
 
+function Update-RulesetBlock { param([string] $Text, [string] $StandardsPath) $Text }
+
 # The ids docs/standards/project-types.yml lists, or nothing when it's missing (an app synced before ADR-0082).
 function Get-KnownProjectType {
     param([Parameter(Mandatory)] [string] $StandardsPath)

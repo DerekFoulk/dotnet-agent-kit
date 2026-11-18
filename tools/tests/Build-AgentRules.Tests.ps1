@@ -270,6 +270,67 @@ types:
         }
     }
 
+    # ADR-0084: each ruleset's ADR lists its rules in a generated block, so the list can't drift from the standards.
+    Context 'ruleset blocks in ADRs' {
+        BeforeAll {
+            function New-RulesetStandards {
+                Set-Content -Path (Join-Path $script:standards 'project-types.yml') -Value @'
+types:
+  - { id: web-api, name: ASP.NET Core Web API, docs: 'https://learn.microsoft.com/aspnet/core/web-api/' }
+  - { id: maui, name: .NET MAUI, docs: 'https://learn.microsoft.com/dotnet/maui/' }
+'@
+                New-StandardsFile -Topic 'data' -Title 'Data' -Rules @(
+                    (New-Rule -Id 'DAT-001' -Statement 'Everywhere.')
+                    (New-Rule -Id 'DAT-002' -Statement 'Web only.' -Types @('web-api'))
+                    (New-Rule -Id 'DAT-003' -Statement 'MAUI, proposed.' -Types @('maui', 'web-api') -Status 'proposed')
+                    (New-Rule -Id 'DAT-004' -Statement 'Retired.' -Types @('maui') -Status 'retired')
+                )
+            }
+        }
+
+        It 'fills a type''s block with every rule naming it, in force or proposed, and leaves the text around it alone' {
+            New-RulesetStandards
+            $text = "# ADR`n`n<!-- ruleset: maui -->`nold`n<!-- end ruleset -->`n`nAfter.`n"
+
+            $filled = Update-RulesetBlock -Text $text -StandardsPath $script:standards
+
+            $filled | Should -Match '(?m)^- \[DAT-003\]\(\.\./standards/data\.md\) \(proposed\): MAUI, proposed\.$'
+            $filled | Should -Not -Match 'DAT-001|DAT-002|DAT-004|old'
+            $filled | Should -Match '(?m)^After\.$'
+        }
+
+        It 'fills the common ruleset''s block with the rules for every type' {
+            New-RulesetStandards
+
+            $filled = Update-RulesetBlock -Text "<!-- ruleset: all -->`n<!-- end ruleset -->`n" -StandardsPath $script:standards
+
+            $filled | Should -Match '(?m)^- \[DAT-001\]\(\.\./standards/data\.md\) \(accepted\): Everywhere\.$'
+            $filled | Should -Not -Match 'DAT-002|DAT-003'
+        }
+
+        It 'refuses a block for a type project-types.yml doesn''t list' {
+            New-RulesetStandards
+
+            { Update-RulesetBlock -Text "<!-- ruleset: silverlight -->`n<!-- end ruleset -->`n" -StandardsPath $script:standards } | Should -Throw '*silverlight*'
+        }
+
+        It 'fills an ADR''s block when it builds, and -Check finds it stale' {
+            Mock Write-Host {}
+            $root = Join-Path $TestDrive "repo-$(New-Guid)"
+            $script:standards = Join-Path $root 'docs' 'standards'
+            New-Item -ItemType Directory -Path $script:standards, (Join-Path $root 'docs' 'adr') | Out-Null
+            Set-Content -Path (Join-Path $root 'AGENTS.md') -Value "# Agent instructions`n"
+            New-RulesetStandards
+            $adr = Join-Path $root 'docs' 'adr' '0089-maui-ruleset.md'
+            Set-Content -Path $adr -Value "# ADR-0089`n`n<!-- ruleset: maui -->`n<!-- end ruleset -->`n" -NoNewline
+
+            Invoke-AgentRuleBuild -RepoRoot $root | Should -Be 0
+            Get-Content -Raw $adr | Should -Match 'DAT-003'
+            Set-Content -Path $adr -Value "# ADR-0089`n`n<!-- ruleset: maui -->`n<!-- end ruleset -->`n" -NoNewline
+            Invoke-AgentRuleBuild -RepoRoot $root -Check | Should -Be 1
+        }
+    }
+
     Context 'runner' {
         BeforeAll {
             function New-Repo {
