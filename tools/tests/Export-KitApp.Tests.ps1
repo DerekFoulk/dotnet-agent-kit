@@ -281,13 +281,130 @@ Describe 'Export-KitApp' {
         $LASTEXITCODE | Should -Be 0 -Because $output
     }
 
+    # GAP-022: an app runs the code shape check (CRF-011) and the duplicate code check (CRF-003) on its own machine, as
+    # the shared CI does: the export puts the kit's Kit.CodeShape source in .kit/tools, with the kit's build files in
+    # .kit, so the tool builds there as it does from the kit's download. A copy of the app gets a project that nests
+    # too deep, so the export's own app stays as other tests expect.
+    Context 'the app''s own code checks' {
+        BeforeAll {
+            $script:withCode = Join-Path $TestDrive 'app-with-code'
+            Copy-Item -LiteralPath $app -Destination $script:withCode -Recurse
+            Copy-Item -LiteralPath (Join-Path $root 'tools/tests/fixtures/CodeShape/Deep') -Destination (Join-Path $script:withCode 'src') -Recurse
+            [IO.File]::WriteAllText((Join-Path $script:withCode 'Contoso.Orders.slnx'), "<Solution>`n  <Project Path=""src/Deep.csproj"" />`n</Solution>`n")
+        }
+
+        It 'fails a breach of a code shape limit, building the kit''s tool from .kit' {
+            Push-Location -LiteralPath $script:withCode
+            try {
+                $output = & pwsh -NoProfile -File (Join-Path $script:withCode '.kit/tools/Test-CodeShape.ps1') -Solution 'Contoso.Orders.slnx' 2>&1 | Out-String
+                $exit = $LASTEXITCODE
+            }
+            finally { Pop-Location }
+
+            $output | Should -Match 'Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep'
+            $exit | Should -Be 1 -Because $output
+        }
+
+        # A stand-in for PMD with a report that finds nothing, so the summary's count shows the kit's tool listed the
+        # project's one file.
+        It 'runs the duplicate code check over the project''s files, with the PMD it''s given' {
+            $env:KIT_FAKE_CPD_REPORT = Join-Path $root 'tools/tests/fixtures/Duplication/cpd-empty.xml'
+            $env:KIT_FAKE_CPD_EXIT = '0'
+            Push-Location -LiteralPath $script:withCode
+            try {
+                $output = & pwsh -NoProfile -File (Join-Path $script:withCode '.kit/tools/Test-Duplication.ps1') -Solution 'Contoso.Orders.slnx' -Pmd (Join-Path $root 'tools/tests/fixtures/Duplication/FakePmd.ps1') 2>&1 | Out-String
+                $exit = $LASTEXITCODE
+            }
+            finally {
+                Pop-Location
+                Remove-Item Env:KIT_FAKE_CPD_REPORT, Env:KIT_FAKE_CPD_EXIT -ErrorAction Ignore
+            }
+
+            $output | Should -Match 'Duplicate code \(CRF-003\): 1 file checked'
+            $exit | Should -Be 0 -Because $output
+        }
+
+        It 'lists both checks in its AGENTS.md, with Java and PMD as the developer''s own install' {
+            $agents = Get-Content -Raw -LiteralPath (Join-Path $app 'AGENTS.md')
+
+            $agents | Should -Match ([regex]::Escape('./.kit/tools/Test-CodeShape.ps1 -Solution Contoso.Orders.slnx'))
+            $agents | Should -Match ([regex]::Escape('./.kit/tools/Test-Duplication.ps1 -Solution Contoso.Orders.slnx -Pmd'))
+            $agents | Should -Not -Match 'run only in CI for now'
+        }
+    }
+
+    # GAP-037: the kit's shared tests reach an app's own test projects, so the rules the sample's tests gate are gated in
+    # the app too. tests/Directory.Build.props compiles the kit's architecture tests into any *.Architecture.Tests
+    # project, from .kit/tools/AppTests. A copy of the app gets a domain and an infrastructure project, and an
+    # Architecture.Tests project with no tests of its own.
+    Context 'the kit''s shared architecture tests in the app' {
+        BeforeAll {
+            $script:layered = Join-Path $TestDrive 'app-layered'
+            Copy-Item -LiteralPath $app -Destination $script:layered -Recurse
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTests/*') -Destination $script:layered -Recurse -Force
+
+            # Builds and tests the copy's solution, and returns the exit code and output. The copy isn't a git repo, so
+            # MinVer is skipped; it has no lock files, so restore isn't locked, even in CI.
+            function Invoke-AppTest([string] $Path = $script:layered) {
+                Push-Location -LiteralPath $Path
+                try {
+                    $build = dotnet build Contoso.Orders.slnx -p:MinVerSkip=true -p:RestoreLockedMode=false 2>&1 | Out-String
+                    if ($LASTEXITCODE -ne 0) { return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $build } }
+                    $test = dotnet test --solution Contoso.Orders.slnx --no-build 2>&1 | Out-String
+                    [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $test }
+                }
+                finally { Pop-Location }
+            }
+        }
+
+        It 'pass for an app whose layers depend only inward' {
+            $result = Invoke-AppTest
+
+            $result.Output | Should -Match 'succeeded: [1-9]'
+            $result.ExitCode | Should -Be 0 -Because $result.Output
+        }
+
+        # SharedAppTestsBroken/README.md lists the four breaks. Each failing test is named, so a build error that only
+        # mentions the projects can't pass for a failing test (review 1).
+        It 'fail each broken rule, naming the test and the assemblies' {
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTestsBroken/*') -Destination $script:layered -Recurse -Force
+
+            $result = Invoke-AppTest
+
+            $result.Output | Should -Match 'AnInnerLayerReferencesNoOuterLayer\(inner: "Contoso\.Orders\.Domain", outer: "Contoso\.Orders\.Infrastructure"\)'
+            $result.Output | Should -Match 'TheDomainKnowsNothingOfPersistence\(domain: "Contoso\.Orders\.Domain"\)'
+            $result.Output | Should -Match 'EveryLayerProjectTheTestsReferenceIsDeclared'
+            $result.Output | Should -Match 'AnApisEndpointsUseNoDomainType\(api: "Contoso\.Orders\.Api"\)'
+            $result.ExitCode | Should -Not -Be 0 -Because $result.Output
+        }
+
+        # An assembly in two layers would follow two sets of rules; the other tests read it by name, once (review 2).
+        It 'fail an assembly declared in two layers, and only that' {
+            $twice = Join-Path $TestDrive 'app-twice'
+            Copy-Item -LiteralPath $app -Destination $twice -Recurse
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTests/*') -Destination $twice -Recurse -Force
+            Copy-Item -Path (Join-Path $root 'tools/tests/fixtures/SharedAppTestsTwice/*') -Destination $twice -Recurse -Force
+
+            $result = Invoke-AppTest -Path $twice
+
+            $result.Output | Should -Match 'NoAssemblyIsDeclaredInTwoLayers'
+            $result.Output | Should -Match 'failed: 1\b'
+        }
+    }
+
     # ADR-0062: the performance workflow runs them in CI; an app runs them too, against a local benchmark or load run.
+    # GAP-040: the license check and the kit's policy it reads, which the shared CI runs too (SEC-005).
     It 'gets the <Script> check, which its AGENTS.md lists' -ForEach @(
         @{ Script = 'Test-BenchmarkBudget.ps1' }
         @{ Script = 'Test-LoadBudget.ps1' }
+        @{ Script = 'Test-PackageLicenses.ps1' }
     ) {
         Test-Path -LiteralPath (Join-Path $app '.kit/tools' $Script) | Should -BeTrue
         Get-Content -Raw -LiteralPath (Join-Path $app 'AGENTS.md') | Should -Match ([regex]::Escape("./.kit/tools/$Script"))
+    }
+
+    It "gets the kit's license policy beside the license check" {
+        Test-Path -LiteralPath (Join-Path $app '.kit/tools/package-licenses.json') | Should -BeTrue
     }
 
     It 'gets the database guide that DAT-001 and the plan checklist point to' {
@@ -319,7 +436,7 @@ Describe 'Export-KitApp' {
 
         $versions = @{}
         foreach ($node in $props.SelectNodes('//PackageVersion')) { $versions[$node.Include] = $node.Version }
-        # The sample app's packages and the kit's own tools' (built from the kit's download in CI) aren't the app's.
+        # The sample app's packages and the kit's own tools' (built with the kit's own props, from its download or .kit) aren't the app's.
         foreach ($kitOnly in $kitProps.SelectNodes('//ItemGroup[@Label="Sample app" or @Label="Kit tools"]/PackageVersion')) {
             $versions.ContainsKey($kitOnly.Include) | Should -BeFalse -Because "$($kitOnly.Include) is only the kit's"
         }
@@ -332,6 +449,17 @@ Describe 'Export-KitApp' {
         # The app adds its own packages here, so the app owns the file.
         $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
         @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain 'Directory.Packages.props'
+    }
+
+    # GAP-033 (ADR-0061): the shared CI runs an app's browser tests in the Playwright image its own pin names, and the
+    # pin follows the app's own Microsoft.Playwright version, so the app starts with the kit's pin and owns it.
+    It 'gives the app the kit''s Playwright image pin, as a file of its own' {
+        $path = Join-Path $app '.config/playwright/Dockerfile'
+        Test-Path -LiteralPath $path | Should -BeTrue -Because 'an app with browser tests needs the pin'
+
+        [IO.File]::ReadAllText($path) | Should -BeExactly ([IO.File]::ReadAllText((Join-Path $checkout '.config/playwright/Dockerfile')))
+        $manifest = Get-Content -Raw (Join-Path $app '.kit/manifest.json') | ConvertFrom-Json -AsHashtable
+        @($manifest['files'] | ForEach-Object { $_['path'] }) | Should -Not -Contain '.config/playwright/Dockerfile'
     }
 
     # Review 1 of PR 36: a global package reference reaches every project, and the banned-API analyzer is the
@@ -506,7 +634,7 @@ Describe 'Export-KitApp' {
         $targets = @($map | ForEach-Object { $_.Target })
 
         foreach ($path in '.editorconfig', 'global.json', 'nuget.config', 'Directory.Build.props', 'tests/Directory.Build.props',
-            '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt',
+            '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt', 'BannedSymbols.Pure.txt',
             'THIRD-PARTY-NOTICES.md', 'CLAUDE.md', '.mcp.json', '.claude/settings.json', 'docs/code-review.md',
             '.claude/skills/tdd-cycle/SKILL.md', 'docs/standards/git.md', '.githooks/commit-msg', '.githooks/commit-msg.ps1',
             '.github/pull_request_template.md', 'docs/adr/0000-template.md', '.kit/tools/Test-ConventionalTitle.ps1') {
@@ -535,7 +663,8 @@ Describe 'Export-KitApp' {
     # would fail only when that line runs.
     It 'includes every kit script that an exported kit script calls from its own folder' {
         $targets = @($map | ForEach-Object { $_.Target })
-        $tools = @($targets | Where-Object { $_ -like '.kit/tools/*' })
+        # The scripts, directly in .kit/tools; the folders under it hold the source of the kit's tools (GAP-022).
+        $tools = @($targets | Where-Object { $_ -like '.kit/tools/*' -and $_ -notlike '.kit/tools/*/*' })
         $called = foreach ($tool in $tools) {
             $text = Get-Content -Raw -LiteralPath (Join-Path $checkout 'tools' (Split-Path $tool -Leaf))
             [regex]::Matches($text, "Join-Path \`$PSScriptRoot '([^'/\\]+\.ps(?:m)?1)'") | ForEach-Object { $_.Groups[1].Value }

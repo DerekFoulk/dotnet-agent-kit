@@ -1,5 +1,5 @@
 # .NET gates for any repo that uses the kit: locked restore with NuGet audit, build with zero warnings,
-# format check, tests with a coverage gate (browser tests too, with Playwright's browser installed), deprecated
+# format check, tests with a coverage gate (browser tests too, in the pinned Playwright image), deprecated
 # packages, empty projects (ARC-009), code shape (CRF-011, and STY-005's nullable rules), duplicate code (CRF-003), an SBOM artifact (SUP-009), and
 # a secret scan of the whole history.
 # Called by this repo's ci.yml, and by app repos pinned to the commit a kit release tag points to:
@@ -146,6 +146,14 @@ jobs:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
 
+      # SEC-005 (GAP-040), over the whole solution, which this leg restored: every locked package's license, from its
+      # .nuspec, against the kit's policy and the repo's .config/package-licenses.json.
+      - name: Package licenses
+        if: runner.os == 'Windows'
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-PackageLicenses.ps1" -Solution $env:SOLUTION'
+
       # CRF-003, over the whole solution, for the same reason as code shape: it lists each project's files through
       # MSBuild. The release is the one the kit pins (ADR-0060), checked against the same committed SHA-256 as on
       # Linux. The runner's Java runs PMD's Windows launcher.
@@ -262,21 +270,22 @@ jobs:
         if: steps.projects.outputs.count != '0'
         run: dotnet format "$FILTER" --verify-no-changes --no-restore
 
-      # Browser and accessibility tests (GAP-004, ADR-0061): a project that uses Playwright gets its browser, Chromium,
-      # from the playwright.ps1 its build put beside it, at the build the Microsoft.Playwright version pins (Dependabot
-      # moves that version). --with-deps adds the browser's system libraries from the runner's Ubuntu archive. Without
-      # a Playwright project, the script says so and installs nothing. Playwright's installer checks no hash (GAP-033).
-      - name: Playwright browser
+      # Microsoft Testing Platform (global.json) runs every test project; each writes a Cobertura report.
+      # Browser and accessibility tests (GAP-004, GAP-033, ADR-0061): when a project uses Playwright, the tests run inside
+      # Microsoft's Playwright .NET image, which holds that version's browsers and their system libraries, pinned by tag
+      # and digest in the repo's own .config/playwright/Dockerfile (Dependabot moves it; its version must be the repo's
+      # Microsoft.Playwright). Docker checks the image against the digest, so no browser is downloaded unchecked. The
+      # container runs this runner's SDK, the one global.json names. Without a Playwright project, they run here.
+      - name: Test with coverage
         if: steps.projects.outputs.count != '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
-        run: '& "$env:KIT/tools/Install-PlaywrightBrowser.ps1" -Solution $env:SOLUTION -Configuration Release -WithDependencies'
-
-      # Microsoft Testing Platform (global.json) runs every test project; each writes a Cobertura report.
-      - name: Test with coverage
-        if: steps.projects.outputs.count != '0'
-        run: dotnet test --solution "$FILTER" --no-build --configuration Release --coverage --coverage-output-format cobertura --results-directory "$RUNNER_TEMP/test-results"
+        run: >-
+          & "$env:KIT/tools/Invoke-WithPlaywrightImage.ps1" -Solution $env:SOLUTION
+          -Pin "$env:GITHUB_WORKSPACE/.config/playwright/Dockerfile" -Share $env:RUNNER_TEMP --
+          dotnet test --solution $env:FILTER --no-build --configuration Release --coverage --coverage-output-format cobertura
+          --results-directory "$env:RUNNER_TEMP/test-results"
 
       # TST-004: 100% line coverage for *.Domain, 95% for *.Application, 90% overall. It reads the whole solution,
       # to tell a UI project (exempt, ARC-010) from a project no test loads (a failure).
@@ -331,6 +340,16 @@ jobs:
         env:
           KIT: ${{ steps.kit.outputs.path }}
         run: '& "$env:KIT/tools/Test-CodeShape.ps1" -Solution $env:SOLUTION'
+
+      # SEC-005 (GAP-040, ADR-0079): every package the lock files resolve, transitive ones too, has a license the kit's
+      # policy (tools/package-licenses.json) or the repo's .config/package-licenses.json allows, read from its .nuspec
+      # in the global packages folder. With UI projects, which this job doesn't restore, the ui job runs it on Windows.
+      - name: Package licenses
+        if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+        run: '& "$env:KIT/tools/Test-PackageLicenses.ps1" -Solution $env:SOLUTION'
 
       # CRF-003: the same code in more than one place, found by PMD's copy-paste detector, CPD (BSD-style licence;
       # ADR-0051). The kit pins the release (ADR-0060): its version in .config/pmd/pom.xml, which Dependabot moves, and

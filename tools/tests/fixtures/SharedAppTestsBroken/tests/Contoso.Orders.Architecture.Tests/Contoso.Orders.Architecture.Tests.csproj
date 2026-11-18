@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A fixture for the kit's shared architecture tests: the broken app's Architecture.Tests project. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Contoso.Orders.Domain\Contoso.Orders.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Contoso.Orders.Infrastructure\Contoso.Orders.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Contoso.Orders.Application\Contoso.Orders.Application.csproj" />
+    <ProjectReference Include="..\..\src\Contoso.Orders.Api\Contoso.Orders.Api.csproj" />
+  </ItemGroup>
+
+</Project>

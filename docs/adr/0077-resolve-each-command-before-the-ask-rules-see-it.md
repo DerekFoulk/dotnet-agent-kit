@@ -68,7 +68,7 @@ Option 1. GAP-044 planned it, and the owner asked on 2026-11-16 to finish the sc
 - Bash's commands inside `$( )`, backquotes, `<( )` and an unquoted heredoc's body are resolved and checked too. A command nested in Bash isn't asked for as such, since Claude Code's ask rules already apply inside a substitution.
 - A guard that can't start (no `pwsh` on the PATH, or a PowerShell older than 7.6) leaves the call to the text rules, as a hook error Claude Code shows, rather than blocking it. `onFailure: "block"` would block every shell call on such a machine, including the commands that would fix it, for a guard whose purpose is mistakes, not a hostile agent (ADR-0075). Older Claude Code versions may not know the key, either (not verified).
 - The hook runs `pwsh` without `-ExecutionPolicy Bypass`: every kit script runs under the machine's policy already, and a policy that stops this one stops them all.
-- Known limits, planned as GAP-046 in `docs/quality/scorecard.md`:
+- Known limits, planned as GAP-048 in `docs/quality/scorecard.md`:
   - a command run from a string (`bash -c "…"`, `pwsh -Command "…"`, `Invoke-Expression`, `eval`) isn't resolved. No allow rule covers these forms, so they prompt today;
   - a program that reads a file for itself, such as `gh pr create --body-file ./.env` or `git add -f` followed by a push, can still send a secret: the guard sees the path, not what it holds;
   - a variable set outside the input (in the user's environment) isn't known to the guard;

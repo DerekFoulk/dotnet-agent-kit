@@ -1,7 +1,8 @@
 # Keeps packages, dotnet tools (.config/dotnet-tools.json), pinned GitHub Actions, the global.json SDK pin, the two
 # tools the shared .NET CI downloads itself (ADR-0060): PMD, pinned in .config/pmd/pom.xml, and the gitleaks image,
 # pinned by tag and digest in .config/gitleaks/Dockerfile, and Locust for the shared load tests, pinned by hash in
-# .config/locust (ADR-0062), current (SUP-008, ADR-0025).
+# .config/locust (ADR-0062), and the Playwright image the kit's browser tests run in, pinned by tag and digest in
+# .config/playwright/Dockerfile (GAP-033), current (SUP-008, ADR-0025).
 # The "chore" prefix makes each PR title a Conventional Commit, which CI requires, and "include: scope" adds
 # "(deps)": "chore(deps): bump ...". The NuGet updater ignores the scope for now (dependabot-core#15158), so
 # NuGet PRs come as "chore: Bump ...", which CI accepts too; keep "include: scope" for when that's fixed.
@@ -12,7 +13,8 @@
 # default is 3 days. Security updates, on since 2026-11-09, don't wait. Shortening any wait here (a semver-minor-days or
 # semver-patch-days below 7 too), or narrowing it with an exclude or include list, is a guardrail change: an agent
 # merges it only on the owner's yes. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors,
-# 0.x packages (BenchmarkDotNet among them), GitHub Actions bumps, and PMD, gitleaks and Locust (pip) bumps are the owner's.
+# 0.x packages (BenchmarkDotNet among them), GitHub Actions bumps, and PMD, gitleaks, Playwright image and Locust (pip)
+# bumps are the owner's, so a Microsoft.Playwright update, which moves with the Playwright image, is too.
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -78,6 +80,19 @@ updates:
   # The gitleaks image for the secret scan (ADR-0024). Docker takes no semver-*-days, so every update waits 7.
   - package-ecosystem: docker
     directory: /.config/gitleaks
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
+
+  # The Playwright image the shared CI runs browser tests in (GAP-033, ADR-0061). Its version must be Microsoft.Playwright's
+  # in Directory.Packages.props, which the nuget entry moves in a PR of its own: CI fails each until both move, so
+  # bring the two into one PR (docs/standards/testing.md, "Browser and accessibility tests").
+  - package-ecosystem: docker
+    directory: /.config/playwright
     schedule:
       interval: weekly
     commit-message:

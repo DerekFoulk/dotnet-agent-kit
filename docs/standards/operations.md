@@ -10,11 +10,11 @@ rules:
     sources: ["ADR-0037", "https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel, retrieved 2026-11-08", "owner, 2026-11-09"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's Bookmarks.ServiceDefaults project and its FunctionalTests (TelemetryTests, which also sees a trace exported over OTLP only when an endpoint is set) in dotnet-ci.reusable.yml"
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): TelemetryTests checks that OpenTelemetry collects traces, metrics and logs, keeps each log's message and scopes, leaves the health probes out of traces, and exports a trace over OTLP only when an endpoint is set; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until it has its own ServiceDefaults project, following the sample"
+        how: "that the setup lives in one ServiceDefaults project, which code review checks"
     scope: core
     paths: ["**/*.csproj", "**/Program.cs", "**/*ServiceDefaults*/**"]
   - id: OPS-002
@@ -27,10 +27,13 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's FunctionalTests check both endpoints, the database and live checks, the production status-only reply, the cache and the timeout"
+        how: "ci: the sample's FunctionalTests check its database check, its live check and its 5-second timeout"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): HealthTests checks that /health and /alive answer an anonymous probe with the status only in Production, that a second probe is served from the cache, that both are time-boxed and a slow check is cut off with a 504, and that /alive stays healthy while a readiness check fails; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until the app follows the sample"
+        how: "that /health includes the app's database, until its own FunctionalTests check it, as the sample's do"
     scope: core
     paths: ["**/Program.cs", "**/*ServiceDefaults*/**", "**/*Infrastructure*/**"]
   - id: OPS-003
@@ -42,14 +45,14 @@ rules:
     sources: ["ADR-0037", "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-08", "owner, 2026-11-09", "owner, 2026-11-16", "https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's FunctionalTests check that a client from IHttpClientFactory has the resilience handler and doesn't retry a failed POST"
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): ResilienceTests checks that a client from IHttpClientFactory has the resilience handler and doesn't retry a failed POST; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: gate
         in: [kit, app]
         how: "build: BannedSymbols.txt bans HttpClient's constructors (RS0030), so a client comes from the factory or, for the cookie case, from the ADR that lifts the ban at that client (CRF-010); tools/tests/BuildConfig.Tests.ps1 has a failing fixture"
       - kind: advisory
-        in: [app]
-        how: "until the app follows the sample"
+        in: [kit, app]
+        how: "a client that removes the default handler for settings of its own, and the cookie case, which code review checks"
     scope: core
     paths: ["**/*ServiceDefaults*/**", "**/*.cs", "BannedSymbols.txt"]
   - id: OPS-004
@@ -77,14 +80,14 @@ rules:
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown, retrieved 2026-11-15"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's ServiceDefaults sets HostOptions.ShutdownTimeout to 25 seconds, and its FunctionalTests (ShutdownTests) check it ends before 30"
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): ShutdownTests checks that the shutdown timeout is positive and ends before 30 seconds, in Production; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: gate
         in: [kit, app]
         how: "build: CA2016 makes every call pass on the cancellation token it has"
       - kind: advisory
         in: [app]
-        how: "until the app has its own ServiceDefaults project, following the sample, with the timeout set under its own platform's grace period"
+        how: "that the timeout ends before the app's own platform's grace period, where that isn't 30 seconds, which code review checks"
     scope: core
     paths: ["**/*ServiceDefaults*/**", "**/Program.cs"]
   - id: OPS-006

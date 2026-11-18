@@ -53,6 +53,27 @@ Describe 'Dependabot configuration' {
         $matching.Count | Should -Be 1 -Because "Dependabot's $Ecosystem updater must read $Directory"
     }
 
+    # GAP-033 (ADR-0061): the Playwright image the shared CI runs browser tests in is pinned in the repo's own
+    # .config/playwright/Dockerfile, since its version follows the repo's Microsoft.Playwright: the kit's, and each app's.
+    It 'watches the Playwright image pin, in <Path>' -ForEach @(
+        @{ Path = '.github/dependabot.yml' }, @{ Path = 'templates/app/.github/dependabot.yml' }
+    ) {
+        $matching = @(Get-Update $Path |
+                Where-Object { $_['package-ecosystem'] -eq 'docker' -and $_['directory'] -eq '/.config/playwright' })
+
+        $matching.Count | Should -Be 1 -Because "Dependabot's docker updater must read /.config/playwright"
+    }
+
+    # GAP-022: an app's .kit holds a copy of the kit's Directory.Packages.props and the code shape tool's project, which
+    # the kit manages and the sync replaces. A Dependabot PR there would edit a kit-managed file, so the app's NuGet
+    # updates leave .kit out; the kit's own release moves those versions.
+    It 'keeps the app''s NuGet updates out of the kit-managed .kit folder' {
+        $nuget = @(Get-Update 'templates/app/.github/dependabot.yml' | Where-Object { $_['package-ecosystem'] -eq 'nuget' })
+
+        $nuget.Count | Should -Be 1
+        @($nuget[0]['exclude-paths']) | Should -Contain '.kit/**'
+    }
+
     It 'waits at least 14 days before proposing a major version of a package or the SDK, in <Path>' -ForEach @(
         @{ Path = '.github/dependabot.yml' }, @{ Path = 'templates/app/.github/dependabot.yml' }
     ) {

@@ -10,11 +10,8 @@ rules:
     sources: ["ADR-0008", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-13"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: sample/tests/Bookmarks.Architecture.Tests (LayerTests, ArchUnitNET) fails when a layer depends outward"
-      - kind: advisory
-        in: [app]
-        how: "until the app's Architecture.Tests carries the same test, following the sample"
+        in: [kit, app]
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): LayerTests fails when a domain, contracts, application or infrastructure assembly references one in a layer outside it; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
         how: "the module's project set and grouping by feature, checked by code review"
@@ -42,11 +39,8 @@ rules:
     sources: ["ADR-0008", "https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-12"]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: sample/tests/Bookmarks.Architecture.Tests (SharedLibraryTests) fails when Domain, Contracts or Application references an ASP.NET Core, EF Core, MAUI or WPF assembly"
-      - kind: advisory
-        in: [app]
-        how: "until the app's Architecture.Tests carries the same test, following the sample"
+        in: [kit, app]
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): SharedLibraryTests fails when a domain, contracts or application assembly references an ASP.NET Core, EF Core, MAUI or WPF assembly; an app without that project isn't checked until TST-003's check (GAP-027)"
     scope: core
     paths: ["src/**", "sample/**"]
   - id: ARC-004
@@ -105,21 +99,21 @@ rules:
     scope: core
     paths: ["spikes/**"]
   - id: ARC-008
-    statement: "No code reads the clock directly: the time comes from an injected TimeProvider, and TimeProvider.System appears only where the app registers it, or where code must agree with a clock it can't inject, such as a test token the app checks against the system clock. Assemblies marked pure (core business logic) also use no randomness, file or network access except through injected abstractions."
-    why: "Pure logic gives deterministic tests; opt-in per project. The clock is read everywhere, so it's injected everywhere: Microsoft's world-ready apps page says to use TimeProvider, and the sample does: its one test helper that read DateTime.UtcNow reads TimeProvider.System, the clock the API checks a token's lifetime against (.NET best-practices pass, owner 2026-11-16: \"Yes, accept them\")."
+    statement: "No code reads the clock directly: the time comes from an injected TimeProvider, and TimeProvider.System appears only where the app registers it, or where code must agree with a clock it can't inject, such as a test token the app checks against the system clock. Assemblies marked pure (core business logic, such as a module's Domain project, marked by setting the PureAssembly property to true in its .csproj) also use no randomness, file, network, environment or process access except through values, streams, readers and writers their callers pass in, or abstractions of their own that are injected (never an HttpClient, even one passed in), and BannedSymbols.Pure.txt lists the APIs they may not call."
+    why: "Pure logic gives deterministic tests; opt-in per project. The clock is read everywhere, so it's injected everywhere: Microsoft's world-ready apps page says to use TimeProvider, and the sample does: its one test helper that read DateTime.UtcNow reads TimeProvider.System, the clock the API checks a token's lifetime against (.NET best-practices pass, owner 2026-11-16: \"Yes, accept them\"). The environment and other processes are outside state the same way, so the pure list bans them too, and the mark is a property Directory.Build.props reads (ADR-0080, GAP-039)."
     layer: owner
     basis: preference
     status: accepted
-    sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-16", "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/datetime/choosing-between-datetime, retrieved 2026-11-15"]
+    sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-16", "ADR-0080", "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-15", "https://learn.microsoft.com/dotnet/standard/datetime/choosing-between-datetime, retrieved 2026-11-15", "https://learn.microsoft.com/visualstudio/msbuild/build-process-overview#evaluation-phase, retrieved 2026-11-16"]
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "build: BannedSymbols.txt bans DateTime.Now, UtcNow and Today and DateTimeOffset.Now and UtcNow in every project (RS0030), and the compiler rejects the obsolete TimeZone (CS0618, an error under STY-004); tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each"
+        how: "build: BannedSymbols.txt bans DateTime.Now, UtcNow and Today and DateTimeOffset.Now and UtcNow in every project (RS0030), and the compiler rejects the obsolete TimeZone (CS0618, an error under STY-004); in a project that sets PureAssembly, Directory.Build.props adds BannedSymbols.Pure.txt, which bans randomness (Random, RandomNumberGenerator, Guid.NewGuid and CreateVersion7), file access (File, Directory, FileStream, path-opening stream constructors, zip and tar files, folder listings, an assembly's own location and the rest), network access (HttpClient, Socket, Dns and the rest), environment variables, the console, Stopwatch, the local time zone and the conversions that read it, pipes and processes (RS0030); tools/tests/BuildConfig.Tests.ps1 has a failing fixture row for each clock ban and for each pure family, rows showing what a pure assembly keeps (Path's string work, a stream passed in, Environment.NewLine), a clean fixture for an unmarked project, a check that every pure ID resolves, and a test that the sample's Domain project gets the pure list"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks what the ban can't see: TimeProvider.System outside the places the statement allows, Stopwatch or Environment.TickCount64 used as a clock, and Task.Delay or a Timer with no TimeProvider where a test should control the wait. The ban list for pure assemblies' randomness, file and network access isn't written yet, nor how an assembly is marked pure (GAP-039)"
+        how: "code review checks what the bans can't see: TimeProvider.System outside the places the statement allows, Stopwatch or Environment.TickCount64 used as a clock outside a pure assembly, Task.Delay or a Timer with no TimeProvider where a test should control the wait, a project of core business logic that isn't marked pure, and, in a pure assembly, a path or URL reached through a general-purpose overload the list can't ban, such as XDocument.Load(string), or the machine's time zone reached the same way, such as TimeZoneInfo.ConvertTime(DateTime, TimeZoneInfo) or a DateTimeOffset made from a local DateTime"
     scope: core
-    paths: ["**/*.cs", "BannedSymbols.txt"]
+    paths: ["**/*.cs", "**/*.csproj", "BannedSymbols.txt", "BannedSymbols.Pure.txt"]
   - id: ARC-009
     statement: "Give an app only the structure today's requirements need: a web app starts with one ARC-001 module and gets another only for a second distinct business area (its own language, data and rules), never one per entity or feature; a console tool, a standalone worker or a library is one project and its tests, its concerns kept apart by namespace, until code another app must share or a boundary the compiler must enforce needs a second project (ARC-010 settles MAUI and desktop apps); every project, each of a module's five included, is created with its first real type, never before; and inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository or an interface that inverts no dependency come only with the requirement the plan names for each."
     why: "Microsoft keeps DDD and CQRS patterns for complex domains and calls them over-engineering for simple services, and the Well-Architected Framework asks for every component to be justified by a requirement; an agent following ARC-001 to the letter can still build every layer and pattern for a tiny app (GAP-002)."

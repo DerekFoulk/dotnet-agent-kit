@@ -8,6 +8,7 @@ public sealed class PageTests
     [Theory]
     [InlineData("/")]
     [InlineData("checks")]
+    [InlineData("interactive")]
     public async Task PageHasNoWcagFailureAxeCanFind(string path)
     {
         await using AppUnderTest app = await AppUnderTest.StartAsync();

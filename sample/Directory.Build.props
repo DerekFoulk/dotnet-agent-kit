@@ -18,6 +18,25 @@
     <Using Include="FluentAssertions" />
   </ItemGroup>
 
+  <!-- The kit's shared tests (GAP-037, ADR-0081): tools/AppTests in the kit, .kit/tools/AppTests in an app, where this
+       file is tests/Directory.Build.props. An Architecture.Tests project compiles the kit's architecture tests, and
+       names the app's assemblies, layer by layer, in its own part of their AppLayers class. A FunctionalTests project
+       compiles the kit's host checks, and says how to start the app, and which routes are public, in its own part of
+       their AppHost class. -->
+  <PropertyGroup>
+    <KitAppTests>$(MSBuildThisFileDirectory)../.kit/tools/AppTests/</KitAppTests>
+    <KitAppTests Condition="!Exists('$(KitAppTests)')">$(MSBuildThisFileDirectory)../tools/AppTests/</KitAppTests>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Architecture.Tests'))">
+    <Compile Include="$(KitAppTests)Architecture/**/*.cs" Link="Kit/Architecture/%(RecursiveDir)%(Filename)%(Extension)" />
+    <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.FunctionalTests'))">
+    <Compile Include="$(KitAppTests)Functional/**/*.cs" Link="Kit/Functional/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <!-- Benchmarks projects: BenchmarkDotNet console apps, each with a benchmark-budget.json beside it (ADR-0062). Not
        test projects, so dotnet test leaves them alone; the coverage gate and the SBOM leave them out by name. The name
        rule's source is Test-BenchmarksProject in the kit's tools/KitSolution.psm1 (.kit/tools in an app), which the

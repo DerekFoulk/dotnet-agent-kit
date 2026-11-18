@@ -499,6 +499,18 @@ Describe 'Shared CI for app repos' {
             $windows['run'] | Should -Match 'Test-CodeShape\.ps1" -Solution \$env:SOLUTION'
         }
 
+        # GAP-040 (SEC-005): the license check reads every project's lock file and each package's .nuspec in the global
+        # packages folder, so it runs where the whole solution was restored: on Linux without UI projects, on Windows
+        # with them, as code shape does. It reads the kit's policy beside it and the repo's own .config one.
+        It 'checks package licenses on Linux only without UI projects, and on Windows over the whole solution with them' {
+            $linux = Get-JobStep $jobs['dotnet'] 'Package licenses'
+            $linux['if'] | Should -Be "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'"
+            $linux['run'] | Should -Match 'Test-PackageLicenses\.ps1" -Solution \$env:SOLUTION'
+            $windows = Get-JobStep $jobs['ui'] 'Package licenses'
+            $windows['if'] | Should -Be "runner.os == 'Windows'"
+            $windows['run'] | Should -Match 'Test-PackageLicenses\.ps1" -Solution \$env:SOLUTION'
+        }
+
         # The duplicate code check (CRF-003) lists each project's files through the same MSBuild evaluation, so it
         # follows code shape: on Windows with UI projects, on Linux without. One PMD release and digest for both.
         It 'checks duplicate code on Linux only without UI projects, and on Windows over the whole solution with them' {
@@ -563,7 +575,7 @@ Describe 'Shared CI for app repos' {
             (Get-JobStep $required 'Restore (locked)')['run'] | Should -Be 'dotnet restore "$FILTER" --locked-mode'
             (Get-JobStep $required 'Build (zero warnings)')['run'] | Should -Match '^dotnet build "\$FILTER" '
             (Get-JobStep $required 'Format check')['run'] | Should -Match '^dotnet format "\$FILTER" '
-            (Get-JobStep $required 'Test with coverage')['run'] | Should -Match '^dotnet test --solution "\$FILTER" '
+            (Get-JobStep $required 'Test with coverage')['run'] | Should -Match ' -- dotnet test --solution \$env:FILTER '
             (Get-JobStep $required 'Coverage gate')['run'] | Should -Match '-Solution \$env:SOLUTION'
             (Get-JobStep $required 'Deprecated packages')['run'] | Should -Match '-Path \$env:FILTER'
         }
@@ -645,42 +657,56 @@ Describe 'Shared CI for app repos' {
         }
     }
 
-    # GAP-004 (ADR-0061): an app's Playwright tests run in "Test with coverage", in the required job, so the browser
-    # they drive is installed just before, with the kit's script, and only where a project uses Playwright.
+    # GAP-004, GAP-033 (ADR-0061): an app's Playwright tests run in "Test with coverage", in the required job. With any,
+    # the step runs inside Microsoft's Playwright .NET image, pinned by tag and digest in the repo's own
+    # .config/playwright/Dockerfile (an app's Playwright version is its own), so no browser is downloaded unchecked;
+    # without any, on the runner, as before.
     Context 'dotnet-ci.reusable.yml browser tests' {
         BeforeAll {
             $steps = @($dotnet.Yaml['jobs']['dotnet']['steps'])
             $names = @($steps | ForEach-Object { $_['name'] })
-            $install = @($steps | Where-Object { $_['name'] -eq 'Playwright browser' })
+            $test = @($steps | Where-Object { $_['name'] -eq 'Test with coverage' })
         }
 
-        It 'installs the browser with the kit''s script after the build and before the tests, once there are projects' {
-            $install | Should -HaveCount 1
-            $install[0]['shell'] | Should -Be 'pwsh'
-            $install[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
-            $install[0]['if'] | Should -Be "steps.projects.outputs.count != '0'"
-            $install[0]['run'] | Should -Be '& "$env:KIT/tools/Install-PlaywrightBrowser.ps1" -Solution $env:SOLUTION -Configuration Release -WithDependencies'
-            $names.IndexOf('Playwright browser') | Should -BeGreaterThan $names.IndexOf('Build (zero warnings)')
-            $names.IndexOf('Playwright browser') | Should -BeLessThan $names.IndexOf('Test with coverage')
+        It 'runs every test project through the kit''s Playwright image script, with the repo''s pin, after the build' {
+            $test | Should -HaveCount 1
+            $test[0]['shell'] | Should -Be 'pwsh'
+            $test[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
+            $test[0]['if'] | Should -Be "steps.projects.outputs.count != '0'"
+            $test[0]['run'] | Should -Be ('& "$env:KIT/tools/Invoke-WithPlaywrightImage.ps1" -Solution $env:SOLUTION -Pin "$env:GITHUB_WORKSPACE/.config/playwright/Dockerfile" -Share $env:RUNNER_TEMP -- ' +
+                'dotnet test --solution $env:FILTER --no-build --configuration Release --coverage --coverage-output-format cobertura --results-directory "$env:RUNNER_TEMP/test-results"')
+            $names.IndexOf('Test with coverage') | Should -BeGreaterThan $names.IndexOf('Build (zero warnings)')
+            $names.IndexOf('Test with coverage') | Should -BeLessThan $names.IndexOf('Coverage gate')
         }
 
-        # The step's own text, run as CI runs it, on a solution whose one project doesn't use Playwright.
-        It 'installs nothing, and passes, for a solution without Playwright tests' {
-            $install | Should -HaveCount 1
+        It 'downloads no browser with Playwright''s unchecked installer' {
+            $names | Should -Not -Contain 'Playwright browser'
+            $dotnet.Text | Should -Not -Match 'Install-PlaywrightBrowser|playwright\.ps1'
+        }
+
+        # The step's own text, run as CI runs it (GitHub ends a pwsh step with "exit $LASTEXITCODE"), on a solution
+        # whose one project doesn't use Playwright, with a dotnet that only says it ran.
+        It 'runs the tests on the runner, and passes, for a solution without Playwright tests' {
+            $test | Should -HaveCount 1
             $dir = Join-Path $TestDrive "no-browser-$(New-Guid)"
-            New-Item -ItemType Directory -Force -Path (Join-Path $dir 'src/Api/obj') | Out-Null
+            New-Item -ItemType Directory -Force -Path (Join-Path $dir 'src/Api/obj'), (Join-Path $dir 'bin') | Out-Null
             '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>' |
                 Set-Content -LiteralPath (Join-Path $dir 'src/Api/Api.csproj')
             '{ "version": 3, "libraries": { "xunit.v3/4.0.3": { "type": "package" } } }' | Set-Content -LiteralPath (Join-Path $dir 'src/Api/obj/project.assets.json')
             '<Solution><Project Path="src/Api/Api.csproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $dir 'App.slnx')
             $script = Join-Path $dir 'step.ps1'
-            Set-Content -LiteralPath $script -Value $install[0]['run']
-            $env:KIT = $root; $env:SOLUTION = Join-Path $dir 'App.slnx'
+            # The script call as CI makes it; only the command after "--" is swapped for one that says it ran, since
+            # there's nothing to test here.
+            $run = $test[0]['run'] -replace ' -- dotnet test --solution .*$', ' -- pwsh -NoProfile -Command "''fake dotnet: test --solution''"'
+            $run | Should -Not -Be $test[0]['run']
+            Set-Content -LiteralPath $script -Value $run, 'exit $LASTEXITCODE'
+            $env:KIT = $root; $env:SOLUTION = Join-Path $dir 'App.slnx'; $env:FILTER = Join-Path $dir 'App.slnx'
             try { $output = & pwsh -NoProfile -File $script 2>&1 | Out-String }
-            finally { Remove-Item Env:KIT, Env:SOLUTION -ErrorAction SilentlyContinue }
+            finally { Remove-Item Env:KIT, Env:SOLUTION, Env:FILTER -ErrorAction SilentlyContinue }
 
             $LASTEXITCODE | Should -Be 0 -Because $output
             $output | Should -Match 'No project uses Playwright'
+            $output | Should -Match 'fake dotnet: test --solution'
         }
     }
 

@@ -31,12 +31,15 @@ flowchart LR
     tools -->|New-KitApp and Export-KitApp copy| templates
     templates --> apps
     tools -->|.kit/tools| apps
+    codeshape -->|source, built in .kit| apps
+    apptests["tools/AppTests<br/>(shared tests)"] -->|compiled into Architecture.Tests and FunctionalTests| sample
+    apptests -->|.kit/tools/AppTests| apps
     ci -->|reusable workflows| apps
 ```
 
 ## The sample's layers
 
-The sample is one ARC-001 module. Each arrow is a project reference; `sample/tests/Bookmarks.Architecture.Tests` fails if a layer depends outward.
+The sample is one ARC-001 module. Each arrow is a project reference; `sample/tests/Bookmarks.Architecture.Tests`, which compiles the kit's shared architecture tests (`tools/AppTests`, ADR-0081), fails if a layer depends outward.
 
 ```mermaid
 flowchart LR
@@ -45,6 +48,6 @@ flowchart LR
     Api --> Contracts["Bookmarks.Contracts"]
     Api --> ServiceDefaults["Bookmarks.ServiceDefaults"]
     Infrastructure --> Application
-    Application --> Domain["Bookmarks.Domain"]
+    Application --> Domain["Bookmarks.Domain<br/>(pure: ARC-008)"]
     Application --> Contracts
 ```

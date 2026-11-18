@@ -61,31 +61,28 @@ jobs:
           $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.'dotnet-stryker'.version
           dotnet tool install dotnet-stryker --version $version --tool-path "$env:RUNNER_TEMP/stryker"
 
-      # Stryker runs every test project, the Playwright ones too (GAP-004, ADR-0061), so their browser comes first, as
-      # in dotnet-ci.reusable.yml. The install reads each Playwright project's Release build, hence the build.
-      # Like Stryker, it can't build MAUI or desktop projects here (GAP-026).
-      - name: Build
+      # Stryker runs every test project, the Playwright ones too (GAP-004, ADR-0061), so with any it runs in the pinned
+      # Playwright image, as the tests do in dotnet-ci.reusable.yml (GAP-033). The script reads each project's restore
+      # graph to tell, hence the restore. Like Stryker, it can't read MAUI or desktop projects here (GAP-026).
+      - name: Restore
         if: steps.projects.outputs.count != '0'
-        run: dotnet build "$SOLUTION" --configuration Release
+        run: dotnet restore "$SOLUTION"
 
-      - name: Playwright browser
+      # Every setting (the MTP runner, the 85% threshold, the reporters, the ConfigureAwait skip) is in the kit's
+      # .config/stryker-config.json, which a person running Stryker locally uses too (ADR-0039). The runner's temp
+      # folder (Stryker and its output) and the kit's files are shared with the container.
+      - name: Mutation test
         if: steps.projects.outputs.count != '0'
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
-        run: '& "$env:KIT/tools/Install-PlaywrightBrowser.ps1" -Solution $env:SOLUTION -Configuration Release -WithDependencies'
-
-      # Every setting (the MTP runner, the 85% threshold, the reporters, the ConfigureAwait skip) is in the kit's
-      # .config/stryker-config.json, which a person running Stryker locally uses too (ADR-0039).
-      - name: Mutation test
-        if: steps.projects.outputs.count != '0'
-        env:
-          KIT: ${{ steps.kit.outputs.path }}
         run: >-
-          "$RUNNER_TEMP/stryker/dotnet-stryker"
-          --config-file "$KIT/.config/stryker-config.json"
-          --solution "$SOLUTION"
-          --output "$RUNNER_TEMP/stryker-output"
+          & "$env:KIT/tools/Invoke-WithPlaywrightImage.ps1" -Solution $env:SOLUTION
+          -Pin "$env:GITHUB_WORKSPACE/.config/playwright/Dockerfile" -Share $env:RUNNER_TEMP, $env:KIT --
+          "$env:RUNNER_TEMP/stryker/dotnet-stryker"
+          --config-file "$env:KIT/.config/stryker-config.json"
+          --solution $env:SOLUTION
+          --output "$env:RUNNER_TEMP/stryker-output"
 
       # A kill by a test that never reached the mutant means that test fails whatever is mutated, so the score can't
       # be trusted (PR 23, ADR-0039).

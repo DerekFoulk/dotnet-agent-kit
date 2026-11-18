@@ -20,8 +20,8 @@ One module in Clean Architecture (ARC-001):
 | `tests/Bookmarks.Domain.Tests` | Unit |
 | `tests/Bookmarks.Application.Tests` | Unit, with Moq |
 | `tests/Bookmarks.IntegrationTests` | Integration: the repository against real in-memory SQLite |
-| `tests/Bookmarks.FunctionalTests` | Functional: the whole API in memory (`WebApplicationFactory`), plus the OpenAPI contract snapshot |
-| `tests/Bookmarks.Architecture.Tests` | Architecture: layers depend only inward (ArchUnitNET) |
+| `tests/Bookmarks.FunctionalTests` | Functional: the whole API in memory (`WebApplicationFactory`), plus the OpenAPI contract snapshot, and the kit's shared host checks (`tools/AppTests/Functional`): health, errors, OpenAPI in Development only, container validation, telemetry, resilience, shutdown, sign-in by default and Kestrel's hardening. Its `AppHost.cs` starts the sample for them |
+| `tests/Bookmarks.Architecture.Tests` | Architecture: the kit's shared tests (`tools/AppTests/Architecture`, ArchUnitNET): layers depend only inward, shared libraries reference no UI or platform package, no namespace cycles. Its `AppLayers.cs` names the sample's assemblies by layer |
 | `tests/Bookmarks.Benchmarks` | Performance: BenchmarkDotNet times `Bookmark.Create` against `benchmark-budget.json` (TST-009, ADR-0062). Not a test project; `.github/workflows/performance.yml` runs it |
 | `tests/load` | Load: a Locust test of the API (`locustfile.py`), its load (`locust.conf`) and its budget (`load-budget.json`). `.github/workflows/performance.yml` starts the API in Release and Production and runs it |
 

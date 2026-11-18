@@ -10,7 +10,6 @@
     <ProjectReference Include="..\..\src\Bookmarks.Application\Bookmarks.Application.csproj" />
     <ProjectReference Include="..\..\src\Bookmarks.Infrastructure\Bookmarks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Bookmarks.Api\Bookmarks.Api.csproj" />
-    <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
   </ItemGroup>
 
 </Project>

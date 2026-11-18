@@ -71,13 +71,16 @@ rules:
     layer: floor
     basis: preference
     status: accepted
-    sources: ["ADR-0004"]
+    sources: ["ADR-0004", "ADR-0079"]
     enforcement:
+      - kind: gate
+        in: [kit, app]
+        how: "ci: dotnet-ci.reusable.yml runs tools/Test-PackageLicenses.ps1, which reads every locked package's license from its .nuspec and fails one that the kit's tools/package-licenses.json, or the repo's own .config/package-licenses.json, doesn't allow; a package free only for non-commercial use, such as FluentAssertions 8, fails once the repo's file sets commercial to true, naming its swap (ADR-0079); tools/tests/Test-PackageLicenses.Tests.ps1 checks it"
       - kind: advisory
         in: [app]
-        how: "until the license check for commercial repos (after v0.1)"
+        how: "a repo marks itself commercial in .config/package-licenses.json; no tool can tell whether an app is sold or paid for, so its owner sets it, and whoever adds an entry to that file gives the reason the license allows the app's use"
     scope: core
-    paths: ["Directory.Packages.props", "**/*.csproj"]
+    paths: ["Directory.Packages.props", "**/*.csproj", ".config/package-licenses.json"]
   - id: SEC-006
     statement: "Every public repo runs CodeQL code scanning on its pull requests and on main, over its GitHub Actions workflows and its C#."
     why: "Code scanning finds injection, unsafe deserialization and similar flaws that analyzers and tests miss, and it's free on public repos (GAP-005)."
@@ -104,10 +107,13 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's FunctionalTests check that every bookmarks endpoint answers 401 without a valid token, that only /health, /alive and the OpenAPI document allow anonymous callers, and that probes and the Development document answer without a token"
+        how: "ci: the sample's FunctionalTests check that every bookmarks endpoint answers 401 without a valid token"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): AuthorizationTests checks that the fallback policy requires a signed-in user, and that only the routes the app lists in AppHost allow anonymous callers; HealthTests and OpenApiTests check that the probes and the Development document answer without a token; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until the app follows the sample"
+        how: "each opt-out's comment saying why, which code review checks"
     scope: core
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*ServiceDefaults*/**", "**/*Security*.cs"]
   - id: SEC-008
@@ -168,10 +174,13 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's FunctionalTests (HostingSecurityTests) check that another host gets a 400, an HTTPS response carries HSTS in Production, a flood from one caller gets 429 with Retry-After as Problem Details, whether the caller has a valid token, no token or a forged one, the health probes are never limited, a rate limit below one stops the app at startup, a cross-origin preflight gets no permission, and Kestrel sends no Server header and caps the request body"
+        how: "ci: the sample's FunctionalTests (HostingSecurityTests) check that a flood from one caller gets 429 with Retry-After as Problem Details, whether the caller has a valid token, no token or a forged one, that the health probes are never limited, and that a rate limit below one stops the app at startup"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): HostingSecurityTests checks that another host gets a 400 and an HTTPS response carries HSTS in Production, that a cross-origin preflight to a route the app names gets no permission, and that Kestrel sends no Server header and caps the request body at 1 MB or less; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until the app follows the sample"
+        how: "the rate limit, whose settings are the app's own, until its own FunctionalTests check it, as the sample's do"
       - kind: advisory
         in: [kit, app]
         how: "the plan names where the app is hosted, and code review checks the rest for that hosting: AllowedHosts set to the deployment's hosts, including the Host header its probes send, HTTPS only with TLS 1.2 or later at the edge, forwarded headers with KnownProxies behind a proxy, and no ASPNETCORE_FORWARDEDHEADERS_ENABLED in any Dockerfile or deployment"
@@ -200,10 +209,13 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's Architecture.Tests check that the endpoint types use no domain type (LayerTests, ArchUnitNET), and its ContractTests that every schema in the OpenAPI document is a Contracts type or one of ASP.NET Core's Problem Details types"
+        how: "ci: the sample's ContractTests check that every schema in the OpenAPI document is a Contracts type or one of ASP.NET Core's Problem Details types"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): EndpointTests fails when a presentation class named ...Endpoints or ...Controller uses a domain type, or when an API (an assembly named .Api) has no such class; endpoints mapped elsewhere, such as in Program.cs, are code review's; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until the app follows the sample"
+        how: "the OpenAPI document's schemas, until the app follows the sample's ContractTests"
     scope: core
     paths: ["**/*Endpoints*.cs", "**/*Contracts*/**"]
   - id: SEC-014
