@@ -1,0 +1,44 @@
+# The project types a rule names in its projectTypes (ADR-0082): one list, read by Test-RuleSources.ps1,
+# Build-AgentRules.ps1 and the new-app intake. A rule says [all], the common ruleset, or lists some of these ids.
+# Each type's ruleset has its own ADR, which lists its rules and the framework's own Microsoft guidance.
+types:
+  - id: web-api
+    name: ASP.NET Core Web API
+    docs: https://learn.microsoft.com/aspnet/core/fundamentals/apis
+    adr: ADR-0086
+  - id: blazor
+    name: Blazor Web App
+    docs: https://learn.microsoft.com/aspnet/core/blazor/
+    adr: ADR-0087
+  - id: razor-pages-mvc
+    name: ASP.NET Core Razor Pages and MVC
+    docs: https://learn.microsoft.com/aspnet/core/razor-pages/
+    adr: ADR-0088
+  - id: maui
+    name: .NET MAUI
+    docs: https://learn.microsoft.com/dotnet/maui/what-is-maui
+    adr: ADR-0089
+  - id: blazor-hybrid
+    name: Blazor Hybrid (.NET MAUI)
+    docs: https://learn.microsoft.com/aspnet/core/blazor/hybrid/
+    adr: ADR-0090
+  - id: winui3
+    name: WinUI 3 (Windows App SDK)
+    docs: https://learn.microsoft.com/windows/apps/winui/winui3/
+    adr: ADR-0091
+  - id: wpf
+    name: WPF
+    docs: https://learn.microsoft.com/dotnet/desktop/wpf/overview/
+    adr: ADR-0092
+  - id: winforms
+    name: Windows Forms
+    docs: https://learn.microsoft.com/dotnet/desktop/winforms/overview/
+    adr: ADR-0093
+  - id: console-worker
+    name: Console app or Worker Service
+    docs: https://learn.microsoft.com/dotnet/core/extensions/workers
+    adr: ADR-0094
+  - id: class-library
+    name: Class library
+    docs: https://learn.microsoft.com/dotnet/standard/library-guidance/
+    adr: ADR-0095

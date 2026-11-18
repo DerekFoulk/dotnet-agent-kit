@@ -9,6 +9,10 @@
     in docs/adr) or "<URL>, retrieved YYYY-MM-DD". Basis 'authority' needs a URL source and 'preference' an
     owner or ADR source. Enforcement is a list of parts, each with kind (gate or advisory), in (kit, app or
     both) and how (ADR-0063). Ids are unique.
+    ADR-0082: an authority rule cites pages only (URLs), has layer outside or floor, and stores quotes: for each
+    cited page, the page's own words with that source's URL and retrieval date, one contiguous passage each. An
+    accepted authority rule names who accepted it in ratified. A preference has layer owner or floor. Every rule in
+    force names its projectTypes: [all], or ids from project-types.yml in the same folder (never every id).
     Exit code: 0 when every rule is traceable, otherwise 1.
 
 .EXAMPLE
@@ -190,6 +194,59 @@ function Get-QuoteProblem {
     }
 }
 
+# ADR-0082: the project types a rule can name, from docs/standards/project-types.yml, the one list of them. Returns
+# the ids, and the file's problems as messages.
+function Read-ProjectType {
+    param([Parameter(Mandatory)] [string] $StandardsPath)
+
+    $path = Join-Path $StandardsPath 'project-types.yml'
+    $result = [pscustomobject]@{ Ids = [System.Collections.Generic.List[string]]::new(); Problems = [System.Collections.Generic.List[string]]::new() }
+    if (-not (Test-Path -LiteralPath $path)) {
+        $result.Problems.Add("project-types.yml is missing from $StandardsPath; it lists the project types rules name (ADR-0082)")
+        return $result
+    }
+    $yaml = ConvertFrom-Yaml -Yaml (Get-Content -LiteralPath $path -Raw)
+    $types = $null
+    if ($yaml -is [System.Collections.IDictionary] -and $yaml.Contains('types')) { $types = $yaml['types'] }
+    foreach ($type in @($types)) {
+        if ($type -isnot [System.Collections.IDictionary] -or "$($type['id'])" -notmatch '^[a-z0-9-]+$') {
+            $result.Problems.Add("project-types.yml has an entry with no id in lower-case-with-dashes: '$type'")
+            continue
+        }
+        $id = "$($type['id'])"
+        if ($id -eq 'all') { $result.Problems.Add("project-types.yml names a type 'all', which is reserved for rules that fit every type") }
+        elseif ($result.Ids.Contains($id)) { $result.Problems.Add("project-types.yml lists '$id' more than once") }
+        else { $result.Ids.Add($id) }
+        if ("$($type['name'])" -notmatch '\S') { $result.Problems.Add("project-types.yml type '$id' has no name") }
+        if ("$($type['docs'])" -notmatch '^https://\S+$') { $result.Problems.Add("project-types.yml type '$id' needs docs, the URL of Microsoft's page for it") }
+    }
+    if ($result.Ids.Count -eq 0 -and $result.Problems.Count -eq 0) { $result.Problems.Add("project-types.yml lists no types") }
+    $result
+}
+
+function Get-ProjectTypeProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Known)
+
+    if ($Rule.Contains('scope')) { "scope is retired: projectTypes replaced it (ADR-0082)" }
+    if ("$($Rule['status'])" -eq 'retired') { return }
+    $types = $null
+    if ($Rule.Contains('projectTypes')) { $types = $Rule['projectTypes'] }
+    if ($types -is [string]) { return "projectTypes must be a list, such as [all] or [web-api, blazor]" }
+    $types = @($types | Where-Object { "$_" -match '\S' } | ForEach-Object { "$_" })
+    if (-not $types) { return "is missing 'projectTypes': [all], or the project types in project-types.yml it applies to" }
+    if ('all' -in $types) {
+        if ($types.Count -gt 1) { "projectTypes: 'all' stands alone, as [all]" }
+        return
+    }
+    foreach ($type in $types) {
+        if ($type -notin $Known) { "project type '$type' isn't one of project-types.yml's: $($Known -join ', ')" }
+    }
+    # A type added later would be left out of a rule that lists every type today, so such a rule says [all].
+    if ($Known.Count -gt 0 -and @($Known | Where-Object { $_ -notin $types }).Count -eq 0) {
+        "projectTypes lists every project type: write [all], so a type added later is covered too"
+    }
+}
+
 function New-Problem {
     param([string] $File, [string] $RuleId, [string] $Message)
     [pscustomobject]@{ File = $File; RuleId = $RuleId; Message = $Message }
@@ -201,6 +258,8 @@ function Get-RuleSourceProblem {
         [Parameter(Mandatory)] [string] $AdrPath
     )
 
+    $projectTypes = Read-ProjectType -StandardsPath $StandardsPath
+    foreach ($message in $projectTypes.Problems) { New-Problem -File 'project-types.yml' -Message $message }
     $seen = @{}
     foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
         $frontMatter = Read-FrontMatter -Path $file.FullName
@@ -251,6 +310,9 @@ function Get-RuleSourceProblem {
             if ($script:LayersForBasis.ContainsKey($basis) -and "$($rule['layer'])" -in $script:AllowedValues['layer'] -and
                 "$($rule['layer'])" -notin $script:LayersForBasis[$basis]) {
                 New-Problem -File $file.Name -RuleId $ruleId -Message "basis '$basis' can't have layer '$($rule['layer'])': use $($script:LayersForBasis[$basis] -join ' or ') (ADR-0082)"
+            }
+            foreach ($message in @(Get-ProjectTypeProblem -Rule $rule -Known $projectTypes.Ids)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
             }
             foreach ($message in @(Get-RatifiedProblem -Rule $rule)) {
                 New-Problem -File $file.Name -RuleId $ruleId -Message $message
