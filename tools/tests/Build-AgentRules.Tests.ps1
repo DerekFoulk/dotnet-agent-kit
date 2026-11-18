@@ -6,10 +6,10 @@ Describe 'Build-AgentRules.ps1' {
         . (Join-Path $PSScriptRoot '..' 'Build-AgentRules.ps1')
 
         function New-Rule {
-            param([string] $Id, [string] $Statement, [string] $Status = 'accepted', [string[]] $Paths = @('**'), [string[]] $Types = @('all'))
+            param([string] $Id, [string] $Statement, [string] $Status = 'accepted', [string[]] $Paths = @('**'), [object] $Scope = 'core')
             [ordered]@{
                 id = $Id; statement = $Statement; why = 'Because.'; layer = 'owner'; status = $Status
-                sources = @('owner, 2026-11-01'); enforcement = 'advisory: test'; projectTypes = $Types; paths = $Paths
+                sources = @('owner, 2026-11-01'); enforcement = 'advisory: test'; scope = $Scope; paths = $Paths
             }
         }
 
@@ -194,16 +194,16 @@ Describe 'Build-AgentRules.ps1' {
     Context 'project types' {
         BeforeAll {
             function New-TypedStandards {
-                Set-Content -Path (Join-Path $script:standards 'project-types.yml') -Value @'
+                Set-Content -Path (Join-Path $script:standards 'app-types.yml') -Value @'
 types:
   - { id: web-api, name: ASP.NET Core Web API, docs: 'https://learn.microsoft.com/aspnet/core/web-api/' }
   - { id: maui, name: .NET MAUI, docs: 'https://learn.microsoft.com/dotnet/maui/' }
-  - { id: wpf, name: WPF, docs: 'https://learn.microsoft.com/dotnet/desktop/wpf/' }
+  - { id: blazor, name: Blazor Web App, docs: 'https://learn.microsoft.com/aspnet/core/blazor/' }
 '@
                 New-StandardsFile -Topic 'data' -Title 'Data' -Rules @(
                     (New-Rule -Id 'DAT-001' -Statement 'Everywhere.')
-                    (New-Rule -Id 'DAT-002' -Statement 'Web only.' -Types @('web-api'))
-                    (New-Rule -Id 'DAT-003' -Statement 'MAUI and WPF.' -Types @('maui', 'wpf'))
+                    (New-Rule -Id 'DAT-002' -Statement 'Web only.' -Scope @('web-api'))
+                    (New-Rule -Id 'DAT-003' -Statement 'MAUI and Blazor.' -Scope @('maui', 'blazor'))
                 )
             }
         }
@@ -211,10 +211,10 @@ types:
         It 'keeps the common rules and those of the app''s types, and leaves out the rest' {
             New-TypedStandards
 
-            $content = (Get-AgentRuleFile -StandardsPath $script:standards -ProjectType 'maui' | Where-Object Path -EQ '.claude/rules/data.md').Content
+            $content = (Get-AgentRuleFile -StandardsPath $script:standards -AppType 'maui' | Where-Object Path -EQ '.claude/rules/data.md').Content
 
             $content | Should -Match '(?m)^- DAT-001: Everywhere\.$'
-            $content | Should -Match '(?m)^- DAT-003: MAUI and WPF\.$'
+            $content | Should -Match '(?m)^- DAT-003: MAUI and Blazor\.$'
             $content | Should -Not -Match 'DAT-002'
         }
 
@@ -231,9 +231,9 @@ types:
         It 'reads the app''s project types from its profile' {
             $root = Join-Path $TestDrive "repo-$(New-Guid)"
             New-Item -ItemType Directory -Path (Join-Path $root 'docs') | Out-Null
-            Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value "# App profile: X`n`n## Project types`n`nProject types: web-api, maui`n"
+            Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value "# App profile: X`n`n## App types`n`nApp types: web-api, maui`n"
 
-            Get-AppProjectType -RepoRoot $root -Known 'web-api', 'maui', 'wpf' | Should -Be @('web-api', 'maui')
+            Get-AppType -RepoRoot $root -Known 'web-api', 'maui', 'blazor' | Should -Be @('web-api', 'maui')
         }
 
         It 'returns no project types for <Case>, so every rule applies' -ForEach @(
@@ -244,15 +244,15 @@ types:
             New-Item -ItemType Directory -Path (Join-Path $root 'docs') | Out-Null
             if ($Profile) { Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value $Profile }
 
-            Get-AppProjectType -RepoRoot $root -Known 'web-api' | Should -BeNullOrEmpty
+            Get-AppType -RepoRoot $root -Known 'web-api' | Should -BeNullOrEmpty
         }
 
         It 'throws for a project type the kit doesn''t know' {
             $root = Join-Path $TestDrive "repo-$(New-Guid)"
             New-Item -ItemType Directory -Path (Join-Path $root 'docs') | Out-Null
-            Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value "Project types: web-api, silverlight`n"
+            Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value "App types: web-api, silverlight`n"
 
-            { Get-AppProjectType -RepoRoot $root -Known 'web-api', 'maui' } | Should -Throw "*silverlight*"
+            { Get-AppType -RepoRoot $root -Known 'web-api', 'maui' } | Should -Throw "*silverlight*"
         }
 
         It 'gives a MAUI app no web-only rule when it builds' {
@@ -261,7 +261,7 @@ types:
             $script:standards = Join-Path $root 'docs' 'standards'
             New-Item -ItemType Directory -Path $script:standards | Out-Null
             Set-Content -Path (Join-Path $root 'AGENTS.md') -Value "# Agent instructions`n"
-            Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value "Project types: maui`n"
+            Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value "App types: maui`n"
             New-TypedStandards
 
             Invoke-AgentRuleBuild -RepoRoot $root | Should -Be 0
@@ -274,16 +274,16 @@ types:
     Context 'ruleset blocks in ADRs' {
         BeforeAll {
             function New-RulesetStandards {
-                Set-Content -Path (Join-Path $script:standards 'project-types.yml') -Value @'
+                Set-Content -Path (Join-Path $script:standards 'app-types.yml') -Value @'
 types:
   - { id: web-api, name: ASP.NET Core Web API, docs: 'https://learn.microsoft.com/aspnet/core/web-api/' }
   - { id: maui, name: .NET MAUI, docs: 'https://learn.microsoft.com/dotnet/maui/' }
 '@
                 New-StandardsFile -Topic 'data' -Title 'Data' -Rules @(
                     (New-Rule -Id 'DAT-001' -Statement 'Everywhere.')
-                    (New-Rule -Id 'DAT-002' -Statement 'Web only.' -Types @('web-api'))
-                    (New-Rule -Id 'DAT-003' -Statement 'MAUI, proposed.' -Types @('maui', 'web-api') -Status 'proposed')
-                    (New-Rule -Id 'DAT-004' -Statement 'Retired.' -Types @('maui') -Status 'retired')
+                    (New-Rule -Id 'DAT-002' -Statement 'Web only.' -Scope @('web-api'))
+                    (New-Rule -Id 'DAT-003' -Statement 'MAUI, proposed.' -Scope @('maui', 'web-api') -Status 'proposed')
+                    (New-Rule -Id 'DAT-004' -Statement 'Retired.' -Scope @('maui') -Status 'retired')
                 )
             }
         }
@@ -302,16 +302,23 @@ types:
         It 'fills the common ruleset''s block with the rules for every type' {
             New-RulesetStandards
 
-            $filled = Update-RulesetBlock -Text "<!-- ruleset: all -->`n<!-- end ruleset -->`n" -StandardsPath $script:standards
+            $filled = Update-RulesetBlock -Text "<!-- ruleset: core -->`n<!-- end ruleset -->`n" -StandardsPath $script:standards
 
             $filled | Should -Match '(?m)^- \[DAT-001\]\(\.\./standards/data\.md\) \(accepted\): Everywhere\.$'
             $filled | Should -Not -Match 'DAT-002|DAT-003'
         }
 
-        It 'refuses a block for a type project-types.yml doesn''t list' {
+        It 'refuses a block for a type app-types.yml doesn''t list' {
             New-RulesetStandards
 
             { Update-RulesetBlock -Text "<!-- ruleset: silverlight -->`n<!-- end ruleset -->`n" -StandardsPath $script:standards } | Should -Throw '*silverlight*'
+        }
+
+        # Review of the branch: an opener with no end line left the block unfilled, and -Check passed.
+        It 'refuses a ruleset block with no end line' {
+            New-RulesetStandards
+
+            { Update-RulesetBlock -Text "<!-- ruleset: maui -->`nold`n" -StandardsPath $script:standards } | Should -Throw '*ruleset*maui*end ruleset*'
         }
 
         It 'fills an ADR''s block when it builds, and -Check finds it stale' {
