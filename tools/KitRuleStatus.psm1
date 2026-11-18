@@ -31,4 +31,8 @@ function Get-RuleStatus {
     $status
 }
 
-Export-ModuleMember -Function Get-RuleStatus
+function Write-RuleFinding {
+    param([Parameter(Mandatory)] [string] $Id, [Parameter(Mandatory)] [string] $Message, [string] $Path)
+}
+
+Export-ModuleMember -Function Get-RuleStatus, Write-RuleFinding

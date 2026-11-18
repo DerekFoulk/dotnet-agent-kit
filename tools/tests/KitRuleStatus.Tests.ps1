@@ -39,4 +39,39 @@ Describe 'KitRuleStatus.psm1' {
             Get-RuleStatus -Id $first.Name | Should -BeExactly $first.Value
         }
     }
+
+    Context 'Write-RuleFinding' {
+        BeforeEach {
+            Mock Write-Host {} -ModuleName KitRuleStatus
+        }
+
+        It 'writes a proposed rule''s finding as a GitHub warning and doesn''t count it' {
+            Write-RuleFinding -Id 'ARC-009' -Message 'src/App.Domain has no source files of its own' -Path $script:statusFile | Should -BeFalse
+
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::ARC-009: src/App.Domain has no source files of its own' }
+        }
+
+        It 'writes an accepted rule''s finding as an error, as it is, and counts it' {
+            Write-RuleFinding -Id 'STY-005' -Message 'App.cs(3,1): error STY005: a #nullable directive' -Path $script:statusFile | Should -BeTrue
+
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter {
+                "$Object" -ceq 'App.cs(3,1): error STY005: a #nullable directive' -and $ForegroundColor -eq 'Red'
+            }
+        }
+
+        # GitHub reads a workflow command to the end of its line, and decodes %25, %0D and %0A in its message.
+        It 'keeps a warning on one line, escaping what GitHub would read as the end of the command' {
+            Write-RuleFinding -Id 'ARC-009' -Message "100% empty`r`nsecond line" -Path $script:statusFile | Should -BeFalse
+
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::ARC-009: 100%25 empty%0D%0Asecond line' }
+        }
+
+        It 'throws for a retired rule, whose check shouldn''t run any more' {
+            { Write-RuleFinding -Id 'OLD-001' -Message 'anything' -Path $script:statusFile } | Should -Throw '*OLD-001*retired*'
+        }
+
+        It 'throws for an id the file doesn''t list' {
+            { Write-RuleFinding -Id 'ARC-099' -Message 'anything' -Path $script:statusFile } | Should -Throw '*ARC-099*'
+        }
+    }
 }
