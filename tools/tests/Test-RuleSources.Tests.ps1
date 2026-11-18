@@ -101,7 +101,10 @@ Describe 'Test-RuleSources.ps1' {
             @{ Source = 'ADR-0007'; Basis = 'preference' }
             @{ Source = 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01'; Basis = 'authority' }
         ) {
-            New-StandardsFile -Rules @(New-Rule -Override @{ sources = @($Source); basis = $Basis; quotes = New-QuotesFor $Source })
+            $layer = if ($Basis -eq 'authority') { 'outside' } else { 'owner' }
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    sources = @($Source); basis = $Basis; layer = $layer; status = 'proposed'; quotes = New-QuotesFor $Source
+                })
 
             Get-Problem | Should -BeNullOrEmpty
         }
@@ -128,11 +131,13 @@ Describe 'Test-RuleSources.ps1' {
 
     Context 'values' {
         It 'accepts layer <Layer> and status <Status>' -ForEach @(
-            @{ Layer = 'floor'; Status = 'proposed' }
-            @{ Layer = 'owner'; Status = 'accepted' }
-            @{ Layer = 'outside'; Status = 'retired' }
+            @{ Layer = 'floor'; Status = 'proposed'; Basis = 'preference' }
+            @{ Layer = 'owner'; Status = 'accepted'; Basis = 'preference' }
+            @{ Layer = 'outside'; Status = 'retired'; Basis = 'authority' }
         ) {
-            New-StandardsFile -Rules @(New-Rule -Override @{ layer = $Layer; status = $Status })
+            # A retired rule isn't in force, so it needs no quote; an outside rule is an authority's.
+            $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
+            New-StandardsFile -Rules @(New-Rule -Override @{ layer = $Layer; status = $Status; basis = $Basis; sources = $sources })
 
             Get-Problem | Should -BeNullOrEmpty
         }
@@ -153,7 +158,8 @@ Describe 'Test-RuleSources.ps1' {
     Context 'basis' {
         It 'accepts an authority rule that cites a URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; sources = @('https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01')
+                    basis = 'authority'; layer = 'outside'; status = 'proposed'
+                    sources = @('https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01')
                     quotes = New-QuotesFor 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01'
                 })
 
@@ -162,11 +168,92 @@ Describe 'Test-RuleSources.ps1' {
 
         It 'accepts an authority rule that cites an http URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; sources = @('http://example.com/guide, retrieved 2026-11-01')
+                    basis = 'authority'; layer = 'outside'; status = 'proposed'; sources = @('http://example.com/guide, retrieved 2026-11-01')
                     quotes = New-QuotesFor 'http://example.com/guide, retrieved 2026-11-01'
                 })
 
             Get-Problem | Should -BeNullOrEmpty
+        }
+
+        # ADR-0082: an authority rule says only what its pages say, so it cites pages only. An owner's decision or an
+        # ADR in its sources would mean part of it is the kit's: that part is a preference rule of its own.
+        It 'reports an authority rule that also cites <Source>' -ForEach @(
+            @{ Source = 'owner, 2026-10-26' }
+            @{ Source = 'ADR-0007' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; status = 'proposed'; sources = @($url, $Source); quotes = New-QuotesFor $url
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*authority*cites pages only*$Source*preference*ratified*"
+        }
+
+        It 'reports basis <Basis> with layer <Layer>' -ForEach @(
+            @{ Basis = 'authority'; Layer = 'owner' }
+            @{ Basis = 'preference'; Layer = 'outside' }
+        ) {
+            $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = $Basis; layer = $Layer; status = 'proposed'; sources = $sources; quotes = New-QuotesFor $sources
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*basis '$Basis'*layer '$Layer'*"
+        }
+
+        It 'accepts layer floor with basis <Basis>' -ForEach @(
+            @{ Basis = 'authority' }
+            @{ Basis = 'preference' }
+        ) {
+            $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = $Basis; layer = 'floor'; status = 'proposed'; sources = $sources; quotes = New-QuotesFor $sources
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        # The owner's acceptance of an authority rule is recorded, not mixed into its sources.
+        It 'accepts an accepted authority rule ratified by <Ratified>' -ForEach @(
+            @{ Ratified = 'owner, 2026-11-12' }
+            @{ Ratified = 'ADR-0007' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'; ratified = $Ratified; sources = @($url); quotes = New-QuotesFor $url
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports an accepted authority rule with ratified <Case>' -ForEach @(
+            @{ Case = 'missing'; Ratified = $null; Expected = "*accepted*authority*ratified*" }
+            @{ Case = 'not an owner date or an ADR'; Ratified = 'the owner'; Expected = "*ratified 'the owner'*owner, YYYY-MM-DD*ADR*" }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            $rule = New-Rule -Override @{ basis = 'authority'; layer = 'outside'; status = 'accepted'; sources = @($url); quotes = New-QuotesFor $url }
+            if ($Ratified) { $rule['ratified'] = $Ratified }
+            New-StandardsFile -Rules @($rule)
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike $Expected
+        }
+
+        It 'reports ratified on a preference rule, whose sources already name the owner' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ ratified = 'owner, 2026-11-12' })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*ratified*authority*"
         }
 
         It 'reports an authority rule that cites no URL' {
