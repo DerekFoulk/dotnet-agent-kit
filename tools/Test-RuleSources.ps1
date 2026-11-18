@@ -122,7 +122,7 @@ function Get-RatifiedProblem {
         return
     }
     $ratified = "$($Rule['ratified'])"
-    if ($ratified -notmatch '^(owner|ADR-\d{4}$)') {
+    if ($ratified -notmatch '^(owner\b|ADR-\d{4}$)') {
         return "ratified '$ratified' must read 'owner, YYYY-MM-DD' or 'ADR-NNNN'"
     }
     # The same form as an owner or ADR source: a real date, or an ADR that exists.
