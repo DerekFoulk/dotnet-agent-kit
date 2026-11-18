@@ -14,7 +14,7 @@
     "rules from docs/standards/<file>.md" block in AGENTS.md and templates/app/AGENTS.md with that standard's
     rules, leaving the rest of those files alone (ADR-0065). Proposed and retired rules aren't in force, so they're
     left out. Generated files carry a marker; generated files no standard produces any more are removed.
-    ADR-0084: an app gets only the common ruleset (rules with scope core) and the rulesets of the app types on the
+    ADR-0084: an app gets only the core ruleset (rules with scope core) and the rulesets of the app types on the
     "App types:" line of its docs/app-profile.md; a repo with no such line, such as the kit, gets every rule. Each "<!-- ruleset: <type> -->" block in docs/adr is filled with that ruleset's rules.
 
     -Check writes nothing and exits 1 when any generated file is missing, hand-edited or stale (S3).
@@ -57,7 +57,7 @@ function ConvertTo-RuleBody {
 }
 
 # ADR-0084: a ruleset's ADR lists its rules in a block, filled from the standards so the list can't drift (CRF-003).
-# '<!-- ruleset: maui -->' lists every rule whose scope names maui; '<!-- ruleset: core -->' the common ruleset, every
+# '<!-- ruleset: maui -->' lists every rule whose scope names maui; '<!-- ruleset: core -->' the core ruleset, every
 # rule with scope core. Proposed rules are listed too, marked, since the ADR records the whole ruleset; retired ones
 # aren't. An opener without its end line stops the build, so a block can't silently go unfilled. Takes and returns
 # text with LF line endings.
@@ -275,7 +275,7 @@ function Invoke-AgentRuleBuild {
     # Everything is built in memory first, so an invalid source stops the run before any write or delete.
     try {
         $standardsPath = Join-Path $RepoRoot 'docs' 'standards'
-        # ADR-0084: an app gets the common ruleset and its app types' rulesets; the kit gets every rule.
+        # ADR-0084: an app gets the core ruleset and its app types' rulesets; the kit gets every rule.
         $appType = @(Get-AppType -RepoRoot $RepoRoot -Known @(Get-KnownAppType -StandardsPath $standardsPath))
         $expected = @(Get-AgentRuleFile -StandardsPath $standardsPath -AppType $appType)
         # AGENTS.md, and the kit's template for an app's AGENTS.md, keep their text; only their rule blocks are filled.

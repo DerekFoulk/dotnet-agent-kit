@@ -2,6 +2,8 @@
 
 Batches D-aspnetcore and D-blazor read this set, and batch R3 read its host-and-deploy pages. The AspNetCore.Docs table of contents lists 872 pages. 167 were candidates. They produced ASP-001 to ASP-024, BLZ-001 to BLZ-028 and OPS-013, OPS-014 and OPS-016. Pages are under https://learn.microsoft.com/aspnet/core/. Pages with no verdict row here were candidates that a batch folded into a neighbouring page's row. Every verdict was checked on 2026-11-17.
 
+Razor Pages and MVC apps, and Blazor Hybrid apps, aren't supported app types yet (`docs/standards/app-types.yml`, ADR-0084), so the rows for their pages (the `razor-pages/`, `mvc/views/` and `blazor/hybrid/` pages) were inventoried but their rules aren't in the kit: ASP-013, ASP-014, BLZ-027 and BLZ-028 name the rules a batch wrote, ready for when the type is supported. A page the supported types share, such as overposting, keeps its rule.
+
 The page list for this set, with every page's guidance-wording score, is in `docs/inventory/aspnetcore-pages.tsv`. Re-check with the `discover-guidance` skill.
 
 | Page | Checked | Verdict |

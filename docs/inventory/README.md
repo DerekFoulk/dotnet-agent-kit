@@ -6,6 +6,8 @@ The method: each docs repo's `toc.yml` files were read from a shallow sparse clo
 
 Each set has two files. `<set>-pages.tsv` lists every page in the table of contents, with its score and whether it was a candidate, all "checked 2026-11-17". `<set>.md` gives each candidate page's verdict: the rule ids it became, "covered by" an existing rule, "no guidance", or "out of scope" with the reason. Re-check pages with the `discover-guidance` skill.
 
+The kit's rules cover only its supported app types, the ones the new-app intake offers: `web-api`, `blazor` and `maui` (`docs/standards/app-types.yml`, ADR-0084). WPF, Windows Forms, WinUI 3, Blazor Hybrid, Razor Pages and MVC, and workers and console apps aren't supported types yet, so their pages were inventoried but their rules aren't in the kit. A verdict below that names a rule for one of them (WPF, WFM and WUI rules, and some ASP and BLZ rules) records what a batch wrote on 2026-11-17, ready for when that type is supported.
+
 | Set | Docs repo | TOC pages | Candidates | Batches |
 |---|---|---|---|---|
 | [aspnetcore](aspnetcore.md) | dotnet/AspNetCore.Docs | 872 | 167 | D-aspnetcore, D-blazor, R3 (host-and-deploy) |

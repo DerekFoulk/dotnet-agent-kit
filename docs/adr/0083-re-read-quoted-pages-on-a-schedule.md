@@ -16,7 +16,7 @@ The first run, on 2026-11-17, showed two more things a re-read must handle:
 
 ### Option 1: A script that reads each page's HTML and looks for each quote, run weekly and on rule changes
 
-`tools/Test-RuleQuotes.ps1` reads each quoted page once and turns its HTML into text: scripts, styles and tags removed, entities decoded. It then compares both sides as a reader sees the words: curly quotes and dashes made plain, emoji and whitespace dropped, case ignored. Each quote ends Found, Missing or Unreachable.
+`tools/Test-RuleQuotes.ps1` reads each quoted page once and turns its HTML into text: scripts, styles and tags removed, entities decoded. It then compares both sides as a reader sees the words: curly quotes and dashes made plain, emoji and whitespace dropped, case ignored. Each quote ends Found, Missing or Unreachable. A page that answers 404 or 410 is gone, so its quotes are Missing; any other failure to load is Unreachable.
 
 - **Trade-offs:** about 300 requests a run, sequential; no dependency. The normalization can hide a change in punctuation or case, which doesn't change what a rule says. Page text never runs and never reaches a shell: the workflow passes only the script's exit code and the run's URL into the issue.
 - **Reversibility:** easy.
@@ -36,9 +36,9 @@ Option 1. One script covers every publisher, compares against what a reader sees
 
 Option 1:
 
-- `.github/workflows/rule-quotes.yml` runs `Test-RuleQuotes.ps1` weekly and by hand. A missing quote, or a run that couldn't finish, opens one issue, unless one with the same title is already open, as `nuget-trust.yml` does. When pages only fail to load, the run says so and opens nothing.
-- It also runs on a pull request that changes `docs/standards/`, the script or the workflow. There it proves new quotes before merge, so an invented or mistyped quote can't land. It is not a required check: a site's outage shouldn't block a PR, and a reviewer reads its result.
-- Exit codes: 0, every quote found; 1, a quote missing; 2, none missing but a page didn't load.
+- `.github/workflows/rule-quotes.yml` runs `Test-RuleQuotes.ps1` weekly and by hand. A scheduled or hand-started run fails, and opens one issue unless one with the same title is already open (as `nuget-trust.yml` does), when a quote is missing ("A rule's quoted source changed"), when pages didn't load ("Pages a rule quotes didn't load"), so a site that keeps refusing the runner doesn't pass unseen, or when the check couldn't finish ("The rule quote check failed"). Only the result word and the run's URL reach the issue, never page text.
+- It also runs on a pull request that changes `docs/standards/`, the script or the workflow, as a check the reviewer reads: the reviewer compares each new or changed quote with its page (ADR-0082) and is the gate before merge. The PR run isn't a required check, and it passes when pages only fail to load, since a site's outage shouldn't block a PR; a missing quote fails it.
+- Exit codes: 0, every quote found; 1, a quote missing, including a page that answers 404 or 410; 2, none missing but a page didn't load.
 - The fix is the `recheck-sources` skill: read the page, then update the quote and the rule to what the page says now, and re-date both. If the page no longer supports the rule at all, downgrade or retire it.
 
 ## Consequences

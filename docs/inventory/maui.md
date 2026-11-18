@@ -2,6 +2,8 @@
 
 Batch D-maui-desktop read the MAUI part of this set. The docs-maui table of contents lists 407 pages. 20 were candidates, and the batch added four pages it found outside the extract (data access, app lifecycle, dependency injection, storage). They produced MAU-001 to MAU-016. Every verdict was checked on 2026-11-17.
 
+Blazor Hybrid isn't a supported app type yet (`docs/standards/app-types.yml`, ADR-0084), so the MAU rules name `maui` alone; the Blazor Hybrid pages are in `aspnetcore.md`.
+
 The page list for this set, with every page's guidance-wording score, is in `docs/inventory/maui-pages.tsv`. Re-check with the `discover-guidance` skill.
 
 | Page | Checked | Verdict |

@@ -13,7 +13,7 @@
 
     New-KitApp (PR D2b) calls this, then creates the GitHub repo. It passes -AppProfile, the intake's
     docs/app-profile.md, which is written before the agent rule files are generated, so the app's first rule files
-    hold only the common ruleset and its project types' rulesets (ADR-0084).
+    hold only the core ruleset and its app types' rulesets (ADR-0084).
 
 .EXAMPLE
     ./tools/Export-KitApp.ps1 -Name Contoso.Orders -Destination ../Contoso.Orders -KitRef v0.1.0
@@ -392,7 +392,7 @@ function Export-KitApp {
                 Copy-Item -LiteralPath $source -Destination $target
             }
         }
-        # App-owned, so not in the manifest; written first, because the app's Build-AgentRules reads its project types.
+        # App-owned, so not in the manifest; written first, because the app's Build-AgentRules reads its app types.
         if ($AppProfile) {
             New-Item -ItemType Directory -Force -Path (Join-Path $Destination 'docs') | Out-Null
             [IO.File]::WriteAllText((Join-Path $Destination 'docs' 'app-profile.md'), $AppProfile, [Text.UTF8Encoding]::new($false))

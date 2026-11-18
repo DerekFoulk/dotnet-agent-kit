@@ -164,7 +164,7 @@ The page list for this set, with every page's guidance-wording score, is in `doc
 | https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging | 2026-11-17 | covered by OPS-007 (generated logger) |
 | https://learn.microsoft.com/dotnet/core/extensions/logging/library-guidance | 2026-11-17 | covered by OPS-007 and HST-003 (templates, no interpolation) |
 | https://learn.microsoft.com/dotnet/core/extensions/logging/overview | 2026-11-17 | new rule HST-003; Trace/Debug-in-production sentences left as descriptive/consider |
-| https://learn.microsoft.com/dotnet/core/extensions/options-library-authors | 2026-11-17 | new rule HST-005 (class-library only) |
+| https://learn.microsoft.com/dotnet/core/extensions/options-library-authors | 2026-11-17 | new rule HST-005 (core: every app holds libraries) |
 | https://learn.microsoft.com/dotnet/core/extensions/performing-culture-insensitive-case-changes | 2026-11-17 | covered by existing strings/culture rules (CA1305/CA1311 fixtures in code-style.md); not duplicated |
 | https://learn.microsoft.com/dotnet/core/extensions/performing-culture-insensitive-string-operations | 2026-11-17 | same as above |
 | https://learn.microsoft.com/dotnet/core/extensions/sslstream-best-practices | 2026-11-17 | out of scope: TLS; touches SEC topic, owned by another batch if at all |

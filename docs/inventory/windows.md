@@ -2,6 +2,8 @@
 
 Batch D-windows read this set. The windows-dev-docs table of contents lists 882 pages. 172 were candidates. They produced WUI-001 to WUI-026. Every verdict was checked on 2026-11-17.
 
+WinUI 3 isn't a supported app type yet (`docs/standards/app-types.yml`, ADR-0084), so these pages were inventoried but their rules aren't in the kit: the WUI ids below name the rules a batch wrote, ready for when the type is supported.
+
 The page list for this set, with every page's guidance-wording score, is in `docs/inventory/windows-pages.tsv`. Re-check with the `discover-guidance` skill.
 
 | Page | Checked | Verdict |

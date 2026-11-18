@@ -5,9 +5,9 @@ description: Find the Microsoft Learn guidance pages for a docs set from its tab
 
 # Discover guidance pages
 
-This is how the kit found the rules for its project types on 2026-11-17 (ADR-0082, ADR-0084): 8,714 pages from six docs repos, 834 candidates, about 220 new rules. Then turn each recommendation into a rule with `source-a-rule`.
+This is how the kit found the rules for its app types on 2026-11-17 (ADR-0082, ADR-0084): 8,714 pages from six docs repos, 834 candidates, about 220 new rules. Then turn each recommendation into a rule with `source-a-rule`.
 
-1. **Pick the docs sets.** Each project type's ADR (ADR-0085 to ADR-0095) lists its sets, and `docs/inventory/README.md` lists the repos.
+1. **Pick the docs sets.** The core ruleset's ADR (ADR-0085) and each app type's ADR (ADR-0086 to ADR-0088) list their sets, and `docs/inventory/README.md` lists the repos. The kit's app types are `web-api`, `blazor` and `maui` (`docs/standards/app-types.yml`); WPF, Windows Forms, WinUI 3, Blazor Hybrid, Razor Pages and MVC, and workers and console apps aren't supported types yet, so their sets were inventoried but get no rules until they are.
 
    | Docs set | Repo | Folder |
    |---|---|---|
@@ -36,7 +36,7 @@ This is how the kit found the rules for its project types on 2026-11-17 (ADR-008
    - **Candidates:** a page scoring 3 or more, or with `ms.topic: best-practice`.
    - **Save the list:** write every page with its score to `docs/inventory/<set>-pages.tsv`: url, checked, score, skipped, candidate.
 
-4. **Read the guidance, cheaply.** For each candidate, pull only the sentences with guidance words from its Markdown, with markup stripped. Read those, not whole pages. Give a batch of pages to each Sonnet helper (the Agent tool with `model: sonnet`), one helper per standards file, so no two write the same file. The brief they followed on 2026-11-17 is the model: schema, strength table, project types, verdicts, report.
+4. **Read the guidance, cheaply.** For each candidate, pull only the sentences with guidance words from its Markdown, with markup stripped. Read those, not whole pages. Give a batch of pages to each Sonnet helper (the Agent tool with `model: sonnet`), one helper per standards file, so no two write the same file. Each helper's brief holds: the rule schema (ADR-0082, `source-a-rule`); the strength table, which maps a page's DO, should, CONSIDER or AVOID to the rule's wording (ADR-0082, "Strength"); the scope, `core` or the app types `web-api`, `blazor` and `maui`; the verdicts in step 5; and the report it returns, each page's verdict and each rule it wrote with its quotes.
 
 5. **Give every candidate a verdict.**
    - **new rule** (its id)
@@ -44,7 +44,7 @@ This is how the kit found the rules for its project types on 2026-11-17 (ADR-008
    - **no guidance**
    - **out of scope**, with the reason: .NET Framework only, preview or deprecated, IDE or docs tooling, Azure-service-only, per-control UX design, or one rarely used API
 
-   Grep `docs/standards/` before writing a rule. Pages already in an owner audit (the 94-page inventory in the owner's `rules-audit.md`) or cited by a rule need only their quotes.
+   Grep `docs/standards/` before writing a rule. Pages already in an owner audit (the owner's earlier 94-page audit, listed in `docs/inventory/README.md`) or cited by a rule need only their quotes.
 
 6. **Record it.** Put the verdicts in `docs/inventory/<set>.md`, with a table of page, date checked and verdict. Each type's ADR points to it. Then run the checks in `source-a-rule`, step 6.
 

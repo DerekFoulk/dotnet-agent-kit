@@ -43,8 +43,8 @@ A rule labeled `basis: authority` states only what its page says (ADR-0082). The
    - **Acceptance:** an authority rule cites pages only. The owner's acceptance of it goes in `ratified`, not `sources`.
    - **No page:** if no page supports the rule, make it a preference citing the owner or ADR that's already on it, or retire it. Never stretch a quote.
 
-5. **Name the project types and the enforcement.**
-   - **Project types:** `[all]` only if the rule fits a WPF app, a MAUI app, a console app and a class library alike. Otherwise list ids from `docs/standards/project-types.yml`, never all of them. Web assumptions are not `[all]`: HTTP, middleware, Program.cs hosting, Problem Details, cookies, CORS, server databases. Say "WinUI 3", never "WinUI".
+5. **Name the scope and the enforcement.**
+   - **Scope:** `core` only if the rule fits a Web API, a Blazor app and a .NET MAUI app alike, and the libraries they hold. Otherwise list app types from `docs/standards/app-types.yml` (`web-api`, `blazor`, `maui`), never all of them. Web assumptions are not `core`: HTTP, middleware, Program.cs hosting, Problem Details, cookies, CORS, server databases. WPF, Windows Forms, WinUI 3, Blazor Hybrid, Razor Pages and MVC, and workers and console apps aren't supported types yet, so no rule is written for them alone. Say "WinUI 3", never "WinUI".
    - **Enforcement:** add a gate where an analyzer or check in this repo already enforces the rule (name it). Otherwise it's advisory: say what code review checks and why no tool does.
    - **Scorecard:** a new rule in force needs a scorecard area, in `docs/quality/scorecard.md`.
 

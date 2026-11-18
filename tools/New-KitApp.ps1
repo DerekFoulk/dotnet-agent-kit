@@ -179,7 +179,7 @@ function New-KitApp {
     # ones set. -WhatIf lists them instead.
     $steps = @(
         # The intake answers go to docs/app-profile.md, app-owned and out of the manifest. The export writes it before
-        # it generates the rule files, which hold only the rulesets of the app's project types (ADR-0084).
+        # it generates the rule files, which hold only the core ruleset and the app's app types' rulesets (ADR-0084).
         [pscustomobject]@{ Description = "Export the kit's files at $commit, with the intake answers in docs/app-profile.md"; Action = {
                 $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name $Name -KitCommit $commit
                 & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot -AppProfile $profileText

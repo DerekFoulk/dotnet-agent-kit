@@ -21,7 +21,7 @@ Each rule in `docs/standards/` gains `quotes`: for each cited page, the page's o
 
 - **Shape:** the source and date must equal one of the rule's URL sources, so they live once in `sources` and the quote is checked against them (CRF-003). An authority rule cites pages only, and quotes every page it cites.
 - **Splits:** an owner's decision or a kit tightening is a preference rule of its own, with `layer: owner`. The owner's acceptance of an authority rule is recorded in `ratified`, not in its sources.
-- **Project types:** every rule names its `projectTypes` (ADR-0084), replacing `scope`.
+- **App types:** every rule names its `scope`: `core`, or the app types it applies to (ADR-0084).
 - **Checks:** `Test-RuleSources.ps1` checks all of this offline, in CI. `Test-RuleQuotes.ps1` re-reads the pages (ADR-0083). The reviewer compares every new or changed rule with its quotes (`docs/code-review.md`).
 - **Trade-offs:** about 800 quotes to keep current, and a quote copied wrong is caught only by the re-read. In return, a reader sees the evidence beside the rule, and a rule worded beyond its quote stands out.
 - **Reversibility:** easy. The fields can be dropped and the checks relaxed.
@@ -54,15 +54,15 @@ Option 1. The schema, as `Test-RuleSources.ps1` enforces it:
 - **A quote** is `{ source, retrieved, text }`. `source` and `retrieved` match a URL source of the rule, written without `, retrieved`. `text` is one contiguous passage, as the page renders it: plain text, link text kept, no markdown. It has no ellipsis standing for left-out words, so another passage is another quote; dots in the page's own code, as in `Task.Run(...)`, stay. It is the shortest passage that supports the rule, usually one sentence.
 - **Strength:** the rule says what the quote says, no stronger and no weaker. DO and must are the imperative; DON'T and never stay "never"; we recommend and should become "prefer", "is recommended" or "should"; CONSIDER becomes "consider"; AVOID becomes "avoid". A page that only allows, supports or shows an example gives no rule.
 - **Versions:** a versioned page is cited at the version the kit uses (`?view=aspnetcore-10.0`), and its .NET 10 text is quoted.
-- **`projectTypes`** is required on every rule in force: `[all]`, or ids from `docs/standards/project-types.yml`, never every id (a type added later would be left out). `scope` is retired.
+- **`scope`** is required on every rule in force: `core`, or ids from `docs/standards/app-types.yml`, never every id (a type added later would be left out; ADR-0084).
 - **Splits:** when a mixed rule splits, the original id stays with the half that existing references and gates mean, which is usually the kit's stricter half. Enforcement parts move with the wording they check. Both halves keep the original's status, so nothing becomes accepted that the owner hadn't accepted.
-- **Retired rules** need neither quotes nor project types.
+- **Retired rules** need neither quotes nor a scope.
 
 **Quoted text and its licenses.** Most quotes come from Microsoft Learn. Its docs repos are CC BY 4.0, checked on GitHub on 2026-11-17 for dotnet/docs, dotnet/AspNetCore.Docs, dotnet/EntityFramework.Docs and MicrosoftDocs/windows-dev-docs. Others come from OWASP's Cheat Sheet Series (CC BY-SA 4.0, checked the same day), the W3C, IETF RFCs, GitHub Docs and a few tool vendors. Each is a short, verbatim, attributed passage: the rule names the page and the date read, and nothing is changed. `THIRD-PARTY-NOTICES.md` records this. Whether every cited publisher's terms allow such quotation was not verified page by page.
 
 ## Consequences
 
-- The re-sourcing pass that came with this ADR applied it to all 120 rules: some matched their page as written, some were reworded to the page's strength, some split into an authority rule and a kit preference, and some were downgraded to preference. It also added proposed rules from Microsoft Learn's guidance pages for each project type (ADR-0085 to ADR-0095, `docs/inventory/`). The PR that made the pass gives the counts and each rule's before and after.
+- The re-sourcing pass that came with this ADR applied it to all 120 rules: some matched their page as written, some were reworded to the page's strength, some split into an authority rule and a kit preference, and some were downgraded to preference. It also added proposed rules from Microsoft Learn's guidance pages for each project type; the kit keeps those of its supported app types (ADR-0084 to ADR-0088, `docs/inventory/`). The PR that made the pass gives the counts and each rule's before and after.
 - About 800 quotes now need to stay current: ADR-0083.
 - A rule proposed by an agent still needs the owner's acceptance; nothing in this pass changed a proposed rule to accepted.
 - **Later:** a kit user's own preferences override the kit's preference rules, never the floor. That's the next step, planned separately (the owner's example: his rule of ten, CRF-012, over CRF-011's limits).

@@ -2,6 +2,8 @@
 
 Batch D-maui-desktop read the WPF and Windows Forms part of this set. The docs-desktop table of contents lists 1,602 pages. 39 were candidates. They produced WPF-001 to WPF-007 and WFM-001 to WFM-004. Every verdict was checked on 2026-11-17.
 
+WPF and Windows Forms aren't supported app types yet (`docs/standards/app-types.yml`, ADR-0084), so these pages were inventoried but their rules aren't in the kit: the WPF and WFM ids below name the rules a batch wrote, ready for when the type is supported.
+
 The page list for this set, with every page's guidance-wording score, is in `docs/inventory/desktop-pages.tsv`. Re-check with the `discover-guidance` skill.
 
 | Page | Checked | Verdict |
