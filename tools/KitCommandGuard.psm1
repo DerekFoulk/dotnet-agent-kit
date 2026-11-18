@@ -43,29 +43,35 @@ function Test-WildcardMatch {
 
 # The commands the ask rules name for a tool, by program and, where the rule names one, subcommand: "*git *push*"
 # names git and push, "Bash(git clean *)" git and clean, "PowerShell(./tools/New-KitApp*)" that script alone. The
-# program is the rule's first word (after "&" or "."), as a wildcard; the subcommand is the plain text that starts its
-# second word, unless that's an option. A value built when a command runs could make it an asked form only if the
-# command is one of these.
+# program is the rule's first word (after "&" or "."), as a wildcard, cut after its first literal part when more
+# follows ("*Initialize-DevMachine*-I*", one word, names *Initialize-DevMachine*); the subcommand is the plain text that
+# starts its second word, unless that's an option. A value built when a command runs could make it an asked form only
+# if the command is one of these.
 function Get-AskedCommand {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $AskRules, [Parameter(Mandatory)] [string] $Tool)
 
     foreach ($rule in $AskRules) {
-        if (-not $rule.StartsWith("$Tool(", [StringComparison]::Ordinal) -or -not $rule.EndsWith(')')) { continue }
+        if (-not $rule.StartsWith("$Tool(", [StringComparison]::Ordinal) -or -not $rule.EndsWith(')', [StringComparison]::Ordinal)) { continue }
         $pattern = $rule.Substring($Tool.Length + 1, $rule.Length - $Tool.Length - 2)
-        if ($pattern.EndsWith(':*')) { $pattern = $pattern.Substring(0, $pattern.Length - 2) }
+        if ($pattern.EndsWith(':*', [StringComparison]::Ordinal)) { $pattern = $pattern.Substring(0, $pattern.Length - 2) }
         $parts = @($pattern.Split(' ') | Where-Object { $_ })
         if ($parts.Count -and $parts[0] -cin '&', '.') { $parts = @($parts | Select-Object -Skip 1) }
         if (-not $parts.Count) { continue }
+        $program = [regex]::Match($parts[0], '\A\**[^*]+\*')
         $subcommand = if ($parts.Count -gt 1) { $parts[1].TrimStart('*').Split('*')[0] }
-        [pscustomobject]@{ Program = $parts[0]; Subcommand = $(if ($subcommand -and -not $subcommand.StartsWith('-')) { $subcommand }) }
+        [pscustomobject]@{
+            Program    = if ($program.Success) { $program.Value } else { $parts[0] }
+            Subcommand = if ($subcommand -and -not $subcommand.StartsWith('-')) { $subcommand }
+        }
     }
 }
 
 # Whether a resolved command could be one the ask rules name (Get-AskedCommand): its program, by any of its spellings
 # (Get-PlainPathWord), matches an asked program, and the rule names no subcommand, or one of the command's words is
-# that subcommand (a path by its last part: .../playwright.ps1), or the word after the program is built when the
-# command runs. A program that is itself built could be
-# anything.
+# that subcommand (a path by its last part: .../playwright.ps1), or the subcommand's place holds a word built when the
+# command runs. That place is the first word after the program that isn't an option, read both ways: with every
+# option taking no value (git --no-pager $p) and with each taking the next word (git -C . $p). A program that is
+# itself built could be anything.
 function Test-AskedCommand {
     param([Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool, [AllowEmptyCollection()] [object[]] $Asked)
 
@@ -75,13 +81,29 @@ function Test-AskedCommand {
     if ($Resolved.Built[$start]) { return $true }
     $names = @($words[$start]) + @(Get-PlainPathWord -Words @($words[$start]))
     $rest = @($words | Select-Object -Skip ($start + 1))
+    $places = @(Get-SubcommandPlace -Words $words -Start ($start + 1))
+    $builtSubcommand = [bool] @($places | Where-Object { $Resolved.Built[$_] }).Count
     foreach ($command in $Asked) {
         if (-not @($names | Where-Object { Test-WildcardMatch -Pattern $command.Program -Text $_ -IgnoreCase }).Count) { continue }
-        if (-not $command.Subcommand -or ($start + 1 -lt $words.Count -and $Resolved.Built[$start + 1])) { return $true }
+        if (-not $command.Subcommand -or $builtSubcommand) { return $true }
         $leaves = $rest | ForEach-Object { $_.Substring($_.Replace('\', '/').LastIndexOf('/') + 1) }
         if (@($leaves | Where-Object { [string]::Equals($_, $command.Subcommand, [StringComparison]::OrdinalIgnoreCase) }).Count) { return $true }
     }
     $false
+}
+
+# Where a command's subcommand may be, from Start: the first word that isn't an option, with every option taking no
+# value, and again with each option that has no "=" taking the next word as its value.
+function Get-SubcommandPlace {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words, [Parameter(Mandatory)] [int] $Start)
+
+    foreach ($valued in $false, $true) {
+        $i = $Start
+        while ($i -lt $Words.Count -and $Words[$i].StartsWith('-')) {
+            $i += if ($valued -and -not $Words[$i].Contains('=') -and $i + 1 -lt $Words.Count -and -not $Words[$i + 1].StartsWith('-')) { 2 } else { 1 }
+        }
+        if ($i -lt $Words.Count) { $i }
+    }
 }
 
 # One argument of a PowerShell command as the command receives it: a string with its quotes and backtick escapes
@@ -104,10 +126,10 @@ function ConvertTo-PowerShellWord {
 }
 
 # Each command in a PowerShell command line, from PowerShell's own parser: Words holds the command as it will run
-# ("&" or "." first when it's invoked with one), and Built, beside each word, the variable that makes it a value the
-# input chose (or $null). Runs names code that runs inside an argument: ( ), @( ), $( ) or { }, or a variable the input
-# fills from a command's output. Throws when the text doesn't parse, since PowerShell won't run it either and nothing
-# it holds can be resolved.
+# ("&" or "." first when it's invoked with one), and Built, beside each word, the variable that makes it a value known
+# only when the command runs (or $null). Runs names code that runs inside an argument: ( ), @( ), $( ) or { }, or a
+# variable the input fills from a command's output. Throws when the text doesn't parse, since PowerShell won't run it
+# either and nothing it holds can be resolved.
 function Get-PowerShellCommand {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Command)
 
@@ -116,18 +138,23 @@ function Get-PowerShellCommand {
     $ast = [Management.Automation.Language.Parser]::ParseInput($Command, [ref] $tokens, [ref] $errors)
     if ($errors.Count) { throw "PowerShell can't parse it: $($errors[0].Message)" }
 
-    # The PowerShell tool keeps no variables between calls, so one the input assigns or loops over holds a value the
-    # input chose, or, when a command fills it, that command's output.
-    $fromValue = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    # The variables the input fills from a command's output: an assignment or a foreach over one, or a common
+    # parameter such as -OutVariable that names the variable a command fills.
     $fromCommand = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $isCommand = { param($node) $node -is [Management.Automation.Language.CommandAst] }
     foreach ($node in $ast.FindAll({ param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] }, $true)) {
         $target, $source = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable, $node.Condition } else { $node.Left, $node.Right }
-        # Assigned, not taken from an if expression, which would enumerate the set.
-        $set = $fromValue
-        if ($source.Find($isCommand, $true)) { $set = $fromCommand }
+        if (-not $source.Find($isCommand, $true)) { continue }
         foreach ($variable in $target.FindAll({ param($v) $v -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
-            [void] $set.Add((Get-PowerShellVariableName -Variable $variable))
+            [void] $fromCommand.Add((Get-PowerShellVariableName -Variable $variable))
+        }
+    }
+    foreach ($commandAst in $ast.FindAll($isCommand, $true)) {
+        $elements = $commandAst.CommandElements
+        for ($i = 0; $i -lt $elements.Count; $i++) {
+            if ($elements[$i] -isnot [Management.Automation.Language.CommandParameterAst] -or $elements[$i].ParameterName -notmatch '^(?i:OutV|ov$|PipelineV|pv$|ErrorV|ev$|WarningV|wv$|InformationV|iv$)') { continue }
+            $value = if ($elements[$i].Argument) { $elements[$i].Argument } elseif ($i + 1 -lt $elements.Count) { $elements[$i + 1] }
+            if ($value -is [Management.Automation.Language.StringConstantExpressionAst]) { [void] $fromCommand.Add($value.Value.TrimStart('+')) }
         }
     }
 
@@ -143,7 +170,9 @@ function Get-PowerShellCommand {
             $words.Add((ConvertTo-PowerShellWord -Element $element))
             $plain = ConvertTo-PowerShellPlainWord -Element $element
             if ($null -ne $plain) { $plainWords.Add($plain) }
-            $variable = $element.Find({ param($node) $node -is [Management.Automation.Language.VariableExpressionAst] -and $fromValue.Contains((Get-PowerShellVariableName -Variable $node)) }, $true)
+            # Any variable: the tool keeps none between calls, so its value comes from this input or the environment,
+            # and either way is known only when the command runs.
+            $variable = $element.Find({ param($node) $node -is [Management.Automation.Language.VariableExpressionAst] }, $true)
             $built.Add($(if ($variable) { $variable.Extent.Text }))
         }
         $name = $words[$words.Count - $commandAst.CommandElements.Count]
@@ -204,7 +233,7 @@ function Test-PowerShellCommandName {
 # text) stay as written in Words, since their values are known only when the command runs, and are taken out in
 # PlainWords (an unset variable is empty). Built, beside each word, names what makes it a value Bash builds when it
 # runs (or $null): a brace expansion, ${...} with an operator, $((...)), a $( ) or backquote substitution other than cat
-# reading a quoted heredoc (whose output is fixed text), or a variable the same input sets. Redirections and heredoc
+# reading a quoted heredoc (whose output is fixed text), or a variable, whose value comes from this input or the environment. Redirections and heredoc
 # bodies aren't words. Throws when a quote, substitution or parenthesis isn't closed, since Bash won't run that either.
 # Bash runs nothing inside an argument that Claude Code doesn't check: its rules apply inside a substitution.
 function Get-BashCommand {
@@ -212,32 +241,7 @@ function Get-BashCommand {
 
     $reader = New-BashReader -Text $Command -Commands ([Collections.Generic.List[object]]::new())
     Read-BashList -Reader $reader -Close ''
-    # The Bash tool keeps no variables between calls, so one the input sets holds a value the input chose.
-    $setHere = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach ($resolved in $reader.Commands) { foreach ($name in Get-BashAssignedName -Words $resolved.Words) { [void] $setHere.Add($name) } }
-    foreach ($resolved in $reader.Commands) {
-        for ($i = 0; $i -lt $resolved.Words.Count; $i++) {
-            $used = @($resolved.Variables[$i] | Where-Object { $setHere.Contains($_) })
-            if ($used.Count -and -not $resolved.Built[$i]) { $resolved.Built[$i] = "`$$($used[0])" }
-        }
-    }
     $reader.Commands
-}
-
-# The variables a Bash command sets: its leading NAME=value assignments, a for loop's variable, read's names, and the
-# names export, declare, local, readonly and typeset give.
-function Get-BashAssignedName {
-    param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words)
-
-    $name = '^([A-Za-z_][A-Za-z0-9_]*)(\+?=|$)'
-    $i = 0
-    while ($i -lt $Words.Count -and $Words[$i] -match '^([A-Za-z_][A-Za-z0-9_]*)\+?=') { $Matches[1]; $i++ }
-    if ($i -ge $Words.Count) { return }
-    $operands = @($Words | Select-Object -Skip ($i + 1) | Where-Object { -not $_.StartsWith('-') })
-    if ($Words[$i] -ceq 'for' -and $operands.Count) { $operands[0] }
-    elseif ($Words[$i] -cin 'read', 'export', 'declare', 'local', 'readonly', 'typeset') {
-        foreach ($operand in $operands) { if ($operand -match $name) { $Matches[1] } }
-    }
 }
 
 function New-BashReader {
@@ -313,8 +317,7 @@ function Read-BashList {
 function New-BashBuilder {
     [pscustomobject]@{
         Words = [Collections.Generic.List[string]]::new(); PlainWords = [Collections.Generic.List[string]]::new(); Built = [Collections.Generic.List[string]]::new()
-        Variables = [Collections.Generic.List[object]]::new(); WordVariables = [Collections.Generic.List[string]]::new()
-        Word = [Text.StringBuilder]::new(); PlainWord = [Text.StringBuilder]::new(); Unquoted = [Text.StringBuilder]::new()
+       Word = [Text.StringBuilder]::new(); PlainWord = [Text.StringBuilder]::new(); Unquoted = [Text.StringBuilder]::new()
         InWord = $false; Quoted = $false; WordComputed = $null; Redirect = $null; Depth = 0; CaseDepth = 0; InPattern = $false
     }
 }
@@ -330,15 +333,14 @@ function Add-BashText {
 }
 
 # An expansion in the current word, kept as written and left out of its plain form. -Computed marks a value Bash
-# builds when it runs, which no rule can read; -Variable names the variable a $name or ${name} expands.
+# builds when it runs, which no rule can read.
 function Add-BashExpansion {
-    param([Parameter(Mandatory)] [pscustomobject] $Builder, [Parameter(Mandatory)] [string] $Text, [switch] $Computed, [string] $Variable)
+    param([Parameter(Mandatory)] [pscustomobject] $Builder, [Parameter(Mandatory)] [string] $Text, [switch] $Computed)
 
     [void] $Builder.Word.Append($Text)
     [void] $Builder.Unquoted.Append("`0")
     $Builder.InWord = $true
     if ($Computed -and -not $Builder.WordComputed) { $Builder.WordComputed = $Text }
-    if ($Variable) { $Builder.WordVariables.Add($Variable) }
 }
 
 # Ends the current word: a command's word, a redirection's target (dropped), or a heredoc's delimiter. An unquoted
@@ -358,7 +360,6 @@ function Add-BashWord {
     $Builder.InWord = $false
     $Builder.Quoted = $false
     $Builder.WordComputed = $null
-    $Builder.WordVariables.Clear()
 }
 
 # Adds a word to the command being read, except where a case statement makes it something else: "case WORD in" ends
@@ -378,8 +379,7 @@ function Add-BashCommandWord {
     if ($Builder.InPattern) { return }
     $Builder.Words.Add($Word)
     $Builder.PlainWords.Add($PlainWord)
-    $Builder.Variables.Add([string[]] $Builder.WordVariables.ToArray())
-    $Builder.Built.Add($Builder.WordComputed)
+   $Builder.Built.Add($Builder.WordComputed)
     if ($Builder.Words.Count -eq 3 -and $Builder.Words[0] -ceq 'case' -and $Word -ceq 'in' -and -not $Builder.Quoted) {
         Add-BashCommand -Reader $Reader -Builder $Builder
         $Builder.CaseDepth++
@@ -402,12 +402,11 @@ function Add-BashCommand {
     if ($Builder.Words.Count) {
         $Reader.Commands.Add([pscustomobject]@{
                 Words = $Builder.Words.ToArray(); PlainWords = $Builder.PlainWords.ToArray(); Native = $true
-                Built = $Builder.Built.ToArray(); Variables = $Builder.Variables.ToArray()
+                Built = $Builder.Built.ToArray()
             })
         $Builder.Words.Clear()
         $Builder.PlainWords.Clear()
-        $Builder.Variables.Clear()
-        $Builder.Built.Clear()
+       $Builder.Built.Clear()
     }
 }
 
@@ -481,15 +480,13 @@ function Read-BashDollar {
         return
     }
     if ($next -eq '{') {
-        $parameter = Read-BashBracketed -Reader $Reader -Open '{' -Close '}'
-        $plain = $parameter -match '^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$'
-        Add-BashExpansion -Builder $Builder -Text $parameter -Computed:(-not $plain) -Variable $(if ($plain) { $Matches[1] })
+        Add-BashExpansion -Builder $Builder -Text (Read-BashBracketed -Reader $Reader -Open '{' -Close '}') -Computed
         return
     }
     $name = [regex]::Match($text.Substring($start + 1), '^(?:[A-Za-z_][A-Za-z0-9_]*|[0-9#?@*!$-])')
     if ($name.Success) {
         $Reader.Index += 1 + $name.Length
-        Add-BashExpansion -Builder $Builder -Text "`$$($name.Value)" -Variable $name.Value
+        Add-BashExpansion -Builder $Builder -Text "`$$($name.Value)" -Computed
         return
     }
     $Reader.Index++
@@ -497,11 +494,23 @@ function Read-BashDollar {
 }
 
 # Whether a $( ) substitution's output is fixed text: cat reading a heredoc whose delimiter is quoted, so nothing in
-# its body expands. This is how Claude Code writes a multi-line commit message.
+# its body expands, and nothing after the heredoc but the closing ')'. This is how Claude Code writes a multi-line
+# commit message. The body ends, as Bash ends it, at the first line that is the delimiter (with "<<-", after its
+# leading tabs), so a second delimiter line can't hide a command after the first.
 function Test-BashFixedSubstitution {
     param([Parameter(Mandatory)] [string] $Text)
 
-    $Text -match '(?s)\A\$\(\s*cat\s+<<-?\s*(?:''(?<d>[^''\n]+)''|"(?<d>[^"\n]+)")[ \t]*\r?\n.*?\n[ \t]*\k<d>[ \t]*\r?\n\s*\)\z'
+    $header = [regex]::Match($Text, '\A\$\(\s*cat\s+<<(?<strip>-?)\s*(?:''(?<d>[^''\n]+)''|"(?<d>[^"\n]+)")[ \t]*\r?\n')
+    if (-not $header.Success) { return $false }
+    $lines = $Text.Substring($header.Length).Split("`n")
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i].TrimEnd("`r")
+        if ($header.Groups['strip'].Value) { $line = $line.TrimStart("`t") }
+        if ($line -ceq $header.Groups['d'].Value) {
+            return (($lines | Select-Object -Skip ($i + 1)) -join "`n") -match '\A\s*\)\z'
+        }
+    }
+    $false
 }
 
 # $((...)) or ${...}, kept as written: from the '$' to the bracket that closes the first one.
