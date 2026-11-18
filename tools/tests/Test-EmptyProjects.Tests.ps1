@@ -243,15 +243,33 @@ Describe 'Test-EmptyProjects.ps1' {
     Context 'run as a script' {
         BeforeAll {
             $script:check = Join-Path $PSScriptRoot '..' 'Test-EmptyProjects.ps1'
+
+            # ADR-0089: whether ARC-009 is in force comes from a fixture, not the real rule's status.
+            function New-StatusFile([string] $Status) {
+                $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
+                Set-Content -LiteralPath $path -Value "{ ""ARC-009"": ""$Status"" }"
+                $path
+            }
         }
 
-        It 'prints each problem and exits 1' {
+        It 'prints each problem and exits 1 once ARC-009 is accepted' {
             $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Domain' = @{} }
 
-            $output = pwsh -NoProfile -File $script:check -Solution $solution 2>&1 | Out-String
+            $output = pwsh -NoProfile -File $script:check -Solution $solution -RuleStatusPath (New-StatusFile 'accepted') 2>&1 | Out-String
 
             $LASTEXITCODE | Should -Be 1 -Because $output
             $output | Should -Match 'App\.Domain.*has no source'
+            $output | Should -Not -Match '::warning::'
+        }
+
+        It 'prints each problem as a warning and exits 0 while ARC-009 is proposed' {
+            $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Domain' = @{} }
+
+            $output = pwsh -NoProfile -File $script:check -Solution $solution -RuleStatusPath (New-StatusFile 'proposed') 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 0 -Because $output
+            $output | Should -Match '(?m)^::warning::ARC-009: src/App\.Domain/App\.Domain\.csproj has no source files of its own'
+            $output | Should -Match '1 empty-project problem.*warning.*ARC-009 is proposed'
         }
 
         It 'says so and exits 0 when every project holds code' {

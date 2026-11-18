@@ -9,7 +9,8 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Solution
+    [string] $Solution,
+    [string] $RuleStatusPath
 )
 
 Set-StrictMode -Version Latest
