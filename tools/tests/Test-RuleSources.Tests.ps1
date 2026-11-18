@@ -19,7 +19,7 @@ Describe 'Test-RuleSources.ps1' {
                 enforcement = @(
                     [ordered]@{ kind = 'gate'; in = @('kit', 'app'); how = 'ruleset: merge-method rule (merge commit only)' }
                 )
-                projectTypes = @('all')
+                scope       = 'core'
                 paths       = @('**')
             }
             foreach ($key in $Override.Keys) { $rule[$key] = $Override[$key] }
@@ -54,8 +54,8 @@ Describe 'Test-RuleSources.ps1' {
         $script:adr = Join-Path $TestDrive "adr-$(New-Guid)"
         New-Item -ItemType Directory -Path $script:standards, $script:adr | Out-Null
         Set-Content -Path (Join-Path $script:adr '0007-github-flow.md') -Value '# ADR-0007'
-        # ADR-0082: the project types a rule can name, kept beside the standards.
-        Set-Content -Path (Join-Path $script:standards 'project-types.yml') -Value @'
+        # ADR-0084: the app types a rule's scope can name, kept beside the standards.
+        Set-Content -Path (Join-Path $script:standards 'app-types.yml') -Value @'
 types:
   - id: web-api
     name: ASP.NET Core Web API
@@ -419,26 +419,27 @@ types:
         }
     }
 
-    # ADR-0082: every rule names the project types it applies to, so an app gets only the rules that fit it.
-    Context 'project types' {
+    # ADR-0084: every rule names its scope, so an app gets only the rules that fit it: core, for every app type, or the
+    # supported app types in app-types.yml it applies to.
+    Context 'scope' {
         It 'accepts a rule for <Case>' -ForEach @(
-            @{ Case = 'every type'; Types = @('all') }
-            @{ Case = 'one type'; Types = @('maui') }
+            @{ Case = 'every app type'; Scope = 'core' }
+            @{ Case = 'one app type'; Scope = @('maui') }
         ) {
-            New-StandardsFile -Rules @(New-Rule -Override @{ projectTypes = $Types })
+            New-StandardsFile -Rules @(New-Rule -Override @{ scope = $Scope })
 
             Get-Problem | Should -BeNullOrEmpty
         }
 
-        It 'reports projectTypes <Case>' -ForEach @(
-            @{ Case = 'missing'; Types = $null; Expected = "*projectTypes*" }
-            @{ Case = 'empty'; Types = @(); Expected = "*projectTypes*" }
-            @{ Case = 'written as a word'; Types = 'all'; Expected = "*projectTypes*list*" }
-            @{ Case = 'naming an unknown type'; Types = @('wpf-classic'); Expected = "*project type 'wpf-classic'*project-types.yml*" }
-            @{ Case = 'mixing all with a type'; Types = @('all', 'maui'); Expected = "*all*alone*" }
-            @{ Case = 'listing every type'; Types = @('web-api', 'maui'); Expected = "*every project type*all*" }
+        It 'reports scope <Case>' -ForEach @(
+            @{ Case = 'missing'; Scope = $null; Expected = "*scope*" }
+            @{ Case = 'empty'; Scope = @(); Expected = "*scope*" }
+            @{ Case = 'a word other than core'; Scope = 'all'; Expected = "*scope 'all'*core*" }
+            @{ Case = 'naming an unknown app type'; Scope = @('wpf'); Expected = "*app type 'wpf'*app-types.yml*" }
+            @{ Case = 'naming core in a list'; Scope = @('core', 'maui'); Expected = "*core*alone*" }
+            @{ Case = 'listing every app type'; Scope = @('web-api', 'maui'); Expected = "*every app type*core*" }
         ) {
-            $rule = if ($null -eq $Types) { New-Rule -Remove 'projectTypes' } else { New-Rule -Override @{ projectTypes = $Types } }
+            $rule = if ($null -eq $Scope) { New-Rule -Remove 'scope' } else { New-Rule -Override @{ scope = $Scope } }
             New-StandardsFile -Rules @($rule)
 
             $problems = @(Get-Problem)
@@ -447,29 +448,29 @@ types:
             $problems[0].Message | Should -BeLike $Expected
         }
 
-        It 'reports the retired field scope, which projectTypes replaced' {
-            New-StandardsFile -Rules @(New-Rule -Override @{ scope = 'core' })
+        It 'reports the field projectTypes, which scope replaced' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ projectTypes = @('maui') })
 
             $problems = @(Get-Problem)
 
             $problems.Count | Should -Be 1
-            $problems[0].Message | Should -BeLike "*scope*projectTypes*"
+            $problems[0].Message | Should -BeLike "*projectTypes*scope*"
         }
 
-        It 'needs no projectTypes on a retired rule' {
-            New-StandardsFile -Rules @(New-Rule -Override @{ status = 'retired' } -Remove 'projectTypes')
+        It 'needs no scope on a retired rule' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ status = 'retired' } -Remove 'scope')
 
             Get-Problem | Should -BeNullOrEmpty
         }
 
-        It 'reports a project types file that <Case>' -ForEach @(
-            @{ Case = 'is missing'; Yaml = $null; Expected = '*project-types.yml*missing*' }
-            @{ Case = 'repeats an id'; Yaml = "types:`n  - { id: maui, name: A, docs: 'https://learn.microsoft.com/a' }`n  - { id: maui, name: B, docs: 'https://learn.microsoft.com/b' }"; Expected = "*project-types.yml*'maui'*more than once*" }
-            @{ Case = 'has a type with no name'; Yaml = "types:`n  - { id: maui, docs: 'https://learn.microsoft.com/a' }"; Expected = "*project-types.yml*'maui'*name*" }
-            @{ Case = 'has a type with no docs URL'; Yaml = "types:`n  - { id: maui, name: A, docs: 'see the docs' }"; Expected = "*project-types.yml*'maui'*docs*URL*" }
-            @{ Case = 'names a type all'; Yaml = "types:`n  - { id: all, name: A, docs: 'https://learn.microsoft.com/a' }"; Expected = "*project-types.yml*'all'*reserved*" }
+        It 'reports an app types file that <Case>' -ForEach @(
+            @{ Case = 'is missing'; Yaml = $null; Expected = '*app-types.yml*missing*' }
+            @{ Case = 'repeats an id'; Yaml = "types:`n  - { id: maui, name: A, docs: 'https://learn.microsoft.com/a' }`n  - { id: maui, name: B, docs: 'https://learn.microsoft.com/b' }"; Expected = "*app-types.yml*'maui'*more than once*" }
+            @{ Case = 'has a type with no name'; Yaml = "types:`n  - { id: maui, docs: 'https://learn.microsoft.com/a' }"; Expected = "*app-types.yml*'maui'*name*" }
+            @{ Case = 'has a type with no docs URL'; Yaml = "types:`n  - { id: maui, name: A, docs: 'see the docs' }"; Expected = "*app-types.yml*'maui'*docs*URL*" }
+            @{ Case = 'names a type core'; Yaml = "types:`n  - { id: core, name: A, docs: 'https://learn.microsoft.com/a' }"; Expected = "*app-types.yml*'core'*reserved*" }
         ) {
-            $path = Join-Path $script:standards 'project-types.yml'
+            $path = Join-Path $script:standards 'app-types.yml'
             if ($null -eq $Yaml) { Remove-Item -LiteralPath $path } else { Set-Content -LiteralPath $path -Value $Yaml }
             New-StandardsFile
 
