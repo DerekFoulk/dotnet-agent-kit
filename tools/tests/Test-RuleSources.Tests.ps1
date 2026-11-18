@@ -392,6 +392,24 @@ types:
             $problems[0].Message | Should -BeLike '*quote*ellipsis*one contiguous passage*'
         }
 
+        It 'accepts dots that are part of the page''s code: <Text>' -ForEach @(
+            @{ Text = "Don't use _ = Task.Run(...) to discard a task." }
+            @{ Text = 'Prefer ForAll(...) to Parallel.ForEach(source, ...).' }
+        ) {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @(New-Quote -Override @{ text = $Text }) })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports a quote that skips words with <Mark> (<Case>)' -ForEach @(
+            @{ Case = 'at the start'; Mark = '...'; Text = '... testing in production.' }
+            @{ Case = 'in brackets'; Mark = '[...]'; Text = 'We recommend [...] testing in production.' }
+        ) {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @(New-Quote -Override @{ text = $Text }) })
+
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike '*quote*ellipsis*'
+        }
+
         It 'accepts a preference rule that also stores a quote' {
             New-StandardsFile -Rules @(New-Rule -Override @{
                     sources = @('owner, 2026-10-26', 'https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17'); quotes = @(New-Quote)
