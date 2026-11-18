@@ -83,6 +83,8 @@ Describe 'Test-RuleQuotes.ps1' {
             @{ Case = 'never, before it'; Text = 'Use the in-memory provider for tests.'; Html = '<p>Never use the in-memory provider for tests.</p>' }
             @{ Case = 'that it isn''t needed'; Text = 'Call Dispose.'; Html = "<p>You don't need to call Dispose.</p>" }
             @{ Case = 'the words run into another word'; Text = 'a cache'; Html = '<p>Use acache.</p>' }
+            @{ Case = 'a longer word where the quote ends'; Text = 'Call Dispose'; Html = '<p>Call DisposeAsync when you are done.</p>' }
+            @{ Case = 'a longer word where the quote starts'; Text = 'use the cache.'; Html = '<p>Reuse the cache.</p>' }
         ) {
             $quote = [pscustomobject]@{ RuleId = 'DAT-012'; File = 'data.md'; Source = 'https://learn.microsoft.com/a'; Text = $Text }
 
@@ -99,6 +101,22 @@ Describe 'Test-RuleQuotes.ps1' {
 
             $result[0].State | Should -Be 'Missing'
             $result[0].Detail | Should -BeLike '*gone*404*'
+        }
+
+        # Review round 2: the 404 and 410 mapping lives in Get-PageHtml, which the other tests stub out.
+        It 'reads a page that answers <Code> as <State>' -ForEach @(
+            @{ Code = 404; State = 'Missing' }
+            @{ Code = 410; State = 'Missing' }
+            @{ Code = 503; State = 'Unreachable' }
+        ) {
+            Mock Invoke-WebRequest {
+                throw [Microsoft.PowerShell.Commands.HttpResponseException]::new("$Code", [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode] $Code))
+            }
+            $quote = [pscustomobject]@{ RuleId = 'DAT-012'; File = 'data.md'; Source = 'https://learn.microsoft.com/a'; Text = 'Avoid the in-memory provider.' }
+
+            $result = @(Test-RuleQuote -Quote $quote)
+
+            $result[0].State | Should -Be $State
         }
 
         It 'reports a quote the page no longer has as Missing' {

@@ -765,8 +765,9 @@ Describe 'Export-KitAppAt' {
         function New-StubKit([switch] $TakesProfile) {
             $kit = Join-Path $TestDrive "kit-$(New-Guid)"
             New-Item -ItemType Directory -Path (Join-Path $kit 'tools') | Out-Null
-            $param = if ($TakesProfile) { 'param([string] $Name, [string] $Destination, [string] $KitRef, [string] $KitRoot, [string] $AppProfile)' }
-            else { 'param([string] $Name, [string] $Destination, [string] $KitRef, [string] $KitRoot)' }
+            # [CmdletBinding()], as the real exporter has: an older one refuses an -AppProfile it doesn't take.
+            $param = if ($TakesProfile) { "[CmdletBinding()]`nparam([string] `$Name, [string] `$Destination, [string] `$KitRef, [string] `$KitRoot, [string] `$AppProfile)" }
+            else { "[CmdletBinding()]`nparam([string] `$Name, [string] `$Destination, [string] `$KitRef, [string] `$KitRoot)" }
             $body = @'
 New-Item -ItemType Directory -Force -Path (Join-Path $Destination '.kit') | Out-Null
 $given = if (Get-Variable -Name AppProfile -ErrorAction SilentlyContinue) { $AppProfile } else { $null }
@@ -795,5 +796,28 @@ $given = if (Get-Variable -Name AppProfile -ErrorAction SilentlyContinue) { $App
         $manifest = Export-KitAppAt -KitRoot $kit -KitRef 'main' -Name 'Contoso.Notes' -Destination (Join-Path $TestDrive "out-$(New-Guid)") -AppProfile "App types: maui`n"
 
         $manifest['given'] | Should -BeNullOrEmpty
+    }
+
+    # Review round 2: the call site, not only Export-KitAppAt, is what keeps a typed app's rule files from reading as
+    # changed: Sync-KitApp reads the app's profile and hands it to both exports.
+    It 'reads the app''s profile and hands it to both exports' {
+        $app = Join-Path $TestDrive "app-$(New-Guid)"
+        New-Item -ItemType Directory -Path (Join-Path $app 'docs') | Out-Null
+        Set-Content -LiteralPath (Join-Path $app 'docs' 'app-profile.md') -Value "App types: maui" -NoNewline
+        $script:given = [System.Collections.Generic.List[object]]::new()
+        Mock Read-KitManifest { @{ kitCommit = 'aaa'; appName = 'Contoso.Notes'; kitVersion = 'v0.1.0'; files = @() } }
+        Mock Get-KitReleaseCommit { 'bbb' }
+        Mock git { $global:LASTEXITCODE = 0 }
+        Mock Export-KitAppAt {
+            $script:given.Add([pscustomobject]@{ Ref = $KitRef; Profile = $AppProfile })
+            if ($script:given.Count -ge 2) { throw 'stop after both exports' }
+            @{ files = @() }
+        }
+
+        { Sync-KitApp -AppRoot $app -KitRoot $TestDrive -KitRef 'v0.2.0' } | Should -Throw '*stop after both exports*'
+
+        $script:given.Count | Should -Be 2
+        $script:given | ForEach-Object { $_.Profile | Should -Be 'App types: maui' }
+        @($script:given.Ref) | Should -Be @('v0.2.0', 'aaa')
     }
 }
