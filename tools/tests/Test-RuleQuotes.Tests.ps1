@@ -43,9 +43,11 @@ Describe 'Test-RuleQuotes.ps1' {
     Context 'comparing with the page' {
         It 'finds a quote the page renders <Case>' -ForEach @(
             @{ Case = 'with inline markup and line breaks'; Html = "<p>Avoid the <strong>in-memory</strong>`n provider for <a href='x'>testing</a> purposes.</p>" }
-            @{ Case = 'with curly quotes and a non-breaking space'; Html = "<p>Avoid the in&#8209;memory provider&nbsp;for testing purposes.</p>" -replace 'in&#8209;memory', 'in-memory' }
+            @{ Case = 'with a non-breaking hyphen and a non-breaking space'; Html = "<p>Avoid the in&#8209;memory provider&nbsp;for testing purposes.</p>" }
             @{ Case = 'with an HTML entity'; Html = '<p>Avoid the in&#45;memory provider for testing&#x20;purposes.</p>' }
             @{ Case = 'with a check-mark emoji before it'; Html = '<p>✔️ Avoid the in-memory provider for testing purposes.</p>' }
+            @{ Case = 'with a link that leaves a space before the period'; Html = "<p>Avoid the in-memory provider for <a href='x'>testing purposes</a> .</p>" }
+            @{ Case = 'with a comment inside a word'; Html = '<p>Avoid the in-memory pro<!-- note -->vider for testing purposes.</p>' }
         ) {
             $quote = [pscustomobject]@{ RuleId = 'DAT-012'; File = 'data.md'; Source = 'https://learn.microsoft.com/a'; Text = 'Avoid the in-memory provider for testing purposes.' }
 
@@ -64,6 +66,30 @@ Describe 'Test-RuleQuotes.ps1' {
             $result = @(Test-RuleQuote -Quote $quote -GetPage { param($Url) $html }.GetNewClosure())
 
             $result[0].State | Should -Be 'Found'
+        }
+
+        # Review of the branch: a page that turned the advice around still matched once case and word edges were dropped.
+        It 'reports a quote as Missing when the page now says <Case>' -ForEach @(
+            @{ Case = 'the opposite, with a negation before it'; Text = 'Use the in-memory provider for tests.'; Html = "<p>Don't use the in-memory provider for tests.</p>" }
+            @{ Case = 'never, before it'; Text = 'Use the in-memory provider for tests.'; Html = '<p>Never use the in-memory provider for tests.</p>' }
+            @{ Case = 'that it isn''t needed'; Text = 'Call Dispose.'; Html = "<p>You don't need to call Dispose.</p>" }
+            @{ Case = 'the words run into another word'; Text = 'a cache'; Html = '<p>Use acache.</p>' }
+        ) {
+            $quote = [pscustomobject]@{ RuleId = 'DAT-012'; File = 'data.md'; Source = 'https://learn.microsoft.com/a'; Text = $Text }
+
+            $result = @(Test-RuleQuote -Quote $quote -GetPage { param($Url) $Html })
+
+            $result[0].State | Should -Be 'Missing'
+        }
+
+        # Review of the branch: a removed page answered 404 and read as an outage, so the weekly run stayed green.
+        It 'reports the quotes of a page that is gone as Missing, not Unreachable' {
+            $quote = [pscustomobject]@{ RuleId = 'DAT-012'; File = 'data.md'; Source = 'https://learn.microsoft.com/a'; Text = 'Avoid the in-memory provider.' }
+
+            $result = @(Test-RuleQuote -Quote $quote -GetPage { param($Url) throw [System.IO.FileNotFoundException]::new('404 (Not Found)') })
+
+            $result[0].State | Should -Be 'Missing'
+            $result[0].Detail | Should -BeLike '*gone*404*'
         }
 
         It 'reports a quote the page no longer has as Missing' {
