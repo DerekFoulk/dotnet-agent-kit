@@ -1,6 +1,9 @@
 # gitleaks findings that aren't secrets, by fingerprint (commit:file:rule:line). Each line names one finding in one
 # commit, so the scan still catches anything new; gitleaks reads this file from the repo root (ADR-0024).
 #
-# A stored quote from Microsoft Learn's cryptography model page (SEC-025, ADR-0082): "Generating a key from a
-# password: Rfc2898DeriveBytes.Pbkdf2". generic-api-key reads the API name after "key" as a key.
+# A stored Microsoft Learn quote from the cryptography model page (SEC-025, ADR-0082). It names the PBKDF2 method
+# right after the words for deriving a secret from a password, and generic-api-key reads the method name as one.
 849a1f712fb0cf5b152e3cb42459b88da3901a38:docs/standards/security.md:generic-api-key:557
+#
+# This file's own first comment, in that commit, quoted the same passage.
+39a2275f9bfdcad3c44ca6484a56a8e6eafc1b8e:.gitleaksignore:generic-api-key:5
