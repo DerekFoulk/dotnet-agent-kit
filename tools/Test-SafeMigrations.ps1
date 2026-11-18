@@ -14,11 +14,13 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Path = '.'
+    [string] $Path = '.',
+    [string] $RuleStatusPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
 
 # MigrationBuilder operations that remove or change what the running version reads or writes.
 $script:UnsafeOperations = @(
@@ -118,7 +120,7 @@ function Get-LineNumber {
 
 # Prints every problem and returns 0 when every migration passes, otherwise 1.
 function Invoke-SafeMigrationsCheck {
-    param([Parameter(Mandatory)] [string] $Path)
+    param([Parameter(Mandatory)] [string] $Path, [string] $RuleStatusPath)
 
     $problems = @(Get-MigrationProblem -Path $Path)
     foreach ($problem in $problems) {
