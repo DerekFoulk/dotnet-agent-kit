@@ -54,7 +54,45 @@ function ConvertTo-RuleBody {
     ($lines -join "`n") + "`n"
 }
 
-function Get-AppProjectType { param([string] $RepoRoot, [string[]] $Known) }
+# ADR-0084: an app's project types, from the "Project types:" line of its docs/app-profile.md, which the new-app
+# intake writes. Nothing when the repo has no profile (the kit) or its profile names none (an app made before
+# project types): then every rule applies. A type docs/standards/project-types.yml doesn't list is an error, so a
+# typo can't quietly drop a ruleset.
+function Get-AppProjectType {
+    param([Parameter(Mandatory)] [string] $RepoRoot, [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Known)
+
+    $profilePath = Join-Path $RepoRoot 'docs' 'app-profile.md'
+    if (-not (Test-Path -LiteralPath $profilePath)) { return }
+    $line = Get-Content -LiteralPath $profilePath | Where-Object { $_ -match '^Project types:' } | Select-Object -First 1
+    if (-not $line) { return }
+    $types = @(($line -replace '^Project types:', '') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $unknown = @($types | Where-Object { $_ -notin $Known })
+    if ($unknown) {
+        throw "docs/app-profile.md names project type(s) $($unknown -join ', ') that docs/standards/project-types.yml doesn't list: $($Known -join ', ')."
+    }
+    $types
+}
+
+# The ids docs/standards/project-types.yml lists, or nothing when it's missing (an app synced before ADR-0082).
+function Get-KnownProjectType {
+    param([Parameter(Mandatory)] [string] $StandardsPath)
+
+    $path = Join-Path $StandardsPath 'project-types.yml'
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    $yaml = ConvertFrom-Yaml -Yaml (Get-Content -LiteralPath $path -Raw)
+    @($yaml['types'] | ForEach-Object { "$($_['id'])" })
+}
+
+# Whether a rule applies to an app of the given project types: every rule does when none are given, and a rule with
+# [all], or no projectTypes, applies to every type.
+function Test-RuleForProjectType {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [string[]] $ProjectType)
+
+    if (-not $ProjectType) { return $true }
+    $types = @(@(if ($Rule.Contains('projectTypes')) { $Rule['projectTypes'] }) | ForEach-Object { "$_" })
+    if (-not $types -or 'all' -in $types) { return $true }
+    [bool] @($types | Where-Object { $_ -in $ProjectType }).Count
+}
 
 # Builds every generated rule file in memory: for each standard, its accepted rules split into always-on
 # rules (paths include **) and path-scoped rules, written once for Claude Code (.claude/rules, paths:)
@@ -74,7 +112,7 @@ function Get-AgentRuleFile {
         $title = (Read-MarkdownBody -Path $file.FullName) -split "`n" | Where-Object { $_ -match '^# ' } | Select-Object -First 1
         $title = if ($title) { $title -replace '^# ', '' } else { $topic }
 
-        $accepted = @($frontMatter['rules'] | Where-Object { $_['status'] -eq 'accepted' })
+        $accepted = @($frontMatter['rules'] | Where-Object { $_['status'] -eq 'accepted' -and (Test-RuleForProjectType -Rule $_ -ProjectType $ProjectType) })
         $always = @($accepted | Where-Object { @($_['paths']) -contains '**' -or -not $_.Contains('paths') })
         $scoped = @($accepted | Where-Object { $_ -notin $always })
 
@@ -108,7 +146,8 @@ function Get-AgentRuleFile {
 function Update-RuleBlock {
     param(
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text,
-        [Parameter(Mandatory)] [string] $StandardsPath
+        [Parameter(Mandatory)] [string] $StandardsPath,
+        [string[]] $ProjectType
     )
 
     $open = '<!-- rules from docs/standards/'
@@ -138,7 +177,7 @@ function Update-RuleBlock {
         if (-not (Test-Path -LiteralPath $path)) { throw "A rules block names docs/standards/$file, which doesn't exist." }
 
         [void] $result.Append($rest.Substring(0, $lineEnd + 1))
-        foreach ($rule in @((Read-FrontMatter -Path $path)['rules'] | Where-Object { $_['status'] -eq 'accepted' })) {
+        foreach ($rule in @((Read-FrontMatter -Path $path)['rules'] | Where-Object { $_['status'] -eq 'accepted' -and (Test-RuleForProjectType -Rule $_ -ProjectType $ProjectType) })) {
             [void] $result.Append("- $($rule['id']): $($rule['statement'])`n")
         }
         [void] $result.Append($close)
@@ -188,7 +227,9 @@ function Invoke-AgentRuleBuild {
     # Everything is built in memory first, so an invalid source stops the run before any write or delete.
     try {
         $standardsPath = Join-Path $RepoRoot 'docs' 'standards'
-        $expected = @(Get-AgentRuleFile -StandardsPath $standardsPath)
+        # ADR-0084: an app gets the common ruleset and its project types' rulesets; the kit gets every rule.
+        $projectType = @(Get-AppProjectType -RepoRoot $RepoRoot -Known @(Get-KnownProjectType -StandardsPath $standardsPath))
+        $expected = @(Get-AgentRuleFile -StandardsPath $standardsPath -ProjectType $projectType)
         # AGENTS.md, and the kit's template for an app's AGENTS.md, keep their text; only their rule blocks are filled.
         # Every repo has AGENTS.md, and Copilot's instructions are copied from it, so a missing one stops the build;
         # only the kit has the template.
@@ -199,7 +240,7 @@ function Invoke-AgentRuleBuild {
         foreach ($relative in 'AGENTS.md', 'templates/app/AGENTS.md') {
             $path = Join-Path $RepoRoot $relative
             if (-not (Test-Path -LiteralPath $path)) { continue }
-            $filled = Update-RuleBlock -Text ((Get-Content -Path $path -Raw) -replace "`r`n", "`n") -StandardsPath $standardsPath
+            $filled = Update-RuleBlock -Text ((Get-Content -Path $path -Raw) -replace "`r`n", "`n") -StandardsPath $standardsPath -ProjectType $projectType
             $expected += [pscustomobject]@{ Path = $relative; Content = $filled }
             if ($relative -eq 'AGENTS.md') { $agentsText = $filled }
         }
