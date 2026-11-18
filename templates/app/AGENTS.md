@@ -60,7 +60,7 @@ Scripts target PowerShell 7.6 or later (`pwsh`), the current LTS.
 
 **Kit-managed files, don't edit:** every file listed in `.kit/manifest.json`, and this file between `kit:begin` and `kit:end`. With each kit release, Dependabot opens a PR that moves the kit pin, and `.github/workflows/kit-sync.yml` adds the release's other kit-managed files to it, merging the kit's changes into any edit this app made and commenting each file that needs a look (kit ADR-0044, ADR-0045). To change one for good, change the kit.
 
-**Generated files, don't edit:** `.github/copilot-instructions.md`, `.claude/rules/`, `.github/instructions/`, `.kit/tools/rule-status.json` and the block that ends `.globalconfig` (kit ADR-0089). After editing this file, run `./.kit/tools/Build-AgentRules.ps1 -RepoRoot .` and commit both.
+**Generated files, don't edit:** `.github/copilot-instructions.md`, `.claude/rules/`, `.github/instructions/` and `.kit/tools/rule-status.json` (kit ADR-0089). After editing this file, run `./.kit/tools/Build-AgentRules.ps1 -RepoRoot .` and commit both.
 
 ## Done means
 
