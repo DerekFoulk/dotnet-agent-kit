@@ -251,7 +251,7 @@ Describe 'Export-KitApp' {
         $listed | Should -Not -Contain '.github/copilot-instructions.md'
     }
 
-    # ADR-0084: New-KitApp hands the export the app's profile, so its first rule files hold only the common ruleset and
+    # ADR-0084: New-KitApp hands the export the app's profile, so its first rule files hold only the core ruleset and
     # its app types' rulesets, and the manifest lists exactly those.
     It 'writes the app profile it''s given before generating the rule files, so a MAUI app gets no web-only rule' {
         $mauiApp = Join-Path $TestDrive 'maui-app'

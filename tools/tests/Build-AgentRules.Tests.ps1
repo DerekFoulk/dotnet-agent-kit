@@ -189,9 +189,9 @@ Describe 'Build-AgentRules.ps1' {
         }
     }
 
-    # ADR-0084: an app gets the common ruleset and the rulesets of its project types, as its docs/app-profile.md lists
+    # ADR-0084: an app gets the core ruleset and the rulesets of its app types, as its docs/app-profile.md lists
     # them; the kit, and an app whose profile names none, get every rule.
-    Context 'project types' {
+    Context 'app types' {
         BeforeAll {
             function New-TypedStandards {
                 Set-Content -Path (Join-Path $script:standards 'app-types.yml') -Value @'
@@ -218,7 +218,7 @@ types:
             $content | Should -Not -Match 'DAT-002'
         }
 
-        It 'keeps every rule when no project types are given' {
+        It 'keeps every rule when no app types are given' {
             New-TypedStandards
 
             $content = (Get-File '.claude/rules/data.md').Content
@@ -228,7 +228,7 @@ types:
             $content | Should -Match 'DAT-003'
         }
 
-        It 'reads the app''s project types from its profile' {
+        It 'reads the app''s app types from its profile' {
             $root = Join-Path $TestDrive "repo-$(New-Guid)"
             New-Item -ItemType Directory -Path (Join-Path $root 'docs') | Out-Null
             Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value "# App profile: X`n`n## App types`n`nApp types: web-api, maui`n"
@@ -236,9 +236,9 @@ types:
             Get-AppType -RepoRoot $root -Known 'web-api', 'maui', 'blazor' | Should -Be @('web-api', 'maui')
         }
 
-        It 'returns no project types for <Case>, so every rule applies' -ForEach @(
+        It 'returns no app types for <Case>, so every rule applies' -ForEach @(
             @{ Case = 'a repo with no profile, such as the kit'; Profile = $null }
-            @{ Case = 'a profile made before project types'; Profile = "# App profile: X`n`n## Choices`n" }
+            @{ Case = 'a profile made before app types'; Profile = "# App profile: X`n`n## Choices`n" }
         ) {
             $root = Join-Path $TestDrive "repo-$(New-Guid)"
             New-Item -ItemType Directory -Path (Join-Path $root 'docs') | Out-Null
@@ -247,7 +247,7 @@ types:
             Get-AppType -RepoRoot $root -Known 'web-api' | Should -BeNullOrEmpty
         }
 
-        It 'throws for a project type the kit doesn''t know' {
+        It 'throws for an app type the kit doesn''t know' {
             $root = Join-Path $TestDrive "repo-$(New-Guid)"
             New-Item -ItemType Directory -Path (Join-Path $root 'docs') | Out-Null
             Set-Content -Path (Join-Path $root 'docs' 'app-profile.md') -Value "App types: web-api, silverlight`n"
@@ -299,7 +299,7 @@ types:
             $filled | Should -Match '(?m)^After\.$'
         }
 
-        It 'fills the common ruleset''s block with the rules for every type' {
+        It 'fills the core ruleset''s block with the rules for every type' {
             New-RulesetStandards
 
             $filled = Update-RulesetBlock -Text "<!-- ruleset: core -->`n<!-- end ruleset -->`n" -StandardsPath $script:standards

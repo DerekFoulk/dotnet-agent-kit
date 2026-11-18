@@ -378,7 +378,7 @@ Describe 'ConvertTo-KitAppProfile' {
     }
 
     # ADR-0084: the profile names the app's app types, and Build-AgentRules reads that line to give the app only
-    # the common ruleset and those types' rulesets.
+    # the core ruleset and those types' rulesets.
     It 'names the app''s app types on the line Build-AgentRules reads' {
         $profileText | Should -Match '(?m)^App types: web-api, blazor$'
     }

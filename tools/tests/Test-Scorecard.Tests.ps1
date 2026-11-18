@@ -379,7 +379,7 @@ Describe 'Test-Scorecard.ps1' {
             $lines | Should -Contain '**Overall:** 2 rules in force, 1 checked by a tool and 1 advisory; 1 proposed; 1 open gap.'
         }
 
-        # ADR-0084: an app gets the common ruleset and its types' rulesets, so the scorecard shows what each type gets.
+        # ADR-0084: an app gets the core ruleset and its types' rulesets, so the scorecard shows what each type gets.
         It 'counts the rules an app of each app type gets, in force and proposed' {
             $web = New-Rule -Id 'STY-002'; $web['scope'] = @('web-api')
             $maui = New-Rule -Id 'STY-003' -Status 'proposed'; $maui['scope'] = @('maui')
