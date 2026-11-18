@@ -114,6 +114,13 @@ function Get-QuoteProblem {
     if ($quotes -is [string] -or $quotes -is [System.Collections.IDictionary]) {
         return "quotes must be a list, each quote with source, retrieved and text"
     }
+    # The rule's URL sources, each with its retrieval date: a quote names one of them and the same date, so the
+    # page and the day live in sources and the quote is checked against them (CRF-003).
+    $cited = [ordered]@{}
+    foreach ($source in @($(if ($Rule.Contains('sources')) { $Rule['sources'] }))) {
+        if ("$source" -match '^(https?://\S+), retrieved (\S+)$') { $cited[$Matches[1]] = $Matches[2] }
+    }
+    $quoted = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($quote in @($quotes)) {
         if ($quote -isnot [System.Collections.IDictionary]) {
             "quote '$quote' must have source, retrieved and text"
@@ -124,9 +131,30 @@ function Get-QuoteProblem {
                 "a quote has no '$field'"
             }
         }
-        if ($quote.Contains('retrieved') -and "$($quote['retrieved'])" -match '\S' -and
-            -not (Test-IsoDate (ConvertTo-DateText $quote['retrieved']))) {
-            "quote retrieved '$($quote['retrieved'])' must be a date, YYYY-MM-DD"
+        $retrieved = if ($quote.Contains('retrieved')) { ConvertTo-DateText $quote['retrieved'] } else { '' }
+        if ($retrieved -match '\S' -and -not (Test-IsoDate $retrieved)) {
+            "quote retrieved '$retrieved' must be a date, YYYY-MM-DD"
+        }
+        $page = if ($quote.Contains('source')) { "$($quote['source'])" } else { '' }
+        if ($page -match '\S') {
+            if (-not $cited.Contains($page)) {
+                "a quote's source '$page' is not one of the rule's sources (write it as the source is written, without ', retrieved')"
+            }
+            else {
+                [void] $quoted.Add($page)
+                if ((Test-IsoDate $retrieved) -and $retrieved -ne $cited[$page]) {
+                    "a quote of $page says retrieved $retrieved, but its source says $($cited[$page])"
+                }
+            }
+        }
+        # One contiguous passage, so the scheduled re-read (ADR-0083) can find it on the page as written.
+        if ($quote.Contains('text') -and "$($quote['text'])" -match '\.\.\.|…') {
+            "a quote of $page has an ellipsis: store one contiguous passage, and another quote for another passage"
+        }
+    }
+    if ($isAuthority) {
+        foreach ($page in $cited.Keys) {
+            if (-not $quoted.Contains($page)) { "the rule cites $page but has no quote from it" }
         }
     }
 }

@@ -242,13 +242,14 @@ Describe 'Test-RuleSources.ps1' {
             $quote = if ($null -eq $Value) { New-Quote -Remove $Field } else { New-Quote -Override @{ $Field = $Value } }
             New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @($quote) })
 
-            (Get-Problem | ForEach-Object Message) | Should -BeLike $Expected
+            # A quote with no source also leaves the cited page unquoted, which is reported as well.
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike $Expected
         }
 
         It 'reports a quote written as a string, not a map' {
             New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @('We recommend testing against production.') })
 
-            (Get-Problem | ForEach-Object Message) | Should -BeLike '*quote*source, retrieved and text*'
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike '*quote*source, retrieved and text*'
         }
 
         It 'reports a quote whose page the rule doesn''t cite' {
