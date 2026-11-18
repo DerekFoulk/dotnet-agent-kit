@@ -153,3 +153,67 @@ Describe 'Test-RuleQuotes.ps1' {
         }
     }
 }
+
+# ADR-0083: the scheduled re-read. Kit only: an app's standards come from the kit.
+Describe 'rule-quotes.yml' {
+    BeforeAll {
+        Import-Module powershell-yaml
+        $path = Join-Path $PSScriptRoot '..' '..' '.github' 'workflows' 'rule-quotes.yml'
+        $script:text = if (Test-Path -LiteralPath $path) { Get-Content -Raw -LiteralPath $path } else { '' }
+        $script:workflow = if ($text) { ConvertFrom-Yaml $text } else { @{} }
+        $script:jobs = if ($workflow.ContainsKey('jobs')) { $workflow['jobs'] } else { @{} }
+        $script:check = if ($jobs.ContainsKey('check')) { $jobs['check'] } else { @{} }
+        $script:report = if ($jobs.ContainsKey('report')) { $jobs['report'] } else { @{} }
+        # powershell-yaml reads YAML 1.1, where a bare "on" key can be the boolean true.
+        $script:on = if ($workflow.ContainsKey('on')) { $workflow['on'] } elseif ($workflow.ContainsKey($true)) { $workflow[$true] } else { @{} }
+    }
+
+    It 'runs on a schedule, by hand, and on pull requests that change the rules or the check' {
+        $on.ContainsKey('workflow_dispatch') | Should -BeTrue
+        @($on['schedule']).Count | Should -Be 1
+        @($on['pull_request']['paths']) | Should -Be @('docs/standards/**', 'tools/Test-RuleQuotes.ps1', '.github/workflows/rule-quotes.yml')
+    }
+
+    It 'gives the workflow no permissions, the check read access only, and the report only issue writes' {
+        $workflow['permissions'].Count | Should -Be 0
+        @($check['permissions'].Keys) | Should -Be @('contents')
+        $check['permissions']['contents'] | Should -Be 'read'
+        @($report['permissions'].Keys) | Should -Be @('issues')
+        $report['permissions']['issues'] | Should -Be 'write'
+    }
+
+    It 'runs the kit script, and passes only its result word to the report, never page text' {
+        $text | Should -Match '\./tools/Test-RuleQuotes\.ps1'
+        $check['outputs']['result'] | Should -Be '${{ steps.quotes.outputs.result }}'
+        $report['steps'][0]['env']['RESULT'] | Should -Be '${{ needs.check.outputs.result }}'
+        # Every expression the workflow uses is one of these: a page's text never reaches a run step.
+        $allowed = 'steps.quotes.outputs.result', 'needs.check.outputs.result', 'needs.check.result', 'github.event_name',
+        'github.token', 'github.server_url', 'github.repository', 'github.run_id'
+        $used = @([regex]::Matches($text, '\$\{\{\s*(.*?)\s*\}\}') | ForEach-Object { $_.Groups[1].Value } | ForEach-Object { $_ -split "\s*(?:&&|==|!=|\(|\))\s*" } |
+                Where-Object { $_ -match '^[a-z_]+\.[\w.]+$' } | Select-Object -Unique)
+        $used | Should -Not -BeNullOrEmpty
+        foreach ($expression in $used) { $expression | Should -BeIn $allowed }
+    }
+
+    # Review of the branch: on a schedule, pages that don't load (a site that starts blocking runners) passed silently.
+    It 'passes a pull request whose pages didn''t load, but fails a scheduled run, so an issue opens' {
+        $run = ($check['steps'] | Where-Object { $_['id'] -eq 'quotes' })['run']
+        $run | Should -Match "\`$code -eq 2 -and \`$env:GITHUB_EVENT_NAME -eq 'pull_request'"
+        $text | Should -Match 'title="Pages a rule quotes didn''t load"'
+    }
+
+    It 'opens one issue for a missing quote or a failed check, never from a pull request, and not when one is open' {
+        @($report['needs']) | Should -Be @('check')
+        "$($report['if'])" | Should -Match "needs\.check\.result == 'failure'"
+        "$($report['if'])" | Should -Match "github\.event_name != 'pull_request'"
+        $text | Should -Match "title=""A rule's quoted source changed"""
+        $text | Should -Match 'gh issue list'
+        $text | Should -Match 'gh issue create'
+    }
+
+    It 'pins every action to a full commit SHA (SUP-008)' {
+        $uses = @($jobs.Values | ForEach-Object { @($_['steps']) } | Where-Object { $_.ContainsKey('uses') } | ForEach-Object { $_['uses'] })
+        $uses | Should -Not -BeNullOrEmpty
+        $uses | Should -Match '@[0-9a-f]{40}$'
+    }
+}
