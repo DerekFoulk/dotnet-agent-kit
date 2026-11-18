@@ -69,7 +69,7 @@ rules:
     enforcement:
       - kind: gate
         in: [app]
-        how: "ci: Test-SafeMigrations.ps1 in app-checks.reusable.yml fails on each call in a migration's Up to an operation in the script's $UnsafeOperations list (drops, renames, alters, data changes and raw SQL) that has no DAT-003 comment with a reason. Gates aren't per app type (ADR-0084), so the check also runs on a .NET MAUI app's migrations of its device database, which this rule leaves out: such a call needs a DAT-003 comment saying the database is on the device. A fix for device databases is GAP-030"
+        how: "ci: Test-SafeMigrations.ps1 in app-checks.reusable.yml fails on each call in a migration's Up to an operation in the script's $UnsafeOperations list (drops, renames, alters, data changes and raw SQL) that has no DAT-003 comment with a reason. Gates aren't per app type (ADR-0084), so the check also runs on a .NET MAUI app's migrations of its device database, which this rule leaves out: such a call needs a DAT-003 comment saying the database is on the device. A fix for device databases is GAP-030; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
       - kind: advisory
         in: [app]
         how: "whether the reason is true, and a tightened constraint (a new foreign key, unique or check constraint the running version's writes could break), which code review checks"

@@ -140,7 +140,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: dotnet-ci.reusable.yml runs tools/Test-EmptyProjects.ps1, which fails on a C# project in the solution with no source of its own (C#, Razor or .proto files) or with the class library template's empty Class1 left in it"
+        how: "ci: dotnet-ci.reusable.yml runs tools/Test-EmptyProjects.ps1, which fails on a C# project in the solution with no source of its own (C#, Razor or .proto files) or with the class library template's empty Class1 left in it; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
       - kind: advisory
         in: [kit, app]
         how: "the number of modules and the patterns inside them: the plan-checklist skill asks, and code review checks"
@@ -156,7 +156,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects"
+        how: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
       - kind: advisory
         in: [kit, app]
         how: "that a UI project holds no logic, checked by code review"
