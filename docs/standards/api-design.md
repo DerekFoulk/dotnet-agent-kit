@@ -15,7 +15,7 @@ rules:
     scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*.proto", "**/*Hub*.cs"]
   - id: API-008
-    statement: "For a new ASP.NET Core HTTP API, Minimal APIs are recommended; consider controller-based APIs where the app needs what controllers provide, such as model binding extensibility, advanced validation, application parts or the application model, or OData. gRPC is well suited to microservices, point-to-point real-time communication, polyglot and network-constrained environments, and inter-process communication; other frameworks are recommended over gRPC for browser-accessible APIs and for broadcasting real-time messages, where SignalR is a useful framework."
+    statement: "For new ASP.NET Core API projects, Minimal APIs are recommended; consider controller-based APIs if you need model binding extensibility, form binding support (including IFormFile), advanced validation features, application parts or the application model, or OData support. gRPC is well suited to microservices, point-to-point real-time communication, polyglot environments, network-constrained environments and inter-process communication; other frameworks are recommended over gRPC for browser-accessible APIs and for broadcast real-time communication, and SignalR is a useful framework for broadcasting."
     why: "Each style fits different callers; Microsoft's pages name the scenarios each one suits, and the kit's choice among them (API-001) starts from these."
     layer: outside
     basis: authority
@@ -28,15 +28,51 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Consider controller-based APIs if you need:"
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Model binding extensibility (IModelBinderProvider, IModelBinder)"
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Form binding support, including IFormFile"
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Advanced validation features (IModelValidator)"
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Application parts or the application model"
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "OData support"
       - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "gRPC is well suited to the following scenarios:"
       - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
+        text: "Microservices: gRPC is designed for low latency and high throughput communication."
+      - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Point-to-point real-time communication: gRPC has excellent support for bi-directional streaming."
+      - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Polyglot environments: gRPC tooling supports all popular development languages, making gRPC a good choice for multi-language environments."
+      - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Network constrained environments: gRPC messages are serialized with Protobuf, a lightweight message format."
+      - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Inter-process communication (IPC): IPC transports such as Unix domain sockets and named pipes can be used with gRPC to communicate between apps on the same machine."
+      - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
         text: "Other frameworks are recommended over gRPC in the following scenarios:"
       - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
-        text: "SignalR is a useful framework for this scenario."
+        text: "Browser accessible APIs: gRPC isn't fully supported in the browser."
+      - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Broadcast real-time communication: gRPC supports real-time communication via streaming, but the concept of broadcasting a message out to registered connections doesn't exist."
+      - source: "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "SignalR is a useful framework for this scenario. SignalR has the concept of persistent connections and built-in support for broadcasting messages."
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -135,7 +171,7 @@ rules:
     scope: [web-api]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*Contracts*/**"]
   - id: API-007
-    statement: "An HTTP API follows HTTP's semantics as Azure's API design guidance sets them out: base resource URIs on nouns and not verbs where possible, and avoid verbs in URIs to represent operations; a POST that creates a resource synchronously should return 201 Created and identify the resource in the Location header; GET, HEAD, PUT and DELETE must be idempotent; and for work that takes time, consider an asynchronous method, which should return 202 Accepted with the status endpoint's URI in the Location header, whose status endpoint should return 303 See Other with the new resource's URI in a Location header once the work has created one."
+    statement: "In an HTTP API, when possible, base resource URIs on nouns and not verbs, and avoid using verbs in URIs to represent operations; a POST that creates a resource synchronously should return 201 Created and identify the resource in the Location header; GET, HEAD, PUT and DELETE must be idempotent; and for work that takes time, consider making the method asynchronous: an asynchronous method should return 202 Accepted, include the status endpoint's URI in the 202's Location header, and if the operation creates a new resource, the status endpoint should return 303 See Other after it completes, with a Location header that gives the new resource's URI."
     why: "Clients, caches and retries rely on what each method and status code promises: a retried PUT must not change anything twice, and a client finds what it created at Location (rules audit, owner 2026-11-12). The kit's naming convention for collections is API-013."
     layer: outside
     basis: authority
@@ -216,7 +252,7 @@ rules:
     scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Error*.cs"]
   - id: API-011
-    statement: "Implement pagination for an endpoint that returns a collection: use limit and offset query parameters with meaningful defaults, such as limit=25 and offset=0, and consider an upper limit on the number of items returned. Apply pagination in the data store, not after loading the entire collection, with a deterministic sort order; include a next-page link or continuation token in the response, omitted or null on the last page; and for a large or frequently changing collection, evaluate cursor-based pagination."
+    statement: "For an endpoint that returns a collection, use limit and offset query parameters with meaningful defaults, such as limit=25 and offset=0, and consider an upper limit on the number of items returned. Apply pagination in the data store, not after loading the entire collection, with a deterministic sort order; include a next-page link or continuation token in the response, omitted or null on the last page; and for a large or frequently changing collection, evaluate cursor-based pagination."
     why: "Microsoft's API design and implementation guidance give these. Split from API-004, which fixes the kit's numbers (default 25, at most 100, offset at most 10,000) and the response's shape, and gates them."
     layer: outside
     basis: authority
@@ -290,7 +326,7 @@ The reference is the sample's API, `sample/src/Bookmarks.Api`. Everything it use
 
 API-008 holds what Microsoft says, and API-001 is the owner's rule on top of it.
 
-- **What Microsoft says (API-008):** for a new ASP.NET Core HTTP API, Minimal APIs are recommended. Consider controller-based APIs where the app needs what controllers provide, such as model binding extensibility, advanced validation, application parts or the application model, or OData. gRPC is well suited to microservices, point-to-point real-time communication, polyglot and network-constrained environments, and inter-process communication. Other frameworks are recommended over gRPC for browser-accessible APIs and for broadcasting real-time messages, where SignalR is a useful framework.
+- **What Microsoft says (API-008):** for new ASP.NET Core API projects, Minimal APIs are recommended. Consider controller-based APIs if you need model binding extensibility, form binding support (including `IFormFile`), advanced validation features, application parts or the application model, or OData support. gRPC is well suited to microservices, point-to-point real-time communication, polyglot environments, network-constrained environments and inter-process communication. Other frameworks are recommended over gRPC for browser-accessible APIs and for broadcast real-time communication, and SignalR is a useful framework for broadcasting. Only Minimal APIs and those other frameworks are recommended in so many words: the page suggests considering controllers and calls gRPC well suited.
 - **What the owner decided (API-001, 2026-11-17):** an HTTP API with Minimal APIs is the default. gRPC, SignalR, controllers or GraphQL come only where a Microsoft page recommends that style for the app's scenario (API-008) or the owner asks for it by name, and the plan says which. GraphQL has no Microsoft recommendation in API-008, so it takes the owner's request.
 
 An app can mix styles, for example an HTTP API for its UI and SignalR for live updates, each one chosen as above.

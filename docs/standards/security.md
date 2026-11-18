@@ -248,7 +248,7 @@ rules:
         how: "code review checks cryptography and deserialization against this rule: no custom cipher or MAC, no secret compared with == or SequenceEqual, no PBKDF2 over SHA-1 or a low iteration count, no RSA key under 2048 bits, and no type chosen from the input; SEC-014's analyzers and bans gate what a tool can see"
     paths: ["**/*.cs"]
   - id: SEC-016
-    statement: "When a secret is exposed, revoke or rotate it immediately; removing it from git history is time-intensive and often unnecessary once the credential is revoked. Consider detecting secrets before they're committed."
+    statement: "Keys that were exposed should undergo immediate revocation, and when secret scanning alerts on one, rotate the affected credential immediately; removing it from git history is time-intensive and often unnecessary once the credential is revoked. Consider detecting secrets before they're committed."
     why: "OWASP and GitHub both say to treat an exposed secret as compromised and revoke it, which is why SEC-001's gitleaks scan covers the full history."
     layer: outside
     basis: authority
@@ -298,7 +298,7 @@ rules:
         how: "code review checks that the app sets a fallback policy; SEC-007's gates check it in the sample and in an app's shared host checks"
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*ServiceDefaults*/**", "**/*Security*.cs"]
   - id: SEC-018
-    statement: "Don't generate your own access tokens or ID tokens in production; use OpenID Connect or an OAuth standard to create access tokens for API access, and never create an access token from a username and password request. An API should fully validate JWT bearer tokens (signature, issuer, audience and expiration) and return 401 when any check fails. ASVS 9.1.1, 9.2.1 and 9.2.3 ask for the signature or MAC, validity time span and audience checks."
+    statement: "Don't generate your own access tokens or ID tokens, except for testing purposes; use OpenID Connect or an OAuth standard to create access tokens for API access, and you should not create an access token from a username and password request. JWT bearer tokens should be fully validated in an API (signature, issuer, audience and expiration), and the API should return 401 when any of them is incorrect. ASVS 9.1.1, 9.2.1 and 9.2.3 ask for the signature or MAC, validity time span and audience checks."
     why: "Self-made tokens that don't follow established standards can lead to security vulnerabilities; the API is where a token's signature, issuer, audience and lifetime are checked (GAP-006)."
     layer: outside
     basis: authority
@@ -316,7 +316,7 @@ rules:
         text: "You should NOT create an access token from a username/password request."
       - source: "https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
-        text: "JWT bearer tokens should be fully validated in an API."
+        text: "JWT bearer tokens should be fully validated in an API. The following should be validated:"
       - source: "https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Signature, for trust and integrity."
@@ -348,7 +348,7 @@ rules:
         how: "code review checks token creation and validation against this rule; SEC-008's gate covers the sample's bearer handling"
     paths: ["**/Program.cs", "**/appsettings*.json", "**/*.csproj", "**/*Security*.cs"]
   - id: SEC-019
-    statement: "Every API endpoint that receives an object's id and acts on the object should implement object-level authorization checks that the logged-in user may perform the action on that object, in every function that takes a record id from the client, at a trusted service layer. To store information per user, use the sub or oid claim alone (with tid for routing or sharding if needed), and don't identify a user by human-readable data."
+    statement: "Every API endpoint that receives an ID of an object and performs any action on the object should implement object-level authorization checks. Use the authorization mechanism to check that the logged-in user has access to perform the requested action on the record in every function that uses an input from the client to access a record in the database. ASVS 8.2.2 and 8.3.1: data-specific access is restricted to consumers with explicit permissions to specific data items, and authorization rules are enforced at a trusted service layer. To store information per user, use the sub or oid claim alone (with tid for routing or sharding if needed), and don't identify a user by human-readable data."
     why: "Broken object-level authorization is OWASP's top API risk, and an id in a URL is easy to change (GAP-006)."
     layer: outside
     basis: authority
@@ -380,7 +380,7 @@ rules:
         how: "code review checks that each endpoint taking an object id checks the caller's access to it; SEC-009's gates check the sample"
     paths: ["**/*Endpoints*.cs", "**/*Repository*.cs", "**/Features/**", "**/*Domain*/**"]
   - id: SEC-020
-    statement: "Define and enforce a maximum size of data on all incoming parameters and payloads, such as maximum length for strings, maximum number of elements in arrays and maximum upload file size. Add server-side validation for query string and request body parameters, especially the one that controls the number of records returned. ASVS 2.2.1 and 2.2.2: validate input against an allow list or expected structure and limits, at a trusted service layer."
+    statement: "Define and enforce a maximum size of data on all incoming parameters and payloads, such as maximum length for strings, maximum number of elements in arrays and maximum upload file size. Add server-side validation for query string and request body parameters, especially the one that controls the number of records returned. ASVS 2.2.1 and 2.2.2: input is validated to enforce business or functional expectations for that input, which should either use positive validation against an allow list of values, patterns and ranges or compare the input to an expected structure and logical limits, and input validation is enforced at a trusted service layer."
     why: "Unbounded input is an easy denial of service (OWASP API4), and a check that only runs in the client isn't one (GAP-006)."
     layer: outside
     basis: authority
@@ -395,7 +395,7 @@ rules:
         text: "Add proper server-side validation for query string and request body parameters, specifically the one that controls the number of records to be returned in the response."
       - source: "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x11-V2-Validation-and-Business-Logic.md"
         retrieved: "2026-11-17"
-        text: "Verify that input is validated to enforce business or functional expectations for that input."
+        text: "Verify that input is validated to enforce business or functional expectations for that input. This should either use positive validation against an allow list of values, patterns, and ranges, or be based on comparing the input to an expected structure and logical limits according to predefined rules."
       - source: "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x11-V2-Validation-and-Business-Logic.md"
         retrieved: "2026-11-17"
         text: "Verify that the application is designed to enforce input validation at a trusted service layer."
@@ -406,7 +406,7 @@ rules:
         how: "code review checks that each request type bounds every string, collection and number; SEC-010's gates check the sample"
     paths: ["**/*Contracts*/**", "**/*Endpoints*.cs", "**/*Domain*/**"]
   - id: SEC-021
-    statement: "Apply Microsoft's Kestrel security checklist for where the app is hosted. At the edge: use host-filtering middleware, enable HTTPS redirection, handle rate limiting in the application, don't enable the Forwarded Headers middleware, verify ASPNETCORE_FORWARDEDHEADERS_ENABLED isn't set, consider lowering the request body limit significantly for an API that accepts no large uploads, and consider disabling the Server header. Behind a reverse proxy: the Forwarded Headers middleware is required, with KnownProxies or KnownIPNetworks configured explicitly. OWASP API4: limit how often a client can interact with the API within a defined timeframe (rate limiting)."
+    statement: "Where Kestrel is an edge server, with no reverse proxy: use host-filtering middleware, enable HTTPS redirection, rate limiting must be handled by the application, don't enable the Forwarded Headers middleware, and verify ASPNETCORE_FORWARDEDHEADERS_ENABLED isn't set in edge deployments. Behind a reverse proxy, the Forwarded Headers middleware is required; configure KnownProxies or KnownIPNetworks explicitly. For an API that doesn't accept large uploads, consider lowering the request body limit significantly. Disable Kestrel's Server header (AddServerHeader) to prevent server identification. OWASP API4: limit how often a client can interact with the API within a defined timeframe (rate limiting)."
     why: "Kestrel's defaults allow every host, any body up to 30 MB and unlimited requests, and announce the server; the checklist closes each (rules audit, owner 2026-11-12)."
     layer: outside
     basis: authority
@@ -422,6 +422,9 @@ rules:
         text: "Edge servers: Enable HTTPS Redirection."
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
+        text: "When Kestrel is directly accessible from the internet, it is the first line of defense:"
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
         text: "Rate limiting must be handled by the application."
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
@@ -431,10 +434,10 @@ rules:
         text: "Verify this variable isn't set in edge deployments—check your Dockerfiles, orchestrator configs, CI/CD pipelines, and hosting platform defaults."
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
-        text: "For APIs that don't accept large uploads, consider lowering this significantly."
+        text: "The MaxRequestBodySize default (30 MB) is chosen for compatibility with IIS defaults. For APIs that don't accept large uploads, consider lowering this significantly."
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
-        text: "Disable it to prevent server identification"
+        text: "AddServerHeader (default true) causes Kestrel to include Server: Kestrel in every response. Disable it to prevent server identification"
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Forwarded Headers middleware is required to preserve the original client IP, scheme, and host."
@@ -451,7 +454,7 @@ rules:
         how: "the plan names where the app is hosted, and code review checks the rest for that hosting; SEC-011's gates check the sample's and an app's host settings"
     paths: ["**/Program.cs", "**/appsettings*.json", "**/*Hosting*.cs", "**/Dockerfile"]
   - id: SEC-022
-    statement: "Most applications should strive for OWASP ASVS Level 2; Level 1 is the minimum starting point for securing an application."
+    statement: "Most applications should strive for OWASP ASVS Level 2; Level 1 contains the minimum requirements to consider when securing an application and is a critical starting point."
     why: "ASVS is OWASP's open standard of security requirements for web apps and web services; its levels say how deep to verify (rules audit, owner 2026-11-12)."
     layer: outside
     basis: authority
@@ -502,7 +505,7 @@ rules:
         how: "code review checks the properties each endpoint returns and accepts; SEC-013's gates check that endpoints use Contracts types"
     paths: ["**/*Endpoints*.cs", "**/*Contracts*/**"]
   - id: SEC-024
-    statement: "Don't use binary formatters, and stop using BinaryFormatter as soon as possible, even if the data seems trustworthy. If you disable a security analyzer rule, clearly mark the reason in code and inform the designated security officer for your development project."
+    statement: "Don't use binary formatters; applications should stop using BinaryFormatter as soon as possible, even if they believe the data they're processing to be trustworthy. If you disable a security analyzer rule, you should clearly mark the reason in code and also inform the designated security officer for your development project."
     why: "BinaryFormatter is insecure and can't be made secure; a disabled security rule should leave a trail (Secure Coding Guidelines pass, 2026-11-15)."
     layer: outside
     basis: authority
@@ -526,7 +529,7 @@ rules:
         how: "code review checks for binary formatters and that a suppressed security rule names its reason; SEC-014's analyzers and bans gate what a tool can see"
     paths: ["**/*.cs", "BannedSymbols.txt"]
   - id: SEC-025
-    statement: "Choose the algorithms the .NET cryptography page lists as recommended (Aes for data privacy; HMACSHA256 or HMACSHA512 for data integrity; ECDsa or RSA for digital signatures; RandomNumberGenerator for random numbers; Rfc2898DeriveBytes.Pbkdf2 for a key from a password). To use padded CBC block ciphers safely, combine them with an HMAC or other data integrity check that you validate with a constant time comparison before decrypting. Take the same precautions with user input as with malicious code calling your code."
+    statement: "Prefer the algorithms the .NET cryptography page recommends by application: Aes for data privacy; HMACSHA256 or HMACSHA512 for data integrity; ECDsa or RSA for digital signatures; RandomNumberGenerator.GetBytes or RandomNumberGenerator.Fill for random number generation; and Rfc2898DeriveBytes.Pbkdf2 for generating a key from a password. To use padded CBC block ciphers safely, you must combine them with an HMAC or other data integrity check that you validate with a constant time comparison before decrypting. User input should be treated with the same precautions as malicious code calling your code with strange parameters."
     why: "Unauthenticated CBC leaks plaintext through padding oracles, and user input is a gateway for bad data into other code (Secure Coding Guidelines pass, 2026-11-15)."
     layer: outside
     basis: authority
@@ -537,12 +540,27 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
         retrieved: "2026-11-17"
         text: "Here is a list of recommended algorithms by application:"
+      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
+        retrieved: "2026-11-17"
+        text: "Data privacy: Aes"
+      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
+        retrieved: "2026-11-17"
+        text: "Data integrity: HMACSHA256 HMACSHA512"
+      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
+        retrieved: "2026-11-17"
+        text: "Digital signature: ECDsa RSA"
+      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
+        retrieved: "2026-11-17"
+        text: "Random number generation: RandomNumberGenerator.GetBytes RandomNumberGenerator.Fill"
+      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
+        retrieved: "2026-11-17"
+        text: "Generating a key from a password: Rfc2898DeriveBytes.Pbkdf2"
       - source: "https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode"
         retrieved: "2026-11-17"
         text: "to use padded CBC block ciphers safely, you must combine them with an HMAC (or another data integrity check) that you validate using a constant time comparison before trying to decrypt the data."
       - source: "https://learn.microsoft.com/dotnet/standard/security/security-and-user-input"
         retrieved: "2026-11-17"
-        text: "This situation is analogous to malicious code calling your code with strange parameters, and the same precautions should be taken."
+        text: "User data, which is any kind of input (data from a Web request or URL, input to controls of a Microsoft Windows Forms application, and so on), can adversely influence code because often that data is used directly as parameters to call other code. This situation is analogous to malicious code calling your code with strange parameters, and the same precautions should be taken."
     scope: core
     enforcement:
       - kind: advisory

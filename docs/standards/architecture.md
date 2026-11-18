@@ -163,8 +163,21 @@ rules:
     scope: [maui]
     paths: ["src/**", "**/*.csproj"]
   - id: ARC-011
+    statement: "A desktop app is a .NET MAUI app (Windows and Mac Catalyst), the same stack as mobile: WinUI 3, WPF and Windows Forms aren't supported app types yet, so a desktop app on any of them, like any other app type the kit doesn't support, needs an ADR."
+    why: "One UI stack across phone and desktop shares the most code and the kit's CI and rules. The kit supports three app types, web-api, blazor and maui (docs/standards/app-types.yml, ADR-0084); WinUI 3, WPF and Windows Forms aren't among them yet. ARC-014 holds what Microsoft recommends for a new Windows desktop app. The kit says \"WinUI 3\", never just \"WinUI\" (owner, 2026-11-17), because WinUI 2 is a different library, for UWP apps."
+    layer: owner
+    basis: preference
+    status: proposed
+    sources: ["ADR-0008", "ADR-0059", "owner, 2026-11-17"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "an architecture choice; code review checks a desktop app is .NET MAUI or has the ADR"
+    scope: [maui]
+    paths: ["**/*.csproj"]
+  - id: ARC-014
     statement: "A new general-purpose Windows desktop app is recommended to use WinUI 3, the native UI framework delivered with the Windows App SDK; a team expecting to target several platforms should start with .NET MAUI (Microsoft names React Native for Desktop beside it), which uses WinUI 3 when running on Windows."
-    why: "The UI framework is the hardest choice to undo in a desktop app: Microsoft says a WinUI 3 app can't later add .NET MAUI for other platforms. The kit says \"WinUI 3\", never just \"WinUI\" (owner, 2026-11-17), because WinUI 2 is a different library, for UWP apps."
+    why: "The UI framework is the hardest choice to undo in a desktop app: asked whether a WinUI 3 app can later integrate .NET MAUI for cross-platform scenarios, Microsoft's FAQ answers \"Not at this time.\" ARC-011 holds the kit's own rule, which keeps desktop apps on .NET MAUI while WinUI 3 isn't a supported app type."
     layer: outside
     basis: authority
     status: proposed
@@ -178,7 +191,10 @@ rules:
         text: "WinUI 3 is the native UI framework delivered with the Windows App SDK."
       - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"
         retrieved: "2026-11-17"
-        text: "Although .NET MAUI uses WinUI 3 when running on Windows, teams expecting to target multiple platforms should start with .NET MAUI or React Native for Desktop."
+        text: "Can I start with WinUI 3, and later integrate .NET MAUI if I eventually want to target cross-platform scenarios?"
+      - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"
+        retrieved: "2026-11-17"
+        text: "Not at this time. Although .NET MAUI uses WinUI 3 when running on Windows, teams expecting to target multiple platforms should start with .NET MAUI or React Native for Desktop."
       - source: "https://learn.microsoft.com/dotnet/maui/what-is-maui"
         retrieved: "2026-11-17"
         text: "Windows apps built using .NET MAUI use Windows UI 3 (WinUI 3) library to create native apps that target the Windows desktop."
@@ -186,19 +202,6 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "an architecture choice in the plan; code review checks the framework against the app's platforms"
-    scope: [maui]
-    paths: ["**/*.csproj"]
-  - id: ARC-014
-    statement: "A new desktop app uses the framework ARC-011 names for its platforms (WinUI 3 for a Windows desktop app, .NET MAUI for several platforms); a new WPF or Windows Forms app needs an ADR that says why."
-    why: "The kit's rules, CI and checks are built for the recommended frameworks; WPF and Windows Forms serve Windows alone and are the older stacks (ADR-0059). Before 2026-11-17 this rule sent every desktop app to .NET MAUI and asked an ADR for WinUI 3 too; the owner had it follow Microsoft's recommendation instead (ARC-011)."
-    layer: owner
-    basis: preference
-    status: proposed
-    sources: ["ADR-0008", "ADR-0059", "owner, 2026-11-17"]
-    enforcement:
-      - kind: advisory
-        in: [kit, app]
-        how: "an architecture choice; code review checks for the ADR"
     scope: [maui]
     paths: ["**/*.csproj"]
   - id: ARC-012
@@ -260,7 +263,7 @@ rules:
     scope: core
     paths: ["docs/adr/**"]
   - id: ARC-016
-    statement: "For a non-trivial monolithic ASP.NET Core application, Clean Architecture is the most appropriate way to structure it: the Application Core holds the business model and the abstractions for infrastructure, Infrastructure implements them, and the UI layer interacts with infrastructure strictly through interfaces defined in the Application Core."
+    statement: "ASP.NET Core's built-in use of and support for dependency injection makes Clean Architecture the most appropriate way to structure non-trivial monolithic applications. In it, the Application Core holds the business model, including the interfaces for operations performed using Infrastructure; Infrastructure's services should implement interfaces defined in the Application Core; and the UI project should reference the Application Core project, and its types should interact with infrastructure strictly through interfaces defined in Application Core."
     why: "Microsoft's modern web apps guide says so, for monolithic applications built on ASP.NET Core's dependency injection. ARC-001 is the kit's own shape for it."
     layer: outside
     basis: authority
@@ -272,7 +275,13 @@ rules:
         text: "ASP.NET Core's built-in use of and support for dependency injection makes this architecture the most appropriate way to structure non-trivial monolithic applications."
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures"
         retrieved: "2026-11-17"
-        text: "This project should reference the Application Core project, and its types should interact with infrastructure strictly through interfaces defined in Application Core."
+        text: "The Application Core holds the business model, which includes entities, services, and interfaces. These interfaces include abstractions for operations that will be performed using Infrastructure, such as data access, file system access, network calls, etc."
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures"
+        retrieved: "2026-11-17"
+        text: "These services should implement interfaces defined in the Application Core, and so Infrastructure should have a reference to the Application Core project."
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures"
+        retrieved: "2026-11-17"
+        text: "The user interface layer in an ASP.NET Core MVC application is the entry point for the application. This project should reference the Application Core project, and its types should interact with infrastructure strictly through interfaces defined in Application Core."
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -280,7 +289,7 @@ rules:
     scope: [web-api, blazor]
     paths: ["src/**", "sample/**"]
   - id: ARC-017
-    statement: "In a .NET MAUI app that uses MVVM, keep view models and views independent: don't reference view types, such as Button and ListView, from view models, and avoid enabling and disabling UI elements in the code-behind, binding them to view model properties instead."
+    statement: "In a .NET MAUI app that uses MVVM, keep view models and views independent: don't reference view types, such as Button and ListView, from view models. Avoid enabling and disabling UI elements in the code-behind: enable and disable them by binding to view model properties instead."
     why: "Microsoft's MVVM page gives these as tips, so view models are tested in isolation."
     layer: outside
     basis: authority
@@ -289,7 +298,13 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/maui/mvvm"
         retrieved: "2026-11-17"
+        text: "Keep view models and views independent."
+      - source: "https://learn.microsoft.com/dotnet/architecture/maui/mvvm"
+        retrieved: "2026-11-17"
         text: "Specifically, don't reference view types, such as Button and ListView, from view models."
+      - source: "https://learn.microsoft.com/dotnet/architecture/maui/mvvm"
+        retrieved: "2026-11-17"
+        text: "Avoid enabling and disabling UI elements in the code-behind."
       - source: "https://learn.microsoft.com/dotnet/architecture/maui/mvvm"
         retrieved: "2026-11-17"
         text: "Therefore, enable and disable UI elements by binding to view model properties, rather than enabling and disabling them in code-behind."
@@ -318,8 +333,8 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: ARC-019
-    statement: "Justify every design decision with a business requirement, and avoid over-engineering as well as under-engineering. Don't use CQRS and DDD patterns everywhere: many subsystems are simpler and can be implemented more easily with simple CRUD services."
-    why: "Microsoft's Well-Architected simplicity page and its microservices guide say so. Split from ARC-009, which gives the kit's own sizes (modules, projects, patterns) and gates empty projects."
+    statement: "Justify every design decision with a business requirement, and avoid over-engineering as well as under-engineering. Don't use CQRS and DDD patterns everywhere."
+    why: "Microsoft's Well-Architected simplicity page and its microservices guide say so; the guide adds that many subsystems are simpler and can be implemented more easily using simple CRUD services or another approach. Split from ARC-009, which gives the kit's own sizes (modules, projects, patterns) and gates empty projects."
     layer: outside
     basis: authority
     status: proposed
@@ -368,8 +383,8 @@ ADR-0059 sets how these are shaped and built.
 
 ## What Microsoft says, and what the kit adds
 
-A rule with `basis: authority` says only what its cited page says, at the page's strength, and stores the sentence. ARC-015 (decision records), ARC-016 (Clean Architecture for non-trivial monoliths), ARC-017 (MAUI view models and views), ARC-018 (TimeProvider) and ARC-019 (justify each decision, no CQRS or DDD everywhere) are those. The kit's own tightenings sit beside them as preferences: ARC-005 (the ADR template and its checks), ARC-001 (the module shape), ARC-008 (the clock ban and pure assemblies) and ARC-009 (how much structure).
+A rule with `basis: authority` says only what its cited page says, at the page's strength, and stores the sentence. ARC-014 (WinUI 3 or .NET MAUI for a new desktop app), ARC-015 (decision records), ARC-016 (Clean Architecture for non-trivial monoliths), ARC-017 (MAUI view models and views), ARC-018 (TimeProvider) and ARC-019 (justify each decision, no CQRS or DDD everywhere) are those. The kit's own tightenings sit beside them as preferences: ARC-011 (desktop apps are .NET MAUI apps while WinUI 3, WPF and Windows Forms aren't supported types), ARC-005 (the ADR template and its checks), ARC-001 (the module shape), ARC-008 (the clock ban and pure assemblies) and ARC-009 (how much structure).
 
 ## Pending ratification
 
-ARC-010 and ARC-011 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them. The coverage gate's exemption is in force once this change merges, which needs your yes, since it changes a CI check (AGENTS.md, "Working modes").
+ARC-010 and ARC-011 were added in auto mode (ADR-0035), and ARC-014, ARC-016, ARC-017 and ARC-019 are new authority rules from 2026-11-17, so they stay `proposed` until you accept them. On 2026-11-17 ARC-011 went back to sending every desktop app to .NET MAUI, because WinUI 3, WPF and Windows Forms aren't supported app types yet; ARC-014 holds Microsoft's recommendation of WinUI 3. The coverage gate's exemption is in force once this change merges, which needs your yes, since it changes a CI check (AGENTS.md, "Working modes").

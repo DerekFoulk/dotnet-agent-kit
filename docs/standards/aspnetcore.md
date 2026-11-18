@@ -2,22 +2,13 @@
 topic: aspnetcore
 rules:
   - id: ASP-001
-    statement: "Avoid the service locator pattern, stateful static classes and members, and direct instantiation of dependent classes within services. Prefer constructor parameters over resolving services from RequestServices, and never dispose a service the container resolved."
-    why: "Microsoft's dependency injection page names these as patterns to avoid or never do; each hides a dependency or breaks the container's ownership of lifetimes."
+    statement: "Prefer requesting dependencies as constructor parameters over resolving services from RequestServices. Services resolved from the container should never be disposed by the developer. CRF-020 carries the rest of Microsoft's dependency injection guidance (the service locator pattern, stateful static classes and members, direct instantiation of dependent classes)."
+    why: "Constructor parameters show what a class needs and make it easier to test, and the container already disposes the IDisposable services it creates, so disposing one by hand breaks the container's ownership of its lifetime."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Avoid using the service locator pattern."
-      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Avoid stateful, static classes and members."
-      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Avoid direct instantiation of dependent classes within services."
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Prefer requesting dependencies as constructor parameters over resolving services from RequestServices."
@@ -28,12 +19,12 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "code review checks for GetService or GetRequiredService calls outside composition code, new on a dependency inside a service, mutable static state, and Dispose calls on container-resolved services"
+        how: "code review checks for services resolved from HttpContext.RequestServices where a constructor parameter would do, and for Dispose calls on container-resolved services"
     paths: ["**/*.cs"]
 
   - id: ASP-002
-    statement: "Never store passwords or other sensitive data in configuration provider code or in plain text configuration files, and don't use production secrets in development or test. Group related hierarchical configuration with the Options pattern (recommended). Don't store a production connection string in an environment variable (recommended against)."
-    why: "The configuration, app-secrets and security pages all give these as the baseline for secrets and for reading settings; OPS-006 and SEC-001 cover validating options and keeping secrets out of the repo."
+    statement: "Never store passwords or other sensitive data in configuration provider code or in plain text configuration files, and don't use production secrets in development or test environments. Secrets shouldn't be deployed with the app. Using environment variables to store a production connection string is recommended against, as it's not the most secure approach. In complex app configuration scenarios, grouping and reading related hierarchical configuration data with the Options pattern is recommended."
+    why: "A secret in a configuration file, in code or shipped with the app can be read by anyone who gets those files. OPS-006 and SEC-001 cover validating options and keeping secrets out of the repo."
     layer: outside
     basis: authority
     status: proposed
@@ -62,8 +53,8 @@ rules:
     paths: ["**/appsettings*.json", "**/Program.cs", "**/*.cs"]
 
   - id: ASP-003
-    statement: "Set minimum log levels in configuration, not in C# code, and don't specify them with filter functions in code. Don't write log messages directly to a slow data store, such as SQL Server, in a Log method."
-    why: "The logging page recommends configuration for levels, and warns that Log methods are synchronous, so a slow store should be filled from a fast one."
+    statement: "Setting the minimum default log level in configuration, not in C# code, is recommended, and so is specifying log levels in configuration rather than in code with filter functions. If a logging data store is slow, don't write to it directly: consider writing the log messages to a fast store first and moving them to the slower store later. For example, don't write log messages directly to a SQL Server data store in a Log method, because Log methods are synchronous."
+    why: "Levels in configuration can change without a rebuild, and a synchronous Log method that waits on a slow store slows every caller."
     layer: outside
     basis: authority
     status: proposed
@@ -77,17 +68,23 @@ rules:
         text: "We recommend specifying log levels in configuration and not in code with filter functions."
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/logging?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
+        text: "If a logging data store is slow, don't write to it directly."
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/logging?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Consider writing the log messages to a fast store initially, then move the logs to the slower data store later."
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/logging?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
         text: "For example, don't write log messages directly to a SQL Server data store in a Log method because Log methods are synchronous."
     scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "code review checks for SetMinimumLevel, AddFilter with a function and custom logger providers that write synchronously to a database"
+        how: "code review checks for SetMinimumLevel, AddFilter with a function and custom logger providers that write synchronously to a slow store"
     paths: ["**/Program.cs", "**/*.cs"]
 
   - id: ASP-004
-    statement: "Don't store sensitive data in session state, and keep the site working without the session data: store critical data in the user database and cache it in session only as a performance optimization. SignalR apps shouldn't use session state. Never put sensitive data in a query string, and always revalidate data read back from hidden fields."
-    why: "The session page lists each as a warning or requirement: session is a cache the client can lose, and query strings and hidden fields are visible to and changeable by the client."
+    statement: "Don't store sensitive data in session state. The site should continue to function without the session data: critical application data should be stored in the user database and cached in session only as a performance optimization. SignalR apps shouldn't use session state. Never use query strings for sensitive data, and the app must always revalidate the data stored in hidden fields."
+    why: "Session data is a cache that can be lost, and the client can read a query string and change a hidden field."
     layer: outside
     basis: authority
     status: proposed
@@ -96,6 +93,9 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't store sensitive data in session state."
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "The site should continue to function without the session data."
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Critical application data should be stored in the user database and cached in session only as a performance optimization."
@@ -108,7 +108,7 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Because the client can potentially tamper with the data, the app must always revalidate the data stored in hidden fields."
-    scope: [blazor]
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -116,8 +116,8 @@ rules:
     paths: ["**/*.cs", "**/*.cshtml", "**/*.razor"]
 
   - id: ASP-005
-    statement: "Never change state on a GET request (a best practice). For browser apps that use cookies, use AutoValidateAntiforgeryToken broadly outside API scenarios (recommended). Don't disable CSRF protection on browser-accessible endpoints that rely on cookies for authentication."
-    why: "The anti-request-forgery page gives these three together: safe methods stay safe, validation is on by default, and opting out is only for endpoints a browser can't be tricked into calling."
+    statement: "A best practice is to never change state on a GET request. Using AutoValidateAntiforgeryToken broadly for non-API scenarios is recommended. Don't disable CSRF protection on browser-accessible endpoints that rely on cookies for authentication."
+    why: "Another site can make a browser send a GET, and a cookie-authenticated endpoint without antiforgery validation accepts a forged request as the signed-in user's."
     layer: outside
     basis: authority
     status: proposed
@@ -140,8 +140,8 @@ rules:
     paths: ["**/*.cs", "**/*.cshtml", "**/*.razor"]
 
   - id: ASP-006
-    statement: "Handle uploaded files safely: never use a client-supplied file name to save a file to physical storage, never grant execute permission on the upload location, set a maximum size limit, don't persist uploads in the same directory tree as the app, and check the file's extension against a list of permitted extensions (should)."
-    why: "The file uploads page lists these protections for the risks uploads bring: overwrites, code execution and large requests."
+    statement: "Handle uploaded files safely: never use a client-supplied file name for saving a file to physical storage; when the app stores uploads on physical storage, never grant execute permission on the storage location; set a maximum size limit to prevent large uploads; do not persist uploaded files in the same directory tree as the app; and the uploaded file's extension should be checked against a list of permitted extensions. BLZ-022 adds the Blazor file-upload page's own advice."
+    why: "An upload can overwrite files, carry code to run or exhaust the server; each of these closes one of those paths."
     layer: outside
     basis: authority
     status: proposed
@@ -166,12 +166,12 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "code review checks any IFormFile or upload endpoint for a generated storage name, a size limit, a permitted-extension check and a storage location outside the app"
-    paths: ["**/*.cs"]
+        how: "code review checks any IFormFile, IBrowserFile or upload endpoint for a generated storage name, a size limit, a permitted-extension check and a storage location outside the app"
+    paths: ["**/*.cs", "**/*.razor"]
 
   - id: ASP-007
-    statement: "Don't store files that require authorization in wwwroot and rely only on MapStaticAssets().RequireAuthorization() to protect them. Disable directory browsing in production (highly recommended). Don't rely on file extension filtering to protect private files."
-    why: "The static files page warns that wwwroot content is served as is, so protection must come from where the file lives and how it is served."
+    statement: "Don't store files that require authorization in wwwroot and rely only on MapStaticAssets().RequireAuthorization() to protect them. Disabling directory browsing in production is highly recommended. Don't rely on file extension filtering to protect private files."
+    why: "The static file and directory browsing middleware can serve files that weren't meant to be public, so a private file's protection shouldn't rest on where it sits under wwwroot or on its extension."
     layer: outside
     basis: authority
     status: proposed
@@ -194,8 +194,8 @@ rules:
     paths: ["**/wwwroot/**", "**/Program.cs"]
 
   - id: ASP-008
-    statement: "Write and test apps to never depend on cached data: always have a fallback that fetches the data. Don't insert external input into the cache, and avoid external user input directly in cache keys. Don't cache user-specific data that other users' requests may retrieve."
-    why: "The in-memory cache, HybridCache and session pages share this: a cache can be empty or evicted at any time, and a key or entry built from untrusted input is unbounded or can leak across users."
+    statement: "Apps should be written and tested to never depend on cached data: code should always have a fallback option to fetch the data. Don't insert external input into the cache, and avoid using external user input directly in cache keys. Do not cache user-specific data that may be retrieved by other user requests."
+    why: "A cache entry can be missing or evicted at any time, and an entry or key built from untrusted input can grow without bound or reach another user."
     layer: outside
     basis: authority
     status: proposed
@@ -224,8 +224,8 @@ rules:
     paths: ["**/*.cs"]
 
   - id: ASP-009
-    statement: "Enable HTTP response caching only for content that doesn't change based on a user's identity or whether a user is signed in. Mark responses with content for authenticated clients as not cacheable so the response caching middleware doesn't store and serve them."
-    why: "The response caching pages say this to stop one user's page being served to another."
+    statement: "HTTP response caching should only be enabled for content that doesn't change based on a user's identity or whether a user is signed in. Responses containing content for authenticated clients must be marked as not cacheable, to prevent the response caching middleware from storing and serving them."
+    why: "A cached per-user response can be served to a different user."
     layer: outside
     basis: authority
     status: proposed
@@ -245,8 +245,8 @@ rules:
     paths: ["**/*.cs", "**/*.cshtml"]
 
   - id: ASP-010
-    statement: "In MVC and controller-based APIs, prefer authorization policies (or a custom authorization policy) over a custom filter, and prefer middleware for exception handling. Don't throw exceptions within authorization filters. Avoid filters used purely for logging."
-    why: "The filters page gives these so that cross-cutting behavior sits where the framework already handles it."
+    statement: "In controller-based APIs, prefer configuring authorization policies or writing a custom authorization policy over writing a custom filter, and prefer middleware for exception handling. Do not throw exceptions within authorization filters. Avoid creating and using filters purely for logging purposes."
+    why: "Authorization, exception handling and logging each already have a place in the framework's pipeline; a filter that repeats one adds a second place to look."
     layer: outside
     basis: authority
     status: proposed
@@ -272,8 +272,8 @@ rules:
     paths: ["**/*Filter*.cs", "**/Controllers/**", "**/Pages/**"]
 
   - id: ASP-011
-    statement: "Protect against overposting with view models rather than the [Bind] attribute (recommended). Don't use [BindProperty] on models containing properties the client shouldn't change. Don't apply [FromBody] to more than one parameter per action method. Create a type converter or use TryParse for a simple string-to-type conversion that needs no external resources (recommended)."
-    why: "The model binding and Razor Pages pages say each of these about binding client input to server types; SEC-013 already keeps domain entities out of endpoints."
+    statement: "For protection against overposting, view models are recommended rather than the [Bind] attribute. [BindProperty] should not be used on models containing properties that should not be changed by the client. Don't apply [FromBody] to more than one parameter per action method. For a string-to-type conversion that doesn't require external resources or multiple inputs, creating a type converter or using TryParse is recommended."
+    why: "Binding client input straight onto a type lets the client set any property it can name. SEC-013 already keeps domain entities out of endpoints."
     layer: outside
     basis: authority
     status: proposed
@@ -299,8 +299,8 @@ rules:
     paths: ["**/*.cs"]
 
   - id: ASP-012
-    statement: "Controller-based web API controllers should typically derive from ControllerBase rather than Controller; derive from Controller only when the same controller must support views. Don't use [FromRoute] when values might contain %2f."
-    why: "The web API page says this: Controller adds view support, and a %2f in a route value isn't unescaped to a slash."
+    statement: "Controller-based web API controllers should typically derive from ControllerBase rather than Controller; if the same controller must support views and web APIs, derive from Controller. Don't use [FromRoute] when values might contain %2f (that is /); use [FromQuery] if the value might contain %2f."
+    why: "Controller adds view support that a web API doesn't use, and a %2f in a route value isn't unescaped to a slash."
     layer: outside
     basis: authority
     status: proposed
@@ -311,7 +311,13 @@ rules:
         text: "Web API controllers should typically derive from ControllerBase rather from Controller."
       - source: "https://learn.microsoft.com/aspnet/core/web-api?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
+        text: "If the same controller must support views and web APIs, derive from Controller."
+      - source: "https://learn.microsoft.com/aspnet/core/web-api?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
         text: "Don't use [FromRoute] when values might contain %2f (that is /)."
+      - source: "https://learn.microsoft.com/aspnet/core/web-api?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Use [FromQuery] if the value might contain %2f."
     scope: [web-api]
     enforcement:
       - kind: advisory
@@ -320,8 +326,8 @@ rules:
     paths: ["**/Controllers/**"]
 
   - id: ASP-015
-    statement: "Don't use route constraints for input validation: invalid input should produce a 400 Bad Request with an appropriate error message, not the 404 a failed constraint gives. SEC-010 and API-006 say how input is validated."
-    why: "The routing page's warning: constraints disambiguate similar routes, and a failed one returns 404."
+    statement: "Don't use route constraints for input validation: if constraints are used for input validation, invalid input results in a 404 Not Found response, and invalid input should produce a 400 Bad Request with an appropriate error message. SEC-010 and API-006 say how input is validated."
+    why: "Route constraints are for telling similar routes apart, not for checking a route's input."
     layer: outside
     basis: authority
     status: proposed
@@ -332,7 +338,13 @@ rules:
         text: "Don't use constraints for input validation."
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/routing?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
+        text: "If constraints are used for input validation, invalid input results in a 404 Not Found response."
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/routing?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
         text: "Invalid input should produce a 400 Bad Request with an appropriate error message."
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/routing?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Route constraints are used to disambiguate similar routes, not to validate the inputs for a particular route."
     scope: [web-api, blazor]
     enforcement:
       - kind: advisory
@@ -341,8 +353,8 @@ rules:
     paths: ["**/*.cs", "**/*.razor", "**/*.cshtml"]
 
   - id: ASP-016
-    statement: "Never suppress the warnings ASP0003, ASP0004, ASP0006, ASP0008, ASP0009, ASP0010 and BL0005, and avoid the RenderTree types in user code (not recommended)."
-    why: "Each analyzer's page says not to suppress it, because the code it flags misbehaves at runtime; the BL0006 page calls RenderTree types an implementation detail that is subject to breaking changes."
+    statement: "Do not suppress a warning from ASP0003, ASP0004, ASP0006, ASP0008, ASP0009, ASP0010 or BL0005. Using the types in the Microsoft.AspNetCore.Components.RenderTree namespace is not recommended in user code."
+    why: "Each of these analyzers flags code that doesn't behave the way it reads, and the RenderTree types are part of Blazor's implementation detail and subject to breaking changes."
     layer: outside
     basis: authority
     status: proposed
@@ -371,6 +383,9 @@ rules:
         text: "Do not suppress a warning from this rule."
       - source: "https://learn.microsoft.com/aspnet/core/diagnostics/bl0006?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
+        text: "Types in the Microsoft.AspNetCore.Components.RenderTree namespace are part of Blazor's implementation detail and are subject to breaking changes."
+      - source: "https://learn.microsoft.com/aspnet/core/diagnostics/bl0006?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
         text: "Using these types is not recommended in user code."
     scope: [web-api, blazor]
     enforcement:
@@ -380,8 +395,8 @@ rules:
     paths: ["**/*.cs", "**/*.razor", "**/.editorconfig"]
 
   - id: ASP-017
-    statement: "Reuse a gRPC channel for calls, prefer async and await over blocking calls, always dispose streaming calls once they're no longer needed, and configure a call deadline (recommended). From an ASP.NET Core app, consider the gRPC client factory integration."
-    why: "The gRPC client and performance pages give these: channels are the expensive object, and a streaming call left running keeps resources on both client and server."
+    statement: "A gRPC channel should be reused when making gRPC calls. Prefer asynchronous programming with async and await when calling gRPC methods. Always dispose streaming calls once they're no longer needed. Configuring a gRPC call deadline is recommended. When calling gRPC services from an ASP.NET Core app, consider the gRPC client factory integration."
+    why: "A new channel per call means new connections and round trips, a streaming call left running holds resources on both ends, and a deadline caps how long a call can run."
     layer: outside
     basis: authority
     status: proposed
@@ -410,8 +425,8 @@ rules:
     paths: ["**/*.cs"]
 
   - id: ASP-018
-    statement: "gRPC services should only listen and respond over secured ports (TLS), and shouldn't expose exception messages to the client in production apps. Services secured by client certificates should use the Microsoft.AspNetCore.Authentication.Certificate package (recommended)."
-    why: "The gRPC security page lists these: exception messages are generally sensitive, and TLS protects messages in production."
+    statement: "gRPC services should only listen and respond over secured ports, and exception messages shouldn't be exposed to the client in production apps. For gRPC services secured by client certificates, the Microsoft.AspNetCore.Authentication.Certificate package is recommended."
+    why: "Exception messages are generally sensitive, and an unsecured port sends messages in the clear."
     layer: outside
     basis: authority
     status: proposed
@@ -434,8 +449,8 @@ rules:
     paths: ["**/*.cs", "**/appsettings*.json"]
 
   - id: ASP-019
-    statement: "In SignalR hubs, don't store state in a property of the hub class, because each hub method call runs on a new hub instance, and don't instantiate a hub directly via DI. Make sure hub methods don't execute concurrent database operations on the same context instance."
-    why: "The hubs page says these: hubs are transient, and a scoped DbContext injected into a hub isn't thread-safe."
+    statement: "In SignalR hubs, don't store state in a property of the hub class, because each hub method call is executed on a new hub instance, and don't instantiate a hub directly via DI. You must ensure that a hub's methods don't execute concurrent database operations on the same context instance, because DbContext isn't thread-safe."
+    why: "State kept on a hub instance is gone at the next call, and two operations at once on one DbContext fail."
     layer: outside
     basis: authority
     status: proposed
@@ -458,8 +473,8 @@ rules:
     paths: ["**/*Hub*.cs"]
 
   - id: ASP-020
-    statement: "A SignalR app on a server farm must use sticky sessions (session affinity), and the Redis backplane is the recommended scale-out approach on your own infrastructure. Allow only the specific expected origins in CORS (allowing any origin isn't secure or recommended), always use HTTPS, and don't expose exception messages to the client in production apps."
-    why: "The SignalR hosting and security pages say these: connections need the same server, and origins, transport and exception details are the exposed surface."
+    statement: "When SignalR runs on a server farm, sticky sessions must be used, and the Redis backplane is the recommended scale-out approach for apps hosted on your own infrastructure. In a SignalR app's CORS policy, allow the specific expected origins: allowing any origin is possible but not secure or recommended. Always use HTTPS between the client and the server, and exception messages should not be exposed to the client in production apps."
+    why: "A SignalR connection's state lives on one server, and the origins it accepts, its transport and the errors it returns are what a client can reach."
     layer: outside
     basis: authority
     status: proposed
@@ -471,6 +486,9 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/signalr/scale?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "The Redis backplane is the recommended scale-out approach for apps hosted on your own infrastructure."
+      - source: "https://learn.microsoft.com/aspnet/core/signalr/security?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Allow the specific expected origins."
       - source: "https://learn.microsoft.com/aspnet/core/signalr/security?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Allowing any origin is possible but is not secure or recommended."
@@ -488,8 +506,8 @@ rules:
     paths: ["**/Program.cs", "**/*Hub*.cs"]
 
   - id: ASP-021
-    statement: "Web apps that sign users in with OpenID Connect use a confidential client with the code flow (the recommended way), with PKCE (recommended). Public OpenID Connect/OAuth clients aren't recommended for web apps. For a web app with no independent backend, use the Backend for Frontend (BFF) pattern (recommended). With a Microsoft identity provider, use the Microsoft.Identity.Web packages (recommended). Don't deploy an app with IdentityModelEventSource.ShowPII to productive servers."
-    why: "The OpenID Connect web authentication page gives these; SEC-008 already picks the OIDC provider."
+    statement: "For a web app that signs users in with OpenID Connect, the recommended way is a confidential client using the code flow, and using PKCE with it is recommended. Public OpenID Connect/OAuth clients are no longer recommended for web applications. For a web app with no independent backend, the Backend for Frontend (BFF) pattern is recommended. When authenticating with one of the Microsoft identity providers, the Microsoft.Identity.Web NuGet packages are recommended. Don't deploy an app with IdentityModelEventSource.ShowPII to productive servers."
+    why: "A confidential client keeps its credential on the server, where the browser can't read it, and ShowPII writes personal data to logs. SEC-008 already picks the OIDC provider."
     layer: outside
     basis: authority
     status: proposed
@@ -520,27 +538,9 @@ rules:
         how: "code review checks AddOpenIdConnect for a client secret or assertion with the code flow and PKCE, and for ShowPII outside Development"
     paths: ["**/Program.cs", "**/*.cs"]
 
-  - id: ASP-022
-    statement: "An ASP.NET Core app that uses ASP.NET Core Identity for user management should use Razor Pages, not Razor components, for Identity-related UI such as registration, login and logout."
-    why: "The scaffold Identity page says Identity is built for HTTP request and response communication, which isn't Blazor's primary model."
-    layer: outside
-    basis: authority
-    status: proposed
-    sources: ["https://learn.microsoft.com/aspnet/core/security/authentication/scaffold-identity?view=aspnetcore-10.0, retrieved 2026-11-17"]
-    quotes:
-      - source: "https://learn.microsoft.com/aspnet/core/security/authentication/scaffold-identity?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "ASP.NET Core apps that use ASP.NET Core Identity for user management should use Razor Pages instead of Razor components for Identity-related UI, such as user registration, login, logout, and other user management tasks."
-    scope: [blazor]
-    enforcement:
-      - kind: advisory
-        in: [kit, app]
-        how: "code review checks that sign-in and account pages for an Identity-based Blazor app are Razor Pages"
-    paths: ["**/Components/Account/**", "**/Areas/Identity/**"]
-
   - id: ASP-023
-    statement: "Protect the Data Protection key ring with appropriate permissions, limit access to its storage to the app itself, and specify an explicit key encryption mechanism for production deployments (recommended). Configure the data protection stack to work in a server farm. Pass a unique purposes parameter to CreateProtector."
-    why: "The Data Protection pages say the key ring is as sensitive as configuration files, and that components consuming IDataProtectionProvider must pass unique purposes; SEC-015 already makes Data Protection the way to protect data."
+    statement: "The Data Protection key ring should be protected using appropriate permissions, and its storage location should have its access limited to the app itself. When the app specifies an explicit key persistence location, specifying an explicit key encryption mechanism for production deployments is also recommended. The data protection stack must be configured to work in a server farm, and components that consume IDataProtectionProvider must pass a unique purposes parameter to the CreateProtector method."
+    why: "Whoever can read or write the key ring can read or forge the data it protects. SEC-015 already makes Data Protection the way to protect data."
     layer: outside
     basis: authority
     status: proposed
@@ -552,6 +552,9 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/overview?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "The storage location configured with Data Protection should have its access limited to the app itself, similar to the way you would protect configuration files."
+      - source: "https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-storage-providers?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "If you specify an explicit key persistence location, the data protection system deregisters the default key encryption at rest mechanism, so keys are no longer encrypted at rest."
       - source: "https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-storage-providers?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "It's recommended that you additionally specify an explicit key encryption mechanism for production deployments."
@@ -569,8 +572,8 @@ rules:
     paths: ["**/Program.cs", "**/*.cs"]
 
   - id: ASP-024
-    statement: "Register a delegating handler for an HttpClient in DI as a transient service, never singleton or scoped."
-    why: "The IHttpClientFactory page says the handler must be transient because the factory pools and reuses handler instances on its own schedule; OPS-003 already requires IHttpClientFactory."
+    statement: "A delegating handler for an HttpClient must be registered in DI as a transient service, rather than singleton or scoped."
+    why: "A delegating handler can't be reused across HTTP client pipelines, so a singleton one throws when it's reused. OPS-003 already requires IHttpClientFactory."
     layer: outside
     basis: authority
     status: proposed
@@ -579,6 +582,9 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "A delegating handler must be registered in DI as a transient service, rather than singleton or scoped."
+      - source: "https://learn.microsoft.com/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Delegating handlers can't be reused across multiple HTTP client pipelines, and registering a handler as a singleton results in an InvalidOperationException when the handler is reused."
     scope: [web-api, blazor]
     enforcement:
       - kind: advisory
@@ -589,6 +595,6 @@ rules:
 
 # ASP.NET Core
 
-What Microsoft's ASP.NET Core documentation says an app should do, beyond what the kit's API (API-), security (SEC-), operations (OPS-) and data (DAT-) rules already state. Each rule says only what its cited page says, at that page's strength, and stores the sentence that says it.
+What Microsoft's ASP.NET Core documentation says an app should do, beyond what the kit's API (API-), security (SEC-), operations (OPS-), data (DAT-) and craft (CRF-) rules already state. Each rule says only what its cited page says, at that page's strength, and stores the sentence that says it.
 
-Every rule here is proposed until the owner accepts it. Pages whose guidance an existing rule already carries are not repeated: the best practices page (OPS-007), the Kestrel and HTTPS pages (SEC-011), JWT bearer tokens (SEC-008), error handling (API-002) and the options and HttpClient pages (OPS-006, OPS-003).
+Every rule here is proposed until the owner accepts it. Pages whose guidance an existing rule already carries are not repeated: the best practices page (OPS-007), the Kestrel and HTTPS pages (SEC-011), JWT bearer tokens (SEC-008), error handling (API-002), the options and HttpClient pages (OPS-006, OPS-003) and the general dependency injection guidelines (CRF-020). The Identity UI rule for Blazor apps is BLZ-015.

@@ -28,8 +28,8 @@ rules:
     scope: [web-api, blazor]
     paths: ["**/*Infrastructure*/**", "**/Migrations/**", "**/Program.cs"]
   - id: DAT-011
-    statement: "Where EF Core manages a relational database whose data must be kept when the model changes, the schema is updated with migrations, which change it incrementally while preserving existing data; EnsureCreated (and EnsureDeleted) suit data that is transient and can be dropped when the schema changes, such as prototypes, tests or local caches, and an app that uses migrations doesn't use EnsureCreated to initialize the schema."
-    why: "EnsureCreated creates a schema only when no tables exist, so it can't carry existing data through a model change, and EF Core warns that it and migrations don't work well together."
+    statement: "EF Core's EnsureCreated and EnsureDeleted (and their Async forms) are useful when the data is transient and can be dropped when the schema changes, for example during prototyping, in tests, or for local caches. EnsureCreated and migrations don't work well together: if you're using migrations, don't use EnsureCreated to initialize the schema, and if you anticipate using migrations in the future, it's best to start with migrations instead of EnsureCreated."
+    why: "EF Core's page says that if any tables exist, EnsureCreated won't initialize the schema, so it can't carry existing data through a model change; migrations update the schema incrementally while preserving existing data."
     layer: outside
     basis: authority
     status: proposed
@@ -43,7 +43,16 @@ rules:
         text: "These methods are useful in scenarios when the data is transient and can be dropped when the schema changes."
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/ensure-created"
         retrieved: "2026-11-17"
-        text: "If you're using Migrations, don't use EnsureCreatedAsync to initialize the schema."
+        text: "For example during prototyping, in tests, or for local caches."
+      - source: "https://learn.microsoft.com/ef/core/managing-schemas/ensure-created"
+        retrieved: "2026-11-17"
+        text: "EnsureCreatedAsync and Migrations don't work well together. If you're using Migrations, don't use EnsureCreatedAsync to initialize the schema."
+      - source: "https://learn.microsoft.com/ef/core/managing-schemas/ensure-created"
+        retrieved: "2026-11-17"
+        text: "If you anticipate using migrations in the future, it's best to just start with Migrations instead of using EnsureCreatedAsync."
+      - source: "https://learn.microsoft.com/ef/core/managing-schemas/ensure-created"
+        retrieved: "2026-11-17"
+        text: "If any tables exist (including tables for another DbContext class), the schema won't be initialized."
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -67,7 +76,7 @@ rules:
     scope: core
     paths: ["**/Migrations/**"]
   - id: DAT-004
-    statement: "Migrations are applied by the deployment, with a migration bundle (or an idempotent SQL script, where someone must review the SQL first), before the new version takes traffic; an app never migrates a server database at startup outside local development. A database on the user's device, which no deployment reaches, is migrated by the app at startup with Migrate."
+    statement: "Migrations of a server database are applied by the deployment, with a migration bundle (or an idempotent SQL script, where someone must review the SQL first), before the new version takes traffic; an app never migrates a server database at startup outside local development. A database on the user's device, which no deployment reaches, is migrated by the app at startup with Migrate."
     why: "Migrating at startup races when several instances start at once on versions of EF Core before 9, needs the app to run with rights to change the schema, and hides a failed migration inside a failed start (GAP-008). EF Core's page leaves startup migration open as a tradeoff (DAT-014); the kit shuts it for server databases and requires the deployment to apply migrations before the new version takes traffic (ADR-0054)."
     layer: owner
     basis: preference
@@ -161,7 +170,7 @@ rules:
     scope: core
     paths: ["**/*Infrastructure*/**", "**/*Domain*/**"]
   - id: DAT-009
-    statement: "Data access with EF Core follows its efficient-querying guidance. It's important not to rush into optimization without data showing a problem. Limit the amount of data going back and forth on the wire: we should only load what's needed. A no-tracking query should be used when the entities retrieved don't need to be updated. Give thought to limiting the number of results, and consider keyset pagination instead of Skip and Take when users move one page at a time. For related data you know in advance you need, eager loading is always better, and it is recommended to avoid lazy loading. Avoid ToList or ToArray before another LINQ operator. Always use asynchronous APIs rather than synchronous ones, and avoid mixing the two in one application. Raw SQL should generally be a last resort."
+    statement: "In EF Core data access, it's important not to rush into optimization without data showing a problem. It's important to limit the amount of data going back and forth on the wire: we should only load what's needed. A no-tracking query should be used when the entities retrieved don't need to be updated. It's usually worth giving thought to limiting the number of results, and for pagination that moves one page at a time, consider keyset pagination. When you know in advance which related entities you need, it is always better to use eager loading, and it is recommended to avoid lazy loading. Avoid ToList or ToArray before another LINQ operator. It's important to always use asynchronous APIs rather than synchronous ones, and avoid mixing the two in one application. Raw SQL should generally be a last resort."
     why: "EF Core's defaults are correct but not always fast, and the costly mistakes (N+1 queries, tracking what's only read, filtering in memory) don't show in a small test database (rules audit, owner 2026-11-12)."
     layer: outside
     basis: authority
@@ -189,7 +198,7 @@ rules:
         text: "For pagination that allows moving one page at a time (as opposed to jumping to arbitrary pages), consider using keyset pagination instead."
       - source: "https://learn.microsoft.com/ef/core/performance/efficient-querying"
         retrieved: "2026-11-17"
-        text: "In these scenarios, it is always better to use eager loading, so that EF can fetch all the required data in one roundtrip."
+        text: "When dealing with related entities, we usually know in advance what we need to load: a typical example would be loading a certain set of Blogs, along with all their Posts. In these scenarios, it is always better to use eager loading, so that EF can fetch all the required data in one roundtrip."
       - source: "https://learn.microsoft.com/ef/core/performance/efficient-querying"
         retrieved: "2026-11-17"
         text: "Because lazy loading makes it extremely easy to inadvertently trigger the N+1 problem, it is recommended to avoid it."
@@ -212,8 +221,8 @@ rules:
     scope: core
     paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
   - id: DAT-010
-    statement: "Raw SQL is parameterized: FromSql, SqlQuery and ExecuteSql with an interpolated string, which EF Core turns into parameters, should be used wherever possible, and their Raw forms take explicit parameters. Never concatenate or interpolate an untrusted value into the text of a Raw call, and never escape one by hand. Where a part can't be a parameter, such as a column name, map the caller's choice to a strict allow-list of fixed values the app owns, so no Raw call carries a caller's text."
-    why: "SQL built from a caller's text is SQL injection. EF Core's page says FromSql and FromSqlInterpolated always integrate parameter data as a separate SQL parameter, while FromSqlRaw can be vulnerable if improperly used; OWASP's page prefers an allow-list of fixed values for a part that can't be a parameter, where EF Core's page leaves sanitizing the text to the developer. EF Core's analyzer EF1002 flags an interpolated string passed to a Raw method (rules audit, owner 2026-11-12, which asked to verify EF1002)."
+    statement: "In EF Core, FromSql and its parameterization should be used wherever possible. Be very careful when using FromSqlRaw, and always make sure values are either from a safe origin or properly sanitized. Don't manually escape untrusted values to construct SQL queries; use parameterized queries instead. For structural parts that can't be parameterized (table names, column names, sort direction), OWASP's preferred pattern is to map user choices to a strict allow-list of fixed, application-owned values."
+    why: "SQL built from a caller's text is SQL injection. EF Core's page says FromSql and FromSqlInterpolated always integrate parameter data as a separate SQL parameter, while FromSqlRaw can be vulnerable if improperly used; OWASP's page says concatenating untrusted values into the query before preparing it defeats parameterization's protection. EF Core's analyzer EF1002 flags an interpolated string passed to a Raw method (rules audit, owner 2026-11-12, which asked to verify EF1002)."
     layer: outside
     basis: authority
     status: accepted
@@ -226,6 +235,12 @@ rules:
       - source: "https://learn.microsoft.com/ef/core/querying/sql-queries"
         retrieved: "2026-11-17"
         text: "The FromSql and FromSqlInterpolated methods are safe against SQL injection, and always integrate parameter data as a separate SQL parameter. However, the FromSqlRaw method can be vulnerable to SQL injection attacks, if improperly used."
+      - source: "https://learn.microsoft.com/ef/core/querying/sql-queries"
+        retrieved: "2026-11-17"
+        text: "Be very careful when using FromSqlRaw, and always make sure values are either from a safe origin, or are properly sanitized."
+      - source: "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html"
+        retrieved: "2026-11-17"
+        text: "The preferred patterns are:"
       - source: "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html"
         retrieved: "2026-11-17"
         text: "Concatenating untrusted values into the query before preparing it defeats this protection."
@@ -262,7 +277,7 @@ rules:
     scope: [web-api, blazor]
     paths: ["**/Migrations/**"]
   - id: DAT-014
-    statement: "For automated deployment of EF Core migrations, use a migration bundle; use a SQL script instead when the SQL must be reviewed, modified, archived, or handed to a DBA before it is applied. Applying migrations at runtime needs careful consideration in production, and a bundle is preferred for automation and a SQL script where review and approval are required; don't make every application replica run migrations from its entrypoint. Use a separate identity for deployment that has permission to change the schema, so the identity the application uses at run time should normally have only the permissions to read and write data, and don't store production connection strings in source control or embed them in the bundle."
+    statement: "For automated deployment of EF Core migrations, use a migration bundle; use a SQL script instead when the SQL must be reviewed, modified, archived, or handed to a DBA before it is applied. Carefully consider before applying migrations at runtime in production; prefer a migration bundle for automation or a SQL script when review and approval are required, and don't make every application replica run migrations from its entrypoint. Use a separate identity for deployment that has permission to change the schema; the identity the application uses at run time should normally have only the permissions it needs to read and write data. Don't store production connection strings in source control or embed them in the bundle."
     why: "A bundle runs without the SDK or the source and a script can be reviewed first, while startup migration needs the application to have elevated access to change the schema. The kit's tighter rule for server databases, that startup migration is never used outside local development, is DAT-004."
     layer: outside
     basis: authority
@@ -294,8 +309,8 @@ rules:
     scope: [web-api, blazor]
     paths: ["**/Program.cs", ".github/workflows/**"]
   - id: DAT-015
-    statement: "An app that connects to Azure SQL Database implements retry logic for transient errors instead of surfacing them to users as application errors. EF Core supplies it as an execution strategy, and the SQL Server provider includes one tailored to SQL Server and Azure SQL. When code starts its own transaction under a retrying strategy, everything in the transaction runs inside the execution strategy as one unit; where a failed commit is simply allowed to fail, avoid store-generated keys and consider a client-generated GUID or value generator, so that a retry can't add a duplicate row."
-    why: "A cloud database drops connections and throttles as a matter of course. EF Core's page says that when a connection drops while a transaction is being committed its resulting state is unknown, and that enabling retries makes EF buffer the resultset, which may significantly increase memory requirements for large ones (rules audit, owner 2026-11-12)."
+    statement: "An app that connects to Azure SQL Database should be built to expect transient errors, and implements retry logic for them instead of surfacing them to users as application errors. When code that uses a retrying EF Core execution strategy starts its own transaction, the solution is to invoke the execution strategy manually with a delegate representing everything that needs to be executed. Where an app lets a failed commit simply fail, it needs to avoid store-generated keys so that an exception is thrown instead of a duplicate row being added, and should consider a client-generated GUID or a client-side value generator."
+    why: "A cloud database drops connections and throttles as a matter of course. EF Core retries through an execution strategy, and its SQL Server provider includes one tailored to SQL Server and Azure SQL. EF Core's page says that when a connection drops while a transaction is being committed its resulting state is unknown, and that enabling retries makes EF buffer the resultset, which may significantly increase memory requirements for large ones (rules audit, owner 2026-11-12)."
     layer: outside
     basis: authority
     status: accepted
@@ -305,6 +320,12 @@ rules:
       - source: "https://learn.microsoft.com/azure/azure-sql/database/troubleshoot-common-connectivity-issues"
         retrieved: "2026-11-17"
         text: "Applications that connect to your database should be built to expect these transient errors. To handle them, implement retry logic in their code instead of surfacing them to users as application errors."
+      - source: "https://learn.microsoft.com/ef/core/miscellaneous/connection-resiliency"
+        retrieved: "2026-11-17"
+        text: "The feature can be used with any database by supplying an \"execution strategy\", which encapsulates the logic necessary to detect failures and retry commands."
+      - source: "https://learn.microsoft.com/ef/core/miscellaneous/connection-resiliency"
+        retrieved: "2026-11-17"
+        text: "The likelihood of a connection failure during transaction commit is low so it may be acceptable for your application to just fail if this condition actually occurs."
       - source: "https://learn.microsoft.com/ef/core/miscellaneous/connection-resiliency"
         retrieved: "2026-11-17"
         text: "As an example, the SQL Server provider includes an execution strategy that is specifically tailored to SQL Server (including SQL Azure)."
@@ -351,7 +372,7 @@ rules:
     scope: core
     paths: ["**/*Infrastructure*/**", "**/*Domain*/**"]
   - id: DAT-017
-    statement: "Always inspect the generated migrations and test them before applying them to a production database, and always review a generated migration's code to make sure it corresponds to the desired change. Don't delete a migration that has been applied to a shared, test, or production database; usually keep it in the project and add a new corrective migration. Check for model changes that no migration covers by running dotnet ef migrations has-pending-model-changes in the CI/CD pipeline."
+    statement: "Always inspect the generated EF Core migrations and test them before applying them to a production database, and you should always review a generated migration's code to make sure it corresponds to the desired change. Don't delete a migration that has been applied to a shared, test, or production database; usually keep it in the project and add a new corrective migration. To detect, before deployment, a model that has pending changes compared to the last migration, use dotnet ef migrations has-pending-model-changes in the CI/CD pipeline."
     why: "A migration may drop a column when the intent was to rename it, or may fail for various reasons when applied to a database; a model change that no migration covers is what the CI check finds before deployment."
     layer: outside
     basis: authority
@@ -369,7 +390,7 @@ rules:
         text: "Don't delete a migration that has been applied to a shared, test, or production database. Usually, keep the migration in the project and add a new corrective migration."
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying"
         retrieved: "2026-11-17"
-        text: "To detect this condition before deployment, use the dotnet ef migrations has-pending-model-changes command in your CI/CD pipeline."
+        text: "Starting with EF Core 9, calling Migrate() or MigrateAsync() will throw an exception when the model has pending changes compared to the last migration (warning event ID RelationalEventId.PendingModelChangesWarning). To detect this condition before deployment, use the dotnet ef migrations has-pending-model-changes command in your CI/CD pipeline."
     enforcement:
       - kind: advisory
         in: [kit, app]
@@ -377,8 +398,8 @@ rules:
     scope: core
     paths: ["**/Migrations/**", ".github/workflows/**"]
   - id: DAT-018
-    statement: "In a platform-specific app that uses EF Core migrations (.NET MAUI or WinUI 3), store the migrations in a separate project, and don't use the platform-specific application project as the startup project for EF tools; prefer an AnyCPU migrations project."
-    why: "Mobile, browser, desktop and RID-specific projects can require a workload or native host that dotnet ef can't execute, so the tools need a normal cross-platform project to run. This applies only where an app chooses EF Core: .NET MAUI's local database docs use sqlite-net-pcl, not EF Core."
+    statement: "In a platform-specific app that uses EF Core migrations, such as a .NET MAUI or WinUI app, storing the migrations in a different project from the one containing the DbContext is recommended. Don't use the platform-specific application project as the startup project for EF tools, and prefer an AnyCPU migrations project."
+    why: "EF Core's page says mobile, browser, desktop, function and RID-specific projects can require a workload or native host that dotnet ef can't execute. This applies only where an app chooses EF Core: .NET MAUI's local database docs use sqlite-net-pcl, not EF Core."
     layer: outside
     basis: authority
     status: proposed
@@ -386,10 +407,10 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/migrations/projects"
         retrieved: "2026-11-17"
-        text: "This is recommended when the application project is platform-specific, such as WinUI, .NET MAUI, Blazor WebAssembly, or Azure Functions, or when it targets a specific runtime identifier (RID)."
+        text: "You can store migrations in a different project from the one containing your DbContext. This is recommended when the application project is platform-specific, such as WinUI, .NET MAUI, Blazor WebAssembly, or Azure Functions, or when it targets a specific runtime identifier (RID)."
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/migrations/projects"
         retrieved: "2026-11-17"
-        text: "Don't use a platform-specific application project as the startup project for EF tools."
+        text: "Don't use a platform-specific application project as the startup project for EF tools. Mobile, browser, desktop, function, and RID-specific projects can require a workload or native host that dotnet ef can't execute."
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/migrations/projects"
         retrieved: "2026-11-17"
         text: "Prefer an AnyCPU migrations project."
@@ -400,7 +421,7 @@ rules:
     scope: [maui]
     paths: ["**/Migrations/**", "**/*.csproj"]
   - id: DAT-019
-    statement: "Seed initial data with UseSeeding and UseAsyncSeeding, the recommended way when working with EF Core, and always implement UseSeeding even if the app normally uses asynchronous APIs. Custom seeding code, for when those methods don't fit, shouldn't be part of the app's normal execution."
+    statement: "UseSeeding and UseAsyncSeeding are the recommended way of seeding the database with initial data when working with EF Core; always implement UseSeeding even if the app normally uses asynchronous APIs. Custom seeding code, for when those methods aren't a good solution, should not be part of the normal app execution."
     why: "EF Core's tooling and bundles rely on the synchronous delegate; seeding in normal app execution can cause concurrency issues when several instances run, and needs permission to change the schema."
     layer: outside
     basis: authority
@@ -423,7 +444,7 @@ rules:
     scope: core
     paths: ["**/*Infrastructure*/**", "**/Program.cs", "**/MauiProgram.cs"]
   - id: DAT-020
-    statement: "Change a relationship in EF Core by manipulating navigations and let the foreign key values update automatically, the recommended way. Don't write code to manipulate all navigations and foreign key values each time a relationship changes, and avoid manipulating both navigations and foreign key values."
+    statement: "Manipulating a relationship in EF Core through its navigations, leaving foreign key values to be updated automatically, is the recommended way. Don't write code to manipulate all navigations and foreign key values each time a relationship changes, and avoid manipulating both navigations and foreign key values."
     why: "Code that touches both is more complicated and must keep foreign keys and navigations consistent in every case."
     layer: outside
     basis: authority
@@ -483,7 +504,7 @@ rules:
     scope: core
     paths: ["**/*Infrastructure*/**", "**/*Repository*.cs"]
   - id: DAT-023
-    statement: "Diagnose an EF Core performance problem carefully before drawing conclusions, and avoid assuming where the root of the issue is. When benchmarking, it's strongly recommended to use the BenchmarkDotNet library, and always make sure to have data in the database that is similar to production data."
+    statement: "With an EF Core performance problem, it's important to carefully diagnose and investigate it before jumping to any conclusions, and to avoid assuming where the root of the issue is. When benchmarking, it's strongly recommended to use the BenchmarkDotNet library, and always make sure to have data in the database that is similar to production data."
     why: "A benchmark on a database that doesn't look like production may not represent actual performance in production."
     layer: outside
     basis: authority
@@ -506,13 +527,16 @@ rules:
     scope: core
     paths: ["**/*Benchmarks*/**", "**/*Infrastructure*/**"]
   - id: DAT-024
-    statement: "Tests that run against a real database keep test isolation and parallelization in mind: a test that commits changes or manages its own transactions must clean the database back to its original state after each test, and parallelization must be disabled for these tests; creating and using many test databases isn't problematic and should be done whenever it's helpful."
+    statement: "Tests that run against a real database keep test isolation and parallelization in mind: a test that modifies data and also explicitly manages transactions must clean up the database to its original state after each test, and parallelization must be disabled for these tests; creating and using many test databases isn't problematic and should be done whenever it's helpful."
     why: "Tests that share one database interfere with each other when they run in parallel or leave committed data behind, and the failures look random."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://learn.microsoft.com/ef/core/testing/testing-with-the-database, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/ef/core/testing/testing-with-the-database"
+        retrieved: "2026-11-17"
+        text: "There is one final category of tests which presents an additional difficulty: tests which modify data and also explicitly manage transactions."
       - source: "https://learn.microsoft.com/ef/core/testing/testing-with-the-database"
         retrieved: "2026-11-17"
         text: "While these tests tend to be more rare, it's necessary to handle them in a special way: you must clean up your database to its original state after each test, and parallelization must be disabled so that these tests don't interfere with each other."

@@ -70,7 +70,7 @@ rules:
     basis: preference
     status: proposed
     sources: ["ADR-0047", "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/manage/ready-cloud-operations, retrieved 2026-11-11", "https://diataxis.fr/how-to-guides/, retrieved 2026-11-11"]
-    scope: core
+    scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [app]
@@ -78,6 +78,9 @@ rules:
       - kind: advisory
         in: [app]
         how: "that the status turns In use before the first production deployment, until the production workflow (GAP-015) refuses a Draft, and whether the steps are right, which code review and a practised restore check"
+      - kind: advisory
+        in: [app]
+        how: "the runbook's sections fit an app the team hosts and deploys, not a .NET MAUI app released through app stores, whose rollback, health and incident steps differ; app-checks.reusable.yml still runs Test-Runbook.ps1 on every app, a MAUI app included, until the check reads the app's type"
     paths: ["**/docs/runbook.md"]
   - id: OPS-005
     statement: "An app shuts down gracefully: on SIGTERM its host stops taking requests and gives in-flight work a shutdown timeout that ends before the platform's grace period (25 seconds where the platform allows 30, Kubernetes' default), and long-running work stops on the host's stopping token or the request's cancellation token, which every call passes on."
@@ -122,7 +125,7 @@ rules:
         how: "code review checks that every settings section the app binds is validated on start, nested options and collections included, with [ValidateObjectMembers] and [ValidateEnumeratedItems], which the options validation source generator honors too, as the options page shows"
     paths: ["**/Program.cs", "**/*Extensions*.cs", "**/appsettings*.json"]
   - id: OPS-007
-    statement: "An ASP.NET Core app follows Microsoft's ASP.NET Core best practices: avoid blocking calls; make hot code paths asynchronous and call data access, I/O and long-running operations asynchronously where an asynchronous API exists; avoid reading large request bodies or response bodies into memory; never create and dispose HttpClient instances directly, and use HttpClientFactory to retrieve them (OPS-008 names the lifetime options); do not use HttpContext after the request is complete, and do not access it from multiple threads. For high-performance logging, use LoggerMessageAttribute with compile-time source generation."
+    statement: "Microsoft's ASP.NET Core best practices say: avoid blocking calls; make hot code paths asynchronous, and call data access, I/O and long-running operations APIs asynchronously if an asynchronous API is available; avoid reading large request bodies or response bodies into memory; don't create and dispose of HttpClient instances directly, and use HttpClientFactory to retrieve them (OPS-008 names the lifetime options); don't use HttpContext after the request is complete, and don't access it from multiple threads. For high-performance logging scenarios in .NET 6 and later, use LoggerMessageAttribute with compile-time source generation."
     why: "The owner asked for Microsoft Learn's performance guidance (owner O7, 2026-11-12). The best-practices page names blocking calls as a common performance problem, and its analyzers catch some of the mistakes (rules audit, 2026-11-12)."
     layer: outside
     basis: authority
@@ -170,8 +173,8 @@ rules:
         how: "code review checks the rest with the analyzing-dotnet-performance skill, and TST-009's benchmarks and load test measure it"
     paths: ["**/*.cs"]
   - id: OPS-008
-    statement: "Use either long-lived HttpClient instances with SocketsHttpHandler.PooledConnectionLifetime set, or short-lived clients created by IHttpClientFactory; what matters is that clients aren't created and disposed with each request. If an app requires cookies, avoid IHttpClientFactory, whose pooled handlers share CookieContainer objects. Add only one resilience handler to a client and avoid stacking handlers."
-    why: "A client created and disposed per request exhausts ports and never sees a DNS change, and pooled handlers can leak cookies between unrelated parts of an app; Microsoft's guidelines name both and say what to use (GAP-007). The kit's own, stricter wording is OPS-003."
+    statement: "For HttpClient lifetime, you should use either long-lived clients with PooledConnectionLifetime set or short-lived clients created by IHttpClientFactory; what matters is that clients aren't created and disposed with each request. If an app requires cookies, it's recommended to avoid IHttpClientFactory: pooling the HttpMessageHandler instances results in sharing of CookieContainer objects. When adding resilience, you should only add one resilience handler and avoid stacking handlers."
+    why: "A client created and disposed per request can exhaust the available ports, a long-lived client without a PooledConnectionLifetime doesn't see DNS changes, and shared cookie containers can mix cookies between unrelated parts of an app (GAP-007). The kit's own, stricter wording is OPS-003."
     layer: outside
     basis: authority
     status: accepted
@@ -187,6 +190,9 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines"
         retrieved: "2026-11-17"
         text: "If your app requires cookies, it's recommended to avoid using IHttpClientFactory."
+      - source: "https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines"
+        retrieved: "2026-11-17"
+        text: "Pooling the HttpMessageHandler instances results in sharing of CookieContainer objects."
       - source: "https://learn.microsoft.com/dotnet/core/resilience/http-resilience"
         retrieved: "2026-11-17"
         text: "When adding resilience, you should only add one resilience handler and avoid stacking handlers."
@@ -197,8 +203,8 @@ rules:
         how: "code review checks client lifetime and the cookie case; OPS-003's checks cover the factory and the resilience handler"
     paths: ["**/*.cs"]
   - id: OPS-009
-    statement: "An app with long-running operations that need to finish gracefully should subscribe to the host's ApplicationStopping event, which the host signals when it receives a shutdown signal such as SIGTERM."
-    why: "Active requests have only the shutdown timeout to finish; when it expires, pending connections and requests are aborted forcefully, which can cause errors in the logs and to the clients. OPS-005 holds the kit's numbers."
+    statement: "When the host receives a shutdown signal (for example, Ctrl+C or StopAsync), it notifies the app by signaling ApplicationStopping; an app with long-running operations that need to finish gracefully should subscribe to that event."
+    why: "Active requests have until the shutdown timeout to complete; if it expires, the pending connections and requests are aborted forcefully, which can cause errors in the logs and to the clients. OPS-005 holds the kit's numbers."
     layer: outside
     basis: authority
     status: accepted
@@ -207,7 +213,13 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown"
         retrieved: "2026-11-17"
+        text: "When the Host receives a shutdown signal (for example, Ctrl+C or StopAsync), it notifies the application by signaling ApplicationStopping."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown"
+        retrieved: "2026-11-17"
         text: "You should subscribe to this event if you have any long-running operations that need to finish gracefully."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown"
+        retrieved: "2026-11-17"
+        text: "The active requests have until the shutdown timeout to complete."
       - source: "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown"
         retrieved: "2026-11-17"
         text: "If the timeout expires, the pending connections and requests are aborted forcefully, which can cause errors in the logs and to the clients."
@@ -218,14 +230,26 @@ rules:
         how: "code review checks that long-running work stops on the stopping token; OPS-005's checks cover the timeout and the cancellation tokens"
     paths: ["**/*ServiceDefaults*/**", "**/Program.cs", "**/*.cs"]
   - id: OPS-010
-    statement: "Use a liveness probe to describe the liveness of the process, running no other checks, and a readiness probe to report \"not ready\" until the app has finished its startup work; separate readiness and liveness checks are useful under an orchestrator such as Kubernetes."
-    why: "A liveness probe that ran the readiness checks would restart an app that is only waiting for startup work to finish; Microsoft's example is an app that downloads a large configuration file before it can take requests (GAP-007). The kit's endpoints and their details are OPS-002."
+    statement: "In some hosting scenarios, use a pair of health checks to distinguish two app states: readiness (the app is running normally but isn't ready to receive requests) and liveness (the app has crashed and must be restarted). In the page's example, an app that must download a large configuration file before it's ready to process requests uses a liveness probe to describe the liveness of the process, with no other checks run, and a readiness probe to indicate a \"not ready\" state until the download succeeds and the app is ready to receive requests."
+    why: "A liveness probe that ran the readiness checks would restart an app that is only waiting to become ready (GAP-007). The page calls separate readiness and liveness checks useful in an environment such as Kubernetes. The kit's endpoints and their details are OPS-002."
     layer: outside
     basis: authority
     status: accepted
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "In some hosting scenarios, use a pair of health checks to distinguish two app states:"
+      - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Readiness indicates if the app is running normally but isn't ready to receive requests."
+      - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Liveness indicates if an app has crashed and must be restarted."
+      - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "An app must download a large configuration file before it's ready to process requests."
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Use a liveness probe to describe the liveness of the process, no other checks are run."
@@ -255,8 +279,8 @@ rules:
         how: "build: CA1848 (LoggerMessage-based logging), which AnalysisLevel latest-all turns on"
     paths: ["**/*.cs"]
   - id: OPS-012
-    statement: "Document how the app is operated, as the Well-Architected Framework asks: documentation should capture standard operating procedures, kept from templates in version control with authorship and review dates, and reviewed regularly; an incident response plan should define the key roles and must include a communication and escalation structure and the core procedures for detection, triage, containment and recovery, and the team should regularly test it; and safe-deployment guidelines should give clear instructions on how to deal with data changes when rolling back."
-    why: "Under pressure, whoever is on call follows written steps instead of improvising; the Well-Architected Framework's operational excellence pillar names these parts (GAP-017). OPS-004 is the kit's own runbook layout."
+    statement: "The Well-Architected Framework's operational excellence pillar says: documentation should capture standard operating procedures and clearly define how work is done; standards should be regularly reviewed and challenged to ensure that they remain appropriate; use templates and version control to maintain consistency and keep a record of updates, and include authorship and review dates. An incident response plan should define the key roles involved in managing an incident and the responsibilities of each, and must include a communication and escalation structure and the core procedures the team will follow during detection, triage, containment and recovery; regularly test incident response processes using dry runs or chaos engineering exercises. Safe deployment practice (SDP) guidelines should provide clear instructions on how to deal with data changes according to the workload's data estate design."
+    why: "Under pressure, whoever is on call follows written steps instead of improvising (GAP-017); the page on safe deployments notes that rolling back changes, especially database, schema or other stateful component changes, can be complex. These fit an app the team hosts and deploys, so the rule is scoped to the web app types. OPS-004 is the kit's own runbook layout."
     layer: outside
     basis: authority
     status: proposed
@@ -265,6 +289,9 @@ rules:
       - source: "https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks"
         retrieved: "2026-11-17"
         text: "Documentation should capture standard operating procedures and clearly define how work is done."
+      - source: "https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks"
+        retrieved: "2026-11-17"
+        text: "Procedures must evolve as your workload and team evolve, and standards should be regularly reviewed and challenged to ensure that they remain appropriate."
       - source: "https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks"
         retrieved: "2026-11-17"
         text: "Use templates and version control to maintain consistency and keep a record of updates."
@@ -285,21 +312,27 @@ rules:
         text: "Regularly test your incident response processes using dry runs or chaos engineering exercises."
       - source: "https://learn.microsoft.com/azure/well-architected/operational-excellence/safe-deployments"
         retrieved: "2026-11-17"
+        text: "Rolling back changes, especially database, schema, or other stateful component changes, can be complex."
+      - source: "https://learn.microsoft.com/azure/well-architected/operational-excellence/safe-deployments"
+        retrieved: "2026-11-17"
         text: "Your SDP guidelines should provide clear instructions on how to deal with data changes according to the data estate design for your workload."
-    scope: core
+    scope: [web-api, blazor]
     enforcement:
       - kind: advisory
         in: [app]
         how: "code review checks that the runbook has each part; OPS-004's Test-Runbook.ps1 checks its shape"
     paths: ["**/docs/runbook.md"]
   - id: OPS-013
-    statement: "Configure data protection to create a persistent cryptographic key store, even if user code never calls the Data Protection APIs, because ASP.NET Core's authentication and anti-forgery middleware use it."
-    why: "If data protection isn't configured, the keys are held in memory and discarded when the app restarts, which signs everyone out and invalidates anti-forgery tokens."
+    statement: "Even if Data Protection APIs aren't called by user code, data protection should be configured to create a persistent cryptographic key store: the ASP.NET Core Data Protection stack is used by several ASP.NET Core middlewares, including authentication middleware (for example, cookie middleware) and cross-site request forgery (CSRF) protections."
+    why: "If data protection isn't configured, the keys are held in memory and discarded when the app restarts; users then have to sign in again, and data protected with the old keys, which can include anti-forgery tokens, can no longer be decrypted."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "The ASP.NET Core Data Protection stack is used by several ASP.NET Core middlewares, including authentication middleware (for example, cookie middleware) and cross-site request forgery (CSRF) protections."
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Even if Data Protection APIs aren't called by user code, data protection should be configured to create a persistent cryptographic key store."
@@ -313,7 +346,7 @@ rules:
         how: "code review checks that an app that signs users in or uses anti-forgery configures a persistent key store"
     paths: ["**/Program.cs", "**/*Extensions*.cs"]
   - id: OPS-015
-    statement: "An app that uses trimming shouldn't produce any trim warnings. Don't suppress a trim warning with SuppressMessage or #pragma warning disable; always use UnconditionalSuppressMessage. Consider whether trimming is appropriate for the app. When publishing with Native AOT, it's recommended to develop, debug and test as usual and publish with Native AOT as one of the last steps."
+    statement: "An app that uses trimming shouldn't produce any trim warnings. Don't use SuppressMessage or #pragma warning disable for trim warnings; to suppress one, always use UnconditionalSuppressMessage. With too many trim warnings to address, consider whether trimming is appropriate for the app. When publishing with Native AOT, it's recommended to develop, debug and test as usual and publish with Native AOT as one of the last steps."
     why: "The trimmer works on compiled assemblies, so a compiler-only suppression is invisible to it; an unfixed trim warning can change behavior or crash the app after trimming."
     layer: outside
     basis: authority
@@ -329,6 +362,9 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/deploying/trimming/fixing-warnings"
         retrieved: "2026-11-17"
         text: "Always use UnconditionalSuppressMessage."
+      - source: "https://learn.microsoft.com/dotnet/core/deploying/trimming/fixing-warnings"
+        retrieved: "2026-11-17"
+        text: "Too many warnings to address"
       - source: "https://learn.microsoft.com/dotnet/core/deploying/trimming/fixing-warnings"
         retrieved: "2026-11-17"
         text: "Consider if trimming is appropriate for your application."

@@ -182,7 +182,7 @@ rules:
         how: "schedule: nuget-trust.yml runs tools/Test-NuGetTrustedSigners.ps1 daily, which compares nuget.config's nuget.org certificates with the ones nuget.org's service index announces, and opens an issue when they differ, so the kit syncs (dotnet nuget trust sync nuget.org) before a restore fails; an app gets the synced nuget.config with the next kit release (ADR-0066); tools/tests/Test-NuGetTrustedSigners.Tests.ps1 checks the script and the workflow"
     paths: ["nuget.config"]
   - id: SUP-013
-    statement: "Use package sources that you trust, and know which feed each package comes from, which is a best practice against attacks such as dependency confusion. Add a nuget.config at the root of the repo, with clear elements so no user or machine specific configuration applies."
+    statement: "Use package sources that you trust; knowing which feed each package comes from is a best practice against known attacks such as dependency confusion. Add a nuget.config at the root of the repo; adding clear elements to it, so no user or machine specific configuration applies, is recommended."
     why: "When a package can come from any of several feeds, a malicious package of the same name can win (dependency confusion)."
     layer: outside
     basis: authority
@@ -206,7 +206,7 @@ rules:
         how: "code review checks the sources nuget.config names; SUP-003's restore gate checks that only nuget.org is mapped"
     paths: ["nuget.config"]
   - id: SUP-014
-    statement: "When NuGet warns that a package your project uses has a known vulnerability, take action quickly: determine whether you are impacted and, if so, update to the latest version and security patch available."
+    statement: "When NuGet warns that a package your project uses has a known vulnerability, you should quickly take action; when a new security vulnerability is discovered, you must determine whether you are impacted and, if so, update to the latest version and security patch available."
     why: "By the time NuGet warns, the vulnerability is publicly known, so attackers can already build on it."
     layer: outside
     basis: authority
@@ -262,13 +262,16 @@ rules:
         how: "code review checks the SBOM format; SUP-009's CI gate writes and uploads the SBOM"
     paths: [".github/workflows/**", ".config/dotnet-tools.json"]
   - id: SUP-017
-    statement: "When a Scorecard workflow publishes its results, give it no workflow-level write permissions and only the job with ossf/scorecard-action the id-token: write permission, and run that job on one of the Ubuntu hosted runners."
+    statement: "When a Scorecard workflow publishes its results, give it no workflow-level write permissions and only the job with ossf/scorecard-action the id-token: write permission; that job should run on one of the Ubuntu hosted runners."
     why: "Scorecard's API checks the producing workflow against these rules and may reject the results otherwise."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://github.com/ossf/scorecard-action, retrieved 2026-11-17"]
     quotes:
+      - source: "https://github.com/ossf/scorecard-action"
+        retrieved: "2026-11-17"
+        text: "If publishing results, our API enforces certain rules on the producing workflow, which may reject the results."
       - source: "https://github.com/ossf/scorecard-action"
         retrieved: "2026-11-17"
         text: "No workflow level write permissions."
@@ -285,7 +288,7 @@ rules:
         how: "code review checks the Scorecard workflow's permissions; SUP-010's SharedCi tests check them in the kit's shared workflow"
     paths: [".github/workflows/**"]
   - id: SUP-018
-    statement: "On macOS, leave NuGet signed-package verification disabled: Microsoft recommends not enabling it, and the functionality isn't currently supported there. Don't use signed-package verification with .NET SDK versions earlier than 6.0.400."
+    statement: "On macOS, where the functionality isn't currently supported, Microsoft recommends that you don't enable NuGet signed-package verification: leave it disabled by default. Don't use signed-package verification with .NET SDK versions earlier than 6.0.400."
     why: "Signed-package verification isn't supported on macOS, so SUP-012's trusted-signer rule can't apply to a macOS restore."
     layer: outside
     basis: authority
@@ -298,10 +301,7 @@ rules:
         text: "However, we recommend that you don't enable verification."
       - source: "https://learn.microsoft.com/dotnet/core/tools/nuget-signed-package-verification"
         retrieved: "2026-11-17"
-        text: "Leave it disabled by default."
-      - source: "https://learn.microsoft.com/dotnet/core/tools/nuget-signed-package-verification"
-        retrieved: "2026-11-17"
-        text: "Don't use signed-package verification with .NET SDK versions earlier than 6.0.400."
+        text: "Although signed-package verification functionality was added in .NET 5 SDK's, the functionality isn't currently supported on macOS. Don't use signed-package verification with .NET SDK versions earlier than 6.0.400. Leave it disabled by default."
     scope: core
     enforcement:
       - kind: advisory

@@ -83,7 +83,7 @@ rules:
     scope: core
     paths: [".editorconfig"]
   - id: STY-007
-    statement: "Follow Microsoft's C# coding conventions and identifier names. Naming: PascalCase for type names, namespaces and all public members; camelCase for parameters and locals; the s_ prefix for private and internal static fields (STY-014 changes this for static readonly and thread-static fields); the Async suffix on methods that return awaitable types, except where the async page says it doesn't apply (an event handler, a web controller method); meaningful, descriptive names; avoid abbreviations and single-letter names except simple loop counters; no two consecutive underscores. Code: use the using syntax that needs no braces, collection expressions, the concise form of new where the variable type matches, parentheses to make clauses in an expression apparent, a dedicated System.Threading.Lock for a lock statement, && and || over & and | in comparisons, Func and Action over custom delegates, a lambda for an event handler you needn't remove, int over unsigned types, string interpolation for short strings, StringBuilder to append in loops, required properties over constructors that force initialization, static members through their class name, meaningful LINQ query-variable names, and prefer raw string literals. Layout: one statement and one declaration per line, a blank line between method and property definitions, comments on their own line starting with a capital letter and ending with a period."
+    statement: "Microsoft's C# coding conventions and identifier names pages say, for naming: by convention, C# programs use PascalCase for type names, namespaces and all public members; use camelCase for method parameters and local variables, and the s_ prefix for private and internal static fields (STY-014 changes this for static readonly and thread-static fields); use the Async suffix for methods that return awaitable types, which doesn't necessarily apply to methods your code doesn't call explicitly, such as event handlers or web controller methods; use meaningful and descriptive names for variables, methods and classes; avoid abbreviations and acronyms in names, except widely known and accepted abbreviations; avoid single-letter names, except simple loop counters; and identifiers shouldn't contain two consecutive underscores. For code: use the using syntax that doesn't need braces, collection expressions to initialize collection types, a concise form of new when the variable type matches the object type, parentheses to make clauses in an expression apparent, a dedicated System.Threading.Lock as the lock object of a lock statement (in .NET 9 and C# 13 or later), && and || instead of & and | in comparisons, Func and Action instead of defining delegate types, a lambda for an event handler you don't need to remove later, int rather than unsigned types, string interpolation to concatenate short strings, a StringBuilder to append strings in loops, required properties instead of constructors to force initialization, static members called through the class name, and meaningful names for query variables; prefer raw string literals to escape sequences or verbatim strings. For layout: one statement and one declaration per line, at least one blank line between method and property definitions, and comments on a separate line, beginning with an uppercase letter and ending with a period."
     why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12: \"adhere to all of the guidance provided by Microsoft Learn\"); the rules audit mapped both pages recommendation by recommendation and made every one an analyzer can check a gate. The identifier names page gives an internal static field the s_ prefix, which the kit changes (STY-014)."
     layer: outside
     basis: authority
@@ -190,21 +190,16 @@ rules:
         how: "build: .editorconfig's naming rules with IDE1006 at warning (the build reports a naming rule only at IDE1006's own severity), and IDE0063, IDE0300 to IDE0305, IDE0090, IDE0047, IDE0048 and IDE0330 at warning; tools/tests/BuildConfig.Tests.ps1 has a failing fixture for each"
       - kind: advisory
         in: [kit, app]
-        how: "the recommendations no analyzer checks, checked by code review: an Async suffix on a method that returns an awaitable, async or not, except where a framework or the pages say otherwise (STY-014 lists the kit's exceptions); meaningful names without abbreviations or single letters, no double underscore, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
+        how: "the recommendations no analyzer checks, checked by code review: an Async suffix on a method that returns an awaitable, async or not, except where a framework or the pages say otherwise (STY-014 lists the kit's exceptions); meaningful names, abbreviations only where widely known and accepted and single letters only for simple loop counters, no double underscore, int over unsigned types, string interpolation and StringBuilder in loops, raw string literals, required properties, Func and Action over custom delegates, && and || over & and |, lambdas for event handlers, static members through their declaring type, the LINQ guidance, one statement and one declaration per line, a blank line between members, and comments on their own line, starting with a capital letter and ending with a period"
     scope: core
     paths: ["**/*.cs", ".editorconfig"]
   - id: STY-008
-    statement: "Describe methods, classes, fields and all public members with XML comments; STY-015 leaves test projects out."
-    why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12); the coding conventions pass made XML documentation on public members a gate. A comment on the public surface is what IntelliSense and a reviewer read."
-    layer: outside
-    basis: authority
+    statement: "Every publicly visible type and member has an XML documentation comment; STY-015 leaves test projects out."
+    why: "The owner asked for the C# documentation's recommendations as rules (owner O7, 2026-11-12), and the coding conventions pass made XML documentation on every public member a gate. That goes beyond Microsoft's page, which says which comment style describes a member (STY-018), not that every public member has one, so it's the kit's decision. A comment on the public surface is what IntelliSense and a reviewer read."
+    layer: owner
+    basis: preference
     status: accepted
-    ratified: "owner, 2026-11-12"
-    sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-17"]
-    quotes:
-      - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions"
-        retrieved: "2026-11-17"
-        text: "For describing methods, classes, fields, and all public members use XML comments."
+    sources: ["owner, 2026-11-12", "ADR-0069"]
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -228,8 +223,8 @@ rules:
     scope: core
     paths: ["**/*.cs", ".editorconfig", "BannedSymbols.txt"]
   - id: STY-010
-    statement: "Follow the Framework Design Guidelines when developing classes and components that extend .NET; each guideline binds at its own prefix (Do, Consider, Avoid, Do not). Code review checks the themes docs/code-review.md lists (exceptions, collections, parameters, naming, properties, events and operator overloads). The page warns that some of the information may be out of date. STY-009 gates the guidelines an analyzer checks."
-    why: "The owner asked for Microsoft Learn's guidance as rules (owner O7, 2026-11-12). The Framework Design Guidelines pass found 229 of their 369 guidelines are judgment no analyzer checks, and the owner accepted one advisory rule for them, with the themes worth a reviewer's eye in an app listed for code review (owner, 2026-11-13: \"Yes, accept them\"). The guidelines are written for public APIs; STY-016 applies them to internal ones too. The themes for libraries a kit app ships (versioning, extensibility, virtual and protected members) wait for the .NET library guidance pass."
+    statement: "Microsoft recommends following the Framework Design Guidelines when developing classes and components that extend .NET. The guidelines are organized as recommendations prefixed with Do, Consider, Avoid and Do not, and each is read at its prefix's strength. The page warns that some of the information in them may be out of date."
+    why: "The owner asked for Microsoft Learn's guidance as rules (owner O7, 2026-11-12). The Framework Design Guidelines pass found 229 of their 369 guidelines are judgment no analyzer checks, and the owner accepted one advisory rule for them, with the themes worth a reviewer's eye in an app listed for code review (owner, 2026-11-13: \"Yes, accept them\"): exceptions, collections, parameters, naming, properties, events and operator overloads, in docs/code-review.md. STY-009 gates the guidelines an analyzer checks. The guidelines are written for public APIs; STY-016 applies them to internal ones too. The themes for libraries a kit app ships (versioning, extensibility, virtual and protected members) wait for the .NET library guidance pass."
     layer: outside
     basis: authority
     status: accepted
@@ -308,7 +303,7 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: STY-013
-    statement: "Choose Nullable enable for new projects and active projects. A project that migrated to nullable reference types ends with <Nullable>enable</Nullable> and no #nullable directives. Use the null-forgiving operator sparingly: prefer a null check, restructuring the code, or annotating the API."
+    statement: "Choose Nullable enable for new projects and active projects where you want to protect against null reference exceptions. A project that migrated to nullable reference types ends with <Nullable>enable</Nullable> and no #nullable directives. Use the null-forgiving operator sparingly: prefer a null check, restructuring the code, or annotating the relevant API so the compiler reaches the right conclusion on its own."
     why: "The compiler then catches null misuse; each ! is a place it can no longer protect you. STY-005 is the kit's stricter form (a labelled operator, no hand-marked generated files)."
     layer: outside
     basis: authority
@@ -374,7 +369,7 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: STY-017
-    statement: "Await a task instead of blocking on it: write code that awaits the result in a nonblocking manner, replacing Task.Wait or Task.Result with await, Task.WaitAny with await Task.WhenAny, Task.WaitAll with await Task.WhenAll and Thread.Sleep with await Task.Delay. Synchronous blocking should be avoided whenever possible; where you must block, GetAwaiter().GetResult() is generally the preferred approach, and Wait() and Result are discouraged. Return async void only from event handlers; other methods that don't return a value should return a Task. Await the Task a method returns, or assign it to a variable for observation later, and put the await inside a using expression."
+    statement: "If a program needs the result of a task, write code that implements the await expression in a nonblocking manner; the C# async page's table replaces Task.Wait or Task.Result with await, Task.WaitAny with await Task.WhenAny, Task.WaitAll with await Task.WhenAll and Thread.Sleep with await Task.Delay. Synchronous blocking on asynchronous operations should be avoided whenever possible; where you must block synchronously, GetAwaiter().GetResult() is generally the preferred approach, and blocking with Wait() and Result is discouraged. Return async void only from event handlers; other methods that don't return a value should return a Task. Tasks returned from async methods should be awaited, or assigned to a variable for observation later; where a using expression holds a Task, add the await operator within it."
     why: "Blocking can deadlock under a synchronization context and ties up a thread the pool needs; Wait and Result also wrap the exception in an AggregateException, which GetAwaiter().GetResult() doesn't. An async void method can't be awaited, so its caller can't catch its exception, which is likely to bring the app down. STY-011 turns this into the kit's bans and gates."
     layer: outside
     basis: authority
@@ -387,13 +382,28 @@ rules:
         text: "If your program needs the result of a task, write code that implements the await expression in a nonblocking manner. Blocking the current thread as a means to wait synchronously for a Task item to complete can result in deadlocks and blocked context threads."
       - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
         retrieved: "2026-11-17"
+        text: "Task scenario Current code Replace with 'await'"
+      - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
+        retrieved: "2026-11-17"
+        text: "Retrieve the result of a background task Task.Wait or Task.Result await"
+      - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
+        retrieved: "2026-11-17"
+        text: "Continue when any task completes Task.WaitAny await Task.WhenAny"
+      - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
+        retrieved: "2026-11-17"
+        text: "Continue when all tasks complete Task.WaitAll await Task.WhenAll"
+      - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
+        retrieved: "2026-11-17"
+        text: "Continue after some amount of time Thread.Sleep await Task.Delay"
+      - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
+        retrieved: "2026-11-17"
         text: "Synchronous blocking on asynchronous operations can lead to deadlocks and should be avoided whenever possible. The preferred solution is to use async/await throughout your call stack."
       - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
         retrieved: "2026-11-17"
         text: "The GetAwaiter().GetResult() pattern is generally the preferred approach when you must block synchronously:"
       - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
         retrieved: "2026-11-17"
-        text: "However, this approach is discouraged because it wraps exceptions in AggregateException."
+        text: "You can use a blocking approach by calling Wait() and Result. However, this approach is discouraged because it wraps exceptions in AggregateException."
       - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
         retrieved: "2026-11-17"
         text: "Return 'async void' only from event handlers"
@@ -413,6 +423,24 @@ rules:
       - kind: advisory
         in: [kit, app]
         how: "code review checks it where STY-011's bans and analyzers don't reach"
+    scope: core
+    paths: ["**/*.cs"]
+  - id: STY-018
+    statement: "For describing methods, classes, fields and all public members, use XML comments."
+    why: "Microsoft's coding conventions page sets this among its comment styles: it says which kind of comment a description is, not which members need one. STY-008 is the kit's requirement that every publicly visible type and member has an XML documentation comment, which the build gates."
+    layer: outside
+    basis: authority
+    status: accepted
+    ratified: "owner, 2026-11-12"
+    sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions"
+        retrieved: "2026-11-17"
+        text: "For describing methods, classes, fields, and all public members use XML comments."
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks that a comment describing a method, class, field or public member is an XML comment, not a // or /* */ one; STY-008's CS1591 gate requires one on every publicly visible type and member outside test projects"
     scope: core
     paths: ["**/*.cs"]
 ---

@@ -2,8 +2,8 @@
 topic: blazor
 rules:
   - id: BLZ-001
-    statement: "Avoid coupling a component's implementation to a specific render mode: design components to support any render mode or hosting model. A reusable component should not specify a render mode, even when it needs interactivity, unless its implementation is fundamentally coupled to one mode."
-    why: "A component that assumes where it runs breaks when an app picks a different render mode, and a library component that sets a render mode takes the choice from the app author."
+    statement: "Component authors should avoid coupling a component's implementation to a specific render mode, and should typically design components to support any render mode or hosting model. In most cases, reusable component authors should not specify a render mode, even when interactivity is required."
+    why: "A component that assumes where it runs breaks when an app picks a different render mode, and a library component that sets a render mode takes the choice from the app developer."
     layer: outside
     basis: authority
     status: proposed
@@ -12,6 +12,9 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Component authors should avoid coupling a component's implementation to a specific render mode."
+      - source: "https://learn.microsoft.com/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Instead, component authors should typically design components to support any render mode or hosting model."
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/class-libraries-and-static-server-side-rendering?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "In most cases, reusable component authors should not specify a render mode, even when interactivity is required."
@@ -23,8 +26,8 @@ rules:
     paths: ["**/*.razor"]
 
   - id: BLZ-002
-    statement: "Avoid creating components that write directly to their own component parameters. Declare parameters as auto properties with no custom logic in their get or set accessors, and don't use the required modifier or an init accessor on them."
-    why: "A parameter is a channel from parent to child; writing to it overwrites the parent's state when the component rerenders."
+    statement: "Generally, avoid creating components that write directly to their own component parameters. Component parameters should be declared as auto properties, with no custom logic in their get or set accessors. Don't use the required modifier or an init accessor on component parameter properties."
+    why: "A parameter is a channel from parent to child: a value the component writes to its own parameter is overwritten when the parent rerenders."
     layer: outside
     basis: authority
     status: proposed
@@ -47,8 +50,8 @@ rules:
     paths: ["**/*.razor", "**/*.razor.cs"]
 
   - id: BLZ-003
-    statement: "For two-way data binding, use @bind:get and @bind:set rather than an event handler. Don't specify a culture with @bind:culture on date and number field types."
-    why: "An event handler used for two-way binding can leave the displayed value out of step with the bound value; Blazor already formats date and number fields for the user's culture."
+    statement: "For two-way data binding, the @bind:get/@bind:set modifiers are recommended. Specifying a culture with @bind:culture isn't recommended when using the date and number field types."
+    why: "The modifiers run a component's own logic when a bound value changes without a hand-written property setter, and Blazor provides built-in support to render values in the current culture."
     layer: outside
     basis: authority
     status: proposed
@@ -60,6 +63,9 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Therefore, specifying a culture with @bind:culture isn't recommended when using the date and number field types."
+      - source: "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Blazor provides built-in support to render values in the current culture."
     scope: [blazor]
     enforcement:
       - kind: advisory
@@ -152,8 +158,8 @@ rules:
     paths: ["**/*.razor", "**/*.razor.cs"]
 
   - id: BLZ-008
-    statement: "Where rendering is expensive or measured to cause UI lag, avoid thousands of component instances, avoid attribute splatting for components that render at scale, avoid recreating delegates for many repeated elements or components, and don't trigger events too rapidly. Most components don't need this optimization."
-    why: "Rendering cost grows with component count and repeated work; the page itself says most components need no aggressive optimization."
+    statement: "Avoid thousands of component instances. For components that render at scale, such as each item in a large list or the cells of a grid, try to avoid attribute splatting. Avoid recreating delegates for many repeated elements or components, and don't trigger events too rapidly. Most Razor components don't require aggressive optimization efforts, because most components don't repeat in the UI and don't rerender at high frequency."
+    why: "Rendering cost grows with how many components render and how often they rerender."
     layer: outside
     basis: authority
     status: proposed
@@ -182,8 +188,8 @@ rules:
     paths: ["**/*.razor"]
 
   - id: BLZ-009
-    statement: "Avoid inline event handlers in JavaScript that Blazor calls; assign handlers in JavaScript with addEventListener. Use JS collocation combined with JS modules, and avoid inline JavaScript. Dispose a JSObjectReference you hold to avoid leaking JS memory, and don't run JS interop for DOM cleanup tasks during component disposal or location changes. Avoid excessively fine-grained JS interop calls."
-    why: "Inline script and per-item interop calls are costly and hard to unload; disposal-time JS calls can fail once the connection or DOM is gone."
+    statement: "Avoiding inline event handlers in favor of assigning handlers in JavaScript with addEventListener is recommended. JS collocation combined with JS modules is recommended, and inline JavaScript isn't recommended for Blazor apps. Maintaining a reference to a JSObjectReference requires disposing of it, to avoid leaking JS memory on the client. Don't execute JS interop code for DOM cleanup tasks during component disposal or when handling location changes. Avoid excessively fine-grained JS interop calls."
+    why: "Script kept in modules beside its component is easier to load and maintain than inline script, each interop call has its own overhead, and a JS call made during disposal can fail once the connection or the DOM is gone."
     layer: outside
     basis: authority
     status: proposed
@@ -218,7 +224,7 @@ rules:
     paths: ["**/*.razor", "**/*.razor.cs", "**/*.js"]
 
   - id: BLZ-010
-    statement: "In server-side components, JS interop calls must be asynchronous, and invokeMethodAsync is recommended over invokeMethod; treat JS interop as unreliable because it can fail on network errors."
+    statement: "When adopting server-side rendering, JS interop calls must be asynchronous, and for server-side components the asynchronous invokeMethodAsync is recommended over the synchronous invokeMethod. In server-side apps with server interactivity, JS interop may fail due to networking errors and should be treated as unreliable."
     why: "Interop calls from an interactive server component travel over the network connection."
     layer: outside
     basis: authority
@@ -242,13 +248,16 @@ rules:
     paths: ["**/*.razor", "**/*.razor.cs"]
 
   - id: BLZ-011
-    statement: "In interactive server-side Blazor, include appropriate checks and limits before potentially CPU-intensive work, and don't let clients allocate an unbounded amount of memory. Always validate data when handling events, don't trust calls from JavaScript to .NET methods, and don't make authorization decisions from the state of the UI, only from component state."
-    why: "Blazor apps have no request time-out safeguards, and a client controls its circuit's events and JS interop calls."
+    statement: "In interactive server-side Blazor, the app must include appropriate checks and limits before performing potentially CPU-intensive work, and, as a general recommendation, clients shouldn't be permitted to allocate an unbounded amount of memory. Always validate data when handling events, don't trust calls from JavaScript to .NET methods, and don't make authorization decisions based on the state of the UI, only from component state."
+    why: "Blazor apps don't have the request and connection time-outs that guard a regular web app, and a client controls its circuit's events and JS interop calls."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "In regular web apps, requests and connections time out as a safeguard, but Blazor apps don't provide the same safeguards."
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Blazor apps must include appropriate checks and limits before performing potentially CPU-intensive work."
@@ -272,7 +281,7 @@ rules:
     paths: ["**/*.razor", "**/*.razor.cs"]
 
   - id: BLZ-012
-    statement: "Avoid rendering raw HTML built from an untrusted source. Avoid passing user-supplied data in parameters to JavaScript calls (for example, don't write it to innerHTML), and avoid using user input as part of navigation call arguments."
+    statement: "Rendering raw HTML constructed from any untrusted source should always be avoided, and so should rendering HTML content directly from a database. Avoid passing user-supplied data in parameters to JavaScript calls; for example, don't write user-supplied data to the DOM by setting an element's innerHTML property. Avoid using user input as part of navigation call arguments."
     why: "Each of these lets user input reach the page as markup or a navigation target, which is cross-site scripting or open redirect."
     layer: outside
     basis: authority
@@ -287,6 +296,9 @@ rules:
         text: "Avoid passing user-supplied data in parameters to JavaScript calls."
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
+        text: "For example, don't write user-supplied data to the DOM by setting the innerHTML property of an element."
+      - source: "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
         text: "Avoid using user input as part of the navigation call arguments."
       - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
@@ -299,8 +311,8 @@ rules:
     paths: ["**/*.razor", "**/*.razor.cs"]
 
   - id: BLZ-013
-    statement: "Use a Content Security Policy in Blazor apps. When WebSocket compression is enabled (the default), avoid setting the frame-ancestors directive to 'null'."
-    why: "A CSP reduces cross-site scripting and clickjacking risk; a 'null' frame-ancestors value with compression enabled opens the app to both."
+    statement: "A Content Security Policy (CSP) is recommended for Blazor apps. Avoid setting the frame-ancestors directive value to 'null' when WebSocket compression is enabled (compression is the default), because it makes the app vulnerable to malicious script injection and clickjacking attacks."
+    why: "A CSP limits what script and framing a page allows, which reduces cross-site scripting and clickjacking risk."
     layer: outside
     basis: authority
     status: proposed
@@ -344,13 +356,16 @@ rules:
     paths: ["**/*.Client/**", "**/*.razor"]
 
   - id: BLZ-015
-    statement: "Use Razor Pages instead of Razor components for ASP.NET Core Identity UI such as registration, login, logout and other user management; building Razor components that directly handle Identity tasks isn't recommended."
-    why: "Microsoft says components that directly handle Identity tasks aren't recommended or supported by Microsoft. Note that the Blazor Web App template's own Identity UI is built from components, so a project that scaffolds it departs from this advice."
+    statement: "ASP.NET Core apps that use ASP.NET Core Identity for user management should use Razor Pages instead of Razor components for Identity-related UI, such as user registration, login, logout and other user management tasks. Building Razor components that directly handle Identity tasks isn't recommended or supported by Microsoft."
+    why: "Identity is designed for HTTP request and response communication, which generally isn't how a Blazor app's client and server talk. The kit's note: the Blazor Web App template's Individual Accounts option generates its account pages as Razor components, so an app that keeps them should check them against this rule (ADR-0087)."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "ASP.NET Core Identity is designed to work in the context of HTTP request and response communication, which generally isn't the Blazor app client-server communication model."
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "ASP.NET Core apps that use ASP.NET Core Identity for user management should use Razor Pages instead of Razor components for Identity-related UI, such as user registration, login, logout, and other user management tasks."
@@ -365,7 +380,7 @@ rules:
     paths: ["**/Components/Account/**", "**/Areas/Identity/**"]
 
   - id: BLZ-016
-    statement: "Use a production distributed token cache (for example Redis, SQL Server or Azure Cosmos DB) in production web apps and web APIs, and always replace the in-memory distributed token caches with a real token cache provider when deploying to production."
+    statement: "Production web apps and web APIs should use a production distributed token cache (for example Redis, SQL Server or Azure Cosmos DB). Always replace the in-memory distributed token caches with a real token cache provider when deploying the app to a production environment."
     why: "An in-memory token cache is lost on restart and not shared across instances."
     layer: outside
     basis: authority
@@ -386,13 +401,16 @@ rules:
     paths: ["**/Program.cs"]
 
   - id: BLZ-017
-    statement: "When a component must call a server project-based API (or transform a request to an external web API) and can run on the client, abstract the call behind a service interface and implement client and server versions of the service. Design components that use these render modes to run successfully from both the client and the server."
+    statement: "Components that use the interactive WebAssembly and Auto render modes should be designed so that they run successfully from both the client and the server. If such a component must call a server project-based API, or transform a request to an external web API, when running on the client, the recommended approach is to abstract that API call behind a service interface and implement client and server versions of the service."
     why: "A component in the Auto or WebAssembly render mode runs in either place, so it can't assume one."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "This means that components using these render modes should be designed so that they run successfully from both the client and the server."
       - source: "https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "If the component must call a server project-based API or transform a request to an external web API (one that's outside of the Blazor Web App) when running on the client, the recommended approach is to abstract that API call behind a service interface and implement client and server versions of the service:"
@@ -422,7 +440,7 @@ rules:
     paths: ["**/*.razor", "**/*.razor.cs"]
 
   - id: BLZ-019
-    statement: "In production, don't render framework exception messages or stack traces in the UI. Narrowly scope error boundaries in most scenarios."
+    statement: "In production, don't render framework exception messages or stack traces in the UI. Narrowly scoping error boundaries is recommended in most scenarios."
     why: "Error detail shown to users can reveal how the app works; a narrow boundary keeps one failure from replacing the whole page."
     layer: outside
     basis: authority
@@ -443,7 +461,7 @@ rules:
     paths: ["**/*.razor"]
 
   - id: BLZ-020
-    statement: "State persisted during prerendering must not contain sensitive, private information when it is exposed to the browser (client-side and Auto render modes). To avoid waiting on slow asynchronous work while prerendering, begin by implementing streaming rendering."
+    statement: "During client-side rendering (CSR, InteractiveWebAssembly), state persisted during prerendering is exposed to the browser and must not contain sensitive, private information. To improve the user experience, begin by implementing streaming rendering, to avoid waiting for an asynchronous task to complete while prerendering."
     why: "Persisted prerendered state is sent to the browser; a long-running load delays the whole prerendered response."
     layer: outside
     basis: authority
@@ -464,7 +482,7 @@ rules:
     paths: ["**/*.razor", "**/*.razor.cs"]
 
   - id: BLZ-021
-    statement: "Always use the @formname directive attribute with a unique form name. To mitigate overposting, use a separate view model or data transfer object (DTO) for the form, apart from the database entity, for create and update operations."
+    statement: "Always use the @formname directive attribute with a unique form name. To mitigate overposting, using a separate view model or data transfer object (DTO) for the form and the database in create (insert) and update operations is recommended."
     why: "A form needs a unique name to bind to its handler, and binding straight to an entity lets a client set fields the form doesn't show."
     layer: outside
     basis: authority
@@ -485,8 +503,8 @@ rules:
     paths: ["**/*.razor"]
 
   - id: BLZ-022
-    statement: "Outside of processing a small file, avoid reading an incoming file stream into memory all at once. Never use a client-supplied file name for saving a file to physical storage. Don't make an uploaded file available for immediate download without security checks."
-    why: "Whole-file reads allow denial of service; a client-chosen name can overwrite files or write outside the app."
+    statement: "Outside of processing a small file, avoid reading the incoming file stream directly into memory all at once. Don't receive files from users or other untrusted sources and then make them available for immediate download without performing security checks on them. ASP-006 covers the rest of safe upload handling, including never using a client-supplied file name for saving a file."
+    why: "A whole-file read lets a large upload exhaust the server's memory, and an unchecked file offered for download can carry malware to other users."
     layer: outside
     basis: authority
     status: proposed
@@ -495,9 +513,6 @@ rules:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/file-uploads?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Outside of processing a small file, avoid reading the incoming file stream directly into memory all at once."
-      - source: "https://learn.microsoft.com/aspnet/core/blazor/file-uploads?view=aspnetcore-10.0"
-        retrieved: "2026-11-17"
-        text: "Never use a client-supplied file name for saving a file to physical storage."
       - source: "https://learn.microsoft.com/aspnet/core/blazor/file-downloads?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Don't receive files from users or other untrusted sources and then make the files available for immediate download without performing security checks on the files."
@@ -530,8 +545,8 @@ rules:
     paths: ["**/*.Client/**", "**/*.csproj"]
 
   - id: BLZ-024
-    statement: "Start new Blazor development with a Blazor Web App (.NET 8 or later). Host interactive server-side apps with WebSockets as the transport (select a proxy or gateway that supports WebSockets), and use session affinity when a web farm or cluster hosts them."
-    why: "Microsoft recommends the Blazor Web App for all new development; interactive server rendering keeps its state in a circuit that a user's requests must reach."
+    statement: "A Blazor Web App is recommended for all new Blazor development in .NET 8 or later. For interactive server-side rendering, WebSockets is the recommended transport protocol, and selecting a proxy or gateway that supports WebSockets is recommended. Server-side Blazor Web Apps hosted in a web farm or cluster of machines must adopt session affinity to maintain Blazor circuits."
+    why: "Interactive server rendering keeps a user's state in a circuit on one server, which the user's connection must keep reaching."
     layer: outside
     basis: authority
     status: proposed
@@ -557,13 +572,19 @@ rules:
     paths: ["**"]
 
   - id: BLZ-025
-    statement: "Use a localization culture cookie to localize resources by a user's stored culture setting."
-    why: "Microsoft's page names the cookie as its recommended approach for a stored culture."
+    statement: "If the app should localize resources based on storing a user's culture setting, use a localization culture cookie."
+    why: "A cookie lets the WebSocket connection carry the culture, which a culture kept in the URL path or query string might not."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "If the app should localize resources based on storing a user's culture setting, use a localization culture cookie."
+      - source: "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "Use of a cookie ensures that the WebSocket connection can correctly propagate the culture."
       - source: "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "Therefore, the recommended approach is to use a localization culture cookie."
@@ -575,13 +596,16 @@ rules:
     paths: ["**/Program.cs", "**/Components/**"]
 
   - id: BLZ-026
-    statement: "Never reference the MAUI library from a Razor class library that holds shared components. Such a library should be host-agnostic, not depending on specific hosting infrastructure or platform APIs, and prefer interfaces over abstract classes."
+    statement: "Never reference the MAUI library from a Razor class library (RCL). RCLs should adopt host-agnostic design and shouldn't depend on specific hosting infrastructure or platform APIs. For an RCL's abstractions, prefer interfaces over abstract classes for flexibility."
     why: "A host-agnostic library works across Blazor Server, WebAssembly, Hybrid and static server-side rendering."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/hybrid/class-libraries-best-practices?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/class-libraries-best-practices?view=aspnetcore-10.0"
+        retrieved: "2026-11-17"
+        text: "RCLs should adopt host-agnostic design, where libraries are reusable UI component packages that work across different platforms, app types, Blazor hosting models (Blazor Server, Blazor WebAssembly, Blazor Hybrid/MAUI), and static server-side rendering."
       - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/class-libraries-best-practices?view=aspnetcore-10.0"
         retrieved: "2026-11-17"
         text: "RCLs shouldn't depend on specific hosting infrastructure or platform APIs:"

@@ -141,8 +141,8 @@ rules:
     scope: core
     paths: ["**/*.Benchmarks/**", "**/tests/load/**", "**/benchmark-budget.json", "**/load-budget.json"]
   - id: TST-010
-    statement: "Unit tests follow Microsoft's unit-testing best practices. Name each test for the method, the scenario and the expected behavior. Try to include only one Act task per test. Avoid logic in a test (string concatenation, if, while, for, switch) and avoid magic strings. Keep a test's input to the simplest information needed. Try not to introduce infrastructure dependencies into unit tests; reserve them for integration tests. Create the objects a test needs in the test or in a helper method, in preference to Setup and Teardown attributes when tests have different setup requirements; where every test needs the same initialization, per-test setup is appropriate, and for synchronous initialization prefer the constructor. In most cases don't test a private method: test the public method that calls it. Where production code calls a static reference such as DateTime.Now, introduce a seam so the test has full control."
-    why: "Microsoft lists these as what makes a unit test fast, isolated, repeatable, self-checking and readable: tests that don't depend on outside state or hide logic can be trusted."
+    statement: "Microsoft's unit testing best practices say: a test's name should consist of three parts, the name of the method being tested, the scenario under which it's tested, and the expected behavior when the scenario is invoked. Try to include only one Act task per test. Avoid manual string concatenation and logical conditions (if, while, for, switch) in unit tests, and avoid magic strings: assign hard-coded values to constants. A unit test's input should be the simplest information needed to verify the behavior under test. Try not to introduce dependencies on infrastructure into unit tests; they should be reserved for integration tests. To keep test-specific setup visible, create the objects a test needs in the test or call a helper method from it, in preference to Setup and Teardown attributes when tests have different setup requirements; common per-test setup can still be appropriate when every test in a class needs the same initialization, and for synchronous initialization, prefer the constructor. In most cases you don't need to test a private method: write the tests against the public method that calls it. A unit test must have full control of the system under test, so where production code calls static references (for example, DateTime.Now), you need to introduce a seam into the production code."
+    why: "Tests that don't depend on outside state or hide logic can be trusted, and a name that says the method, the scenario and the expected behavior says what failed. TST-011 holds the kit's additions: names without underscores, and shared setup in a helper method rather than a constructor."
     layer: outside
     basis: authority
     status: accepted
@@ -154,10 +154,22 @@ rules:
         text: "The name of your test should consist of three parts:"
       - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
         retrieved: "2026-11-17"
+        text: "Name of the method being tested"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Scenario under which the method is being tested"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Expected behavior when the scenario is invoked"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
         text: "When you write your tests, try to include only one Act task per test."
       - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
         retrieved: "2026-11-17"
         text: "When you write your unit tests, avoid manual string concatenation, logical conditions, such as if, while, for, and switch, and other conditions."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Avoid magic strings"
       - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
         retrieved: "2026-11-17"
         text: "Rather than using magic strings, assign any hard-coded values to constants."
@@ -184,6 +196,12 @@ rules:
         text: "When you encounter a private method, locate the public method that calls the private method, and write your tests against the public method."
       - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
         retrieved: "2026-11-17"
+        text: "One principle of a unit test is that it must have full control of the system under test."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "However, this principle can be problematic when production code includes calls to static references (for example, DateTime.Now)."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
         text: "To solve these problems, you need to introduce a seam into your production code."
     scope: core
     enforcement:
@@ -192,8 +210,8 @@ rules:
         how: "no analyzer checks a test's shape; code review checks, the nightly mutation score (TST-004) exposes tests that assert too little, and the tdd-cycle skill names these practices"
     paths: ["**/*Tests*/**"]
   - id: TST-011
-    statement: "The kit's additions to its unit tests, beyond Microsoft's best practices (TST-010): write each test name as the method, the scenario and the expected behavior without underscores (AddRejectsAMissingRequestByName); arrange, act and assert; keep try out of a test; and bring time, randomness and other outside state in through seams such as TimeProvider."
-    why: "The kit keeps names without underscores, the owner's choice (owner, 2026-11-09) and what CA1707 asks of every name, in place of Microsoft's Method_Scenario_ExpectedBehavior; the other points tighten TST-010 in the same spirit, so a test reads the same in every repo."
+    statement: "The kit's additions to its unit tests, beyond Microsoft's best practices (TST-010): write each test name as the method, the scenario and the expected behavior without underscores (AddRejectsAMissingRequestByName); arrange, act and assert; keep try out of a test; shared setup is a helper method, not a constructor every test runs; and bring time, randomness and other outside state in through seams such as TimeProvider."
+    why: "The kit keeps names without underscores, the owner's choice (owner, 2026-11-09) and what CA1707 asks of every name, in place of Microsoft's Method_Scenario_ExpectedBehavior; the other points tighten TST-010 in the same spirit, so a test reads the same in every repo. Shared setup in a helper method, not a constructor every test runs, is the owner's accepted wording from before the rule was split (owner, 2026-11-12), and goes further than Microsoft's page, which prefers the constructor for synchronous initialization that every test in a class needs."
     layer: owner
     basis: preference
     status: accepted
@@ -205,7 +223,7 @@ rules:
     scope: core
     paths: ["**/*Tests*/**"]
   - id: TST-012
-    statement: "Avoid ordering unit tests: the order in which they run should not matter."
+    statement: "Avoid ordering unit tests: it's best practice, and ideally the order in which they run should not matter."
     why: "Tests that depend on each other fail for reasons the failing test doesn't show, and can't run alone or in parallel."
     layer: outside
     basis: authority

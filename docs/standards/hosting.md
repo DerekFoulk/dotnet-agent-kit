@@ -2,7 +2,7 @@
 topic: hosting
 rules:
   - id: HST-001
-    statement: "Don't auto-activate services with a scoped or transient lifetime, and keep what an auto-activated service does at startup fast. For longer-running initialization, consider background services or hosted services."
+    statement: "Services with a scoped or transient lifetime should not be auto-activated, and auto-activated services should complete their initialization quickly to avoid delaying application startup; for longer-running initialization, consider background services or hosted services."
     why: "Microsoft's auto-activation page gives these as best practices for services the host creates at startup."
     layer: outside
     basis: authority
@@ -25,8 +25,8 @@ rules:
         how: "code review checks what is auto-activated and how long its startup work takes"
     paths: ["**/*.cs"]
   - id: HST-002
-    statement: "Don't cache an HttpClient that IHttpClientFactory created for a long time, and don't inject a typed client into a singleton service: request a client in a timely manner or each time you need one. Don't cache scope-related information (such as data from HttpContext) inside HttpMessageHandler instances or their dependencies. Don't register a typed client separately, because AddHttpClient already registers it. Don't start a large number of HTTP/1.1 requests at once without specifying limits."
-    why: "Microsoft's IHttpClientFactory troubleshooting page lists these as DO NOT items: a long-lived client keeps one handler and misses DNS and network changes, scope data in a shared handler can leak sensitive information, and a separate registration overwrites the typed client's own. OPS-003 covers using the factory at all, and its cookie exception."
+    statement: "Don't cache an HttpClient that IHttpClientFactory created for a long time, and don't inject a typed client into a singleton service; consider requesting a client from IHttpClientFactory in a timely manner or each time you need one. Don't cache scope-related information (such as data from HttpContext) inside HttpMessageHandler instances or their dependencies. Don't register a typed client separately, because AddHttpClient already registers it. Don't start a large number of HTTP/1.1 requests at once without specifying limits."
+    why: "Microsoft's IHttpClientFactory troubleshooting page lists these as DO NOT and CONSIDER items: a client captured for longer than its handler's lifetime misses DNS changes, scope data in a handler can leak sensitive information, and a second registration of a typed client overwrites the one the factory added. OPS-003 covers using the factory at all, and its cookie exception."
     layer: outside
     basis: authority
     status: proposed
@@ -57,8 +57,8 @@ rules:
         how: "code review checks how typed clients are registered and injected, and that concurrent request volume has a limit; BannedSymbols.txt's ban of HttpClient's constructors (OPS-003) keeps clients coming from the factory"
     paths: ["**/*.cs"]
   - id: HST-003
-    statement: "Name a log category after the fully qualified class that writes the message (an ILogger<T> does it), and use log message template formatting, not string interpolation. If a logging data store is slow, don't write to it directly from a logger."
-    why: "Microsoft's logging pages recommend the category name so logs relate back to their code, say interpolation can cause performance issues, and advise against writing to a slow store directly. OPS-007 covers the generated, high-performance logger."
+    statement: "Using the fully qualified name of the class that creates a log message as its category name is the recommended practice; in most cases, you should use log message template formatting when logging; and if a logging data store is slow, don't write to it directly."
+    why: "Microsoft's logging page recommends the category name so logs relate back to the code that produced them, and says string interpolation can cause performance issues. OPS-007 covers the generated, high-performance logger."
     layer: outside
     basis: authority
     status: proposed
@@ -83,7 +83,7 @@ rules:
         how: "code review checks the category and that logging doesn't write straight to a slow store"
     paths: ["**/*.cs"]
   - id: HST-004
-    statement: "Use AddDistributedMemoryCache only in development or testing; it isn't a viable production implementation of IDistributedCache."
+    statement: "AddDistributedMemoryCache should only be used in development or testing scenarios; it isn't a viable production implementation of IDistributedCache."
     why: "Microsoft's caching page says so in a caution. It is an in-process cache that doesn't share entries across servers."
     layer: outside
     basis: authority
@@ -100,7 +100,7 @@ rules:
         how: "code review checks that production registrations of IDistributedCache aren't the in-memory one"
     paths: ["**/*.cs"]
   - id: HST-005
-    statement: "A library that adds registration extension methods must not use the Microsoft.Extensions.DependencyInjection namespace unless it is an official Microsoft package, and must not use names that are already part of the .NET ecosystem from official Microsoft packages."
+    statement: "In a library that isn't an official Microsoft package, don't use the Microsoft.Extensions.DependencyInjection namespace, and don't give its service registration extension methods names that are already part of the .NET ecosystem from official Microsoft packages."
     why: "Microsoft's options guidance for library authors gives both as DO NOT items, so a library's extensions don't collide with or pose as Microsoft's."
     layer: outside
     basis: authority

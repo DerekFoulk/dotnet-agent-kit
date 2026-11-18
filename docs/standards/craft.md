@@ -189,8 +189,8 @@ rules:
     scope: [web-api, blazor]
     paths: ["**/*.cs"]
   - id: CRF-014
-    statement: "Types limit outside access to their state: outside code changes an object's state through a well-defined function or property setter, not direct access to its private state (encapsulation). Types that need to be persisted stay unaffected by the persistence technology (persistence ignorance): a required base class, a required interface implementation, classes that save themselves, a required parameterless constructor, properties that must be virtual and persistence-specific required attributes all violate it. CRF-021 adds the kit's check on what the domain references."
-    why: "Microsoft's architectural principles name both: encapsulation lets a component change its internals without breaking collaborators, and persistence ignorance allows the same business model to be persisted in multiple ways, so storage can change without touching business rules."
+    statement: "Different parts of an application should use encapsulation to insulate them from other parts of the application: an outside actor that wants to manipulate an object's state should do so through a well-defined function (or property setter), rather than having direct access to the object's private state. Microsoft's page calls persistence ignorance (types that need to be persisted, but whose code is unaffected by the choice of persistence technology) valuable, and gives as examples of violations a required base class, a required interface implementation, classes responsible for saving themselves (such as the Active Record pattern), a required parameterless constructor, properties requiring the virtual keyword and persistence-specific required attributes: requiring any of them adds coupling between the types to be persisted and the choice of persistence technology. CRF-021 adds the kit's check on what the domain references."
+    why: "Encapsulation lets a type change its internals without breaking the code that uses it. Persistence ignorance allows the same business model to be persisted in multiple ways (the page's reason), so storage can change without touching business rules; the page states it as a principle with examples of violations, not as a requirement, and the kit's check is CRF-021's."
     layer: outside
     basis: authority
     status: accepted
@@ -202,25 +202,48 @@ rules:
         text: "If an outside actor wants to manipulate the state of the object, it should do so through a well-defined function (or property setter), rather than having direct access to the private state of the object."
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
         retrieved: "2026-11-17"
+        text: "Different parts of an application should use encapsulation to insulate them from other parts of the application."
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
+        retrieved: "2026-11-17"
+        text: "Persistence ignorance (PI) refers to types that need to be persisted, but whose code is unaffected by the choice of persistence technology."
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
+        retrieved: "2026-11-17"
         text: "Persistence ignorance is valuable because it allows the same business model to be persisted in multiple ways, offering additional flexibility to the application."
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
         retrieved: "2026-11-17"
-        text: "The requirement that classes have any of the above features or behaviors adds coupling between the types to be persisted and the choice of persistence technology, making it more difficult to adopt new data access strategies in the future."
+        text: "Some examples of violations of this principle include:"
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
+        retrieved: "2026-11-17"
+        text: "A required base class."
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
+        retrieved: "2026-11-17"
+        text: "A required interface implementation."
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
+        retrieved: "2026-11-17"
+        text: "Classes responsible for saving themselves (such as the Active Record pattern)."
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
+        retrieved: "2026-11-17"
+        text: "Required parameterless constructor."
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
+        retrieved: "2026-11-17"
+        text: "Properties requiring virtual keyword."
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
         retrieved: "2026-11-17"
         text: "Persistence-specific required attributes."
-
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
+        retrieved: "2026-11-17"
+        text: "The requirement that classes have any of the above features or behaviors adds coupling between the types to be persisted and the choice of persistence technology, making it more difficult to adopt new data access strategies in the future."
     enforcement:
       - kind: gate
         in: [kit, app]
         how: "build: CA1051 (no visible instance fields) and CA1002 (no List<T> in a member's signature: property, return type or parameter), on internal types too (STY-009), and CA2227 (collection properties are read-only), on public types only, all on through AnalysisLevel latest-all"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks what the analyzers can't: no setter that lets a caller break an invariant, a settable collection property on an internal type (CA2227 checks public types only), and no persistence attributes or constructors only the database needs in domain types"
+        how: "code review checks what the analyzers can't: no setter that lets a caller break an invariant, a settable collection property on an internal type (CA2227 checks public types only), and the page's examples of persistence ignorance violations, such as persistence-specific attributes or a constructor only the database needs, in domain types"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-015
-    statement: "Avoid specifying behavior related to a particular concept in multiple places (DRY): encapsulate it in one programming construct that is the single authority over that behavior, and have every other part that needs it use that construct. Avoid binding together behavior that is only coincidentally repetitive."
+    statement: "An application should avoid specifying behavior related to a particular concept in multiple places (DRY): rather than duplicating logic, encapsulate it in one programming construct that is the single authority over that behavior, and have every other part that needs it use that construct. Avoid binding together behavior that is only coincidentally repetitive."
     why: "A change in requirements will need the behavior changed, and one copy will likely be missed, so the system behaves inconsistently; two constants with the same value but different meanings stay two constants. CRF-003 is the kit's wider form, with its duplication check."
     layer: outside
     basis: authority
@@ -247,7 +270,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: CRF-016
-    statement: "Objects have one responsibility and one reason to change (single responsibility). The direction of dependency is toward abstraction, not implementation details (dependency inversion). Methods and classes explicitly require the collaborating objects they need (explicit dependencies)."
+    statement: "Objects should have only one responsibility and only one reason to change (single responsibility). The direction of dependency within an application should be toward abstraction, not implementation details (dependency inversion). Methods and classes should explicitly require any collaborating objects they need in order to function correctly (explicit dependencies)."
     why: "Each keeps a change local and the code honest about what it needs. CRF-005 is the kit's fuller SOLID, with open-closed, Liskov substitution and interface segregation."
     layer: outside
     basis: authority
@@ -271,14 +294,17 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-017
-    statement: "Keep software separated by the kind of work it performs (separation of concerns): ideally business rules and logic reside in a separate project that doesn't depend on other projects in the application, and it helps if infrastructure concerns depend on abstractions defined in the business layer."
-    why: "This separation keeps the business model easy to test and lets it evolve without being tightly coupled to low-level implementation details. CRF-006 is the kit's form, with its architecture tests."
+    statement: "Software should be separated based on the kinds of work it performs (separation of concerns): ideally, business rules and logic should reside in a separate project, which should not depend on other projects in the application."
+    why: "The page's reason: this separation helps ensure that the business model is easy to test and can evolve without being tightly coupled to low-level implementation details, and it also helps if infrastructure concerns depend on abstractions defined in the business layer. CRF-006 is the kit's form, with its architecture tests."
     layer: outside
     basis: authority
     status: accepted
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
+        retrieved: "2026-11-17"
+        text: "This principle asserts that software should be separated based on the kinds of work it performs."
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
         retrieved: "2026-11-17"
         text: "Ideally, business rules and logic should reside in a separate project, which should not depend on other projects in the application."
@@ -292,7 +318,7 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-018
-    statement: "Validate input before business processing or storage, and validate data from internal APIs, partner feeds, queues and stored records when it crosses a trust boundary."
+    statement: "Use a maintained parser for the expected format, handle parsing failures, and validate the resulting values before business processing or storage; validate data from internal APIs, partner feeds, queues and stored records when it crosses a trust boundary."
     why: "An internal transport doesn't establish that a value meets the receiving component's rules. CRF-006 is the kit's form: validate where input enters, so the code inside can trust it; SEC-010 (proposed) says how an API validates a request."
     layer: outside
     basis: authority
@@ -313,7 +339,7 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-019
-    statement: "Don't rely on the internal implementation details of the runtime and libraries, which .NET doesn't support, and don't assume that any nonpublic member of the BCL will always be present or have a specific shape."
+    statement: "Avoid accessing or relying on the internal implementation details of the runtime and libraries, which is bad practice in general and not supported by .NET; don't assume any given nonpublic member in the BCL will always be present or will have a specific shape."
     why: "The .NET team occasionally modifies or removes nonpublic APIs in servicing releases. CRF-010 is the kit's wider form: every library, with a ban on the reflection routes in."
     layer: outside
     basis: authority
@@ -321,6 +347,9 @@ rules:
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices"
+        retrieved: "2026-11-17"
+        text: "Internal implementation details of the runtime and libraries"
       - source: "https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices"
         retrieved: "2026-11-17"
         text: "While accessing or relying on internal implementation details is bad practice in general (and not supported by .NET), it's worth calling out specific commonly observed cases."
@@ -334,7 +363,7 @@ rules:
     scope: core
     paths: ["**"]
   - id: CRF-020
-    statement: "Follow Microsoft's dependency injection guidelines: avoid stateful, static classes and members; avoid instantiating dependent classes directly within services; avoid static access to services; avoid the service locator pattern and a factory that resolves dependencies at run time; avoid calling BuildServiceProvider while configuring services; enable scope validation so no singleton captures a scoped service; use the singleton lifetime only for services with their own state that is expensive to create or globally shared; and avoid the page's anti-patterns, a captive dependency and a scoped service retrieved outside a scope."
+    statement: "Microsoft's dependency injection guidelines say: avoid stateful, static classes and members; avoid direct instantiation of dependent classes within services; avoid static access to services; avoid the service locator pattern, and its variation of injecting a factory that resolves dependencies at run time; avoid calls to BuildServiceProvider when configuring services; enable scope validation to make sure the app doesn't have singletons that capture scoped services; and only use the singleton lifetime for services with their own state that is expensive to create or globally shared. Don't use the page's example anti-patterns: disposable transient services captured by the container, async DI factories, a captive dependency, and a scoped service used as a singleton."
     why: "A captured scoped service lives for the whole app, so one DbContext is shared across requests, and a service locator hides what a class needs. CRF-005 and CRF-016 say how dependencies are passed in; CRF-013 is the kit's check that the tests validate scopes."
     layer: outside
     basis: authority
@@ -369,6 +398,21 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines"
         retrieved: "2026-11-17"
         text: "In addition to the guidelines in this article, there are several anti-patterns you should avoid."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines"
+        retrieved: "2026-11-17"
+        text: "These are example anti-patterns. Do not copy the code, do not use these patterns, and avoid these patterns at all costs."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines"
+        retrieved: "2026-11-17"
+        text: "Disposable transient services captured by container"
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines"
+        retrieved: "2026-11-17"
+        text: "Async DI factories can cause deadlocks"
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines"
+        retrieved: "2026-11-17"
+        text: "The term \"captive dependency\", coined by Mark Seemann, refers to the misconfiguration of service lifetimes, where a longer-lived service holds a shorter-lived service captive."
+      - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines"
+        retrieved: "2026-11-17"
+        text: "Scoped service as singleton"
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -413,7 +457,7 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 - **Metric limits (CRF-008), and the limits no analyzer checks (CRF-011, proposed).** See below.
 - **STUPID (CRF-009).** William Durand's name (2013) for six habits that make code hard to change: Singleton, Tight coupling, Untestability, Premature optimization, Indescriptive naming, Duplication. Testability and deployability are design drivers: if a part can't be tested in isolation, the design changes, not the test.
 - **The rule of ten (CRF-012).** A target, not a ceiling: ten subfolders, files, types, members or lines is where to start asking whether a unit does one thing. No tool enforces it; CRF-011 (proposed) caps statements per member (30), members per type (20) and lines per file (400) above ten.
-- **Dependency injection (CRF-020, CRF-013).** Microsoft's [guidelines](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines) in short: ask for dependencies in the constructor; never resolve them yourself, from `IServiceProvider`, a factory or a static; keep singletons for state that's shared or costly to create; and let the container check the registrations. ASP.NET Core checks them only in Development, so the sample's test host turns the checks on in every environment it runs the app in, and the app keeps Microsoft's setting.
+- **Dependency injection (CRF-020, CRF-013).** Microsoft's [guidelines](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines) in short (CRF-020 has their wording): avoid resolving dependencies yourself, from `IServiceProvider`, a factory or a static; keep singletons for state that's shared or costly to create; and enable scope validation. The kit asks for dependencies in the constructor (CRF-005). ASP.NET Core checks them only in Development, so the sample's test host turns the checks on in every environment it runs the app in, and the app keeps Microsoft's setting.
 - **Encapsulation and persistence ignorance (CRF-014).** From Microsoft's [architectural principles](https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles). The sample's `Bookmark` sets its state only through `Create`, which checks every part, and the domain project references no persistence library; Infrastructure maps it to the database.
 - **Documented use (CRF-010, CRF-019).** Use each library, tool and service the way its documentation describes for the version in use. Where there's no documented way to do something, ask its authors for one; don't reach into its internals. The ban covers an app's own code too, since the analyzer can't tell whose type a call reaches. In an app's own code the way forward is to register each type explicitly, as the built-in container requires: Microsoft's dependency injection guidance registers each service by its type, and its [guidelines](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines) list convention-based (scanning) registration among the features the built-in container doesn't have. Making a type public is the way forward only when it belongs to a library's public API; in an executable project (the API, a worker), CA1515 keeps types internal. Against a library, a banned member has a public alternative, which its message names: for example, a dynamic `OrderBy` over an `IQueryable` builds its expression from `type.GetProperty(name)` and a `MethodInfo` taken from `typeof(Queryable).GetMethods()`, not from the by-name `Expression` factories.
 

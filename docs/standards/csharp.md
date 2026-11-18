@@ -76,7 +76,7 @@ rules:
         how: "code review checks every use of dynamic"
     paths: ["**/*.cs"]
   - id: CS-005
-    statement: "Include an explanation of what to use instead in an Obsolete attribute (recommended)."
+    statement: "Including an explanation of what to use instead in an Obsolete attribute is recommended."
     why: "The message is shown as part of the warning or error."
     layer: outside
     basis: authority
@@ -93,8 +93,8 @@ rules:
         how: "code review checks every Obsolete attribute"
     paths: ["**/*.cs"]
   - id: CS-006
-    statement: "Write a static constructor instead of a module initializer in most cases, and use OverloadResolutionPriority only as a last resort when adding a new and better overload."
-    why: "Module initializers are for source generators' initialization code; overload priority needs a deep understanding of overload resolution, or unexpected errors result."
+    statement: "Outside the initialization code source generators need, in most cases you should write a static constructor instead of a module initializer; and library authors should use OverloadResolutionPriority as a last resort when adding a new and better method overload."
+    why: "Module initializers give source generators a standard place for their initialization code; overload priority needs a deep understanding of overload resolution, or unexpected errors result."
     layer: outside
     basis: authority
     status: proposed
@@ -102,7 +102,7 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general"
         retrieved: "2026-11-17"
-        text: "In most other cases, you should write a static constructor instead of a module initializer."
+        text: "Source code generators sometimes need to generate initialization code. Module initializers provide a standard place for that code. In most other cases, you should write a static constructor instead of a module initializer."
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general"
         retrieved: "2026-11-17"
         text: "Library authors should use this attribute as a last resort when adding a new and better method overload."
@@ -130,7 +130,7 @@ rules:
         how: "code review checks new enums; CA1008 checks the same for the Framework Design Guidelines (STY-009)"
     paths: ["**/*.cs"]
   - id: CS-008
-    statement: "Compute a record's computed properties on access, not when the instance is created."
+    statement: "Computed properties in record types should be computed on access, not initialized when the instance is created."
     why: "A with expression copies the instance, so a value computed at creation would describe the original, not the copy."
     layer: outside
     basis: authority
@@ -147,7 +147,7 @@ rules:
         how: "code review checks computed properties on records"
     paths: ["**/*.cs"]
   - id: CS-009
-    statement: "Define immutable structure types, and consider defining a class when a type's focus is behavior."
+    statement: "Defining immutable structure types is recommended, and if you're focused on the behavior of a type, consider defining a class."
     why: "Structure types have value semantics."
     layer: outside
     basis: authority
@@ -167,7 +167,7 @@ rules:
         how: "code review checks new structs; CA1815 and CA1819 check related Framework Design Guidelines (STY-009)"
     paths: ["**/*.cs"]
   - id: CS-010
-    statement: "Prefer ref readonly over in for a struct parameter when the method captures the parameter or returns it by readonly reference; otherwise in offers more flexibility."
+    statement: "For a by-reference struct parameter, prefer ref readonly over in when the method captures the parameter or returns it by readonly reference."
     why: "Passing a large struct by reference avoids copying it."
     layer: outside
     basis: authority
@@ -207,7 +207,7 @@ rules:
         how: "code review checks every stackalloc"
     paths: ["**/*.cs"]
   - id: CS-012
-    statement: "Lock a dedicated object that isn't used for another purpose; avoid using one lock object for different shared resources, and avoid this, Type instances and string instances (including literals) as lock objects."
+    statement: "Starting with .NET 9 and C# 13, lock a dedicated System.Threading.Lock instance for best performance (on an older .NET and C#, a dedicated object instance that isn't used for another purpose); avoid using the same lock object instance for different shared resources; and avoid this, Type instances and string instances (including string literals) as lock objects."
     why: "A shared or publicly reachable lock object can cause deadlock or lock contention."
     layer: outside
     basis: authority
@@ -216,10 +216,19 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock"
         retrieved: "2026-11-17"
-        text: "Avoid using the same lock object instance for different shared resources, as it might result in deadlock or lock contention."
+        text: "Starting with .NET 9 and C# 13, lock a dedicated object instance of the System.Threading.Lock type for best performance."
+      - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock"
+        retrieved: "2026-11-17"
+        text: "If you're using an older version of .NET and C#, lock on a dedicated object instance that isn't used for another purpose."
+      - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock"
+        retrieved: "2026-11-17"
+        text: "Avoid using the same lock object instance for different shared resources, as it might result in deadlock or lock contention. In particular, avoid using the following instances as lock objects:"
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock"
         retrieved: "2026-11-17"
         text: "this, as callers might also lock this."
+      - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock"
+        retrieved: "2026-11-17"
+        text: "Type instances, as they might be obtained by the typeof operator or reflection."
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock"
         retrieved: "2026-11-17"
         text: "string instances, including string literals, as they might be interned."
@@ -247,7 +256,7 @@ rules:
         how: "code review checks static constructors and static field initializers"
     paths: ["**/*.cs"]
   - id: CS-014
-    statement: "Don't subscribe to an event with an anonymous function if you have to unsubscribe later, and unsubscribe from events before disposing a subscriber."
+    statement: "Subscribing to an event with an anonymous function is not recommended if you have to unsubscribe from it later, and you should unsubscribe from events before you dispose of a subscriber object."
     why: "Until you unsubscribe, the publisher holds a reference to the subscriber's handler, so the subscriber can't be collected."
     layer: outside
     basis: authority
@@ -287,8 +296,8 @@ rules:
         how: "code review checks the methods a query expression calls"
     paths: ["**/*.cs"]
   - id: CS-016
-    statement: "In a class library you own, don't use extension methods to avoid incrementing the assembly version; follow the .NET guidelines for assembly versioning."
-    why: "The page says to follow the .NET guidelines for assembly versioning when adding significant functionality to a library you own."
+    statement: "For a class library you implemented, you should not use extension methods to avoid incrementing the assembly's version number; to add significant functionality to a library whose source code you own, follow the .NET guidelines for assembly versioning."
+    why: "Functionality added through extension methods leaves the assembly's version unchanged, which hides the change from the library's versioning."
     layer: outside
     basis: authority
     status: proposed
@@ -296,7 +305,7 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/extension-methods"
         retrieved: "2026-11-17"
-        text: "For a class library that you implemented, you shouldn't use extension methods to avoid incrementing the version number of an assembly."
+        text: "For a class library that you implemented, you shouldn't use extension methods to avoid incrementing the version number of an assembly. If you want to add significant functionality to a library for which you own the source code, follow the .NET guidelines for assembly versioning."
     scope: core
     enforcement:
       - kind: advisory
@@ -321,7 +330,7 @@ rules:
         how: "code review checks new members that share a name with a base type's virtual member"
     paths: ["**/*.cs"]
   - id: CS-018
-    statement: "Avoid overriding the same method in multiple derived interfaces, and keep interface definitions small and focused on one feature."
+    statement: "Avoid overriding the same method in multiple derived interfaces."
     why: "Two overrides of a default interface method make a call ambiguous for a class that implements both interfaces."
     layer: outside
     basis: authority
@@ -331,9 +340,6 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/csharp/advanced-topics/interface-implementation/mixins-with-default-interface-methods"
         retrieved: "2026-11-17"
         text: "Avoid overriding the same method in multiple derived interfaces."
-      - source: "https://learn.microsoft.com/dotnet/csharp/advanced-topics/interface-implementation/mixins-with-default-interface-methods"
-        retrieved: "2026-11-17"
-        text: "You can usually avoid this situation by keeping interface definitions small and focused on one feature."
     scope: core
     enforcement:
       - kind: advisory
@@ -341,7 +347,7 @@ rules:
         how: "code review checks default interface methods"
     paths: ["**/*.cs"]
   - id: CS-019
-    statement: "Annotate a method that can take null but is known to leave the argument not null when it returns true with the nullable static-analysis attributes (such as NotNullWhen), so callers don't need to null-check."
+    statement: "You should annotate a method whose arguments could be null, and are known to be not null when the method returns true, the way the page annotates its TryGetMessage example: with NotNullWhen."
     why: "The attributes state a null contract the type alone can't express."
     layer: outside
     basis: authority
@@ -350,7 +356,10 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/nullable-analysis"
         retrieved: "2026-11-17"
-        text: "You should annotate similar methods in your codebase in the same way: the arguments could be null, and are known to be not null when the method returns true."
+        text: "In a nullable enabled context, you can communicate that idiom using the NotNullWhen attribute."
+      - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/nullable-analysis"
+        retrieved: "2026-11-17"
+        text: "In the preceding example, the value of message is known to be not null when TryGetMessage returns true. You should annotate similar methods in your codebase in the same way: the arguments could be null, and are known to be not null when the method returns true."
     scope: core
     enforcement:
       - kind: advisory
@@ -358,7 +367,7 @@ rules:
         how: "code review checks Try-style methods and other null contracts the nullable type can't express (STY-005 covers the nullable switch itself)"
     paths: ["**/*.cs"]
   - id: CS-020
-    statement: "Call platform-specific APIs only when running on an appropriate platform, guarding the call (for example with OperatingSystem.IsWindows) rather than suppressing the platform compatibility analyzer's diagnostic."
+    statement: "The recommended way to deal with the platform compatibility analyzer's diagnostics is to make sure you only call platform-specific APIs when running on an appropriate platform; suppressing the warning should be a last resort."
     why: "A call on the wrong platform throws at run time; the analyzer's diagnostics point out where."
     layer: outside
     basis: authority
@@ -368,14 +377,17 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/analyzers/platform-compat-analyzer"
         retrieved: "2026-11-17"
         text: "The recommended way to deal with these diagnostics is to make sure you only call platform-specific APIs when running on an appropriate platform."
+      - source: "https://learn.microsoft.com/dotnet/standard/analyzers/platform-compat-analyzer"
+        retrieved: "2026-11-17"
+        text: "However, this option should be a last resort when using platform-specific APIs."
     scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "code review checks that a platform-compat diagnostic is fixed with a guard, not a suppression"
+        how: "code review checks how each platform-compat diagnostic is dealt with, and that a suppression is a last resort"
     paths: ["**/*.cs"]
   - id: CS-021
-    statement: "A library doesn't expose an asynchronous method purely for offloading, and doesn't expose a synchronous method that wraps an asynchronous implementation; the consumer decides whether to offload or to block."
+    statement: "In a library, don't expose asynchronous methods purely for offloading, and don't expose a synchronous method that wraps an asynchronous implementation: leave the choice to offload, and the decision whether to block, to the consumer."
     why: "The consumer knows its threading environment and can make an informed choice."
     layer: outside
     basis: authority
@@ -384,10 +396,10 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/async-wrappers-for-synchronous-methods"
         retrieved: "2026-11-17"
-        text: "Don't expose asynchronous methods purely for offloading."
+        text: "Don't expose asynchronous methods purely for offloading. Leave that choice to the consumer."
       - source: "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/synchronous-wrappers-for-asynchronous-methods"
         retrieved: "2026-11-17"
-        text: "Don't expose a synchronous method that wraps an asynchronous implementation."
+        text: "Don't expose a synchronous method that wraps an asynchronous implementation. Instead, leave the decision of whether to block to the consumer."
     scope: core
     enforcement:
       - kind: advisory
@@ -404,6 +416,9 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/complete-your-tasks"
         retrieved: "2026-11-17"
+        text: "When you expose a task from TaskCompletionSource<TResult>, you own the task's lifetime."
+      - source: "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/complete-your-tasks"
+        retrieved: "2026-11-17"
         text: "Always complete the task in success and failure paths."
       - source: "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/keep-async-methods-alive"
         retrieved: "2026-11-17"
@@ -415,8 +430,8 @@ rules:
         how: "code review checks every TaskCompletionSource and every task that outlives its caller"
     paths: ["**/*.cs"]
   - id: CS-023
-    statement: "Prefer the regular expression source generator when the pattern is known at compile time."
-    why: "Source-generated regexes are the general guidance wherever the generator can be used."
+    statement: "Use the regular expression source generator if you can (the page's general guidance), and prefer it when you use Regex in C# with arguments known at compile time."
+    why: "A source-generated regex is built at compile time instead of at run time."
     layer: outside
     basis: authority
     status: proposed
@@ -425,6 +440,9 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/standard/base-types/regular-expression-source-generators"
         retrieved: "2026-11-17"
         text: "The general guidance is if you can use the source generator, use it."
+      - source: "https://learn.microsoft.com/dotnet/standard/base-types/regular-expression-source-generators"
+        retrieved: "2026-11-17"
+        text: "If you're using Regex today in C# with arguments known at compile time, and especially if you're already using RegexOptions.Compiled (because the regex has been identified as a hot spot that would benefit from faster throughput), you should prefer to use the source generator."
     scope: core
     enforcement:
       - kind: gate
@@ -455,7 +473,7 @@ rules:
         how: "code review checks how an app validates an email address"
     paths: ["**/*.cs"]
   - id: CS-025
-    statement: "Use a Unicode encoding, preferably UTF-8 or UTF-16, when you choose the encoding; use UTF-8 instead of UTF-7; avoid best-fit fallback in new code; specify the fallback strategy when you create an encoding object; and don't store binary data as a string through an encoding class (use Base64)."
+    statement: "If you can choose the encoding, you should use a Unicode encoding, preferably UTF8Encoding or UnicodeEncoding, and you should use UTF-8 instead of UTF-7 if possible; most new applications should avoid best-fit behavior; whenever possible, you should specify an encoding object's fallback strategy when you instantiate it; and the encoding classes should not be used to store binary data in string form: to convert binary data to a string form, use Convert.ToBase64String."
     why: "Best-fit mapping has security risks, and a text encoding can corrupt binary data."
     layer: outside
     basis: authority
@@ -476,7 +494,10 @@ rules:
         text: "Whenever possible, you should specify the fallback strategy used by an encoding object when you instantiate the object."
       - source: "https://learn.microsoft.com/dotnet/standard/base-types/character-encoding"
         retrieved: "2026-11-17"
-        text: "They should not be used to store binary data in string form."
+        text: "They should not be used to store binary data in string form. Depending on the encoding used, converting binary data to string format with the encoding classes can introduce unexpected behavior and produce inaccurate or corrupted data."
+      - source: "https://learn.microsoft.com/dotnet/standard/base-types/character-encoding"
+        retrieved: "2026-11-17"
+        text: "To convert binary data to a string form, use the Convert.ToBase64String method."
     scope: core
     enforcement:
       - kind: advisory
@@ -484,7 +505,7 @@ rules:
         how: "code review checks every Encoding that isn't UTF-8 and any binary data held in a string"
     paths: ["**/*.cs"]
   - id: CS-026
-    statement: "When you implement the observer pattern, don't write observers that depend on being notified before or after another observer, don't throw exceptions from OnNext or OnError, and attach an observer to only one provider."
+    statement: "When you implement the observer pattern, don't write observers that depend on being notified before or after another observer, don't throw exceptions from OnNext or OnError, and the recommended pattern is to attach an observer to only one provider."
     why: "The provider is free to choose the notification order, and an exception from an observer goes unhandled."
     layer: outside
     basis: authority
@@ -507,7 +528,7 @@ rules:
         how: "code review checks IObservable<T> and IObserver<T> implementations"
     paths: ["**/*.cs"]
   - id: CS-027
-    statement: "Use the cooperative cancellation model for all new library and application code, dispose a CancellationTokenSource when you have finished with it, and give a library's cancelable operations public methods that accept an external cancellation token."
+    statement: "Using the cooperative cancellation model for all new library and application code is recommended; you should call CancellationTokenSource.Dispose when you have finished using the cancellation token source; and library code that provides cancelable operations should also provide public methods that accept an external cancellation token."
     why: "An undisposed source holds unmanaged resources, and a caller can only cancel an operation that takes its token."
     layer: outside
     basis: authority
@@ -530,13 +551,16 @@ rules:
         how: "code review checks every CancellationTokenSource's disposal and a library's cancelable public methods"
     paths: ["**/*.cs"]
   - id: CS-028
-    statement: "Measure before using a parallel loop or PLINQ rather than assume it is faster; avoid, or at least limit, access to shared state in them; never let one iteration of a parallel loop wait on another; don't catch an AggregateException without observing its inner exceptions; and prefer ForAll to Parallel.ForEach over a PLINQ query."
+    statement: "Don't assume that parallel is always faster: always measuring actual results is recommended; avoiding, or at least limiting, access to shared state in a parallel loop is recommended; one iteration of a parallel loop should never wait on another iteration of the loop to make progress; catching an AggregateException without observing any of its inner exceptions is not recommended; and source.AsParallel().Where().ForAll(...) should be strongly preferred to Parallel.ForEach(source.AsParallel().Where(), ...)."
     why: "Parallelism sometimes runs slower, and shared state, waiting iterations and a blocked UI thread cause races and deadlocks."
     layer: outside
     basis: authority
     status: proposed
     sources: ["https://learn.microsoft.com/dotnet/standard/parallel-programming/potential-pitfalls-in-data-and-task-parallelism, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/parallel-programming/potential-pitfalls-with-plinq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/parallel-programming/exception-handling-task-parallel-library, retrieved 2026-11-17"]
     quotes:
+      - source: "https://learn.microsoft.com/dotnet/standard/parallel-programming/potential-pitfalls-in-data-and-task-parallelism"
+        retrieved: "2026-11-17"
+        text: "Do Not Assume That Parallel Is Always Faster"
       - source: "https://learn.microsoft.com/dotnet/standard/parallel-programming/potential-pitfalls-in-data-and-task-parallelism"
         retrieved: "2026-11-17"
         text: "However, because many factors are involved in performance, we recommend that you always measure actual results."
@@ -551,7 +575,7 @@ rules:
         text: "In other words, source.AsParallel().Where().ForAll(...) should be strongly preferred to Parallel.ForEach(source.AsParallel().Where(), ...)."
       - source: "https://learn.microsoft.com/dotnet/standard/parallel-programming/exception-handling-task-parallel-library"
         retrieved: "2026-11-17"
-        text: "However, we recommend that you do not do this because it is analogous to catching the base Exception type in non-parallel scenarios."
+        text: "You could avoid an unhandled exception by just catching the AggregateException and not observing any of the inner exceptions. However, we recommend that you do not do this because it is analogous to catching the base Exception type in non-parallel scenarios."
     scope: core
     enforcement:
       - kind: advisory
@@ -559,7 +583,7 @@ rules:
         how: "code review checks every Parallel call and PLINQ query"
     paths: ["**/*.cs"]
   - id: CS-029
-    statement: "Avoid using weak references as an automatic solution to memory management problems (develop a caching policy instead) or for small objects; allocate a pool of large objects to reuse instead of allocating temporary ones; and never make assumptions about or depend on a particular garbage collector segment size."
+    statement: "Avoid using weak references as an automatic solution to memory management problems (develop an effective caching policy instead) and avoid weak references to small objects; allocating a pool of large objects that you reuse instead of allocating temporary ones is recommended; and an app should never make assumptions about or depend on a particular garbage collector segment size."
     why: "Large temporary objects fragment the large object heap, and segment sizes are implementation-specific and can change at any time."
     layer: outside
     basis: authority
@@ -568,7 +592,7 @@ rules:
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/garbage-collection/weak-references"
         retrieved: "2026-11-17"
-        text: "Avoid using weak references as an automatic solution to memory management problems."
+        text: "Avoid using weak references as an automatic solution to memory management problems. Instead, develop an effective caching policy for handling your application's objects."
       - source: "https://learn.microsoft.com/dotnet/standard/garbage-collection/weak-references"
         retrieved: "2026-11-17"
         text: "Avoid using weak references to small objects because the pointer itself may be as large or larger."
@@ -585,7 +609,7 @@ rules:
         how: "code review checks every WeakReference and any large temporary allocation on a hot path"
     paths: ["**/*.cs"]
   - id: CS-030
-    statement: "When extracting an untrusted ZIP or TAR archive, always enforce limits on decompressed size and entry count, check that extracted entry names conform to an acceptable pattern, and don't use ExtractToDirectory (iterate the entries manually); when creating encrypted ZIP entries, always prefer Aes256."
+    statement: "When extracting an untrusted ZIP or TAR archive, always enforce limits on decompressed size and entry count, applications should check that extracted entry names conform to an acceptable pattern, and don't use ExtractToDirectory (iterate the entries manually); when creating encrypted ZIP entries, always prefer Aes256."
     why: "Extraction helpers don't enforce size or entry limits and don't guarantee containment on disk, so path traversal and decompression bombs are the caller's to stop; ZipCrypto has known weaknesses."
     layer: outside
     basis: authority
@@ -611,7 +635,7 @@ rules:
         how: "code review checks every ZIP or TAR extraction of data the app doesn't produce"
     paths: ["**/*.cs"]
   - id: CS-031
-    statement: "When processing untrusted XML, use an XmlReader configured to filter out known XML denial-of-service attacks; don't accept DTDs or XSD schemas from untrusted sources; and don't expose error messages to callers that aren't trusted, reporting your own custom error messages instead."
+    statement: "If you must process untrusted XML from unknown sources, using an XmlReader configured to filter out known XML denial-of-service attacks is recommended; you should not accept DTDs or XSD schemas from untrusted sources; and error messages should not be exposed to callers that aren't trusted: you should catch all errors and report them with your own custom error messages."
     why: "DTDs and schemas are inherently vulnerable to denial-of-service attacks, and an error description can reveal data, file names or implementation details."
     layer: outside
     basis: authority
@@ -649,7 +673,7 @@ rules:
         text: "DSA is not as secure as RSA, and we recommend RSA."
       - source: "https://learn.microsoft.com/dotnet/standard/security/cryptographic-services"
         retrieved: "2026-11-17"
-        text: "But the MD5 and SHA-1 algorithms have been found to be insecure, and SHA-2 is now recommended instead."
+        text: "But the MD5 and SHA-1 algorithms have been found to be insecure, and SHA-2 is now recommended instead. SHA-2 includes SHA256, SHA384, and SHA512."
     scope: core
     enforcement:
       - kind: advisory
@@ -700,7 +724,7 @@ rules:
         how: "code review checks a packable library's target frameworks and package references"
     paths: ["**/*.csproj", "**/Directory.Build.props"]
   - id: CS-035
-    statement: "A package's assemblies for compatible frameworks must expose the same (or a superset of) API surface; never decrease the assembly version across releases, and change it with each release (unless the package overlaps with a .NET shared framework); avoid binary breaking changes to the public API and avoid removing package dependencies between compatible versions; and consider enabling Package Validation with a baseline version."
+    statement: "A package's assemblies for compatible frameworks must expose the same (or a superset of) API surface; never decrease the assembly version across releases, and change it with each release, unless the package overlaps with a .NET shared framework; avoid binary breaking changes to the public API and avoid removing package dependencies between compatible versions; and consider enabling Package Validation with a baseline version."
     why: "Consumers must be able to update packages and use them across frameworks and versions reliably."
     layer: outside
     basis: authority
@@ -715,7 +739,7 @@ rules:
         text: "DO NOT decrease the assembly version of a package across releases."
       - source: "https://learn.microsoft.com/dotnet/standard/library-guidance/nuget-package-compatibility-rules"
         retrieved: "2026-11-17"
-        text: "DO change the assembly version with each release of your package."
+        text: "DO change the assembly version with each release, unless the package overlaps with a .NET shared framework."
       - source: "https://learn.microsoft.com/dotnet/standard/library-guidance/nuget-package-compatibility-rules"
         retrieved: "2026-11-17"
         text: "AVOID binary breaking changes to your package's public API."
@@ -732,7 +756,7 @@ rules:
         how: "code review checks a packable library's release against these compatibility rules"
     paths: ["**/*.csproj", "**/*.cs"]
   - id: CS-036
-    statement: "A library that targets .NET Standard should target .NET Standard 2.0 unless it needs to support an earlier version, shouldn't target .NET Standard 1.x, and, where .NET Framework isn't needed, should skip .NET Standard 2.1 and target the current .NET."
+    statement: "A library that targets .NET Standard should target .NET Standard 2.0 unless it needs to support an earlier version, shouldn't target .NET Standard 1.x, and, if it doesn't need to support .NET Framework, should skip .NET Standard 2.1 and go straight to the current .NET (the page names .NET 11)."
     why: "The page's reach-against-features trade-off: .NET Standard 2.0 is supported by all modern platforms, and 1.x limits features for little extra reach."
     layer: outside
     basis: authority
@@ -747,7 +771,7 @@ rules:
         text: "We don't recommend targeting .NET Standard 1.x, as you'd limit the available feature set for a minimal increase in reach."
       - source: "https://learn.microsoft.com/dotnet/standard/net-standard"
         retrieved: "2026-11-17"
-        text: "We recommend you skip .NET Standard 2.1 and go straight to .NET 11."
+        text: "If you don't need to support .NET Framework, you could target .NET Standard 2.1 or .NET 11. We recommend you skip .NET Standard 2.1 and go straight to .NET 11."
     scope: core
     enforcement:
       - kind: advisory

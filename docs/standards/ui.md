@@ -41,13 +41,19 @@ rules:
         how: "no check finds a page without its test, so code review checks that, once the rule is accepted"
     paths: ["**/*.razor", "**/*.cshtml", "**/*E2E.Tests/**"]
   - id: UI-003
-    statement: "To meet WCAG 2.2 level AA, a UI must meet, among all the other level A and AA success criteria: a text alternative for non-text content, and a name for every control (1.1.1); structure and relationships that can be programmatically determined (1.3.1); color not as the only visual means of conveying information (1.4.1); a contrast ratio of at least 4.5:1 for text, 3:1 for large text (1.4.3); text resizable to 200 percent without loss of content or functionality (1.4.4); content that reflows at a width equivalent to 320 CSS pixels (1.4.10); a contrast ratio of at least 3:1 for the visual information that identifies user interface components and states (1.4.11); all functionality operable through a keyboard interface (2.1.1) with no keyboard trap (2.1.2); a focus order that preserves meaning and operability (2.4.3); a visible keyboard focus indicator (2.4.7) that isn't entirely hidden by author-created content (2.4.11); pointer targets at least 24 by 24 CSS pixels unless an exception applies (2.5.8); labels or instructions where content requires input (3.3.2); no cognitive function test in authentication unless an alternative or a mechanism is offered (3.3.8); and a programmatically determinable name and role for every user interface component (4.1.2). For native UI, W3C's WCAG2ICT note says how each criterion applies."
-    why: "WCAG is the global accessibility standard and legal benchmark for web and mobile (Microsoft's MAUI page says so); these are the criteria a UI most often fails, not the whole standard, and each keeps the exceptions its page lists (GAP-018)."
+    statement: "For WCAG 2.2 level AA conformance, a UI satisfies all the level A and level AA success criteria (or a level AA conforming alternate version is provided); among them, each with the exceptions and conditions WCAG lists: non-text content has a text alternative, and non-text content that is a control or accepts user input has a name that describes its purpose (1.1.1); information, structure and relationships conveyed through presentation can be programmatically determined or are available in text (1.3.1); color isn't the only visual means of conveying information (1.4.1); text has a contrast ratio of at least 4.5:1, and large-scale text at least 3:1 (1.4.3); text, except captions and images of text, can be resized without assistive technology up to 200 percent without loss of content or functionality (1.4.4); vertically scrolling content can be presented at a width equivalent to 320 CSS pixels without loss of information or functionality and without scrolling in two dimensions (1.4.10); the visual information required to identify user interface components and states has a contrast ratio of at least 3:1 against adjacent colors (1.4.11); all functionality is operable through a keyboard interface (2.1.1), and focus moved to a component with the keyboard can be moved away with the keyboard (2.1.2); where navigation sequences affect meaning or operation, components receive focus in an order that preserves meaning and operability (2.4.3); keyboard operable UI has a mode where the focus indicator is visible (2.4.7), and a component receiving focus isn't entirely hidden by author-created content (2.4.11); pointer targets are at least 24 by 24 CSS pixels (2.5.8); labels or instructions are provided when content requires user input (3.3.2); no step in authentication requires a cognitive function test unless that step provides an alternative or a mechanism WCAG lists (3.3.8); and every user interface component's name and role can be programmatically determined (4.1.2). W3C's WCAG2ICT note helps clarify how to use WCAG 2 for non-web software."
+    why: "Microsoft's MAUI page calls WCAG the global accessibility standard and legal benchmark for web and mobile; these are the criteria a UI most often fails, not the whole standard, and each keeps the exceptions its page lists (GAP-018)."
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17"]
+    sources: ["https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-17"]
     quotes:
+      - source: "https://www.w3.org/TR/WCAG22/"
+        retrieved: "2026-11-17"
+        text: "For Level AA conformance, the web page satisfies all the Level A and Level AA success criteria, or a Level AA conforming alternate version is provided."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "WCAG is the global accessibility standard and legal benchmark for web and mobile."
       - source: "https://www.w3.org/TR/WCAG22/"
         retrieved: "2026-11-17"
         text: "All non-text content that is presented to the user has a text alternative that serves the equivalent purpose, except for the situations listed below."
@@ -124,8 +130,8 @@ rules:
         how: "the rest stays with the person building and code review, which reviews UI changes against this rule once it's accepted; native UI stays a manual check with each platform's tools (GAP-032)"
     paths: ["**/*.razor", "**/*.razor.cs", "**/*.cshtml", "**/*.css", "**/*.html", "**/*.xaml", "**/*.xaml.cs"]
   - id: UI-004
-    statement: "A .NET MAUI app uses semantic properties, the recommended approach, for accessibility values, and not the superseded automation properties; AutomationProperties.Name and HelpText are deprecated since .NET 8. Set Description on elements that have a meaning that's important for understanding the content or interacting with the interface; avoid setting it on a Label, or on an Entry or Editor on Android. Ensure images and icons have alternate text descriptions, support large fonts and high contrast (avoid hardcoding control dimensions, prefer layouts that resize, test color schemes in high-contrast mode), design the visual tree with navigation in mind, don't rely on audio or color cues alone, and test the accessibility features on each platform the app targets."
-    why: "Semantic properties rely on each platform's own accessibility experience, and a Description on the wrong control stops the platform's screen reader from speaking the control's own text or from working at all (Microsoft's MAUI accessibility page)."
+    statement: "In a .NET MAUI app, semantic properties are the recommended approach to providing accessibility values; automation properties, the Xamarin.Forms approach, have been superseded by them, and AutomationProperties.Name and HelpText have been deprecated since .NET 8. Description should be set on elements that have a meaning that's important for understanding the content or interacting with the user interface; avoid setting it on a Label, or on an Entry or Editor on Android. Ensure images and icons have alternate text descriptions; support large fonts and high contrast (avoid hardcoding control dimensions and prefer layouts that resize to accommodate larger font sizes, and test color schemes in high-contrast mode); design the visual tree with navigation in mind; don't rely on audio or color cues alone; and test the accessibility features of the app on each platform it targets."
+    why: "Microsoft's MAUI accessibility page warns that a Description on a Label stops its Text being spoken by the screen reader, and that one on an Entry or Editor on Android stops TalkBack actions functioning."
     layer: outside
     basis: authority
     status: proposed
@@ -136,13 +142,16 @@ rules:
         text: "Semantic properties are the .NET MAUI approach to providing accessibility values in apps, and are the recommended approach."
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
         retrieved: "2026-11-17"
+        text: "Automation properties are the Xamarin.Forms approach to providing accessibility values in apps, and have been superseded by semantic properties."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Avoid setting the Description attached property on a Label. This will stop the Text property being spoken by the screen reader."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
+        text: "Avoid setting the Description attached property on an Entry or Editor on Android. Doing so will stop Talkback actions functioning."
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+        retrieved: "2026-11-17"
         text: "This property should be set for elements that have a meaning that's important for understanding the content or interacting with the user interface."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
-        retrieved: "2026-11-17"
-        text: "Avoid setting the Description attached property on a Label."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
-        retrieved: "2026-11-17"
-        text: "Avoid setting the Description attached property on an Entry or Editor on Android."
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
         retrieved: "2026-11-17"
         text: "The Name attached property has been deprecated in .NET 8."
