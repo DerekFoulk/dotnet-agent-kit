@@ -17,11 +17,13 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Path = 'docs/runbook.md'
+    [string] $Path = 'docs/runbook.md',
+    [string] $RuleStatusPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
 
 $script:RequiredSections = @(
     'Where it runs', 'How to deploy a release', 'How to roll back a release', 'How to check its health',
@@ -154,7 +156,7 @@ function Get-RunbookProblem {
 
 # Prints every problem and returns 0 when the runbook passes, otherwise 1.
 function Invoke-RunbookCheck {
-    param([Parameter(Mandatory)] [string] $Path)
+    param([Parameter(Mandatory)] [string] $Path, [string] $RuleStatusPath)
 
     $problems = @(Get-RunbookProblem -Path $Path)
     foreach ($problem in $problems) {

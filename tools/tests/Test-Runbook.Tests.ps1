@@ -349,9 +349,19 @@ Describe 'Test-Runbook.ps1' {
         }
     }
 
+    # ADR-0089: whether OPS-004 is in force comes from a fixture, not the real rule's status.
     Context 'runner' {
+        BeforeAll {
+            function New-StatusFile([string] $Status) {
+                $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
+                Set-Content -LiteralPath $path -Value "{ ""OPS-004"": ""$Status"" }"
+                $path
+            }
+        }
+
         BeforeEach {
             Mock Write-Host {}
+            Mock Write-Host {} -ModuleName KitRuleStatus
         }
 
         It 'reports a runbook that isn''t there' {
@@ -361,22 +371,30 @@ Describe 'Test-Runbook.ps1' {
         It 'returns 0 and says so when the runbook is complete' {
             New-Runbook
 
-            Invoke-RunbookCheck -Path $script:runbook | Should -Be 0
+            Invoke-RunbookCheck -Path $script:runbook -RuleStatusPath (New-StatusFile 'accepted') | Should -Be 0
             Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*runbook*complete*' }
         }
 
-        It 'returns 1 and prints each problem' {
+        It 'returns 1 and prints each problem once OPS-004 is accepted' {
             New-Runbook -Omit 'How to restore its data'
 
-            Invoke-RunbookCheck -Path $script:runbook | Should -Be 1
-            Should -Invoke Write-Host -ParameterFilter { "$Object" -like "*'How to restore its data' is missing*" }
+            Invoke-RunbookCheck -Path $script:runbook -RuleStatusPath (New-StatusFile 'accepted') | Should -Be 1
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -ParameterFilter { "$Object" -like "*'How to restore its data' is missing*" -and "$Object" -notlike '::warning::*' }
         }
 
-        It 'exits 1 when run as a script against an incomplete runbook' {
+        It 'returns 0 and prints each problem as a warning while OPS-004 is proposed' {
+            New-Runbook -Omit 'How to restore its data'
+
+            Invoke-RunbookCheck -Path $script:runbook -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 0
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -ParameterFilter { "$Object" -like "::warning::OPS-004: *'How to restore its data' is missing*" }
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 runbook problem.*warning.*OPS-004 is proposed' }
+        }
+
+        It 'exits 1 when run as a script against an incomplete runbook once OPS-004 is accepted' {
             New-Runbook -Omit 'How to roll back a release'
             $script = Join-Path $PSScriptRoot '..' 'Test-Runbook.ps1'
 
-            $output = pwsh -NoProfile -File $script -Path $script:runbook 2>&1 | Out-String
+            $output = pwsh -NoProfile -File $script -Path $script:runbook -RuleStatusPath (New-StatusFile 'accepted') 2>&1 | Out-String
 
             $LASTEXITCODE | Should -Be 1 -Because $output
             $output | Should -Match 'How to roll back a release'
