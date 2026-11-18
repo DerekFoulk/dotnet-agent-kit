@@ -248,15 +248,36 @@ Describe 'Get-CommandGuardDecision for Bash' {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*builds an argument*'
     }
 
-    # Review round 1: the shell keeps no variables between calls, so one set in the same input holds a value the
-    # command line chose, which no rule can read.
-    It 'asks for <Command>, which uses a variable the same input sets in an asked command' -ForEach @(
+    # Review rounds 1 and 2: a variable's value is known only when the command runs, however the input or the
+    # environment set it, so in an asked command any variable asks.
+    It 'asks for <Command>, which uses a variable in an asked command' -ForEach @(
         @{ Command = 'f=-f; git push origin $f' }
         @{ Command = 'for f in -f; do git push origin "$f"; done' }
         @{ Command = 'read f; git push origin ${f}' }
         @{ Command = 'export F=--force && git push origin $F' }
+        @{ Command = 'printf -v X %s --for""ce; git push origin "$X"' }
+        @{ Command = 'mapfile -t X <<< --for""ce; git push origin "$X"' }
+        @{ Command = ': ${X:=--for""ce}; git push origin $X' }
+        @{ Command = 'git push origin $B' }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*builds an argument*'
+    }
+
+    # Review round 2: git's global options come before the subcommand, so a built one can sit later than right after
+    # the program.
+    It 'asks for <Command>, whose subcommand is built after a global option' -ForEach @(
+        @{ Command = 'p=pu""sh; git -C . $p --force origin main' }
+        @{ Command = 'git -C . ${p:-pu""sh} --force origin main' }
+        @{ Command = 'git --no-pager $p --force origin main' }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*builds an argument*'
+    }
+
+    # Review round 2: Bash ends a heredoc at its first delimiter line and runs what follows, so a second one can hide a
+    # command whose output becomes the argument.
+    It 'asks for a substitution whose heredoc ends before its last delimiter line' {
+        $command = "git push origin `$(cat <<'EOF'`nx`nEOF`necho --for''ce`nEOF`n)"
+        Get-KitDecision -Tool 'Bash' -Command $command | Should -BeLike '*builds an argument*'
     }
 
     # A built value matters only where it could make an asked command: replaying the kit's sessions showed these
@@ -368,11 +389,16 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         $reason | Should -BeLike '*builds an argument*'
     }
 
-    It 'asks for <Command>, which uses a variable the same input sets in an asked command' -ForEach @(
-        # Review round 1: the PowerShell tool keeps no variables between calls, so this one's value was chosen here.
+    It 'asks for <Command>, which uses a variable in an asked command' -ForEach @(
+        # Review rounds 1 and 2: a variable's value is known only when the command runs, however it was set.
         @{ Command = "`$f = '--for' + 'ce'; git push origin `$f" }
         @{ Command = "foreach (`$f in '--force') { git push origin `$f }" }
         @{ Command = "`$F = '-f'; git push origin ""x`$f""" }
+        @{ Command = "Set-Variable p --force; git push origin `$p" }
+        @{ Command = "Write-Output '--force' -OutVariable p; git push origin `$p" }
+        @{ Command = "`$p = 'push'; git -C . `$p --force origin main" }
+        # A splat past a one-word rule, *Initialize-DevMachine*-I*: its program is its first literal part.
+        @{ Command = "`$o = @{ Install = `$true }; ./tools/Initialize-DevMachine.ps1 @o" }
     ) {
         Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*builds an argument*'
     }
