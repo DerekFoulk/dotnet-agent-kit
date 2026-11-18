@@ -565,7 +565,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "code review checks cryptography against this rule: no custom cipher or MAC, no unauthenticated CBC; SEC-015's wording gates nothing beyond code review, and SEC-024's analyzers and bans gate what a tool can see"
+        how: "code review checks cryptography against this rule: no custom cipher or MAC, no unauthenticated CBC; this rule's wording gates nothing beyond code review, and SEC-024's analyzers and bans gate what a tool can see"
     paths: ["**/*.cs"]
 ---
 

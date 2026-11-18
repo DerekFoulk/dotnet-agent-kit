@@ -137,6 +137,8 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 
 **What gets harder:** the shared source must stay within the kit's analyzers and limits in every app. Its tests run in each app's own test run, so a breaking change in it fails every app's CI at its next sync. The sample's CI is the first to see one.
 
+**Update (2026-11-18): CRF-014 split.** ADR-0082 split CRF-014: it keeps Microsoft's encapsulation, gated by the analyzers, and the owner's tightening (state kept valid, a persistence-ignorant domain) is CRF-021. The domain's persistence check named above as CRF-014's now gates CRF-021.
+
 ## Pillars affected
 
 - **Reliability and Operational Excellence:** an app gets the kit's architecture gates from its first Architecture.Tests project, in its own `dotnet test`, and keeps them current through the sync.
