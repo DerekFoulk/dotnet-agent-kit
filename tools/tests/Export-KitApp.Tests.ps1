@@ -720,6 +720,16 @@ Describe 'Export-KitApp' {
         Test-Path -LiteralPath (Join-Path $app '.claude' 'skills' 'new-app') | Should -BeFalse
     }
 
+    # ADR-0082 and ADR-0083: the skills that find, write and re-check the kit's rules edit the kit's own standards;
+    # an app gets those from the kit, so it doesn't get the skills.
+    It 'leaves out the <Skill> skill, which works on the kit''s own standards' -ForEach @(
+        @{ Skill = 'discover-guidance' }, @{ Skill = 'source-a-rule' }, @{ Skill = 'recheck-sources' }
+    ) {
+        Test-Path -LiteralPath (Join-Path $checkout '.claude' 'skills' $Skill 'SKILL.md') | Should -BeTrue -Because 'the kit has the skill'
+        @($map | Where-Object { $_.Source -like ".claude/skills/$Skill/*" }) | Should -BeNullOrEmpty
+        Test-Path -LiteralPath (Join-Path $app '.claude' 'skills' $Skill) | Should -BeFalse
+    }
+
     # The owner, 2026-11-09: an app's settings shouldn't carry rules for kit scripts it doesn't have, such as
     # the asks before ./tools/New-KitApp (review 1 of PR 17, finding 10).
     It 'gives the app the kit''s permission rules, without those for kit scripts the app doesn''t get' {
