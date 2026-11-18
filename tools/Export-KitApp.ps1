@@ -40,8 +40,10 @@ $script:KitCopies = @(
 )
 
 # Kit skills an app doesn't get, though it gets the rest of .claude/skills/: new-app runs New-KitApp, which only the
-# kit has (ADR-0058).
-$script:KitOnlySkills = @('.claude/skills/new-app/')
+# kit has (ADR-0058); discover-guidance, source-a-rule and recheck-sources work on the kit's own standards, which an
+# app gets from the kit (ADR-0082, ADR-0083).
+$script:KitOnlySkills = @('.claude/skills/new-app/', '.claude/skills/discover-guidance/', '.claude/skills/source-a-rule/',
+    '.claude/skills/recheck-sources/')
 
 # Kit files an app gets at another path.
 $script:KitMoves = [ordered]@{
