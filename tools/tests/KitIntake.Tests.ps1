@@ -34,6 +34,19 @@ Describe 'the intake data' {
             $guide | Should -Match "\*\*$([regex]::Escape($label))\*\* \(the agent's recommendation\)" -Because "the guide labels $label as the agent's pick for $answer data"
         }
     }
+    # ADR-0084: one list of project types, docs/standards/project-types.yml; each app type names its own from it.
+    It 'maps each app type to project types that docs/standards/project-types.yml lists' {
+        Import-Module powershell-yaml
+        $known = @((ConvertFrom-Yaml (Get-Content -Raw (Join-Path $root 'docs' 'standards' 'project-types.yml')))['types'] | ForEach-Object { $_['id'] })
+        $options = ($intake['cards'] | Where-Object { $_['id'] -eq 'appType' })['options']
+
+        foreach ($option in $options) {
+            $option.Contains('projectTypes') | Should -BeTrue -Because "app type '$($option['id'])' needs its project types"
+            @($option['projectTypes']).Count | Should -BeGreaterThan 0 -Because $option['id']
+            foreach ($type in $option['projectTypes']) { $type | Should -BeIn $known -Because $option['id'] }
+        }
+    }
+
     It 'exists as templates/app-intake.json' {
         Test-Path -LiteralPath $intakePath | Should -BeTrue
     }
@@ -362,6 +375,21 @@ Describe 'ConvertTo-KitAppProfile' {
 
         $toolset | Should -Match ([regex]::Escape('docs/app-profile.md'))
         $profileText | Should -Match '(?m)^## Test tools$'
+    }
+
+    # ADR-0084: the profile names the app's project types, and Build-AgentRules reads that line to give the app only
+    # the common ruleset and those types' rulesets.
+    It 'names the app type''s project types on the line Build-AgentRules reads' {
+        $profileText | Should -Match '(?m)^Project types: web-api, blazor$'
+    }
+
+    It 'names no project types for an Other app type, so the app gets every rule until an ADR sets them' {
+        $other = [ordered]@{ appType = 'Other: A Unity game'; data = 'none'; database = 'none'; signIn = 'none'; hosting = 'none' }
+
+        $text = ConvertTo-KitAppProfile -Resolved (Resolve-KitIntakeAnswer -Intake $intake -Answers $other) -Name 'Contoso.Game' -KitCommit 'abc1234'
+
+        $text | Should -Not -Match '(?m)^Project types:'
+        $text | Should -Match '(?m)^## Project types$'
     }
 
     It 'names the app and the kit commit it was chosen from' {
