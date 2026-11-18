@@ -32,6 +32,20 @@ Describe 'KitRuleStatus.psm1' {
             { Get-RuleStatus -Id 'ARC-009' -Path $odd } | Should -Throw '*ARC-009*maybe*'
         }
 
+        # Review of the branch: a missing file reported "Rule X isn't in ..." after a non-terminating error, and an empty
+        # one threw about a missing property. Each says what's wrong with the file instead.
+        It 'throws, naming the file, when the statuses file <Case>' -ForEach @(
+            @{ Case = 'is missing'; Text = $null; Expected = "*no-statuses.json*doesn't exist*Build-AgentRules*" }
+            @{ Case = 'is empty'; Text = ''; Expected = '*no-statuses.json*is empty*Build-AgentRules*' }
+            @{ Case = 'holds only spaces'; Text = "  `n"; Expected = '*no-statuses.json*is empty*Build-AgentRules*' }
+        ) {
+            $path = Join-Path $TestDrive "case-$(New-Guid)" 'no-statuses.json'
+            New-Item -ItemType Directory -Path (Split-Path $path) | Out-Null
+            if ($null -ne $Text) { Set-Content -LiteralPath $path -Value $Text -NoNewline }
+
+            { Get-RuleStatus -Id 'ARC-009' -Path $path } | Should -Throw $Expected
+        }
+
         It 'reads the rule-status.json beside the module when no path is given' {
             $real = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '..' 'rule-status.json') | ConvertFrom-Json
             $first = @($real.PSObject.Properties)[0]
