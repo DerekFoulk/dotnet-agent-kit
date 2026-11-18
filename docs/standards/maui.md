@@ -7,12 +7,12 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite"
+      - source: "https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Despite the package name, use the sqlite-net-pcl NuGet package in .NET MAUI projects."
-      - source: "https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite"
+      - source: "https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "This article uses the sqlite-net-pcl NuGet package to provide SQLite database access to a table to store todo items."
     scope: [maui]
@@ -27,18 +27,18 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "It's recommended to set the x:DataType attribute at the same level in the view hierarchy as the BindingContext is set."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "It's best practice to add x:DataType to all elements where the binding context changes."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "To ensure these warnings aren't ignored, consider changing specific warnings to build errors with the $(WarningsAsErrors) build property:"
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "XC0022 and XC0023 warnings will always be suppressed unless the $(MauiStrictXamlCompilation) build property is set to true."
     scope: [maui]
@@ -53,15 +53,15 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Avoid profiling an app in a simulator, as the simulator may distort the app performance."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Ideally, profiling should be performed on a variety of devices, as taking performance measurements on one device won't always show the performance characteristics of other devices."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "However, at a minimum, profiling should be performed on a device that has the lowest anticipated specification."
     scope: [maui]
@@ -76,12 +76,12 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Before an app displays its initial UI, it should provide a splash screen to indicate to the user that the app is starting."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "In addition, the app's activation logic should only perform work that's required to let the user start using the app."
     scope: [maui]
@@ -96,15 +96,15 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Any resources that are used throughout the app should be stored in the app's resource dictionary to avoid duplication."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "However, XAML that's specific to a page shouldn't be included in the app's resource dictionary, as the resources will then be parsed at app startup instead of when required by a page."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "If a resource is used by a page that's not the startup page, it should be placed in the resource dictionary for that page, therefore helping to reduce the XAML that's parsed when the app starts."
     scope: [maui]
@@ -119,15 +119,15 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Update UI elements with data from asynchronous operations on the UI thread, to avoid exceptions being thrown."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Avoid trying to create asynchronous constructors."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Use the lazy task pattern to avoid waiting for asynchronous operations to complete during app startup."
     scope: [maui]
@@ -142,12 +142,12 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "To prevent memory leaks, events should be unsubscribed from before the subscriber object is disposed of."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Avoid strong circular references on iOS and Mac Catalyst"
     scope: [maui]
@@ -162,15 +162,15 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Don't use bindings for content that can easily be set statically."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "In addition, don't attempt to reproduce the appearance of a specific layout by using combinations of other layouts, as this results in unnecessary layout calculations being performed."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "In addition, images should only be created when required and should be released as soon as the app no longer requires them."
     scope: [maui]
@@ -185,18 +185,18 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/user-interface/layouts/, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview?view=net-maui-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/user-interface/layouts/?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview"
+      - source: "https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "ScrollView objects should not be nested."
-      - source: "https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview"
+      - source: "https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "In addition, ScrollView objects should not be nested with other controls that provide scrolling, such as CollectionView, ListView, and WebView."
-      - source: "https://learn.microsoft.com/dotnet/maui/user-interface/layouts/"
+      - source: "https://learn.microsoft.com/dotnet/maui/user-interface/layouts/?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Avoid using the AbsoluteLayout.AutoSize property whenever possible, as it will cause the layout engine to perform additional layout calculations."
-      - source: "https://learn.microsoft.com/dotnet/maui/user-interface/layouts/"
+      - source: "https://learn.microsoft.com/dotnet/maui/user-interface/layouts/?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Bindable layouts should only be used when the collection of items to be displayed is small, and scrolling and selection isn't required."
     scope: [maui]
@@ -211,27 +211,27 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "There's no guarantee that an app will resume from this state, because it may be terminated by the operating system."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Disconnect from any long running processes, or cancel any pending requests that might consume device resources."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Subscribe to any required events, and refresh any content that's on the visible page."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Remove any event subscriptions that you've attached to the native window."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "In addition, the Window class also defines a Backgrounding event that's raised on iOS and Mac Catalyst when the Window is closed or enters a background state."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "A BackgroundingEventArgs object accompanies this event, and any string state should be persisted to the State property of the BackgroundingEventArgs object, which the OS will preserve until it's time to resume the window."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Always call the super class's implementation."
     scope: [maui]
@@ -246,18 +246,18 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions"
+      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Permissions shouldn't be requested from your MauiProgram or App class, and should only be requested once the first page of the app has appeared."
-      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions"
+      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "It's best practice to explain to your user why your application needs a specific permission."
-      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions"
+      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Permissions must have the matching attributes set in the Android Manifest file."
-      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions"
+      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Permissions must have a matching string in the Info.plist file."
     scope: [maui]
@@ -272,15 +272,15 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication"
+      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "The best practice here's to use a web backend as a middle layer between your mobile app and the authentication provider."
-      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication"
+      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "We strongly recommend against using older mobile-only authentication libraries and patterns which do not leverage a web backend in the authentication flow, due to their inherent lack of security for storing client secrets."
-      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication"
+      - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "According to Apple's review guidelines, if your Apple app uses any social login service to authenticate, it must also offer Apple Sign In as an option."
     scope: [maui]
@@ -295,18 +295,18 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Always await the GoToAsync method."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Receiving navigation data using the QueryPropertyAttribute isn't trim safe and shouldn't be used with full trimming or NativeAOT."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Instead, you should implement the IQueryAttributable interface on types that need to accept query parameters."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Setting an explicit AccessibilityLabel is recommended whenever IconOverride is set or TextOverride is hidden, because screen readers would otherwise announce a generic value or no value at all."
     scope: [maui]
@@ -321,12 +321,12 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "MessagingCenter has been deprecated and we recommend that you replace it with WeakReferenceMessenger in the CommunityToolkit.Mvvm NuGet package."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "We recommend migrating to WeakReferenceMessenger from the CommunityToolkit.Mvvm package, or using events with weak references for simple scenarios."
     scope: [maui]
@@ -341,18 +341,18 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/nativeaot, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/deployment/nativeaot?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Therefore, when building an app for Native AOT deployment you should review and correct all trimming and AOT warnings."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "All binding expressions must use compiled bindings, rather than a binding path that's set to a string."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "The $(PublishAot) build property shouldn't be conditioned by build configuration."
-      - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot"
+      - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "You should develop, debug, and test your application as usual and publish your final app with Native AOT as one of the last steps."
     scope: [maui]

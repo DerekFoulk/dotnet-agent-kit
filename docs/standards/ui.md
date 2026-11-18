@@ -7,7 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
-    sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-17"]
+    sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://www.w3.org/TR/WCAG22/"
         retrieved: "2026-11-17"
@@ -15,7 +15,7 @@ rules:
       - source: "https://www.w3.org/TR/wcag2ict-22/"
         retrieved: "2026-11-17"
         text: "This document is intended to help clarify how to use WCAG 2 to make non-web documents and software more accessible to people with disabilities."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Ensure your app is perceivable, operable, understandable, and robust for all by following the Web Content Accessibility Guidelines (WCAG)."
     scope: [blazor, maui]
@@ -46,12 +46,12 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-17"]
+    sources: ["https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://www.w3.org/TR/WCAG22/"
         retrieved: "2026-11-17"
         text: "For Level AA conformance, the web page satisfies all the Level A and Level AA success criteria, or a Level AA conforming alternate version is provided."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "WCAG is the global accessibility standard and legal benchmark for web and mobile."
       - source: "https://www.w3.org/TR/WCAG22/"
@@ -135,48 +135,48 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Semantic properties are the .NET MAUI approach to providing accessibility values in apps, and are the recommended approach."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Automation properties are the Xamarin.Forms approach to providing accessibility values in apps, and have been superseded by semantic properties."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Avoid setting the Description attached property on a Label. This will stop the Text property being spoken by the screen reader."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Avoid setting the Description attached property on an Entry or Editor on Android. Doing so will stop Talkback actions functioning."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "This property should be set for elements that have a meaning that's important for understanding the content or interacting with the user interface."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "The Name attached property has been deprecated in .NET 8."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "The HelpText attached property has been deprecated in .NET 8."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Ensure that images and icons have alternate text descriptions."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Support large fonts and high contrast."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Avoid hardcoding control dimensions, and instead prefer layouts that resize to accommodate larger font sizes."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Test color schemes in high-contrast mode to ensure they are readable."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Design the visual tree with navigation in mind."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Don't rely on audio or color cues alone."
-      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility"
+      - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Test the accessibility features of your app on each platform it targets."
     scope: [maui]

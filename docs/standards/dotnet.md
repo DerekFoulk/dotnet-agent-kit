@@ -12,7 +12,7 @@ rules:
       - source: "https://learn.microsoft.com/dotnet/core/resilience/http-resilience"
         retrieved: "2026-11-17"
         text: "If you need to add multiple resilience handlers, you should consider using the AddResilienceHandler extension method, which allows you to customize the resilience strategies."
-    scope: [web-api, blazor]
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]

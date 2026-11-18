@@ -181,7 +181,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/what-is-maui, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/what-is-maui?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"
         retrieved: "2026-11-17"
@@ -195,7 +195,7 @@ rules:
       - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"
         retrieved: "2026-11-17"
         text: "Not at this time. Although .NET MAUI uses WinUI 3 when running on Windows, teams expecting to target multiple platforms should start with .NET MAUI or React Native for Desktop."
-      - source: "https://learn.microsoft.com/dotnet/maui/what-is-maui"
+      - source: "https://learn.microsoft.com/dotnet/maui/what-is-maui?view=net-maui-10.0"
         retrieved: "2026-11-17"
         text: "Windows apps built using .NET MAUI use Windows UI 3 (WinUI 3) library to create native apps that target the Windows desktop."
     enforcement:

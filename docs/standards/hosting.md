@@ -123,7 +123,7 @@ rules:
 
 # Hosting and background services
 
-Rules for apps built on the .NET generic host and the Microsoft.Extensions libraries: dependency injection, logging, caching, the HTTP client factory, and options for libraries. The generic host runs web apps, Worker Services and console apps built with it, so these rules name those project types, plus MAUI where its builder offers the same API (`AddHttpClient`, `builder.Logging`).
+Rules for apps built on the .NET generic host and the Microsoft.Extensions libraries: dependency injection, logging, caching, the HTTP client factory, and options for libraries. The generic host runs web apps (and Worker Services and console apps, which aren't supported app types yet), so a rule about hosting is scoped to `web-api` and `blazor`, and one about a library MAUI's builder offers too (`AddHttpClient`, `builder.Logging`) is `core`.
 
 Every rule here is proposed, and stays proposed until the owner accepts it. Each states only what its cited Microsoft page says, at the page's own strength.
 
