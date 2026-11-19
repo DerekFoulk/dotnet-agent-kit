@@ -537,7 +537,8 @@ function Get-SettledFailure {
 # haven't completed, and those that failed: a job that needs another isn't a check until its turn comes, so every
 # registered check done isn't CI done. Of a workflow that ran more than once for one trigger, only its latest run
 # counts, and the replaced runs' checks are dropped. The checks and the runs are two reads, and a job can finish
-# between them, so once every run has completed the checks are read again (Copilot's reviews of PR #73).
+# between them, so once every run has completed the checks are read again (Copilot's reviews of PR #73). It also names
+# the failures that can't change without a push (Get-SettledFailure), which a wait reports while other checks still run.
 function Get-PullRequestStatus {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $WithRuns)
 
@@ -564,7 +565,8 @@ function Get-PullRequestStatus {
             })
         # No ordering of runs is safe to rely on while one is going (a queued re-run can keep its first attempt's start
         # time), so any run on the head that hasn't completed means CI isn't done, and only a completed run's checks are
-        # dropped as replaced (Copilot's thirteenth review of PR #73). The ordering decides only whose failure counts.
+        # dropped as replaced (Copilot's thirteenth review of PR #73). The ordering decides only whose failure counts, and
+        # a failure in a group with a run still going is never settled (Get-SettledFailure).
         $kept = @($latest | Where-Object { $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
         $replaced = @($every | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -notin $kept -and "$($_['status'])" -eq 'completed' } | ForEach-Object { [long] $_['id'] })
         $pendingRuns = @($every | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" } | Select-Object -Unique)
@@ -666,9 +668,14 @@ function Get-PullRequestChange {
 
 # Waits until the pull request has news an agent acts on, and says which in Event and in a plain Message:
 # Reviewed (Copilot reviewed the head commit; -For Review or Either), ReviewFailed (Copilot posted a reason, such as
-# running out of quota, instead of a review of the head, and no review request came after it), ChecksPassed or ChecksFailed (no check or workflow
-# run on the head is pending, and a pass is confirmed by the next poll; -For Checks or Either), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it
-# still waits for. -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
+# running out of quota, instead of a review of the head, and no review request came after it), ChecksPassed (no check
+# or workflow run on the head is pending, nothing failed, and the next poll confirms it), ChecksFailed (-For Checks or
+# Either: at once when a failure can't change without a push, even while other checks still run, and otherwise once
+# nothing is pending; FailedChecks names every failure and PendingChecks what still runs), HeadMoved (a push while it
+# waited), Merged or Closed, or TimedOut, naming what it still waits for and, with -For Checks or Either, every failure
+# seen so far. A failure a re-run can still replace (Get-SettledFailure) doesn't end the wait early, and neither does one
+# named in -KnownFailures, so an agent that answers a failure rather than fixing it can wait for the rest of CI (PR 116:
+# gitleaks failed while the mutation workflow still ran, and the wait said nothing). -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
 # kit's one watcher, for any agent in any tool (owner, 2026-11-14). Polling costs no model call, so an agent runs it in
 # the foreground. The default time-out stays under 5 minutes, the prompt cache's shortest lifetime, by about a minute, so
 # the call after a wait usually reads the conversation from the cache on any plan (ADR-0068).
@@ -744,7 +751,8 @@ function Wait-PullRequest {
                 $skipped = @($checks | Where-Object Result -EQ 'Skipped').Count
                 $text = if ($failures) { "$failures." } else { "every check passed ($($checks.Count - $skipped) passed, $skipped skipped)." }
                 # A pass rests on one read, and a workflow run created just after it isn't in it, so a pass counts only
-                # once the next poll finds it again; a failure is final at once (Copilot's ninth review of PR #73).
+                # once the next poll finds it again; a failure with nothing pending is final at once (Copilot's ninth
+                # review of PR #73).
                 if ($outcome -eq 'ChecksPassed' -and $passSeenAt -ne $status.HeadSha) { $passSeenAt = $status.HeadSha }
                 else {
                     $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha

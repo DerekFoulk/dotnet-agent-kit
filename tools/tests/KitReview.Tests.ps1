@@ -1169,7 +1169,8 @@ Describe 'KitReview.psm1' {
         # A rollup holds CheckRuns, with status and conclusion, and StatusContexts, with context and state (seen on PR #72,
         # 2026-11-14).
         It 'keeps waiting while there are no checks yet or one is running, then returns <Outcome> naming <What>' -ForEach @(
-            # A pass waits one more poll to be confirmed (Copilot's ninth review of PR #73); a failure is final at once.
+            # A pass waits one more poll to be confirmed (Copilot's ninth review of PR #73); a failure with nothing pending
+            # is final at once.
             @{ Outcome = 'ChecksPassed'; What = 'every check'; Conclusion = 'SUCCESS'; Expected = 'CI finished at head2: every check passed (2 passed, 1 skipped)'; Sleeps = 3 }
             @{ Outcome = 'ChecksFailed'; What = 'the failed one'; Conclusion = 'FAILURE'; Expected = 'CI finished at head2: 1 of 3 checks failed: dotnet / Build'; Sleeps = 2 }
         ) {
@@ -1514,7 +1515,7 @@ Describe 'KitReview.psm1' {
 
         # Copilot's ninth review of PR #73: a pass rests on one read, and a workflow run created just after it (seconds
         # after a push, or between the runs read and the checks read) isn't in it. A pass counts only once the next poll
-        # finds it again; a failure is final at once.
+        # finds it again; a failure with nothing pending is final at once.
         It 'reports a pass only when the next poll confirms it, so a run created just after the first read counts' {
             InModuleScope KitReview {
                 function New-View([object[]] $Checks) { ConvertTo-RollupJson -Checks $Checks }
