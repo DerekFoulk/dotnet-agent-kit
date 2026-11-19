@@ -1678,6 +1678,15 @@ Describe 'KitReview.psm1' {
                 Checks = @()
                 Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":11,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/b","run_attempt":1,"status":"in_progress","conclusion":null}]}'
                 Expected = 'workflow runs failed: ci; workflow runs still going: ci' }
+            # The reviewer agent's branch review: a branch name that differs only in case is another group (M2, M3).
+            @{ Case = 'a failed check while its workflow runs for a branch named in another case'; Failed = @('build'); Pending = @('ci')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"success"},{"id":11,"name":"ci","workflow_id":12,"event":"push","head_branch":"Feat/A","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = '1 of 1 checks failed: build; workflow runs still going: ci' }
+            @{ Case = 'a failed run while its workflow runs for a branch named in another case'; Failed = @('ci'); Pending = @('ci')
+                Checks = @()
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":11,"name":"ci","workflow_id":12,"event":"push","head_branch":"Feat/A","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = 'workflow runs failed: ci; workflow runs still going: ci' }
         ) {
             InModuleScope KitReview -Parameters @{ Checks = $Checks; Runs = $Runs; Failed = $Failed; Pending = $Pending; Expected = $Expected } {
                 param($Checks, $Runs, $Failed, $Pending, $Expected)
@@ -1743,6 +1752,12 @@ Describe 'KitReview.psm1' {
                 Checks = @()
                 Runs = '{"workflow_runs":[{"id":9,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":2,"status":"queued","conclusion":null},{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"}]}'
                 Expected = 'failed so far: workflow runs failed: ci; workflow runs still going: ci' }
+            # The reviewer agent's branch review: a queued re-run of an older run can keep its first start time, so a newer
+            # completed run sorts as the latest until the re-run starts and replaces it (M1).
+            @{ Case = 'a failed check of a completed run while an older run of its group is queued again'; Failed = @('build', 'ci'); Pending = @('ci')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":9,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":2,"status":"queued","conclusion":null},{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"}]}'
+                Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs failed: ci; workflow runs still going: ci' }
         ) {
             InModuleScope KitReview -Parameters @{ Checks = $Checks; Runs = $Runs; Failed = $Failed; Pending = $Pending; Expected = $Expected } {
                 param($Checks, $Runs, $Failed, $Pending, $Expected)
@@ -1783,6 +1798,10 @@ Describe 'KitReview.psm1' {
             @{ Case = 'a failure named only in another case'; Expected = 'ChecksFailed'; Known = @('Gitleaks')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
                 Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
+            # The reviewer agent's branch review: a known check hides only its own run's failure, not another run's (M5).
+            @{ Case = 'another workflow''s startup failure besides a known check'; Expected = 'ChecksFailed'; Known = @('gitleaks')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":11,"name":"labeler","workflow_id":14,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"startup_failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
             @{ Case = 'a known failure once CI is done'; Expected = 'ChecksFailed'; Known = @('gitleaks')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
                 Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"}]}' }
