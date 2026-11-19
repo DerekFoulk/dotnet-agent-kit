@@ -9,36 +9,51 @@ A rule marked `status: proposed` in `docs/standards/` isn't in force until the o
 
 The inventory on 2026-11-18: 19 `kind: gate` enforcement parts on 18 proposed rules.
 
-- **8 judge an app's own code**, which this changes:
+- **8 judge an app's own code**:
   - CRF-011 (`Test-CodeShape.ps1`);
   - ARC-009 (`Test-EmptyProjects.ps1`);
   - ARC-010 (`Get-UiProject.ps1`'s check that no project references a UI project);
   - DAT-003 (`Test-SafeMigrations.ps1`);
   - OPS-004 (`Test-Runbook.ps1`);
-  - CS-023 (SYSLIB1045) and HST-003 (CA2254), build gates;
+  - CS-023 and HST-003, whose gates are `build:` gates (see the table below);
   - SEC-007's shared part, the shared host checks in `tools/AppTests/Functional`. **Held for the owner**: it stays failing while he decides.
 - **7 are the kit's own sample or fixture tests**, unchanged: API-006, SEC-007's sample part, SEC-008, SEC-009, SEC-010, UI-003, TST-007.
 - **4 are CI machinery**, unchanged: SUP-009 (the SBOM), SUP-010 (Scorecard), SUP-011 (the workload pin), UI-002 (Playwright and axe).
+
+Every analyzer a proposed rule's `build:` gate names today is already in force through an accepted rule. These are all the `kind: gate` parts on proposed rules whose `how` starts with `build:`, read from `docs/standards` on 2026-11-18:
+
+| ID | Proposed rule | Accepted rule that puts it in force | How, with evidence |
+|---|---|---|---|
+| SYSLIB1045 | CS-023 | STY-003 | The root `.globalconfig` line `dotnet_diagnostic.SYSLIB1045.severity = warning`. `git log -S` shows it came in with 1721bff on 2026-11-16 ("feat: Async names, System.Threading.Lock and the source-generated regex and P/Invoke are gates ... (STY-003, STY-007, STY-011, ADR-0076)"), before CS-023 existed; 5f14fe7 added CS-023 on 2026-11-17. On `origin/main`, `docs/standards/code-style.md` has STY-003 `accepted`, with a `how` that names "the root .globalconfig for every rule latest-all leaves off, SYSLIB1045 ([GeneratedRegex]) and SYSLIB1054 ([LibraryImport]) among them". |
+| CA2254 | HST-003 | STY-003 | `<AnalysisLevel>latest-all</AnalysisLevel>` in `Directory.Build.props`, there since a06a672 (2026-11-01). On `origin/main`, STY-003's `how` lists it among the families latest-all turns on ("logging, CA1848, CA2254, CA1727, CA1873"), and the `LoggingMisuse` fixture in `tools/tests/BuildConfig.Tests.ps1` (1f38b0d, 2026-11-16) proves it fails the build. 5f14fe7 added HST-003 on 2026-11-17. |
 
 Two constraints shape the design. The shared CI jobs that run these checks (`.github/workflows/dotnet-ci.reusable.yml`, `app-checks.reusable.yml`) don't install powershell-yaml, so a check can't read the standards' YAML front matter there. And in an app's CI, `$env:KIT` is a checkout of the kit at the version the app pins, so the kit's own copy of the statuses decides.
 
 ## Options
 
-### Option 1: Each check reads its rule's status per finding (recommended)
+### Option 1: Each check script reads its rule's status per finding (recommended)
 
-`tools/Build-AgentRules.ps1` writes `tools/rule-status.json` (`.kit/tools/` in an app), every rule's status, from `docs/standards`. A small module, `tools/KitRuleStatus.psm1`, reads it: `Get-RuleStatus` returns a rule's status and throws on an id it doesn't list, and `Write-RuleFinding` writes one finding, as a `::warning::` annotation for a proposed rule or as the error it was for an accepted one, and returns whether it counts. Each check exits non-zero only when a counted finding exists. For build gates, the same build writes a block at the end of `.globalconfig` that sets each diagnostic a proposed rule's build gate names to `suggestion`.
+`tools/Build-AgentRules.ps1` writes `tools/rule-status.json` (`.kit/tools/` in an app), every rule's status, from `docs/standards`. A small module, `tools/KitRuleStatus.psm1`, reads it: `Get-RuleStatus` returns a rule's status and throws on an id it doesn't list, and `Write-RuleFinding` writes one finding, as a `::warning` annotation for a proposed rule or as the error it was for an accepted one, and returns whether it counts. Each check exits non-zero only when a counted finding exists.
 
-- **Trade-offs:** per finding, so one check can hold both kinds: Test-CodeShape's STY-005 findings (accepted) still fail beside CRF-011's warnings. Accepting a rule is the only step that turns its findings into failures. One more generated file and one more generated block, which `-Check` keeps current. The checks need the module and the file beside them, so an app gets both in `.kit/tools`.
-- **Reversibility:** easy: drop the module calls and the block.
+- **Trade-offs:** per finding, so one check can hold both kinds: Test-CodeShape's STY-005 findings (accepted) still fail beside CRF-011's warnings. Accepting a rule is the only step that turns its findings into failures. One more generated file, which `-Check` keeps current. The checks need the module and the file beside them, so an app gets both in `.kit/tools`.
+- **Reversibility:** easy: drop the module calls.
 - **Risk:** low. A typo in a check's rule id throws rather than silently warning. A retired rule's finding throws too, since its check should be gone.
 
-### Option 2: `continue-on-error` on the CI steps
+### Option 2: Also lower a proposed rule's build diagnostics in a generated `.globalconfig` block (rejected)
+
+The first version of this change had `Build-AgentRules.ps1` write a block at the end of `.globalconfig` that set each diagnostic a proposed rule's `build:` gate names to `suggestion`, unless an accepted rule's gate named the same ID.
+
+- **Trade-offs:** "accepted wins" protects only the IDs an accepted rule names, but accepted rules put whole families in force: STY-003 turns on every analyzer through AnalysisLevel latest-all and the root `.globalconfig`, and SEC-014 relies on every CA2xxx, CA3xxx and CA5xxx security rule. The branch review showed that a proposed rule naming CA3001 got it lowered to `suggestion`, which switched off part of accepted SEC-014. The ID pattern also missed bans (RS0030), compiler warnings (CS), EF Core and NuGet diagnostics, and gates that are build properties. And `suggestion` doesn't show in a command-line build, so it isn't a warning anyone sees.
+- **Reversibility:** easy.
+- **Risk:** high: a generated line could silently switch off an accepted security rule. And it had nothing safe to do: every ID it would lower today is in force through STY-003 (the table above). Removed in the same PR (CRF-004).
+
+### Option 3: `continue-on-error` on the CI steps
 
 - **Trade-offs:** no code. But it isn't per finding: it would hide the accepted rules' findings in the same step too (STY-005 in the code shape step), and it doesn't follow the status: accepting a rule would need a workflow edit, in the kit and in the shared workflows every app calls.
 - **Reversibility:** easy.
 - **Risk:** high: a guardrail that's off for everything in the step.
 
-### Option 3: Leave it as it is
+### Option 4: Leave it as it is
 
 - **Trade-offs:** nothing to build, but a proposed rule keeps failing CI, against the owner's ruling and AGENTS.md's "aren't in force".
 - **Reversibility:** n/a.
@@ -52,27 +67,28 @@ Option 1: the status decides per finding, from one generated source, so acceptin
 
 Option 1, as the owner set out on 2026-11-18:
 
-- `tools/rule-status.json` maps every rule id to proposed, accepted or retired, sorted by id. `Build-AgentRules.ps1` writes it, and `-Check` fails when it's stale. It lists every rule, whatever an app's types, since a status doesn't depend on them.
-- `tools/KitRuleStatus.psm1` exports `Get-RuleStatus` and `Write-RuleFinding`. A warning escapes `%`, CR and LF, so a finding stays one annotation.
-- `Test-CodeShape.ps1` maps each finding to its rule from the tool's error code (CRF011 is CRF-011, STY005 is STY-005); Kit.CodeShape already tagged them, so the C# tool is unchanged. `Test-EmptyProjects.ps1` (ARC-009), `Test-SafeMigrations.ps1` (DAT-003), `Test-Runbook.ps1` (OPS-004) and `Get-UiProject.ps1`'s reference check (ARC-010) use the module too; `Get-UiProject.ps1`'s listing of UI projects is CI machinery and unchanged. Each takes `-RuleStatusPath`, for a test's own statuses, and its summary says how many findings were warnings because their rule is proposed.
-- The `.globalconfig` block lowers a diagnostic only when no accepted rule's build gate names it: accepted wins. On 2026-11-18 it lowers nothing. CS-023's SYSLIB1045 and HST-003's CA2254 are both also named by STY-003's build gate, which is accepted and turns every analyzer rule on, so they stay warnings, and the block says "None today". A test checks that the kit's block lowers no diagnostic an accepted rule names.
+- `tools/rule-status.json` maps every rule id to proposed, accepted or retired, sorted by id. `Build-AgentRules.ps1` writes it, and `-Check` fails when it's stale. It lists every rule, whatever an app's types, since a status doesn't depend on them. A missing or empty file stops the check with a message that says so.
+- `tools/KitRuleStatus.psm1` exports `Get-RuleStatus` and `Write-RuleFinding`. A warning can name the finding's file, line and column (GitHub's `file`, `line` and `col`), so it shows on that line of the diff; the message and the properties are escaped, so a finding stays one annotation.
+- `Test-CodeShape.ps1` maps each finding to its rule from the tool's error code (CRF011 is CRF-011, STY005 is STY-005), and a test checks that every code in `RuleCodes.cs` names a rule `rule-status.json` lists; Kit.CodeShape already tagged its findings, so the C# tool is unchanged. Its warnings name the file relative to the repo root. `Test-EmptyProjects.ps1` (ARC-009), `Test-SafeMigrations.ps1` (DAT-003), `Test-Runbook.ps1` (OPS-004) and `Get-UiProject.ps1`'s reference check (ARC-010) use the module too; `Get-UiProject.ps1`'s listing of UI projects is CI machinery and unchanged, and so is `Test-EmptyProjects.ps1`'s failure on a project the solution lists but that isn't there, which is a broken solution rather than ARC-009's concern. Each takes `-RuleStatusPath`, for a test's own statuses, and its summary says how many findings were warnings because their rule is proposed.
+- **The per-finding warning covers the check scripts only.** A build gate isn't per finding: the compiler fails the build on a diagnostic, whichever rule asked for it. So a proposed rule's `build:` gate must name only diagnostics, bans or build properties that an accepted rule already puts in force: STY-003's AnalysisLevel latest-all and root `.globalconfig`, SEC-014's security analyzers, CRF-010's `BannedSymbols.txt`, and `TreatWarningsAsErrors`. A new diagnostic, ban or property a proposed rule needs is turned on only in the pull request that accepts the rule. Code review checks this (`docs/code-review.md`).
 - SEC-007's shared host check is unchanged, held for the owner.
 
 ## Consequences
 
-- A check that judges an app's code warns on a proposed rule's findings and fails on an accepted one's. Accepting a rule, then running `Build-AgentRules.ps1`, turns its warnings into failures in the kit at once, and in an app when it moves to that kit version.
-- `rule-status.json` and the `.globalconfig` block are generated files (AGENTS.md lists them). Editing a rule's status without regenerating fails `Build-AgentRules.ps1 -Check`.
-- A new check that judges an app's code calls `Write-RuleFinding` with its rule's id, and a new error code from Kit.CodeShape needs a rule id that `rule-status.json` lists, or the check throws.
-- Known limits, written down rather than built now (CRF-002):
-  - `.editorconfig` wins over `.globalconfig`, so a proposed rule's diagnostic that `.editorconfig` also sets isn't lowered by the block. None is today; it would fail the build, which errs toward the gate.
-  - When the block first lowers a diagnostic that `tools/tests/BuildConfig.Tests.ps1` has a failing fixture for, that fixture will stop failing, and the test must learn to expect the lowered severity in the same PR.
-  - `Get-UiProject.ps1` runs in several CI steps, so a proposed ARC-010 warning can show once per step.
+- A check script that judges an app's code warns on a proposed rule's findings and fails on an accepted one's. Accepting a rule, then running `Build-AgentRules.ps1`, turns its warnings into failures in the kit at once, and in an app when it moves to that kit version.
+- `rule-status.json` is a generated file (AGENTS.md lists it). Editing a rule's status without regenerating fails `Build-AgentRules.ps1 -Check`.
+- A new check that judges an app's code calls `Write-RuleFinding` with its rule's id, and a new error code from Kit.CodeShape needs a rule id that `rule-status.json` lists, which a test checks.
+- A proposed rule whose gate would need a new analyzer, ban or property stays advisory until it's accepted; the accepting pull request turns the gate on.
+- Known limits (CRF-002):
+  - `Get-UiProject.ps1` runs in several CI steps, so a proposed ARC-010 warning can show once per step. No follow-up: GitHub shows each annotation with its step, a repeat doesn't fail anything, and it ends when ARC-010 is accepted or the reference goes.
+  - The warnings of Test-EmptyProjects, Test-SafeMigrations, Test-Runbook and Get-UiProject don't name a file and line yet, since their findings carry only a message; each knows the file (a project, a migration with its line, the runbook). Follow-up: a small follow-up pull request passes `-File` and `-Line` from each, after the code shape check's inline warnings have been seen on a real pull request, so the path form is proven first.
 
 ## Pillars affected
 
-- **Operational excellence:** CI fails only on rules in force; a proposed rule's findings still show, as warnings, so nothing goes unseen while the owner decides.
-- **Reliability:** an unknown rule id or status throws, so a typo can't turn a gate into warnings.
-- **Security, cost, performance:** n/a. No security check changes: SEC-007's shared check is held, and every accepted rule's gate still fails.
+- **Operational excellence:** CI fails only on rules in force. A check script's findings for a proposed rule still show, as warnings on the pull request, so nothing it finds goes unseen while the owner decides. A build gate never lowers anything, so every analyzer that's on stays a build failure.
+- **Reliability:** an unknown rule id or status, or a missing statuses file, throws, so a typo can't turn a gate into warnings.
+- **Security:** no security check changes: SEC-007's shared check is held, every accepted rule's gate still fails, and no analyzer severity is lowered.
+- **Cost, performance:** n/a.
 
 ## Sources
 
@@ -80,4 +96,3 @@ Option 1, as the owner set out on 2026-11-18:
 - ADR-0063
 - ADR-0084
 - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands, retrieved 2026-11-18
-- https://learn.microsoft.com/dotnet/fundamentals/code-analysis/configuration-files, retrieved 2026-11-18
