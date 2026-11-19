@@ -499,10 +499,11 @@ function Get-RunGroupKey {
     "$($Run['workflow_id'] ?? $Run['name'])|$($Run['event'])|$source|$($Run['head_branch'])|$pulls"
 }
 
-# The failures that can't change without a push, by name, so a wait can report them while other checks still run (the
-# reviewer agent's plan review). A run can be re-run only once it has completed, and a re-run raises its attempt and goes
-# back to queued; until the new attempt's job starts, the old attempt's failed check is still the latest of its name (a
-# job that needs another starts minutes later). And while any run of a group is going, no ordering of the group's runs
+# The failures that are final, by name: no run still going can replace them, so a wait can report them while other
+# checks still run (the reviewer agent's plan review). Someone can still re-run a completed run or post a new commit
+# status; that's a new event, which the next wait sees. A run can be re-run only once it has completed, and a re-run
+# raises its attempt and goes back to queued; until the new attempt's job starts, the old attempt's failed check is still
+# the latest of its name (a job that needs another starts minutes later). And while any run of a group is going, no ordering of the group's runs
 # is safe (Get-PullRequestStatus). So a failure is settled when:
 # - it's a failed check that belongs to no workflow run (a commit status, or another app's check);
 # - it's a failed check of a listed run, and no run of that run's group is going, or the only one going is that run
@@ -517,9 +518,9 @@ function Get-SettledFailure {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $FailedRuns
     )
 
-    # The checks can come from a read after the runs (Get-PullRequestStatus reads them again once every run completed). A
-    # pending check of a run the runs read called completed means a re-run started between the reads: that read is stale,
-    # so nothing is settled on it (the reviewer agent's branch review).
+    # The checks can come from a read after the runs (Get-PullRequestStatus reads them again once every run completed).
+    # A pending check of a run the runs read called completed means a re-run started between the reads: that read is
+    # stale, so nothing is settled on it (the reviewer agent's branch review).
     $completed = @($Runs | Where-Object { "$($_['status'])" -eq 'completed' -and $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
     if (@($Checks | Where-Object { $_.Result -eq 'Pending' -and $null -ne $_.RunId -and $_.RunId -in $completed }).Count -gt 0) { return }
     $going = @($Runs | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { Get-RunGroupKey -Run $_ })
@@ -543,7 +544,7 @@ function Get-SettledFailure {
 # registered check done isn't CI done. Of a workflow that ran more than once for one trigger, only its latest run
 # counts, and the replaced runs' checks are dropped. The checks and the runs are two reads, and a job can finish
 # between them, so once every run has completed the checks are read again (Copilot's reviews of PR #73). It also names
-# the failures that can't change without a push (Get-SettledFailure), which a wait reports while other checks still run.
+# the failures that are final (Get-SettledFailure), which a wait reports while other checks still run.
 function Get-PullRequestStatus {
     param([Parameter(Mandatory)] [string] $Repository, [Parameter(Mandatory)] [int] $Number, [switch] $WithRuns)
 
@@ -570,8 +571,8 @@ function Get-PullRequestStatus {
             })
         # No ordering of runs is safe to rely on while one is going (a queued re-run can keep its first attempt's start
         # time), so any run on the head that hasn't completed means CI isn't done, and only a completed run's checks are
-        # dropped as replaced (Copilot's thirteenth review of PR #73). The ordering decides only whose failure counts, and
-        # a failure in a group with a run still going is never settled (Get-SettledFailure).
+        # dropped as replaced (Copilot's thirteenth review of PR #73). The ordering decides only whose failure counts,
+        # and a failure in a group with a run still going is never settled (Get-SettledFailure).
         $kept = @($latest | Where-Object { $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
         $replaced = @($every | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -notin $kept -and "$($_['status'])" -eq 'completed' } | ForEach-Object { [long] $_['id'] })
         $pendingRuns = @($every | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" } | Select-Object -Unique)
@@ -675,15 +676,17 @@ function Get-PullRequestChange {
 # Reviewed (Copilot reviewed the head commit; -For Review or Either), ReviewFailed (Copilot posted a reason, such as
 # running out of quota, instead of a review of the head, and no review request came after it), ChecksPassed (no check
 # or workflow run on the head is pending, nothing failed, and the next poll confirms it), ChecksFailed (-For Checks or
-# Either: at once when a failure can't change without a push, even while other checks still run, and otherwise once
-# nothing is pending; FailedChecks names every failure and PendingChecks what still runs), HeadMoved (a push while it
-# waited), Merged or Closed, or TimedOut, naming what it still waits for and, with -For Checks or Either, every failure
-# seen so far. A failure a re-run can still replace (Get-SettledFailure) doesn't end the wait early, and neither does one
-# named in -KnownFailures, so an agent that answers a failure rather than fixing it can wait for the rest of CI (PR 116:
-# gitleaks failed while the mutation workflow still ran, and the wait said nothing). -For Either returns the first. It polls every -IntervalSeconds and sleeps only between polls. The
-# kit's one watcher, for any agent in any tool (owner, 2026-11-14). Polling costs no model call, so an agent runs it in
-# the foreground. The default time-out stays under 5 minutes, the prompt cache's shortest lifetime, by about a minute, so
-# the call after a wait usually reads the conversation from the cache on any plan (ADR-0068).
+# Either: at once when a failure is final, that is no run still going can replace it, even while other checks still
+# run, and otherwise once nothing is pending; FailedChecks names every failure in that read and PendingChecks what still
+# runs), HeadMoved (a push while it waited), Merged or Closed, or TimedOut, naming what it still waits for and, with
+# -For Checks or Either, every failure in its last read. A failure a run still going can replace (Get-SettledFailure)
+# doesn't end the wait early, and neither does one named in -KnownFailures, so an agent that answers a failure rather
+# than fixing it can wait for the rest of CI (PR 116: gitleaks failed while the mutation workflow still ran, and the
+# wait said nothing). -KnownFailures matches by name, so a known name hides another check of that name until CI is done,
+# when every failure is reported. -For Either returns the first. It polls every -IntervalSeconds and sleeps only between
+# polls. The kit's one watcher, for any agent in any tool (owner, 2026-11-14). Polling costs no model call, so an agent
+# runs it in the foreground. The default time-out stays under 5 minutes, the prompt cache's shortest lifetime, by about
+# a minute, so the call after a wait usually reads the conversation from the cache on any plan (ADR-0068).
 function Wait-PullRequest {
     param(
         [Parameter(Mandatory)] [string] $Repository,
@@ -770,8 +773,8 @@ function Wait-PullRequest {
             }
             else {
                 $passSeenAt = $null
-                # A settled failure can't change without a push, so it ends the wait while other checks still run, unless
-                # the caller already knows it. Check names are case-sensitive.
+                # A settled failure is final, so it ends the wait while other checks still run, unless the caller already
+                # knows it. Check names are case-sensitive.
                 if (@($status.SettledFailures | Where-Object { $_ -cnotin $KnownFailures }).Count -gt 0) {
                     $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
                     if ($changed) { return $changed }

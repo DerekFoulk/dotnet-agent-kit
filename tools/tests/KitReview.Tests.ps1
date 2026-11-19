@@ -1632,8 +1632,8 @@ Describe 'KitReview.psm1' {
         }
 
         # PR 116: gitleaks failed while the mutation workflow was still going, and the wait said nothing until it timed out.
-        # A failure that can't change without a push (here, a job of a run on its first attempt, which can't be re-run while
-        # it's going) ends the wait on the first poll that shows it, whatever else still runs.
+        # A final failure, one no run still going can replace (here, a job of a run on its first attempt, which can't be
+        # re-run while it's going), ends the wait on the first poll that shows it, whatever else still runs.
         It 'returns ChecksFailed on the first poll that shows a settled failure, naming what still runs' {
             InModuleScope KitReview {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
@@ -1657,7 +1657,7 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        # The reviewer agent's plan review: what else can't change without a push. A check of a run that completed, with
+        # The reviewer agent's plan review: what else is final. A check of a run that completed, with
         # nothing of its workflow going (the job may have continue-on-error, so the run passed); a commit status, which
         # belongs to no run; and a run that failed with no failed check of its own, such as a startup failure, while no
         # run of its group (Get-RunGroupKey) is going. A run of the same workflow for another branch is another group.
