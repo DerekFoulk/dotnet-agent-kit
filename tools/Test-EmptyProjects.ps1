@@ -31,9 +31,11 @@ $script:ProjectExtension = '.csproj'
 # and .proto files, which Grpc.Tools turns into C# at build time.
 $script:SourceExtensions = '.cs', '.razor', '.cshtml', '.proto'
 
+# Rule is the rule a problem breaks, whose status decides whether it fails the check (ADR-0089); a broken solution
+# breaks none and always fails.
 function New-Problem {
-    param([string] $Message)
-    [pscustomobject]@{ Message = $Message }
+    param([string] $Message, [string] $Rule = 'ARC-009')
+    [pscustomobject]@{ Message = $Message; Rule = $Rule }
 }
 
 # True for the file `dotnet new classlib` writes, Class1.cs with an empty class Class1, in either namespace style.
@@ -73,7 +75,7 @@ function Get-EmptyProjectProblem {
             continue
         }
         if (-not (Test-Path -LiteralPath $project.FullPath -PathType Leaf)) {
-            New-Problem -Message "$relative is in the solution but isn't there"
+            New-Problem -Message "$relative is in the solution but isn't there" -Rule ''
             continue
         }
         $projectFolder = Split-Path -Parent $project.FullPath
@@ -91,15 +93,20 @@ function Get-EmptyProjectProblem {
 }
 
 # Prints every problem and returns 0 when every project holds code of its own, otherwise 1. While ARC-009 is
-# proposed, each problem is a warning and the check passes (ADR-0089).
+# proposed, each of its problems is a warning and doesn't fail the check (ADR-0089); a project the solution lists but
+# that isn't there is a broken solution, and fails it whatever ARC-009's status.
 function Invoke-EmptyProjectsCheck {
     param([Parameter(Mandatory)] [string] $Solution, [string] $RuleStatusPath)
 
     $problems = @(Get-EmptyProjectProblem -Solution $Solution)
-    $counted = @($problems | Where-Object { Write-RuleFinding -Id 'ARC-009' -Message $_.Message -Path $RuleStatusPath }).Count
+    $counted = @($problems | Where-Object {
+            if ($_.Rule) { Write-RuleFinding -Id $_.Rule -Message $_.Message -Path $RuleStatusPath }
+            else { Write-Host $_.Message -ForegroundColor Red; $true }
+        }).Count
 
     if ($counted) {
-        Write-Host "`n$counted empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red
+        $more = if ($problems.Count -gt $counted) { "; $($problems.Count - $counted) more were warnings, because ARC-009 is proposed" } else { '' }
+        Write-Host "`n$counted empty-project problem(s) in $Solution$more. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red
         return 1
     }
     if ($problems) {
