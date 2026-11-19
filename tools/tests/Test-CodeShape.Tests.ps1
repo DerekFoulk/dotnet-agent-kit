@@ -168,10 +168,17 @@ Describe 'Test-CodeShape.ps1' {
 
         It 'exits 0 as a script, with the warning annotation, on a CRF-011 breach while CRF-011 is proposed' {
             $script = Join-Path $PSScriptRoot '..' 'Test-CodeShape.ps1'
+            $statuses = New-StatusFile 'proposed'
 
-            $output = pwsh -NoProfile -File $script -Solution (Join-Path $script:fixtures 'Deep.slnx') -RuleStatusPath (New-StatusFile 'proposed') 2>&1 | Out-String
+            # The check runs from the repo root, as CI runs it, whatever folder the tests were started from.
+            Push-Location -LiteralPath (Resolve-Path -LiteralPath $script:kitRoot).ProviderPath
+            try {
+                $output = pwsh -NoProfile -File $script -Solution (Join-Path $script:fixtures 'Deep.slnx') -RuleStatusPath $statuses 2>&1 | Out-String
+                $exit = $LASTEXITCODE
+            }
+            finally { Pop-Location }
 
-            $LASTEXITCODE | Should -Be 0 -Because $output
+            $exit | Should -Be 0 -Because $output
             $output | Should -Match '(?m)^::warning file=tools/tests/fixtures/CodeShape/Deep/Deep\.cs,line=7,col=74::CRF-011: .*Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep'
         }
     }
