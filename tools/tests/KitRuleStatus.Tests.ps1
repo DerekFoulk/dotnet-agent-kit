@@ -80,6 +80,32 @@ Describe 'KitRuleStatus.psm1' {
             Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::ARC-009: 100%25 empty%0D%0Asecond line' }
         }
 
+        # Review of the branch: a warning that names its place shows inline on the pull request's diff.
+        It 'names the file, line and column in a warning, as GitHub''s warning command takes them' {
+            Write-RuleFinding -Id 'ARC-009' -Message 'Run nests 5 levels deep' -File 'src/App/Deep.cs' -Line 7 -Column 74 -Path $script:statusFile | Should -BeFalse
+
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning file=src/App/Deep.cs,line=7,col=74::ARC-009: Run nests 5 levels deep' }
+        }
+
+        It 'names only the file when no line is given' {
+            Write-RuleFinding -Id 'ARC-009' -Message 'no source' -File 'src/App.Domain/App.Domain.csproj' -Path $script:statusFile | Should -BeFalse
+
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning file=src/App.Domain/App.Domain.csproj::ARC-009: no source' }
+        }
+
+        # A property ends at a comma, and its name at a colon, so those are escaped too, as @actions/core does.
+        It 'escapes what GitHub would read as the end of a property in the file name' {
+            Write-RuleFinding -Id 'ARC-009' -Message 'odd' -File 'src/a,b:c%.cs' -Line 1 -Path $script:statusFile | Should -BeFalse
+
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning file=src/a%2Cb%3Ac%25.cs,line=1::ARC-009: odd' }
+        }
+
+        It 'writes an accepted rule''s finding as it is, whatever place it names' {
+            Write-RuleFinding -Id 'STY-005' -Message 'App.cs(3,1): error STY005: x' -File 'App.cs' -Line 3 -Column 1 -Path $script:statusFile | Should -BeTrue
+
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq 'App.cs(3,1): error STY005: x' }
+        }
+
         It 'throws for a retired rule, whose check shouldn''t run any more' {
             { Write-RuleFinding -Id 'OLD-001' -Message 'anything' -Path $script:statusFile } | Should -Throw '*OLD-001*retired*'
         }

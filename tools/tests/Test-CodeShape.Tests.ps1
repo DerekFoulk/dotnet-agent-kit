@@ -85,7 +85,7 @@ Describe 'Test-CodeShape.ps1' {
         It 'warns, and passes, on a CRF-011 breach while CRF-011 is proposed' {
             Write-CodeShapeResult -ExitCode 1 -Output $script:shapeLine -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 0
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning::CRF-011: $script:shapeLine" }
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning file=C%3A/app/Deep.cs,line=7,col=74::CRF-011: $script:shapeLine" }
             Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 code shape finding.*warning.*proposed' }
         }
 
@@ -99,8 +99,22 @@ Describe 'Test-CodeShape.ps1' {
             Write-CodeShapeResult -ExitCode 1 -Output "$script:shapeLine`n$script:nullableLine" -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 1
 
             Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq $script:nullableLine -and $ForegroundColor -eq 'Red' }
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning::CRF-011: $script:shapeLine" }
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning file=C%3A/app/Deep.cs,line=7,col=74::CRF-011: $script:shapeLine" }
             Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 code shape finding.*fail.*1 more.*warning' }
+        }
+
+        # Review of the branch: the warning names its place, relative to the folder the check runs in (the repo root), so
+        # it shows inline on the diff. GitHub's warning command takes file, line and col:
+        #   https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands  retrieved 2026-11-18
+        It 'names the finding''s file, relative to where the check runs, with its line and column' {
+            $line = (Join-Path $TestDrive 'src' 'Deep.cs') + '(7,74): error CRF011: Run nests 5 levels deep; the limit is 3 (CRF-011). [x.csproj]'
+            Push-Location -LiteralPath $TestDrive
+            try {
+                Write-CodeShapeResult -ExitCode 1 -Output $line -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 0
+            }
+            finally { Pop-Location }
+
+            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning file=src/Deep.cs,line=7,col=74::CRF-011: $line" }
         }
 
         It 'throws for a finding whose rule the statuses don''t list, so a new code can''t pass unseen' {
@@ -158,7 +172,7 @@ Describe 'Test-CodeShape.ps1' {
             $output = pwsh -NoProfile -File $script -Solution (Join-Path $script:fixtures 'Deep.slnx') -RuleStatusPath (New-StatusFile 'proposed') 2>&1 | Out-String
 
             $LASTEXITCODE | Should -Be 0 -Because $output
-            $output | Should -Match '(?m)^::warning::CRF-011: .*Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep'
+            $output | Should -Match '(?m)^::warning file=tools/tests/fixtures/CodeShape/Deep/Deep\.cs,line=7,col=74::CRF-011: .*Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep'
         }
     }
 

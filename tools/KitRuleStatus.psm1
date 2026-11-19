@@ -45,7 +45,7 @@ function Get-RuleStatus {
 # matcher. A retired rule isn't in force and its check should be gone, so a finding for it throws.
 function Write-RuleFinding {
     [OutputType([bool])]
-    param([Parameter(Mandatory)] [string] $Id, [Parameter(Mandatory)] [string] $Message, [string] $Path)
+    param([Parameter(Mandatory)] [string] $Id, [Parameter(Mandatory)] [string] $Message, [string] $Path, [string] $File, [int] $Line, [int] $Column)
 
     $status = Get-RuleStatus -Id $Id -Path $Path
     if ($status -ceq 'proposed') {
