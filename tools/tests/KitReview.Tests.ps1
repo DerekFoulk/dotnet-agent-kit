@@ -1822,6 +1822,21 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # The reviewer agent's branch review: finish-work says to wait once more after a time-out, and a wait without the
+        # known failures would end at once on the same one, a wasted call.
+        It 'says in its time-out to pass the same -KnownFailures to the next wait' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'gitleaks'; Result = 'Failed'; RunId = 10 }); PendingRuns = @('mutation'); SettledFailures = @('gitleaks') } }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20 -KnownFailures 'gitleaks'
+
+                $result.Message | Should -Be 'Timed out after 1 minute at head2: failed so far: 1 of 1 checks failed: gitleaks; workflow runs still going: mutation. Pass the same -KnownFailures to the next wait.'
+            }
+        }
+
         # The reviewer agent's branch review: once every run has completed, the checks are read again, and a re-run asked for
         # between the reads shows there as a new pending check of a run the runs read called completed. That read is stale,
         # so the old attempt's failure isn't settled on that poll.
