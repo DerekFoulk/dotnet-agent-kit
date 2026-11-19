@@ -7,4 +7,6 @@ paths:
 
 # API design
 
-- API-007: An HTTP API follows HTTP's semantics as Azure's API design guidance sets them out: URIs name resources with nouns (plural for collections) and avoid verbs, using one sparingly, only for an operation that isn't a resource; a POST that creates a resource answers 201 Created with its URI in the Location header; PUT and DELETE are idempotent; and work that outlasts a request answers 202 Accepted with a Location header pointing at a status endpoint.
+- API-007: In an HTTP API, when possible, base resource URIs on nouns and not verbs, and avoid using verbs in URIs to represent operations; a POST that creates a resource synchronously should return 201 Created and identify the resource in the Location header; GET, HEAD, PUT and DELETE must be idempotent; and for work that takes time, consider making the method asynchronous: an asynchronous method should return 202 Accepted, include the status endpoint's URI in the 202's Location header, and if the operation creates a new resource, the status endpoint should return 303 See Other after it completes, with a Location header that gives the new resource's URI.
+- API-009: OpenAPI user interfaces (Swagger UI, ReDoc, Scalar) should only be enabled in development environments.
+- API-013: An HTTP API's URIs name a collection with a plural noun, and use a verb sparingly, only for an operation that isn't a resource.

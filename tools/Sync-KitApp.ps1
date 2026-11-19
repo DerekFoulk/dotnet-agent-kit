@@ -102,7 +102,8 @@ function Export-KitAppAt {
         [Parameter(Mandatory)] [string] $KitRoot,
         [Parameter(Mandatory)] [string] $KitRef,
         [Parameter(Mandatory)] [string] $Name,
-        [Parameter(Mandatory)] [string] $Destination
+        [Parameter(Mandatory)] [string] $Destination,
+        [string] $AppProfile
     )
 
     $checkout = Join-Path ([IO.Path]::GetTempPath()) "kit-sync-$([guid]::NewGuid().ToString('N'))"
@@ -110,7 +111,12 @@ function Export-KitAppAt {
     if ($LASTEXITCODE -ne 0) { throw "Couldn't check out $KitRef from $KitRoot." }
     try {
         $exporter = Join-Path $checkout 'tools/Export-KitApp.ps1'
-        $output = & pwsh -NoProfile -File $exporter -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot 2>&1 | Out-String
+        $arguments = @('-Name', $Name, '-Destination', $Destination, '-KitRef', $KitRef, '-KitRoot', $KitRoot)
+        # ADR-0084: the app's profile names its app types, so both exports hold the rule files the app really has.
+        # A kit version from before the profile was passed has an exporter that takes none.
+        $takesProfile = (Get-Command -Name $exporter).Parameters.ContainsKey('AppProfile')
+        if ($AppProfile -and $takesProfile) { $arguments += @('-AppProfile', $AppProfile) }
+        $output = & pwsh -NoProfile -File $exporter @arguments 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) { throw "Exporting the app at $KitRef failed:`n$output" }
     }
     finally {
@@ -446,10 +452,12 @@ function Sync-KitApp {
     $work = Join-Path ([IO.Path]::GetTempPath()) "kit-sync-$([guid]::NewGuid().ToString('N'))"
     try {
         $newRoot = Join-Path $work 'new'
-        $new = Export-KitAppAt -KitRoot $KitRoot -KitRef $KitRef -Name $manifest['appName'] -Destination $newRoot
+        $profilePath = Join-Path $AppRoot 'docs' 'app-profile.md'
+        $appProfile = if (Test-Path -LiteralPath $profilePath) { [IO.File]::ReadAllText($profilePath) } else { $null }
+        $new = Export-KitAppAt -KitRoot $KitRoot -KitRef $KitRef -Name $manifest['appName'] -Destination $newRoot -AppProfile $appProfile
         # The kit's text at the app's version: the base of a three-way merge with an app's edit.
         $baseRoot = Join-Path $work 'base'
-        $null = Export-KitAppAt -KitRoot $KitRoot -KitRef $fromCommit -Name $manifest['appName'] -Destination $baseRoot
+        $null = Export-KitAppAt -KitRoot $KitRoot -KitRef $fromCommit -Name $manifest['appName'] -Destination $baseRoot -AppProfile $appProfile
         $oldEntries = @{}
         foreach ($entry in $manifest['files']) { $oldEntries[$entry['path']] = $entry }
         $newEntries = @{}

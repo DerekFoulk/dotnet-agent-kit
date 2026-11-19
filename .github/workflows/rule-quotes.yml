@@ -1,0 +1,88 @@
+# ADR-0083: every authority rule stores the sentence on its page that says what the rule says (ADR-0082). Pages
+# change, so this re-reads each quoted page weekly and opens an issue when a stored quote is gone, or when the check
+# couldn't finish. On a pull request that changes the rules it proves their quotes before merge; it isn't a required
+# check there, since a source site's outage shouldn't block a PR. Kit only: an app's standards come from the kit.
+name: Rule quotes
+
+on:
+  schedule:
+    - cron: '41 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - docs/standards/**
+      - tools/Test-RuleQuotes.ps1
+      - .github/workflows/rule-quotes.yml
+
+permissions: {}
+
+jobs:
+  check:
+    name: Find each stored quote on its page
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      result: ${{ steps.quotes.outputs.result }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install PowerShell modules
+        run: Install-PSResource -Name powershell-yaml -Version 0.4.12 -Scope CurrentUser -Repository PSGallery -TrustRepository
+
+      # 0: every quote found. 1: a quote is missing. 2: none missing, but a page didn't load, which isn't a missing
+      # quote. A pull request passes on 2, since a site's outage shouldn't block it; a scheduled run fails on 2, so a
+      # site that keeps refusing the runner opens an issue instead of passing unseen. Only the result word reaches
+      # the report job, never page text.
+      - name: Re-read the quoted pages
+        id: quotes
+        run: |
+          ./tools/Test-RuleQuotes.ps1
+          $code = $LASTEXITCODE
+          $result = switch ($code) { 0 { 'found' } 1 { 'missing' } 2 { 'unreachable' } default { 'failed' } }
+          "result=$result" >> $env:GITHUB_OUTPUT
+          if ($code -eq 2 -and $env:GITHUB_EVENT_NAME -eq 'pull_request') { exit 0 }
+          exit $code
+
+  report:
+    name: Open an issue
+    needs: check
+    if: ${{ always() && needs.check.result == 'failure' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      # One open issue per title at a time: a later run that finds the same thing adds nothing.
+      - name: Open an issue unless one is open
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.check.outputs.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = "missing" ]; then
+            title="A rule's quoted source changed"
+            body="A page that a rule in docs/standards quotes no longer has the quoted text: $RUN_URL
+
+          The run's log names each rule, page and quote. For each one, read the page, then update the quote and the rule to what the page says now, re-dated; if the page no longer supports the rule, downgrade it to a preference or retire it (the recheck-sources skill, ADR-0083)."
+          elif [ "$RESULT" = "unreachable" ]; then
+            title="Pages a rule quotes didn't load"
+            body="Some pages that rules in docs/standards quote didn't load, so their quotes weren't checked: $RUN_URL
+
+          The run's log names each page and the error. Run the workflow again by hand; if a page keeps failing, open it yourself: a page that moved needs its new URL in the rule (ADR-0083)."
+          else
+            title="The rule quote check failed"
+            body="The check that re-reads the pages rules quote couldn't finish: $RUN_URL
+
+          Read the run's log, fix the cause, and run the workflow again by hand; close this issue once a run passes (ADR-0083)."
+          fi
+          open="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq 'length')"
+          if [ "$open" -gt 0 ]; then
+            echo "An issue is already open."
+            exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"

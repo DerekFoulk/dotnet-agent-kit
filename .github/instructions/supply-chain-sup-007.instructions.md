@@ -6,3 +6,4 @@ applyTo: 'Directory.Packages.props'
 # Supply chain
 
 - SUP-007: Deprecated packages fail CI; a preview package needs an ADR.
+- SUP-015: Don't use deprecated components, and carefully assess the risks of using preview features.

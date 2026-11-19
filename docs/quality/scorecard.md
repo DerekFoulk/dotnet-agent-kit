@@ -9,7 +9,7 @@ areas:
     sources:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-07"
       - "ADR-0008"
-    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, ARC-010, ARC-011, ARC-012, ARC-013, CRF-006, CRF-007, DAT-001, DAT-002]
+    rules: [ARC-001, ARC-002, ARC-003, ARC-004, ARC-007, ARC-008, ARC-018, ARC-010, ARC-011, ARC-012, ARC-013, CRF-006, CRF-018, CRF-017, CRF-007, DAT-001, DAT-002]
     gaps:
       - id: GAP-039
         gap: "ARC-008 says assemblies marked pure use no randomness, file or network access except through injected abstractions, but nothing says how an assembly is marked pure, and no ban list holds the APIs it may not call (Random, File, the network classes and the rest), so that part of the rule has no check. A BannedSymbols file that only pure assemblies add, proved by a fixture, would make it a gate (rules audit, 2026-11-12). The clock is done: BannedSymbols.txt bans reading it directly in every project (.NET best-practices pass, 2026-11-16). Closed by ADR-0080: a project sets PureAssembly in its .csproj, Directory.Build.props then adds BannedSymbols.Pure.txt (randomness, file, network, environment and process access), each family has a failing fixture in tools/tests/BuildConfig.Tests.ps1, and the sample's Bookmarks.Domain is marked pure."
@@ -28,6 +28,10 @@ areas:
       - id: GAP-031
         gap: "The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059)."
         status: proposed
+      - id: GAP-048
+        gap: "No rulesets yet for the app types ADR-0084 lists as not supported: WPF, Windows Forms, WinUI 3, Blazor Hybrid, Razor Pages and MVC, and workers and console apps. Their Microsoft Learn pages are inventoried in docs/inventory/, marked as not a supported type yet, and the rules first written for them were removed from docs/standards. Each type needs its rules sourced from its inventory pages (the source-a-rule skill), its own ruleset ADR and an entry in docs/standards/app-types.yml. The owner, 2026-11-18: \"We want to be sure to author the rules for the 'unsupported' app types in the future. Please don't let us forget that!\""
+        status: proposed
+        needs: "per type: rules sourced from its docs/inventory pages, a ruleset ADR and an app-types.yml entry"
   - id: craft
     name: Craft
     perfect: "Code built on the fundamentals (SOLID, DRY, KISS, YAGNI, separation of concerns, acyclic dependencies), within metric limits a tool enforces, using every library only through its documented API; every defect fixed at its root, and no known-worse design left unnamed."
@@ -36,7 +40,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-10"
       - "ADR-0043"
       - "ADR-0050"
-    rules: [CRF-001, CRF-002, CRF-003, CRF-004, CRF-005, CRF-006, CRF-007, CRF-008, CRF-009, CRF-010, CRF-011, CRF-012, CRF-013, CRF-014]
+    rules: [CRF-001, CRF-002, CRF-003, CRF-015, CRF-004, CRF-005, CRF-016, CRF-006, CRF-018, CRF-017, CRF-007, CRF-008, CRF-009, CRF-010, CRF-019, CRF-011, CRF-012, CRF-013, CRF-020, CRF-014, CRF-021]
     gaps:
       - id: GAP-019
         gap: "No tool checks nesting depth, statements per method, file length or class cohesion (LCOM4); CRF-008 leaves them to the reviewer agent. Closed by ADR-0050: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml, and CRF-011 (proposed) states them as limits; ADR-0071 adds members per type and public types per file."
@@ -69,7 +73,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2016, retrieved 2026-11-07"
       - "ADR-0009"
-    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-006, STY-007, STY-008, STY-009, STY-010, STY-011, STY-012, CRF-008, CRF-010]
+    rules: [STY-001, STY-002, STY-003, STY-004, STY-005, STY-013, STY-006, STY-007, STY-014, STY-008, STY-018, STY-015, STY-009, STY-010, STY-016, STY-011, STY-017, STY-012, CRF-008, CRF-010, CRF-019]
     gaps:
       - id: GAP-021
         gap: "CA1014 (mark assemblies CLS-compliant), a rule latest-all leaves off, is still off, though STY-003 says every rule is on. Declaring CLS compliance makes the compiler check it, and the sample then breaks it in 48 places; whether apps should declare it is a decision of its own. Microsoft's code analysis overview (https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) says the eleven rules it lists as left off by latest-all, CA1014 among them, might be deprecated in a future version. Closed by ADR-0049, which found the 48 counted each diagnostic twice (24 places then, 32 by the time it was decided): CA1014 is on, and Directory.Build.props declares every assembly not CLS-compliant, as Microsoft's CA1014 page advises for an assembly that isn't meant to be; a library published for other .NET languages declares CLSCompliant(true) instead."
@@ -86,7 +90,7 @@ areas:
       - "https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-07"
       - "ADR-0003"
       - "ADR-0018"
-    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, TST-007, TST-010, GIT-005, DAT-005]
+    rules: [TST-001, TST-002, TST-003, TST-004, TST-005, TST-006, TST-007, TST-010, TST-011, GIT-005, DAT-005]
     gaps:
       - id: GAP-003
         gap: "Mutation testing (Stryker, TST-004's 85% score) isn't run yet; it's planned as a nightly job after v0.1. Closed by ADR-0039: a shared nightly Stryker.NET workflow for the kit and every app, failing below 85%."
@@ -101,7 +105,7 @@ areas:
         status: proposed
         needs: "packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests"
       - id: GAP-037
-        gap: "Some rules are gated only by the kit's sample, so in an app they're advisory: parts a shared check could still take on, with a hook in the app's part of AppHost. The OpenAPI document's checks: API-002's declared errors as Problem Details, API-003's snapshot and SEC-013's schemas. SEC-008's token rejections that need no app key, and its bearer scheme in the document. A second host, such as a web UI beside an API, which the host checks don't start. Narrowed by ADR-0081's update of 2026-11-16: the architecture tests (part 1) and tools/AppTests/Functional's host checks, compiled into every *.FunctionalTests project, gate ARC-001, ARC-003, CRF-006, CRF-007, CRF-014, SEC-013's endpoint part, API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 and SEC-011 in apps. The app's own behavior (API-004, API-006, API-007, SEC-009, SEC-010, OPS-006), SEC-011's rate limit and /health's database check stay with the app's own tests by design; TST-003 is GAP-027's and UI-001 is UI-002's."
+        gap: "Some rules are gated only by the kit's sample, so in an app they're advisory: parts a shared check could still take on, with a hook in the app's part of AppHost. The OpenAPI document's checks: API-002's declared errors as Problem Details, API-003's snapshot and SEC-013's schemas. SEC-008's token rejections that need no app key, and its bearer scheme in the document. A second host, such as a web UI beside an API, which the host checks don't start. Narrowed by ADR-0081's update of 2026-11-16: the architecture tests (part 1) and tools/AppTests/Functional's host checks, compiled into every *.FunctionalTests project, gate ARC-001, ARC-003, CRF-006, CRF-007, CRF-021 (CRF-014 on that date, before the owner's tightening of it moved to CRF-021), SEC-013's endpoint part, API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 and SEC-011 in apps. The app's own behavior (API-004, API-006, API-007, SEC-009, SEC-010, OPS-006), SEC-011's rate limit and /health's database check stay with the app's own tests by design; TST-003 is GAP-027's and UI-001 is UI-002's."
         status: proposed
         needs: "shared checks of the OpenAPI document and of SEC-008's key-free token rejections, and a second host in the app's AppHost part (ADR-0081)"
       - id: GAP-027
@@ -111,13 +115,17 @@ areas:
       - id: GAP-047
         gap: "When a project uses Playwright, the shared CI runs every test project inside the Playwright image (ADR-0061's update of 2026-11-16), so an app with a web UI and a database (Testcontainers by default, DAT-002) runs its Testcontainers tests there. The container shares the runner's Docker socket and network and sets TESTCONTAINERS_HOST_OVERRIDE=localhost, but no kit test starts a container inside the image, so nothing proves it works. Closed by ADR-0061's second update of 2026-11-16: the web UI fixture's E2E project, which uses Playwright, has ContainerTests, which starts Testcontainers' helloworld image, pinned by tag and digest, and reads its port through IHttpClientFactory; CI runs it inside the Playwright image, so it proves the socket, the resource reaper and the localhost override there."
         status: closed
+      - id: GAP-049
+        gap: "No check proves the kit's output: CI should generate a fresh app of each supported type from the kit (Export-KitApp, no GitHub repo), build it, and run every gate, its secret scan included (a quote the kit skips only by a `.gitleaksignore` fingerprint would still fail an app's scan, ADR-0024), so a kit change that would produce an app failing its own rules fails the kit's CI first. Today only the sample app is tested this way."
+        status: proposed
+        needs: "a CI job that exports and checks an app of each supported type (web-api, blazor, maui)"
   - id: security
     name: Security
     perfect: "A threat model for anything touching data or sign-in; authentication and authorization by default; validated input; no secrets in code; dependencies, code and history all scanned."
     sources:
       - "https://asvs.owasp.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/azure/well-architected/security/, retrieved 2026-11-07"
-    rules: [SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-012, SEC-013, SEC-014, SEC-015, ARC-006, DAT-010]
+    rules: [SEC-001, SEC-016, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-010, SEC-011, SEC-021, SEC-012, SEC-022, SEC-013, SEC-023, SEC-014, SEC-024, SEC-015, SEC-025, ARC-006, DAT-010]
     gaps:
       - id: GAP-040
         gap: "SEC-005 (no package that isn't free for commercial use, in a commercial repo) has no check: nothing reads each package's license expression from its .nuspec and compares it with an allowlist (rules audit, 2026-11-12). Closed by ADR-0079: the shared .NET CI runs tools/Test-PackageLicenses.ps1, which reads every locked package's license from its .nuspec (an SPDX expression, or a license file or URL that a package entry must pin) against tools/package-licenses.json and the repo's .config/package-licenses.json, where a repo marks itself commercial; there, FluentAssertions 8 fails, naming AwesomeAssertions."
@@ -144,7 +152,7 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/reliability/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks, retrieved 2026-11-07"
-    rules: [ARC-006, OPS-002, OPS-003, OPS-005, OPS-006, DAT-003, DAT-004, DAT-007, DAT-008]
+    rules: [ARC-006, OPS-002, OPS-010, OPS-003, OPS-008, OPS-005, OPS-009, OPS-006, DAT-003, DAT-004, DAT-007, DAT-015, DAT-008, DAT-016]
     gaps:
       - id: GAP-007
         gap: "No service defaults: apps don't get health checks or HTTP resilience (timeouts and retries) from the kit. Closed by ADR-0037: the sample's ServiceDefaults project and OPS-002, OPS-003 (accepted 2026-11-09)."
@@ -181,7 +189,7 @@ areas:
       - "https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-07"
       - "https://learn.microsoft.com/en-us/aspnet/core/grpc/comparison, retrieved 2026-11-07"
       - "owner, 2026-11-06"
-    rules: [API-001, API-002, API-003, API-004, API-005, API-006, API-007]
+    rules: [API-001, API-002, API-010, API-003, API-009, API-004, API-011, API-005, API-006, API-007, API-013]
     gaps:
       - id: GAP-010
         gap: "No guidance on choosing an API style: when HTTP APIs, gRPC, SignalR or GraphQL fit. Closed by ADR-0038: API-001 (proposed) and the plan-checklist skill."
@@ -196,7 +204,7 @@ areas:
       - "https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/, retrieved 2026-11-07"
       - "https://benchmarkdotnet.org/, retrieved 2026-11-07"
       - "https://learn.microsoft.com/aspnet/core/test/load-tests?view=aspnetcore-10.0, retrieved 2026-11-12"
-    rules: [ARC-006, TST-009, DAT-009, OPS-007]
+    rules: [ARC-006, TST-009, DAT-009, OPS-007, OPS-011]
     gaps:
       - id: GAP-012
         gap: "No benchmarks or performance budgets for hot paths, and no load tests. ADR-0057 chose the load-testing tools (Locust by default, in GitHub Actions). Closed by ADR-0062: BenchmarkDotNet benchmarks and a Locust load test, each against a budget in the repo, run by the shared performance workflow off the required path (TST-009, proposed), proven on the sample. A load test of a deployed app waits for GAP-015."
@@ -208,7 +216,7 @@ areas:
       - "https://learn.microsoft.com/en-us/nuget/concepts/security-best-practices, retrieved 2026-11-07"
       - "https://slsa.dev/, retrieved 2026-11-07"
       - "ADR-0020"
-    rules: [SUP-001, SUP-002, SUP-003, SUP-004, SUP-005, SUP-006, SUP-007, SUP-008, SUP-009, SUP-010, SUP-011, SUP-012]
+    rules: [SUP-001, SUP-002, SUP-003, SUP-013, SUP-004, SUP-014, SUP-005, SUP-006, SUP-007, SUP-015, SUP-008, SUP-009, SUP-010, SUP-011, SUP-012, SUP-018]
     gaps:
       - id: GAP-013
         gap: "No SBOM is produced for an app's build. Closed by ADR-0055: the shared .NET CI writes a CycloneDX SBOM of each build's shipped projects, leaving out the projects MSBuild marks as tests, and uploads it as the 'sbom' artifact (SUP-009, proposed)."
@@ -259,7 +267,7 @@ areas:
     sources:
       - "https://diataxis.fr/, retrieved 2026-11-07"
       - "ADR-0016"
-    rules: [ARC-005, ARC-006, DOD-001, OPS-004]
+    rules: [ARC-005, ARC-015, ARC-006, DOD-001, OPS-004]
     gaps:
       - id: GAP-017
         gap: "No runbooks: nothing says how to operate, recover or roll back an app. Closed by ADR-0047: every app gets docs/runbook.md from a template, a how-to guide for each operating task, and the shared app checks run Test-Runbook.ps1 on it (OPS-004, proposed)."
@@ -316,32 +324,41 @@ Each area in the front matter above has:
 <!-- scorecard-table:start -->
 | Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
 |---|---|---|---|---|---|
-| Architecture | 10 | 7 | 3 | 4 | 3 |
-| Craft | 13 | 7 | 6 | 1 | 0 |
+| Architecture | 13 | 8 | 5 | 4 | 4 |
+| Craft | 20 | 11 | 9 | 1 | 0 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
-| Code | 14 | 11 | 3 | 0 | 0 |
-| Tests | 8 | 4 | 4 | 2 | 3 |
-| Security | 13 | 10 | 3 | 4 | 2 |
-| Reliability | 7 | 4 | 3 | 2 | 1 |
+| Code | 21 | 15 | 6 | 0 | 0 |
+| Tests | 9 | 4 | 5 | 2 | 4 |
+| Security | 19 | 10 | 9 | 4 | 2 |
+| Reliability | 12 | 5 | 7 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 1 |
-| API design | 4 | 4 | 0 | 3 | 0 |
-| Performance | 3 | 1 | 2 | 1 | 0 |
-| Supply chain and build | 9 | 9 | 0 | 3 | 1 |
+| API design | 8 | 4 | 4 | 3 | 0 |
+| Performance | 4 | 2 | 2 | 1 | 0 |
+| Supply chain and build | 13 | 9 | 4 | 3 | 1 |
 | Delivery | 1 | 1 | 0 | 2 | 3 |
-| Docs and decisions | 3 | 2 | 1 | 1 | 0 |
+| Docs and decisions | 4 | 2 | 2 | 1 | 0 |
 | UI and accessibility | 3 | 1 | 2 | 2 | 1 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 94 rules in force, 61 checked by a tool and 33 advisory; 25 proposed; 16 open gaps.
+**Overall:** 130 rules in force, 70 checked by a tool and 60 advisory; 163 proposed; 18 open gaps.
+
+| Ruleset | Rules in force | Proposed rules |
+|---|---|---|
+| Core (every app type) | 104 | 64 |
+| ASP.NET Core Web API | 130 | 111 |
+| Blazor Web App | 128 | 132 |
+| .NET MAUI | 104 | 88 |
 
 Open gaps:
 
 - **GAP-026** (Architecture, proposed; needs a CI change): Nightly mutation testing (mutation.reusable.yml) and the Dependabot lock-file refresh (dependabot-lockfiles.yml) run on Linux against the whole solution, so they can't build one with MAUI or desktop projects; they need the solution filter the .NET CI uses, or a Windows runner for the lock files (ADR-0059).
 - **GAP-028** (Architecture, proposed; needs a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change): No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, the runners' Android SDK, and the checks that move to Windows (code shape, duplicate code with PMD's batch launcher, the SBOM) are untested (ADR-0059).
 - **GAP-031** (Architecture, proposed): The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059).
+- **GAP-048** (Architecture, proposed; needs per type: rules sourced from its docs/inventory pages, a ruleset ADR and an app-types.yml entry): No rulesets yet for the app types ADR-0084 lists as not supported: WPF, Windows Forms, WinUI 3, Blazor Hybrid, Razor Pages and MVC, and workers and console apps. Their Microsoft Learn pages are inventoried in docs/inventory/, marked as not a supported type yet, and the rules first written for them were removed from docs/standards. Each type needs its rules sourced from its inventory pages (the source-a-rule skill), its own ruleset ADR and an entry in docs/standards/app-types.yml. The owner, 2026-11-18: "We want to be sure to author the rules for the 'unsupported' app types in the future. Please don't let us forget that!"
 - **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
-- **GAP-037** (Tests, proposed; needs shared checks of the OpenAPI document and of SEC-008's key-free token rejections, and a second host in the app's AppHost part (ADR-0081)): Some rules are gated only by the kit's sample, so in an app they're advisory: parts a shared check could still take on, with a hook in the app's part of AppHost. The OpenAPI document's checks: API-002's declared errors as Problem Details, API-003's snapshot and SEC-013's schemas. SEC-008's token rejections that need no app key, and its bearer scheme in the document. A second host, such as a web UI beside an API, which the host checks don't start. Narrowed by ADR-0081's update of 2026-11-16: the architecture tests (part 1) and tools/AppTests/Functional's host checks, compiled into every *.FunctionalTests project, gate ARC-001, ARC-003, CRF-006, CRF-007, CRF-014, SEC-013's endpoint part, API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 and SEC-011 in apps. The app's own behavior (API-004, API-006, API-007, SEC-009, SEC-010, OPS-006), SEC-011's rate limit and /health's database check stay with the app's own tests by design; TST-003 is GAP-027's and UI-001 is UI-002's.
+- **GAP-037** (Tests, proposed; needs shared checks of the OpenAPI document and of SEC-008's key-free token rejections, and a second host in the app's AppHost part (ADR-0081)): Some rules are gated only by the kit's sample, so in an app they're advisory: parts a shared check could still take on, with a hook in the app's part of AppHost. The OpenAPI document's checks: API-002's declared errors as Problem Details, API-003's snapshot and SEC-013's schemas. SEC-008's token rejections that need no app key, and its bearer scheme in the document. A second host, such as a web UI beside an API, which the host checks don't start. Narrowed by ADR-0081's update of 2026-11-16: the architecture tests (part 1) and tools/AppTests/Functional's host checks, compiled into every *.FunctionalTests project, gate ARC-001, ARC-003, CRF-006, CRF-007, CRF-021 (CRF-014 on that date, before the owner's tightening of it moved to CRF-021), SEC-013's endpoint part, API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 and SEC-011 in apps. The app's own behavior (API-004, API-006, API-007, SEC-009, SEC-010, OPS-006), SEC-011's rate limit and /health's database check stay with the app's own tests by design; TST-003 is GAP-027's and UI-001 is UI-002's.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
+- **GAP-049** (Tests, proposed; needs a CI job that exports and checks an app of each supported type (web-api, blazor, maui)): No check proves the kit's output: CI should generate a fresh app of each supported type from the kit (Export-KitApp, no GitHub repo), build it, and run every gate, its secret scan included (a quote the kit skips only by a `.gitleaksignore` fingerprint would still fail an app's scan, ADR-0024), so a kit change that would produce an app failing its own rules fails the kit's CI first. Today only the sample app is tested this way.
 - **GAP-041** (Security, proposed; needs a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR): Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
 - **GAP-042** (Security, proposed; needs a log-capturing test in the sample, and a deployment that uses Key Vault): SEC-012's first checks a tool can make don't exist yet: that logs hold no secrets or personal data (a test that captures a request's logs and finds neither the token nor the user's data), and that a deployed app reads its secrets from Key Vault with managed identity, which waits for the deployment pipeline (GAP-015) (rules audit, 2026-11-12). Microsoft's logging pages offer redaction (Microsoft.Extensions.Compliance.Redaction, with [LoggerMessage] parameters classified as sensitive) as the way to keep such data out; it would be a new dependency, chosen with the test (.NET best-practices pass, 2026-11-16).
 - **GAP-030** (Reliability, proposed; needs a change to the safe-migrations check): Test-SafeMigrations.ps1 checks every EF Core migration in an app, but DAT-003 exempts a database on the user's device, such as a MAUI app's SQLite file: a MAUI app's ordinary migration that drops or renames a column fails the app checks, with advice (expand, then contract) that doesn't fit a single-version device database (ADR-0059).

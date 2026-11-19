@@ -21,7 +21,7 @@ BeforeDiscovery {
         @{ Fixture = 'VarForBuiltInType'; Diagnostic = 'IDE0008'; Description = 'var for a built-in type, even after a cast that names it (STY-002)' }
         # STY-007 (rules audit, owner 2026-11-12): Microsoft's C# coding conventions and identifier names pages, as gates.
         @{ Fixture = 'ParameterInPascalCase'; Diagnostic = 'IDE1006'; Description = 'a parameter in PascalCase, where the naming rules ask for camelCase (STY-007)' }
-        @{ Fixture = 'InternalStaticReadonlyPrefixed'; Diagnostic = 'IDE1006'; Description = 'an internal static readonly field with the s_ prefix, where the naming rules ask for PascalCase (STY-007)' }
+        @{ Fixture = 'InternalStaticReadonlyPrefixed'; Diagnostic = 'IDE1006'; Description = 'an internal static readonly field with the s_ prefix, where the naming rules ask for PascalCase (STY-014)' }
         @{ Fixture = 'PrivateStaticReadonlyUnprefixed'; Diagnostic = 'IDE1006'; Description = 'a private static readonly field without the s_ prefix (STY-007)' }
         @{ Fixture = 'UsingBlock'; Diagnostic = 'IDE0063'; Description = 'a using block where a simple using declaration does (STY-007)' }
         @{ Fixture = 'ArrayInitializer'; Diagnostic = 'IDE0300'; Description = 'an array creation where a collection expression does (STY-007)' }

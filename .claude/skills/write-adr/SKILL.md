@@ -1,6 +1,6 @@
 ---
 name: write-adr
-description: Record a significant technical decision as an Architecture Decision Record in docs/adr. Use when choosing between technologies, patterns or approaches, when adding a dependency or preview package, when deviating from a kit default, or when reversing an earlier decision.
+description: Record a significant technical decision as an ADR in docs/adr. Use when choosing between technologies or approaches, adding a dependency, deviating from a kit default, or reversing a decision.
 ---
 
 # Write an ADR

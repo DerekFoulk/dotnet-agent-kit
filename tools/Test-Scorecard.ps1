@@ -104,10 +104,12 @@ function Get-KitRule {
         $frontMatter = Read-FrontMatter -Path $file.FullName
         if ($null -eq $frontMatter -or -not $frontMatter.Contains('rules')) { continue }
         foreach ($rule in @($frontMatter['rules'])) {
+            $types = @(@(if ($rule.Contains('scope')) { $rule['scope'] }) | ForEach-Object { "$_" })
             $rules["$($rule['id'])"] = [pscustomobject]@{
                 Id       = "$($rule['id'])"
                 Status   = "$($rule['status'])"
                 Advisory = -not @(@($rule['enforcement']) | Where-Object { $_ -is [System.Collections.IDictionary] -and "$($_['kind'])" -eq 'gate' })
+                Types    = $(if ($types) { $types } else { @('core') })
             }
         }
     }
@@ -175,6 +177,19 @@ function Format-ScorecardTable {
     $gapNoun = if ($openGaps -eq 1) { 'gap' } else { 'gaps' }
     $lines.Add('')
     $lines.Add("**Overall:** $($inForce.Count) $ruleNoun in force, $($inForce.Count - $advisory) checked by a tool and $advisory advisory; $proposed proposed; $openGaps open $gapNoun.")
+    # ADR-0084: what an app of each app type gets, the core ruleset included.
+    $typesPath = Join-Path $StandardsPath 'app-types.yml'
+    if (Test-Path -LiteralPath $typesPath) {
+        $lines.Add('')
+        $lines.Add('| Ruleset | Rules in force | Proposed rules |')
+        $lines.Add('|---|---|---|')
+        $common = @($rules | Where-Object { 'core' -in $_.Types })
+        $lines.Add("| Core (every app type) | $(@($common | Where-Object Status -EQ 'accepted').Count) | $(@($common | Where-Object Status -EQ 'proposed').Count) |")
+        foreach ($type in @((ConvertFrom-Yaml -Yaml (Get-Content -Raw -LiteralPath $typesPath))['types'])) {
+            $applies = @($rules | Where-Object { 'core' -in $_.Types -or "$($type['id'])" -in $_.Types })
+            $lines.Add("| $($type['name']) | $(@($applies | Where-Object Status -EQ 'accepted').Count) | $(@($applies | Where-Object Status -EQ 'proposed').Count) |")
+        }
+    }
     if ($gapLines.Count) {
         $lines.Add('')
         $lines.Add('Open gaps:')

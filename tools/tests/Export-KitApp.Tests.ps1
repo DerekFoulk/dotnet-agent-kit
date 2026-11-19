@@ -251,6 +251,25 @@ Describe 'Export-KitApp' {
         $listed | Should -Not -Contain '.github/copilot-instructions.md'
     }
 
+    # ADR-0084: New-KitApp hands the export the app's profile, so its first rule files hold only the core ruleset and
+    # its app types' rulesets, and the manifest lists exactly those.
+    It 'writes the app profile it''s given before generating the rule files, so a MAUI app gets no web-only rule' {
+        $mauiApp = Join-Path $TestDrive 'maui-app'
+        $profileText = "# App profile: Contoso.Notes`n`n## App types`n`nApp types: maui`n"
+
+        & $script -Name 'Contoso.Notes' -Destination $mauiApp -KitRef $commit -KitRoot $kit -AppProfile $profileText
+
+        $LASTEXITCODE | Should -Be 0
+        $profilePath = Join-Path $mauiApp 'docs' 'app-profile.md'
+        Test-Path -LiteralPath $profilePath | Should -BeTrue -Because 'the export writes the profile it was given'
+        Get-Content -Raw $profilePath | Should -Be $profileText
+        $rules = (Get-ChildItem -LiteralPath (Join-Path $mauiApp '.claude/rules') -File | Get-Content -Raw) -join "`n"
+        $rules | Should -Match '(?m)^- GIT-001:'
+        $rules | Should -Not -Match '(?m)^- API-002:'
+        & pwsh -NoProfile -File (Join-Path $mauiApp '.kit/tools/Build-AgentRules.ps1') -RepoRoot $mauiApp -Check | Out-Null
+        $LASTEXITCODE | Should -Be 0
+    }
+
     It 'gets a Draft runbook that passes its own runbook check' {
         $runbook = Join-Path $app 'docs/runbook.md'
         Test-Path -LiteralPath $runbook | Should -BeTrue -Because 'every app starts with a runbook to fill in (OPS-004)'
@@ -699,6 +718,16 @@ Describe 'Export-KitApp' {
         Test-Path -LiteralPath (Join-Path $checkout '.claude' 'skills' 'new-app' 'SKILL.md') | Should -BeTrue -Because 'the kit has the skill'
         @($map | Where-Object { $_.Source -match '^\.claude/skills/new-app/|^templates/app-intake\.json$|KitIntake\.psm1$' }) | Should -BeNullOrEmpty
         Test-Path -LiteralPath (Join-Path $app '.claude' 'skills' 'new-app') | Should -BeFalse
+    }
+
+    # ADR-0082 and ADR-0083: the skills that find, write and re-check the kit's rules edit the kit's own standards;
+    # an app gets those from the kit, so it doesn't get the skills.
+    It 'leaves out the <Skill> skill, which works on the kit''s own standards' -ForEach @(
+        @{ Skill = 'discover-guidance' }, @{ Skill = 'source-a-rule' }, @{ Skill = 'recheck-sources' }
+    ) {
+        Test-Path -LiteralPath (Join-Path $checkout '.claude' 'skills' $Skill 'SKILL.md') | Should -BeTrue -Because 'the kit has the skill'
+        @($map | Where-Object { $_.Source -like ".claude/skills/$Skill/*" }) | Should -BeNullOrEmpty
+        Test-Path -LiteralPath (Join-Path $app '.claude' 'skills' $Skill) | Should -BeFalse
     }
 
     # The owner, 2026-11-09: an app's settings shouldn't carry rules for kit scripts it doesn't have, such as

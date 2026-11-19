@@ -8,3 +8,4 @@ paths:
 # Operations
 
 - OPS-005: An app shuts down gracefully: on SIGTERM its host stops taking requests and gives in-flight work a shutdown timeout that ends before the platform's grace period (25 seconds where the platform allows 30, Kubernetes' default), and long-running work stops on the host's stopping token or the request's cancellation token, which every call passes on.
+- OPS-010: In some hosting scenarios, use a pair of health checks to distinguish two app states: readiness (the app is running normally but isn't ready to receive requests) and liveness (the app has crashed and must be restarted).

@@ -11,7 +11,7 @@ internal static class ProjectCheck
 
         SourceFile[] files = [.. project.Files.Select(path => Read(path, project))];
         // The owner, 2026-11-16: a test's ! follows an assertion or passes null on purpose to test a guard, so a test
-        // project (a name ending in Tests, as STY-008 and CA2007 have it) needs no label on it (STY-005).
+        // project (a name ending in Tests, as STY-015 and CA2007 have it) needs no label on it (STY-005).
         bool isTestProject = Path.GetFileNameWithoutExtension(project.Name).EndsWith("Tests", StringComparison.Ordinal);
         return files
             .Where(file => !file.Generated)

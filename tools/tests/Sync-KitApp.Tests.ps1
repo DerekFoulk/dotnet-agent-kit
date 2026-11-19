@@ -751,3 +751,73 @@ Describe 'Sync-KitApp' {
         }
     }
 }
+
+# ADR-0084, review of the branch: a sync exported both kit versions without the app's profile, so a typed app's
+# filtered rule files read as changed on every sync. The export gets the profile whenever that version's exporter
+# takes one.
+Describe 'Export-KitAppAt' {
+    BeforeAll {
+        . (Join-Path $PSScriptRoot '..' 'Sync-KitApp.ps1')
+        Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+        $script:savedGitAt = Set-TestGitEnvironment
+
+        # A kit whose exporter records what it was given in the manifest.
+        function New-StubKit([switch] $TakesProfile) {
+            $kit = Join-Path $TestDrive "kit-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $kit 'tools') | Out-Null
+            # [CmdletBinding()], as the real exporter has: an older one refuses an -AppProfile it doesn't take.
+            $param = if ($TakesProfile) { "[CmdletBinding()]`nparam([string] `$Name, [string] `$Destination, [string] `$KitRef, [string] `$KitRoot, [string] `$AppProfile)" }
+            else { "[CmdletBinding()]`nparam([string] `$Name, [string] `$Destination, [string] `$KitRef, [string] `$KitRoot)" }
+            $body = @'
+New-Item -ItemType Directory -Force -Path (Join-Path $Destination '.kit') | Out-Null
+$given = if (Get-Variable -Name AppProfile -ErrorAction SilentlyContinue) { $AppProfile } else { $null }
+@{ appName = $Name; files = @(); given = $given } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Destination '.kit/manifest.json')
+'@
+            Set-Content -LiteralPath (Join-Path $kit 'tools' 'Export-KitApp.ps1') -Value "$param`n$body"
+            git -C $kit init -q -b main
+            git -C $kit add -A
+            git -C $kit commit -q -m 'chore: stub kit'
+            $kit
+        }
+    }
+    AfterAll { Restore-TestGitEnvironment -Saved $script:savedGitAt }
+
+    It 'hands the app''s profile to an exporter that takes one' {
+        $kit = New-StubKit -TakesProfile
+
+        $manifest = Export-KitAppAt -KitRoot $kit -KitRef 'main' -Name 'Contoso.Notes' -Destination (Join-Path $TestDrive "out-$(New-Guid)") -AppProfile "App types: maui`n"
+
+        $manifest['given'] | Should -Be "App types: maui`n"
+    }
+
+    It 'exports without it at a kit version whose exporter takes none' {
+        $kit = New-StubKit
+
+        $manifest = Export-KitAppAt -KitRoot $kit -KitRef 'main' -Name 'Contoso.Notes' -Destination (Join-Path $TestDrive "out-$(New-Guid)") -AppProfile "App types: maui`n"
+
+        $manifest['given'] | Should -BeNullOrEmpty
+    }
+
+    # Review round 2: the call site, not only Export-KitAppAt, is what keeps a typed app's rule files from reading as
+    # changed: Sync-KitApp reads the app's profile and hands it to both exports.
+    It 'reads the app''s profile and hands it to both exports' {
+        $app = Join-Path $TestDrive "app-$(New-Guid)"
+        New-Item -ItemType Directory -Path (Join-Path $app 'docs') | Out-Null
+        Set-Content -LiteralPath (Join-Path $app 'docs' 'app-profile.md') -Value "App types: maui" -NoNewline
+        $script:given = [System.Collections.Generic.List[object]]::new()
+        Mock Read-KitManifest { @{ kitCommit = 'aaa'; appName = 'Contoso.Notes'; kitVersion = 'v0.1.0'; files = @() } }
+        Mock Get-KitReleaseCommit { 'bbb' }
+        Mock git { $global:LASTEXITCODE = 0 }
+        Mock Export-KitAppAt {
+            $script:given.Add([pscustomobject]@{ Ref = $KitRef; Profile = $AppProfile })
+            if ($script:given.Count -ge 2) { throw 'stop after both exports' }
+            @{ files = @() }
+        }
+
+        { Sync-KitApp -AppRoot $app -KitRoot $TestDrive -KitRef 'v0.2.0' } | Should -Throw '*stop after both exports*'
+
+        $script:given.Count | Should -Be 2
+        $script:given | ForEach-Object { $_.Profile | Should -Be 'App types: maui' }
+        @($script:given.Ref) | Should -Be @('v0.2.0', 'aaa')
+    }
+}

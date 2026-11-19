@@ -11,7 +11,9 @@
     there. The files come from a clean checkout of the commit (a temporary git worktree), never from the kit's
     working tree, so an unfinished local edit can't slip into an app.
 
-    New-KitApp (PR D2b) calls this, then creates the GitHub repo.
+    New-KitApp (PR D2b) calls this, then creates the GitHub repo. It passes -AppProfile, the intake's
+    docs/app-profile.md, which is written before the agent rule files are generated, so the app's first rule files
+    hold only the core ruleset and its app types' rulesets (ADR-0084).
 
 .EXAMPLE
     ./tools/Export-KitApp.ps1 -Name Contoso.Orders -Destination ../Contoso.Orders -KitRef v0.1.0
@@ -21,7 +23,8 @@ param(
     [string] $Name,
     [string] $Destination,
     [string] $KitRef,
-    [string] $KitRoot
+    [string] $KitRoot,
+    [string] $AppProfile
 )
 
 Set-StrictMode -Version Latest
@@ -37,8 +40,10 @@ $script:KitCopies = @(
 )
 
 # Kit skills an app doesn't get, though it gets the rest of .claude/skills/: new-app runs New-KitApp, which only the
-# kit has (ADR-0058).
-$script:KitOnlySkills = @('.claude/skills/new-app/')
+# kit has (ADR-0058); discover-guidance, source-a-rule and recheck-sources work on the kit's own standards, which an
+# app gets from the kit (ADR-0082, ADR-0083).
+$script:KitOnlySkills = @('.claude/skills/new-app/', '.claude/skills/discover-guidance/', '.claude/skills/source-a-rule/',
+    '.claude/skills/recheck-sources/')
 
 # Kit files an app gets at another path.
 $script:KitMoves = [ordered]@{
@@ -330,7 +335,8 @@ function Export-KitApp {
         [Parameter(Mandatory)] [string] $Name,
         [Parameter(Mandatory)] [string] $Destination,
         [Parameter(Mandatory)] [string] $KitRef,
-        [Parameter(Mandatory)] [string] $KitRoot
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [string] $AppProfile
     )
 
     # .NET file calls resolve a relative path against the process's directory, not PowerShell's location.
@@ -386,6 +392,11 @@ function Export-KitApp {
                 Copy-Item -LiteralPath $source -Destination $target
             }
         }
+        # App-owned, so not in the manifest; written first, because the app's Build-AgentRules reads its app types.
+        if ($AppProfile) {
+            New-Item -ItemType Directory -Force -Path (Join-Path $Destination 'docs') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $Destination 'docs' 'app-profile.md'), $AppProfile, [Text.UTF8Encoding]::new($false))
+        }
         $map += @(New-KitAgentRuleFile -Destination $Destination)
         Write-KitManifest -Destination $Destination -Map $map -Commit $commit -KitVersion $KitVersion -Name $Name
     }
@@ -403,7 +414,7 @@ function Export-KitApp {
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $KitRoot) { $KitRoot = Split-Path -Path $PSScriptRoot -Parent }
     try {
-        Export-KitApp -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot
+        Export-KitApp -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot -AppProfile $AppProfile
     }
     catch {
         Write-Host $_.Exception.Message -ForegroundColor Red

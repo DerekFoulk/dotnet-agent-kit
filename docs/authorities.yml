@@ -105,12 +105,6 @@ sources:
     covers: the Microsoft.VisualStudio.Threading.Analyzers rules the kit turns on
     match:
       - https://github.com/microsoft/vs-threading/
-  - name: CycloneDX for .NET
-    publisher: OWASP CycloneDX
-    class: project
-    covers: the SBOM tool the kit's CI runs
-    match:
-      - https://github.com/CycloneDX/
   - name: OpenSSF Scorecard action
     publisher: OpenSSF (Open Source Security Foundation)
     class: project

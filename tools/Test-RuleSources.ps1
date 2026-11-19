@@ -9,6 +9,10 @@
     in docs/adr) or "<URL>, retrieved YYYY-MM-DD". Basis 'authority' needs a URL source and 'preference' an
     owner or ADR source. Enforcement is a list of parts, each with kind (gate or advisory), in (kit, app or
     both) and how (ADR-0063). Ids are unique.
+    ADR-0082: an authority rule cites pages only (URLs), has layer outside or floor, and stores quotes: for each
+    cited page, the page's own words with that source's URL and retrieval date, one contiguous passage each. An
+    accepted authority rule names who accepted it in ratified. A preference has layer owner or floor. Every rule in
+    force names its scope: core, or app types from app-types.yml in the same folder (never every one; ADR-0084).
     Exit code: 0 when every rule is traceable, otherwise 1.
 
 .EXAMPLE
@@ -87,8 +91,164 @@ function Get-BasisProblem {
     if ($Basis -eq 'authority' -and -not ($sources -match '^https?://')) {
         return "basis 'authority' needs a URL source for the authority"
     }
+    # ADR-0082: an authority rule says only what its pages say. An owner's decision or an ADR among its sources means
+    # part of it is the kit's, which is a preference rule of its own; the owner accepting the rule is 'ratified'.
+    if ($Basis -eq 'authority') {
+        foreach ($source in @($sources | Where-Object { $_ -match '^(owner, |ADR-\d{4}$)' })) {
+            "basis 'authority' cites pages only, not '$source': split what the owner or ADR adds into a preference rule, or move the owner's acceptance to ratified (ADR-0082)"
+        }
+    }
     if ($Basis -eq 'preference' -and -not ($sources -match '^(owner, |ADR-\d{4}$)')) {
         return "basis 'preference' needs an 'owner, YYYY-MM-DD' or ADR source"
+    }
+}
+
+# ADR-0082: layer says whose rule it is. An authority's rule is the outside layer and a preference is the owner's;
+# a floor rule (law, safety, security, privacy, licenses) can be either.
+$script:LayersForBasis = @{ authority = @('outside', 'floor'); preference = @('owner', 'floor') }
+
+function Get-RatifiedProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [Parameter(Mandatory)] [string] $AdrPath)
+
+    $hasRatified = $Rule.Contains('ratified') -and "$($Rule['ratified'])" -match '\S'
+    if ("$($Rule['basis'])" -ne 'authority') {
+        if ($hasRatified) { "ratified is for an authority rule; a preference's sources already name the owner or the ADR" }
+        return
+    }
+    if (-not $hasRatified) {
+        if ("$($Rule['status'])" -eq 'accepted') {
+            "an accepted authority rule needs ratified: 'owner, YYYY-MM-DD' or 'ADR-NNNN', who accepted it"
+        }
+        return
+    }
+    $ratified = "$($Rule['ratified'])"
+    if ($ratified -notmatch '^(owner\b|ADR-\d{4}$)') {
+        return "ratified '$ratified' must read 'owner, YYYY-MM-DD' or 'ADR-NNNN'"
+    }
+    # The same form as an owner or ADR source: a real date, or an ADR that exists.
+    $problem = Get-SourceProblem -Source $ratified -AdrPath $AdrPath
+    if ($problem) { "ratified: $problem" }
+}
+
+# ADR-0082: a quote is the page's own words, with the page and the day they were read, so the rule can be compared
+# with them. Returns the date as text, whether YAML read it as a string or a date.
+function ConvertTo-DateText {
+    param($Value)
+    if ($Value -is [datetime]) { return $Value.ToString('yyyy-MM-dd', [cultureinfo]::InvariantCulture) }
+    "$Value"
+}
+
+function Get-QuoteProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
+
+    # Not "$quotes = if (...)": an if statement's output is enumerated, so a one-quote list would become the quote.
+    $quotes = $null
+    if ($Rule.Contains('quotes')) { $quotes = $Rule['quotes'] }
+    $isAuthority = "$($Rule['basis'])" -eq 'authority' -and "$($Rule['status'])" -ne 'retired'
+    if (-not (Test-Present $quotes)) {
+        if ($isAuthority) { "basis 'authority' needs quotes: the sentence on each cited page that says what the rule says (ADR-0082)" }
+        return
+    }
+    if ($quotes -is [string] -or $quotes -is [System.Collections.IDictionary]) {
+        return "quotes must be a list, each quote with source, retrieved and text"
+    }
+    # The rule's URL sources, each with its retrieval date: a quote names one of them and the same date, so the
+    # page and the day live in sources and the quote is checked against them (CRF-003).
+    $cited = [ordered]@{}
+    foreach ($source in @($(if ($Rule.Contains('sources')) { $Rule['sources'] }))) {
+        if ("$source" -match '^(https?://\S+), retrieved (\S+)$') { $cited[$Matches[1]] = $Matches[2] }
+    }
+    $quoted = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($quote in @($quotes)) {
+        if ($quote -isnot [System.Collections.IDictionary]) {
+            "quote '$quote' must have source, retrieved and text"
+            continue
+        }
+        foreach ($field in 'source', 'retrieved', 'text') {
+            if (-not $quote.Contains($field) -or "$($quote[$field])" -notmatch '\S') {
+                "a quote has no '$field'"
+            }
+        }
+        $retrieved = if ($quote.Contains('retrieved')) { ConvertTo-DateText $quote['retrieved'] } else { '' }
+        if ($retrieved -match '\S' -and -not (Test-IsoDate $retrieved)) {
+            "quote retrieved '$retrieved' must be a date, YYYY-MM-DD"
+        }
+        $page = if ($quote.Contains('source')) { "$($quote['source'])" } else { '' }
+        if ($page -match '\S') {
+            if (-not $cited.Contains($page)) {
+                "a quote's source '$page' is not one of the rule's sources (write it as the source is written, without ', retrieved')"
+            }
+            else {
+                [void] $quoted.Add($page)
+                if ((Test-IsoDate $retrieved) -and $retrieved -ne $cited[$page]) {
+                    "a quote of $page says retrieved $retrieved, but its source says $($cited[$page])"
+                }
+            }
+        }
+        # One contiguous passage, so the scheduled re-read (ADR-0083) can find it on the page as written. An ellipsis that
+        # stands for left-out words stands alone or in brackets; dots inside the page's code, as in Task.Run(...), stay.
+        if ($quote.Contains('text') -and "$($quote['text'])" -match '\[(\.\.\.|…)\]|(^|\s)(\.\.\.|…)(\s|$)') {
+            "a quote of $page has an ellipsis: store one contiguous passage, and another quote for another passage"
+        }
+    }
+    if ($isAuthority) {
+        foreach ($page in $cited.Keys) {
+            if (-not $quoted.Contains($page)) { "the rule cites $page but has no quote from it" }
+        }
+    }
+}
+
+# ADR-0084: the app types a rule's scope can name, from docs/standards/app-types.yml, the one list of them. Returns
+# the ids, and the file's problems as messages.
+function Read-AppType {
+    param([Parameter(Mandatory)] [string] $StandardsPath)
+
+    $path = Join-Path $StandardsPath 'app-types.yml'
+    $result = [pscustomobject]@{ Ids = [System.Collections.Generic.List[string]]::new(); Problems = [System.Collections.Generic.List[string]]::new() }
+    if (-not (Test-Path -LiteralPath $path)) {
+        $result.Problems.Add("app-types.yml is missing from $StandardsPath; it lists the app types a rule's scope names (ADR-0084)")
+        return $result
+    }
+    $yaml = ConvertFrom-Yaml -Yaml (Get-Content -LiteralPath $path -Raw)
+    $types = $null
+    if ($yaml -is [System.Collections.IDictionary] -and $yaml.Contains('types')) { $types = $yaml['types'] }
+    foreach ($type in @($types)) {
+        if ($type -isnot [System.Collections.IDictionary] -or "$($type['id'])" -notmatch '^[a-z0-9-]+$') {
+            $result.Problems.Add("app-types.yml has an entry with no id in lower-case-with-dashes: '$type'")
+            continue
+        }
+        $id = "$($type['id'])"
+        if ($id -eq 'core') { $result.Problems.Add("app-types.yml names a type 'core', which is reserved for rules that fit every app type") }
+        elseif ($result.Ids.Contains($id)) { $result.Problems.Add("app-types.yml lists '$id' more than once") }
+        else { $result.Ids.Add($id) }
+        if ("$($type['name'])" -notmatch '\S') { $result.Problems.Add("app-types.yml type '$id' has no name") }
+        if ("$($type['docs'])" -notmatch '^https://\S+$') { $result.Problems.Add("app-types.yml type '$id' needs docs, the URL of Microsoft's page for it") }
+    }
+    if ($result.Ids.Count -eq 0 -and $result.Problems.Count -eq 0) { $result.Problems.Add("app-types.yml lists no types") }
+    $result
+}
+
+# ADR-0084: scope is 'core' (every app type) or a list of the app types in app-types.yml, never all of them: a type
+# added later would be left out of a rule that lists every type today, so such a rule says core.
+function Get-ScopeProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Known)
+
+    if ($Rule.Contains('projectTypes')) { "projectTypes is retired: write scope, core or the app types it applies to (ADR-0084)" }
+    if ("$($Rule['status'])" -eq 'retired') { return }
+    $scope = $null
+    if ($Rule.Contains('scope')) { $scope = $Rule['scope'] }
+    if ($scope -is [string]) {
+        if ($scope -eq 'core') { return }
+        if ($scope -match '\S') { return "scope '$scope' must be core, or a list of app types such as [web-api, blazor]" }
+    }
+    $types = @(@($scope) | Where-Object { "$_" -match '\S' } | ForEach-Object { "$_" })
+    if (-not $types) { return "is missing 'scope': core, or the app types in app-types.yml it applies to" }
+    if ('core' -in $types) { return "scope: core stands alone, written as core, not in a list" }
+    foreach ($type in $types) {
+        if ($type -notin $Known) { "app type '$type' isn't one of app-types.yml's: $($Known -join ', ')" }
+    }
+    if ($Known.Count -gt 0 -and @($Known | Where-Object { $_ -notin $types }).Count -eq 0) {
+        "scope lists every app type: write core, so a type added later is covered too"
     }
 }
 
@@ -103,6 +263,8 @@ function Get-RuleSourceProblem {
         [Parameter(Mandatory)] [string] $AdrPath
     )
 
+    $appTypes = Read-AppType -StandardsPath $StandardsPath
+    foreach ($message in $appTypes.Problems) { New-Problem -File 'app-types.yml' -Message $message }
     $seen = @{}
     foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
         $frontMatter = Read-FrontMatter -Path $file.FullName
@@ -145,10 +307,23 @@ function Get-RuleSourceProblem {
                     (Test-Present $_) -and -not (Get-SourceProblem -Source "$_" -AdrPath $AdrPath)
                 })
             if ($rule.Contains('basis') -and $validSources -and "$($rule['basis'])" -in $script:AllowedValues['basis']) {
-                $message = Get-BasisProblem -Basis "$($rule['basis'])" -Sources $validSources
-                if ($message) {
+                foreach ($message in @(Get-BasisProblem -Basis "$($rule['basis'])" -Sources $validSources)) {
                     New-Problem -File $file.Name -RuleId $ruleId -Message $message
                 }
+            }
+            $basis = "$($rule['basis'])"
+            if ($script:LayersForBasis.ContainsKey($basis) -and "$($rule['layer'])" -in $script:AllowedValues['layer'] -and
+                "$($rule['layer'])" -notin $script:LayersForBasis[$basis]) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message "basis '$basis' can't have layer '$($rule['layer'])': use $($script:LayersForBasis[$basis] -join ' or ') (ADR-0082)"
+            }
+            foreach ($message in @(Get-ScopeProblem -Rule $rule -Known $appTypes.Ids)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
+            }
+            foreach ($message in @(Get-RatifiedProblem -Rule $rule -AdrPath $AdrPath)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
+            }
+            foreach ($message in @(Get-QuoteProblem -Rule $rule)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
             }
             if ($rule.Contains('sources')) {
                 foreach ($source in @($rule['sources'])) {

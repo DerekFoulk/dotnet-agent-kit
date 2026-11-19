@@ -37,7 +37,7 @@ Answer each heading in the plan. Where a heading doesn't apply, write "n/a" with
 - Retention, personal data?
 
 ## API style
-- Does it add or change an API? Name its style (an HTTP API with Minimal APIs, gRPC or SignalR) and why; controllers or GraphQL need an ADR (API-001, `docs/standards/api-design.md`).
+- Does it add or change an API? Name its style and why: Minimal APIs by default; gRPC, SignalR, controllers or GraphQL only where a Microsoft page recommends that style for the scenario (name the page, API-008) or the owner asked for it (API-001, `docs/standards/api-design.md`).
 
 ## Craft
 - Does the change fix the root cause? Name any safety net that stays, and why (CRF-001); name any better design that has to wait, and where it's planned (CRF-002).
