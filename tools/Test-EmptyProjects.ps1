@@ -105,8 +105,14 @@ function Invoke-EmptyProjectsCheck {
         }).Count
 
     if ($counted) {
-        $more = if ($problems.Count -gt $counted) { "; $($problems.Count - $counted) more were warnings, because ARC-009 is proposed" } else { '' }
-        Write-Host "`n$counted empty-project problem(s) in $Solution$more. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red
+        # A missing project is a broken solution, summed up apart, so the summary blames ARC-009 only for its own.
+        $broken = @($problems | Where-Object { -not $_.Rule }).Count
+        $empty = $counted - $broken
+        $warned = $problems.Count - $counted
+        if ($broken -eq 1) { Write-Host "`n1 project the solution lists isn't there, in $Solution; fix the solution file." -ForegroundColor Red }
+        elseif ($broken) { Write-Host "`n$broken projects the solution lists aren't there, in $Solution; fix the solution file." -ForegroundColor Red }
+        if ($empty) { Write-Host "`n$empty empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red }
+        if ($warned) { Write-Host "$warned more empty-project problem(s) were warnings, because ARC-009 is proposed." -ForegroundColor Yellow }
         return 1
     }
     if ($problems) {
