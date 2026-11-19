@@ -39,7 +39,8 @@ function Get-RuleStatus {
 }
 
 # Writes one finding of rule Id and returns whether it counts toward the check's failure; the rule's status alone
-# decides. A proposed rule's finding is a GitHub warning annotation ("::warning::<id>: <message>"), which the pull
+# decides. A proposed rule's finding is a GitHub warning annotation ("::warning::<id>: <message>", or
+# "::warning file=<file>,line=<line>,col=<column>::<id>: <message>" when its place is given), which the pull
 # request shows without failing, and doesn't count. An accepted rule's finding is written as it is, in red, as the
 # checks wrote their errors before, and counts: an MSBuild-format line stays readable by setup-dotnet's problem
 # matcher. A retired rule isn't in force and its check should be gone, so a finding for it throws. -File, -Line and

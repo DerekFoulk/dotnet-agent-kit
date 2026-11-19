@@ -273,7 +273,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [app]
-        how: "code review checks that a breaking schema change is split across releases; Test-SafeMigrations.ps1 (DAT-003) fails each drop, rename, alter, data change or raw SQL in a migration's Up that has no DAT-003 reason"
+        how: "code review checks that a breaking schema change is split across releases; Test-SafeMigrations.ps1 (DAT-003) reports each drop, rename, alter, data change or raw SQL in a migration's Up that has no DAT-003 reason, as a warning while DAT-003 is proposed and a failure once it's accepted (ADR-0089)"
     scope: [web-api, blazor]
     paths: ["**/Migrations/**"]
   - id: DAT-014
@@ -575,7 +575,7 @@ While a release rolls out, and again after a rollback, the version that was runn
    migrationBuilder.DropColumn(name: "Notes", table: "Orders");
    ```
 
-`Test-SafeMigrations.ps1` runs in the shared app checks (`app-checks.reusable.yml`). An app runs it as `./.kit/tools/Test-SafeMigrations.ps1 -Path .`. It reads each migration's `Up` method and fails on each call to an operation that removes or changes what the running version uses, unless that call has a `// DAT-003:` comment with a reason. The operations are listed once, in the script's `$UnsafeOperations`: drops, renames and alters, changes to existing data, and raw `Sql`, which could do anything. It can't tell whether the reason is true, or whether a new constraint (a foreign key, unique or check constraint) would reject the running version's writes; code review checks those. It reads the C# as text, so a migration that builds its operations in a helper method isn't checked.
+`Test-SafeMigrations.ps1` runs in the shared app checks (`app-checks.reusable.yml`). An app runs it as `./.kit/tools/Test-SafeMigrations.ps1 -Path .`. It reads each migration's `Up` method and reports each call to an operation that removes or changes what the running version uses, unless that call has a `// DAT-003:` comment with a reason: it warns while DAT-003 is proposed, and fails once it's accepted (ADR-0089). The operations are listed once, in the script's `$UnsafeOperations`: drops, renames and alters, changes to existing data, and raw `Sql`, which could do anything. It can't tell whether the reason is true, or whether a new constraint (a foreign key, unique or check constraint) would reject the running version's writes; code review checks those. It reads the C# as text, so a migration that builds its operations in a helper method isn't checked.
 
 Generate each migration with `dotnet ef migrations add <Name>`, read it before committing, and keep the model snapshot that comes with it. A test that calls `context.Database.HasPendingModelChanges()` fails when someone changes the model and forgets the migration.
 
