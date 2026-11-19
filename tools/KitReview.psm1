@@ -777,20 +777,25 @@ function Wait-PullRequest {
     $head = Get-ShortSha -Sha $status.HeadSha
     $minutes = if ($TimeoutMinutes -eq 1) { '1 minute' } else { "$TimeoutMinutes minutes" }
     $pendingNames = @($status.Checks | Where-Object Result -EQ 'Pending' | ForEach-Object Name)
+    $failedNames = @()
     $missing = @(
         if ($For -in 'Review', 'Either') {
             if ($lastFailure) { "no review from Copilot of $head yet (its last try failed: $(Get-ReviewReason -Review $lastFailure))" }
             else { "no review from Copilot of $head yet" }
         }
         if ($For -in 'Checks', 'Either') {
+            # A failure a re-run can still replace didn't end the wait, but it's news: the time-out names it.
+            $running = Get-StillRunning -Status $status
+            $pendingNames = $running.Names
+            $failedNames = @($failed) + @($failedRuns)
+            if ($failures) { "failed so far: $failures" }
             if ($passSeenAt) { 'every check passed once, waiting for a second read to confirm it' }
-            elseif (@($status.Checks).Count -eq 0) { 'no checks have started' }
-            elseif ($pendingNames) { "$($pendingNames.Count) checks still running: $($pendingNames -join ', ')" }
-            else { "workflow runs still going: $(@($status.PendingRuns) -join ', ')" }
+            elseif (@($status.Checks).Count -eq 0 -and -not $failures) { 'no checks have started' }
+            else { $running.Text }
         }
     )
     [pscustomobject]@{
-        Event = 'TimedOut'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @(); PendingChecks = $pendingNames
+        Event = 'TimedOut'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = $failedNames; PendingChecks = $pendingNames
         Message = "Timed out after $minutes at ${head}: $($missing -join '; ')."
     }
 }
