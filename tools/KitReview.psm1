@@ -809,9 +809,11 @@ function Wait-PullRequest {
             else { $running.Text }
         }
     )
+    # A wait once more without them would end at once on a failure already known (the reviewer agent's branch review).
+    $again = if ($KnownFailures) { ' Pass the same -KnownFailures to the next wait.' } else { '' }
     [pscustomobject]@{
         Event = 'TimedOut'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = $failedNames; PendingChecks = $pendingNames
-        Message = "Timed out after $minutes at ${head}: $($missing -join '; ')."
+        Message = "Timed out after $minutes at ${head}: $($missing -join '; ').$again"
     }
 }
 
