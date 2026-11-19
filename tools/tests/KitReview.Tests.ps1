@@ -1632,8 +1632,8 @@ Describe 'KitReview.psm1' {
         }
 
         # PR 116: gitleaks failed while the mutation workflow was still going, and the wait said nothing until it timed out.
-        # A final failure, one no run still going can replace (here, a job of a run on its first attempt, which can't be
-        # re-run while it's going), ends the wait on the first poll that shows it, whatever else still runs.
+        # A final failure, one no run still going can replace (here, a job of the CI run, which has completed), ends the wait
+        # on the first poll that shows it, whatever else still runs.
         It 'returns ChecksFailed on the first poll that shows a settled failure, naming what still runs' {
             InModuleScope KitReview {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
@@ -1641,18 +1641,18 @@ Describe 'KitReview.psm1' {
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
                 $script:view = ConvertTo-RollupJson -Checks @(
                     @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Secret scan (gitleaks)'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 }
-                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'IN_PROGRESS'; conclusion = $null; runId = 10; id = 2 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; runId = 10; id = 2 }
                     @{ __typename = 'CheckRun'; workflowName = 'mutation'; name = 'mutation / Stryker'; status = 'IN_PROGRESS'; conclusion = $null; runId = 20; id = 3 }
                 )
                 Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
-                Mock Invoke-Gh { '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
 
                 $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
 
                 $result.Event | Should -Be 'ChecksFailed'
-                $result.FailedChecks | Should -Be @('dotnet / Secret scan (gitleaks)')
-                $result.PendingChecks | Should -Be @('dotnet / Build', 'mutation / Stryker')
-                $result.Message | Should -Be 'CI failed at head2 with checks still running: 1 of 3 checks failed: dotnet / Secret scan (gitleaks); 2 checks still running: dotnet / Build, mutation / Stryker. To wait for the rest, pass FailedChecks as -KnownFailures.'
+                $result.FailedChecks | Should -Be @('dotnet / Secret scan (gitleaks)', 'ci')
+                $result.PendingChecks | Should -Be @('mutation / Stryker')
+                $result.Message | Should -Be 'CI failed at head2 with checks still running: 1 of 3 checks failed: dotnet / Secret scan (gitleaks); workflow runs failed: ci; 1 checks still running: mutation / Stryker. To wait for the rest, pass FailedChecks as -KnownFailures.'
                 Should -Invoke Start-Sleep -Times 0 -Exactly
             }
         }
@@ -1791,7 +1791,7 @@ Describe 'KitReview.psm1' {
         It 'with -KnownFailures, returns <Expected> on <Case>' -ForEach @(
             @{ Case = 'a known failure while CI still runs'; Expected = 'TimedOut'; Known = @('gitleaks')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
-                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"success"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
             @{ Case = 'a known failed check whose run then failed, while CI still runs'; Expected = 'TimedOut'; Known = @('gitleaks')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
                 Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
@@ -1800,10 +1800,10 @@ Describe 'KitReview.psm1' {
                     @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 }
                     @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 2 }
                 )
-                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
             @{ Case = 'a failure named only in another case'; Expected = 'ChecksFailed'; Known = @('Gitleaks')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
-                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
             # The reviewer agent's branch review: a known check hides only its own run's failure, not another run's (M5).
             @{ Case = 'another workflow''s startup failure besides a known check'; Expected = 'ChecksFailed'; Known = @('gitleaks')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })

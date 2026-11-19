@@ -501,13 +501,13 @@ function Get-RunGroupKey {
 
 # The failures that are final, by name: no run still going can replace them, so a wait can report them while other
 # checks still run (the reviewer agent's plan review). Someone can still re-run a completed run or post a new commit
-# status; that's a new event, which the next wait sees. A run can be re-run only once it has completed, and a re-run
-# raises its attempt and goes back to queued; until the new attempt's job starts, the old attempt's failed check is still
-# the latest of its name (a job that needs another starts minutes later). And while any run of a group is going, no
+# status; that's a new event, which the next wait sees. A re-run sends its run back to queued, and until the new
+# attempt's job starts, the old attempt's failed check is still the latest of its name (a job that needs another starts
+# minutes later). The attempt number doesn't tell them apart: on PR 117 (2026-11-19), a run read queued with run_attempt
+# still 1 just after `gh run rerun`, and attempt 2 only seconds later. And while any run of a group is going, no
 # ordering of the group's runs is safe (Get-PullRequestStatus). So a failure is settled when:
 # - it's a failed check that belongs to no workflow run (a commit status, or another app's check);
-# - it's a failed check of a listed run, and no run of that run's group is going, or the only one going is that run
-#   itself, on its first attempt;
+# - it's a failed check of a listed run, and no run of that run's group is going;
 # - it's a failed run (the latest of its group, so completed) with no run of its group going and no failed check of its
 #   own, such as a startup failure: a run's failed checks already stand for it, so a known failed check doesn't come
 #   back as its run's failure.
@@ -529,9 +529,7 @@ function Get-SettledFailure {
         if ($null -eq $check.RunId) { $check.Name; continue }
         $run = $Runs | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -eq $check.RunId } | Select-Object -First 1
         if (-not $run) { continue }
-        $goingInGroup = @($going | Where-Object { $_ -ceq (Get-RunGroupKey -Run $run) }).Count
-        $alone = $goingInGroup -eq 0 -or ($goingInGroup -eq 1 -and "$($run['status'])" -ne 'completed' -and $run['run_attempt'] -eq 1)
-        if ($alone) { $check.Name }
+        if ((Get-RunGroupKey -Run $run) -cnotin $going) { $check.Name }
     }
     foreach ($run in $FailedRuns) {
         $ownFailure = @($failedChecks | Where-Object { $null -ne $_.RunId -and $_.RunId -eq [long] $run['id'] }).Count -gt 0
