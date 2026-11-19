@@ -42,16 +42,26 @@ function Get-RuleStatus {
 # decides. A proposed rule's finding is a GitHub warning annotation ("::warning::<id>: <message>"), which the pull
 # request shows without failing, and doesn't count. An accepted rule's finding is written as it is, in red, as the
 # checks wrote their errors before, and counts: an MSBuild-format line stays readable by setup-dotnet's problem
-# matcher. A retired rule isn't in force and its check should be gone, so a finding for it throws.
+# matcher. A retired rule isn't in force and its check should be gone, so a finding for it throws. -File, -Line and
+# -Column name the finding's place in the warning, so the pull request shows it on that line of the diff; GitHub's
+# warning command takes them as file, line and col:
+#   https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands  retrieved 2026-11-18
 function Write-RuleFinding {
     [OutputType([bool])]
     param([Parameter(Mandatory)] [string] $Id, [Parameter(Mandatory)] [string] $Message, [string] $Path, [string] $File, [int] $Line, [int] $Column)
 
     $status = Get-RuleStatus -Id $Id -Path $Path
     if ($status -ceq 'proposed') {
-        # GitHub ends a workflow command at the line's end, and decodes these three in its message.
+        # GitHub ends a workflow command at the line's end, and decodes these three in its message; a property also
+        # ends at a comma, and its name at a colon, so those are escaped in one too, as @actions/core does.
         $data = $Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
-        Write-Host "::warning::${Id}: $data"
+        $place = @(
+            if ($File) { 'file=' + $File.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A').Replace(':', '%3A').Replace(',', '%2C') }
+            if ($Line -gt 0) { "line=$Line" }
+            if ($Column -gt 0) { "col=$Column" }
+        )
+        $properties = if ($place) { ' ' + ($place -join ',') } else { '' }
+        Write-Host "::warning${properties}::${Id}: $data"
         return $false
     }
     if ($status -ceq 'accepted') {

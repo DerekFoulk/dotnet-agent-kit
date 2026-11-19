@@ -113,6 +113,19 @@ function ConvertTo-CodeShapeRuleId {
     "$($Matches['letters'])-$($Matches['number'])"
 }
 
+# A finding's file as a warning names it: relative to the folder the check runs in, which is the repo root (GitHub's
+# own example names a file in the repo, file=app.js), with / between folders. A path outside that folder, or one that
+# isn't a full path on this system, is kept as the tool printed it, with / between folders.
+function Get-CodeShapeFindingFile {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $root = (Get-Location).ProviderPath.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    if ([IO.Path]::IsPathRooted($Path) -and $Path.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
+        $Path = $Path.Substring($root.Length)
+    }
+    $Path.Replace('\', '/')
+}
+
 # Prints Kit.CodeShape's output and returns the check's exit code (ADR-0089). Each finding names its rule in its error
 # code, CRF011 for CRF-011: a proposed rule's finding is a warning that doesn't fail the check, an accepted rule's is
 # printed as it is, in MSBuild's error format, and fails it (KitRuleStatus.psm1). Any other exit code than 1 is the
@@ -123,13 +136,18 @@ function Write-CodeShapeResult {
     $counted = 0
     $warned = 0
     foreach ($line in $Output -split '\r?\n' | Where-Object { $_ }) {
-        $finding = [regex]::Match($line, '^.+\(\d+,\d+\): error (?<code>[A-Z]+\d+): ')
+        $finding = [regex]::Match($line, '^(?<file>.+)\((?<line>\d+),(?<column>\d+)\): error (?<code>[A-Z]+\d+): ')
         if (-not $finding.Success) {
             Write-Host $line
             continue
         }
         $rule = ConvertTo-CodeShapeRuleId -Code $finding.Groups['code'].Value
-        if (Write-RuleFinding -Id $rule -Message $line -Path $RuleStatusPath) { $counted++ } else { $warned++ }
+        $place = @{
+            File   = Get-CodeShapeFindingFile -Path $finding.Groups['file'].Value
+            Line   = [int] $finding.Groups['line'].Value
+            Column = [int] $finding.Groups['column'].Value
+        }
+        if (Write-RuleFinding -Id $rule -Message $line -Path $RuleStatusPath @place) { $counted++ } else { $warned++ }
     }
 
     if ($ExitCode -ne 1) { return $ExitCode }
