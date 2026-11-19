@@ -1736,6 +1736,12 @@ Describe 'KitReview.psm1' {
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
                 Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":2,"status":"queued","conclusion":null}]}'
                 Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs still going: ci' }
+            # Seen on PR 117 (2026-11-19): just after `gh run rerun`, the run read queued and still said run_attempt 1; seconds
+            # later it read in_progress, attempt 2. So the attempt number can't tell a first attempt from a re-run.
+            @{ Case = 'a failed check whose run is queued again, its attempt not yet raised'; Failed = @('build'); Pending = @('ci')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"queued","conclusion":null}]}'
+                Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs still going: ci' }
             @{ Case = 'a failed check whose run is on its first attempt while another run of its group is going'; Failed = @('build'); Pending = @('ci')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
                 Runs = '{"workflow_runs":[{"id":9,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":2,"status":"queued","conclusion":null},{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
