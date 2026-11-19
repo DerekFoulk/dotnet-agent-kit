@@ -285,6 +285,19 @@ Describe 'Test-EmptyProjects.ps1' {
             $output | Should -Not -Match '::warning::'
         }
 
+        # Review of the branch: when the only failure is a missing project, the summary mustn't blame ARC-009.
+        It 'sums up a missing project as a broken solution, not an ARC-009 problem' {
+            Mock Write-Host {}
+            Mock Write-Host {} -ModuleName KitRuleStatus
+            $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Gone' = @{ 'Gone.cs' = 'class Gone { }' } }
+            Remove-Item -LiteralPath (Join-Path (Split-Path $solution) 'src' 'App.Gone') -Recurse
+
+            Invoke-EmptyProjectsCheck -Solution $solution -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 1
+
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 project the solution lists isn't there.*fix the solution" }
+            Should -Invoke Write-Host -Times 0 -Exactly -ParameterFilter { "$Object" -match 'ARC-009|Remove a project' }
+        }
+
         It 'says so and exits 0 when every project holds code' {
             $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' } }
 
