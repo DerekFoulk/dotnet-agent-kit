@@ -859,10 +859,10 @@ Describe 'KitReview.psm1' {
                     ConvertTo-Json -Depth 15 -Compress
             }
             # A fake Get-PullRequestStatus result with the fields the real one always sets: the read's starting head is the
-            # head, and no runs are pending or failed, unless the test says otherwise.
+            # head, and no runs are pending or failed and no failure is settled, unless the test says otherwise.
             function global:New-StatusFake {
                 param([Parameter(Mandatory)] [hashtable] $Fields)
-                $status = @{ Checks = @(); PendingRuns = @(); FailedRuns = @(); StartHeadSha = $Fields['HeadSha'] }
+                $status = @{ Checks = @(); PendingRuns = @(); FailedRuns = @(); SettledFailures = @(); StartHeadSha = $Fields['HeadSha'] }
                 foreach ($key in $Fields.Keys) { $status[$key] = $Fields[$key] }
                 [pscustomobject] $status
             }
@@ -905,8 +905,8 @@ Describe 'KitReview.psm1' {
         # A pass needs the next poll to find it again; a poll in between that finds CI not done starts that over.
         It 'confirms a pass again after a poll finds CI not done' {
             InModuleScope KitReview {
-                $passed = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @() }
-                $going = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @() }
+                $passed = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @(); SettledFailures = @() }
+                $going = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @(); SettledFailures = @() }
                 $script:polls = @($passed, $going, $passed, $passed)
                 $script:sleeps = 0
                 Mock Start-Sleep { $script:sleeps++ }
@@ -924,7 +924,7 @@ Describe 'KitReview.psm1' {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @() } }
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @(); SettledFailures = @() } }
 
                 (Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20).Message | Should -Be 'Timed out after 1 minute at head2: workflow runs still going: ci.'
             }
@@ -937,7 +937,7 @@ Describe 'KitReview.psm1' {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @() } }
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @(); SettledFailures = @() } }
 
                 (Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks).Message | Should -Be 'Timed out after 4 minutes at head2: workflow runs still going: ci.'
             }

@@ -484,8 +484,38 @@ function Select-CurrentCheck {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Items, [long[]] $ReplacedRuns = @())
 
     @($Items | Where-Object { $null -eq $_.RunId -or $_.RunId -notin $ReplacedRuns } | Group-Object Key -CaseSensitive | ForEach-Object {
-            $_.Group | Sort-Object Id, Started, Order | Select-Object -Last 1 | Select-Object Name, Result
+            $_.Group | Sort-Object Id, Started, Order | Select-Object -Last 1 | Select-Object Name, Result, RunId
         })
+}
+
+# The key that groups a workflow's runs for one trigger: runs of one workflow for different triggers (a push and a pull
+# request), on different branches with this commit, from a fork's branch of the same name, or for different pull
+# requests from one branch are independent, so each group counts (Copilot's sixth and eighth reviews of PR #73). Branch
+# names are case-sensitive, so compare keys case-sensitively (Copilot's ninth review).
+function Get-RunGroupKey {
+    param([Parameter(Mandatory)] [hashtable] $Run)
+    $source = if ($Run['head_repository']) { "$($Run['head_repository']['full_name'])" } else { '' }
+    $pulls = @($Run['pull_requests'] | Where-Object { $_ } | ForEach-Object { "$($_['number'])" } | Sort-Object) -join ','
+    "$($Run['workflow_id'] ?? $Run['name'])|$($Run['event'])|$source|$($Run['head_branch'])|$pulls"
+}
+
+# The failed checks that can't change without a push, so a wait can report them while other checks still run. A check's
+# run can be re-run only once it has completed, and a re-run raises its attempt and goes back to queued; until the new
+# attempt's job starts, the old attempt's failed check is still the latest of its name (a job that needs another starts
+# minutes later; the reviewer agent's plan review). So a failed check is settled while its run is still going only on the
+# run's first attempt, with no other run of its group going.
+function Get-SettledFailure {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Checks, [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Runs)
+
+    $going = @($Runs | Where-Object { "$($_['status'])" -ne 'completed' })
+    foreach ($check in @($Checks | Where-Object Result -EQ 'Failed')) {
+        $run = $Runs | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -eq $check.RunId } | Select-Object -First 1
+        if (-not $run) { continue }
+        $key = Get-RunGroupKey -Run $run
+        $goingInGroup = @($going | Where-Object { (Get-RunGroupKey -Run $_) -ceq $key })
+        $firstAttempt = $goingInGroup.Count -eq 1 -and $goingInGroup[0] -eq $run -and $run['run_attempt'] -eq 1
+        if ($firstAttempt) { $check.Name }
+    }
 }
 
 # The pull request's state, head and checks. With -WithRuns it also lists the head commit's GitHub Actions runs that
@@ -507,15 +537,8 @@ function Get-PullRequestStatus {
         # GitHub lists the runs 100 to a page; --paginate --slurp reads every page into one array, one item per page.
         $pages = Invoke-Gh api "repos/$Repository/actions/runs?head_sha=$($view.HeadSha)&per_page=100" --paginate --slurp | ConvertFrom-Json -AsHashtable
         $every = @(@($pages) | ForEach-Object { $_['workflow_runs'] } | Where-Object { $_ })
-        # Runs of one workflow for different triggers (a push and a pull request), on different branches with this
-        # commit, from a fork's branch of the same name, or for different pull requests from one branch are independent,
-        # so each counts (Copilot's sixth and eighth reviews of PR #73). Branch names are case-sensitive, and so is the
-        # grouping (Group-Object ignores case by default; Copilot's ninth review).
-        $latest = @($every | Group-Object {
-                $source = if ($_['head_repository']) { "$($_['head_repository']['full_name'])" } else { '' }
-                $pulls = @($_['pull_requests'] | Where-Object { $_ } | ForEach-Object { "$($_['number'])" } | Sort-Object) -join ','
-                "$($_['workflow_id'] ?? $_['name'])|$($_['event'])|$source|$($_['head_branch'])|$pulls"
-            } -CaseSensitive | ForEach-Object {
+        # Independent runs each count (Get-RunGroupKey); Group-Object ignores case unless told not to.
+        $latest = @($every | Group-Object { Get-RunGroupKey -Run $_ } -CaseSensitive | ForEach-Object {
                 # The run started last counts: run_started_at is its latest attempt's start, so re-running an older run
                 # makes it the current one, though it keeps its creation time (Copilot's twelfth review of PR #73). Runs
                 # started in the same second are ordered by id, which GitHub assigns in order.
@@ -538,7 +561,11 @@ function Get-PullRequestStatus {
         }
     }
     $checks = Select-CurrentCheck -Items $view.Items -ReplacedRuns $replaced
-    [pscustomobject]@{ State = $view.State; HeadSha = $view.HeadSha; StartHeadSha = $startHead; Checks = $checks; PendingRuns = $pendingRuns; FailedRuns = $failedRuns }
+    $settled = if ($WithRuns -and $view.HeadSha) { @(Get-SettledFailure -Checks @($checks) -Runs $every) } else { @() }
+    [pscustomobject]@{
+        State = $view.State; HeadSha = $view.HeadSha; StartHeadSha = $startHead; Checks = $checks
+        PendingRuns = $pendingRuns; FailedRuns = $failedRuns; SettledFailures = $settled
+    }
 }
 # The time now: the clock Wait-PullRequest measures its limit by, which the tests replace (TST-010).
 function Get-KitUtcNow {
@@ -565,6 +592,30 @@ function Get-CopilotReviewRequestTime {
 function Get-ReviewReason {
     param([Parameter(Mandatory)] $Review)
     ("$($Review.Body)".Trim() -split '\r?\n')[0]
+}
+
+# What failed in a read of the checks, as Wait-PullRequest's messages say it; nothing if nothing failed.
+function Get-FailureText {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Checks,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $FailedChecks,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $FailedRuns
+    )
+    $parts = @(
+        if ($FailedChecks) { "$($FailedChecks.Count) of $($Checks.Count) checks failed: $($FailedChecks -join ', ')" }
+        if ($FailedRuns) { "workflow runs failed: $($FailedRuns -join ', ')" }
+    )
+    $parts -join '; '
+}
+
+# What CI still runs at a read: the pending checks by name, or, while no check is pending, the workflow runs still going
+# (a job that needs another isn't a check until its turn comes).
+function Get-StillRunning {
+    param([Parameter(Mandatory)] $Status)
+    $checks = @($Status.Checks | Where-Object Result -EQ 'Pending' | ForEach-Object Name)
+    if ($checks) { return [pscustomobject]@{ Names = $checks; Text = "$($checks.Count) checks still running: $($checks -join ', ')" } }
+    $runs = @($Status.PendingRuns)
+    [pscustomobject]@{ Names = $runs; Text = "workflow runs still going: $($runs -join ', ')" }
 }
 
 # Wait-PullRequest's result when a push moved the head while it waited.
@@ -669,15 +720,12 @@ function Wait-PullRequest {
             $pending = @($checks | Where-Object Result -EQ 'Pending')
             # A failed workflow run is a failure even when the checks don't show its job (Copilot's re-review of PR #73).
             $failedRuns = @($status.FailedRuns)
+            $failed = @($checks | Where-Object Result -EQ 'Failed' | ForEach-Object Name)
+            $failures = Get-FailureText -Checks $checks -FailedChecks $failed -FailedRuns $failedRuns
             if (($checks.Count -gt 0 -or $failedRuns.Count -gt 0) -and $pending.Count -eq 0 -and @($status.PendingRuns).Count -eq 0) {
-                $failed = @($checks | Where-Object Result -EQ 'Failed' | ForEach-Object Name)
                 $outcome = if ($failed -or $failedRuns) { 'ChecksFailed' } else { 'ChecksPassed' }
                 $skipped = @($checks | Where-Object Result -EQ 'Skipped').Count
-                $parts = @(
-                    if ($failed) { "$($failed.Count) of $($checks.Count) checks failed: $($failed -join ', ')" }
-                    if ($failedRuns) { "workflow runs failed: $($failedRuns -join ', ')" }
-                )
-                $text = if ($parts) { ($parts -join '; ') + '.' } else { "every check passed ($($checks.Count - $skipped) passed, $skipped skipped)." }
+                $text = if ($failures) { "$failures." } else { "every check passed ($($checks.Count - $skipped) passed, $skipped skipped)." }
                 # A pass rests on one read, and a workflow run created just after it isn't in it, so a pass counts only
                 # once the next poll finds it again; a failure is final at once (Copilot's ninth review of PR #73).
                 if ($outcome -eq 'ChecksPassed' -and $passSeenAt -ne $status.HeadSha) { $passSeenAt = $status.HeadSha }
@@ -690,7 +738,19 @@ function Wait-PullRequest {
                     }
                 }
             }
-            else { $passSeenAt = $null }
+            else {
+                $passSeenAt = $null
+                # A settled failure can't change without a push, so it ends the wait while other checks still run.
+                if (@($status.SettledFailures).Count -gt 0) {
+                    $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
+                    if ($changed) { return $changed }
+                    $running = Get-StillRunning -Status $status
+                    return [pscustomobject]@{
+                        Event = 'ChecksFailed'; HeadSha = $status.HeadSha; Review = $null; FailedChecks = @($failed) + @($failedRuns); PendingChecks = $running.Names
+                        Message = "CI failed at ${head} with checks still running: $failures; $($running.Text). To wait for the rest, pass FailedChecks as -KnownFailures."
+                    }
+                }
+            }
         }
 
         $remaining = ($deadline - (Get-KitUtcNow)).TotalSeconds
