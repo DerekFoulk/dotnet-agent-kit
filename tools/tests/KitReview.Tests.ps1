@@ -1822,6 +1822,27 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # The reviewer agent's branch review: once every run has completed, the checks are read again, and a re-run asked for
+        # between the reads shows there as a new pending check of a run the runs read called completed. That read is stale,
+        # so the old attempt's failure isn't settled on that poll.
+        It 'settles no failure when the checks read again show a run the runs read called completed going again' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $failed = @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 }
+                $rerun = @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'find'; status = 'QUEUED'; conclusion = $null; runId = 10; id = 2 }
+                $script:views = @((ConvertTo-RollupJson -Checks @($failed)), (ConvertTo-RollupJson -Checks @($failed, $rerun)))
+                $script:viewCalls = 0
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'TimedOut'
+            }
+        }
+
         # The reviewer agent's plan review: a wait for Copilot's review alone says nothing about CI when it times out.
         It 'names no failed check when a wait for a review times out' {
             InModuleScope KitReview {
