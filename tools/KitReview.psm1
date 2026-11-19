@@ -517,6 +517,11 @@ function Get-SettledFailure {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $FailedRuns
     )
 
+    # The checks can come from a read after the runs (Get-PullRequestStatus reads them again once every run completed). A
+    # pending check of a run the runs read called completed means a re-run started between the reads: that read is stale,
+    # so nothing is settled on it (the reviewer agent's branch review).
+    $completed = @($Runs | Where-Object { "$($_['status'])" -eq 'completed' -and $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
+    if (@($Checks | Where-Object { $_.Result -eq 'Pending' -and $null -ne $_.RunId -and $_.RunId -in $completed }).Count -gt 0) { return }
     $going = @($Runs | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { Get-RunGroupKey -Run $_ })
     $failedChecks = @($Checks | Where-Object Result -EQ 'Failed')
     foreach ($check in $failedChecks) {
