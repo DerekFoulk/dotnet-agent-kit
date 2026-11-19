@@ -554,7 +554,7 @@ rules:
         text: "Random number generation: RandomNumberGenerator.GetBytes RandomNumberGenerator.Fill"
       - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
         retrieved: "2026-11-17"
-        text: "Generating a key from a password: Rfc2898DeriveBytes.Pbkdf2"
+        text: "Generating a key from a password: Rfc2898DeriveBytes.Pbkdf2" # gitleaks:allow (a method name, not a key; apps get this file, ADR-0024)
       - source: "https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode"
         retrieved: "2026-11-17"
         text: "to use padded CBC block ciphers safely, you must combine them with an HMAC (or another data integrity check) that you validate using a constant time comparison before trying to decrypt the data."

@@ -42,7 +42,7 @@ Accepted as recommended (owner, 2026-11-01).
 - GitHub secret scanning stays off for these repos.
 - **Amended by ADR-0031 (2026-11-05):** the kit repo is public, where GitHub secret scanning runs for free. The CI gitleaks scan stays the required check for every repo, and the only scan on private app repos.
 - **Amended by ADR-0060 (2026-11-11):** the gitleaks image is pinned by tag and digest in the kit's `.config/gitleaks/Dockerfile`, where Dependabot's docker updater moves both; the scan runs the image that file names.
-- **Update (2026-11-18):** a finding that isn't a secret is listed by its fingerprint (commit, file, rule and line) in the kit's `.gitleaksignore`, with the reason above it, so only that one finding in that one commit is skipped. The first is a stored Microsoft Learn quote naming `Rfc2898DeriveBytes.Pbkdf2` (ADR-0082).
+- **Update (2026-11-18):** a finding that isn't a secret is listed by its fingerprint (commit, file, rule and line) in the kit's `.gitleaksignore`, with the reason above it, so only that one finding in that one commit is skipped. The first is a stored Microsoft Learn quote naming `Rfc2898DeriveBytes.Pbkdf2` (ADR-0082). A fingerprint holds only in the repo whose commits it names, and a merge commit (GIT-001) keeps them, while a rebase wouldn't. A line in a file that apps get, such as `docs/standards/`, also carries gitleaks' inline `gitleaks:allow` marker, so the app's own scan skips it too; that quote's line does.
 
 ## Pillars affected
 
