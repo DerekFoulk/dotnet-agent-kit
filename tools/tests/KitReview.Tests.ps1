@@ -1656,6 +1656,68 @@ Describe 'KitReview.psm1' {
             }
         }
 
+        # The reviewer agent's plan review: what else can't change without a push. A check of a run that completed, with
+        # nothing of its workflow going (the job may have continue-on-error, so the run passed); a commit status, which
+        # belongs to no run; and a run that failed with no failed check of its own, such as a startup failure, while no
+        # run of its group (Get-RunGroupKey) is going. A run of the same workflow for another branch is another group.
+        It 'returns ChecksFailed at once for <Case>, while CI still runs' -ForEach @(
+            @{ Case = 'a failed check of a completed run'; Failed = @('build'); Pending = @('mutation')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"success"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = '1 of 1 checks failed: build; workflow runs still going: mutation' }
+            @{ Case = 'a failed commit status'; Failed = @('deploy'); Pending = @('mutation')
+                Checks = @(@{ __typename = 'StatusContext'; context = 'deploy'; state = 'FAILURE' })
+                Runs = '{"workflow_runs":[{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = '1 of 1 checks failed: deploy; workflow runs still going: mutation' }
+            @{ Case = 'a workflow run that failed without a check'; Failed = @('ci'); Pending = @('mutation')
+                Checks = @()
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"startup_failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = 'workflow runs failed: ci; workflow runs still going: mutation' }
+            @{ Case = 'a failed run while its workflow runs for another branch'; Failed = @('ci'); Pending = @('ci')
+                Checks = @()
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":11,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/b","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = 'workflow runs failed: ci; workflow runs still going: ci' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Checks = $Checks; Runs = $Runs; Failed = $Failed; Pending = $Pending; Expected = $Expected } {
+                param($Checks, $Runs, $Failed, $Pending, $Expected)
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = ConvertTo-RollupJson -Checks $Checks
+                $script:runsJson = $Runs
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.FailedChecks | Should -Be $Failed
+                $result.PendingChecks | Should -Be $Pending
+                $result.Message | Should -Be "CI failed at head2 with checks still running: $Expected. To wait for the rest, pass FailedChecks as -KnownFailures."
+            }
+        }
+
+        # A push or a close can land during a poll's reads, so the state and head are read again before a settled failure
+        # is reported, as before any other CI result.
+        It 'returns <Outcome> when the pull request is <Change> before a settled failure is reported' -ForEach @(
+            @{ Change = 'pushed to'; State = 'OPEN'; Head = 'head3'; Outcome = 'HeadMoved' }
+            @{ Change = 'closed'; State = 'CLOSED'; Head = 'head2'; Outcome = 'Closed' }
+        ) {
+            InModuleScope KitReview -Parameters @{ State = $State; Head = $Head; Outcome = $Outcome } {
+                param($State, $Head, $Outcome)
+                $script:later = New-StatusFake @{ State = $State; HeadSha = $Head }
+                $settled = New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'gitleaks'; Result = 'Failed'; RunId = 10 }); PendingRuns = @('mutation'); SettledFailures = @('gitleaks') }
+                $script:settled = $settled
+                Mock Get-PullRequestStatus { $script:settled } -ParameterFilter { $WithRuns }
+                Mock Get-PullRequestStatus { $script:later }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be $Outcome
+            }
+        }
+
         # A push while it waits makes the old head's review and checks beside the point.
         It 'returns HeadMoved, with the new head, when someone pushes while it waits' {
             InModuleScope KitReview {
