@@ -678,7 +678,8 @@ function Wait-PullRequest {
         [Parameter(Mandatory)] [int] $Number,
         [ValidateSet('Review', 'Checks', 'Either')] [string] $For = 'Either',
         [ValidateRange(1, 180)] [int] $TimeoutMinutes = 4,
-        [ValidateRange(5, 600)] [int] $IntervalSeconds = 20
+        [ValidateRange(5, 600)] [int] $IntervalSeconds = 20,
+        [string[]] $KnownFailures = @()
     )
 
     # The limit is elapsed time, and a sleep never runs past it (Copilot's review of PR #73).
