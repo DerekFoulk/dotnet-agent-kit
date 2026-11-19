@@ -757,8 +757,9 @@ function Wait-PullRequest {
             }
             else {
                 $passSeenAt = $null
-                # A settled failure can't change without a push, so it ends the wait while other checks still run.
-                if (@($status.SettledFailures).Count -gt 0) {
+                # A settled failure can't change without a push, so it ends the wait while other checks still run, unless
+                # the caller already knows it. Check names are case-sensitive.
+                if (@($status.SettledFailures | Where-Object { $_ -cnotin $KnownFailures }).Count -gt 0) {
                     $changed = Get-PullRequestChange -Repository $Repository -Number $Number -HeadSha $status.HeadSha
                     if ($changed) { return $changed }
                     $running = Get-StillRunning -Status $status
