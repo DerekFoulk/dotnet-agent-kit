@@ -272,6 +272,19 @@ Describe 'Test-EmptyProjects.ps1' {
             $output | Should -Match '1 empty-project problem.*warning.*ARC-009 is proposed'
         }
 
+        # Review of the branch: a project the solution lists but that isn't there is a broken solution, not ARC-009's
+        # concern, so it fails whatever ARC-009's status.
+        It 'fails on a project the solution lists but that isn''t there, while ARC-009 is proposed' {
+            $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Gone' = @{ 'Gone.cs' = 'class Gone { }' } }
+            Remove-Item -LiteralPath (Join-Path (Split-Path $solution) 'src' 'App.Gone') -Recurse
+
+            $output = pwsh -NoProfile -File $script:check -Solution $solution -RuleStatusPath (New-StatusFile 'proposed') 2>&1 | Out-String
+
+            $LASTEXITCODE | Should -Be 1 -Because $output
+            $output | Should -Match 'src/App\.Gone/App\.Gone\.csproj is in the solution but isn''t there'
+            $output | Should -Not -Match '::warning::'
+        }
+
         It 'says so and exits 0 when every project holds code' {
             $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' } }
 
