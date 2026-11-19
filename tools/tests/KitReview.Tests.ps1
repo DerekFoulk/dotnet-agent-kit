@@ -1632,8 +1632,8 @@ Describe 'KitReview.psm1' {
         }
 
         # PR 116: gitleaks failed while the mutation workflow was still going, and the wait said nothing until it timed out.
-        # A final failure, one no run still going can replace (here, a job of the CI run, which has completed), ends the wait
-        # on the first poll that shows it, whatever else still runs.
+        # A final failure, one no run still going can replace (here, a job of the CI run, which has completed), ends the
+        # wait on the first poll that shows it, whatever else still runs.
         It 'returns ChecksFailed on the first poll that shows a settled failure, naming what still runs' {
             InModuleScope KitReview {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
