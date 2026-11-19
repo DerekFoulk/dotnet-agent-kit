@@ -1742,7 +1742,7 @@ Describe 'KitReview.psm1' {
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
                 Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"queued","conclusion":null}]}'
                 Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs still going: ci' }
-            @{ Case = 'a failed check whose run is on its first attempt while another run of its group is going'; Failed = @('build'); Pending = @('ci')
+            @{ Case = 'a failed check whose run and another run of its group are both going'; Failed = @('build'); Pending = @('ci')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
                 Runs = '{"workflow_runs":[{"id":9,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":2,"status":"queued","conclusion":null},{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
                 Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs still going: ci' }
@@ -1789,10 +1789,10 @@ Describe 'KitReview.psm1' {
         # in -KnownFailures don't end the wait; a new one does, and so does CI finishing. A run whose failed check is known
         # doesn't come back as the run's own failure. Names compare case-sensitively, as check names do.
         It 'with -KnownFailures, returns <Expected> on <Case>' -ForEach @(
-            @{ Case = 'a known failure while CI still runs'; Expected = 'TimedOut'; Known = @('gitleaks')
+            @{ Case = 'a known failure while another workflow still runs'; Expected = 'TimedOut'; Known = @('gitleaks')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
                 Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"success"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
-            @{ Case = 'a known failed check whose run then failed, while CI still runs'; Expected = 'TimedOut'; Known = @('gitleaks')
+            @{ Case = 'a known failed check whose run then failed, while another workflow still runs'; Expected = 'TimedOut'; Known = @('gitleaks')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
                 Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
             @{ Case = 'a new failure besides a known one'; Expected = 'ChecksFailed'; Known = @('gitleaks')
