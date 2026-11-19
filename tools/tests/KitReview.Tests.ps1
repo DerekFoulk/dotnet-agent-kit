@@ -1657,10 +1657,10 @@ Describe 'KitReview.psm1' {
             }
         }
 
-        # The reviewer agent's plan review: what else is final. A check of a run that completed, with
-        # nothing of its workflow going (the job may have continue-on-error, so the run passed); a commit status, which
-        # belongs to no run; and a run that failed with no failed check of its own, such as a startup failure, while no
-        # run of its group (Get-RunGroupKey) is going. A run of the same workflow for another branch is another group.
+        # The reviewer agent's plan review: what else is final. A check of a run that completed, with nothing of its
+        # workflow going (the job may have continue-on-error, so the run passed); a commit status, which belongs to no
+        # run; and a run that failed with no failed check of its own, such as a startup failure, while no run of its group
+        # (Get-RunGroupKey) is going. A run of the same workflow for another branch is another group.
         It 'returns ChecksFailed at once for <Case>, while CI still runs' -ForEach @(
             @{ Case = 'a failed check of a completed run'; Failed = @('build'); Pending = @('mutation')
                 Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
