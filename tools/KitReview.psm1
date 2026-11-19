@@ -499,22 +499,37 @@ function Get-RunGroupKey {
     "$($Run['workflow_id'] ?? $Run['name'])|$($Run['event'])|$source|$($Run['head_branch'])|$pulls"
 }
 
-# The failed checks that can't change without a push, so a wait can report them while other checks still run. A check's
-# run can be re-run only once it has completed, and a re-run raises its attempt and goes back to queued; until the new
-# attempt's job starts, the old attempt's failed check is still the latest of its name (a job that needs another starts
-# minutes later; the reviewer agent's plan review). So a failed check is settled while its run is still going only on the
-# run's first attempt, with no other run of its group going.
+# The failures that can't change without a push, by name, so a wait can report them while other checks still run (the
+# reviewer agent's plan review). A run can be re-run only once it has completed, and a re-run raises its attempt and goes
+# back to queued; until the new attempt's job starts, the old attempt's failed check is still the latest of its name (a
+# job that needs another starts minutes later). And while any run of a group is going, no ordering of the group's runs
+# is safe (Get-PullRequestStatus). So a failure is settled when:
+# - it's a failed check that belongs to no workflow run (a commit status, or another app's check);
+# - it's a failed check of a listed run, and no run of that run's group is going, or the only one going is that run
+#   itself, on its first attempt;
+# - it's a failed run (the latest of its group, so completed) with no run of its group going and no failed check of its
+#   own, such as a startup failure: a run's failed checks already stand for it, so a known failed check doesn't come
+#   back as its run's failure.
 function Get-SettledFailure {
-    param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Checks, [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Runs)
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Checks,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Runs,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $FailedRuns
+    )
 
-    $going = @($Runs | Where-Object { "$($_['status'])" -ne 'completed' })
-    foreach ($check in @($Checks | Where-Object Result -EQ 'Failed')) {
+    $going = @($Runs | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { Get-RunGroupKey -Run $_ })
+    $failedChecks = @($Checks | Where-Object Result -EQ 'Failed')
+    foreach ($check in $failedChecks) {
+        if ($null -eq $check.RunId) { $check.Name; continue }
         $run = $Runs | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -eq $check.RunId } | Select-Object -First 1
         if (-not $run) { continue }
-        $key = Get-RunGroupKey -Run $run
-        $goingInGroup = @($going | Where-Object { (Get-RunGroupKey -Run $_) -ceq $key })
-        $firstAttempt = $goingInGroup.Count -eq 1 -and $goingInGroup[0] -eq $run -and $run['run_attempt'] -eq 1
-        if ($firstAttempt) { $check.Name }
+        $goingInGroup = @($going | Where-Object { $_ -ceq (Get-RunGroupKey -Run $run) }).Count
+        $alone = $goingInGroup -eq 0 -or ($goingInGroup -eq 1 -and "$($run['status'])" -ne 'completed' -and $run['run_attempt'] -eq 1)
+        if ($alone) { $check.Name }
+    }
+    foreach ($run in $FailedRuns) {
+        $ownFailure = @($failedChecks | Where-Object { $null -ne $_.RunId -and $_.RunId -eq [long] $run['id'] }).Count -gt 0
+        if (-not $ownFailure -and (Get-RunGroupKey -Run $run) -cnotin $going) { "$($run['name'])" }
     }
 }
 
@@ -553,7 +568,8 @@ function Get-PullRequestStatus {
         $kept = @($latest | Where-Object { $null -ne $_['id'] } | ForEach-Object { [long] $_['id'] })
         $replaced = @($every | Where-Object { $null -ne $_['id'] -and [long] $_['id'] -notin $kept -and "$($_['status'])" -eq 'completed' } | ForEach-Object { [long] $_['id'] })
         $pendingRuns = @($every | Where-Object { "$($_['status'])" -ne 'completed' } | ForEach-Object { "$($_['name'])" } | Select-Object -Unique)
-        $failedRuns = @($latest | Where-Object { "$($_['status'])" -eq 'completed' -and "$($_['conclusion'])" -notin 'success', 'skipped', 'neutral' } | ForEach-Object { "$($_['name'])" })
+        $failedRunItems = @($latest | Where-Object { "$($_['status'])" -eq 'completed' -and "$($_['conclusion'])" -notin 'success', 'skipped', 'neutral' })
+        $failedRuns = @($failedRunItems | ForEach-Object { "$($_['name'])" })
         if (-not $pendingRuns) {
             # A push between the reads moves HeadSha from StartHeadSha, and Wait-PullRequest returns HeadMoved before it
             # looks at any check.
@@ -561,7 +577,7 @@ function Get-PullRequestStatus {
         }
     }
     $checks = Select-CurrentCheck -Items $view.Items -ReplacedRuns $replaced
-    $settled = if ($WithRuns -and $view.HeadSha) { @(Get-SettledFailure -Checks @($checks) -Runs $every) } else { @() }
+    $settled = if ($WithRuns -and $view.HeadSha) { @(Get-SettledFailure -Checks @($checks) -Runs $every -FailedRuns $failedRunItems) } else { @() }
     [pscustomobject]@{
         State = $view.State; HeadSha = $view.HeadSha; StartHeadSha = $startHead; Checks = $checks
         PendingRuns = $pendingRuns; FailedRuns = $failedRuns; SettledFailures = $settled
