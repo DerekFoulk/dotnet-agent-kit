@@ -4,17 +4,26 @@
     Breaks a file on purpose, one mutant at a time, and reports whether the tests notice (owner, 2026-11-10).
 
 .DESCRIPTION
-    Each mutant replaces one exact piece of text in -Path. The tests in -TestPath then run in a fresh pwsh
-    -NoProfile process, and the file is restored byte for byte before the next mutant. A mutant the tests fail on,
-    or that breaks a test file's discovery or setup, is "Killed"; one they pass with "Survived" shows behavior no
-    test pins. Text found zero times or more than once is "NotFound" or "Ambiguous", and nothing runs.
+    Each mutant replaces one exact piece of text in -Path. The tests in -TestPath then run through
+    Invoke-KitTests.ps1, in a fresh pwsh -NoProfile process with $ErrorActionPreference 'Stop', from the root of
+    the repo this script is in (ADR-0092), and the file is restored byte for byte before the next mutant. A mutant
+    the tests fail on, or that breaks a test file's discovery or setup, is "Killed"; one they pass with "Survived"
+    shows behavior no test pins. Text found zero times or more than once is "NotFound" or "Ambiguous", and nothing
+    runs.
 
-    The tests run once on the unchanged file first. If they fail there, run no tests, or return no result, every
-    mutant is an "Error". So is a mutant whose own run returns no result or runs no tests. An error's Message says
-    why and adds what the test process printed.
+    The tests run once on the unchanged file first. If they fail there, run no tests (none passed or failed), or
+    return no result, every mutant is an "Error". So is a mutant whose own run returns no result or runs no tests.
+    An error's Message says why and adds what the test process printed.
 
-    Run it in a fresh clone, never in your working copy: the file is changed in place. A Ctrl+C or an error still
-    restores it, but a killed pwsh leaves the mutant on disk; `git checkout -- <file>` puts it back.
+    Run it in a fresh clone, never in your working copy: the file is changed in place. Run that clone's own copy
+    of this script, since its tests run from the root of the repo the script is in. A Ctrl+C or an error still
+    restores the file, but a killed pwsh leaves the mutant on disk; `git restore -- <path>` puts it back. Never
+    put a file back by writing saved text to a path held in a session variable: the restore here reads only this
+    script's own variables, and nothing runs between the save and the restore but its own functions and a child
+    process.
+
+    Run it with ./ or &, never dot-sourced: dot-sourced, it refuses, though PowerShell has already set its
+    parameters ($Path, $TestPath, $Mutant) in your session.
 
     -Find is matched exactly, line endings included, so a multi-line -Find must use the file's own: .ps1 files
     are checked out with CRLF everywhere, and .md files with the platform's own. The file is read as UTF-8 (a
@@ -40,33 +49,21 @@ if ($MyInvocation.InvocationName -eq '.') {
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Runs the Pester tests at $TestPath in a fresh process, so no state from this session leaks in. Returns whether
-# Pester returned a result, how many tests ran and failed, whether a test file or block broke outside a test (a
-# failed discovery, BeforeAll or AfterAll), and everything else the process printed, on stdout or stderr, for the
-# message of an error.
+# Runs the Pester tests at $TestPath through Invoke-KitTests.ps1, the kit's one launcher (ADR-0092): a fresh pwsh
+# process, so no state from this session leaks in either way. Returns whether Pester returned a result, how many
+# tests there were, how many ran (passed or failed: a skipped or filtered-out test proves nothing), how many
+# failed, whether a test file or block broke outside a test (a failed discovery, BeforeAll or AfterAll), and
+# everything else the process printed, on stdout or stderr, which the launcher shows on the information stream,
+# for the message of an error.
 function Invoke-TestRun([string] $TestPath) {
-    # Pester reads Run.Path as a wildcard pattern, so a folder named "x [1]" needs escaping.
-    $literal = [WildcardPattern]::Escape($TestPath) -replace "'", "''"
-    $marker = 'Invoke-Mutant result: '
-    $command = @"
-`$c = New-PesterConfiguration
-`$c.Run.Path = '$literal'
-`$c.Run.PassThru = `$true
-`$c.Output.Verbosity = 'None'
-`$r = Invoke-Pester -Configuration `$c
-'$marker' + (@{ Total = `$r.TotalCount; Failed = `$r.FailedCount; Broken = `$r.FailedContainersCount + `$r.FailedBlocksCount } | ConvertTo-Json -Compress)
-"@
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
-    $lines = @(& pwsh -NoProfile -NonInteractive -EncodedCommand $encoded 2>&1 | ForEach-Object { "$_" })
-    $resultLine = $lines | Where-Object { $_.StartsWith($marker) } | Select-Object -Last 1
-    $printed = (@($lines | Where-Object { -not $_.StartsWith($marker) -and $_.Trim() } | ForEach-Object Trim) -join ' ')
-    $run = if ($resultLine) { $resultLine.Substring($marker.Length) | ConvertFrom-Json }
-    # Invoke-Pester prints its own failure, such as "No test files were found", and returns nothing, so the result
-    # line then holds no counts.
-    if ($null -eq $run -or $null -eq $run.Total) {
-        return [pscustomobject]@{ Returned = $false; Total = 0; Failed = 0; Broken = 0; Printed = $printed }
+    $streams = @(& (Join-Path $PSScriptRoot 'Invoke-KitTests.ps1') -Path $TestPath -Output None 6>&1)
+    $run = $streams | Where-Object { $_ -isnot [Management.Automation.InformationRecord] } | Select-Object -Last 1
+    $printed = @($streams | Where-Object { $_ -is [Management.Automation.InformationRecord] } |
+            ForEach-Object { "$($_.MessageData)".Trim() } | Where-Object { $_ }) -join ' '
+    [pscustomobject]@{
+        Returned = $run.Returned; Total = $run.Total; Ran = $run.Passed + $run.Failed; Failed = $run.Failed
+        Broken = $run.Broken; Printed = $printed
     }
-    [pscustomobject]@{ Returned = $true; Total = $run.Total; Failed = $run.Failed; Broken = $run.Broken; Printed = $printed }
 }
 
 # An error's reason, followed by what the test process printed, if anything.
@@ -106,7 +103,7 @@ foreach ($m in $Mutant) {
         $baselineProblem =
             if (-not $baseline.Returned) { Format-Problem 'Pester returned no result on the unchanged file.' $baseline }
             elseif ($baseline.Failed -gt 0 -or $baseline.Broken -gt 0) { 'The tests already fail on the unchanged file.' }
-            elseif ($baseline.Total -eq 0) { Format-Problem 'The tests ran no tests on the unchanged file.' $baseline }
+            elseif ($baseline.Ran -eq 0) { Format-Problem 'The tests ran no tests on the unchanged file.' $baseline }
         $baselineDone = $true
     }
     if ($baselineProblem) {
@@ -124,7 +121,7 @@ foreach ($m in $Mutant) {
             # A mutant that breaks a test file's discovery or setup is caught as surely as one that fails a test.
             New-Result $m.Name 'Killed' $run $null
         }
-        elseif ($run.Total -eq 0) {
+        elseif ($run.Ran -eq 0) {
             New-Result $m.Name 'Error' $run (Format-Problem 'No tests ran with the mutant in place.' $run)
         }
         else {
