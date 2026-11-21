@@ -66,4 +66,18 @@ Describe 'Fixture' {
         $result.ExitCode | Should -Be 1
         $LASTEXITCODE | Should -Be 1
     }
+
+    # CI's pwsh steps run with 'Stop' (GitHub prepends it), so a local run must too, or a non-terminating error
+    # passes here and fails there.
+    It 'runs the tests with $ErrorActionPreference set to Stop, as CI does' {
+        $path = New-TestFile -Body @'
+Describe 'Fixture' {
+    It 'stops on errors' { $ErrorActionPreference | Should -Be 'Stop' }
+}
+'@
+
+        $result = & $launcher -Path $path -Output None
+
+        $result.Passed | Should -Be 1
+    }
 }
