@@ -1,7 +1,42 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Runs the kit's Pester tests in a child pwsh process (ADR-0092).
+    Runs the kit's Pester tests in a child pwsh process, so nothing Pester does reaches your session (ADR-0092).
+
+.DESCRIPTION
+    The one way to run the kit's script tests locally. Never run Invoke-Pester in Claude Code's PowerShell tool
+    session, which keeps its variables between calls: twice, a run there left a path variable pointing into
+    Pester's own module folder, and a later "restore" of a script through it overwrote a Pester file.
+
+    Each -Path is resolved where you stand and passed to Pester literally (escaped, since Pester reads paths as
+    wildcard patterns). The tests run in a new `pwsh -NoProfile -NonInteractive` process, with
+    $ErrorActionPreference set to 'Stop' as in CI, from the root of the repo this script is in. Pester's own
+    output is shown as it runs.
+
+    Returns ExitCode, Returned (whether Pester returned a result), Total, Passed, Failed, Skipped, NotRun and
+    Broken (blocks and files that failed outside a test), and exits with ExitCode: 0 only when Pester returned
+    a result with no failed test or block and at least one test passed or failed. A run that only skipped
+    tests, or whose filter matched none, proves nothing, so it exits 1.
+
+    Run it with ./ or &, never dot-sourced: dot-sourced, it refuses, though PowerShell has already set its
+    parameters ($Path, $FullNameFilter, $Output) in your session.
+
+.PARAMETER Path
+    Test files or folders. Defaults to tools/tests in this script's repo.
+
+.PARAMETER FullNameFilter
+    Pester's Filter.FullName: run only the tests whose full name (Describe, Context and It, joined by dots)
+    matches one of these wildcard patterns.
+
+.PARAMETER Output
+    Pester's Output.Verbosity: None, Normal (the default), Detailed or Diagnostic.
+
+.EXAMPLE
+    ./tools/Invoke-KitTests.ps1
+    Every script test.
+
+.EXAMPLE
+    ./tools/Invoke-KitTests.ps1 -Path ./tools/tests/Set-AgentMode.Tests.ps1 -Output Detailed
 #>
 [CmdletBinding()]
 param(
