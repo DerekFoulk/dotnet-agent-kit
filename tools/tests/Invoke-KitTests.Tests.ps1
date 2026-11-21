@@ -37,4 +37,13 @@ Describe 'Fixture' {
         $result.ExitCode | Should -Be 0
         $LASTEXITCODE | Should -Be 0
     }
+
+    It 'runs only the tests -FullNameFilter names' {
+        $path = New-TestFile -Body $passing
+
+        $result = & $launcher -Path $path -FullNameFilter 'Fixture.two' -Output None
+
+        $result.Passed | Should -Be 1
+        $result.NotRun | Should -Be 1
+    }
 }
