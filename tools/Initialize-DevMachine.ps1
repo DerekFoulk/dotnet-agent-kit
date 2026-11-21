@@ -3,7 +3,7 @@
     Checks this machine for the dotnet-agent-kit toolchain and, with -Install, installs what's missing.
 
 .DESCRIPTION
-    Required: PowerShell 7.6 or later (the current LTS), Pester 6 (runs the kit's script tests), powershell-yaml (reads rule metadata), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
+    Required: PowerShell 7.6 or later (the current LTS), Pester 6 (runs the kit's script tests) with its signed files unchanged (on Windows; ADR-0092), powershell-yaml (reads rule metadata), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
     Later in the build: VS Code with the PowerShell extension, Docker.
 
     Nothing is installed unless you pass -Install; each install command is shown first, and -WhatIf

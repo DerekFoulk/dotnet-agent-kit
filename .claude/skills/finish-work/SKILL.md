@@ -9,7 +9,7 @@ description: Verify a finished change against the definition of done, get the re
 
 Run every command in the **Commands table of `AGENTS.md`**, which gives this repo's paths, and keep the output for the PR. Each must pass:
 - the build, with zero warnings;
-- every test suite, with the coverage gate where the table has one;
+- every test suite, with the coverage gate where the table has one; the kit's script tests through `./tools/Invoke-KitTests.ps1`, never `Invoke-Pester` in your own session (ADR-0092);
 - every check: generated files current (if not, regenerate them and commit), ADR sections, Conventional Commit subjects and red→green order for `origin/main..HEAD`, and any other the table lists.
 
 Skip only the commands that write, such as regenerating without `-Check`, unless a check failed and asks for it. CI runs the same checks on the PR; a local pass first saves a round trip.

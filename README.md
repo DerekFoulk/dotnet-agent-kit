@@ -205,6 +205,7 @@ The rest of this page is reference: setting up a machine, the standards and the 
 |---|---|---|
 | PowerShell 7.6 or later (the current LTS) | Every kit script, and CI | Yes |
 | Pester 6 | The kit's script tests | Yes |
+| Pester's signed files unchanged (Windows) | Trusting a test run: twice a test run in a shared session overwrote one (ADR-0092) | Yes |
 | powershell-yaml | Reading rule metadata in `docs/standards` | Yes |
 | Git | Everything | Yes |
 | GitHub CLI, signed in | Pushing, PRs and reviews | Yes |
@@ -520,7 +521,9 @@ Applied 2026-11-12 with the owner's OK, and removed 2026-11-14 on his yes:
 ## Run the tests
 
 ```powershell
-Invoke-Pester -Path ./tools/tests
+./tools/Invoke-KitTests.ps1
 ```
+
+`tools/Invoke-KitTests.ps1` runs Pester in a child `pwsh -NoProfile` process, from the repo root, with `$ErrorActionPreference` set to `Stop` as in CI, and returns the counts; `-Path` and `-FullNameFilter` narrow the run. Don't run `Invoke-Pester` in a session you keep using: a Pester run can change that session's variables (ADR-0092).
 
 `tools/tests/BuildConfig.Tests.ps1` copies the root build config (`global.json`, `Directory.*.props`, `.editorconfig`, `nuget.config`, `.globalconfig`, `CodeMetricsConfig.txt`, `BannedSymbols.txt`, `BannedSymbols.Pure.txt`) into isolated workspaces and builds small fixture projects against it. It proves that clean code builds with a MinVer version and a lock file, and that `var`, nullable violations, `latest-all` analyzer findings, the rules `latest-all` leaves off, the metric limits and the banned APIs fail the build, while code at each metric limit builds (ADR-0043). It also checks that every banned symbol exists and that CRF-008 states the limits `CodeMetricsConfig.txt` sets.
