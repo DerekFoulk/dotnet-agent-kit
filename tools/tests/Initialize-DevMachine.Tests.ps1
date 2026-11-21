@@ -389,6 +389,33 @@ Describe 'Initialize-DevMachine.ps1 as a script' -Tag 'Machine' {
     }
 }
 
+Describe 'Get-PesterSignatureProblem on this machine' -Tag 'Machine' -Skip:(-not $IsWindows) {
+    # A fake Pester 6 next to the real one: its manifest is a copy of the running Pester's own, still validly signed;
+    # a script with no signature stands in for an overwritten file; a text file Authenticode can't sign is left out.
+    BeforeAll {
+        $fakeModules = Join-Path $TestDrive "modules-$(New-Guid)"
+        $fakeBase = Join-Path $fakeModules 'Pester' (Get-Module -Name Pester).Version.ToString()
+        New-Item -ItemType Directory -Path $fakeBase -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path (Get-Module -Name Pester).ModuleBase 'Pester.psd1') -Destination $fakeBase
+        Set-Content -LiteralPath (Join-Path $fakeBase 'Overwritten.ps1') -Value '"no signature here"'
+        Set-Content -LiteralPath (Join-Path $fakeBase 'notes.txt') -Value 'not a signable file'
+        $savedModulePath = $env:PSModulePath
+        $env:PSModulePath = $fakeModules + [IO.Path]::PathSeparator + $env:PSModulePath
+    }
+
+    AfterAll {
+        $env:PSModulePath = $savedModulePath
+    }
+
+    It 'reports a file of a type Authenticode signs whose signature isn''t valid, and no other' {
+        $texts = @(Get-PesterSignatureProblem).Text
+
+        $texts | Should -BeLike '*: Overwritten.ps1 is NotSigned'
+        $texts | Should -Not -BeLike '*Pester.psd1*'
+        $texts | Should -Not -BeLike '*notes.txt*'
+    }
+}
+
 Describe 'Invoke-InstallCommand' {
     # Real native commands, no mocks: winget and friends report failure by exit code, not by throwing.
     It 'throws when the installer exits nonzero, naming the exit code' {
