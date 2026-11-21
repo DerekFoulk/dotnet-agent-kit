@@ -16,10 +16,8 @@ $ErrorActionPreference = 'Stop'
 # A value for a single-quoted PowerShell string.
 function ConvertTo-Literal([string] $Value) { "'" + ($Value -replace "'", "''") + "'" }
 
-if (-not $Path) {
-    [pscustomobject]@{ ExitCode = 1; Returned = $false; Total = 0; Passed = 0; Failed = 0; Skipped = 0; NotRun = 0; Broken = 0 }
-    exit 1
-}
+$repoRoot = Split-Path -Path $PSScriptRoot -Parent
+if (-not $Path) { $Path = @(Join-Path $repoRoot 'tools' 'tests') }
 
 $marker = 'Invoke-KitTests result: '
 $paths = @($Path | ForEach-Object { ConvertTo-Literal (Resolve-Path -LiteralPath $_).Path }) -join ', '
