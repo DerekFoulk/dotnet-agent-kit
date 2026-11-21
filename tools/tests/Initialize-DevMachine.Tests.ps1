@@ -406,6 +406,10 @@ Describe 'Get-PesterSignatureProblem on this machine' -Tag 'Machine' -Skip:(-not
         Copy-Item -LiteralPath (Join-Path (Get-Module -Name Pester).ModuleBase 'Pester.ScriptScope.ps1') -Destination (Join-Path $fakeBase 'Signed.ps1')
         Set-Content -LiteralPath (Join-Path $fakeBase 'Overwritten.ps1') -Value '"no signature here"'
         Set-Content -LiteralPath (Join-Path $fakeBase 'notes.txt') -Value 'not a signable file'
+        # An older Pester, which the kit doesn't run, with an unsigned manifest of its own.
+        $oldBase = Join-Path $fakeModules 'Pester' '5.99.0'
+        New-Item -ItemType Directory -Path $oldBase -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $oldBase 'Pester.psd1') -Value "@{ ModuleVersion = '5.99.0' }"
         $savedModulePath = $env:PSModulePath
         $env:PSModulePath = $fakeModules + [IO.Path]::PathSeparator + $env:PSModulePath
     }
@@ -421,6 +425,7 @@ Describe 'Get-PesterSignatureProblem on this machine' -Tag 'Machine' -Skip:(-not
         $texts | Should -Contain 'Pester 6.99.0: Pester.psd1 is NotSigned'
         $texts | Should -Not -BeLike '*Signed.ps1 is*' -Because 'a validly signed file is fine'
         $texts | Should -Not -BeLike '*notes.txt*' -Because 'Authenticode can''t sign a text file'
+        $texts | Should -Not -BeLike 'Pester 5.99.0*' -Because 'the kit runs Pester 6 or later'
     }
 }
 
