@@ -10,6 +10,12 @@ param(
     [ValidateSet('None', 'Normal', 'Detailed', 'Diagnostic')] [string] $Output = 'Normal'
 )
 
+# First, before strict mode or a preference changes the caller's session: dot-sourced, every variable below would
+# land there too (ADR-0092).
+if ($MyInvocation.InvocationName -eq '.') {
+    throw 'Run Invoke-KitTests.ps1 with ./ or &, not dot-sourced: dot-sourced, it would leave its variables in your session.'
+}
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
