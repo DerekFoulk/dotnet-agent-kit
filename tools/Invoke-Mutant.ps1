@@ -132,3 +132,7 @@ foreach ($m in $Mutant) {
         [IO.File]::WriteAllBytes($file, $original)
     }
 }
+
+# Every mutant has its result, whatever it is. The launcher exits 1 when a mutant fails the tests, which would
+# otherwise be the caller's $LASTEXITCODE.
+exit 0
