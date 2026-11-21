@@ -212,6 +212,8 @@ function Get-DevMachineCheck {
         -InstallCommand 'winget install --id Microsoft.PowerShell --exact'
     New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PwshModule -Name 'Pester' -MinimumVersion '6.0.0' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0')
+    New-DevMachineCheck -Name 'Pester files signed' -Required $true -Test { $true } `
+        -ManualAction 'Reinstall Pester yourself.'
     New-DevMachineCheck -Name 'powershell-yaml' -Required $true -Test { Test-PwshModule -Name 'powershell-yaml' -MinimumVersion '0.4.12' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'powershell-yaml' -Version '0.4.12')
     New-DevMachineCheck -Name 'Git' -Required $true -Test { Test-CommandAvailable -Name 'git' } `
