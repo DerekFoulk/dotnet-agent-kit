@@ -156,6 +156,32 @@ function Test-PwshModule {
     (Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-Command', $moduleQuery).ExitCode -eq 0
 }
 
+# The script PowerShell 7 runs to find Pester's files that aren't validly signed: one "<version>`t<file>`t<status>"
+# line each.
+function Get-PesterSignatureProbe {
+    ''
+}
+
+# Asks PowerShell 7 which of Pester's signed files aren't validly signed any more (ADR-0092): twice a test run in a
+# shared session overwrote one. Each problem has the Pester version it's in (none when the probe itself failed)
+# and its text. A probe that fails is a problem too: it proves nothing.
+function Get-PesterSignatureProblem {
+    if (-not (Test-CommandAvailable -Name 'pwsh')) {
+        return @()
+    }
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes((Get-PesterSignatureProbe)))
+    $result = Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded
+    if ($result.ExitCode -ne 0) {
+        return [pscustomobject]@{ Version = $null; Text = "The check itself failed (exit code $($result.ExitCode)): $($result.Output -join ' ')" }
+    }
+    foreach ($line in $result.Output) {
+        $parts = @($line -split "`t")
+        if ($parts.Count -eq 3) {
+            [pscustomobject]@{ Version = $parts[0]; Text = "Pester $($parts[0]): $($parts[1]) is $($parts[2])" }
+        }
+    }
+}
+
 function Get-PwshModuleInstallCommand {
     param(
         [Parameter(Mandatory)] [string] $Name,
@@ -212,7 +238,7 @@ function Get-DevMachineCheck {
         -InstallCommand 'winget install --id Microsoft.PowerShell --exact'
     New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PwshModule -Name 'Pester' -MinimumVersion '6.0.0' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0')
-    New-DevMachineCheck -Name 'Pester files signed' -Required $true -Test { $true } `
+    New-DevMachineCheck -Name 'Pester files signed' -Required $true -Test { -not @(Get-PesterSignatureProblem) } `
         -ManualAction 'Reinstall Pester yourself.'
     New-DevMachineCheck -Name 'powershell-yaml' -Required $true -Test { Test-PwshModule -Name 'powershell-yaml' -MinimumVersion '0.4.12' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'powershell-yaml' -Version '0.4.12')
