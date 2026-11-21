@@ -20,7 +20,8 @@ $repoRoot = Split-Path -Path $PSScriptRoot -Parent
 if (-not $Path) { $Path = @(Join-Path $repoRoot 'tools' 'tests') }
 
 $marker = 'Invoke-KitTests result: '
-$paths = @($Path | ForEach-Object { ConvertTo-Literal (Resolve-Path -LiteralPath $_).Path }) -join ', '
+# Pester reads Run.Path as a wildcard pattern, so each path is escaped: "a [1]" would otherwise run "a 1".
+$paths = @($Path | ForEach-Object { ConvertTo-Literal ([WildcardPattern]::Escape((Resolve-Path -LiteralPath $_).Path)) }) -join ', '
 $filters = @($FullNameFilter | Where-Object { $_ } | ForEach-Object { ConvertTo-Literal $_ }) -join ', '
 $filterLine = if ($filters) { "`$c.Filter.FullName = @($filters)" }
 $command = @"
