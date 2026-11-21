@@ -540,6 +540,15 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'gh pr merge 76 --merge' }
                 @{ Tool = $tool; Command = 'pwsh -NoProfile -Command "Invoke-Pester -Path ./tools/tests; Remove-Item -Recurse -Force ~"' }
             }
+            # ADR-0092: putting a file back drops uncommitted work, and the spellings of Invoke-Pester that the ask rule
+            # doesn't match (an assignment, a module-qualified name, the call operator) must still prompt.
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'git restore -- tools/x.ps1' }
+                @{ Tool = $tool; Command = 'git checkout -- tools/x.ps1' }
+            }
+            @{ Tool = 'PowerShell'; Command = '$r = Invoke-Pester -Path ./tools/tests -PassThru' }
+            @{ Tool = 'PowerShell'; Command = 'Pester\Invoke-Pester -Path ./tools/tests' }
+            @{ Tool = 'PowerShell'; Command = '& Invoke-Pester -Path ./tools/tests' }
             @{ Tool = 'PowerShell'; Command = 'git branch -D feat/x' }
             @{ Tool = 'PowerShell'; Command = 'Set-Content ./AGENTS.md x' }
             @{ Tool = 'PowerShell'; Command = 'Remove-Item ./docs -Recurse' }
