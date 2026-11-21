@@ -1,0 +1,40 @@
+#Requires -Version 7.6
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
+
+# Invoke-KitTests.ps1 is the kit's one way to run its script tests locally (ADR-0092): always in a child pwsh, so
+# nothing Pester does reaches the caller's session. Twice, a run in Claude Code's shared PowerShell session left a
+# path variable pointing into Pester's own module folder, and a later "restore" overwrote a Pester file.
+
+Describe 'Invoke-KitTests.ps1' {
+    BeforeAll {
+        $launcher = Join-Path $PSScriptRoot '..' 'Invoke-KitTests.ps1'
+
+        # A test file in a folder of its own, holding the given Pester body.
+        function New-TestFile([string] $Body, [string] $Folder = "fixture-$(New-Guid)", [string] $Name = 'Fixture.Tests.ps1') {
+            $folderPath = Join-Path $TestDrive $Folder
+            New-Item -ItemType Directory -Path $folderPath -Force | Out-Null
+            $path = Join-Path $folderPath $Name
+            [IO.File]::WriteAllText($path, $Body)
+            $path
+        }
+
+        $passing = @'
+Describe 'Fixture' {
+    It 'one' { 1 | Should -Be 1 }
+    It 'two' { 2 | Should -Be 2 }
+}
+'@
+    }
+
+    It 'runs a passing test file and returns its counts with exit code 0' {
+        $path = New-TestFile -Body $passing
+
+        $result = & $launcher -Path $path -Output None
+
+        $result.Total | Should -Be 2
+        $result.Passed | Should -Be 2
+        $result.Failed | Should -Be 0
+        $result.ExitCode | Should -Be 0
+        $LASTEXITCODE | Should -Be 0
+    }
+}
