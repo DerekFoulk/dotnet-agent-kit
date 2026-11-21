@@ -157,9 +157,21 @@ function Test-PwshModule {
 }
 
 # The script PowerShell 7 runs to find Pester's files that aren't validly signed: one "<version>`t<file>`t<status>"
-# line each.
+# line each. It checks every installed Pester 6 or later (the kit's minimum; Windows PowerShell's own Pester 3.4 is
+# left alone), and every file of a type Authenticode signs, by extension rather than by "has a signature": an
+# overwritten script has none, and reads NotSigned. Pester 6.2.0 has seven such files.
 function Get-PesterSignatureProbe {
-    ''
+    @'
+$signable = '.ps1', '.psm1', '.psd1', '.ps1xml', '.dll', '.cat'
+foreach ($module in @(Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version -ge [version] '6.0.0' })) {
+    foreach ($file in @(Get-ChildItem -LiteralPath $module.ModuleBase -Recurse -File | Where-Object { $_.Extension -in $signable })) {
+        $status = (Get-AuthenticodeSignature -LiteralPath $file.FullName).Status
+        if ($status -ne 'Valid') {
+            "$($module.Version)`t$($file.FullName.Substring($module.ModuleBase.Length + 1))`t$status"
+        }
+    }
+}
+'@
 }
 
 # Asks PowerShell 7 which of Pester's signed files aren't validly signed any more (ADR-0092): twice a test run in a

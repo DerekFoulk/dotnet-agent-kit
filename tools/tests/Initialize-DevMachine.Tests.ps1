@@ -390,13 +390,16 @@ Describe 'Initialize-DevMachine.ps1 as a script' -Tag 'Machine' {
 }
 
 Describe 'Get-PesterSignatureProblem on this machine' -Tag 'Machine' -Skip:(-not $IsWindows) {
-    # A fake Pester 6 next to the real one: its manifest is a copy of the running Pester's own, still validly signed;
-    # a script with no signature stands in for an overwritten file; a text file Authenticode can't sign is left out.
+    # A fake Pester 6.99.0 next to the real one (Get-Module -ListAvailable leaves out a second copy of a version it
+    # already lists): its own manifest, unsigned; a renamed copy of the running Pester's signed Pester.ScriptScope.ps1,
+    # still valid, since a script's signature covers its text, not its name; a script with no signature, standing in
+    # for an overwritten file; and a text file, which Authenticode can't sign.
     BeforeAll {
         $fakeModules = Join-Path $TestDrive "modules-$(New-Guid)"
-        $fakeBase = Join-Path $fakeModules 'Pester' (Get-Module -Name Pester).Version.ToString()
+        $fakeBase = Join-Path $fakeModules 'Pester' '6.99.0'
         New-Item -ItemType Directory -Path $fakeBase -Force | Out-Null
-        Copy-Item -LiteralPath (Join-Path (Get-Module -Name Pester).ModuleBase 'Pester.psd1') -Destination $fakeBase
+        Set-Content -LiteralPath (Join-Path $fakeBase 'Pester.psd1') -Value "@{ ModuleVersion = '6.99.0' }"
+        Copy-Item -LiteralPath (Join-Path (Get-Module -Name Pester).ModuleBase 'Pester.ScriptScope.ps1') -Destination (Join-Path $fakeBase 'Signed.ps1')
         Set-Content -LiteralPath (Join-Path $fakeBase 'Overwritten.ps1') -Value '"no signature here"'
         Set-Content -LiteralPath (Join-Path $fakeBase 'notes.txt') -Value 'not a signable file'
         $savedModulePath = $env:PSModulePath
@@ -407,12 +410,13 @@ Describe 'Get-PesterSignatureProblem on this machine' -Tag 'Machine' -Skip:(-not
         $env:PSModulePath = $savedModulePath
     }
 
-    It 'reports a file of a type Authenticode signs whose signature isn''t valid, and no other' {
-        $texts = @(Get-PesterSignatureProblem).Text
+    It 'reports each file of a type Authenticode signs whose signature isn''t valid, and no other' {
+        $texts = @(@(Get-PesterSignatureProblem) | ForEach-Object Text)
 
-        $texts | Should -BeLike '*: Overwritten.ps1 is NotSigned'
-        $texts | Should -Not -BeLike '*Pester.psd1*'
-        $texts | Should -Not -BeLike '*notes.txt*'
+        $texts | Should -Contain 'Pester 6.99.0: Overwritten.ps1 is NotSigned'
+        $texts | Should -Contain 'Pester 6.99.0: Pester.psd1 is NotSigned'
+        $texts | Should -Not -BeLike '*Signed.ps1 is*' -Because 'a validly signed file is fine'
+        $texts | Should -Not -BeLike '*notes.txt*' -Because 'Authenticode can''t sign a text file'
     }
 }
 
