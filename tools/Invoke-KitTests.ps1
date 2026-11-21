@@ -18,12 +18,15 @@ function ConvertTo-Literal([string] $Value) { "'" + ($Value -replace "'", "''") 
 
 $marker = 'Invoke-KitTests result: '
 $paths = @($Path | ForEach-Object { ConvertTo-Literal (Resolve-Path -LiteralPath $_).Path }) -join ', '
+$filters = @($FullNameFilter | Where-Object { $_ } | ForEach-Object { ConvertTo-Literal $_ }) -join ', '
+$filterLine = if ($filters) { "`$c.Filter.FullName = @($filters)" }
 $command = @"
 Import-Module -Name Pester -MinimumVersion 6.0.0
 `$c = New-PesterConfiguration
 `$c.Run.Path = @($paths)
 `$c.Run.PassThru = `$true
 `$c.Output.Verbosity = $(ConvertTo-Literal $Output)
+$filterLine
 `$r = Invoke-Pester -Configuration `$c
 '$marker' + (ConvertTo-Json -Compress -InputObject @{
     Total = `$r.TotalCount; Passed = `$r.PassedCount; Failed = `$r.FailedCount; Skipped = `$r.SkippedCount
