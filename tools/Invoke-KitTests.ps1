@@ -21,6 +21,7 @@ $paths = @($Path | ForEach-Object { ConvertTo-Literal (Resolve-Path -LiteralPath
 $filters = @($FullNameFilter | Where-Object { $_ } | ForEach-Object { ConvertTo-Literal $_ }) -join ', '
 $filterLine = if ($filters) { "`$c.Filter.FullName = @($filters)" }
 $command = @"
+`$ErrorActionPreference = 'Stop'
 Import-Module -Name Pester -MinimumVersion 6.0.0
 `$c = New-PesterConfiguration
 `$c.Run.Path = @($paths)
