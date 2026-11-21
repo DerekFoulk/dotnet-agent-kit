@@ -18,6 +18,16 @@ Describe 'Invoke-KitTests.ps1' {
             $path
         }
 
+        # A copy of the launcher in a repo of its own, so a run with no -Path runs that repo's tools/tests, not
+        # this one's, which holds this file and would run it again without end.
+        function New-FakeRepo([hashtable] $TestFiles) {
+            $root = Join-Path $TestDrive "repo-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $root 'tools' 'tests') -Force | Out-Null
+            Copy-Item -LiteralPath $launcher -Destination (Join-Path $root 'tools' 'Invoke-KitTests.ps1')
+            foreach ($name in $TestFiles.Keys) { [IO.File]::WriteAllText((Join-Path $root 'tools' 'tests' $name), $TestFiles[$name]) }
+            $root
+        }
+
         $passing = @'
 Describe 'Fixture' {
     It 'one' { 1 | Should -Be 1 }
@@ -79,5 +89,13 @@ Describe 'Fixture' {
         $result = & $launcher -Path $path -Output None
 
         $result.Passed | Should -Be 1
+    }
+
+    It 'runs every test file under its repo''s tools/tests when no -Path is given' {
+        $root = New-FakeRepo @{ 'One.Tests.ps1' = $passing; 'Two.Tests.ps1' = $passing }
+
+        $result = & (Join-Path $root 'tools' 'Invoke-KitTests.ps1') -Output None
+
+        $result.Passed | Should -Be 4
     }
 }
