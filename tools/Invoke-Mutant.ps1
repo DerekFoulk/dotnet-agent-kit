@@ -31,6 +31,12 @@ param(
     [Parameter(Mandatory)] [hashtable[]] $Mutant
 )
 
+# First, before strict mode or a preference changes the caller's session: dot-sourced, $file, $original and the rest
+# would land there, the kind of generic variable a later hand-made "restore" can write through (ADR-0092).
+if ($MyInvocation.InvocationName -eq '.') {
+    throw 'Run Invoke-Mutant.ps1 with ./ or &, not dot-sourced: dot-sourced, it would leave its variables in your session.'
+}
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
