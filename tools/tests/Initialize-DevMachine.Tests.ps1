@@ -137,6 +137,10 @@ Describe 'Get-DevMachineCheck' {
         Should -Invoke Invoke-Native -Times 0
     }
 
+    It 'knows whether it runs on Windows' {
+        Test-WindowsPlatform | Should -Be $IsWindows
+    }
+
     It 'reinstalls a module with -Reinstall added to its install command' {
         Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0' -Reinstall |
             Should -Be 'pwsh -NoProfile -Command "Install-PSResource -Name Pester -Version 6.2.0 -Scope CurrentUser -Repository PSGallery -TrustRepository -Reinstall"'
