@@ -235,7 +235,8 @@ function New-DevMachineCheck {
         [string] $InstallCommand,
         [string] $ManualAction,
         # What a failed check adds to ManualAction, worked out only when the check fails.
-        [scriptblock] $Detail
+        [scriptblock] $Detail,
+        [scriptblock] $Skip
     )
     [pscustomobject]@{
         Name           = $Name

@@ -121,6 +121,22 @@ Describe 'Get-DevMachineCheck' {
         $result.ManualAction | Should -BeLike "*$(Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0' -Reinstall)*"
     }
 
+    # Get-AuthenticodeSignature exists only on Windows, and the check runs in PowerShell 7.
+    It 'skips the Pester signature check, saying why, when <Case>' -ForEach @(
+        @{ Case = 'not on Windows'; Windows = $false; Pwsh = $true; Reason = '*only on Windows*' }
+        @{ Case = 'PowerShell 7 is missing'; Windows = $true; Pwsh = $false; Reason = '*PowerShell 7*' }
+    ) {
+        Mock Test-WindowsPlatform { $Windows }
+        Mock Test-CommandAvailable { $Pwsh }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 0; Output = @("6.2.0`tPester.psm1`tNotSigned") } }
+
+        $result = Invoke-DevMachineCheck -Check (Get-Check 'Pester files signed')
+
+        $result.Status | Should -Be 'skipped'
+        $result.ManualAction | Should -BeLike $Reason
+        Should -Invoke Invoke-Native -Times 0
+    }
+
     It 'reinstalls a module with -Reinstall added to its install command' {
         Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0' -Reinstall |
             Should -Be 'pwsh -NoProfile -Command "Install-PSResource -Name Pester -Version 6.2.0 -Scope CurrentUser -Repository PSGallery -TrustRepository -Reinstall"'
@@ -320,6 +336,16 @@ Describe 'Initialize-DevMachine' {
             Initialize-DevMachine -RepoRoot $TestDrive -Install -WhatIf | Should -Be 1
             Should -Invoke Invoke-InstallCommand -Times 0
         }
+    }
+
+    It 'shows a skipped check with its reason, and returns 0 when nothing else is missing' {
+        Mock Get-DevMachineCheck {
+            New-FakeCheck -Name 'Present' -Required $true -Passes $true -Install 'install present'
+            New-DevMachineCheck -Name 'Signatures' -Required $true -Test { $false } -Skip { 'not on this platform' }
+        }
+
+        Initialize-DevMachine -RepoRoot $TestDrive | Should -Be 0
+        Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*`[skipped`]*Signatures*not on this platform*' }
     }
 
     It 'returns 0 when only optional tools are missing' {
