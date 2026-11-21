@@ -98,4 +98,17 @@ Describe 'Fixture' {
 
         $result.Passed | Should -Be 4
     }
+
+    # The caller never stands in the fake repo, so the tests see its root only if the launcher moves there.
+    It 'runs the tests from its repo''s root, wherever the caller stands' {
+        $root = New-FakeRepo @{ 'Where.Tests.ps1' = @'
+Describe 'Fixture' {
+    It 'is at the root' { (Get-Location).Path | Should -Be (Split-Path (Split-Path $PSScriptRoot)) }
+}
+'@ }
+
+        $result = & (Join-Path $root 'tools' 'Invoke-KitTests.ps1') -Output None
+
+        $result.Passed | Should -Be 1
+    }
 }
