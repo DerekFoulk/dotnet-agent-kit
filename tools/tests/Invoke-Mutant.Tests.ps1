@@ -98,6 +98,32 @@ Describe 'Add' {
         [Convert]::ToHexString([IO.File]::ReadAllBytes($fixture.Source)) | Should -Be ([Convert]::ToHexString($before))
     }
 
+    # Pester's TotalCount counts skipped tests too, so "ran" means passed or failed: a run that only skipped proves
+    # nothing (review round 1 of ADR-0092's PR).
+    It 'reports every mutant as an error when every test on the unchanged file is skipped' {
+        $fixture = New-Fixture -Tests "Describe 'Add' { It 'adds' -Skip { 1 | Should -Be 1 } }`n"
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match 'ran no tests on the unchanged file'
+    }
+
+    It 'reports a mutant as an error when, with it in place, every test is skipped' {
+        $fixture = New-Fixture -Tests @'
+$skip = -not (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Add.ps1') -Raw).Contains('+')
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'adds' -Skip:$skip { Add 1 2 | Should -Be 3 }
+}
+'@
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match 'No tests ran with the mutant in place'
+    }
+
     It 'reports every mutant as an error with what Pester wrote to stderr, when <Case>' -ForEach @(
         @{ Case = 'they run no tests'; Tests = "[Console]::Error.WriteLine('setup broke')`nDescribe 'Add' { }`n"; Message = 'ran no tests.*setup broke' }
         @{ Case = 'they end the process'; Tests = "[Console]::Error.WriteLine('setup broke')`n[Environment]::Exit(3)`n"; Message = 'returned no result.*setup broke' }

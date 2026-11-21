@@ -44,6 +44,7 @@ Describe 'Fixture' {
         $result.Total | Should -Be 2
         $result.Passed | Should -Be 2
         $result.Failed | Should -Be 0
+        $result.Broken | Should -Be 0 -Because 'Invoke-Mutant reads any broken block as a killed mutant'
         $result.ExitCode | Should -Be 0
         $LASTEXITCODE | Should -Be 0
     }
@@ -86,9 +87,10 @@ Describe 'Fixture' {
         Get-Variable -Name KitTestsProbe -Scope Global -ErrorAction Ignore | Should -BeNullOrEmpty
         [int] (Get-Content -LiteralPath (Join-Path $folder 'pid.txt')) | Should -Not -Be $PID
         Get-Content -LiteralPath (Join-Path $folder 'args.txt') | Should -Contain '-NoProfile'
+        Get-Content -LiteralPath (Join-Path $folder 'args.txt') | Should -Contain '-NonInteractive' -Because 'a prompt would hang the run'
     }
 
-    It 'throws, and starts no tests, when a path doesn''t exist' {
+    It 'throws when a path doesn''t exist' {
         { & $launcher -Path (Join-Path $TestDrive "missing-$(New-Guid).Tests.ps1") -Output None } | Should -Throw '*Cannot find path*'
     }
 
