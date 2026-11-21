@@ -111,4 +111,15 @@ Describe 'Fixture' {
 
         $result.Passed | Should -Be 1
     }
+
+    # Pester reads a path as a wildcard pattern, where "[1]" matches "1": unescaped, "a [1]" would run "a 1".
+    It 'takes a path with wildcard characters literally' {
+        $guid = New-Guid
+        $literal = New-TestFile -Body "Describe 'Fixture' { It 'one' { 1 | Should -Be 1 } }" -Folder "a [1] $guid"
+        $null = New-TestFile -Body $passing -Folder "a 1 $guid"
+
+        $result = & $launcher -Path (Split-Path $literal) -Output None
+
+        $result.Passed | Should -Be 1
+    }
 }
