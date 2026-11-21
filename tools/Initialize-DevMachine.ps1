@@ -185,9 +185,15 @@ function Get-PesterSignatureProblem {
 function Get-PwshModuleInstallCommand {
     param(
         [Parameter(Mandatory)] [string] $Name,
-        [Parameter(Mandatory)] [string] $Version
+        [Parameter(Mandatory)] [string] $Version,
+        [switch] $Reinstall
     )
     "pwsh -NoProfile -Command `"Install-PSResource -Name $Name -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository`""
+}
+
+# Windows PowerShell 5.1 has no $IsWindows, and strict mode makes reading it an error there.
+function Test-WindowsPlatform {
+    $true
 }
 
 function Test-VsCodeExtension {

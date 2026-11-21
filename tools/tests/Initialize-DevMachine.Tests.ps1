@@ -105,6 +105,27 @@ Describe 'Get-DevMachineCheck' {
         $check.ManualAction | Should -BeLike '*gh auth login*'
     }
 
+    # Reinstalling is the owner's step ("Always ask"), so the check has no install command, and -Install never runs
+    # it: it says which files changed and how to reinstall each Pester they're in.
+    It 'names each file that isn''t validly signed, with the command that reinstalls its Pester, and installs nothing' {
+        Mock Test-WindowsPlatform { $true }
+        Mock Test-CommandAvailable { $true }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 0; Output = @("6.2.0`tPester.ScriptScope.ps1`tNotSigned", "6.2.0`tbin\net8.0\Pester.dll`tHashMismatch") } } -ParameterFilter { $FilePath -eq 'pwsh' -and $Arguments -contains '-EncodedCommand' }
+
+        $result = Invoke-DevMachineCheck -Check (Get-Check 'Pester files signed')
+
+        $result.Status | Should -Be 'action'
+        $result.InstallCommand | Should -BeNullOrEmpty
+        $result.ManualAction | Should -BeLike '*Pester 6.2.0: Pester.ScriptScope.ps1 is NotSigned*'
+        $result.ManualAction | Should -BeLike '*Pester 6.2.0: bin\net8.0\Pester.dll is HashMismatch*'
+        $result.ManualAction | Should -BeLike "*$(Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0' -Reinstall)*"
+    }
+
+    It 'reinstalls a module with -Reinstall added to its install command' {
+        Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0' -Reinstall |
+            Should -Be 'pwsh -NoProfile -Command "Install-PSResource -Name Pester -Version 6.2.0 -Scope CurrentUser -Repository PSGallery -TrustRepository -Reinstall"'
+    }
+
     Context 'probes' {
         It '<Name> passes when its command is on PATH' -ForEach @(
             @{ Name = 'Git'; Command = 'git' }
