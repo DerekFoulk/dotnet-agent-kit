@@ -174,8 +174,8 @@ foreach ($module in @(Get-Module -ListAvailable -Name Pester | Where-Object { $_
 '@
 }
 
-# Asks PowerShell 7 which of Pester's signed files aren't validly signed any more (ADR-0092): twice a test run in a
-# shared session overwrote one. Each problem has the Pester version it's in (none when the probe itself failed)
+# Asks PowerShell 7 which of Pester's signed files aren't validly signed any more (ADR-0092): twice an agent's
+# "restore" of a script, through a path variable a test run in a shared session had changed, overwrote one. Each problem has the Pester version it's in (none when the probe itself failed)
 # and its text. A probe that fails is a problem too: it proves nothing. The check skips itself where this can't run
 # (Get-PesterSignatureSkipReason).
 function Get-PesterSignatureProblem {

@@ -19,8 +19,8 @@
     of this script, since its tests run from the root of the repo the script is in. A Ctrl+C or an error still
     restores the file, but a killed pwsh leaves the mutant on disk; `git restore -- <path>` puts it back. Never
     put a file back by writing saved text to a path held in a session variable: the restore here reads only this
-    script's own variables, and nothing runs between the save and the restore but its own functions and a child
-    process.
+    script's own variables, and nothing runs between the save and the restore but its own functions and the
+    launcher script, which starts the child process.
 
     It can't mutate Invoke-KitTests.ps1 beside it, which judges every mutant: to probe the launcher, run another
     clone's Invoke-Mutant with -Path and -TestPath in the clone to probe.

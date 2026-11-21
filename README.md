@@ -205,7 +205,7 @@ The rest of this page is reference: setting up a machine, the standards and the 
 |---|---|---|
 | PowerShell 7.6 or later (the current LTS) | Every kit script, and CI | Yes |
 | Pester 6 | The kit's script tests | Yes |
-| Pester's signed files unchanged (Windows) | Trusting a test run: twice a test run in a shared session overwrote one (ADR-0092) | Yes |
+| Pester's signed files unchanged (Windows) | Trusting a test run: twice an agent's "restore" of a script, after a test run in a shared session changed its path variable, overwrote one (ADR-0092) | Yes |
 | powershell-yaml | Reading rule metadata in `docs/standards` | Yes |
 | Git | Everything | Yes |
 | GitHub CLI, signed in | Pushing, PRs and reviews | Yes |
