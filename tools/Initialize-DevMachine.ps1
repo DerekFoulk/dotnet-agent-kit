@@ -164,11 +164,9 @@ function Get-PesterSignatureProbe {
 
 # Asks PowerShell 7 which of Pester's signed files aren't validly signed any more (ADR-0092): twice a test run in a
 # shared session overwrote one. Each problem has the Pester version it's in (none when the probe itself failed)
-# and its text. A probe that fails is a problem too: it proves nothing.
+# and its text. A probe that fails is a problem too: it proves nothing. The check skips itself where this can't run
+# (Get-PesterSignatureSkipReason).
 function Get-PesterSignatureProblem {
-    if (-not (Test-CommandAvailable -Name 'pwsh')) {
-        return @()
-    }
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes((Get-PesterSignatureProbe)))
     $result = Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded
     if ($result.ExitCode -ne 0) {
@@ -209,7 +207,17 @@ function Format-PesterSignatureProblem {
 
 # Windows PowerShell 5.1 has no $IsWindows, and strict mode makes reading it an error there.
 function Test-WindowsPlatform {
-    $true
+    [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+}
+
+# Why the Pester signature check can't run here, or nothing when it can.
+function Get-PesterSignatureSkipReason {
+    if (-not (Test-WindowsPlatform)) {
+        return 'Skipped: Get-AuthenticodeSignature is available only on Windows.'
+    }
+    if (-not (Test-CommandAvailable -Name 'pwsh')) {
+        return 'Skipped: the check runs in PowerShell 7, which is missing.'
+    }
 }
 
 function Test-VsCodeExtension {
@@ -236,6 +244,7 @@ function New-DevMachineCheck {
         [string] $ManualAction,
         # What a failed check adds to ManualAction, worked out only when the check fails.
         [scriptblock] $Detail,
+        # Returns why the check can't run on this machine, or nothing when it can.
         [scriptblock] $Skip
     )
     [pscustomobject]@{
@@ -245,6 +254,7 @@ function New-DevMachineCheck {
         InstallCommand = $InstallCommand
         ManualAction   = $ManualAction
         Detail         = $Detail
+        Skip           = $Skip
     }
 }
 
@@ -266,7 +276,7 @@ function Get-DevMachineCheck {
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0')
     New-DevMachineCheck -Name 'Pester files signed' -Required $true -Test { -not @(Get-PesterSignatureProblem) } `
         -ManualAction 'Pester''s own files have changed, so its runs can''t be trusted: reinstall it yourself (installing is your step).' `
-        -Detail { Format-PesterSignatureProblem -Problem @(Get-PesterSignatureProblem) }
+        -Detail { Format-PesterSignatureProblem -Problem @(Get-PesterSignatureProblem) } -Skip { Get-PesterSignatureSkipReason }
     New-DevMachineCheck -Name 'powershell-yaml' -Required $true -Test { Test-PwshModule -Name 'powershell-yaml' -MinimumVersion '0.4.12' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'powershell-yaml' -Version '0.4.12')
     New-DevMachineCheck -Name 'Git' -Required $true -Test { Test-CommandAvailable -Name 'git' } `
@@ -294,6 +304,21 @@ function Invoke-DevMachineCheck {
     param([Parameter(Mandatory)] [pscustomobject] $Check)
 
     # ok: present. action: only the owner can fix it. missing: required now. later: needed in a later build step.
+    # skipped: it can't run on this machine, which says nothing about the tool.
+    $skipReason = $null
+    if ($Check.Skip) {
+        $skipReason = & $Check.Skip
+    }
+    if ($skipReason) {
+        return [pscustomobject]@{
+            Name           = $Check.Name
+            Required       = $Check.Required
+            Status         = 'skipped'
+            InstallCommand = $Check.InstallCommand
+            ManualAction   = "$skipReason"
+        }
+    }
+
     $status = 'later'
     if (& $Check.Test) {
         $status = 'ok'
@@ -341,8 +366,8 @@ function Initialize-DevMachine {
         [switch] $Install
     )
 
-    $labels = @{ ok = '[ok]     '; missing = '[missing]'; later = '[later]  '; action = '[action] ' }
-    $colors = @{ ok = 'Green'; missing = 'Red'; later = 'Yellow'; action = 'Red' }
+    $labels = @{ ok = '[ok]     '; missing = '[missing]'; later = '[later]  '; action = '[action] '; skipped = '[skipped]' }
+    $colors = @{ ok = 'Green'; missing = 'Red'; later = 'Yellow'; action = 'Red'; skipped = 'Yellow' }
 
     Write-Host "`nChecking the dotnet-agent-kit toolchain on $env:COMPUTERNAME..." -ForegroundColor Cyan
     $results = @(Get-DevMachineCheck -RepoRoot $RepoRoot | ForEach-Object { Invoke-DevMachineCheck -Check $_ })
@@ -351,13 +376,13 @@ function Initialize-DevMachine {
         if ($result.Status -in 'missing', 'later') {
             $line += "  ->  $($result.InstallCommand)"
         }
-        elseif ($result.Status -eq 'action') {
+        elseif ($result.Status -in 'action', 'skipped') {
             $line += "  ->  $($result.ManualAction)"
         }
         Write-Host $line -ForegroundColor $colors[$result.Status]
     }
 
-    $notReady = @($results | Where-Object { $_.Required -and $_.Status -ne 'ok' })
+    $notReady = @($results | Where-Object { $_.Required -and $_.Status -notin 'ok', 'skipped' })
 
     if ($Install) {
         $installable = @($results | Where-Object { $_.Status -in 'missing', 'later' })
