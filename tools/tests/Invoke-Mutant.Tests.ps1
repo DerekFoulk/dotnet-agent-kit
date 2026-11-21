@@ -36,6 +36,15 @@ Describe 'Add' {
         $result.Failed | Should -BeGreaterThan 0
     }
 
+    # A killed mutant is the run going as planned; the launcher's exit code for its failing tests isn't the caller's.
+    It 'leaves $LASTEXITCODE at 0 after a run whose mutant is killed' {
+        $fixture = New-Fixture
+
+        $null = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $LASTEXITCODE | Should -Be 0
+    }
+
     It 'reports a mutant the tests miss as survived, and restores the file byte for byte after every mutant' {
         $fixture = New-Fixture
         $before = [IO.File]::ReadAllBytes($fixture.Source)
