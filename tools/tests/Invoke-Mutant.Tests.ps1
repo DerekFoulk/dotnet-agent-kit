@@ -240,6 +240,21 @@ try { . '$($script -replace "'", "''")' -Path '$($fixture.Source -replace "'", "
         [Convert]::ToHexString([IO.File]::ReadAllBytes($fixture.Source)) | Should -Be ([Convert]::ToHexString($before))
     }
 
+    # Its test runs go through Invoke-KitTests.ps1, so they run as the kit's other local runs and CI's do.
+    It 'runs the tests with $ErrorActionPreference set to Stop, as CI does' {
+        $fixture = New-Fixture -Tests @'
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'adds' { Add 1 2 | Should -Be 3 }
+    It 'stops on errors' { $ErrorActionPreference | Should -Be 'Stop' }
+}
+'@
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Killed'
+    }
+
     It 'runs tests in a folder whose name has a quote and wildcard brackets' {
         $fixture = New-Fixture -Folder "it's here [x]"
 
