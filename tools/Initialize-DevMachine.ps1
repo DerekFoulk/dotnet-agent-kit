@@ -188,7 +188,23 @@ function Get-PwshModuleInstallCommand {
         [Parameter(Mandatory)] [string] $Version,
         [switch] $Reinstall
     )
-    "pwsh -NoProfile -Command `"Install-PSResource -Name $Name -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository`""
+    $reinstallFlag = ''
+    if ($Reinstall) {
+        $reinstallFlag = ' -Reinstall'
+    }
+    "pwsh -NoProfile -Command `"Install-PSResource -Name $Name -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository$reinstallFlag`""
+}
+
+# What the owner reads when Pester's files changed: each file, then the command that reinstalls each Pester they're in.
+function Format-PesterSignatureProblem {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Problem)
+    $reinstalls = @($Problem | Where-Object { $_.Version } | ForEach-Object { $_.Version } | Sort-Object -Unique |
+            ForEach-Object { Get-PwshModuleInstallCommand -Name 'Pester' -Version $_ -Reinstall })
+    $text = "Not validly signed: $(@($Problem | ForEach-Object { $_.Text }) -join '; ')."
+    if ($reinstalls) {
+        $text += " Reinstall: $($reinstalls -join '; ')"
+    }
+    $text
 }
 
 # Windows PowerShell 5.1 has no $IsWindows, and strict mode makes reading it an error there.
@@ -217,7 +233,9 @@ function New-DevMachineCheck {
         [Parameter(Mandatory)] [bool] $Required,
         [Parameter(Mandatory)] [scriptblock] $Test,
         [string] $InstallCommand,
-        [string] $ManualAction
+        [string] $ManualAction,
+        # What a failed check adds to ManualAction, worked out only when the check fails.
+        [scriptblock] $Detail
     )
     [pscustomobject]@{
         Name           = $Name
@@ -225,6 +243,7 @@ function New-DevMachineCheck {
         Test           = $Test
         InstallCommand = $InstallCommand
         ManualAction   = $ManualAction
+        Detail         = $Detail
     }
 }
 
@@ -245,7 +264,8 @@ function Get-DevMachineCheck {
     New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PwshModule -Name 'Pester' -MinimumVersion '6.0.0' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0')
     New-DevMachineCheck -Name 'Pester files signed' -Required $true -Test { -not @(Get-PesterSignatureProblem) } `
-        -ManualAction 'Reinstall Pester yourself.'
+        -ManualAction 'Pester''s own files have changed, so its runs can''t be trusted: reinstall it yourself (installing is your step).' `
+        -Detail { Format-PesterSignatureProblem -Problem @(Get-PesterSignatureProblem) }
     New-DevMachineCheck -Name 'powershell-yaml' -Required $true -Test { Test-PwshModule -Name 'powershell-yaml' -MinimumVersion '0.4.12' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'powershell-yaml' -Version '0.4.12')
     New-DevMachineCheck -Name 'Git' -Required $true -Test { Test-CommandAvailable -Name 'git' } `
@@ -284,12 +304,17 @@ function Invoke-DevMachineCheck {
         $status = 'missing'
     }
 
+    $manualAction = $Check.ManualAction
+    if ($status -ne 'ok' -and $Check.Detail) {
+        $manualAction = "$manualAction $(& $Check.Detail)".Trim()
+    }
+
     [pscustomobject]@{
         Name           = $Check.Name
         Required       = $Check.Required
         Status         = $status
         InstallCommand = $Check.InstallCommand
-        ManualAction   = $Check.ManualAction
+        ManualAction   = $manualAction
     }
 }
 
