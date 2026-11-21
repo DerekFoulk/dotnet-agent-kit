@@ -121,6 +121,20 @@ Describe 'Get-DevMachineCheck' {
         $result.ManualAction | Should -BeLike "*$(Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0' -Reinstall)*"
     }
 
+    # A probe that fails proves nothing either way, so it says the check couldn't run, not that files changed.
+    It 'says the Pester signature check couldn''t run, without blaming Pester''s files, when the probe fails' {
+        Mock Test-WindowsPlatform { $true }
+        Mock Test-CommandAvailable { $true }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @('pwsh: could not start') } } -ParameterFilter { $FilePath -eq 'pwsh' -and $Arguments -contains '-EncodedCommand' }
+
+        $result = Invoke-DevMachineCheck -Check (Get-Check 'Pester files signed')
+
+        $result.Status | Should -Be 'action'
+        $result.ManualAction | Should -BeLike '*couldn''t run*pwsh: could not start*'
+        $result.ManualAction | Should -Not -BeLike '*changed*'
+        $result.ManualAction | Should -Not -BeLike '*Reinstall*'
+    }
+
     # Get-AuthenticodeSignature exists only on Windows, and the check runs in PowerShell 7.
     It 'skips the Pester signature check, saying why, when <Case>' -ForEach @(
         @{ Case = 'not on Windows'; Windows = $false; Pwsh = $true; Reason = '*only on Windows*' }
