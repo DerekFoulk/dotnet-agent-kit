@@ -32,7 +32,7 @@ $filterLine
     Total = `$r.TotalCount; Passed = `$r.PassedCount; Failed = `$r.FailedCount; Skipped = `$r.SkippedCount
     NotRun = `$r.NotRunCount; Broken = `$r.FailedContainersCount + `$r.FailedBlocksCount
 })
-exit `$(if (`$r.Result -eq 'Passed') { 0 } else { 1 })
+exit `$(if (`$r.Result -eq 'Passed' -and `$r.PassedCount + `$r.FailedCount -gt 0) { 0 } else { 1 })
 "@
 $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
 
