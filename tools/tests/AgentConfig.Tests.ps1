@@ -75,6 +75,22 @@ Describe 'Agent configuration' {
             (Get-RuleList 'ask') -ccontains "PowerShell($Command)" | Should -BeTrue
         }
 
+        # Initialize-DevMachine prints these as the fix for a missing module or a changed Pester (ADR-0092); an agent
+        # that pastes one installs software, which is "Always ask". The rule matches the printed form's start, so a
+        # commit message or a grep that quotes it doesn't ask (review round 1 of ADR-0092's PR).
+        It 'asks before the module install Initialize-DevMachine prints: <Tool>, <Module>, reinstall <Reinstall>' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Module = 'Pester'; Version = '6.2.0'; Reinstall = $false }
+                @{ Tool = $tool; Module = 'Pester'; Version = '6.2.0'; Reinstall = $true }
+                @{ Tool = $tool; Module = 'powershell-yaml'; Version = '0.4.12'; Reinstall = $false }
+            }
+        ) {
+            . (Join-Path $repoRoot 'tools' 'Initialize-DevMachine.ps1')
+            $command = Get-PwshModuleInstallCommand -Name $Module -Version $Version -Reinstall:$Reinstall
+
+            Test-AskRuleMatch -Tool $Tool -Command $command | Should -BeTrue -Because "an ask rule should catch $Tool($command)"
+        }
+
         # ADR-0092: Pester run in the PowerShell tool's shared session twice left a path variable pointing into
         # Pester's module folder, and a later restore overwrote a Pester file. The kit's tests run through
         # ./tools/Invoke-KitTests.ps1, which starts a child pwsh; typing Invoke-Pester asks. Claude Code's
