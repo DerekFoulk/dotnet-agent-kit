@@ -48,6 +48,64 @@ Describe 'Fixture' {
         $LASTEXITCODE | Should -Be 0
     }
 
+    It 'counts a failing test and exits 1' {
+        $path = New-TestFile -Body "Describe 'Fixture' { It 'fails' { 1 | Should -Be 2 }; It 'passes' { 1 | Should -Be 1 } }"
+
+        $result = & $launcher -Path $path -Output None
+
+        $result.Failed | Should -Be 1
+        $result.ExitCode | Should -Be 1
+        $LASTEXITCODE | Should -Be 1
+    }
+
+    It 'counts a block that breaks outside a test and exits 1' {
+        $path = New-TestFile -Body "Describe 'Fixture' { BeforeAll { throw 'setup broke' }; It 'one' { 1 | Should -Be 1 } }"
+
+        $result = & $launcher -Path $path -Output None
+
+        $result.Broken | Should -BeGreaterThan 0
+        $result.ExitCode | Should -Be 1
+    }
+
+    # The whole point (ADR-0092): Pester runs in another process, started without the profile, so nothing it
+    # does to a session reaches the caller's.
+    It 'runs Pester in another process, without the profile, so a variable a test sets never reaches the caller' {
+        $folder = Join-Path $TestDrive "probe-$(New-Guid)"
+        $path = New-TestFile -Folder (Split-Path $folder -Leaf) -Body @'
+Describe 'Fixture' {
+    It 'records its process' {
+        $global:KitTestsProbe = 'leaked'
+        Set-Content -LiteralPath (Join-Path $PSScriptRoot 'pid.txt') -Value $PID
+        Set-Content -LiteralPath (Join-Path $PSScriptRoot 'args.txt') -Value ([Environment]::GetCommandLineArgs())
+    }
+}
+'@
+
+        $null = & $launcher -Path $path -Output None
+
+        Get-Variable -Name KitTestsProbe -Scope Global -ErrorAction Ignore | Should -BeNullOrEmpty
+        [int] (Get-Content -LiteralPath (Join-Path $folder 'pid.txt')) | Should -Not -Be $PID
+        Get-Content -LiteralPath (Join-Path $folder 'args.txt') | Should -Contain '-NoProfile'
+    }
+
+    It 'throws, and starts no tests, when a path doesn''t exist' {
+        { & $launcher -Path (Join-Path $TestDrive "missing-$(New-Guid).Tests.ps1") -Output None } | Should -Throw '*Cannot find path*'
+    }
+
+    # Fails closed: no result is never a pass, even when the test process exits 0.
+    It 'exits 1 with no counts when Pester returns no result because <Case>' -ForEach @(
+        @{ Case = 'a test file ends the process with exit code 0'; Body = "[Environment]::Exit(0)`n" }
+        @{ Case = 'the folder holds no test files'; Body = $null }
+    ) {
+        $path = if ($Body) { New-TestFile -Body $Body } else { New-Item -ItemType Directory -Path (Join-Path $TestDrive "empty-$(New-Guid)") }
+
+        $result = & $launcher -Path $path -Output None
+
+        $result.Returned | Should -BeFalse
+        $result.ExitCode | Should -Be 1
+        $LASTEXITCODE | Should -Be 1
+    }
+
     It 'runs only the tests -FullNameFilter names' {
         $path = New-TestFile -Body $passing
 
