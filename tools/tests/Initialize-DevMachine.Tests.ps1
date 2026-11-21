@@ -60,10 +60,10 @@ Describe 'Get-DevMachineCheck' {
         $checks = Get-DevMachineCheck -RepoRoot $TestDrive
 
         $checks.Name | Should -Be @(
-            'PowerShell 7.6+', 'Pester 6', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403',
-            'Claude Code', 'Git commit-msg hook', 'VS Code', 'VS Code PowerShell extension', 'Docker'
+            'PowerShell 7.6+', 'Pester 6', 'Pester files signed', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in',
+            '.NET SDK 10.0.403', 'Claude Code', 'Git commit-msg hook', 'VS Code', 'VS Code PowerShell extension', 'Docker'
         )
-        @($checks | Where-Object Required).Count | Should -Be 9
+        @($checks | Where-Object Required).Count | Should -Be 10
     }
 
     It 'turns the commit-msg hook on for this clone only' {
