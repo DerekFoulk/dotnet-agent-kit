@@ -804,6 +804,7 @@ Describe 'Shared CI for app repos' {
             $scan[0]['name'] | Should -Be 'Scan every commit HEAD reaches'
             $scan[0]['run'] | Should -Match ([regex]::Escape('--redact --verbose --log-opts="--full-history --diff-filter=tuxdb HEAD"'))
             $scan[0]['run'] | Should -Not -Match '--all\b' -Because 'every fetched branch is not the commit under test'
+            [regex]::Matches($scan[0]['run'], '--log-opts').Count | Should -Be 1 -Because 'gitleaks keeps the last --log-opts given'
         }
     }
 
