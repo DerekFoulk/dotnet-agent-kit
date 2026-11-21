@@ -222,6 +222,24 @@ Describe 'Add' {
         @(Get-Content -LiteralPath (Join-Path (Split-Path $fixture.Tests) 'runs.log')).Count | Should -Be 3
     }
 
+    # Dot-sourced, $file, $original and the rest would land in the caller's session: the generic variables both
+    # Pester incidents restored through (ADR-0092). It refuses before it changes anything.
+    It 'refuses to run dot-sourced, leaving the file, the caller''s variables and its preferences alone' {
+        $fixture = New-Fixture
+        $before = [IO.File]::ReadAllBytes($fixture.Source)
+        $probe = @"
+`$file = 'mine'
+try { . '$($script -replace "'", "''")' -Path '$($fixture.Source -replace "'", "''")' -TestPath '$($fixture.Tests -replace "'", "''")' -Mutant @{ Name = 'subtract'; Find = '`$a + `$b'; Replace = '`$a - `$b' } } catch { 'refused' }
+"file=`$file eap=`$ErrorActionPreference"
+"@
+
+        $printed = @(& pwsh -NoProfile -NonInteractive -Command $probe 2>&1 | ForEach-Object { "$_" })
+
+        $printed | Should -Contain 'refused'
+        $printed | Should -Contain 'file=mine eap=Continue'
+        [Convert]::ToHexString([IO.File]::ReadAllBytes($fixture.Source)) | Should -Be ([Convert]::ToHexString($before))
+    }
+
     It 'runs tests in a folder whose name has a quote and wildcard brackets' {
         $fixture = New-Fixture -Folder "it's here [x]"
 
