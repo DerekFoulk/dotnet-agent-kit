@@ -122,4 +122,20 @@ Describe 'Fixture' {
 
         $result.Passed | Should -Be 1
     }
+
+    # Dot-sourced, a script's variables land in the caller's session: the kind of leftover generic variable
+    # (such as $exitCode) that both incidents wrote through. It refuses before it sets anything but its parameters.
+    It 'refuses to run dot-sourced, leaving the caller''s variables and preferences alone' {
+        $path = New-TestFile -Body $passing
+        $probe = @"
+`$exitCode = 'mine'
+try { . '$($launcher -replace "'", "''")' -Path '$($path -replace "'", "''")' -Output None } catch { 'refused' }
+"exitCode=`$exitCode eap=`$ErrorActionPreference"
+"@
+
+        $printed = @(& pwsh -NoProfile -NonInteractive -Command $probe 2>&1 | ForEach-Object { "$_" })
+
+        $printed | Should -Contain 'refused'
+        $printed | Should -Contain 'exitCode=mine eap=Continue'
+    }
 }
