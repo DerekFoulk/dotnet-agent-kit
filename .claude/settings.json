@@ -185,6 +185,8 @@
       "PowerShell(*gh api* -i*)",
       "PowerShell(Invoke-Pester *)",
       "PowerShell(Install-PSResource *)",
+      "PowerShell(pwsh -NoProfile -Command \"Install-PSResource *)",
+      "Bash(pwsh -NoProfile -Command \"Install-PSResource *)",
       "PowerShell(Install-Module *)",
       "Bash(winget install *)",
       "PowerShell(winget install *)",
