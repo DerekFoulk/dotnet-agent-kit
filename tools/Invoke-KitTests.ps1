@@ -25,6 +25,7 @@ $filters = @($FullNameFilter | Where-Object { $_ } | ForEach-Object { ConvertTo-
 $filterLine = if ($filters) { "`$c.Filter.FullName = @($filters)" }
 $command = @"
 `$ErrorActionPreference = 'Stop'
+Set-Location -LiteralPath $(ConvertTo-Literal $repoRoot)
 Import-Module -Name Pester -MinimumVersion 6.0.0
 `$c = New-PesterConfiguration
 `$c.Run.Path = @($paths)
