@@ -184,6 +184,19 @@ Describe 'Get-DevMachineCheck' {
             & (Get-Check $Name).Test | Should -Be $Expected
         }
 
+        # ADR-0092: a file of Pester's that isn't validly signed any more was overwritten, as twice by a test run.
+        It 'the Pester signature check is <Expected> when PowerShell 7 reports <Case>' -ForEach @(
+            @{ Case = 'no file'; Reported = @(); ExitCode = 0; Expected = $true }
+            @{ Case = 'a file that isn''t validly signed'; Reported = @("6.2.0`tPester.ScriptScope.ps1`tNotSigned"); ExitCode = 0; Expected = $false }
+            @{ Case = 'nothing, and fails'; Reported = @('probe broke'); ExitCode = 1; Expected = $false }
+        ) {
+            Mock Test-CommandAvailable { $true }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = $ExitCode; Output = $Reported } } -ParameterFilter { $FilePath -eq 'pwsh' -and $Arguments -contains '-EncodedCommand' }
+
+            & (Get-Check 'Pester files signed').Test | Should -Be $Expected
+        }
+
         It 'the PowerShell extension check is <Expected> when VS Code lists <Listed>' -ForEach @(
             @{ Listed = @('github.copilot', 'ms-vscode.powershell'); Expected = $true }
             @{ Listed = @('github.copilot'); Expected = $false }
