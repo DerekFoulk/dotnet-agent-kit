@@ -306,6 +306,8 @@ Describe 'Initialize-DevMachine.ps1 as a script' -Tag 'Machine' {
         $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script 2>&1 | Out-String
 
         $output | Should -Match 'Checking the dotnet-agent-kit toolchain'
+        # The banner prints before any check runs; only the closing line shows that every check ran in 5.1.
+        $output | Should -Match 'All required tools are ready|Fix the items above' -Because $output
         $LASTEXITCODE | Should -BeIn 0, 1 -Because $output
     }
 
