@@ -22,6 +22,9 @@
     script's own variables, and nothing runs between the save and the restore but its own functions and a child
     process.
 
+    It can't mutate Invoke-KitTests.ps1 beside it, which judges every mutant: to probe the launcher, run another
+    clone's Invoke-Mutant with -Path and -TestPath in the clone to probe.
+
     Run it with ./ or &, never dot-sourced: dot-sourced, it refuses, though PowerShell has already set its
     parameters ($Path, $TestPath, $Mutant) in your session.
 
@@ -49,6 +52,9 @@ if ($MyInvocation.InvocationName -eq '.') {
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# The launcher that runs, and so judges, every test run.
+$launcher = Join-Path $PSScriptRoot 'Invoke-KitTests.ps1'
+
 # Runs the Pester tests at $TestPath through Invoke-KitTests.ps1, the kit's one launcher (ADR-0092): a fresh pwsh
 # process, so no state from this session leaks in either way. Returns whether Pester returned a result, how many
 # tests there were, how many ran (passed or failed: a skipped or filtered-out test proves nothing), how many
@@ -56,7 +62,7 @@ $ErrorActionPreference = 'Stop'
 # everything else the process printed, on stdout or stderr, which the launcher shows on the information stream,
 # for the message of an error.
 function Invoke-TestRun([string] $TestPath) {
-    $streams = @(& (Join-Path $PSScriptRoot 'Invoke-KitTests.ps1') -Path $TestPath -Output None 6>&1)
+    $streams = @(& $launcher -Path $TestPath -Output None 6>&1)
     $run = $streams | Where-Object { $_ -isnot [Management.Automation.InformationRecord] } | Select-Object -Last 1
     $printed = @($streams | Where-Object { $_ -is [Management.Automation.InformationRecord] } |
             ForEach-Object { "$($_.MessageData)".Trim() } | Where-Object { $_ }) -join ' '
@@ -81,6 +87,11 @@ function New-Result([string] $Name, [string] $Result, $Run, [string] $Message) {
 
 $file = (Resolve-Path -LiteralPath $Path).Path
 $tests = (Resolve-Path -LiteralPath $TestPath).Path
+# A mutant of the launcher would judge itself: one that over-reports a broken block reads as Killed with no test
+# failing. Another clone's Invoke-Mutant judges it with a launcher of its own.
+if ([string]::Equals($file, (Resolve-Path -LiteralPath $launcher).Path, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Invoke-Mutant judges every mutant with $launcher, so it can't mutate that file. Run Invoke-Mutant from another clone, with -Path and -TestPath in this one."
+}
 $original = [IO.File]::ReadAllBytes($file)
 $text = [Text.UTF8Encoding]::new($false).GetString($original)
 
