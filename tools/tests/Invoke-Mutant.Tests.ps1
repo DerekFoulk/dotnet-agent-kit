@@ -48,6 +48,15 @@ Describe 'Add' {
         [Convert]::ToHexString([IO.File]::ReadAllBytes($launcher)) | Should -Be ([Convert]::ToHexString($before))
     }
 
+    # Windows paths ignore case, and Resolve-Path keeps the case typed, so the refusal must too.
+    It 'refuses the launcher named in another case, on Windows' -Skip:(-not $IsWindows) {
+        $launcher = (Join-Path (Split-Path $script) 'Invoke-KitTests.ps1').ToUpperInvariant()
+        $fixture = New-Fixture
+
+        { & $script -Path $launcher -TestPath $fixture.Tests -Mutant @{ Name = 'none'; Find = 'text that is not there'; Replace = 'x' } } |
+            Should -Throw '*another clone*'
+    }
+
     # A killed mutant is the run going as planned; the launcher's exit code for its failing tests isn't the caller's.
     It 'leaves $LASTEXITCODE at 0 after a run whose mutant is killed' {
         $fixture = New-Fixture
