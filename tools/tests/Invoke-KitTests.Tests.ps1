@@ -46,4 +46,24 @@ Describe 'Fixture' {
         $result.Passed | Should -Be 1
         $result.NotRun | Should -Be 1
     }
+
+    # Pester calls a run with nothing in it "Passed", and its TotalCount counts tests it didn't run. A run that
+    # ran no test proves nothing, so it fails.
+    It 'exits 1 when <Case>' -ForEach @(
+        @{ Case = 'the filter matches no test'; Filter = @('nothing matches this*') }
+        @{ Case = 'every test it runs is skipped'; Filter = @('Fixture.skipped') }
+    ) {
+        $path = New-TestFile -Body @'
+Describe 'Fixture' {
+    It 'runs' { 1 | Should -Be 1 }
+    It 'skipped' -Skip { 1 | Should -Be 1 }
+}
+'@
+
+        $result = & $launcher -Path $path -FullNameFilter $Filter -Output None
+
+        $result.Passed + $result.Failed | Should -Be 0
+        $result.ExitCode | Should -Be 1
+        $LASTEXITCODE | Should -Be 1
+    }
 }
