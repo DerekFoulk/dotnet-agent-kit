@@ -121,6 +121,17 @@ Describe 'Get-DevMachineCheck' {
         $result.ManualAction | Should -BeLike "*$(Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0' -Reinstall)*"
     }
 
+    # The probe scans every signable file of each Pester, so a passing check runs it once, not again for its detail.
+    It 'runs the Pester signature probe once when the check passes' {
+        Mock Test-WindowsPlatform { $true }
+        Mock Test-CommandAvailable { $true }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 0; Output = @() } }
+
+        $null = Invoke-DevMachineCheck -Check (Get-Check 'Pester files signed')
+
+        Should -Invoke Invoke-Native -Times 1 -Exactly
+    }
+
     # A probe that fails proves nothing either way, so it says the check couldn't run, not that files changed.
     It 'says the Pester signature check couldn''t run, without blaming Pester''s files, when the probe fails' {
         Mock Test-WindowsPlatform { $true }
@@ -244,6 +255,8 @@ Describe 'Get-DevMachineCheck' {
             @{ Case = 'no file'; Reported = @(); ExitCode = 0; Expected = $true }
             @{ Case = 'a file that isn''t validly signed'; Reported = @("6.2.0`tPester.ScriptScope.ps1`tNotSigned"); ExitCode = 0; Expected = $false }
             @{ Case = 'nothing, and fails'; Reported = @('probe broke'); ExitCode = 1; Expected = $false }
+            # Only "<version><tab><file><tab><status>" lines are problems: a warning on the probe's output isn't one.
+            @{ Case = 'only a stray warning line'; Reported = @('WARNING: a module path is slow'); ExitCode = 0; Expected = $true }
         ) {
             Mock Test-CommandAvailable { $true }
             Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
