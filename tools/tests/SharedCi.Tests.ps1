@@ -793,6 +793,19 @@ Describe 'Shared CI for app repos' {
             # The step's pattern names the image too, but no tag: v[0-9]+, never v8.
             $dotnet.Text | Should -Not -Match 'gitleaks/gitleaks:v\d' -Because 'the Dockerfile is the one pin'
         }
+
+        # ADR-0024 (update, 2026-11-21): without --log-opts, gitleaks scans `git log --all`, so one branch's known false
+        # positive failed every other PR. The scan keeps gitleaks' own defaults but names HEAD, the commit under test.
+        It 'scans every commit HEAD reaches, with gitleaks'' own log options but HEAD in place of --all' {
+            $checkout = @(@($secrets['steps']) | Where-Object { "$($_['uses'])" -match '^actions/checkout@' })
+
+            $checkout | Should -HaveCount 1
+            $checkout[0]['with']['fetch-depth'] | Should -Be 0 -Because 'the scan needs all of HEAD''s history'
+            $scan[0]['name'] | Should -Be 'Scan every commit HEAD reaches'
+            $scan[0]['run'] | Should -Match ([regex]::Escape('--redact --verbose --log-opts="--full-history --diff-filter=tuxdb HEAD"'))
+            $scan[0]['run'] | Should -Not -Match '--all\b' -Because 'every fetched branch is not the commit under test'
+            [regex]::Matches($scan[0]['run'], '--log-opts').Count | Should -Be 1 -Because 'gitleaks keeps the last --log-opts given'
+        }
     }
 
     Context 'app-checks.reusable.yml' {
