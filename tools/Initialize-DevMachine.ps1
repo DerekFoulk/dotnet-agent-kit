@@ -182,7 +182,7 @@ function Get-PesterSignatureProblem {
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes((Get-PesterSignatureProbe)))
     $result = Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded
     if ($result.ExitCode -ne 0) {
-        return [pscustomobject]@{ Version = $null; Text = "The check itself failed (exit code $($result.ExitCode)): $($result.Output -join ' ')" }
+        return [pscustomobject]@{ Version = $null; Text = "exit code $($result.ExitCode): $($result.Output -join ' ')" }
     }
     foreach ($line in $result.Output) {
         $parts = @($line -split "`t")
@@ -205,16 +205,19 @@ function Get-PwshModuleInstallCommand {
     "pwsh -NoProfile -Command `"Install-PSResource -Name $Name -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository$reinstallFlag`""
 }
 
-# What the owner reads when Pester's files changed: each file, then the command that reinstalls each Pester they're in.
+# What the owner reads when the Pester signature check fails. When its files changed: each file, then the command
+# that reinstalls each Pester they're in. When the probe itself failed (a problem with no version), that says
+# nothing about Pester's files, so it only says the check couldn't run, and why.
 function Format-PesterSignatureProblem {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Problem)
-    $reinstalls = @($Problem | Where-Object { $_.Version } | ForEach-Object { $_.Version } | Sort-Object -Unique |
-            ForEach-Object { Get-PwshModuleInstallCommand -Name 'Pester' -Version $_ -Reinstall })
-    $text = "Not validly signed: $(@($Problem | ForEach-Object { $_.Text }) -join '; ')."
-    if ($reinstalls) {
-        $text += " Reinstall: $($reinstalls -join '; ')"
+    $changed = @($Problem | Where-Object { $_.Version })
+    if (-not $changed) {
+        return "The check couldn't run, so Pester's files aren't confirmed: $(@($Problem | ForEach-Object { $_.Text }) -join '; ')."
     }
-    $text
+    $reinstalls = @($changed | ForEach-Object { $_.Version } | Sort-Object -Unique |
+            ForEach-Object { Get-PwshModuleInstallCommand -Name 'Pester' -Version $_ -Reinstall })
+    "Pester's own files have changed, so its runs can't be trusted: reinstall it yourself (installing is your step). " +
+    "Not validly signed: $(@($changed | ForEach-Object { $_.Text }) -join '; '). Reinstall: $($reinstalls -join '; ')"
 }
 
 # Windows PowerShell 5.1 has no $IsWindows, and strict mode makes reading it an error there.
@@ -287,7 +290,6 @@ function Get-DevMachineCheck {
     New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PwshModule -Name 'Pester' -MinimumVersion '6.0.0' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0')
     New-DevMachineCheck -Name 'Pester files signed' -Required $true -Test { -not @(Get-PesterSignatureProblem) } `
-        -ManualAction 'Pester''s own files have changed, so its runs can''t be trusted: reinstall it yourself (installing is your step).' `
         -Detail { Format-PesterSignatureProblem -Problem @(Get-PesterSignatureProblem) } -Skip { Get-PesterSignatureSkipReason }
     New-DevMachineCheck -Name 'powershell-yaml' -Required $true -Test { Test-PwshModule -Name 'powershell-yaml' -MinimumVersion '0.4.12' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'powershell-yaml' -Version '0.4.12')
