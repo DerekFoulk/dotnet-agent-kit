@@ -60,10 +60,10 @@ Describe 'Get-DevMachineCheck' {
         $checks = Get-DevMachineCheck -RepoRoot $TestDrive
 
         $checks.Name | Should -Be @(
-            'PowerShell 7.6+', 'Pester 6', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in', '.NET SDK 10.0.403',
-            'Claude Code', 'Git commit-msg hook', 'VS Code', 'VS Code PowerShell extension', 'Docker'
+            'PowerShell 7.6+', 'Pester 6', 'Pester files signed', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in',
+            '.NET SDK 10.0.403', 'Claude Code', 'Git commit-msg hook', 'VS Code', 'VS Code PowerShell extension', 'Docker'
         )
-        @($checks | Where-Object Required).Count | Should -Be 9
+        @($checks | Where-Object Required).Count | Should -Be 10
     }
 
     It 'turns the commit-msg hook on for this clone only' {
@@ -103,6 +103,72 @@ Describe 'Get-DevMachineCheck' {
 
         $check.InstallCommand | Should -BeNullOrEmpty
         $check.ManualAction | Should -BeLike '*gh auth login*'
+    }
+
+    # Reinstalling is the owner's step ("Always ask"), so the check has no install command, and -Install never runs
+    # it: it says which files changed and how to reinstall each Pester they're in.
+    It 'names each file that isn''t validly signed, with the command that reinstalls its Pester, and installs nothing' {
+        Mock Test-WindowsPlatform { $true }
+        Mock Test-CommandAvailable { $true }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 0; Output = @("6.2.0`tPester.ScriptScope.ps1`tNotSigned", "6.2.0`tbin\net8.0\Pester.dll`tHashMismatch") } } -ParameterFilter { $FilePath -eq 'pwsh' -and $Arguments -contains '-EncodedCommand' }
+
+        $result = Invoke-DevMachineCheck -Check (Get-Check 'Pester files signed')
+
+        $result.Status | Should -Be 'action'
+        $result.InstallCommand | Should -BeNullOrEmpty
+        $result.ManualAction | Should -BeLike '*Pester 6.2.0: Pester.ScriptScope.ps1 is NotSigned*'
+        $result.ManualAction | Should -BeLike '*Pester 6.2.0: bin\net8.0\Pester.dll is HashMismatch*'
+        $result.ManualAction | Should -BeLike "*$(Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0' -Reinstall)*"
+    }
+
+    # The probe scans every signable file of each Pester, so a passing check runs it once, not again for its detail.
+    It 'runs the Pester signature probe once when the check passes' {
+        Mock Test-WindowsPlatform { $true }
+        Mock Test-CommandAvailable { $true }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 0; Output = @() } }
+
+        $null = Invoke-DevMachineCheck -Check (Get-Check 'Pester files signed')
+
+        Should -Invoke Invoke-Native -Times 1 -Exactly
+    }
+
+    # A probe that fails proves nothing either way, so it says the check couldn't run, not that files changed.
+    It 'says the Pester signature check couldn''t run, without blaming Pester''s files, when the probe fails' {
+        Mock Test-WindowsPlatform { $true }
+        Mock Test-CommandAvailable { $true }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @('pwsh: could not start') } } -ParameterFilter { $FilePath -eq 'pwsh' -and $Arguments -contains '-EncodedCommand' }
+
+        $result = Invoke-DevMachineCheck -Check (Get-Check 'Pester files signed')
+
+        $result.Status | Should -Be 'action'
+        $result.ManualAction | Should -BeLike '*couldn''t run*pwsh: could not start*'
+        $result.ManualAction | Should -Not -BeLike '*changed*'
+        $result.ManualAction | Should -Not -BeLike '*Reinstall*'
+    }
+
+    # Get-AuthenticodeSignature exists only on Windows, and the check runs in PowerShell 7.
+    It 'skips the Pester signature check, saying why, when <Case>' -ForEach @(
+        @{ Case = 'not on Windows'; Windows = $false; Pwsh = $true; Reason = '*only on Windows*' }
+        @{ Case = 'PowerShell 7 is missing'; Windows = $true; Pwsh = $false; Reason = '*PowerShell 7*' }
+    ) {
+        Mock Test-WindowsPlatform { $Windows }
+        Mock Test-CommandAvailable { $Pwsh }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 0; Output = @("6.2.0`tPester.psm1`tNotSigned") } }
+
+        $result = Invoke-DevMachineCheck -Check (Get-Check 'Pester files signed')
+
+        $result.Status | Should -Be 'skipped'
+        $result.ManualAction | Should -BeLike $Reason
+        Should -Invoke Invoke-Native -Times 0
+    }
+
+    It 'knows whether it runs on Windows' {
+        Test-WindowsPlatform | Should -Be $IsWindows
+    }
+
+    It 'reinstalls a module with -Reinstall added to its install command' {
+        Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0' -Reinstall |
+            Should -Be 'pwsh -NoProfile -Command "Install-PSResource -Name Pester -Version 6.2.0 -Scope CurrentUser -Repository PSGallery -TrustRepository -Reinstall"'
     }
 
     Context 'probes' {
@@ -182,6 +248,21 @@ Describe 'Get-DevMachineCheck' {
             Mock Invoke-Native { [pscustomobject]@{ ExitCode = $ExitCode; Output = @() } } -ParameterFilter { $FilePath -eq 'pwsh' -and ($Arguments -join ' ') -like $ProbePattern }
 
             & (Get-Check $Name).Test | Should -Be $Expected
+        }
+
+        # ADR-0092: a file of Pester's that isn't validly signed any more was overwritten, as twice by a test run.
+        It 'the Pester signature check is <Expected> when PowerShell 7 reports <Case>' -ForEach @(
+            @{ Case = 'no file'; Reported = @(); ExitCode = 0; Expected = $true }
+            @{ Case = 'a file that isn''t validly signed'; Reported = @("6.2.0`tPester.ScriptScope.ps1`tNotSigned"); ExitCode = 0; Expected = $false }
+            @{ Case = 'nothing, and fails'; Reported = @('probe broke'); ExitCode = 1; Expected = $false }
+            # Only "<version><tab><file><tab><status>" lines are problems: a warning on the probe's output isn't one.
+            @{ Case = 'only a stray warning line'; Reported = @('WARNING: a module path is slow'); ExitCode = 0; Expected = $true }
+        ) {
+            Mock Test-CommandAvailable { $true }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
+            Mock Invoke-Native { [pscustomobject]@{ ExitCode = $ExitCode; Output = $Reported } } -ParameterFilter { $FilePath -eq 'pwsh' -and $Arguments -contains '-EncodedCommand' }
+
+            & (Get-Check 'Pester files signed').Test | Should -Be $Expected
         }
 
         It 'the PowerShell extension check is <Expected> when VS Code lists <Listed>' -ForEach @(
@@ -288,6 +369,16 @@ Describe 'Initialize-DevMachine' {
         }
     }
 
+    It 'shows a skipped check with its reason, and returns 0 when nothing else is missing' {
+        Mock Get-DevMachineCheck {
+            New-FakeCheck -Name 'Present' -Required $true -Passes $true -Install 'install present'
+            New-DevMachineCheck -Name 'Signatures' -Required $true -Test { $false } -Skip { 'not on this platform' }
+        }
+
+        Initialize-DevMachine -RepoRoot $TestDrive | Should -Be 0
+        Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*`[skipped`]*Signatures*not on this platform*' }
+    }
+
     It 'returns 0 when only optional tools are missing' {
         Mock Get-DevMachineCheck {
             New-FakeCheck -Name 'Present' -Required $true -Passes $true -Install 'install present'
@@ -306,6 +397,8 @@ Describe 'Initialize-DevMachine.ps1 as a script' -Tag 'Machine' {
         $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script 2>&1 | Out-String
 
         $output | Should -Match 'Checking the dotnet-agent-kit toolchain'
+        # The banner prints before any check runs; only the closing line shows that every check ran in 5.1.
+        $output | Should -Match 'All required tools are ready|Fix the items above' -Because $output
         $LASTEXITCODE | Should -BeIn 0, 1 -Because $output
     }
 
@@ -324,6 +417,42 @@ Describe 'Initialize-DevMachine.ps1 as a script' -Tag 'Machine' {
         $output = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $driver 2>&1 | Out-String
 
         $output | Should -Match 'EXIT=3 OUTPUT=.*probe-error'
+    }
+}
+
+Describe 'Get-PesterSignatureProblem on this machine' -Tag 'Machine' -Skip:(-not $IsWindows) {
+    # A fake Pester 6.99.0 next to the real one (Get-Module -ListAvailable leaves out a second copy of a version it
+    # already lists): its own manifest, unsigned; a renamed copy of the running Pester's signed Pester.ScriptScope.ps1,
+    # still valid, since a script's signature covers its text, not its name; a script with no signature, standing in
+    # for an overwritten file; and a text file, which Authenticode can't sign.
+    BeforeAll {
+        $fakeModules = Join-Path $TestDrive "modules-$(New-Guid)"
+        $fakeBase = Join-Path $fakeModules 'Pester' '6.99.0'
+        New-Item -ItemType Directory -Path $fakeBase -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $fakeBase 'Pester.psd1') -Value "@{ ModuleVersion = '6.99.0' }"
+        Copy-Item -LiteralPath (Join-Path (Get-Module -Name Pester).ModuleBase 'Pester.ScriptScope.ps1') -Destination (Join-Path $fakeBase 'Signed.ps1')
+        Set-Content -LiteralPath (Join-Path $fakeBase 'Overwritten.ps1') -Value '"no signature here"'
+        Set-Content -LiteralPath (Join-Path $fakeBase 'notes.txt') -Value 'not a signable file'
+        # An older Pester, which the kit doesn't run, with an unsigned manifest of its own.
+        $oldBase = Join-Path $fakeModules 'Pester' '5.99.0'
+        New-Item -ItemType Directory -Path $oldBase -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $oldBase 'Pester.psd1') -Value "@{ ModuleVersion = '5.99.0' }"
+        $savedModulePath = $env:PSModulePath
+        $env:PSModulePath = $fakeModules + [IO.Path]::PathSeparator + $env:PSModulePath
+    }
+
+    AfterAll {
+        $env:PSModulePath = $savedModulePath
+    }
+
+    It 'reports each file of a type Authenticode signs whose signature isn''t valid, and no other' {
+        $texts = @(@(Get-PesterSignatureProblem) | ForEach-Object Text)
+
+        $texts | Should -Contain 'Pester 6.99.0: Overwritten.ps1 is NotSigned'
+        $texts | Should -Contain 'Pester 6.99.0: Pester.psd1 is NotSigned'
+        $texts | Should -Not -BeLike '*Signed.ps1 is*' -Because 'a validly signed file is fine'
+        $texts | Should -Not -BeLike '*notes.txt*' -Because 'Authenticode can''t sign a text file'
+        $texts | Should -Not -BeLike 'Pester 5.99.0*' -Because 'the kit runs Pester 6 or later'
     }
 }
 

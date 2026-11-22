@@ -3,7 +3,7 @@
     Checks this machine for the dotnet-agent-kit toolchain and, with -Install, installs what's missing.
 
 .DESCRIPTION
-    Required: PowerShell 7.6 or later (the current LTS), Pester 6 (runs the kit's script tests), powershell-yaml (reads rule metadata), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
+    Required: PowerShell 7.6 or later (the current LTS), Pester 6 (runs the kit's script tests) with its signed files unchanged (on Windows; ADR-0092), powershell-yaml (reads rule metadata), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
     Later in the build: VS Code with the PowerShell extension, Docker.
 
     Nothing is installed unless you pass -Install; each install command is shown first, and -WhatIf
@@ -156,12 +156,83 @@ function Test-PwshModule {
     (Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-Command', $moduleQuery).ExitCode -eq 0
 }
 
+# The script PowerShell 7 runs to find Pester's files that aren't validly signed: one "<version>`t<file>`t<status>"
+# line each. It checks every installed Pester 6 or later (the kit's minimum; Windows PowerShell's own Pester 3.4 is
+# left alone), and every file of a type Authenticode signs, by extension rather than by "has a signature": an
+# overwritten script has none, and reads NotSigned. Pester 6.2.0 has seven such files.
+function Get-PesterSignatureProbe {
+    @'
+$signable = '.ps1', '.psm1', '.psd1', '.ps1xml', '.dll', '.cat'
+foreach ($module in @(Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version -ge [version] '6.0.0' })) {
+    foreach ($file in @(Get-ChildItem -LiteralPath $module.ModuleBase -Recurse -File | Where-Object { $_.Extension -in $signable })) {
+        $status = (Get-AuthenticodeSignature -LiteralPath $file.FullName).Status
+        if ($status -ne 'Valid') {
+            "$($module.Version)`t$($file.FullName.Substring($module.ModuleBase.Length + 1))`t$status"
+        }
+    }
+}
+'@
+}
+
+# Asks PowerShell 7 which of Pester's signed files aren't validly signed any more (ADR-0092): twice an agent's
+# "restore" of a script, through a path variable a test run in a shared session had changed, overwrote one. Each
+# problem has the Pester version it's in (none when the probe itself failed) and its text. A probe that fails is a problem too: it proves nothing. The check skips itself where this can't run
+# (Get-PesterSignatureSkipReason).
+function Get-PesterSignatureProblem {
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes((Get-PesterSignatureProbe)))
+    $result = Invoke-Native -FilePath 'pwsh' -Arguments '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded
+    if ($result.ExitCode -ne 0) {
+        return [pscustomobject]@{ Version = $null; Text = "exit code $($result.ExitCode): $($result.Output -join ' ')" }
+    }
+    foreach ($line in $result.Output) {
+        $parts = @($line -split "`t")
+        if ($parts.Count -eq 3) {
+            [pscustomobject]@{ Version = $parts[0]; Text = "Pester $($parts[0]): $($parts[1]) is $($parts[2])" }
+        }
+    }
+}
+
 function Get-PwshModuleInstallCommand {
     param(
         [Parameter(Mandatory)] [string] $Name,
-        [Parameter(Mandatory)] [string] $Version
+        [Parameter(Mandatory)] [string] $Version,
+        [switch] $Reinstall
     )
-    "pwsh -NoProfile -Command `"Install-PSResource -Name $Name -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository`""
+    $reinstallFlag = ''
+    if ($Reinstall) {
+        $reinstallFlag = ' -Reinstall'
+    }
+    "pwsh -NoProfile -Command `"Install-PSResource -Name $Name -Version $Version -Scope CurrentUser -Repository PSGallery -TrustRepository$reinstallFlag`""
+}
+
+# What the owner reads when the Pester signature check fails. When its files changed: each file, then the command
+# that reinstalls each Pester they're in. When the probe itself failed (a problem with no version), that says
+# nothing about Pester's files, so it only says the check couldn't run, and why.
+function Format-PesterSignatureProblem {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Problem)
+    $changed = @($Problem | Where-Object { $_.Version })
+    if (-not $changed) {
+        return "The check couldn't run, so Pester's files aren't confirmed: $(@($Problem | ForEach-Object { $_.Text }) -join '; ')."
+    }
+    $reinstalls = @($changed | ForEach-Object { $_.Version } | Sort-Object -Unique |
+            ForEach-Object { Get-PwshModuleInstallCommand -Name 'Pester' -Version $_ -Reinstall })
+    "Pester's own files have changed, so its runs can't be trusted: reinstall it yourself (installing is your step). " +
+    "Not validly signed: $(@($changed | ForEach-Object { $_.Text }) -join '; '). Reinstall: $($reinstalls -join '; ')"
+}
+
+# Windows PowerShell 5.1 has no $IsWindows, and strict mode makes reading it an error there.
+function Test-WindowsPlatform {
+    [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+}
+
+# Why the Pester signature check can't run here, or nothing when it can.
+function Get-PesterSignatureSkipReason {
+    if (-not (Test-WindowsPlatform)) {
+        return 'Skipped: Get-AuthenticodeSignature is available only on Windows.'
+    }
+    if (-not (Test-CommandAvailable -Name 'pwsh')) {
+        return 'Skipped: the check runs in PowerShell 7, which is missing.'
+    }
 }
 
 function Test-VsCodeExtension {
@@ -185,7 +256,11 @@ function New-DevMachineCheck {
         [Parameter(Mandatory)] [bool] $Required,
         [Parameter(Mandatory)] [scriptblock] $Test,
         [string] $InstallCommand,
-        [string] $ManualAction
+        [string] $ManualAction,
+        # What a failed check adds to ManualAction, worked out only when the check fails.
+        [scriptblock] $Detail,
+        # Returns why the check can't run on this machine, or nothing when it can.
+        [scriptblock] $Skip
     )
     [pscustomobject]@{
         Name           = $Name
@@ -193,6 +268,8 @@ function New-DevMachineCheck {
         Test           = $Test
         InstallCommand = $InstallCommand
         ManualAction   = $ManualAction
+        Detail         = $Detail
+        Skip           = $Skip
     }
 }
 
@@ -212,6 +289,8 @@ function Get-DevMachineCheck {
         -InstallCommand 'winget install --id Microsoft.PowerShell --exact'
     New-DevMachineCheck -Name 'Pester 6' -Required $true -Test { Test-PwshModule -Name 'Pester' -MinimumVersion '6.0.0' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'Pester' -Version '6.2.0')
+    New-DevMachineCheck -Name 'Pester files signed' -Required $true -Test { -not @(Get-PesterSignatureProblem) } `
+        -Detail { Format-PesterSignatureProblem -Problem @(Get-PesterSignatureProblem) } -Skip { Get-PesterSignatureSkipReason }
     New-DevMachineCheck -Name 'powershell-yaml' -Required $true -Test { Test-PwshModule -Name 'powershell-yaml' -MinimumVersion '0.4.12' } `
         -InstallCommand (Get-PwshModuleInstallCommand -Name 'powershell-yaml' -Version '0.4.12')
     New-DevMachineCheck -Name 'Git' -Required $true -Test { Test-CommandAvailable -Name 'git' } `
@@ -239,6 +318,21 @@ function Invoke-DevMachineCheck {
     param([Parameter(Mandatory)] [pscustomobject] $Check)
 
     # ok: present. action: only the owner can fix it. missing: required now. later: needed in a later build step.
+    # skipped: it can't run on this machine, which says nothing about the tool.
+    $skipReason = $null
+    if ($Check.Skip) {
+        $skipReason = & $Check.Skip
+    }
+    if ($skipReason) {
+        return [pscustomobject]@{
+            Name           = $Check.Name
+            Required       = $Check.Required
+            Status         = 'skipped'
+            InstallCommand = $Check.InstallCommand
+            ManualAction   = "$skipReason"
+        }
+    }
+
     $status = 'later'
     if (& $Check.Test) {
         $status = 'ok'
@@ -250,12 +344,17 @@ function Invoke-DevMachineCheck {
         $status = 'missing'
     }
 
+    $manualAction = $Check.ManualAction
+    if ($status -ne 'ok' -and $Check.Detail) {
+        $manualAction = "$manualAction $(& $Check.Detail)".Trim()
+    }
+
     [pscustomobject]@{
         Name           = $Check.Name
         Required       = $Check.Required
         Status         = $status
         InstallCommand = $Check.InstallCommand
-        ManualAction   = $Check.ManualAction
+        ManualAction   = $manualAction
     }
 }
 
@@ -281,8 +380,8 @@ function Initialize-DevMachine {
         [switch] $Install
     )
 
-    $labels = @{ ok = '[ok]     '; missing = '[missing]'; later = '[later]  '; action = '[action] ' }
-    $colors = @{ ok = 'Green'; missing = 'Red'; later = 'Yellow'; action = 'Red' }
+    $labels = @{ ok = '[ok]     '; missing = '[missing]'; later = '[later]  '; action = '[action] '; skipped = '[skipped]' }
+    $colors = @{ ok = 'Green'; missing = 'Red'; later = 'Yellow'; action = 'Red'; skipped = 'Yellow' }
 
     Write-Host "`nChecking the dotnet-agent-kit toolchain on $env:COMPUTERNAME..." -ForegroundColor Cyan
     $results = @(Get-DevMachineCheck -RepoRoot $RepoRoot | ForEach-Object { Invoke-DevMachineCheck -Check $_ })
@@ -291,13 +390,13 @@ function Initialize-DevMachine {
         if ($result.Status -in 'missing', 'later') {
             $line += "  ->  $($result.InstallCommand)"
         }
-        elseif ($result.Status -eq 'action') {
+        elseif ($result.Status -in 'action', 'skipped') {
             $line += "  ->  $($result.ManualAction)"
         }
         Write-Host $line -ForegroundColor $colors[$result.Status]
     }
 
-    $notReady = @($results | Where-Object { $_.Required -and $_.Status -ne 'ok' })
+    $notReady = @($results | Where-Object { $_.Required -and $_.Status -notin 'ok', 'skipped' })
 
     if ($Install) {
         $installable = @($results | Where-Object { $_.Status -in 'missing', 'later' })

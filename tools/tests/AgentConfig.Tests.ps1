@@ -75,6 +75,37 @@ Describe 'Agent configuration' {
             (Get-RuleList 'ask') -ccontains "PowerShell($Command)" | Should -BeTrue
         }
 
+        # Initialize-DevMachine prints these as the fix for a missing module or a changed Pester (ADR-0092); an agent
+        # that pastes one installs software, which is "Always ask". The rule matches the printed form's start, so a
+        # commit message or a grep that quotes it doesn't ask (review round 1 of ADR-0092's PR).
+        It 'asks before the module install Initialize-DevMachine prints: <Tool>, <Module>, reinstall <Reinstall>' -ForEach @(
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Module = 'Pester'; Version = '6.2.0'; Reinstall = $false }
+                @{ Tool = $tool; Module = 'Pester'; Version = '6.2.0'; Reinstall = $true }
+                @{ Tool = $tool; Module = 'powershell-yaml'; Version = '0.4.12'; Reinstall = $false }
+            }
+        ) {
+            . (Join-Path $repoRoot 'tools' 'Initialize-DevMachine.ps1')
+            $command = Get-PwshModuleInstallCommand -Name $Module -Version $Version -Reinstall:$Reinstall
+
+            Test-AskRuleMatch -Tool $Tool -Command $command | Should -BeTrue -Because "an ask rule should catch $Tool($command)"
+        }
+
+        # ADR-0092: Pester run in the PowerShell tool's shared session twice left a path variable pointing into
+        # Pester's module folder, and a later restore overwrote a Pester file. The kit's tests run through
+        # ./tools/Invoke-KitTests.ps1, which starts a child pwsh; typing Invoke-Pester asks. Claude Code's
+        # PowerShell rules ignore case, so the stricter reading for an ask is the exact case.
+        It 'asks before Invoke-Pester typed into the PowerShell tool: <Command>' -ForEach @(
+            @{ Command = 'Invoke-Pester' }
+            @{ Command = 'Invoke-Pester -Path ./tools/tests' }
+            @{ Command = 'Invoke-Pester -Path ./tools/tests/Set-AgentMode.Tests.ps1 -Output Detailed' }
+            @{ Command = 'Invoke-Pester -Configuration $c' }
+            @{ Command = 'Invoke-Pester ./tools/tests' }
+        ) {
+            Test-AskRuleMatch -Tool 'PowerShell' -Command $Command | Should -BeTrue -Because "an ask rule should catch PowerShell($Command)"
+            Test-RuleMatch -Kind 'allow' -Tool 'PowerShell' -Command $Command -IgnoreCase | Should -BeFalse -Because 'no allow rule should cover it'
+        }
+
         It 'asks before editing <Path>' -ForEach @(
             # The agent's own permissions and connectors (SEC-004), and the working mode (ADR-0035).
             @{ Path = './.claude/settings.json' }, @{ Path = './.claude/settings.local.json' }, @{ Path = './.agent-mode' }
@@ -281,7 +312,8 @@ Describe 'Agent configuration' {
         It 'doesn''t ask for a command that only names the install: <Tool>(<Command>)' -ForEach @(
             foreach ($tool in 'Bash', 'PowerShell') {
                 @{ Tool = $tool; Command = 'dotnet test --project fixtures/WebUi/tests/Kit.WebUi.E2E.Tests' }
-                @{ Tool = $tool; Command = 'Invoke-Pester -Path ./tools/tests/Install-PlaywrightBrowser.Tests.ps1' }
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./tools/Invoke-KitTests.ps1 -Path ./tools/tests/Install-PlaywrightBrowser.Tests.ps1' }
+                @{ Tool = $tool; Command = './tools/Invoke-KitTests.ps1 -Path ./tools/tests/Install-PlaywrightBrowser.Tests.ps1' }
                 @{ Tool = $tool; Command = 'git add tools/Install-PlaywrightBrowser.ps1 tools/tests/Install-PlaywrightBrowser.Tests.ps1' }
                 @{ Tool = $tool; Command = 'git diff origin/main -- tools/Install-PlaywrightBrowser.ps1' }
                 @{ Tool = $tool; Command = './tools/Invoke-Mutant.ps1 -Path ./tools/Install-PlaywrightBrowser.ps1 -TestPath ./tools/tests/Install-PlaywrightBrowser.Tests.ps1' }
@@ -394,6 +426,8 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'git merge --no-edit origin/main' }
                 @{ Tool = $tool; Command = 'git pull --ff-only' }
                 @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./tools/Test-RuleSources.ps1' }
+                # The test launcher (ADR-0092), including runs of test files named after scripts that ask.
+                @{ Tool = $tool; Command = 'pwsh -NoProfile -File ./tools/Invoke-KitTests.ps1 -Path ./tools/tests/Initialize-DevMachine.Tests.ps1' }
             }
             @{ Tool = 'PowerShell'; Command = 'git status' }
             @{ Tool = 'PowerShell'; Command = 'git status --short --ignored' }
@@ -411,6 +445,11 @@ Describe 'Agent configuration' {
             @{ Tool = 'PowerShell'; Command = 'Get-OpenFinding -Repository o/r -Number 76' }
             @{ Tool = 'PowerShell'; Command = 'Add-ReviewReply -Repository o/r -Number 76 -CommentId 1 -Body x' }
             @{ Tool = 'PowerShell'; Command = 'Resolve-ReviewFinding -Repository o/r -ThreadId x' }
+            @{ Tool = 'PowerShell'; Command = './tools/Invoke-KitTests.ps1' }
+            @{ Tool = 'PowerShell'; Command = './tools/Invoke-KitTests.ps1 -Path ./tools/tests/Set-AgentMode.Tests.ps1 -Output Detailed' }
+            @{ Tool = 'PowerShell'; Command = './tools/Invoke-KitTests.ps1 -Path ./tools/tests/New-KitApp.Tests.ps1' }
+            @{ Tool = 'PowerShell'; Command = '.\tools\Invoke-KitTests.ps1 -Path .\tools\tests\Initialize-DevMachine.Tests.ps1' }
+            @{ Tool = 'PowerShell'; Command = '& ./tools/Invoke-KitTests.ps1 -FullNameFilter ''*mode*''' }
         ) {
             Test-RuleMatch -Kind 'allow' -Tool $Tool -Command $Command | Should -BeTrue -Because "an allow rule should cover $Tool($Command)"
             Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command -IgnoreCase | Should -BeFalse -Because 'an ask rule wins over an allow rule'
@@ -444,9 +483,9 @@ Describe 'Agent configuration' {
         # Look-alikes of the routine commands that write, run a program, read a secret or drop work, which no allow
         # rule may cover (ADR-0075). git fetch, merge and pull are allowed only as exact commands, since --upload-pack
         # runs a program. A 'pwsh -Command "..."' string is opaque to Claude Code's command splitting, as 'bash -c' is
-        # in its docs, so a wildcard there would allow anything after a ';' inside the quotes; run Invoke-Pester or a
-        # ./tools script directly instead. ForEach-Object, Where-Object and the other cmdlets that take a script block
-        # stay unallowed too, since whether Claude Code checks the commands inside one isn't documented.
+        # in its docs, so a wildcard there would allow anything after a ';' inside the quotes; run the tests with
+        # ./tools/Invoke-KitTests.ps1 (ADR-0092), or a ./tools script, directly instead. ForEach-Object, Where-Object
+        # and the other cmdlets that take a script block stay unallowed too, since whether Claude Code checks the commands inside one isn't documented.
         # Reviews 1 and 2 of PR 1 probed the rest: git log, diff and show write any file with --output (.agent-mode,
         # the settings), diff --no-index and blame --contents print any file, gh pr comment deletes or rewrites a
         # comment or posts a file, and a parent segment in a path or a second module after a comma leaves the kit's
@@ -501,6 +540,15 @@ Describe 'Agent configuration' {
                 @{ Tool = $tool; Command = 'gh pr merge 76 --merge' }
                 @{ Tool = $tool; Command = 'pwsh -NoProfile -Command "Invoke-Pester -Path ./tools/tests; Remove-Item -Recurse -Force ~"' }
             }
+            # ADR-0092: putting a file back drops uncommitted work, and the spellings of Invoke-Pester that the ask rule
+            # doesn't match (an assignment, a module-qualified name, the call operator) must still prompt.
+            foreach ($tool in 'Bash', 'PowerShell') {
+                @{ Tool = $tool; Command = 'git restore -- tools/x.ps1' }
+                @{ Tool = $tool; Command = 'git checkout -- tools/x.ps1' }
+            }
+            @{ Tool = 'PowerShell'; Command = '$r = Invoke-Pester -Path ./tools/tests -PassThru' }
+            @{ Tool = 'PowerShell'; Command = 'Pester\Invoke-Pester -Path ./tools/tests' }
+            @{ Tool = 'PowerShell'; Command = '& Invoke-Pester -Path ./tools/tests' }
             @{ Tool = 'PowerShell'; Command = 'git branch -D feat/x' }
             @{ Tool = 'PowerShell'; Command = 'Set-Content ./AGENTS.md x' }
             @{ Tool = 'PowerShell'; Command = 'Remove-Item ./docs -Recurse' }
