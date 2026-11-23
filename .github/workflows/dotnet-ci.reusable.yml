@@ -420,6 +420,6 @@ jobs:
           fetch-depth: 0 # scan every commit HEAD reaches, not just the latest tree
           persist-credentials: false # nothing in .git for the container to read
 
-      # The scan, shared with the push scan of every branch (secret-scan.reusable.yml, ADR-0024): on a pull request it
+      # The scan, shared with the scan of every push to another branch or a tag (secret-scan.reusable.yml, ADR-0024): on a pull request it
       # covers the merge commit's history (main's and the PR's commits), on a push to main, main's.
       - uses: $/.github/actions/secret-scan

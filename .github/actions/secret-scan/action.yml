@@ -2,7 +2,7 @@ name: secret scan
 description: >-
   Scans every commit HEAD reaches for secrets with gitleaks (ADR-0024). The caller checks out first, with
   fetch-depth: 0 and persist-credentials: false. A kit shared workflow calls it as `uses: $/.github/actions/secret-scan`:
-  the .NET CI's required "Secret scan (gitleaks)" job, and the scan on every push to every branch.
+  the .NET CI's required "Secret scan (gitleaks)" job, and the scan of every push to a branch other than main or a tag.
 runs:
   using: composite
   steps:
