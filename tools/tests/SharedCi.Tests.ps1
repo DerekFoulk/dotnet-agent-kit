@@ -874,6 +874,62 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # ADR-0024 (update, 2026-11-23): a secret is exposed once it's pushed, to any branch, PR or not. Every push to a
+    # branch other than main (CI's push run scans main) and every tag push is scanned, as its own run on that ref.
+    Context 'secret-scan.reusable.yml' {
+        BeforeAll {
+            $pushScan = Read-Yaml '.github/workflows/secret-scan.reusable.yml'
+            $pushJobs = if ($pushScan.Yaml.ContainsKey('jobs')) { $pushScan.Yaml['jobs'] } else { @{} }
+        }
+
+        It 'is a shared workflow with one read-only job that checks out all history, then runs the secret-scan action' {
+            $pushScan.Text | Should -Match '(?m)^\s*workflow_call:' -Because 'secret-scan.reusable.yml scans pushes for the kit and its apps'
+            $pushJobs.Count | Should -Be 1
+            $job = @($pushJobs.Values)[0]
+            $steps = @($job['steps'])
+
+            $job['name'] | Should -Be 'Secret scan (gitleaks)'
+            $job['runs-on'] | Should -Be 'ubuntu-latest'
+            @($pushScan.Yaml['permissions'].Values) | Should -Be @('read')
+            $job.ContainsKey('permissions') | Should -BeFalse
+            $steps | Should -HaveCount 2
+            $steps[0]['uses'] | Should -Match '^actions/checkout@[0-9a-f]{40}$'
+            $steps[0]['with']['fetch-depth'] | Should -Be 0
+            $steps[0]['with']['persist-credentials'] | Should -BeFalse
+            $steps[1]['uses'] | Should -Be '$/.github/actions/secret-scan'
+            $pushScan.Text | Should -Not -Match '\./tools/'
+        }
+
+        # A branch deletion is a push event too; its run's SHA is the default branch's, so it would rescan main.
+        It 'skips a push that deletes the ref, and never cancels a run: a force-push can''t take back what was pushed' {
+            $pushJobs.Count | Should -Be 1 -Because 'secret-scan.reusable.yml has one scan job'
+            $job = @($pushJobs.Values)[0]
+
+            $job['if'] | Should -Be '${{ !github.event.deleted }}'
+            $pushScan.Text | Should -Not -Match '(?m)^\s*concurrency:'
+        }
+
+        It 'runs in <Caller> on every push to a branch other than main and every tag push, never as a pull request check' -ForEach @(
+            @{ Caller = 'the kit'; File = '.github/workflows/secret-scan.yml'; Uses = './.github/workflows/secret-scan.reusable.yml' }
+            @{ Caller = 'every app'; File = 'templates/app/.github/workflows/secret-scan.yml'; Uses = 'DerekFoulk/dotnet-agent-kit/.github/workflows/secret-scan.reusable.yml@X' }
+        ) {
+            $path = Join-Path $root $File
+            Test-Path -LiteralPath $path | Should -BeTrue -Because "$File calls the shared push scan"
+            # {{Name}} placeholders aren't YAML.
+            $yaml = ConvertFrom-Yaml ((Get-Content -Raw -LiteralPath $path) -replace '\{\{[A-Za-z]+\}\}', 'X')
+            $on = if ($yaml.ContainsKey('on')) { $yaml['on'] } else { $yaml[$true] }
+
+            @($on.Keys) | Should -Be @('push')
+            @($on['push']['branches-ignore']) | Should -Be @('main')
+            @($on['push']['tags']) | Should -Be @('**')
+            $on['push'].ContainsKey('branches') | Should -BeFalse
+            @($yaml['permissions'].Values) | Should -Be @('read')
+            $yaml.ContainsKey('concurrency') | Should -BeFalse
+            $yaml['jobs'].Count | Should -Be 1
+            @($yaml['jobs'].Values)[0]['uses'] | Should -Be $Uses
+        }
+    }
+
     Context 'app-checks.reusable.yml' {
         BeforeAll {
             $run = (@(Get-Steps $app.Yaml) | Where-Object { $_ -and $_.ContainsKey('run') } | ForEach-Object { $_['run'] }) -join "`n"
