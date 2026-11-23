@@ -32,6 +32,8 @@ Canon TDD (ADR-0018): take **one** item from the plan's test list at a time. Nev
 
 ## Notes
 
+- **Run Pester tests only in a child process.** Use the script-test command in `AGENTS.md`'s Commands table (in the kit, a launcher that starts a child `pwsh -NoProfile`); where there's none, `pwsh -NoProfile -Command "..."` with literal paths. Never type `Invoke-Pester` into a session you keep using, such as Claude Code's PowerShell tool: a Pester run there twice left a path variable pointing into Pester's own module folder (ADR-0092). Claude Code asks before it. In a fresh clone, run the clone's own launcher from inside the clone; run by its full path from elsewhere, no allow rule covers it, so it prompts.
+- **Put a file back through git:** `git restore -- <path>` (it prompts, since no allow rule covers it). Never save a file's text and write it back to a path held in a session variable; `Invoke-Mutant` is the one tool that restores from memory, inside its own script scope. Say the same in every brief you give a subagent that runs tests.
 - A bug fix starts with a test that reproduces the bug (red), before any fix.
 - If a test passes on its first run, it isn't testing what you think. Check it before moving on.
 - Run `git log -1 --format='%(trailers:key=TDD,valueonly)'` to confirm git reads the trailer.
