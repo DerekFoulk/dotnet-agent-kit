@@ -249,7 +249,7 @@ rules:
     paths: ["**/*.cs"]
   - id: SEC-016
     statement: "Keys that were exposed should undergo immediate revocation, and when secret scanning alerts on one, rotate the affected credential immediately; removing it from git history is time-intensive and often unnecessary once the credential is revoked. Consider detecting secrets before they're committed."
-    why: "OWASP and GitHub both say to treat an exposed secret as compromised and revoke it, which is why SEC-001's gitleaks scan covers the full history."
+    why: "OWASP and GitHub both say to treat an exposed secret as compromised and revoke it, which is why SEC-001's gitleaks scan reads every commit HEAD reaches, and every push."
     layer: outside
     basis: authority
     status: accepted
