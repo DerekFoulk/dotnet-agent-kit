@@ -818,6 +818,48 @@ Describe 'Shared CI for app repos' {
             [regex]::Matches($scan[0]['run'], '--log-opts').Count | Should -Be 1 -Because 'gitleaks keeps the last --log-opts given'
         }
 
+        # Three workflows call the action, and a caller that forgot fetch-depth: 0 would scan one commit and pass. The
+        # step is run here, as CI runs it, with a docker on PATH that only records its arguments.
+        It 'scans a full checkout, passing the log options as one argument, and refuses a shallow one' {
+            $scan | Should -HaveCount 1
+            $kit = Join-Path $TestDrive "kit-$(New-Guid)"
+            $actionPath = Join-Path $kit '.github' 'actions' 'secret-scan'
+            New-Item -ItemType Directory -Force -Path $actionPath, (Join-Path $kit '.config' 'gitleaks'), (Join-Path $kit 'bin') | Out-Null
+            Copy-Item -LiteralPath (Join-Path $root '.config' 'gitleaks' 'Dockerfile') -Destination (Join-Path $kit '.config' 'gitleaks')
+            $calls = Join-Path $kit 'docker-calls'
+            Set-Content -LiteralPath (Join-Path $kit 'bin' 'docker') -Value "#!/usr/bin/env bash`nprintf '%s\n' `"`$@`" >> `"`$DOCKER_CALLS`"`n" -NoNewline
+            Set-Content -LiteralPath (Join-Path $kit 'scan.sh') -Value ($scan[0]['run'] -replace "`r`n", "`n") -NoNewline
+            $full = Join-Path $TestDrive "full-$(New-Guid)"
+            git init -q $full
+            foreach ($n in 1, 2) { git -C $full commit -q --allow-empty -m "commit $n" }
+            $shallow = Join-Path $TestDrive "shallow-$(New-Guid)"
+            git clone -q --depth 1 "file://$($full -replace '\\', '/')" $shallow
+            # On Windows, Git's own bash: the one on PATH may be WSL's, with no Linux installed.
+            $bash = if ($IsWindows) { Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin' 'bash.exe' } else { 'bash' }
+            $saved = @{ Path = $env:PATH }
+            $results = foreach ($workspace in $full, $shallow) {
+                Remove-Item -LiteralPath $calls -ErrorAction SilentlyContinue
+                try {
+                    $env:PATH = "$(Join-Path $kit 'bin')$([IO.Path]::PathSeparator)$($saved.Path)"
+                    $env:GITHUB_ACTION_PATH = $actionPath -replace '\\', '/'
+                    $env:GITHUB_WORKSPACE = $workspace -replace '\\', '/'
+                    $env:DOCKER_CALLS = $calls
+                    $output = & $bash --noprofile --norc -e -o pipefail (Join-Path $kit 'scan.sh') 2>&1
+                    [pscustomobject]@{ Exit = $LASTEXITCODE; Output = "$output"; Docker = @(if (Test-Path -LiteralPath $calls) { Get-Content -LiteralPath $calls }) }
+                }
+                finally {
+                    $env:PATH = $saved.Path
+                    Remove-Item Env:GITHUB_ACTION_PATH, Env:GITHUB_WORKSPACE, Env:DOCKER_CALLS -ErrorAction SilentlyContinue
+                }
+            }
+
+            $results[0].Exit | Should -Be 0 -Because "a full checkout is scanned: $($results[0].Output)"
+            $results[0].Docker | Should -Contain '--log-opts=--full-history --diff-filter=tuxdb HEAD'
+            $results[1].Exit | Should -Not -Be 0 -Because 'a shallow checkout holds only part of HEAD''s history'
+            $results[1].Docker | Should -HaveCount 0
+            $results[1].Output | Should -Match '::error::.*fetch-depth: 0'
+        }
+
         # The job keeps its name: the ruleset requires "dotnet / Secret scan (gitleaks)".
         It 'is what the .NET CI''s required job runs, after a full checkout that keeps no token' {
             $secrets = $dotnet.Yaml['jobs']['secrets']
