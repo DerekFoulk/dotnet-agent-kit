@@ -14,6 +14,8 @@
     "rules from docs/standards/<file>.md" block in AGENTS.md and templates/app/AGENTS.md with that standard's
     rules, leaving the rest of those files alone (ADR-0065). Proposed and retired rules aren't in force, so they're
     left out. Generated files carry a marker; generated files no standard produces any more are removed.
+    ADR-0084: an app gets only the core ruleset (rules with scope core) and the rulesets of the app types on the
+    "App types:" line of its docs/app-profile.md; a repo with no such line, such as the kit, gets every rule. Each "<!-- ruleset: <type> -->" block in docs/adr is filled with that ruleset's rules.
 
     -Check writes nothing and exits 1 when any generated file is missing, hand-edited or stale (S3).
 
@@ -54,11 +56,97 @@ function ConvertTo-RuleBody {
     ($lines -join "`n") + "`n"
 }
 
+# ADR-0084: a ruleset's ADR lists its rules in a block, filled from the standards so the list can't drift (CRF-003).
+# '<!-- ruleset: maui -->' lists every rule whose scope names maui; '<!-- ruleset: core -->' the core ruleset, every
+# rule with scope core. Proposed rules are listed too, marked, since the ADR records the whole ruleset; retired ones
+# aren't. An opener without its end line stops the build, so a block can't silently go unfilled. Takes and returns
+# text with LF line endings.
+function Update-RulesetBlock {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text,
+        [Parameter(Mandatory)] [string] $StandardsPath
+    )
+
+    $openers = [regex]::Matches($Text, '(?m)^<!-- ruleset: (?<type>[\w-]+) -->$')
+    if ($openers.Count -eq 0) { return $Text }
+    $pattern = '(?ms)^<!-- ruleset: (?<type>[\w-]+) -->\n.*?^<!-- end ruleset -->$'
+    $blocks = [regex]::Matches($Text, $pattern)
+    if ($blocks.Count -ne $openers.Count) {
+        throw "A '<!-- ruleset: $($openers[0].Groups['type'].Value) -->' block has no '<!-- end ruleset -->' line of its own."
+    }
+    $known = @(Get-KnownAppType -StandardsPath $StandardsPath)
+    $rules = foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
+        foreach ($rule in @((Read-FrontMatter -Path $file.FullName)['rules'])) {
+            if ("$($rule['status'])" -eq 'retired') { continue }
+            [pscustomobject]@{ Rule = $rule; File = $file.Name; Scope = @(Get-RuleScope -Rule $rule) }
+        }
+    }
+    [regex]::Replace($Text, $pattern, {
+            param($match)
+            $type = $match.Groups['type'].Value
+            if ($type -ne 'core' -and $type -notin $known) {
+                throw "A ruleset block names app type '$type', which docs/standards/app-types.yml doesn't list."
+            }
+            $lines = foreach ($entry in @($rules | Where-Object { $type -in $_.Scope })) {
+                "- [$($entry.Rule['id'])](../standards/$($entry.File)) ($($entry.Rule['status'])): $($entry.Rule['statement'])"
+            }
+            (@("<!-- ruleset: $type -->") + @($lines) + '<!-- end ruleset -->') -join "`n"
+        })
+}
+
+# ADR-0084: a rule's scope as a list: 'core', or the app types it names. A rule with no scope counts as core.
+function Get-RuleScope {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
+
+    $scope = @(@(if ($Rule.Contains('scope')) { $Rule['scope'] }) | ForEach-Object { "$_" } | Where-Object { $_ })
+    if ($scope) { $scope } else { 'core' }
+}
+
+# ADR-0084: an app's app types, from the "App types:" line of its docs/app-profile.md, which the new-app intake
+# writes. Nothing when the repo has no profile (the kit) or its profile names none (an app made before app types):
+# then every rule applies. A type docs/standards/app-types.yml doesn't list is an error, so a typo can't quietly drop
+# a ruleset.
+function Get-AppType {
+    param([Parameter(Mandatory)] [string] $RepoRoot, [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Known)
+
+    $profilePath = Join-Path $RepoRoot 'docs' 'app-profile.md'
+    if (-not (Test-Path -LiteralPath $profilePath)) { return }
+    $line = Get-Content -LiteralPath $profilePath | Where-Object { $_ -match '^App types:' } | Select-Object -First 1
+    if (-not $line) { return }
+    $types = @(($line -replace '^App types:', '') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $unknown = @($types | Where-Object { $_ -notin $Known })
+    if ($unknown) {
+        throw "docs/app-profile.md names app type(s) $($unknown -join ', ') that docs/standards/app-types.yml doesn't list: $($Known -join ', ')."
+    }
+    $types
+}
+
+# The ids docs/standards/app-types.yml lists, or nothing when it's missing (an app synced before ADR-0084).
+function Get-KnownAppType {
+    param([Parameter(Mandatory)] [string] $StandardsPath)
+
+    $path = Join-Path $StandardsPath 'app-types.yml'
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    $yaml = ConvertFrom-Yaml -Yaml (Get-Content -LiteralPath $path -Raw)
+    @($yaml['types'] | ForEach-Object { "$($_['id'])" })
+}
+
+# Whether a rule applies to an app of the given app types: every rule does when none are given, and a rule with
+# scope core applies to every type.
+function Test-RuleForAppType {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [string[]] $AppType)
+
+    if (-not $AppType) { return $true }
+    $scope = @(Get-RuleScope -Rule $Rule)
+    if ('core' -in $scope) { return $true }
+    [bool] @($scope | Where-Object { $_ -in $AppType }).Count
+}
+
 # Builds every generated rule file in memory: for each standard, its accepted rules split into always-on
 # rules (paths include **) and path-scoped rules, written once for Claude Code (.claude/rules, paths:)
 # and once for Copilot (.github/instructions, applyTo:). Proposed and retired rules aren't in force.
 function Get-AgentRuleFile {
-    param([Parameter(Mandatory)] [string] $StandardsPath)
+    param([Parameter(Mandatory)] [string] $StandardsPath, [string[]] $AppType)
 
     foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
         # A standard that lost its front matter or rules key is an editing mistake, not "no rules": skipping
@@ -72,7 +160,7 @@ function Get-AgentRuleFile {
         $title = (Read-MarkdownBody -Path $file.FullName) -split "`n" | Where-Object { $_ -match '^# ' } | Select-Object -First 1
         $title = if ($title) { $title -replace '^# ', '' } else { $topic }
 
-        $accepted = @($frontMatter['rules'] | Where-Object { $_['status'] -eq 'accepted' })
+        $accepted = @($frontMatter['rules'] | Where-Object { $_['status'] -eq 'accepted' -and (Test-RuleForAppType -Rule $_ -AppType $AppType) })
         $always = @($accepted | Where-Object { @($_['paths']) -contains '**' -or -not $_.Contains('paths') })
         $scoped = @($accepted | Where-Object { $_ -notin $always })
 
@@ -106,7 +194,8 @@ function Get-AgentRuleFile {
 function Update-RuleBlock {
     param(
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text,
-        [Parameter(Mandatory)] [string] $StandardsPath
+        [Parameter(Mandatory)] [string] $StandardsPath,
+        [string[]] $AppType
     )
 
     $open = '<!-- rules from docs/standards/'
@@ -136,7 +225,7 @@ function Update-RuleBlock {
         if (-not (Test-Path -LiteralPath $path)) { throw "A rules block names docs/standards/$file, which doesn't exist." }
 
         [void] $result.Append($rest.Substring(0, $lineEnd + 1))
-        foreach ($rule in @((Read-FrontMatter -Path $path)['rules'] | Where-Object { $_['status'] -eq 'accepted' })) {
+        foreach ($rule in @((Read-FrontMatter -Path $path)['rules'] | Where-Object { $_['status'] -eq 'accepted' -and (Test-RuleForAppType -Rule $_ -AppType $AppType) })) {
             [void] $result.Append("- $($rule['id']): $($rule['statement'])`n")
         }
         [void] $result.Append($close)
@@ -186,7 +275,9 @@ function Invoke-AgentRuleBuild {
     # Everything is built in memory first, so an invalid source stops the run before any write or delete.
     try {
         $standardsPath = Join-Path $RepoRoot 'docs' 'standards'
-        $expected = @(Get-AgentRuleFile -StandardsPath $standardsPath)
+        # ADR-0084: an app gets the core ruleset and its app types' rulesets; the kit gets every rule.
+        $appType = @(Get-AppType -RepoRoot $RepoRoot -Known @(Get-KnownAppType -StandardsPath $standardsPath))
+        $expected = @(Get-AgentRuleFile -StandardsPath $standardsPath -AppType $appType)
         # AGENTS.md, and the kit's template for an app's AGENTS.md, keep their text; only their rule blocks are filled.
         # Every repo has AGENTS.md, and Copilot's instructions are copied from it, so a missing one stops the build;
         # only the kit has the template.
@@ -197,7 +288,7 @@ function Invoke-AgentRuleBuild {
         foreach ($relative in 'AGENTS.md', 'templates/app/AGENTS.md') {
             $path = Join-Path $RepoRoot $relative
             if (-not (Test-Path -LiteralPath $path)) { continue }
-            $filled = Update-RuleBlock -Text ((Get-Content -Path $path -Raw) -replace "`r`n", "`n") -StandardsPath $standardsPath
+            $filled = Update-RuleBlock -Text ((Get-Content -Path $path -Raw) -replace "`r`n", "`n") -StandardsPath $standardsPath -AppType $appType
             $expected += [pscustomobject]@{ Path = $relative; Content = $filled }
             if ($relative -eq 'AGENTS.md') { $agentsText = $filled }
         }
@@ -205,6 +296,15 @@ function Invoke-AgentRuleBuild {
         # An app made before ADR-0064 has no docs/code-review.md until the kit sync brings it.
         $codeReview = Join-Path $RepoRoot 'docs' 'code-review.md'
         if (Test-Path -LiteralPath $codeReview) { $expected += Get-CodeReviewInstructionsFile -SourcePath $codeReview }
+        # Each ruleset's ADR lists its rules (ADR-0084); only the kit's ADRs have the blocks.
+        $adrPath = Join-Path $RepoRoot 'docs' 'adr'
+        if (Test-Path -LiteralPath $adrPath) {
+            foreach ($adr in Get-ChildItem -LiteralPath $adrPath -Filter '*.md' -File | Sort-Object Name) {
+                $text = (Get-Content -LiteralPath $adr.FullName -Raw) -replace "`r`n", "`n"
+                if ($text -notmatch '(?m)^<!-- ruleset: ') { continue }
+                $expected += [pscustomobject]@{ Path = "docs/adr/$($adr.Name)"; Content = (Update-RulesetBlock -Text $text -StandardsPath $standardsPath) }
+            }
+        }
     }
     catch {
         Write-Host "  $($_.Exception.Message)" -ForegroundColor Red

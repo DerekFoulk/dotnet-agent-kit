@@ -27,6 +27,16 @@ Describe 'Test-RuleSources.ps1' {
             $rule
         }
 
+        # A quote for each URL source, so a test about something else has a well-formed authority rule (ADR-0082).
+        function New-QuotesFor {
+            param([string[]] $Sources)
+            , @(foreach ($source in $Sources) {
+                    if ($source -match '^(https?://\S+), retrieved (\S+)$') {
+                        [ordered]@{ source = $Matches[1]; retrieved = $Matches[2]; text = 'The page''s own words.' }
+                    }
+                })
+        }
+
         function New-StandardsFile {
             param([string] $Name = 'git', [object[]] $Rules = @(New-Rule))
 
@@ -44,6 +54,16 @@ Describe 'Test-RuleSources.ps1' {
         $script:adr = Join-Path $TestDrive "adr-$(New-Guid)"
         New-Item -ItemType Directory -Path $script:standards, $script:adr | Out-Null
         Set-Content -Path (Join-Path $script:adr '0007-github-flow.md') -Value '# ADR-0007'
+        # ADR-0084: the app types a rule's scope can name, kept beside the standards.
+        Set-Content -Path (Join-Path $script:standards 'app-types.yml') -Value @'
+types:
+  - id: web-api
+    name: ASP.NET Core Web API
+    docs: https://learn.microsoft.com/aspnet/core/web-api/
+  - id: maui
+    name: .NET MAUI
+    docs: https://learn.microsoft.com/dotnet/maui/
+'@
     }
 
     Context 'structure' {
@@ -91,7 +111,10 @@ Describe 'Test-RuleSources.ps1' {
             @{ Source = 'ADR-0007'; Basis = 'preference' }
             @{ Source = 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01'; Basis = 'authority' }
         ) {
-            New-StandardsFile -Rules @(New-Rule -Override @{ sources = @($Source); basis = $Basis })
+            $layer = if ($Basis -eq 'authority') { 'outside' } else { 'owner' }
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    sources = @($Source); basis = $Basis; layer = $layer; status = 'proposed'; quotes = New-QuotesFor $Source
+                })
 
             Get-Problem | Should -BeNullOrEmpty
         }
@@ -118,11 +141,13 @@ Describe 'Test-RuleSources.ps1' {
 
     Context 'values' {
         It 'accepts layer <Layer> and status <Status>' -ForEach @(
-            @{ Layer = 'floor'; Status = 'proposed' }
-            @{ Layer = 'owner'; Status = 'accepted' }
-            @{ Layer = 'outside'; Status = 'retired' }
+            @{ Layer = 'floor'; Status = 'proposed'; Basis = 'preference' }
+            @{ Layer = 'owner'; Status = 'accepted'; Basis = 'preference' }
+            @{ Layer = 'outside'; Status = 'retired'; Basis = 'authority' }
         ) {
-            New-StandardsFile -Rules @(New-Rule -Override @{ layer = $Layer; status = $Status })
+            # A retired rule isn't in force, so it needs no quote; an outside rule is an authority's.
+            $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
+            New-StandardsFile -Rules @(New-Rule -Override @{ layer = $Layer; status = $Status; basis = $Basis; sources = $sources })
 
             Get-Problem | Should -BeNullOrEmpty
         }
@@ -143,7 +168,9 @@ Describe 'Test-RuleSources.ps1' {
     Context 'basis' {
         It 'accepts an authority rule that cites a URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; sources = @('https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01')
+                    basis = 'authority'; layer = 'outside'; status = 'proposed'
+                    sources = @('https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01')
+                    quotes = New-QuotesFor 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01'
                 })
 
             Get-Problem | Should -BeNullOrEmpty
@@ -151,16 +178,101 @@ Describe 'Test-RuleSources.ps1' {
 
         It 'accepts an authority rule that cites an http URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; sources = @('http://example.com/guide, retrieved 2026-11-01')
+                    basis = 'authority'; layer = 'outside'; status = 'proposed'; sources = @('http://example.com/guide, retrieved 2026-11-01')
+                    quotes = New-QuotesFor 'http://example.com/guide, retrieved 2026-11-01'
                 })
 
             Get-Problem | Should -BeNullOrEmpty
         }
 
+        # ADR-0082: an authority rule says only what its pages say, so it cites pages only. An owner's decision or an
+        # ADR in its sources would mean part of it is the kit's: that part is a preference rule of its own.
+        It 'reports an authority rule that also cites <Source>' -ForEach @(
+            @{ Source = 'owner, 2026-10-26' }
+            @{ Source = 'ADR-0007' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; status = 'proposed'; sources = @($url, $Source); quotes = New-QuotesFor $url
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*authority*cites pages only*$Source*preference*ratified*"
+        }
+
+        It 'reports basis <Basis> with layer <Layer>' -ForEach @(
+            @{ Basis = 'authority'; Layer = 'owner' }
+            @{ Basis = 'preference'; Layer = 'outside' }
+        ) {
+            $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = $Basis; layer = $Layer; status = 'proposed'; sources = $sources; quotes = New-QuotesFor $sources
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*basis '$Basis'*layer '$Layer'*"
+        }
+
+        It 'accepts layer floor with basis <Basis>' -ForEach @(
+            @{ Basis = 'authority' }
+            @{ Basis = 'preference' }
+        ) {
+            $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = $Basis; layer = 'floor'; status = 'proposed'; sources = $sources; quotes = New-QuotesFor $sources
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        # The owner's acceptance of an authority rule is recorded, not mixed into its sources.
+        It 'accepts an accepted authority rule ratified by <Ratified>' -ForEach @(
+            @{ Ratified = 'owner, 2026-11-12' }
+            @{ Ratified = 'ADR-0007' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'; ratified = $Ratified; sources = @($url); quotes = New-QuotesFor $url
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports an accepted authority rule with ratified <Case>' -ForEach @(
+            @{ Case = 'missing'; Ratified = $null; Expected = "*accepted*authority*ratified*" }
+            @{ Case = 'not an owner date or an ADR'; Ratified = 'the owner'; Expected = "*ratified 'the owner'*owner, YYYY-MM-DD*ADR*" }
+            @{ Case = 'an owner with no real date'; Ratified = 'owner, 2026-13-45'; Expected = "*ratified*owner, YYYY-MM-DD*" }
+            @{ Case = 'an ADR that doesn''t exist'; Ratified = 'ADR-9999'; Expected = "*ratified*ADR-9999*not found*" }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            $rule = New-Rule -Override @{ basis = 'authority'; layer = 'outside'; status = 'accepted'; sources = @($url); quotes = New-QuotesFor $url }
+            if ($Ratified) { $rule['ratified'] = $Ratified }
+            New-StandardsFile -Rules @($rule)
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike $Expected
+        }
+
+        It 'reports ratified on a preference rule, whose sources already name the owner' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ ratified = 'owner, 2026-11-12' })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*ratified*authority*"
+        }
+
         It 'reports an authority rule that cites no URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{ basis = 'authority'; sources = @('owner, 2026-10-26', 'ADR-0007') })
 
-            (Get-Problem | ForEach-Object Message) | Should -BeLike '*authority*URL*'
+            # It has no quote either, since it cites no page to quote; that's reported too.
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike '*authority*URL*'
         }
 
         It 'reports a preference that cites neither the owner nor an ADR' {
@@ -169,6 +281,202 @@ Describe 'Test-RuleSources.ps1' {
                 })
 
             (Get-Problem | ForEach-Object Message) | Should -BeLike '*preference*owner*ADR*'
+        }
+    }
+
+    # ADR-0082: an authority rule stores the sentence on each cited page that says what the rule says, so a reader
+    # and the reviewer can compare the two; a rule worded beyond its quote is the kit's, and says so (preference).
+    Context 'quotes' {
+        BeforeAll {
+            function New-Quote {
+                param([hashtable] $Override = @{}, [string[]] $Remove = @())
+                $quote = [ordered]@{
+                    source    = 'https://learn.microsoft.com/ef/core/testing/'
+                    retrieved = '2026-11-17'
+                    text      = 'We recommend testing against the same database system you use in production.'
+                }
+                foreach ($key in $Override.Keys) { $quote[$key] = $Override[$key] }
+                foreach ($key in $Remove) { $quote.Remove($key) }
+                $quote
+            }
+            function New-AuthorityRule {
+                param([hashtable] $Override = @{}, [string[]] $Remove = @())
+                $rule = New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; status = 'proposed'
+                    sources = @('https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17'); quotes = @(New-Quote)
+                }
+                foreach ($key in $Override.Keys) { $rule[$key] = $Override[$key] }
+                foreach ($key in $Remove) { $rule.Remove($key) }
+                $rule
+            }
+        }
+
+        It 'accepts an authority rule whose cited page has a quote' {
+            New-StandardsFile -Rules @(New-AuthorityRule)
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports an authority rule with quotes <Case>' -ForEach @(
+            @{ Case = 'missing'; Value = $null }
+            @{ Case = 'empty'; Value = @() }
+        ) {
+            $rule = if ($null -eq $Value) { New-AuthorityRule -Remove 'quotes' } else { New-AuthorityRule -Override @{ quotes = $Value } }
+            New-StandardsFile -Rules @($rule)
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].RuleId | Should -Be 'GIT-001'
+            $problems[0].Message | Should -BeLike "*authority*quote*"
+        }
+
+        It 'reports a quote whose <Field> is <Case>' -ForEach @(
+            @{ Field = 'source'; Case = 'missing'; Value = $null; Expected = "*quote*source*" }
+            @{ Field = 'retrieved'; Case = 'missing'; Value = $null; Expected = "*quote*retrieved*" }
+            @{ Field = 'text'; Case = 'missing'; Value = $null; Expected = "*quote*text*" }
+            @{ Field = 'text'; Case = 'blank'; Value = '   '; Expected = "*quote*text*" }
+            @{ Field = 'retrieved'; Case = 'not a date'; Value = 'last week'; Expected = "*quote*retrieved*YYYY-MM-DD*" }
+        ) {
+            $quote = if ($null -eq $Value) { New-Quote -Remove $Field } else { New-Quote -Override @{ $Field = $Value } }
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @($quote) })
+
+            # A quote with no source also leaves the cited page unquoted, which is reported as well.
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike $Expected
+        }
+
+        It 'reports a quote written as a string, not a map' {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @('We recommend testing against production.') })
+
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike '*quote*source, retrieved and text*'
+        }
+
+        It 'reports a quote whose page the rule doesn''t cite' {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{
+                    quotes = @((New-Quote), (New-Quote -Override @{ source = 'https://learn.microsoft.com/ef/core/other' }))
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*quote*https://learn.microsoft.com/ef/core/other*not one of the rule's sources*"
+        }
+
+        It 'reports a quote read on another day than its source says' {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @(New-Quote -Override @{ retrieved = '2026-11-16' }) })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*quote*2026-11-16*source*2026-11-17*"
+        }
+
+        It 'reports an authority rule that cites a page it doesn''t quote' {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{
+                    sources = @('https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17', 'https://learn.microsoft.com/ef/core/other, retrieved 2026-11-17')
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*https://learn.microsoft.com/ef/core/other*no quote*"
+        }
+
+        It 'reports a quote that skips words with <Mark>' -ForEach @(
+            @{ Mark = '...' }
+            @{ Mark = '…' }
+        ) {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @(New-Quote -Override @{ text = "We recommend testing $Mark in production." }) })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike '*quote*ellipsis*one contiguous passage*'
+        }
+
+        It 'accepts dots that are part of the page''s code: <Text>' -ForEach @(
+            @{ Text = "Don't use _ = Task.Run(...) to discard a task." }
+            @{ Text = 'Prefer ForAll(...) to Parallel.ForEach(source, ...).' }
+        ) {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @(New-Quote -Override @{ text = $Text }) })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports a quote that skips words with <Mark> (<Case>)' -ForEach @(
+            @{ Case = 'at the start'; Mark = '...'; Text = '... testing in production.' }
+            @{ Case = 'in brackets'; Mark = '[...]'; Text = 'We recommend [...] testing in production.' }
+        ) {
+            New-StandardsFile -Rules @(New-AuthorityRule -Override @{ quotes = @(New-Quote -Override @{ text = $Text }) })
+
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike '*quote*ellipsis*'
+        }
+
+        It 'accepts a preference rule that also stores a quote' {
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    sources = @('owner, 2026-10-26', 'https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17'); quotes = @(New-Quote)
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+    }
+
+    # ADR-0084: every rule names its scope, so an app gets only the rules that fit it: core, for every app type, or the
+    # supported app types in app-types.yml it applies to.
+    Context 'scope' {
+        It 'accepts a rule for <Case>' -ForEach @(
+            @{ Case = 'every app type'; Scope = 'core' }
+            @{ Case = 'one app type'; Scope = @('maui') }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ scope = $Scope })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports scope <Case>' -ForEach @(
+            @{ Case = 'missing'; Scope = $null; Expected = "*scope*" }
+            @{ Case = 'empty'; Scope = @(); Expected = "*scope*" }
+            @{ Case = 'a word other than core'; Scope = 'all'; Expected = "*scope 'all'*core*" }
+            @{ Case = 'naming an unknown app type'; Scope = @('wpf'); Expected = "*app type 'wpf'*app-types.yml*" }
+            @{ Case = 'naming core in a list'; Scope = @('core', 'maui'); Expected = "*core*alone*" }
+            @{ Case = 'listing every app type'; Scope = @('web-api', 'maui'); Expected = "*every app type*core*" }
+        ) {
+            $rule = if ($null -eq $Scope) { New-Rule -Remove 'scope' } else { New-Rule -Override @{ scope = $Scope } }
+            New-StandardsFile -Rules @($rule)
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike $Expected
+        }
+
+        It 'reports the field projectTypes, which scope replaced' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ projectTypes = @('maui') })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*projectTypes*scope*"
+        }
+
+        It 'needs no scope on a retired rule' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ status = 'retired' } -Remove 'scope')
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports an app types file that <Case>' -ForEach @(
+            @{ Case = 'is missing'; Yaml = $null; Expected = '*app-types.yml*missing*' }
+            @{ Case = 'repeats an id'; Yaml = "types:`n  - { id: maui, name: A, docs: 'https://learn.microsoft.com/a' }`n  - { id: maui, name: B, docs: 'https://learn.microsoft.com/b' }"; Expected = "*app-types.yml*'maui'*more than once*" }
+            @{ Case = 'has a type with no name'; Yaml = "types:`n  - { id: maui, docs: 'https://learn.microsoft.com/a' }"; Expected = "*app-types.yml*'maui'*name*" }
+            @{ Case = 'has a type with no docs URL'; Yaml = "types:`n  - { id: maui, name: A, docs: 'see the docs' }"; Expected = "*app-types.yml*'maui'*docs*URL*" }
+            @{ Case = 'names a type core'; Yaml = "types:`n  - { id: core, name: A, docs: 'https://learn.microsoft.com/a' }"; Expected = "*app-types.yml*'core'*reserved*" }
+        ) {
+            $path = Join-Path $script:standards 'app-types.yml'
+            if ($null -eq $Yaml) { Remove-Item -LiteralPath $path } else { Set-Content -LiteralPath $path -Value $Yaml }
+            New-StandardsFile
+
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike $Expected
         }
     }
 

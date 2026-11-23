@@ -58,7 +58,11 @@ rules:
     layer: owner
     basis: preference
     status: accepted
-    sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-13"]
+    sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Setting an overly ambitious code coverage percentage goal can be counterproductive."
     enforcement:
       - kind: gate
         in: [kit, app]
@@ -137,17 +141,103 @@ rules:
     scope: core
     paths: ["**/*.Benchmarks/**", "**/tests/load/**", "**/benchmark-budget.json", "**/load-budget.json"]
   - id: TST-010
-    statement: "Unit tests follow Microsoft's unit-testing best practices: each name says the method, the scenario and the expected behavior, written without underscores (AddRejectsAMissingRequestByName); each test arranges, acts once and asserts; a test holds no logic (no if, loop or try) and no magic strings; shared setup is a helper method, not a constructor every test runs; private code is tested through the public method that uses it; and time, randomness and other outside state come in through seams such as TimeProvider."
-    why: "Microsoft lists these as what makes a unit test fast, isolated, repeatable, self-checking and readable. The kit keeps its names without underscores, the owner's choice (owner, 2026-11-09) and what CA1707 asks of every name, in place of Microsoft's Method_Scenario_ExpectedBehavior."
+    statement: "A test's name should consist of three parts, the name of the method being tested, the scenario under which it's tested, and the expected behavior when the scenario is invoked. Try to include only one Act task per test. Avoid manual string concatenation and logical conditions (if, while, for, switch) in unit tests, and avoid magic strings: assign hard-coded values to constants. A unit test's input should be the simplest information needed to verify the behavior under test. Try not to introduce dependencies on infrastructure into unit tests; they should be reserved for integration tests. To keep test-specific setup visible, create the objects a test needs in the test or call a helper method from it, in preference to Setup and Teardown attributes when tests have different setup requirements; common per-test setup can still be appropriate when every test in a class needs the same initialization, and for synchronous initialization, prefer the constructor. In most cases you don't need to test a private method: write the tests against the public method that calls it. A unit test must have full control of the system under test, so where production code calls static references (for example, DateTime.Now), you need to introduce a seam into the production code."
+    why: "Tests that don't depend on outside state or hide logic can be trusted, and a name that says the method, the scenario and the expected behavior says what failed. TST-011 holds the kit's additions: names without underscores, and shared setup in a helper method rather than a constructor."
     layer: outside
     basis: authority
     status: accepted
-    sources: ["owner, 2026-11-09", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-13"]
+    ratified: "owner, 2026-11-12"
+    sources: ["https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "The name of your test should consist of three parts:"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Name of the method being tested"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Scenario under which the method is being tested"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Expected behavior when the scenario is invoked"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "When you write your tests, try to include only one Act task per test."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "When you write your unit tests, avoid manual string concatenation, logical conditions, such as if, while, for, and switch, and other conditions."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Avoid magic strings"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Rather than using magic strings, assign any hard-coded values to constants."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "The input for a unit test should be the simplest information needed to verify the behavior you're currently testing."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Try not to introduce dependencies on infrastructure when writing unit tests. The dependencies make the tests slow and brittle and should be reserved for integration tests."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "To keep test-specific setup visible, create the objects you need in each test method or call a helper method from the test. Prefer this approach over Setup and Teardown attributes when tests have different setup requirements:"
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "Common per-test setup can still be appropriate when every test in a class needs the same initialization."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "For synchronous initialization, prefer the constructor."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "In most cases, you don't need to test a private method in your code."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "When you encounter a private method, locate the public method that calls the private method, and write your tests against the public method."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "One principle of a unit test is that it must have full control of the system under test."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "However, this principle can be problematic when production code includes calls to static references (for example, DateTime.Now)."
+      - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
+        retrieved: "2026-11-17"
+        text: "To solve these problems, you need to introduce a seam into your production code."
+    scope: core
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "no analyzer checks a test's shape; code review checks, the nightly mutation score (TST-004) exposes tests that assert too little, and the tdd-cycle skill names these practices; ARC-008's ban gates the clock"
+        how: "no analyzer checks a test's shape; code review checks, the nightly mutation score (TST-004) exposes tests that assert too little, and the tdd-cycle skill names these practices"
+    paths: ["**/*Tests*/**"]
+  - id: TST-011
+    statement: "The kit's additions to its unit tests, beyond Microsoft's best practices (TST-010): write each test name as the method, the scenario and the expected behavior without underscores (AddRejectsAMissingRequestByName); arrange, act and assert; keep try out of a test; shared setup is a helper method, not a constructor every test runs (this departs from TST-010's \"for synchronous initialization, prefer the constructor\": the kit's tests don't); and bring time, randomness and other outside state in through seams such as TimeProvider."
+    why: "The kit keeps names without underscores, the owner's choice (owner, 2026-11-09) and what CA1707 asks of every name, in place of Microsoft's Method_Scenario_ExpectedBehavior; the other points tighten TST-010 in the same spirit, so a test reads the same in every repo. Shared setup in a helper method, not a constructor every test runs, is the owner's accepted wording from before the rule was split (owner, 2026-11-12), and goes further than Microsoft's page, which prefers the constructor for synchronous initialization that every test in a class needs."
+    layer: owner
+    basis: preference
+    status: accepted
+    sources: ["owner, 2026-11-09", "owner, 2026-11-12"]
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "no analyzer checks a test's shape; code review checks, and ARC-008's ban gates the clock"
     scope: core
+    paths: ["**/*Tests*/**"]
+  - id: TST-012
+    statement: "Avoid ordering unit tests: it's best practice, and ideally the order in which they run should not matter."
+    why: "Tests that depend on each other fail for reasons the failing test doesn't show, and can't run alone or in parallel."
+    layer: outside
+    basis: authority
+    status: proposed
+    sources: ["https://learn.microsoft.com/dotnet/core/testing/order-unit-tests, retrieved 2026-11-17"]
+    quotes:
+      - source: "https://learn.microsoft.com/dotnet/core/testing/order-unit-tests"
+        retrieved: "2026-11-17"
+        text: "Ideally, the order in which unit tests run should not matter, and it is best practice to avoid ordering unit tests."
+    scope: core
+    enforcement:
+      - kind: advisory
+        in: [kit, app]
+        how: "code review checks that no test relies on another's side effects or on run order"
     paths: ["**/*Tests*/**"]
 ---
 
@@ -161,7 +251,7 @@ Test-first at every level (ADR-0018). The test matrix in brief §6.7 sets which 
 
 ## Shared tests
 
-Some rules hold in every app the same way: layers depend only inward (ARC-001, CRF-006), shared libraries reference no UI or platform package (ARC-003), the domain references no persistence library (CRF-014), endpoints use no domain type (SEC-013), and namespaces form no cycle (CRF-007). The kit writes their tests once, in `tools/AppTests/Architecture`, and `tests/Directory.Build.props` (the sample's `sample/Directory.Build.props` in the kit) compiles them into every `*.Architecture.Tests` project, from `.kit/tools/AppTests` in an app (ADR-0081). The project names the app's assemblies by layer in its own part of `AppLayers`, and doesn't build until it does; a test fails when a project whose name ends in a layer (`.Domain`, `.Contracts`, `.Application`, `.Infrastructure`, `.Api`, `.Web`, `.Presentation`) that the tests reference is left out. A layer an app doesn't have is an empty list, and its tests skip. The endpoint check looks for classes named `...Endpoints` or `...Controller`, and in an API (an assembly named `.Api`) it fails when it finds none. The kit's sample runs the same tests, so the kit's CI proves them. An app without an Architecture.Tests project isn't checked; TST-003's planned check (GAP-027) will notice it.
+Some rules hold in every app the same way: layers depend only inward (ARC-001, CRF-006), shared libraries reference no UI or platform package (ARC-003), the domain references no persistence library (CRF-021), endpoints use no domain type (SEC-013), and namespaces form no cycle (CRF-007). The kit writes their tests once, in `tools/AppTests/Architecture`, and `tests/Directory.Build.props` (the sample's `sample/Directory.Build.props` in the kit) compiles them into every `*.Architecture.Tests` project, from `.kit/tools/AppTests` in an app (ADR-0081). The project names the app's assemblies by layer in its own part of `AppLayers`, and doesn't build until it does; a test fails when a project whose name ends in a layer (`.Domain`, `.Contracts`, `.Application`, `.Infrastructure`, `.Api`, `.Web`, `.Presentation`) that the tests reference is left out. A layer an app doesn't have is an empty list, and its tests skip. The endpoint check looks for classes named `...Endpoints` or `...Controller`, and in an API (an assembly named `.Api`) it fails when it finds none. The kit's sample runs the same tests, so the kit's CI proves them. An app without an Architecture.Tests project isn't checked; TST-003's planned check (GAP-027) will notice it.
 
 Some host settings hold in every app the same way too: the health endpoints (OPS-002), Problem Details for a route that doesn't exist and for an unhandled exception (API-002), the OpenAPI document in Development only (API-003), the container's validation (CRF-013), telemetry (OPS-001), the resilience handler (OPS-003), the shutdown timeout (OPS-005), sign-in required by default (SEC-007), and host filtering, HSTS, CORS and Kestrel's limits (SEC-011). Their checks are in `tools/AppTests/Functional`, which `tests/Directory.Build.props` compiles into every `*.FunctionalTests` project (ADR-0081). The project says how to start the app, with its test database and sign-in, in its own part of `AppHost`: `Start` returns the running app, whose `CreateClient(signedIn)` gives a signed-in or anonymous client; `AnonymousRoutes` lists the routes that may be called without signing in; `SignedInRoute` names a route a signed-in user may GET, which the hosting checks send their requests to; and `ServesHttpApi` says whether the app serves an HTTP API, so a Blazor web app with no API of its own skips the API's checks. The sample's `AppHost.cs` starts it through its own `ApiHost`. The checks start one host, the one `AppHost` starts. Rules about the app's own endpoints, data and settings, such as paging (API-004), validation (API-006, SEC-010), each user's data (SEC-009) and its rate limit, stay with the app's own tests, which the sample's show; what a shared check could still take on is GAP-037's.
 

@@ -85,4 +85,4 @@ function Get-SourceProblem {
     "source '$Source' is not a recognized source (owner, ADR or URL)"
 }
 
-Export-ModuleMember -Function Read-FrontMatter, Read-MarkdownBody, Test-Present, Get-SourceProblem
+Export-ModuleMember -Function Read-FrontMatter, Read-MarkdownBody, Test-Present, Test-IsoDate, Get-SourceProblem

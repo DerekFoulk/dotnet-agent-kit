@@ -1,6 +1,6 @@
 ---
 name: address-review
-description: Handle a code review on your open pull request, from GitHub Copilot or a person. Verify each finding, fix the valid ones test-first, push, then reply with evidence and resolve each thread as addressed or incorrect. Use as soon as a review lands, including Copilot's "Changes recommended" or "Approval recommended" summary, and again after each re-review.
+description: Handle a review on your open pull request, from a person or Copilot. Verify each finding, fix the valid ones test-first, push, reply with evidence and resolve each thread. Use when a review lands, and after each re-review.
 ---
 
 # Address a review
