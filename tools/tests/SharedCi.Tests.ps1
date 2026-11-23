@@ -804,7 +804,7 @@ Describe 'Shared CI for app repos' {
             # The step's pattern names the image too, but no tag: v[0-9]+, never v8.
             $scanAction.Text | Should -Not -Match 'gitleaks/gitleaks:v\d' -Because 'the Dockerfile is the one pin'
             foreach ($file in Get-ChildItem -LiteralPath (Join-Path $root '.github' 'workflows') -Filter *.yml) {
-                Get-Content -Raw -LiteralPath $file.FullName | Should -Not -Match 'docker run|ghcr\.io/gitleaks' -Because "$($file.Name) uses the secret-scan action"
+                Get-Content -Raw -LiteralPath $file.FullName | Should -Not -Match 'ghcr\.io/gitleaks|\$image" git /repo' -Because "$($file.Name) uses the secret-scan action"
             }
         }
 
@@ -827,7 +827,10 @@ Describe 'Shared CI for app repos' {
             New-Item -ItemType Directory -Force -Path $actionPath, (Join-Path $kit '.config' 'gitleaks'), (Join-Path $kit 'bin') | Out-Null
             Copy-Item -LiteralPath (Join-Path $root '.config' 'gitleaks' 'Dockerfile') -Destination (Join-Path $kit '.config' 'gitleaks')
             $calls = Join-Path $kit 'docker-calls'
-            Set-Content -LiteralPath (Join-Path $kit 'bin' 'docker') -Value "#!/usr/bin/env bash`nprintf '%s\n' `"`$@`" >> `"`$DOCKER_CALLS`"`n" -NoNewline
+            $stub = Join-Path $kit 'bin' 'docker'
+            Set-Content -LiteralPath $stub -Value "#!/usr/bin/env bash`nprintf '%s\n' `"`$@`" >> `"`$DOCKER_CALLS`"`n" -NoNewline
+            # Git's bash on Windows runs any #! file; elsewhere bash skips a file it can't execute and finds the real docker.
+            if (-not $IsWindows) { [IO.File]::SetUnixFileMode($stub, 'UserRead, UserWrite, UserExecute') }
             Set-Content -LiteralPath (Join-Path $kit 'scan.sh') -Value ($scan[0]['run'] -replace "`r`n", "`n") -NoNewline
             $full = Join-Path $TestDrive "full-$(New-Guid)"
             git init -q $full
