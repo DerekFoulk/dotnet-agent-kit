@@ -48,6 +48,12 @@ Accepted as recommended (owner, 2026-11-01).
   - **Leave `--all`:** every branch is scanned on every run, and any branch's false positive fails every PR until that branch merges.
 
   Every branch is still scanned: in its own pull request, and main on every push. On the kit, a public repo, GitHub secret scanning and push protection also check pushes to every branch (ADR-0031). On a private app repo, a branch that never gets a pull request is no longer scanned by CI; before, it was scanned only as a side effect of other PRs. When the gitleaks image's version moves, recheck these options against `sources/git.go`.
+- **Update (2026-11-23):** every push to any branch or tag is scanned too. A secret is exposed once it's pushed, whether or not the branch ever gets a pull request or merges (owner, 2026-11-23), and on a private repo owned by a personal account GitHub's push protection isn't available, so the 2026-11-21 update left such a branch unscanned. The scan moves into one composite action, `.github/actions/secret-scan`, which refuses a shallow checkout. The .NET CI's required "Secret scan (gitleaks)" job runs it unchanged, and `secret-scan.reusable.yml` runs it on every push to a branch other than `main` (CI's push run scans main) and on every tag push, from `secret-scan.yml` in the kit and in every app. A push that deletes a branch is skipped: its run's SHA is the default branch's. Runs are never cancelled, since a force-push doesn't take back a commit an earlier push exposed. It isn't a pull request check, so no required check or ruleset changes. Options weighed:
+  - **Scan each push's HEAD history (chosen):** a finding fails a run on the ref that holds it, within minutes, and tells whoever pushed it; one branch's false positive can't fail another's run.
+  - **A nightly `--all` scan that opens an issue:** one run a day, but a secret can sit unnoticed for a day, and the finding isn't tied to its push or its pusher.
+  - **Scan only each push's new commits (`before..after`):** faster, but a new branch or a force-push has no usable `before`, so each case needs its own range.
+
+  Cost: free on public repos, where standard GitHub-hosted runners are free. On a private repo, each run is a Linux job of under a minute, which GitHub rounds to a whole minute at $0.006, within GitHub Free's $12 a month of included compute (about 2,000 Linux minutes); a push to a branch with an open pull request runs both scans. Limits: a scan finds a secret after it's pushed, so a red run means rotating the secret. A push runs the workflow file in its own commit, so a branch cut before `secret-scan.yml` existed, an orphan branch, or a branch that edits or deletes that file isn't scanned on push (it still is in its pull request). An existing app gets `secret-scan.yml` by hand: the kit sync reports a new workflow as one to add, because a workflow's token can't write workflow files. Pushes made with a workflow's `GITHUB_TOKEN`, such as release-please's, start no run.
 
 ## Pillars affected
 
@@ -58,4 +64,8 @@ Security: secrets are caught before they are merged.
 - owner, 2026-11-01
 - owner, 2026-11-21 (scan HEAD's history, not every branch)
 - https://github.com/gitleaks/gitleaks/blob/v8.30.1/sources/git.go, retrieved 2026-11-21
+- owner, 2026-11-23 (scan every push to every branch)
+- https://docs.github.com/en/webhooks/webhook-events-and-payloads, retrieved 2026-11-23 (the push event fires when a branch is deleted; `deleted`: "Whether this push deleted the ref")
+- https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows, retrieved 2026-11-23 (on a branch deletion, the run's SHA is the default branch's)
+- https://docs.github.com/en/billing/concepts/product-billing/github-actions and https://docs.github.com/en/billing/reference/actions-runner-pricing, retrieved 2026-11-23 (standard runners free on public repos; Linux $0.006 a minute; GitHub Free includes $12 a month; minutes rounded per job)
 - https://docs.github.com/en/enterprise-server@3.18/code-security/concepts/secret-security/push-protection, retrieved 2026-11-01
