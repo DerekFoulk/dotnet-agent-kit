@@ -767,11 +767,13 @@ Describe 'Shared CI for app repos' {
     }
 
     # GAP-023 (ADR-0060): the gitleaks image is pinned by tag and digest in the kit's .config/gitleaks/Dockerfile, where
-    # Dependabot's docker updater moves both. The job keeps its name: the ruleset requires "Secret scan (gitleaks)".
-    Context 'dotnet-ci.reusable.yml secret scan' {
+    # Dependabot's docker updater moves both. ADR-0024 (update, 2026-11-23): the scan itself lives in one composite
+    # action, .github/actions/secret-scan, which the .NET CI's required job and the push scan both use.
+    Context 'the secret-scan action' {
         BeforeAll {
-            $secrets = $dotnet.Yaml['jobs']['secrets']
-            $scan = @(@($secrets['steps']) | Where-Object { "$($_['run'])" -match 'docker run' })
+            $scanAction = Read-Yaml '.github/actions/secret-scan/action.yml'
+            $actionSteps = if ($scanAction.Yaml.ContainsKey('runs')) { @($scanAction.Yaml['runs']['steps']) } else { @() }
+            $scan = @($actionSteps | Where-Object { "$($_['run'])" -match 'docker run' })
             $dockerfile = Get-Content -LiteralPath (Join-Path $root '.config' 'gitleaks' 'Dockerfile')
         }
 
@@ -782,29 +784,51 @@ Describe 'Shared CI for app repos' {
             $instructions[0] | Should -Match '^FROM ghcr\.io/gitleaks/gitleaks:v\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$'
         }
 
-        It 'runs the image the kit''s Dockerfile names, requiring its tag and digest, and names none itself' {
-            $secrets['name'] | Should -Be 'Secret scan (gitleaks)'
-            @(@($secrets['steps']) | Where-Object { "$($_['uses'])" -eq '$/.github/actions/kit-tools' }) | Should -HaveCount 1
+        # Dependabot's github-actions updater reads .github/workflows only (directory: /), so the action uses no other
+        # action, and it finds the kit from its own folder, as kit-tools does.
+        It 'is a composite action that finds the kit from its own folder, uses no other action and pastes no ${{ }} into a script' {
+            $scanAction.Yaml.ContainsKey('runs') | Should -BeTrue -Because '.github/actions/secret-scan/action.yml holds the scan'
+            $scanAction.Yaml['runs']['using'] | Should -Be 'composite'
+            @($actionSteps | Where-Object { $_.ContainsKey('uses') }) | Should -HaveCount 0
             $scan | Should -HaveCount 1
-            $scan[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
-            $scan[0]['run'] | Should -Match '"\$KIT/\.config/gitleaks/Dockerfile"'
+            $scan[0]['shell'] | Should -Be 'bash'
+            $scan[0]['run'] | Should -Match ([regex]::Escape('"$GITHUB_ACTION_PATH/../../.."'))
+            $scan[0]['run'] | Should -Not -Match '\$\{\{'
+        }
+
+        It 'runs the image the kit''s Dockerfile names, requiring its tag and digest, and no workflow names it' {
+            $scan | Should -HaveCount 1
+            $scan[0]['run'] | Should -Match '"\$kit/\.config/gitleaks/Dockerfile"'
             $scan[0]['run'] | Should -Match ([regex]::Escape('@sha256:[0-9a-f]{64}'))
             $scan[0]['run'] | Should -Match '"\$image" git /repo --redact --verbose'
             # The step's pattern names the image too, but no tag: v[0-9]+, never v8.
-            $dotnet.Text | Should -Not -Match 'gitleaks/gitleaks:v\d' -Because 'the Dockerfile is the one pin'
+            $scanAction.Text | Should -Not -Match 'gitleaks/gitleaks:v\d' -Because 'the Dockerfile is the one pin'
+            foreach ($file in Get-ChildItem -LiteralPath (Join-Path $root '.github' 'workflows') -Filter *.yml) {
+                Get-Content -Raw -LiteralPath $file.FullName | Should -Not -Match 'docker run|ghcr\.io/gitleaks' -Because "$($file.Name) uses the secret-scan action"
+            }
         }
 
         # ADR-0024 (update, 2026-11-21): without --log-opts, gitleaks scans `git log --all`, so one branch's known false
         # positive failed every other PR. The scan keeps gitleaks' own defaults but names HEAD, the commit under test.
         It 'scans every commit HEAD reaches, with gitleaks'' own log options but HEAD in place of --all' {
-            $checkout = @(@($secrets['steps']) | Where-Object { "$($_['uses'])" -match '^actions/checkout@' })
-
-            $checkout | Should -HaveCount 1
-            $checkout[0]['with']['fetch-depth'] | Should -Be 0 -Because 'the scan needs all of HEAD''s history'
+            $scan | Should -HaveCount 1
             $scan[0]['name'] | Should -Be 'Scan every commit HEAD reaches'
             $scan[0]['run'] | Should -Match ([regex]::Escape('--redact --verbose --log-opts="--full-history --diff-filter=tuxdb HEAD"'))
             $scan[0]['run'] | Should -Not -Match '--all\b' -Because 'every fetched branch is not the commit under test'
             [regex]::Matches($scan[0]['run'], '--log-opts').Count | Should -Be 1 -Because 'gitleaks keeps the last --log-opts given'
+        }
+
+        # The job keeps its name: the ruleset requires "dotnet / Secret scan (gitleaks)".
+        It 'is what the .NET CI''s required job runs, after a full checkout that keeps no token' {
+            $secrets = $dotnet.Yaml['jobs']['secrets']
+            $steps = @($secrets['steps'])
+
+            $secrets['name'] | Should -Be 'Secret scan (gitleaks)'
+            $steps | Should -HaveCount 2
+            $steps[0]['uses'] | Should -Match '^actions/checkout@[0-9a-f]{40}$'
+            $steps[0]['with']['fetch-depth'] | Should -Be 0 -Because 'the scan needs all of HEAD''s history'
+            $steps[0]['with']['persist-credentials'] | Should -BeFalse
+            $steps[1]['uses'] | Should -Be '$/.github/actions/secret-scan'
         }
     }
 
