@@ -420,30 +420,6 @@ jobs:
           fetch-depth: 0 # scan every commit HEAD reaches, not just the latest tree
           persist-credentials: false # nothing in .git for the container to read
 
-      # The kit's files, at this workflow's own commit, for the image pin below.
-      - id: kit
-        uses: $/.github/actions/kit-tools
-
-      # The gitleaks CLI (MIT) from its official image, pinned by tag and digest in the kit's .config/gitleaks/Dockerfile,
-      # where Dependabot moves both (ADR-0024, ADR-0060). Nothing builds that file; a FROM line without both fails here.
-      # The GIT_CONFIG_* variables mark the mounted checkout as safe for git inside the container.
-      # It scans every commit HEAD reaches: on a pull request, the merge commit (main's history and the PR's commits);
-      # on a push to main, main. Without --log-opts, gitleaks runs `git log -p -U0 --full-history --all
-      # --diff-filter=tuxdb` (sources/git.go at v8.30.1; the lower-case letters leave out type changes and unmerged,
-      # unknown, deleted and broken file pairs), so every fetched branch was scanned and one branch's known false
-      # positives failed every PR. These options are that default with HEAD in place of --all; gitleaks splits them on
-      # single spaces. Recheck them against sources/git.go when the image's version moves (ADR-0024).
-      - name: Scan every commit HEAD reaches
-        env:
-          KIT: ${{ steps.kit.outputs.path }}
-        run: |
-          dockerfile="$KIT/.config/gitleaks/Dockerfile"
-          image="$(sed -n -E 's#^FROM (ghcr\.io/gitleaks/gitleaks:v[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64})$#\1#p' "$dockerfile")"
-          if [ "$(grep -c '^FROM ' "$dockerfile")" -ne 1 ] || [ -z "$image" ]; then
-            echo "::error::$dockerfile must have one FROM line, naming the gitleaks image by tag and digest"
-            exit 1
-          fi
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/repo" \
-            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
-            "$image" git /repo --redact --verbose --log-opts="--full-history --diff-filter=tuxdb HEAD"
+      # The scan, shared with the scan of every push to another branch or a tag (secret-scan.reusable.yml, ADR-0024): on a pull request it
+      # covers the merge commit's history (main's and the PR's commits), on a push to main, main's.
+      - uses: $/.github/actions/secret-scan

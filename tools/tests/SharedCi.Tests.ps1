@@ -767,11 +767,13 @@ Describe 'Shared CI for app repos' {
     }
 
     # GAP-023 (ADR-0060): the gitleaks image is pinned by tag and digest in the kit's .config/gitleaks/Dockerfile, where
-    # Dependabot's docker updater moves both. The job keeps its name: the ruleset requires "Secret scan (gitleaks)".
-    Context 'dotnet-ci.reusable.yml secret scan' {
+    # Dependabot's docker updater moves both. ADR-0024 (update, 2026-11-23): the scan itself lives in one composite
+    # action, .github/actions/secret-scan, which the .NET CI's required job and the push scan both use.
+    Context 'the secret-scan action' {
         BeforeAll {
-            $secrets = $dotnet.Yaml['jobs']['secrets']
-            $scan = @(@($secrets['steps']) | Where-Object { "$($_['run'])" -match 'docker run' })
+            $scanAction = Read-Yaml '.github/actions/secret-scan/action.yml'
+            $actionSteps = if ($scanAction.Yaml.ContainsKey('runs')) { @($scanAction.Yaml['runs']['steps']) } else { @() }
+            $scan = @($actionSteps | Where-Object { "$($_['run'])" -match 'docker run' })
             $dockerfile = Get-Content -LiteralPath (Join-Path $root '.config' 'gitleaks' 'Dockerfile')
         }
 
@@ -782,29 +784,152 @@ Describe 'Shared CI for app repos' {
             $instructions[0] | Should -Match '^FROM ghcr\.io/gitleaks/gitleaks:v\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$'
         }
 
-        It 'runs the image the kit''s Dockerfile names, requiring its tag and digest, and names none itself' {
-            $secrets['name'] | Should -Be 'Secret scan (gitleaks)'
-            @(@($secrets['steps']) | Where-Object { "$($_['uses'])" -eq '$/.github/actions/kit-tools' }) | Should -HaveCount 1
+        # Dependabot's github-actions updater reads .github/workflows only (directory: /), so the action uses no other
+        # action, and it finds the kit from its own folder, as kit-tools does.
+        It 'is a composite action that finds the kit from its own folder, uses no other action and pastes no ${{ }} into a script' {
+            $scanAction.Yaml.ContainsKey('runs') | Should -BeTrue -Because '.github/actions/secret-scan/action.yml holds the scan'
+            $scanAction.Yaml['runs']['using'] | Should -Be 'composite'
+            @($actionSteps | Where-Object { $_.ContainsKey('uses') }) | Should -HaveCount 0
             $scan | Should -HaveCount 1
-            $scan[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'
-            $scan[0]['run'] | Should -Match '"\$KIT/\.config/gitleaks/Dockerfile"'
+            $scan[0]['shell'] | Should -Be 'bash'
+            $scan[0]['run'] | Should -Match ([regex]::Escape('"$GITHUB_ACTION_PATH/../../.."'))
+            $scan[0]['run'] | Should -Not -Match '\$\{\{'
+        }
+
+        It 'runs the image the kit''s Dockerfile names, requiring its tag and digest, and no workflow names it' {
+            $scan | Should -HaveCount 1
+            $scan[0]['run'] | Should -Match '"\$kit/\.config/gitleaks/Dockerfile"'
             $scan[0]['run'] | Should -Match ([regex]::Escape('@sha256:[0-9a-f]{64}'))
             $scan[0]['run'] | Should -Match '"\$image" git /repo --redact --verbose'
             # The step's pattern names the image too, but no tag: v[0-9]+, never v8.
-            $dotnet.Text | Should -Not -Match 'gitleaks/gitleaks:v\d' -Because 'the Dockerfile is the one pin'
+            $scanAction.Text | Should -Not -Match 'gitleaks/gitleaks:v\d' -Because 'the Dockerfile is the one pin'
+            foreach ($file in Get-ChildItem -LiteralPath (Join-Path $root '.github' 'workflows') -Filter *.yml) {
+                Get-Content -Raw -LiteralPath $file.FullName | Should -Not -Match 'ghcr\.io/gitleaks|\$image" git /repo' -Because "$($file.Name) uses the secret-scan action"
+            }
         }
 
         # ADR-0024 (update, 2026-11-21): without --log-opts, gitleaks scans `git log --all`, so one branch's known false
         # positive failed every other PR. The scan keeps gitleaks' own defaults but names HEAD, the commit under test.
         It 'scans every commit HEAD reaches, with gitleaks'' own log options but HEAD in place of --all' {
-            $checkout = @(@($secrets['steps']) | Where-Object { "$($_['uses'])" -match '^actions/checkout@' })
-
-            $checkout | Should -HaveCount 1
-            $checkout[0]['with']['fetch-depth'] | Should -Be 0 -Because 'the scan needs all of HEAD''s history'
+            $scan | Should -HaveCount 1
             $scan[0]['name'] | Should -Be 'Scan every commit HEAD reaches'
             $scan[0]['run'] | Should -Match ([regex]::Escape('--redact --verbose --log-opts="--full-history --diff-filter=tuxdb HEAD"'))
             $scan[0]['run'] | Should -Not -Match '--all\b' -Because 'every fetched branch is not the commit under test'
             [regex]::Matches($scan[0]['run'], '--log-opts').Count | Should -Be 1 -Because 'gitleaks keeps the last --log-opts given'
+        }
+
+        # Three workflows call the action, and a caller that forgot fetch-depth: 0 would scan one commit and pass. The
+        # step is run here, as CI runs it, with a docker on PATH that only records its arguments.
+        It 'scans a full checkout, passing the log options as one argument, and refuses a shallow one' {
+            $scan | Should -HaveCount 1
+            $kit = Join-Path $TestDrive "kit-$(New-Guid)"
+            $actionPath = Join-Path $kit '.github' 'actions' 'secret-scan'
+            New-Item -ItemType Directory -Force -Path $actionPath, (Join-Path $kit '.config' 'gitleaks'), (Join-Path $kit 'bin') | Out-Null
+            Copy-Item -LiteralPath (Join-Path $root '.config' 'gitleaks' 'Dockerfile') -Destination (Join-Path $kit '.config' 'gitleaks')
+            $calls = Join-Path $kit 'docker-calls'
+            $stub = Join-Path $kit 'bin' 'docker'
+            Set-Content -LiteralPath $stub -Value "#!/usr/bin/env bash`nprintf '%s\n' `"`$@`" >> `"`$DOCKER_CALLS`"`n" -NoNewline
+            # Git's bash on Windows runs any #! file; elsewhere bash skips a file it can't execute and finds the real docker.
+            if (-not $IsWindows) { [IO.File]::SetUnixFileMode($stub, 'UserRead, UserWrite, UserExecute') }
+            Set-Content -LiteralPath (Join-Path $kit 'scan.sh') -Value ($scan[0]['run'] -replace "`r`n", "`n") -NoNewline
+            $full = Join-Path $TestDrive "full-$(New-Guid)"
+            git init -q $full
+            foreach ($n in 1, 2) { git -C $full commit -q --allow-empty -m "commit $n" }
+            $shallow = Join-Path $TestDrive "shallow-$(New-Guid)"
+            git clone -q --depth 1 "file://$($full -replace '\\', '/')" $shallow
+            # On Windows, Git's own bash: the one on PATH may be WSL's, with no Linux installed.
+            $bash = if ($IsWindows) { Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin' 'bash.exe' } else { 'bash' }
+            $saved = @{ Path = $env:PATH }
+            $results = foreach ($workspace in $full, $shallow) {
+                Remove-Item -LiteralPath $calls -ErrorAction SilentlyContinue
+                try {
+                    $env:PATH = "$(Join-Path $kit 'bin')$([IO.Path]::PathSeparator)$($saved.Path)"
+                    $env:GITHUB_ACTION_PATH = $actionPath -replace '\\', '/'
+                    $env:GITHUB_WORKSPACE = $workspace -replace '\\', '/'
+                    $env:DOCKER_CALLS = $calls
+                    $output = & $bash --noprofile --norc -e -o pipefail (Join-Path $kit 'scan.sh') 2>&1
+                    [pscustomobject]@{ Exit = $LASTEXITCODE; Output = "$output"; Docker = @(if (Test-Path -LiteralPath $calls) { Get-Content -LiteralPath $calls }) }
+                }
+                finally {
+                    $env:PATH = $saved.Path
+                    Remove-Item Env:GITHUB_ACTION_PATH, Env:GITHUB_WORKSPACE, Env:DOCKER_CALLS -ErrorAction SilentlyContinue
+                }
+            }
+
+            $results[0].Exit | Should -Be 0 -Because "a full checkout is scanned: $($results[0].Output)"
+            $results[0].Docker | Should -Contain '--log-opts=--full-history --diff-filter=tuxdb HEAD'
+            $results[1].Exit | Should -Not -Be 0 -Because 'a shallow checkout holds only part of HEAD''s history'
+            $results[1].Docker | Should -HaveCount 0
+            $results[1].Output | Should -Match '::error::.*fetch-depth: 0'
+        }
+
+        # The job keeps its name: the ruleset requires "dotnet / Secret scan (gitleaks)".
+        It 'is what the .NET CI''s required job runs, after a full checkout that keeps no token' {
+            $secrets = $dotnet.Yaml['jobs']['secrets']
+            $steps = @($secrets['steps'])
+
+            $secrets['name'] | Should -Be 'Secret scan (gitleaks)'
+            $steps | Should -HaveCount 2
+            $steps[0]['uses'] | Should -Match '^actions/checkout@[0-9a-f]{40}$'
+            $steps[0]['with']['fetch-depth'] | Should -Be 0 -Because 'the scan needs all of HEAD''s history'
+            $steps[0]['with']['persist-credentials'] | Should -BeFalse
+            $steps[1]['uses'] | Should -Be '$/.github/actions/secret-scan'
+        }
+    }
+
+    # ADR-0024 (update, 2026-11-23): a secret is exposed once it's pushed, to any branch, PR or not. Every push to a
+    # branch other than main (CI's push run scans main) and every tag push is scanned, as its own run on that ref.
+    Context 'secret-scan.reusable.yml' {
+        BeforeAll {
+            $pushScan = Read-Yaml '.github/workflows/secret-scan.reusable.yml'
+            $pushJobs = if ($pushScan.Yaml.ContainsKey('jobs')) { $pushScan.Yaml['jobs'] } else { @{} }
+        }
+
+        It 'is a shared workflow with one read-only job that checks out all history, then runs the secret-scan action' {
+            $pushScan.Text | Should -Match '(?m)^\s*workflow_call:' -Because 'secret-scan.reusable.yml scans pushes for the kit and its apps'
+            $pushJobs.Count | Should -Be 1
+            $job = @($pushJobs.Values)[0]
+            $steps = @($job['steps'])
+
+            $job['name'] | Should -Be 'Secret scan (gitleaks)'
+            $job['runs-on'] | Should -Be 'ubuntu-latest'
+            @($pushScan.Yaml['permissions'].Values) | Should -Be @('read')
+            $job.ContainsKey('permissions') | Should -BeFalse
+            $steps | Should -HaveCount 2
+            $steps[0]['uses'] | Should -Match '^actions/checkout@[0-9a-f]{40}$'
+            $steps[0]['with']['fetch-depth'] | Should -Be 0
+            $steps[0]['with']['persist-credentials'] | Should -BeFalse
+            $steps[1]['uses'] | Should -Be '$/.github/actions/secret-scan'
+            $pushScan.Text | Should -Not -Match '\./tools/'
+        }
+
+        # A branch deletion is a push event too; its run's SHA is the default branch's, so it would rescan main.
+        It 'skips a push that deletes the ref, and never cancels a run: a force-push can''t take back what was pushed' {
+            $pushJobs.Count | Should -Be 1 -Because 'secret-scan.reusable.yml has one scan job'
+            $job = @($pushJobs.Values)[0]
+
+            $job['if'] | Should -Be '${{ !github.event.deleted }}'
+            $pushScan.Text | Should -Not -Match '(?m)^\s*concurrency:'
+        }
+
+        It 'runs in <Caller> on every push to a branch other than main and every tag push, never as a pull request check' -ForEach @(
+            @{ Caller = 'the kit'; File = '.github/workflows/secret-scan.yml'; Uses = './.github/workflows/secret-scan.reusable.yml' }
+            @{ Caller = 'every app'; File = 'templates/app/.github/workflows/secret-scan.yml'; Uses = 'DerekFoulk/dotnet-agent-kit/.github/workflows/secret-scan.reusable.yml@X' }
+        ) {
+            $path = Join-Path $root $File
+            Test-Path -LiteralPath $path | Should -BeTrue -Because "$File calls the shared push scan"
+            # {{Name}} placeholders aren't YAML.
+            $yaml = ConvertFrom-Yaml ((Get-Content -Raw -LiteralPath $path) -replace '\{\{[A-Za-z]+\}\}', 'X')
+            $on = if ($yaml.ContainsKey('on')) { $yaml['on'] } else { $yaml[$true] }
+
+            @($on.Keys) | Should -Be @('push')
+            @($on['push']['branches-ignore']) | Should -Be @('main')
+            @($on['push']['tags']) | Should -Be @('**')
+            $on['push'].ContainsKey('branches') | Should -BeFalse
+            @($yaml['permissions'].Values) | Should -Be @('read')
+            $yaml.ContainsKey('concurrency') | Should -BeFalse
+            $yaml['jobs'].Count | Should -Be 1
+            @($yaml['jobs'].Values)[0]['uses'] | Should -Be $Uses
         }
     }
 
