@@ -3,4 +3,4 @@
 # updater moves both. Its tag's version must be the Microsoft.Playwright version in Directory.Packages.props: Playwright
 # finds only its own version's browsers. Move the two in one PR (docs/standards/testing.md, "Browser and accessibility
 # tests"). Nothing builds this file: CI runs the image its FROM line names.
-FROM mcr.microsoft.com/playwright/dotnet:v1.64.1-noble@sha256:6955861f6e17b2580c00f0970198e446f006cdae6c34fb8f9ad5318aaab50da0
+FROM mcr.microsoft.com/playwright/dotnet:v1.65.1-noble@sha256:d6f5dc4c392790d21671887dcfa1d37c6a9fcb088a5950d991dcea7e519a5c30
