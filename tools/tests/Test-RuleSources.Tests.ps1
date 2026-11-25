@@ -196,6 +196,44 @@ types:
             $problems[0].Message | Should -BeLike "*strength '$Strength'*must, should, consider*"
         }
 
+        # An agent can't make a source sound stricter than it is: an authority must needs a must-word in a quote.
+        It 'accepts an authority must whose quote says <Text>' -ForEach @(
+            @{ Text = 'Apps must validate tokens.' }
+            @{ Text = 'DO name it in PascalCase.' }
+            @{ Text = 'DO NOT expose it.' }
+            @{ Text = 'Do not store secrets in code.' }
+            @{ Text = 'Don''t block on async code.' }
+            @{ Text = 'Never grant execute permission.' }
+            @{ Text = 'Verify that the application uses TLS.' }
+            @{ Text = 'Always dispose the call.' }
+            @{ Text = 'A key is required for this call.' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; strength = 'must'; ratified = 'ADR-0007'; sources = @($url)
+                    quotes = @([ordered]@{ source = 'https://example.com/guide'; retrieved = '2026-11-01'; text = $Text })
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports an authority must whose quotes say only <Text>' -ForEach @(
+            @{ Text = 'You should validate tokens.' }
+            @{ Text = 'Consider a fallback policy; you can opt out.' }
+            @{ Text = 'Do this when it fits.' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; strength = 'must'; ratified = 'ADR-0007'; sources = @($url)
+                    quotes = @([ordered]@{ source = 'https://example.com/guide'; retrieved = '2026-11-01'; text = $Text })
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*strength 'must'*no quote*must-word*should*ADR-0090*"
+        }
+
         It 'needs no strength on a retired rule' {
             New-StandardsFile -Rules @(New-Rule -Override @{ status = 'retired' } -Remove 'strength')
 
