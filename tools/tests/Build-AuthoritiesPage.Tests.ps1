@@ -68,6 +68,20 @@ Describe 'Build-AuthoritiesPage.ps1' {
                 Should -Be @('https://learn.microsoft.com/dotnet/architecture/x')
         }
 
+        It 'reads each stored quote''s page with its rule and file, retired rules too, one Learn page cited two ways as one, and skips a quote with no source' {
+            $retired = New-Rule -Id 'API-003' -Status 'retired' -Sources 'ADR-0038' -Quotes 'https://www.rfc-editor.org/rfc/rfc9457'
+            $retired['quotes'] += [ordered]@{ retrieved = '2026-11-01'; text = 'No source.' }
+            New-StandardsFile -Topic 'api' -Rules @(
+                (New-Rule -Id 'API-001' -Sources 'ADR-0038' -Quotes 'https://learn.microsoft.com/en-us/aspnet/core/a#part')
+                $retired
+            )
+
+            @(Get-QuotedPage -StandardsPath $script:standards | ForEach-Object { "$($_.RuleId) $($_.File) $($_.Url)" }) | Should -Be @(
+                'API-001 api.md https://learn.microsoft.com/aspnet/core/a'
+                'API-003 api.md https://www.rfc-editor.org/rfc/rfc9457'
+            )
+        }
+
         It 'keeps a locale-like path segment on any other site, where it may be part of the page' {
             ConvertTo-PageUrl 'https://example.com/en-us/page' | Should -BeExactly 'https://example.com/en-us/page'
         }
@@ -351,6 +365,19 @@ Describe 'Build-AuthoritiesPage.ps1' {
             $block | Should -Match ([regex]::Escape('| [ASP.NET Core docs](https://learn.microsoft.com/aspnet/core/) | Microsoft and contributors; Copyright (c) Microsoft Corporation | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://github.com/dotnet/AspNetCore.Docs/blob/main/LICENSE>, checked 2026-11-25 | 3 | [api-design.md](docs/standards/api-design.md), [aspnetcore.md](docs/standards/aspnetcore.md) |' + "`n" + '| [WCAG 2.2]'))
         }
 
+        It 'credits a quote to the work its page matches, even when another work has the same title' {
+            $broad = [ordered]@{ title = 'Docs'; author = 'Broad author'; source = 'https://example.com/'; license = 'CC-BY-4.0'
+                stated = 'https://example.com/license'; checked = '2026-11-25'; match = @('https://example.com/') }
+            $narrow = [ordered]@{ title = 'Docs'; author = 'Narrow author'; source = 'https://example.com/a/'; license = 'CC-BY-4.0'
+                stated = 'https://example.com/license'; checked = '2026-11-25'; match = @('https://example.com/a/') }
+            $quotes = @([pscustomobject]@{ Url = 'https://example.com/a/page'; RuleId = 'API-001'; File = 'api-design.md' })
+
+            $text = ConvertTo-NoticesBlock -Quoted $quotes -Works @($broad, $narrow) -Licenses $licenses
+
+            $text | Should -Match '\| Narrow author \|'
+            $text | Should -Not -Match 'Broad author'
+        }
+
         It 'lists each used license''s note and each work''s notice under the table, and leaves out a license no work uses' {
             $block | Should -Match ([regex]::Escape("`n`n- [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/): Credit the author.`n- [WCAG 2.2](https://www.w3.org/TR/WCAG22/): Copyright © 2020-2024 World Wide Web Consortium. W3C Recommendation 12 December 2024.`n") + '$')
             $block | Should -Not -Match 'Unused'
@@ -424,6 +451,10 @@ Describe 'Build-AuthoritiesPage.ps1' {
                 Message = "work 'RFC 9457' match 'https://www.rfc-editor.org/rfc/rfc9457' must be an http or https URL ending in '/'" }
             @{ Case = 'a | in its author'; Field = 'author'; Value = 'IETF | IRTF'
                 Message = "work 'RFC 9457' author has a '|', which would break the notices table" }
+            @{ Case = 'a | in its title'; Field = 'title'; Value = 'RFC | 9457'
+                Message = "work 'RFC | 9457' title has a '|', which would break the notices table" }
+            @{ Case = 'a | in its copyright'; Field = 'copyright'; Value = 'IETF | IRTF'
+                Message = "work 'RFC 9457' copyright has a '|', which would break the notices table" }
         ) {
             $work = New-Work
             $work[$Field] = $Value
@@ -435,8 +466,26 @@ Describe 'Build-AuthoritiesPage.ps1' {
             $other = New-Work
             $other['match'] = @('https://www.rfc-editor.org/rfc/')
 
-            (Get-CheckOutput -Works @((New-Work), $other) -Licenses @(New-License)).Lines |
-                Should -Contain "work 'RFC 9457' has the same title as another; give each its own"
+            $lines = (Get-CheckOutput -Works @((New-Work), $other) -Licenses @(New-License)).Lines
+
+            $lines | Should -Contain "work 'RFC 9457' has the same title as another; give each its own"
+            # Each work keeps its own quotes, whatever its title: the longer prefix takes the quote, so the other has none.
+            @($lines | Where-Object { $_ -eq "work 'RFC 9457' matches no quoted page; remove it" }).Count | Should -Be 1
+        }
+
+        It 'reports a license whose url isn''t an http or https URL' {
+            $license = New-License
+            $license['url'] = 'creativecommons.org'
+
+            (Get-CheckOutput -Works @(New-Work) -Licenses @($license)).Lines |
+                Should -Contain "license 'CC-BY-4.0' url 'creativecommons.org' must be an http or https URL"
+        }
+
+        It 'stops with the reason when <Key> isn''t a list' -ForEach @(@{ Key = 'works' }, @{ Key = 'licenses' }) {
+            $path = Join-Path $TestDrive "authorities-$(New-Guid).yml"
+            Set-Content -Path $path -Value "sources: []`n${Key}: some text`n"
+
+            { Read-AuthoritiesData -Path $path } | Should -Throw "*'$Key' isn't a list*"
         }
 
         It 'reports a license with no <Field>, and a license no work uses' -ForEach @(@{ Field = 'id' }, @{ Field = 'name' }, @{ Field = 'url' }) {
