@@ -63,10 +63,10 @@ jobs:
 
       # Stryker runs every test project, the Playwright ones too (GAP-004, ADR-0061), so with any it runs in the pinned
       # Playwright image, as the tests do in dotnet-ci.reusable.yml (GAP-033). The script reads each project's restore
-      # graph to tell, hence the restore. Like Stryker, it can't read MAUI or desktop projects here (GAP-026).
+      # graph to tell, hence the restore, locked like CI's (SUP-001). Like Stryker, it can't read MAUI or desktop projects here (GAP-026).
       - name: Restore
         if: steps.projects.outputs.count != '0'
-        run: dotnet restore "$SOLUTION"
+        run: dotnet restore "$SOLUTION" --locked-mode
 
       # Every setting (the MTP runner, the 85% threshold, the reporters, the ConfigureAwait skip) is in the kit's
       # .config/stryker-config.json, which a person running Stryker locally uses too (ADR-0039). The runner's temp
