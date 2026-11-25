@@ -452,7 +452,8 @@ function Read-AuthoritiesData {
         if ($data.Contains($key)) { $value = $data[$key] }
         if ($null -ne $value -and -not (& $isList $value)) { throw "docs/authorities.yml '$key' isn't a list." }
         $entries = @($(if ($null -ne $value) { $value }))
-        if ($entries | Where-Object { $_ -isnot [System.Collections.IDictionary] }) { throw "docs/authorities.yml '$key' has an entry that isn't a mapping." }
+        # Counted, not tested for truth: an empty, blank or zero entry is itself false.
+        if (@($entries | Where-Object { $_ -isnot [System.Collections.IDictionary] }).Count -gt 0) { throw "docs/authorities.yml '$key' has an entry that isn't a mapping." }
         $lists[$key] = $entries
     }
     [pscustomobject]@{
