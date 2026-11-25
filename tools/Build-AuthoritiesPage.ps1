@@ -117,7 +117,10 @@ function Find-SourceEntry {
     $bestLength = -1
     foreach ($entry in $Entries) {
         foreach ($prefix in @($entry['match'])) {
-            if ($Url.StartsWith("$prefix", [System.StringComparison]::OrdinalIgnoreCase) -and "$prefix".Length -gt $bestLength) {
+            # A prefix is a folder, ending in '/'; the folder's own page, cited without that slash, is in it too.
+            $inFolder = $Url.StartsWith("$prefix", [System.StringComparison]::OrdinalIgnoreCase) -or
+                "$Url/".Equals("$prefix", [System.StringComparison]::OrdinalIgnoreCase)
+            if ($inFolder -and "$prefix".Length -gt $bestLength) {
                 $best = $entry
                 $bestLength = "$prefix".Length
             }
