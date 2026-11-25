@@ -64,5 +64,14 @@ Describe 'New-FreshApp' {
             @($choices -split '\r?\n' | Where-Object { $_ }).Count | Should -Be @($intake['cards']).Count
             Should -Invoke Read-KitPreference -Times 0 -Exactly
         }
+
+        # The app's history is what its secret scan and commit checks read, so it starts as New-KitApp's does.
+        It 'starts its history with New-KitApp''s first commit, on main, with the commit-msg hook executable' {
+            Test-Path -LiteralPath (Join-Path $app '.git') | Should -BeTrue
+            git -C $app branch --show-current | Should -Be 'main'
+            @(git -C $app log --format=%s) | Should -Be @('chore: start from dotnet-agent-kit unreleased')
+            (git -C $app ls-files --stage -- .githooks/commit-msg) | Should -Match '^100755 '
+            git -C $app status --porcelain | Should -BeNullOrEmpty
+        }
     }
 }
