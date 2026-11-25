@@ -21,4 +21,31 @@ public sealed class EachHostTests
 
         checks.Should().BeEmpty("every host check takes its host's name first, from EachHost");
     }
+
+    // The sample has one host, so these show the rows for two, as an API with a web UI beside it gets.
+    [Fact]
+    public void EachHostGetsARowWithItsNameFirst()
+    {
+        IReadOnlyList<object?[]> rows = EachHostAttribute.Rows(["Shop.Api", "Shop.Web"], ["/health", true]);
+
+        rows.Should().HaveCount(2);
+        rows[0].Should().Equal("Shop.Api", "/health", true);
+        rows[1].Should().Equal("Shop.Web", "/health", true);
+    }
+
+    // A host's name names its rows and its contract snapshot's folder, so it must be one of its own, and a folder's.
+    [Theory]
+    [InlineData("")]
+    [InlineData("Shop.Api|Shop.Api")]
+    [InlineData("Shop Api")]
+    [InlineData("Shop/Api")]
+    [InlineData("Shop.Api|")]
+    public void HostsNeedNamesOfTheirOwnThatCanNameAFolder(string names)
+    {
+        string[] hosts = string.IsNullOrEmpty(names) ? [] : names.Split('|');
+
+        Action rows = () => EachHostAttribute.Rows(hosts, []);
+
+        rows.Should().Throw<InvalidOperationException>().WithMessage("*AppHost.Hosts*");
+    }
 }
