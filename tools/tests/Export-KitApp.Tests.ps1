@@ -748,6 +748,16 @@ Describe 'Export-KitApp' {
         $raw.EndsWith("`n") | Should -BeTrue
     }
 
+    It 'runs the command guard in the app from its copy in .kit/tools (ADR-0077)' {
+        $appSettings = Get-Content -Raw -LiteralPath (Join-Path $app '.claude/settings.json') | ConvertFrom-Json -AsHashtable
+        $guard = @($appSettings['hooks']['PreToolUse'] | ForEach-Object { $_['hooks'] } | Where-Object { $_['command'] -ceq 'pwsh' })
+        $guard.Count | Should -Be 1
+        $script = $guard[0]['args'][-1]
+        $script | Should -BeExactly '${CLAUDE_PROJECT_DIR}/.kit/tools/Invoke-CommandGuard.ps1'
+        $script.Replace('${CLAUDE_PROJECT_DIR}', $app) | Should -Exist
+        Join-Path $app '.kit' 'tools' 'KitCommandGuard.psm1' | Should -Exist
+    }
+
     It 'drops a rule for any kit script the app doesn''t get, worked out from the tools it does get' {
         # No list of kit-only scripts to keep in step: a new one's rules are dropped as New-KitApp's are.
         $kit = [ordered]@{ permissions = [ordered]@{
@@ -806,6 +816,33 @@ Describe 'Export-KitApp' {
         # And one filtered down to none is an empty list, not null.
         Get-KitAppSettingsText -SettingsText '{"permissions":{"ask":["PowerShell(./tools/New-KitApp*)"]}}' -AppTools 'Set-AgentMode.ps1' |
             Should -Match '"ask": \[\]'
+    }
+
+    # ADR-0077: the command guard is a kit script, which an app keeps under .kit/tools.
+    It 'points a hook that runs a kit script at the app''s copy in .kit/tools, and keeps the rest of it' {
+        $kit = [ordered]@{
+            permissions = [ordered]@{ allow = @() }
+            hooks       = [ordered]@{ PreToolUse = @([ordered]@{ matcher = 'Bash|PowerShell'; hooks = @(
+                            [ordered]@{ type = 'command'; command = 'pwsh'; args = @('-NoProfile', '-File', '${CLAUDE_PROJECT_DIR}/tools/Invoke-CommandGuard.ps1'); timeout = 30 }
+                            [ordered]@{ type = 'command'; command = '"${CLAUDE_PROJECT_DIR}/tools/Set-AgentMode.ps1"' }
+                            [ordered]@{ type = 'command'; command = 'node'; args = @('${CLAUDE_PROJECT_DIR}/scripts/tools/x.js') }) })
+            }
+        } | ConvertTo-Json -Depth 10
+
+        $app = Get-KitAppSettingsText -SettingsText $kit -AppTools 'Invoke-CommandGuard.ps1', 'Set-AgentMode.ps1' | ConvertFrom-Json -AsHashtable
+        $hooks = $app['hooks']['PreToolUse'][0]['hooks']
+
+        $hooks[0]['args'] | Should -Be @('-NoProfile', '-File', '${CLAUDE_PROJECT_DIR}/.kit/tools/Invoke-CommandGuard.ps1')
+        $hooks[0]['command'] | Should -BeExactly 'pwsh'
+        $hooks[0]['timeout'] | Should -Be 30
+        $hooks[1]['command'] | Should -BeExactly '"${CLAUDE_PROJECT_DIR}/.kit/tools/Set-AgentMode.ps1"'
+        $hooks[2]['args'] | Should -Be @('${CLAUDE_PROJECT_DIR}/scripts/tools/x.js') -Because 'only the root tools folder is the kit''s'
+        $app['hooks']['PreToolUse'][0]['matcher'] | Should -BeExactly 'Bash|PowerShell'
+    }
+
+    It 'stops when a hook runs a kit script the app doesn''t get, since it would fail on every call' {
+        $kit = '{"permissions":{},"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"pwsh","args":["-File","${CLAUDE_PROJECT_DIR}/tools/New-KitApp.ps1"]}]}]}}'
+        { Get-KitAppSettingsText -SettingsText $kit -AppTools 'Set-AgentMode.ps1' } | Should -Throw '*New-KitApp.ps1*'
     }
 
     It 'keeps a date-like string exactly as written, whatever the machine''s time zone' {

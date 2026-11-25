@@ -302,9 +302,12 @@ areas:
     rules: [GIT-001, GIT-002, GIT-003, GIT-004, GIT-005, COM-001, COM-002, COM-003, COM-004, COM-005, COM-006, COM-007, DOD-002, DOD-003, DOD-004, DOD-005, DOD-006]
     gaps:
       - id: GAP-044
-        gap: "The asks in .claude/settings.json match a command's text, so a quoted or escaped spelling, joined short options such as git push -qf, or a command inside ( ), @( ) or $( ) gets past them (ADR-0075, Known limits). A PreToolUse hook that resolves each command with PowerShell's own parser (and Bash's) before it runs, and asks for what the rules would ask for, would close them; so would Claude Code's sandbox, once it supports the PowerShell tool on Windows."
+        gap: "The asks in .claude/settings.json match a command's text, so a quoted or escaped spelling, joined short options such as git push -qf, or a command inside ( ), @( ) or $( ) gets past them (ADR-0075, Known limits). Closed by ADR-0077: a PreToolUse hook, tools/Invoke-CommandGuard.ps1, resolves each Bash or PowerShell command with PowerShell's own parser or a POSIX tokenizer before it runs. It asks when an ask rule covers the resolved command (its short options split, past Claude Code's wrappers, its paths in plain form), when code runs inside a PowerShell argument, and when a command an ask rule names takes a value built as it runs. Claude Code's sandbox doesn't run on native Windows."
+        status: closed
+      - id: GAP-048
+        gap: "The command guard (ADR-0077) doesn't resolve a command run from a string (bash -c, pwsh -Command, Invoke-Expression, eval), which prompts today only because no allow rule covers it; doesn't see what a file holds when a program reads it for itself (gh pr create --body-file ./.env, or git add -f and a push), which can send a secret; doesn't know a variable set outside the input; and reads only the project's ask rules, not the user's or managed ones (ADR-0077, Known limits). Feeding the string to the tokenizer again, and asking when a file argument matches a Read deny rule, would close the first two."
         status: proposed
-        needs: "a hook script with Pester tests, a hooks entry in .claude/settings.json, and an ADR"
+        needs: "Pester tests and a change to tools/KitCommandGuard.psm1"
 ---
 
 # Quality scorecard
@@ -368,7 +371,7 @@ Open gaps:
 - **GAP-016** (Delivery, proposed; needs cloud resources and cost): No infrastructure as code for an app's cloud resources.
 - **GAP-024** (Delivery, proposed; needs infrastructure as code first (GAP-016)): No check that an app's cloud database keeps its free-tier guard on (DAT-006): the guard is a setting in infrastructure code, which apps don't have yet (GAP-016).
 - **GAP-032** (UI and accessibility, proposed; needs a native UI test tool (an ADR and packages), and CI runners with emulators or devices): No automated UI tests for MAUI or desktop apps: UI-001 and its accessibility checks stay manual there, with each platform's tools, and nothing drives a native UI the way Playwright drives a browser (Appium for MAUI, or a Windows UI Automation driver for desktop). See also GAP-031: the intake offers a MAUI app browser test tools (ADR-0061).
-- **GAP-044** (Process, proposed; needs a hook script with Pester tests, a hooks entry in .claude/settings.json, and an ADR): The asks in .claude/settings.json match a command's text, so a quoted or escaped spelling, joined short options such as git push -qf, or a command inside ( ), @( ) or $( ) gets past them (ADR-0075, Known limits). A PreToolUse hook that resolves each command with PowerShell's own parser (and Bash's) before it runs, and asks for what the rules would ask for, would close them; so would Claude Code's sandbox, once it supports the PowerShell tool on Windows.
+- **GAP-048** (Process, proposed; needs Pester tests and a change to tools/KitCommandGuard.psm1): The command guard (ADR-0077) doesn't resolve a command run from a string (bash -c, pwsh -Command, Invoke-Expression, eval), which prompts today only because no allow rule covers it; doesn't see what a file holds when a program reads it for itself (gh pr create --body-file ./.env, or git add -f and a push), which can send a secret; doesn't know a variable set outside the input; and reads only the project's ask rules, not the user's or managed ones (ADR-0077, Known limits). Feeding the string to the tokenizer again, and asking when a file argument matches a Read deny rule, would close the first two.
 <!-- scorecard-table:end -->
 
 ## Keeping it current
