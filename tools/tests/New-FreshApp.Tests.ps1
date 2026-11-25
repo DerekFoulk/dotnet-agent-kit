@@ -104,5 +104,22 @@ Describe 'New-FreshApp' {
                 Should -Be @($expected | ForEach-Object { $_.Substring($From.Length + 1) } | Sort-Object)
             (Get-Content -Raw -LiteralPath (Join-Path $app $edited.Substring($From.Length + 1))) | Should -Not -Match 'uncommitted-edit-marker'
         }
+
+        # Export-KitApp leaves the sample's packages out of an app; the web-api probe is the sample, so it needs them back,
+        # as an app adds the packages its first task uses. The web UI fixture's are all in groups an app keeps.
+        It 'has the versions of the packages its probe uses, and no others the kit leaves out' {
+            [xml] $kitProps = git -C $kit show "${commit}:Directory.Packages.props" | Out-String
+            $sample = @($kitProps.Project.ItemGroup | Where-Object { $_.GetAttribute('Label') -eq 'Sample app' } | ForEach-Object { $_.PackageVersion })
+            $sample.Count | Should -BeGreaterThan 0
+            [xml] $appProps = Get-Content -Raw -LiteralPath (Join-Path $app 'Directory.Packages.props')
+            $versions = @{}
+            foreach ($package in $appProps.SelectNodes('//PackageVersion')) { $versions[$package.Include] = $package.Version }
+
+            foreach ($package in $sample) {
+                if ($Type -eq 'web-api') { $versions[$package.Include] | Should -Be $package.Version -Because "the sample uses $($package.Include)" }
+                else { $versions.ContainsKey($package.Include) | Should -BeFalse -Because "the web UI fixture doesn't use $($package.Include)" }
+            }
+            $versions.ContainsKey('Microsoft.CodeAnalysis.CSharp') | Should -BeFalse -Because 'the kit tools'' packages stay out of an app'
+        }
     }
 }
