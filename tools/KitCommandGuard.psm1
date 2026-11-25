@@ -745,7 +745,9 @@ function Expand-PathGlob {
 
 # The spellings of one resolved command that the ask rules are matched against: each of its word forms joined by
 # spaces, and for a native command also with each cluster of short options split up ("-qf" as "-q -f"), as git's and
-# gh's option parsers read it. Both are kept, so a rule written for the cluster ("-uf") still matches.
+# gh's option parsers read it. Both are kept, so a rule written for the cluster ("-uf") still matches. A form with a
+# word that holds white space is also spelled with that word in double quotes, as a rule may write it
+# (pwsh -NoProfile -Command "Install-PSResource *), since any quoting of the word reaches the program as the same text.
 function Get-CommandSpelling {
     param(
         [Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool,
@@ -754,6 +756,9 @@ function Get-CommandSpelling {
 
     foreach ($words in Get-CommandWordForm -Resolved $Resolved -Tool $Tool -WorkingDirectory $WorkingDirectory) {
         $words -join ' '
+        if (@($words | Where-Object { $_ -match '\s' }).Count) {
+            ($words | ForEach-Object { if ($_ -match '\s') { """$_""" } else { $_ } }) -join ' '
+        }
         if ($Resolved.Native) {
             $split = foreach ($word in $words) {
                 if ($word -cmatch '^-[A-Za-z][A-Za-z0-9]+$') { ($word.Substring(1).ToCharArray() | ForEach-Object { "-$_" }) -join ' ' } else { $word }
