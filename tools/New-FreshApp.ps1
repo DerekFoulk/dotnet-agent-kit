@@ -23,6 +23,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'KitIntake.psm1') -Force
 
+# New-KitApp's first commit, so a fresh app's history starts as a real app's does (CRF-003). Loaded in a child scope, so
+# New-KitApp's parameters don't replace this script's, then defined here with the git helper it calls.
+$script:KitAppFunctions = & {
+    . (Join-Path $PSScriptRoot 'New-KitApp.ps1')
+    @{ 'New-KitAppFirstCommit' = ${function:New-KitAppFirstCommit}; 'Invoke-KitGit' = ${function:Invoke-KitGit} }
+}
+foreach ($function in $script:KitAppFunctions.GetEnumerator()) { Set-Item -Path "function:script:$($function.Key)" -Value $function.Value }
+
 # The probe for each app type the job checks: the kit's own reference app of that type (ADR-0095). Name is the app's
 # name; From is the kit folder whose src/ and tests/ become the app's.
 $script:Probes = [ordered]@{
@@ -94,6 +102,7 @@ function New-FreshApp {
 
     & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $probe.Name -Destination $Destination -KitRef $commit -KitRoot $KitRoot -AppProfile $profileText
     if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
+    New-KitAppFirstCommit -Path $Destination
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
