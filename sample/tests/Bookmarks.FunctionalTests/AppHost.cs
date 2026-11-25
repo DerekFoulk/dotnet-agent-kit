@@ -1,4 +1,5 @@
 using System.Reflection;
+using Bookmarks.Contracts;
 using Bookmarks.FunctionalTests;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,7 +22,7 @@ internal static partial class AppHost
 
         public override bool ServesHttpApi => true;
 
-        public override IReadOnlyCollection<Assembly> ContractAssemblies => [];
+        public override IReadOnlyCollection<Assembly> ContractAssemblies => [typeof(CreateBookmarkRequest).Assembly];
 
         public override IAppUnderTest Start(string environment, IReadOnlyDictionary<string, string> settings, Action<IServiceCollection> services) =>
             new ApiHost(environment, settings, services);
