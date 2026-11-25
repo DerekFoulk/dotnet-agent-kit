@@ -1,16 +1,23 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Fills the generated block of docs/authorities.md: every source the rules in docs/standards cite, by publisher.
+    Fills the generated blocks of docs/authorities.md (every source the rules in docs/standards cite, by publisher)
+    and THIRD-PARTY-NOTICES.md (every work the rules quote, with its license).
 
 .DESCRIPTION
     Reads the URL sources of every rule in docs/standards that isn't retired, gives each URL to the entry in
-    docs/authorities.yml with the longest matching prefix (an archived web.archive.org copy is matched by its
-    original URL), and writes the block between '<!-- sources from docs/standards' and '<!-- end sources -->'
-    in docs/authorities.md. The text outside the block is hand-written and left alone (ADR-0073).
+    docs/authorities.yml's 'sources' with the longest matching prefix (an archived web.archive.org copy is matched by
+    its original URL), and writes the block between '<!-- sources from docs/standards' and '<!-- end sources -->'
+    in docs/authorities.md (ADR-0073).
+
+    Reads the page of every stored quote (ADR-0082), gives each to the entry in 'works' with the longest matching
+    prefix, and writes the block between '<!-- quotes from docs/standards' and '<!-- end quotes -->' in
+    THIRD-PARTY-NOTICES.md: each work's title, author, source and license, with links, as its license asks of a copy
+    (ADR-0094). Apps get that file's text in their own notices, so the attribution travels with the quotes.
+    The text outside each block is hand-written and left alone.
 
     -Check writes nothing and exits 1 when a cited URL matches no entry, an entry matches no cited URL, an entry
-    is incomplete, the block's markers are missing, or the block is stale.
+    is incomplete, a block's markers are missing, or a block is stale.
 
 .EXAMPLE
     ./tools/Build-AuthoritiesPage.ps1
@@ -60,6 +67,25 @@ function Get-CitedUrl {
                     Basis  = "$($rule['basis'])"
                     File   = $file.Name
                 }
+            }
+        }
+    }
+}
+
+# Every stored quote's page (ADR-0082): one object per quote, with its rule and file. A retired rule's quotes count
+# too: its words are still copied in the file.
+function Get-QuotedPage {
+    param([Parameter(Mandatory)] [string] $StandardsPath)
+
+    foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
+        $frontMatter = Read-FrontMatter -Path $file.FullName
+        if ($null -eq $frontMatter -or -not $frontMatter.Contains('rules')) { continue }
+        foreach ($rule in @($frontMatter['rules'])) {
+            if ($rule -isnot [System.Collections.IDictionary] -or -not $rule.Contains('quotes')) { continue }
+            foreach ($quote in @($rule['quotes'])) {
+                # A quote without a source is Test-RuleSources' to report.
+                if ($quote -isnot [System.Collections.IDictionary] -or -not (Test-Present $quote['source'])) { continue }
+                [pscustomobject]@{ Url = ConvertTo-PageUrl -Url "$($quote['source'])"; RuleId = "$($rule['id'])"; File = $file.Name }
             }
         }
     }
@@ -188,6 +214,39 @@ function ConvertTo-AuthoritiesBlock {
     ($lines -join "`n") + "`n"
 }
 
+# The generated block of THIRD-PARTY-NOTICES.md: each quoted work with what its license asks a copy to name (title,
+# author, source, license, with links; ADR-0094), where the license is stated, how many quotes come from it and the
+# standards that hold them.
+function ConvertTo-NoticesBlock {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Quoted,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Works,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Licenses
+    )
+
+    $byWork = @{}
+    foreach ($quote in $Quoted) {
+        $work = Find-SourceEntry -Url $quote.Url -Entries $Works
+        if (-not $work) { continue }
+        if (-not $byWork.ContainsKey($work['title'])) { $byWork[$work['title']] = [System.Collections.Generic.List[object]]::new() }
+        $byWork[$work['title']].Add($quote)
+    }
+    $licenseById = @{}
+    foreach ($license in $Licenses) { $licenseById["$($license['id'])"] = $license }
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $lines.AddRange([string[]] @("The rules quote $($Quoted.Count) passages from $($byWork.Count) works.", ''))
+    $lines.AddRange([string[]] @('| Work | Author | License | License stated in | Quotes | Quoted in |', '|---|---|---|---|---|---|'))
+    foreach ($work in $Works | Where-Object { $byWork.ContainsKey($_['title']) } | Sort-Object { "$($_['title'])" }) {
+        $quotes = $byWork[$work['title']]
+        $license = $licenseById["$($work['license'])"]
+        $licenseText = if ($license) { "[$($license['name'])]($($license['url']))" } else { "$($work['license'])" }
+        $files = @($quotes | ForEach-Object File | Sort-Object -Unique | ForEach-Object { "[$_](docs/standards/$_)" }) -join ', '
+        $lines.Add("| [$($work['title'])]($($work['source'])) | $($work['author']) | $licenseText | <$($work['stated'])>, checked $(ConvertTo-DateText $work['checked']) | $($quotes.Count) | $files |")
+    }
+    ($lines -join "`n") + "`n"
+}
+
 # Each citing rule once, sorted, linked to its standard, with a proposed rule marked: it isn't in force yet.
 function ConvertTo-RuleLinks {
     param([AllowEmptyCollection()] [object[]] $Citations)
@@ -214,17 +273,27 @@ function Invoke-AuthoritiesPageBuild {
     )
 
     $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).ProviderPath
-    $pagePath = Join-Path $RepoRoot 'docs' 'authorities.md'
-    # Kept across the catch, so a page that can't be filled is reported beside what was found before it.
+    # The two generated files: what each is called in messages, where it is, the word its block's markers use, and
+    # how to make its block once the data is read.
+    $targets = @(
+        [pscustomobject]@{ Name = 'docs/authorities.md'; Path = Join-Path $RepoRoot 'docs' 'authorities.md'; Marker = 'sources'
+            Block = { ConvertTo-AuthoritiesBlock -Cited $cited -Entries $data.Sources }; Current = $null; Expected = $null }
+        [pscustomobject]@{ Name = 'THIRD-PARTY-NOTICES.md'; Path = Join-Path $RepoRoot 'THIRD-PARTY-NOTICES.md'; Marker = 'quotes'
+            Block = { ConvertTo-NoticesBlock -Quoted $quoted -Works $data.Works -Licenses $data.Licenses }; Current = $null; Expected = $null }
+    )
+    # Kept across the catch, so a file that can't be filled is reported beside what was found before it.
     $problems = @()
     try {
-        $entries = @(Read-SourceEntry -Path (Join-Path $RepoRoot 'docs' 'authorities.yml'))
-        $cited = @(Get-CitedUrl -StandardsPath (Join-Path $RepoRoot 'docs' 'standards'))
-        $problems += @(Get-AuthoritiesProblem -Cited $cited -Entries $entries)
-        if (-not (Test-Path -LiteralPath $pagePath)) { $problems += 'docs/authorities.md is missing' }
-        else {
-            $current = (Get-Content -Raw -LiteralPath $pagePath) -replace "`r`n", "`n"
-            $expected = Update-SourcesBlock -Text $current -Block (ConvertTo-AuthoritiesBlock -Cited $cited -Entries $entries)
+        $data = Read-AuthoritiesData -Path (Join-Path $RepoRoot 'docs' 'authorities.yml')
+        $standardsPath = Join-Path $RepoRoot 'docs' 'standards'
+        $cited = @(Get-CitedUrl -StandardsPath $standardsPath)
+        $quoted = @(Get-QuotedPage -StandardsPath $standardsPath)
+        $problems += @(Get-AuthoritiesProblem -Cited $cited -Entries $data.Sources)
+        foreach ($target in $targets) {
+            if (-not (Test-Path -LiteralPath $target.Path)) { $problems += "$($target.Name) is missing"; continue }
+            $target.Current = (Get-Content -Raw -LiteralPath $target.Path) -replace "`r`n", "`n"
+            try { $target.Expected = Update-GeneratedBlock -Text $target.Current -Block (& $target.Block) -Marker $target.Marker -Name $target.Name }
+            catch { $problems += $_.Exception.Message }
         }
     }
     catch {
@@ -233,61 +302,83 @@ function Invoke-AuthoritiesPageBuild {
 
     if ($problems) {
         foreach ($problem in $problems) { Write-Host "  $problem" -ForegroundColor Red }
-        Write-Host "`n$($problems.Count) problem(s); docs/authorities.md was not written." -ForegroundColor Red
+        Write-Host "`n$($problems.Count) problem(s); docs/authorities.md and THIRD-PARTY-NOTICES.md were not written." -ForegroundColor Red
         return 1
     }
-    if ($current -ceq $expected) {
-        Write-Host "docs/authorities.md is current: $($cited.Count) citations from $($entries.Count) sources." -ForegroundColor Green
+    $stale = @($targets | Where-Object { $_.Current -cne $_.Expected })
+    if (-not $stale) {
+        Write-Host "docs/authorities.md and THIRD-PARTY-NOTICES.md are current: $($cited.Count) citations from $($data.Sources.Count) sources, $($quoted.Count) quotes from $($data.Works.Count) works." -ForegroundColor Green
         return 0
     }
     if ($Check) {
-        Write-Host '  out of date: docs/authorities.md' -ForegroundColor Red
-        # The first line that differs, so a failure in CI shows what changed without a local run.
-        $want = $expected -split "`n"
-        $have = $current -split "`n"
-        $line = 0
-        while ($line -lt $want.Count -and $line -lt $have.Count -and $want[$line] -ceq $have[$line]) { $line++ }
-        Write-Host "  first difference, line $($line + 1):" -ForegroundColor Red
-        Write-Host "    expected: $(if ($line -lt $want.Count) { $want[$line] } else { '(end of page)' })" -ForegroundColor Red
-        Write-Host "    found:    $(if ($line -lt $have.Count) { $have[$line] } else { '(end of page)' })" -ForegroundColor Red
+        foreach ($target in $stale) { Write-StaleDifference -Name $target.Name -Expected $target.Expected -Current $target.Current }
         Write-Host "`nRun ./tools/Build-AuthoritiesPage.ps1 and commit the result." -ForegroundColor Red
         return 1
     }
-    Set-Content -LiteralPath $pagePath -Value $expected -NoNewline
-    Write-Host 'updated: docs/authorities.md' -ForegroundColor Cyan
+    foreach ($target in $stale) {
+        Set-Content -LiteralPath $target.Path -Value $target.Expected -NoNewline
+        Write-Host "updated: $($target.Name)" -ForegroundColor Cyan
+    }
     0
 }
 
-# The entries of docs/authorities.yml. A missing file, or one without a 'sources' list, is a mistake to fix, not
-# "no sources": every cited URL would then be reported, so stop with the real reason.
-function Read-SourceEntry {
+# Says a generated file is out of date, with the first line that differs, so a failure in CI shows what changed
+# without a local run.
+function Write-StaleDifference {
+    param([Parameter(Mandatory)] [string] $Name, [Parameter(Mandatory)] [string] $Expected, [Parameter(Mandatory)] [string] $Current)
+
+    Write-Host "  out of date: $Name" -ForegroundColor Red
+    $want = $Expected -split "`n"
+    $have = $Current -split "`n"
+    $line = 0
+    while ($line -lt $want.Count -and $line -lt $have.Count -and $want[$line] -ceq $have[$line]) { $line++ }
+    Write-Host "  first difference, line $($line + 1):" -ForegroundColor Red
+    Write-Host "    expected: $(if ($line -lt $want.Count) { $want[$line] } else { '(end of page)' })" -ForegroundColor Red
+    Write-Host "    found:    $(if ($line -lt $have.Count) { $have[$line] } else { '(end of page)' })" -ForegroundColor Red
+}
+
+# The lists in docs/authorities.yml: Sources (each publisher, ADR-0073), and Works and Licenses (each quoted work and
+# its license, ADR-0094; empty when absent, so a quote is then reported as having no work). A missing file, or one
+# without a 'sources' list, is a mistake to fix, not "no sources": every cited URL would then be reported, so stop with
+# the real reason.
+function Read-AuthoritiesData {
     param([Parameter(Mandatory)] [string] $Path)
 
     if (-not (Test-Path -LiteralPath $Path)) { throw 'docs/authorities.yml is missing; it classes every source the rules cite (ADR-0073).' }
     $data = ConvertFrom-Yaml -Yaml (Get-Content -Raw -LiteralPath $Path)
-    if ($data -isnot [System.Collections.IDictionary] -or -not $data.Contains('sources') -or
-        $data['sources'] -is [string] -or $data['sources'] -isnot [System.Collections.IEnumerable]) {
+    $isList = { param($Value) $Value -isnot [string] -and $Value -is [System.Collections.IEnumerable] }
+    if ($data -isnot [System.Collections.IDictionary] -or -not $data.Contains('sources') -or -not (& $isList $data['sources'])) {
         throw "docs/authorities.yml has no 'sources' list."
     }
-    @($data['sources'])
+    foreach ($key in 'works', 'licenses') {
+        if ($data.Contains($key) -and $null -ne $data[$key] -and -not (& $isList $data[$key])) { throw "docs/authorities.yml '$key' isn't a list." }
+    }
+    [pscustomobject]@{
+        Sources  = @($data['sources'])
+        Works    = @($(if ($data.Contains('works')) { $data['works'] }))
+        Licenses = @($(if ($data.Contains('licenses')) { $data['licenses'] }))
+    }
 }
 
-# Replaces what's between the block's markers, which must each be a line of their own; the rest stays the author's.
-function Update-SourcesBlock {
+# Replaces what's between a generated block's markers, '<!-- <Marker> from docs/standards ... -->' and
+# '<!-- end <Marker> -->', each a line of its own; the rest of the file stays the author's.
+function Update-GeneratedBlock {
     param(
         [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text,
-        [Parameter(Mandatory)] [string] $Block
+        [Parameter(Mandatory)] [string] $Block,
+        [Parameter(Mandatory)] [string] $Marker,
+        [Parameter(Mandatory)] [string] $Name
     )
 
     # One opening line and one closing line, in that order. A second opening line, such as one quoted in an example,
     # would otherwise start the match early and replace the hand-written text after it.
-    $opens = [regex]::Matches($Text, '(?m)^<!-- sources from docs/standards[^\n]*-->$')
-    $pattern = '(?ms)^(?<open><!-- sources from docs/standards[^\n]*-->)\n.*?^<!-- end sources -->$'
+    $opens = [regex]::Matches($Text, "(?m)^<!-- $Marker from docs/standards[^\n]*-->$")
+    $pattern = "(?ms)^(?<open><!-- $Marker from docs/standards[^\n]*-->)\n.*?^<!-- end $Marker -->$"
     $found = [regex]::Matches($Text, $pattern)
     if ($opens.Count -ne 1 -or $found.Count -ne 1) {
-        throw "docs/authorities.md needs one block: one '<!-- sources from docs/standards ... -->' line, then one '<!-- end sources -->' line."
+        throw "$Name needs one block: one '<!-- $Marker from docs/standards ... -->' line, then one '<!-- end $Marker -->' line."
     }
-    $Text.Substring(0, $found[0].Index) + $found[0].Groups['open'].Value + "`n" + $Block + '<!-- end sources -->' +
+    $Text.Substring(0, $found[0].Index) + $found[0].Groups['open'].Value + "`n" + $Block + "<!-- end $Marker -->" +
         $Text.Substring($found[0].Index + $found[0].Length)
 }
 

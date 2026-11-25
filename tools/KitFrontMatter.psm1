@@ -53,6 +53,13 @@ function Test-IsoDate {
     [datetime]::TryParseExact($Text, 'yyyy-MM-dd', [cultureinfo]::InvariantCulture, 'None', [ref] $parsed)
 }
 
+# A YAML date as text, yyyy-MM-dd: powershell-yaml reads an unquoted date as a DateTime, a quoted one as a string.
+function ConvertTo-DateText {
+    param($Value)
+    if ($Value -is [datetime]) { return $Value.ToString('yyyy-MM-dd', [cultureinfo]::InvariantCulture) }
+    "$Value"
+}
+
 # A source is one of: "owner, YYYY-MM-DD", "ADR-NNNN" (an existing ADR file), or "<URL>, retrieved YYYY-MM-DD".
 # Returns the problem message, or $null when the source is valid. Shared by the rule-source and scorecard checks.
 function Get-SourceProblem {
@@ -85,4 +92,4 @@ function Get-SourceProblem {
     "source '$Source' is not a recognized source (owner, ADR or URL)"
 }
 
-Export-ModuleMember -Function Read-FrontMatter, Read-MarkdownBody, Test-Present, Test-IsoDate, Get-SourceProblem
+Export-ModuleMember -Function Read-FrontMatter, Read-MarkdownBody, Test-Present, Test-IsoDate, ConvertTo-DateText, Get-SourceProblem
