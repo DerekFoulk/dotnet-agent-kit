@@ -91,6 +91,19 @@ Describe 'New-ShippedSolutionFilter.ps1' {
             Should -Throw '*src/Bad/Bad.csproj*'
     }
 
+    # Review 1 of PR 129: MSBuild prints nothing, its errors included, while it writes a result file, so the failure must
+    # still carry MSBuild's own reason (MSB4025 for a file that isn't a project).
+    It 'says why MSBuild couldn''t read a project' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $unreadable = Join-Path $TestDrive 'unreadable'
+        New-Item -ItemType Directory -Force -Path (Join-Path $unreadable 'src/Bad') | Out-Null
+        'not a project' | Set-Content -LiteralPath (Join-Path $unreadable 'src/Bad/Bad.csproj')
+        '<Solution><Project Path="src/Bad/Bad.csproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $unreadable 'Bad.slnx')
+
+        { New-ShippedSolutionFilter -Solution (Join-Path $unreadable 'Bad.slnx') -Destination (Join-Path $TestDrive 'out9') } |
+            Should -Throw '*MSB4025*'
+    }
+
     # Review 2 of PR 48: MSBuild prints an evaluation warning before the value, so the whole output isn't the value.
     It 'reads the value past an MSBuild warning, and keeps one shipped project as a list' {
         Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
@@ -105,6 +118,31 @@ Describe 'New-ShippedSolutionFilter.ps1' {
 
         @(($text | ConvertFrom-Json).solution.projects) | Should -Be @('src/App/App.csproj')
         $text | Should -Match '"projects":\s*\[' -Because 'CycloneDX reads projects as an array, even with one'
+    }
+
+    # Dependabot's PR 122 (SDK 11.0.100): MSBuild printed the value before a warning, so the value can't depend on where
+    # it falls in MSBuild's output. This stand-in for dotnet prints the SDK 11 order and, when asked for a result file
+    # (MSBuild's -getResultOutputFile, MSB1068), writes only the value there, as MSBuild does.
+    It 'reads the value whatever MSBuild prints after it' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $ordered = Join-Path $TestDrive 'ordered'
+        New-Project $ordered 'src/App/App.csproj'
+        New-Project $ordered 'tests/T/T.csproj'
+        '<Solution><Project Path="src/App/App.csproj" /><Project Path="tests/T/T.csproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $ordered 'R.slnx')
+        Mock dotnet {
+            $value = if ("$args" -match 'T\.csproj') { 'true' } else { 'false' }
+            $resultFile = @($args | Where-Object { $_ -like '-getResultOutputFile:*' }) | Select-Object -First 1
+            if ($resultFile) { $value | Set-Content -LiteralPath ($resultFile -replace '^-getResultOutputFile:', '') }
+            $value
+            'warning NETSDK1234: A warning MSBuild prints after the value.'
+            $global:LASTEXITCODE = 0
+        }
+
+        { $script:filter = New-ShippedSolutionFilter -Solution (Join-Path $ordered 'R.slnx') -Destination (Join-Path $TestDrive 'out8') } |
+            Should -Not -Throw
+        $filter = $script:filter
+
+        @((Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json).solution.projects) | Should -Be @('src/App/App.csproj')
     }
 
     # CycloneDX reads only C#, F#, Visual Basic and X# projects; MSBuild may not evaluate the rest (a .shproj) on Linux.
