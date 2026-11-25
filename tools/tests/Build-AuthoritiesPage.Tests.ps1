@@ -498,9 +498,12 @@ Describe 'Build-AuthoritiesPage.ps1' {
             $data.Licenses.Count | Should -Be 0
         }
 
-        It 'stops with the reason when <Key> has an entry that isn''t a mapping' -ForEach @(@{ Key = 'works' }, @{ Key = 'licenses' }) {
+        It 'stops with the reason when <Key> has an entry that isn''t a mapping: <Entry>' -ForEach @(
+            @{ Key = 'works'; Entry = 'just text' }, @{ Key = 'licenses'; Entry = 'just text' }
+            @{ Key = 'works'; Entry = '' }, @{ Key = 'works'; Entry = "''" }, @{ Key = 'works'; Entry = '0' }
+        ) {
             $path = Join-Path $TestDrive "authorities-$(New-Guid).yml"
-            Set-Content -Path $path -Value "sources: []`n${Key}:`n  - just text`n"
+            Set-Content -Path $path -Value "sources: []`n${Key}:`n  - $Entry`n"
 
             { Read-AuthoritiesData -Path $path } | Should -Throw "*'$Key' has an entry that isn't a mapping*"
         }
