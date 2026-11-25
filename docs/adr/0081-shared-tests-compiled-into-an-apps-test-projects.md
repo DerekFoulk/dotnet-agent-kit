@@ -139,16 +139,58 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 
 **Update (2026-11-18): CRF-014 split.** ADR-0082 split CRF-014: it keeps Microsoft's encapsulation, gated by the analyzers, and the owner's tightening (state kept valid, a persistence-ignorant domain) is CRF-021. The domain's persistence check named above as CRF-014's now gates CRF-021.
 
+**Update (2026-11-25): the rest of GAP-037.** The owner chose on 2026-11-25 to land it before v0.1.0, as an approved exception to the coming freeze on new checks.
+
+- **Every host:** the app's part of `AppHost` now lists its hosts (`Hosts`), such as an API and a web UI beside it, since TST-003 gives an app one FunctionalTests project, which must start each.
+  - Each host is a `HostUnderTest`, with the members the single host had (`Start`, `AnonymousRoutes`, `SignedInRoute`, `ServesHttpApi`), a `Name`, and `ContractAssemblies`, the assemblies its endpoints' types may come from (SEC-013).
+  - `EachHost`, an xUnit v3 data attribute, gives every check one row per host, with the host's name first, listed before the run. Each check starts the host its row names. No check can start "the" app, because nothing in the shared source starts one any other way.
+  - `EachHostTests` checks that every shared check takes its rows from `EachHost`, and the rows for two hosts. It also refuses an empty list, a repeated name, and a name that can't name a folder, since the name also names the host's snapshot folder.
+- **The OpenAPI document's checks**, for each host that serves an HTTP API:
+  - `OpenApiTests` (API-003) compares the Development document with `Contract/<host name>/openapi-v1.json` in the FunctionalTests project. On a mismatch it writes `openapi-v1.received.json` beside it, which git ignores. `tests/Directory.Build.props` records the project's folder as `ProjectDirectory` assembly metadata for every `*.FunctionalTests` project; the sample's project file did that before. The sample's snapshot moved to `Contract/Bookmarks.Api/`.
+  - `OpenApiDocumentTests` checks that every error the document declares is Problem Details (API-002): a 4xx, a 5xx, a range, and the default response. It also checks the Bearer scheme, and that every operation not on one of the host's anonymous routes requires it and declares 401 and 403 (SEC-007, SEC-008). Route constraints are stripped before the two are compared.
+  - `ContractTypeTests` (SEC-013) reads the types from ApiExplorer, which the document is made from. Every type an endpoint takes as a body or form, or answers with, must come from the host's `ContractAssemblies` or be .NET's own, and so must its generic arguments and array elements. ".NET's own" means signed with one of Microsoft's public key tokens, which covers ProblemDetails.
+    - **Why types, not schema names:** ASP.NET Core composes the names of generic schemas (`OkOfArrayOfTodo`), and its customization page says those details may change. A name check would fail an app with a generic page type in its Contracts.
+    - **Why ApiExplorer:** it's in the shared framework, so the check compiles in every app without the OpenAPI package. It also covers endpoints mapped in `Program.cs`, which the architecture tests' EndpointTests don't see.
+- **SEC-008's token checks:** `TokenTests` sends four callers to the host's signed-in route and expects a 401 Problem that names the Bearer scheme:
+  - no token;
+  - an unsigned token (`alg: none`);
+  - the signed-in client's token with a claim added after it was signed;
+  - an RS256 token signed with a new key, with a key id of its own.
+
+  Each is made with the BCL only, from the token the host's signed-in client sends, so none needs the app's key, issuer or audience. The untouched token getting through is the control. A host that serves an HTTP API must send a JWT bearer token from `CreateClient(signedIn: true)`: SEC-008 says an HTTP API takes them. Without one, the check fails rather than skips.
+- **The sample** keeps only its own:
+  - the create request's limits in the document (SEC-010);
+  - no token, an expired token, another issuer and another audience on every bookmarks endpoint, which need its key.
+
+  Its copies of the moved checks went (CRF-003).
+- **Rules:** SEC-008 and SEC-013's document part gain a gate in apps. API-002 and API-003 now gate the document's errors and its snapshot in apps too.
+- **Proof:** the sample runs every check in the kit's CI. Locally, on 2026-11-25, a broken sample failed the check meant for each break:
+  - dropping the bearer document transformer;
+  - declaring a bare 404;
+  - answering with a list of domain `Bookmark`s;
+  - accepting any signature.
+- **Not verified:**
+  - a real second host. The sample has one, so only `EachHostTests` shows the rows for two.
+  - an exported app's FunctionalTests, for the reason the first host-checks update gives.
+- **GAP-037 closed.** What stays with an app's own tests is there by design: its own endpoints, data and settings, and tokens only its key can sign.
+
+**An app that already has a FunctionalTests project** has to do these at its next sync. Its build fails until it does the first two.
+- Turn its `AppHost.cs` into a `Hosts` list of `HostUnderTest`s, as the sample's.
+- Name each host's `ContractAssemblies`.
+- Move its snapshot, if it kept one, to `Contract/<host name>/openapi-v1.json`, and drop its own `ProjectDirectory` metadata item, which `tests/Directory.Build.props` now adds.
+
 ## Pillars affected
 
 - **Reliability and Operational Excellence:** an app gets the kit's architecture gates from its first Architecture.Tests project, in its own `dotnet test`, and keeps them current through the sync.
-- **Security:** SEC-013's endpoint check now runs in every app, so a domain type can't leak through an endpoint class unseen; endpoints mapped elsewhere stay code review's.
+- **Security:** SEC-013's endpoint check now runs in every app, so a domain type can't leak through an endpoint class unseen; since the 2026-11-25 update, ContractTypeTests checks every endpoint's types, wherever it's mapped, and TokenTests that an HTTP API refuses an unsigned, changed or untrusted token.
 - **Cost Optimization:** free; the tests take about a second.
 - **Performance Efficiency:** not affected.
 
 ## Sources
 
 - owner, 2026-11-16 ("Finish the free gaps")
+- owner, 2026-11-25 (GAP-037 before v0.1.0, an exception to the freeze on new checks)
+- https://learn.microsoft.com/aspnet/core/fundamentals/openapi/customize-openapi#customize-schema-reuse, retrieved 2026-11-25
 - https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory, retrieved 2026-11-16
 - https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/partial-member, retrieved 2026-11-16
 - https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-07
