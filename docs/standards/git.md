@@ -7,6 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-10-26", "ADR-0007"]
     enforcement:
       - kind: gate
@@ -20,6 +21,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-10-26", "ADR-0007"]
     enforcement:
       - kind: gate
@@ -33,6 +35,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0007", "ADR-0010", "ADR-0035", "owner, 2026-11-09", "owner, 2026-11-10"]
     enforcement:
       - kind: gate
@@ -49,6 +52,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0006", "ADR-0022", "ADR-0027"]
     enforcement:
       - kind: gate
@@ -68,6 +72,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01", "ADR-0006"]
     enforcement:
       - kind: gate

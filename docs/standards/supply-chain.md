@@ -7,6 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0020"]
     scope: core
     enforcement:
@@ -26,6 +27,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0020", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -39,6 +41,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -52,6 +55,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -65,6 +69,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0025"]
     scope: core
     enforcement:
@@ -81,6 +86,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0019", "ADR-0022", "owner, 2026-11-04"]
     scope: core
     enforcement:
@@ -94,6 +100,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0016"]
     scope: core
     enforcement:
@@ -110,6 +117,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-11", "ADR-0041", "ADR-0060"]
     scope: core
     enforcement:
@@ -126,6 +134,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["ADR-0055"]
     scope: core
     enforcement:
@@ -139,6 +148,8 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
+    when: [is-public-repo]
     sources: ["ADR-0056"]
     scope: core
     enforcement:
@@ -155,6 +166,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["ADR-0059"]
     scope: [maui]
     enforcement:
@@ -168,6 +180,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12", "ADR-0066"]
     scope: core
     enforcement:
@@ -187,6 +200,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/nuget/concepts/security-best-practices, retrieved 2026-11-17"]
     quotes:
@@ -211,6 +225,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/nuget/concepts/security-best-practices, retrieved 2026-11-17"]
     quotes:
@@ -232,6 +247,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "ADR-0016"
     sources: ["https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals, retrieved 2026-11-17"]
     quotes:
@@ -250,6 +266,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/security/benchmark/azure/mcsb-v2-devops-security, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/security/benchmark/azure/mcsb-v2-devops-security"
@@ -267,6 +284,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://github.com/ossf/scorecard-action, retrieved 2026-11-17"]
     quotes:
       - source: "https://github.com/ossf/scorecard-action"
@@ -293,6 +311,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/core/tools/nuget-signed-package-verification, retrieved 2026-11-17"]
     quotes:

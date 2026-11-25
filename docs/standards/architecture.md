@@ -7,6 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0008", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures"
@@ -27,6 +28,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0008", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/architecture/microservices/architect-microservice-container-applications/data-sovereignty-per-microservice, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/microservices/architect-microservice-container-applications/data-sovereignty-per-microservice"
@@ -44,6 +46,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0008"]
     enforcement:
       - kind: gate
@@ -57,6 +60,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0005", "ADR-0008", "https://learn.microsoft.com/azure/well-architected/reliability/simplify, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/reliability/simplify"
@@ -74,6 +78,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0016"]
     enforcement:
       - kind: gate
@@ -90,6 +95,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0016"]
     enforcement:
       - kind: advisory
@@ -103,6 +109,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0016"]
     enforcement:
       - kind: advisory
@@ -116,6 +123,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-16", "ADR-0080", "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/datetime/choosing-between-datetime, retrieved 2026-11-15", "https://learn.microsoft.com/visualstudio/msbuild/build-process-overview#evaluation-phase, retrieved 2026-11-16"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps"
@@ -136,6 +144,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: must
     sources: ["ADR-0052", "ADR-0008"]
     enforcement:
       - kind: gate
@@ -152,6 +161,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["ADR-0008", "ADR-0059", "https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -168,6 +178,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["ADR-0008", "ADR-0059", "owner, 2026-11-17"]
     enforcement:
       - kind: advisory
@@ -181,6 +192,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/what-is-maui?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"
@@ -210,6 +222,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-11", "owner, 2026-11-12", "ADR-0058", "https://learn.microsoft.com/azure/well-architected/cost-optimization/principles, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/cost-optimization/principles"
@@ -230,6 +243,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12", "ADR-0016", "https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals"
@@ -250,6 +264,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "ADR-0016"
     sources: ["https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals, retrieved 2026-11-17"]
     quotes:
@@ -268,6 +283,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures"
@@ -294,6 +310,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/maui/mvvm"
@@ -320,6 +337,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-16"
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-17"]
     quotes:
@@ -338,6 +356,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/azure/well-architected/reliability/simplify, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/eshoponcontainers-cqrs-ddd-microservice, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/reliability/simplify"

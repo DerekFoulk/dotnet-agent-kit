@@ -7,6 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["owner, 2026-11-17", "ADR-0038"]
     enforcement:
       - kind: advisory
@@ -20,6 +21,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0"
@@ -85,6 +87,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0038", "owner, 2026-11-09", "https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-07", "https://learn.microsoft.com/aspnet/core/fundamentals/error-handling-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -104,6 +107,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0038", "owner, 2026-11-09", "https://learn.microsoft.com/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-10.0"
@@ -127,6 +131,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0038", "owner, 2026-11-09", "https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-data-pagination-and-filtering, retrieved 2026-11-17", "https://learn.microsoft.com/azure/architecture/best-practices/api-implementation#handling-large-requests-and-responses, retrieved 2026-11-17", "https://learn.microsoft.com/sql/connect/ado-net/sql/compare-guid-uniqueidentifier-values, retrieved 2026-11-08"]
     enforcement:
       - kind: gate
@@ -143,6 +148,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["ADR-0038", "https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-versioning, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-versioning"
@@ -160,6 +166,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["ADR-0038", "https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-10.0#validation-support-in-minimal-apis, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/fundamentals/validation?view=aspnetcore-10.0, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -176,6 +183,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/azure/architecture/best-practices/api-design, retrieved 2026-11-17", "https://learn.microsoft.com/azure/architecture/best-practices/api-implementation, retrieved 2026-11-17"]
     quotes:
@@ -218,6 +226,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/openapi/using-openapi-documents?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -236,6 +245,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/error-handling-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -257,6 +267,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-data-pagination-and-filtering, retrieved 2026-11-17", "https://learn.microsoft.com/azure/architecture/best-practices/api-implementation#handling-large-requests-and-responses, retrieved 2026-11-17"]
     quotes:
@@ -287,6 +298,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/azure/architecture/microservices/design/api-design#api-versioning, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/architecture/microservices/design/api-design#api-versioning"
@@ -307,6 +319,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12"]
     enforcement:
       - kind: advisory

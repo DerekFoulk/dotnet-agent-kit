@@ -7,6 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/azure/architecture/guide/technology-choices/data-store-decision-tree, retrieved 2026-11-11"]
     enforcement:
       - kind: advisory
@@ -20,6 +21,8 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
+    when: [has-server-database, has-relational-database]
     sources: ["owner, 2026-11-10", "ADR-0053"]
     enforcement:
       - kind: advisory
@@ -33,6 +36,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/ef/core/managing-schemas/migrations/, retrieved 2026-11-17", "https://learn.microsoft.com/ef/core/managing-schemas/ensure-created, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/migrations/"
@@ -65,6 +69,8 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
+    when: [has-server-database]
     sources: ["ADR-0054"]
     enforcement:
       - kind: gate
@@ -81,6 +87,8 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
+    when: [has-database]
     sources: ["ADR-0054"]
     enforcement:
       - kind: advisory
@@ -94,6 +102,8 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
+    when: [has-server-database]
     sources: ["ADR-0054", "owner, 2026-11-12", "https://learn.microsoft.com/azure/cosmos-db/emulator-linux, retrieved 2026-11-11"]
     enforcement:
       - kind: advisory
@@ -107,6 +117,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/ef/core/testing/choosing-a-testing-strategy, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/test/integration-tests?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/testing/choosing-a-testing-strategy"
@@ -136,6 +147,8 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
+    when: [has-cloud-database]
     sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/azure/azure-sql/database/free-offer, retrieved 2026-11-11", "https://learn.microsoft.com/azure/cosmos-db/free-tier, retrieved 2026-11-11", "https://learn.microsoft.com/azure/cosmos-db/limit-total-account-throughput, retrieved 2026-11-11", "https://learn.microsoft.com/azure/cost-management-billing/costs/tutorial-acm-create-budgets, retrieved 2026-11-11"]
     enforcement:
       - kind: advisory
@@ -149,6 +162,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    when: [has-server-database]
     sources: ["owner, 2026-11-12"]
     enforcement:
       - kind: advisory
@@ -162,6 +177,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    when: [has-database]
     sources: ["owner, 2026-11-12"]
     enforcement:
       - kind: advisory
@@ -175,6 +192,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/ef/core/performance/efficient-querying, retrieved 2026-11-17", "https://learn.microsoft.com/ef/core/querying/tracking, retrieved 2026-11-17", "https://learn.microsoft.com/ef/core/performance/, retrieved 2026-11-17"]
     quotes:
@@ -226,6 +244,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/ef/core/querying/sql-queries, retrieved 2026-11-17", "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html, retrieved 2026-11-17"]
     quotes:
@@ -265,6 +284,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/azure/aks/zero-downtime-migration, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/aks/zero-downtime-migration"
@@ -282,6 +302,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying"
@@ -314,6 +335,8 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
+    when: [has-database]
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/azure/azure-sql/database/troubleshoot-common-connectivity-issues, retrieved 2026-11-17", "https://learn.microsoft.com/ef/core/miscellaneous/connection-resiliency, retrieved 2026-11-17"]
     quotes:
@@ -353,6 +376,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/ef/core/saving/concurrency, retrieved 2026-11-17"]
     quotes:
@@ -377,6 +401,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying, retrieved 2026-11-17", "https://learn.microsoft.com/ef/core/managing-schemas/migrations/managing, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying"
@@ -403,6 +428,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/ef/core/managing-schemas/migrations/projects, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/migrations/projects"
@@ -426,6 +452,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/ef/core/modeling/data-seeding, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/modeling/data-seeding"
@@ -449,6 +476,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/ef/core/change-tracking/relationship-changes, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/change-tracking/relationship-changes"
@@ -472,6 +500,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/ef/core/miscellaneous/nullable-reference-types, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/miscellaneous/nullable-reference-types"
@@ -489,6 +518,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/ef/core/performance/advanced-performance-topics, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/performance/advanced-performance-topics"
@@ -509,6 +539,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/ef/core/performance/performance-diagnosis, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/performance/performance-diagnosis"
@@ -532,6 +563,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/ef/core/testing/testing-with-the-database, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/testing/testing-with-the-database"

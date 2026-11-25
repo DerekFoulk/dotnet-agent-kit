@@ -7,6 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0037", "https://learn.microsoft.com/dotnet/core/diagnostics/observability-with-otel, retrieved 2026-11-17", "owner, 2026-11-09"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/diagnostics/observability-with-otel"
@@ -27,6 +28,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0037", "https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0, retrieved 2026-11-17", "https://aspire.dev/fundamentals/health-checks/, retrieved 2026-11-17", "owner, 2026-11-09"]
     scope: [web-api, blazor]
     enforcement:
@@ -46,6 +48,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0037", "owner, 2026-11-09", "owner, 2026-11-16", "https://learn.microsoft.com/dotnet/core/resilience/http-resilience, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/resilience/http-resilience"
@@ -69,6 +72,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: must
     sources: ["ADR-0047", "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/manage/ready-cloud-operations, retrieved 2026-11-11", "https://diataxis.fr/how-to-guides/, retrieved 2026-11-11"]
     scope: [web-api, blazor]
     enforcement:
@@ -88,6 +92,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown, retrieved 2026-11-17"]
     scope: [web-api, blazor]
     enforcement:
@@ -107,6 +112,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/options#options-validation, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/options#options-validation"
@@ -130,6 +136,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/best-practices?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging, retrieved 2026-11-17"]
     quotes:
@@ -178,6 +185,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/resilience/http-resilience, retrieved 2026-11-17"]
     quotes:
@@ -208,6 +216,8 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
+    when: [has-long-running-operations]
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown, retrieved 2026-11-17"]
     quotes:
@@ -235,6 +245,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -271,6 +282,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging, retrieved 2026-11-17"]
     scope: core
     enforcement:
@@ -284,6 +296,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks, retrieved 2026-11-17", "https://learn.microsoft.com/azure/well-architected/operational-excellence/incident-response, retrieved 2026-11-17", "https://learn.microsoft.com/azure/well-architected/operational-excellence/safe-deployments, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks"
@@ -328,6 +341,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0"
@@ -351,6 +365,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [publishes-trimmed]
     sources: ["https://learn.microsoft.com/dotnet/core/deploying/trimming/fixing-warnings, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/deploying/native-aot/diagnostics, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/deploying/trimming/fixing-warnings"
@@ -383,6 +399,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0"
@@ -400,6 +417,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://aspire.dev/fundamentals/health-checks/, retrieved 2026-11-17"]
     quotes:
       - source: "https://aspire.dev/fundamentals/health-checks/"

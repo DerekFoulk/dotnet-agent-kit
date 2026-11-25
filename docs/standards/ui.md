@@ -7,6 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://www.w3.org/TR/WCAG22/"
@@ -30,6 +31,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["ADR-0061", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://github.com/dequelabs/axe-core/blob/develop/doc/API.md, retrieved 2026-11-17", "https://github.com/dequelabs/axe-core-nuget/blob/develop/packages/playwright/README.md, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/test?view=aspnetcore-10.0, retrieved 2026-11-12"]
     scope: [blazor]
     enforcement:
@@ -46,6 +48,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://www.w3.org/TR/WCAG22/"
@@ -135,6 +138,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0"

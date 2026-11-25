@@ -7,6 +7,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite?view=net-maui-10.0"
@@ -27,6 +28,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings?view=net-maui-10.0"
@@ -53,6 +55,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
@@ -76,6 +79,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
@@ -96,6 +100,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
@@ -119,6 +124,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
@@ -142,6 +148,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
@@ -162,6 +169,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"
@@ -185,6 +193,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview?view=net-maui-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/user-interface/layouts/?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview?view=net-maui-10.0"
@@ -211,6 +220,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0"
@@ -246,6 +256,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions?view=net-maui-10.0"
@@ -272,6 +283,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [has-sign-in]
     sources: ["https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication?view=net-maui-10.0"
@@ -295,6 +308,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation?view=net-maui-10.0"
@@ -321,6 +335,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter?view=net-maui-10.0"
@@ -341,6 +356,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [publishes-native-aot]
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/nativeaot?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/nativeaot?view=net-maui-10.0"

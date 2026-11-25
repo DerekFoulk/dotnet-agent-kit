@@ -7,6 +7,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/components/class-libraries-and-static-server-side-rendering?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0"
@@ -31,6 +32,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/data-binding?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/components/?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/data-binding?view=aspnetcore-10.0"
@@ -55,6 +57,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/data-binding?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/data-binding?view=aspnetcore-10.0"
@@ -79,6 +82,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/synchronization-context?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/synchronization-context?view=aspnetcore-10.0"
@@ -100,6 +104,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/component-disposal?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/component-disposal?view=aspnetcore-10.0"
@@ -121,6 +126,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/advanced-scenarios?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/fundamentals/handle-errors?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/advanced-scenarios?view=aspnetcore-10.0"
@@ -142,6 +148,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/cascading-values-and-parameters?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/cascading-values-and-parameters?view=aspnetcore-10.0"
@@ -163,6 +170,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/performance/rendering?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/performance/rendering?view=aspnetcore-10.0"
@@ -193,6 +201,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/location-of-javascript?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-dotnet-from-javascript?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/fundamentals/navigation?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/performance/javascript-interoperability?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/?view=aspnetcore-10.0"
@@ -229,6 +238,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [has-server-interactivity]
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-dotnet-from-javascript?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-javascript-from-dotnet?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/?view=aspnetcore-10.0"
@@ -253,6 +264,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [has-server-interactivity]
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0"
@@ -286,6 +299,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/components/?view=aspnetcore-10.0"
@@ -316,6 +330,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/content-security-policy?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/content-security-policy?view=aspnetcore-10.0"
@@ -337,6 +352,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0"
@@ -361,6 +377,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
+    when: [uses-aspnet-core-identity]
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0"
@@ -385,6 +403,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0"
@@ -406,6 +425,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0"
@@ -427,6 +447,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/fundamentals/dependency-injection?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/fundamentals/dependency-injection?view=aspnetcore-10.0"
@@ -445,6 +466,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/fundamentals/handle-errors?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/fundamentals/handle-errors?view=aspnetcore-10.0"
@@ -466,6 +488,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/state-management/prerendered-state-persistence?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/components/lifecycle?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/state-management/prerendered-state-persistence?view=aspnetcore-10.0"
@@ -487,6 +510,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/forms/?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/forms/?view=aspnetcore-10.0"
@@ -508,6 +532,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/file-uploads?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/file-downloads?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/file-uploads?view=aspnetcore-10.0"
@@ -529,6 +554,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/configure-trimmer?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/bundle-caching-and-integrity-check-failures?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/configure-trimmer?view=aspnetcore-10.0"
@@ -550,6 +576,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/tooling?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/security/blazor-web-app-with-oidc?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/tooling?view=aspnetcore-10.0"
@@ -577,6 +604,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
+    when: [localizes-by-user-culture]
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0"
@@ -601,6 +630,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/hybrid/class-libraries-best-practices?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/hybrid/class-libraries-best-practices?view=aspnetcore-10.0"

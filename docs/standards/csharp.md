@@ -7,6 +7,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/patterns/discards, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/patterns/discards"
@@ -27,6 +28,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/patterns/discards, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/patterns/discards"
@@ -47,6 +49,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/types/built-in-types, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/types/built-in-types"
@@ -64,6 +67,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/types/built-in-types, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/fundamentals/types/built-in-types"
@@ -81,6 +85,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general"
@@ -98,6 +103,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general"
@@ -118,6 +124,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/enum, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/enum"
@@ -135,6 +142,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/record, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/record"
@@ -152,6 +160,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/struct, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/struct"
@@ -172,6 +181,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/advanced-topics/performance/, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/advanced-topics/performance/"
@@ -192,6 +202,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/operators/stackalloc, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/operators/stackalloc"
@@ -212,6 +223,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock"
@@ -244,6 +256,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/static-constructors, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/static-constructors"
@@ -261,6 +274,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/programming-guide/events/how-to-subscribe-to-and-unsubscribe-from-events, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/programming-guide/events/how-to-subscribe-to-and-unsubscribe-from-events"
@@ -281,6 +295,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/csharp/linq/get-started/write-linq-queries, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/linq/mixed-declarative-imperative-code-bugs, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/linq/get-started/write-linq-queries"
@@ -301,6 +316,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/extension-methods, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/extension-methods"
@@ -318,6 +334,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/versioning-with-the-override-and-new-keywords, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/versioning-with-the-override-and-new-keywords"
@@ -335,6 +352,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/advanced-topics/interface-implementation/mixins-with-default-interface-methods, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/advanced-topics/interface-implementation/mixins-with-default-interface-methods"
@@ -352,6 +370,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/nullable-analysis, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/nullable-analysis"
@@ -372,6 +391,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/analyzers/platform-compat-analyzer, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/analyzers/platform-compat-analyzer"
@@ -392,6 +412,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/async-wrappers-for-synchronous-methods, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/synchronous-wrappers-for-asynchronous-methods, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/async-wrappers-for-synchronous-methods"
@@ -412,6 +433,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/complete-your-tasks, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/keep-async-methods-alive, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/complete-your-tasks"
@@ -435,6 +457,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/base-types/regular-expression-source-generators, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/base-types/regular-expression-source-generators"
@@ -455,6 +478,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/base-types/how-to-verify-that-strings-are-in-valid-email-format, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/base-types/how-to-verify-that-strings-are-in-valid-email-format"
@@ -478,6 +502,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/base-types/character-encoding, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/base-types/character-encoding"
@@ -510,6 +535,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/events/observer-design-pattern-best-practices, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/events/observer-design-pattern-best-practices"
@@ -533,6 +559,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/threading/cancellation-in-managed-threads, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/threading/cancellation-in-managed-threads"
@@ -556,6 +583,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/parallel-programming/potential-pitfalls-in-data-and-task-parallelism, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/parallel-programming/potential-pitfalls-with-plinq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/parallel-programming/exception-handling-task-parallel-library, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/parallel-programming/potential-pitfalls-in-data-and-task-parallelism"
@@ -588,6 +616,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/garbage-collection/weak-references, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/garbage-collection/large-object-heap, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/garbage-collection/fundamentals, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/garbage-collection/weak-references"
@@ -614,6 +643,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/io/zip-tar-best-practices, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/io/zip-tar-best-practices"
@@ -640,6 +670,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/linq/linq-xml-security, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/linq/linq-xml-security"
@@ -666,6 +697,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/security/cryptographic-services, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/security/cryptographic-services"
@@ -686,6 +718,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [publishes-native-aot]
     sources: ["https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/reflection-vs-source-generation, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/reflection-vs-source-generation"
@@ -703,6 +737,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [ships-nuget-package]
     sources: ["https://learn.microsoft.com/dotnet/standard/library-guidance/dependencies-net, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/library-guidance/dependencies-net"
@@ -729,6 +765,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [ships-nuget-package]
     sources: ["https://learn.microsoft.com/dotnet/standard/library-guidance/nuget-package-compatibility-rules, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/library-guidance/nuget-package-compatibility-rules"
@@ -761,6 +799,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/net-standard, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/net-standard"
@@ -784,6 +823,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/io/pipelines, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/io/pipelines"
@@ -804,6 +844,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/native-interop/customize-struct-marshalling, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/native-interop/customize-struct-marshalling"

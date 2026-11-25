@@ -7,6 +7,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: consider
     sources: ["https://learn.microsoft.com/dotnet/core/resilience/http-resilience, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/resilience/http-resilience"

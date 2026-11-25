@@ -7,6 +7,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0"
@@ -28,6 +29,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/configuration?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/app-secrets?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/configuration?view=aspnetcore-10.0"
@@ -58,6 +60,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/logging?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/logging?view=aspnetcore-10.0"
@@ -88,6 +91,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0"
@@ -121,6 +125,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0"
@@ -145,6 +150,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/mvc/models/file-uploads?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/mvc/models/file-uploads?view=aspnetcore-10.0"
@@ -175,6 +181,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/static-files?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/static-files?view=aspnetcore-10.0"
@@ -199,6 +206,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/performance/caching/memory?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/performance/caching/hybrid?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/performance/caching/memory?view=aspnetcore-10.0"
@@ -229,6 +237,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/performance/caching/response?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/performance/caching/middleware?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/performance/caching/response?view=aspnetcore-10.0"
@@ -250,6 +259,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/mvc/controllers/filters?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/mvc/controllers/filters?view=aspnetcore-10.0"
@@ -277,6 +287,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/mvc/models/model-binding?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/razor-pages?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/mvc/advanced/custom-model-binding?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/mvc/models/model-binding?view=aspnetcore-10.0"
@@ -304,6 +315,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/web-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/web-api?view=aspnetcore-10.0"
@@ -331,6 +343,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/routing?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/routing?view=aspnetcore-10.0"
@@ -358,6 +371,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/diagnostics/asp0003?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0004?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0006?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0008?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0009?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0010?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/bl0005?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/bl0006?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/diagnostics/asp0003?view=aspnetcore-10.0"
@@ -400,6 +414,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [uses-grpc]
     sources: ["https://learn.microsoft.com/aspnet/core/grpc/performance?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/grpc/client?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/grpc/performance?view=aspnetcore-10.0"
@@ -430,6 +446,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
+    when: [uses-grpc]
     sources: ["https://learn.microsoft.com/aspnet/core/grpc/security?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/grpc/security?view=aspnetcore-10.0"
@@ -454,6 +472,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [uses-signalr]
     sources: ["https://learn.microsoft.com/aspnet/core/signalr/hubs?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/signalr/hubs?view=aspnetcore-10.0"
@@ -478,6 +498,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [uses-signalr]
     sources: ["https://learn.microsoft.com/aspnet/core/signalr/scale?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/signalr/security?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/signalr/scale?view=aspnetcore-10.0"
@@ -511,6 +533,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [has-sign-in]
     sources: ["https://learn.microsoft.com/aspnet/core/security/authentication/configure-oidc-web-authentication?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/authentication/configure-oidc-web-authentication?view=aspnetcore-10.0"
@@ -544,6 +568,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/overview?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-storage-providers?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/purpose-strings?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/overview?view=aspnetcore-10.0"
@@ -577,6 +602,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0"

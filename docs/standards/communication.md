@@ -7,6 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01"]
     enforcement:
       - kind: advisory
@@ -20,6 +21,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01"]
     enforcement:
       - kind: advisory
@@ -33,6 +35,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01"]
     enforcement:
       - kind: advisory
@@ -46,6 +49,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-10-31", "ADR-0011"]
     enforcement:
       - kind: advisory
@@ -59,6 +63,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01"]
     enforcement:
       - kind: advisory
@@ -72,6 +77,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-10-26"]
     enforcement:
       - kind: advisory
@@ -85,6 +91,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-09"]
     enforcement:
       - kind: advisory

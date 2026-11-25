@@ -7,6 +7,7 @@ rules:
     layer: floor
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0024"]
     scope: core
     enforcement:
@@ -23,6 +24,7 @@ rules:
     layer: floor
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01"]
     scope: core
     enforcement:
@@ -39,6 +41,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-01", "owner, 2026-11-07", "owner, 2026-11-09", "ADR-0032", "ADR-0035"]
     scope: core
     enforcement:
@@ -55,6 +58,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["ADR-0017"]
     scope: core
     enforcement:
@@ -71,6 +75,8 @@ rules:
     layer: floor
     basis: preference
     status: accepted
+    strength: must
+    when: [is-commercial]
     sources: ["ADR-0004", "ADR-0079"]
     scope: core
     enforcement:
@@ -87,6 +93,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    when: [is-public-repo]
     sources: ["ADR-0036", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -116,6 +124,8 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
+    when: [has-sign-in]
     sources: ["ADR-0048"]
     scope: [web-api, blazor]
     enforcement:
@@ -132,6 +142,8 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
+    when: [has-sign-in]
     sources: ["ADR-0048"]
     scope: [web-api, blazor]
     enforcement:
@@ -148,6 +160,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["ADR-0048"]
     scope: [web-api, blazor]
     enforcement:
@@ -164,6 +177,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12"]
     scope: [web-api, blazor]
     enforcement:
@@ -186,6 +200,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12"]
     scope: core
     enforcement:
@@ -199,6 +214,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12"]
     scope: [web-api]
     enforcement:
@@ -218,6 +234,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12"]
     scope: core
     enforcement:
@@ -234,6 +251,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12"]
     scope: core
     enforcement:
@@ -247,6 +265,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "ADR-0024"
     sources: ["https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html, retrieved 2026-11-17", "https://docs.github.com/en/code-security/concepts/secret-security/secret-scanning, retrieved 2026-11-17"]
     quotes:
@@ -274,6 +293,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [has-sign-in]
     sources: ["https://learn.microsoft.com/aspnet/core/security/authorization/policies?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/authorization/secure-data?view=aspnetcore-10.0, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x17-V8-Authorization.md, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/authorization/policies?view=aspnetcore-10.0"
@@ -303,6 +324,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [has-sign-in]
     sources: ["https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x18-V9-Self-contained-Tokens.md, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0"
@@ -353,6 +376,8 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
+    when: [has-sign-in]
     sources: ["https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x17-V8-Authorization.md, retrieved 2026-11-17", "https://learn.microsoft.com/entra/identity-platform/id-token-claims-reference, retrieved 2026-11-17"]
     quotes:
       - source: "https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization"
@@ -385,6 +410,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x11-V2-Validation-and-Business-Logic.md, retrieved 2026-11-17"]
     quotes:
       - source: "https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption"
@@ -411,6 +437,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations?view=aspnetcore-10.0, retrieved 2026-11-17", "https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption, retrieved 2026-11-17"]
     quotes:
@@ -459,6 +486,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-12"
     sources: ["https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x03-What-is-the-ASVS.md, retrieved 2026-11-17"]
     quotes:
@@ -480,6 +508,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://api-security.owasp.org/editions/2023/en/0xa3-broken-object-property-level-authorization, retrieved 2026-11-17"]
     quotes:
@@ -510,6 +539,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/standard/security/secure-coding-guidelines, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/security-warnings, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/serialization/binaryformatter-security-guide, retrieved 2026-11-17"]
     quotes:
@@ -534,6 +564,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/standard/security/cryptography-model, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/security/security-and-user-input, retrieved 2026-11-17"]
     quotes:

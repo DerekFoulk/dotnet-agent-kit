@@ -7,6 +7,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation"
@@ -30,6 +31,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
@@ -62,6 +64,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/logging/overview, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/logging/overview"
@@ -88,6 +91,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/caching, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/caching"
@@ -105,6 +109,7 @@ rules:
     layer: outside
     basis: authority
     status: proposed
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/options-library-authors, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/options-library-authors"

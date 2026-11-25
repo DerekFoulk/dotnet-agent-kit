@@ -7,6 +7,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08"]
     enforcement:
       - kind: advisory
@@ -20,6 +21,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08"]
     enforcement:
       - kind: advisory
@@ -33,6 +35,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08", "https://pragprog.com/tips/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -49,6 +52,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08", "ADR-0018", "https://martinfowler.com/bliki/Yagni.html, retrieved 2026-11-10", "https://martinfowler.com/articles/designDead.html, retrieved 2026-11-10"]
     enforcement:
       - kind: advisory
@@ -62,6 +66,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17", "https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod, retrieved 2026-11-17", "https://en.wikipedia.org/wiki/SOLID, retrieved 2026-11-17", "https://en.wikipedia.org/wiki/Liskov_substitution_principle, retrieved 2026-11-17"]
     enforcement:
       - kind: advisory
@@ -75,6 +80,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17", "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -91,6 +97,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08", "ADR-0043", "https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod, retrieved 2026-11-17", "https://en.wikipedia.org/wiki/Acyclic_dependencies_principle, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -107,6 +114,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08", "ADR-0043", "https://learn.microsoft.com/visualstudio/code-quality/code-metrics-cyclomatic-complexity, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1506, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -120,6 +128,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08", "ADR-0008", "https://williamdurand.fr/2013/07/30/from-stupid-to-solid-code/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines, retrieved 2026-11-17"]
     enforcement:
       - kind: advisory
@@ -133,6 +142,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-08", "ADR-0043", "https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -149,6 +159,7 @@ rules:
     layer: owner
     basis: preference
     status: proposed
+    strength: should
     sources: ["owner, 2026-11-11", "owner, 2026-11-12", "ADR-0050", "ADR-0071"]
     enforcement:
       - kind: gate
@@ -162,6 +173,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12"]
     enforcement:
       - kind: advisory
@@ -175,6 +187,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-10.0#validatescopes-and-validateonbuild, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -194,6 +207,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
@@ -218,6 +232,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
@@ -245,6 +260,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
@@ -269,6 +285,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
@@ -293,6 +310,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-08"
     sources: ["https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html, retrieved 2026-11-17"]
     quotes:
@@ -314,6 +332,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices, retrieved 2026-11-17"]
     quotes:
@@ -338,6 +357,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines, retrieved 2026-11-17"]
     quotes:
@@ -398,6 +418,7 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
