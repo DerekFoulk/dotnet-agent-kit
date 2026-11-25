@@ -10,7 +10,8 @@
 # the same workflow pins the new release zip's SHA-256, from GitHub's digest for the asset.
 # Each version update waits before Dependabot proposes it, so a release that's pulled or found compromised
 # in its first days never reaches a PR (ADR-0041): 7 days, and 14 for a NuGet or SDK major. Dependabot's own
-# default is 3 days. Security updates, on since 2026-11-09, don't wait. Shortening any wait here (a semver-minor-days or
+# default is 3 days. The Playwright image's entry has the wait too, but Dependabot applies none to it (GAP-046).
+# Security updates, on since 2026-11-09, don't wait. Shortening any wait here (a semver-minor-days or
 # semver-patch-days below 7 too), or narrowing it with an exclude or include list, is a guardrail change: an agent
 # merges it only on the owner's yes. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors,
 # 0.x packages (BenchmarkDotNet among them), GitHub Actions bumps, and PMD, gitleaks, Playwright image and Locust (pip)
@@ -88,9 +89,10 @@ updates:
     cooldown:
       default-days: 7
 
-  # The Playwright image the shared CI runs browser tests in (GAP-033, ADR-0061). Its version must be Microsoft.Playwright's
-  # in Directory.Packages.props, which the nuget entry moves in a PR of its own: CI fails each until both move, so
-  # bring the two into one PR (docs/standards/testing.md, "Browser and accessibility tests").
+  # The Playwright image the shared CI runs browser tests in (GAP-033, ADR-0061). Dependabot finds no publication date for
+  # it on MCR, so it applies no cooldown (GAP-046). Its version must be Microsoft.Playwright's in
+  # Directory.Packages.props, which the nuget entry moves in a PR of its own: CI fails each until both move, so bring the
+  # two into one PR, re-reading the image's digest then (docs/standards/testing.md, "Browser and accessibility tests").
   - package-ecosystem: docker
     directory: /.config/playwright
     schedule:

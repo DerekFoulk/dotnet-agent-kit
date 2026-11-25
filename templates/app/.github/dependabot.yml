@@ -8,7 +8,8 @@
 # (ADR-0031); the sync's comment on the PR says how.
 # This file is the app's: add an ecosystem when the app adds one of its own.
 # Each update waits before Dependabot proposes it: 7 days, and 14 for a NuGet major, so a release that's pulled
-# or found compromised in its first days never reaches a PR (the kit's ADR-0041); give an ecosystem you add the
+# or found compromised in its first days never reaches a PR (the kit's ADR-0041), except the Playwright image below,
+# which Dependabot doesn't hold back (the kit's GAP-046); give an ecosystem you add the
 # same cooldown (github-actions supports only default-days). Security updates, which New-KitApp turns on,
 # don't wait. Shortening or narrowing the wait is a guardrail change: an agent merges it only on the owner's yes.
 version: 2
@@ -44,10 +45,10 @@ updates:
 
   # The Playwright image the kit's shared CI runs this app's browser tests in, pinned by tag and digest (the kit's
   # GAP-033, ADR-0061). Docker takes no semver-*-days, and for this MCR image Dependabot finds no publication date, so
-  # it applies no cooldown at all (the kit's GAP-046); the image waits only because its version must be
-  # Microsoft.Playwright's in Directory.Packages.props, which the nuget entry moves, after its 7 days, in a PR of its own:
-  # CI fails each until both move, so bring the two into one PR (docs/standards/testing.md, "Browser and accessibility
-  # tests").
+  # it applies no cooldown at all (the kit's GAP-046). Its version must be Microsoft.Playwright's in
+  # Directory.Packages.props, which the nuget entry moves, after its 7 days, in a PR of its own: CI fails each until both
+  # move, so bring the two into one PR, re-reading the image's digest then, since the image PR read it on its first days
+  # (docs/standards/testing.md, "Browser and accessibility tests").
   - package-ecosystem: docker
     directory: /.config/playwright
     schedule:
