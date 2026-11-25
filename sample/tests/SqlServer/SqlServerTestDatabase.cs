@@ -11,8 +11,11 @@ internal static class SqlServerTestDatabase
     /// <param name="inCi">Whether this is a CI run.</param>
     internal static void WithoutDocker(string reason, bool inCi)
     {
-        // A stub for the red test: it neither skips nor fails.
-        _ = reason;
-        _ = inCi;
+        if (inCi)
+        {
+            throw new InvalidOperationException($"This CI run has no Docker, so the database tests can't run on SQL Server: {reason}");
+        }
+
+        Assert.Skip($"These tests need SQL Server in Docker, and Docker isn't available: {reason} Start Docker Desktop and run them again; CI runs them on every pull request.");
     }
 }
