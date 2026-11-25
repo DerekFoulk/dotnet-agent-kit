@@ -44,6 +44,32 @@ function Assert-FreshAppType {
     throw "There's no fresh-app probe for the app type '$Type'$reason. Types with a probe: $($script:Probes.Keys -join ', ')."
 }
 
+# The intake's answers for a fresh app: the app type's own option, and every other card's default as the new-app skill
+# would show it with no developer preferences, so a run on any machine gives the app CI checks.
+function Get-FreshAppAnswer {
+    param(
+        [Parameter(Mandatory)] [Collections.IDictionary] $Intake,
+        [Parameter(Mandatory)] [string] $Type
+    )
+
+    $defaults = @(Get-KitIntakeDefault -Intake $Intake -Preference @())
+    $appType = @($Intake['cards'] | Where-Object { $_['id'] -ceq 'appType' })
+    $option = @($appType | ForEach-Object { $_['options'] } | Where-Object { @($_['appTypes']).Count -eq 1 -and @($_['appTypes'])[0] -ceq $Type })
+    if ($option.Count -ne 1) { throw "The intake's appType card has no option for the app type '$Type' alone." }
+
+    $answers = [ordered]@{ appType = $option[0]['id'] }
+    foreach ($card in $Intake['cards'] | Where-Object { $_['id'] -cne 'appType' }) {
+        $id = $card['id']
+        $row = if ($card.Contains('dependsOn')) {
+            @($defaults | Where-Object { $_.Choice -ceq $id -and $_.When -ceq $answers[$card['dependsOn']] })
+        }
+        else { @($defaults | Where-Object { $_.Choice -ceq $id -and -not $_.When }) }
+        # A card with a default of its own, such as the budget, takes it when the answers leave it out.
+        if ($row -and $row[0].Pick) { $answers[$id] = $row[0].Pick }
+    }
+    $answers
+}
+
 function New-FreshApp {
     param(
         [Parameter(Mandatory)] [string] $Type,
@@ -53,6 +79,21 @@ function New-FreshApp {
     )
 
     Assert-FreshAppType -Type $Type
+    $probe = $script:Probes[$Type]
+    $KitRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($KitRoot)
+    $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination)
+    $commit = (git -C $KitRoot rev-parse --verify --quiet "$KitRef^{commit}" | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $commit) { throw "'$KitRef' isn't a commit or tag in $KitRoot." }
+
+    # The intake at the same commit as the files, as New-KitApp reads it.
+    $intakeText = git -C $KitRoot show "${commit}:templates/app-intake.json" 2>$null | Out-String
+    if ($LASTEXITCODE -ne 0 -or -not $intakeText.Trim()) { throw "The kit at $commit has no templates/app-intake.json." }
+    $intake = Get-KitIntake -Text $intakeText
+    $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers (Get-FreshAppAnswer -Intake $intake -Type $Type)
+    $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name $probe.Name -KitCommit $commit
+
+    & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $probe.Name -Destination $Destination -KitRef $commit -KitRoot $KitRoot -AppProfile $profileText
+    if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
