@@ -46,6 +46,10 @@ $script:Classes = 'authority', 'practitioner', 'project'
 # The page lists authorities first, then the tool pages ADR-0063 also counts as authorities, then practitioners.
 $script:ClassOrder = [System.Collections.Generic.List[string]] @('authority', 'project', 'practitioner')
 $script:ClassHeadings = @{ authority = 'Authorities'; project = 'Tool and project pages'; practitioner = 'Practitioners and references' }
+# What docs/authorities.yml says about each quoted work and each license (ADR-0094). A work's 'stated' is the page
+# where its license is stated, such as its repo's LICENSE file, read on its 'checked' date.
+$script:WorkFields = 'title', 'author', 'source', 'license', 'stated', 'checked', 'match'
+$script:LicenseFields = 'id', 'name', 'url'
 
 # Every URL source of the rules in docs/standards that aren't retired: one object per rule and URL, with the
 # rule's id, status and basis.
@@ -214,6 +218,84 @@ function ConvertTo-AuthoritiesBlock {
     ($lines -join "`n") + "`n"
 }
 
+# Each work that some quote comes from, with those quotes: keyed by the work's own entry, so a work with a missing or
+# repeated title still gets its own quotes.
+function Group-QuoteByWork {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Quoted,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Works
+    )
+
+    $byWork = [System.Collections.Generic.Dictionary[object, System.Collections.Generic.List[object]]]::new(
+        [System.Collections.Generic.ReferenceEqualityComparer]::Instance)
+    foreach ($quote in $Quoted) {
+        $work = Find-SourceEntry -Url $quote.Url -Entries $Works
+        if (-not $work) { continue }
+        $key = $work.psobject.BaseObject
+        if (-not $byWork.ContainsKey($key)) { $byWork[$key] = [System.Collections.Generic.List[object]]::new() }
+        $byWork[$key].Add($quote)
+    }
+    , $byWork
+}
+
+# Every reason the notices can't be built (ADR-0094): a quote no work matches, a work no quote matches, a work or a
+# license that's incomplete or malformed, a work naming a license the list doesn't have, a license no work uses.
+function Get-NoticesProblem {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Quoted,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Works,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Licenses
+    )
+
+    $licenseIds = @($Licenses | Where-Object { $_ -is [System.Collections.IDictionary] -and $_.Contains('id') } | ForEach-Object { "$($_['id'])" })
+    foreach ($license in $Licenses) {
+        $id = if ($license.Contains('id') -and (Test-Present $license['id'])) { $license['id'] } else { '(no id)' }
+        foreach ($field in $script:LicenseFields) {
+            if (-not $license.Contains($field) -or -not (Test-Present $license[$field])) { "license '$id' is missing '$field'" }
+        }
+        if ($license.Contains('url') -and (Test-Present $license['url']) -and "$($license['url'])" -notmatch '^https?://\S+$') {
+            "license '$id' url '$($license['url'])' must be an http or https URL"
+        }
+    }
+    foreach ($work in $Works) {
+        $title = if ($work.Contains('title') -and (Test-Present $work['title'])) { $work['title'] } else { '(no title)' }
+        foreach ($field in $script:WorkFields) {
+            if (-not $work.Contains($field) -or -not (Test-Present $work[$field])) { "work '$title' is missing '$field'" }
+        }
+        if ($work.Contains('license') -and (Test-Present $work['license']) -and "$($work['license'])" -notin $licenseIds) {
+            "work '$title' license '$($work['license'])' isn't in docs/authorities.yml's licenses"
+        }
+        if ($work.Contains('checked') -and (Test-Present $work['checked']) -and -not (Test-IsoDate (ConvertTo-DateText $work['checked']))) {
+            "work '$title' checked '$($work['checked'])' must be a date, yyyy-MM-dd"
+        }
+        foreach ($field in 'source', 'stated') {
+            if ($work.Contains($field) -and (Test-Present $work[$field]) -and "$($work[$field])" -notmatch '^https?://\S+$') {
+                "work '$title' $field '$($work[$field])' must be an http or https URL"
+            }
+        }
+        foreach ($prefix in @($(if ($work.Contains('match')) { $work['match'] }))) {
+            if ("$prefix" -notmatch '^https?://[^/\s]+/(\S*/)?$') { "work '$title' match '$prefix' must be an http or https URL ending in '/'" }
+        }
+        # The block puts these in table cells, where a '|' ends the cell.
+        foreach ($field in 'title', 'author', 'copyright') {
+            if ($work.Contains($field) -and "$($work[$field])".Contains('|')) { "work '$title' $field has a '|', which would break the notices table" }
+        }
+    }
+    foreach ($group in $Works | Where-Object { $_.Contains('title') } | Group-Object { "$($_['title'])" } | Where-Object Count -GT 1) {
+        "work '$($group.Name)' has the same title as another; give each its own"
+    }
+
+    $byWork = Group-QuoteByWork -Quoted $Quoted -Works $Works
+    foreach ($quote in $Quoted | Where-Object { -not (Find-SourceEntry -Url $_.Url -Entries $Works) }) {
+        "quote from $($quote.Url) ($($quote.RuleId)) matches no work in docs/authorities.yml; add the work and its license (ADR-0094)"
+    }
+    foreach ($work in $Works | Where-Object { -not $byWork.ContainsKey($_.psobject.BaseObject) }) {
+        "work '$($work['title'])' matches no quoted page; remove it"
+    }
+    $usedLicenses = @($Works | Where-Object { $_.Contains('license') } | ForEach-Object { "$($_['license'])" })
+    foreach ($id in $licenseIds | Where-Object { $_ -notin $usedLicenses }) { "license '$id' is used by no work; remove it" }
+}
+
 # The generated block of THIRD-PARTY-NOTICES.md: each quoted work with what its license asks a copy to name (title,
 # author, source, license, with links; ADR-0094), where the license is stated, how many quotes come from it and the
 # standards that hold them.
@@ -224,21 +306,15 @@ function ConvertTo-NoticesBlock {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Licenses
     )
 
-    $byWork = @{}
-    foreach ($quote in $Quoted) {
-        $work = Find-SourceEntry -Url $quote.Url -Entries $Works
-        if (-not $work) { continue }
-        if (-not $byWork.ContainsKey($work['title'])) { $byWork[$work['title']] = [System.Collections.Generic.List[object]]::new() }
-        $byWork[$work['title']].Add($quote)
-    }
+    $byWork = Group-QuoteByWork -Quoted $Quoted -Works $Works
     $licenseById = @{}
     foreach ($license in $Licenses) { $licenseById["$($license['id'])"] = $license }
 
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.AddRange([string[]] @("The rules quote $($Quoted.Count) passages from $($byWork.Count) works.", ''))
     $lines.AddRange([string[]] @('| Work | Author | License | License stated in | Quotes | Quoted in |', '|---|---|---|---|---|---|'))
-    foreach ($work in $Works | Where-Object { $byWork.ContainsKey($_['title']) } | Sort-Object { "$($_['title'])" }) {
-        $quotes = $byWork[$work['title']]
+    foreach ($work in $Works | Where-Object { $byWork.ContainsKey($_.psobject.BaseObject) } | Sort-Object { "$($_['title'])" }) {
+        $quotes = $byWork[$work.psobject.BaseObject]
         $license = $licenseById["$($work['license'])"]
         $licenseText = if ($license) { "[$($license['name'])]($($license['url']))" } else { "$($work['license'])" }
         $files = @($quotes | ForEach-Object File | Sort-Object -Unique | ForEach-Object { "[$_](docs/standards/$_)" }) -join ', '
@@ -289,6 +365,7 @@ function Invoke-AuthoritiesPageBuild {
         $cited = @(Get-CitedUrl -StandardsPath $standardsPath)
         $quoted = @(Get-QuotedPage -StandardsPath $standardsPath)
         $problems += @(Get-AuthoritiesProblem -Cited $cited -Entries $data.Sources)
+        $problems += @(Get-NoticesProblem -Quoted $quoted -Works $data.Works -Licenses $data.Licenses)
         foreach ($target in $targets) {
             if (-not (Test-Path -LiteralPath $target.Path)) { $problems += "$($target.Name) is missing"; continue }
             $target.Current = (Get-Content -Raw -LiteralPath $target.Path) -replace "`r`n", "`n"
