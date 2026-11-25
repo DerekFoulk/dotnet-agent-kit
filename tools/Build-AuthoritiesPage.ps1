@@ -440,13 +440,22 @@ function Read-AuthoritiesData {
     if ($data -isnot [System.Collections.IDictionary] -or -not $data.Contains('sources') -or -not (& $isList $data['sources'])) {
         throw "docs/authorities.yml has no 'sources' list."
     }
+    # A key with no value ('works:' alone) is an empty list; anything else must be a list of mappings, which is what
+    # the checks read fields from.
+    $lists = @{}
     foreach ($key in 'works', 'licenses') {
-        if ($data.Contains($key) -and $null -ne $data[$key] -and -not (& $isList $data[$key])) { throw "docs/authorities.yml '$key' isn't a list." }
+        # Assigned, not taken from an 'if' expression, which would unroll a one-entry list into its entry.
+        $value = $null
+        if ($data.Contains($key)) { $value = $data[$key] }
+        if ($null -ne $value -and -not (& $isList $value)) { throw "docs/authorities.yml '$key' isn't a list." }
+        $entries = @($(if ($null -ne $value) { $value }))
+        if ($entries | Where-Object { $_ -isnot [System.Collections.IDictionary] }) { throw "docs/authorities.yml '$key' has an entry that isn't a mapping." }
+        $lists[$key] = $entries
     }
     [pscustomobject]@{
         Sources  = @($data['sources'])
-        Works    = @($(if ($data.Contains('works')) { $data['works'] }))
-        Licenses = @($(if ($data.Contains('licenses')) { $data['licenses'] }))
+        Works    = $lists['works']
+        Licenses = $lists['licenses']
     }
 }
 
