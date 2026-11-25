@@ -337,13 +337,35 @@ types:
             $problems[0].Message | Should -BeLike $Expected
         }
 
-        It 'reports ratified on a preference rule, whose sources already name the owner' {
-            New-StandardsFile -Rules @(New-Rule -Override @{ ratified = 'owner, 2026-11-12' })
+        # ADR-0090: the kit's own rules start at should, and only the owner moves one to must, recorded in ratified.
+        It 'accepts a kit must ratified by <Ratified>' -ForEach @(
+            @{ Ratified = 'owner, 2026-11-25' }
+            @{ Ratified = 'ADR-0007' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = 'must'; ratified = $Ratified })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports a kit must with no ratified' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = 'must' })
 
             $problems = @(Get-Problem)
 
             $problems.Count | Should -Be 1
-            $problems[0].Message | Should -BeLike "*ratified*authority*"
+            $problems[0].Message | Should -BeLike "*kit rule*must*ratified*owner*ADR-0090*"
+        }
+
+        It 'reports a kit must ratified by <Ratified>' -ForEach @(
+            @{ Ratified = 'the owner' }
+            @{ Ratified = 'ADR-9999' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = 'must'; ratified = $Ratified })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*ratified*$Ratified*"
         }
 
         It 'reports an authority rule that cites no URL' {
