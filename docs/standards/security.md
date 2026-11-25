@@ -12,7 +12,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: dotnet-ci.reusable.yml scans the full git history with gitleaks on every pull request and push to main"
+        how: "ci: gitleaks scans every commit HEAD reaches: dotnet-ci.reusable.yml on every pull request and push to main, and secret-scan.reusable.yml on every push to another branch and every tag push"
       - kind: gate
         in: [kit, app]
         how: "github: secret scanning and push protection, on in the kit and turned on by New-KitApp in a public app (tools/tests/New-KitApp.Tests.ps1), block a push that holds a known provider's secret; non-provider patterns are off, a repo setting that is the owner's call"
@@ -249,7 +249,7 @@ rules:
     paths: ["**/*.cs"]
   - id: SEC-016
     statement: "Keys that were exposed should undergo immediate revocation, and when secret scanning alerts on one, rotate the affected credential immediately; removing it from git history is time-intensive and often unnecessary once the credential is revoked. Consider detecting secrets before they're committed."
-    why: "OWASP and GitHub both say to treat an exposed secret as compromised and revoke it, which is why SEC-001's gitleaks scan covers the full history."
+    why: "OWASP and GitHub both say to treat an exposed secret as compromised and revoke it, which is why SEC-001's gitleaks scan reads every commit HEAD reaches, and every push."
     layer: outside
     basis: authority
     status: accepted
@@ -554,7 +554,7 @@ rules:
         text: "Random number generation: RandomNumberGenerator.GetBytes RandomNumberGenerator.Fill"
       - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
         retrieved: "2026-11-17"
-        text: "Generating a key from a password: Rfc2898DeriveBytes.Pbkdf2"
+        text: "Generating a key from a password: Rfc2898DeriveBytes.Pbkdf2" # gitleaks:allow (a method name, not a key; apps get this file, ADR-0024)
       - source: "https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode"
         retrieved: "2026-11-17"
         text: "to use padded CBC block ciphers safely, you must combine them with an HMAC (or another data integrity check) that you validate using a constant time comparison before trying to decrypt the data."
@@ -571,7 +571,7 @@ rules:
 
 # Security
 
-Floor rules (security, privacy, license compliance) are never overridden (brief §4). GitHub secret scanning isn't available on private repos owned by a personal account, so the gitleaks scan of the full git history in CI is the protection on every repo (ADR-0024, ADR-0027). The kit itself is public (ADR-0031), where GitHub's secret scanning also runs for free.
+Floor rules (security, privacy, license compliance) are never overridden (brief §4). GitHub secret scanning isn't available on private repos owned by a personal account, so CI's gitleaks scan is the protection on every repo: every commit HEAD reaches, on every pull request and on every push to any branch or tag (ADR-0024, ADR-0027). It finds a secret after it's pushed, so a finding means rotating the secret. The kit itself is public (ADR-0031), where GitHub's secret scanning also runs for free.
 
 ## Sign-in, access and input (SEC-007 to SEC-010, SEC-017 to SEC-020)
 

@@ -59,6 +59,6 @@ A rule labeled `basis: authority` states only what its page says (ADR-0082). The
    ```
 
    - `Build-AuthoritiesPage.ps1`: a new site needs an entry in `docs/authorities.yml` first.
-   - Then `./tools/Build-AgentRules.ps1 -Check`, and Pester in a fresh clone.
+   - Then `./tools/Build-AgentRules.ps1 -Check`, and `./tools/Invoke-KitTests.ps1` in a fresh clone (ADR-0092).
 
 7. **Have the reviewer compare.** The reviewer compares every new or changed rule with its quotes and refuses one worded more strongly (`docs/code-review.md`). Report the before and after of each changed rule in the PR.

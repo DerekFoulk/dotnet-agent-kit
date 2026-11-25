@@ -36,6 +36,36 @@ Describe 'Add' {
         $result.Failed | Should -BeGreaterThan 0
     }
 
+    # The launcher next to it judges every mutant, so a mutant of the launcher would judge itself: one that
+    # over-reports a broken block would read as Killed while no test failed (review round 1 of ADR-0092's PR).
+    It 'refuses to mutate the launcher it judges with, and leaves it unchanged' {
+        $launcher = Join-Path (Split-Path $script) 'Invoke-KitTests.ps1'
+        $fixture = New-Fixture
+        $before = [IO.File]::ReadAllBytes($launcher)
+
+        { & $script -Path $launcher -TestPath $fixture.Tests -Mutant @{ Name = 'none'; Find = 'text that is not there'; Replace = 'x' } } |
+            Should -Throw '*another clone*'
+        [Convert]::ToHexString([IO.File]::ReadAllBytes($launcher)) | Should -Be ([Convert]::ToHexString($before))
+    }
+
+    # Windows paths ignore case, and Resolve-Path keeps the case typed, so the refusal must too.
+    It 'refuses the launcher named in another case, on Windows' -Skip:(-not $IsWindows) {
+        $launcher = (Join-Path (Split-Path $script) 'Invoke-KitTests.ps1').ToUpperInvariant()
+        $fixture = New-Fixture
+
+        { & $script -Path $launcher -TestPath $fixture.Tests -Mutant @{ Name = 'none'; Find = 'text that is not there'; Replace = 'x' } } |
+            Should -Throw '*another clone*'
+    }
+
+    # A killed mutant is the run going as planned; the launcher's exit code for its failing tests isn't the caller's.
+    It 'leaves $LASTEXITCODE at 0 after a run whose mutant is killed' {
+        $fixture = New-Fixture
+
+        $null = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $LASTEXITCODE | Should -Be 0
+    }
+
     It 'reports a mutant the tests miss as survived, and restores the file byte for byte after every mutant' {
         $fixture = New-Fixture
         $before = [IO.File]::ReadAllBytes($fixture.Source)
@@ -75,6 +105,32 @@ Describe 'Add' {
         $result.Result | Should -Be 'Error'
         $result.Message | Should -Match 'ran no tests on the unchanged file'
         [Convert]::ToHexString([IO.File]::ReadAllBytes($fixture.Source)) | Should -Be ([Convert]::ToHexString($before))
+    }
+
+    # Pester's TotalCount counts skipped tests too, so "ran" means passed or failed: a run that only skipped proves
+    # nothing (review round 1 of ADR-0092's PR).
+    It 'reports every mutant as an error when every test on the unchanged file is skipped' {
+        $fixture = New-Fixture -Tests "Describe 'Add' { It 'adds' -Skip { 1 | Should -Be 1 } }`n"
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match 'ran no tests on the unchanged file'
+    }
+
+    It 'reports a mutant as an error when, with it in place, every test is skipped' {
+        $fixture = New-Fixture -Tests @'
+$skip = -not (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Add.ps1') -Raw).Contains('+')
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'adds' -Skip:$skip { Add 1 2 | Should -Be 3 }
+}
+'@
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Error'
+        $result.Message | Should -Match 'No tests ran with the mutant in place'
     }
 
     It 'reports every mutant as an error with what Pester wrote to stderr, when <Case>' -ForEach @(
@@ -220,6 +276,39 @@ Describe 'Add' {
 
         # One baseline run, then one run per mutant.
         @(Get-Content -LiteralPath (Join-Path (Split-Path $fixture.Tests) 'runs.log')).Count | Should -Be 3
+    }
+
+    # Dot-sourced, $file, $original and the rest would land in the caller's session: the generic variables both
+    # Pester incidents restored through (ADR-0092). It refuses before it changes anything.
+    It 'refuses to run dot-sourced, leaving the file, the caller''s variables and its preferences alone' {
+        $fixture = New-Fixture
+        $before = [IO.File]::ReadAllBytes($fixture.Source)
+        $probe = @"
+`$file = 'mine'
+try { . '$($script -replace "'", "''")' -Path '$($fixture.Source -replace "'", "''")' -TestPath '$($fixture.Tests -replace "'", "''")' -Mutant @{ Name = 'subtract'; Find = '`$a + `$b'; Replace = '`$a - `$b' } } catch { 'refused' }
+"file=`$file eap=`$ErrorActionPreference"
+"@
+
+        $printed = @(& pwsh -NoProfile -NonInteractive -Command $probe 2>&1 | ForEach-Object { "$_" })
+
+        $printed | Should -Contain 'refused'
+        $printed | Should -Contain 'file=mine eap=Continue'
+        [Convert]::ToHexString([IO.File]::ReadAllBytes($fixture.Source)) | Should -Be ([Convert]::ToHexString($before))
+    }
+
+    # Its test runs go through Invoke-KitTests.ps1, so they run as the kit's other local runs and CI's do.
+    It 'runs the tests with $ErrorActionPreference set to Stop, as CI does' {
+        $fixture = New-Fixture -Tests @'
+Describe 'Add' {
+    BeforeAll { . (Join-Path $PSScriptRoot 'Add.ps1') }
+    It 'adds' { Add 1 2 | Should -Be 3 }
+    It 'stops on errors' { $ErrorActionPreference | Should -Be 'Stop' }
+}
+'@
+
+        $result = & $script -Path $fixture.Source -TestPath $fixture.Tests -Mutant @{ Name = 'subtract'; Find = '$a + $b'; Replace = '$a - $b' }
+
+        $result.Result | Should -Be 'Killed'
     }
 
     It 'runs tests in a folder whose name has a quote and wildcard brackets' {

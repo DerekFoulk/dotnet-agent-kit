@@ -859,10 +859,10 @@ Describe 'KitReview.psm1' {
                     ConvertTo-Json -Depth 15 -Compress
             }
             # A fake Get-PullRequestStatus result with the fields the real one always sets: the read's starting head is the
-            # head, and no runs are pending or failed, unless the test says otherwise.
+            # head, and no runs are pending or failed and no failure is settled, unless the test says otherwise.
             function global:New-StatusFake {
                 param([Parameter(Mandatory)] [hashtable] $Fields)
-                $status = @{ Checks = @(); PendingRuns = @(); FailedRuns = @(); StartHeadSha = $Fields['HeadSha'] }
+                $status = @{ Checks = @(); PendingRuns = @(); FailedRuns = @(); SettledFailures = @(); StartHeadSha = $Fields['HeadSha'] }
                 foreach ($key in $Fields.Keys) { $status[$key] = $Fields[$key] }
                 [pscustomobject] $status
             }
@@ -905,8 +905,8 @@ Describe 'KitReview.psm1' {
         # A pass needs the next poll to find it again; a poll in between that finds CI not done starts that over.
         It 'confirms a pass again after a poll finds CI not done' {
             InModuleScope KitReview {
-                $passed = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @() }
-                $going = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @() }
+                $passed = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @(); FailedRuns = @(); SettledFailures = @() }
+                $going = [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @(); SettledFailures = @() }
                 $script:polls = @($passed, $going, $passed, $passed)
                 $script:sleeps = 0
                 Mock Start-Sleep { $script:sleeps++ }
@@ -924,7 +924,7 @@ Describe 'KitReview.psm1' {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @() } }
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @(); SettledFailures = @() } }
 
                 (Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20).Message | Should -Be 'Timed out after 1 minute at head2: workflow runs still going: ci.'
             }
@@ -937,7 +937,7 @@ Describe 'KitReview.psm1' {
                 $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
                 Mock Get-KitUtcNow { $script:now }
                 Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
-                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @() } }
+                Mock Get-PullRequestStatus { [pscustomobject]@{ State = 'OPEN'; HeadSha = 'head2'; StartHeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Passed' }); PendingRuns = @('ci'); FailedRuns = @(); SettledFailures = @() } }
 
                 (Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks).Message | Should -Be 'Timed out after 4 minutes at head2: workflow runs still going: ci.'
             }
@@ -1169,7 +1169,8 @@ Describe 'KitReview.psm1' {
         # A rollup holds CheckRuns, with status and conclusion, and StatusContexts, with context and state (seen on PR #72,
         # 2026-11-14).
         It 'keeps waiting while there are no checks yet or one is running, then returns <Outcome> naming <What>' -ForEach @(
-            # A pass waits one more poll to be confirmed (Copilot's ninth review of PR #73); a failure is final at once.
+            # A pass waits one more poll to be confirmed (Copilot's ninth review of PR #73); a failure with nothing pending
+            # is final at once.
             @{ Outcome = 'ChecksPassed'; What = 'every check'; Conclusion = 'SUCCESS'; Expected = 'CI finished at head2: every check passed (2 passed, 1 skipped)'; Sleeps = 3 }
             @{ Outcome = 'ChecksFailed'; What = 'the failed one'; Conclusion = 'FAILURE'; Expected = 'CI finished at head2: 1 of 3 checks failed: dotnet / Build'; Sleeps = 2 }
         ) {
@@ -1514,7 +1515,7 @@ Describe 'KitReview.psm1' {
 
         # Copilot's ninth review of PR #73: a pass rests on one read, and a workflow run created just after it (seconds
         # after a push, or between the runs read and the checks read) isn't in it. A pass counts only once the next poll
-        # finds it again; a failure is final at once.
+        # finds it again; a failure with nothing pending is final at once.
         It 'reports a pass only when the next poll confirms it, so a run created just after the first read counts' {
             InModuleScope KitReview {
                 function New-View([object[]] $Checks) { ConvertTo-RollupJson -Checks $Checks }
@@ -1627,6 +1628,255 @@ Describe 'KitReview.psm1' {
 
                 $result.Event | Should -Be 'ChecksFailed'
                 $result.Message | Should -Be 'CI finished at head2: workflow runs failed: ci.'
+            }
+        }
+
+        # PR 116: gitleaks failed while the mutation workflow was still going, and the wait said nothing until it timed out.
+        # A final failure, one no run still going can replace (here, a job of the CI run, which has completed), ends the
+        # wait on the first poll that shows it, whatever else still runs.
+        It 'returns ChecksFailed on the first poll that shows a settled failure, naming what still runs' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = ConvertTo-RollupJson -Checks @(
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Secret scan (gitleaks)'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'dotnet / Build'; status = 'COMPLETED'; conclusion = 'SUCCESS'; runId = 10; id = 2 }
+                    @{ __typename = 'CheckRun'; workflowName = 'mutation'; name = 'mutation / Stryker'; status = 'IN_PROGRESS'; conclusion = $null; runId = 20; id = 3 }
+                )
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.FailedChecks | Should -Be @('dotnet / Secret scan (gitleaks)', 'ci')
+                $result.PendingChecks | Should -Be @('mutation / Stryker')
+                $result.Message | Should -Be 'CI failed at head2 with checks still running: 1 of 3 checks failed: dotnet / Secret scan (gitleaks); workflow runs failed: ci; 1 checks still running: mutation / Stryker. To wait for the rest, pass FailedChecks as -KnownFailures.'
+                Should -Invoke Start-Sleep -Times 0 -Exactly
+            }
+        }
+
+        # The reviewer agent's plan review: what else is final. A check of a run that completed, with nothing of its
+        # workflow going (the job may have continue-on-error, so the run passed); a commit status, which belongs to no
+        # run; and a run that failed with no failed check of its own, such as a startup failure, while no run of its group
+        # (Get-RunGroupKey) is going. A run of the same workflow for another branch is another group.
+        It 'returns ChecksFailed at once for <Case>, while CI still runs' -ForEach @(
+            @{ Case = 'a failed check of a completed run'; Failed = @('build'); Pending = @('mutation')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"success"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = '1 of 1 checks failed: build; workflow runs still going: mutation' }
+            @{ Case = 'a failed commit status'; Failed = @('deploy'); Pending = @('mutation')
+                Checks = @(@{ __typename = 'StatusContext'; context = 'deploy'; state = 'FAILURE' })
+                Runs = '{"workflow_runs":[{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = '1 of 1 checks failed: deploy; workflow runs still going: mutation' }
+            @{ Case = 'a workflow run that failed without a check'; Failed = @('ci'); Pending = @('mutation')
+                Checks = @()
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"startup_failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = 'workflow runs failed: ci; workflow runs still going: mutation' }
+            @{ Case = 'a failed run while its workflow runs for another branch'; Failed = @('ci'); Pending = @('ci')
+                Checks = @()
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":11,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/b","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = 'workflow runs failed: ci; workflow runs still going: ci' }
+            # The reviewer agent's branch review: a branch name that differs only in case is another group (M2, M3).
+            @{ Case = 'a failed check while its workflow runs for a branch named in another case'; Failed = @('build'); Pending = @('ci')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"success"},{"id":11,"name":"ci","workflow_id":12,"event":"push","head_branch":"Feat/A","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = '1 of 1 checks failed: build; workflow runs still going: ci' }
+            @{ Case = 'a failed run while its workflow runs for a branch named in another case'; Failed = @('ci'); Pending = @('ci')
+                Checks = @()
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"push","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":11,"name":"ci","workflow_id":12,"event":"push","head_branch":"Feat/A","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = 'workflow runs failed: ci; workflow runs still going: ci' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Checks = $Checks; Runs = $Runs; Failed = $Failed; Pending = $Pending; Expected = $Expected } {
+                param($Checks, $Runs, $Failed, $Pending, $Expected)
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = ConvertTo-RollupJson -Checks $Checks
+                $script:runsJson = $Runs
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'ChecksFailed'
+                $result.FailedChecks | Should -Be $Failed
+                $result.PendingChecks | Should -Be $Pending
+                $result.Message | Should -Be "CI failed at head2 with checks still running: $Expected. To wait for the rest, pass FailedChecks as -KnownFailures."
+            }
+        }
+
+        # A push or a close can land during a poll's reads, so the state and head are read again before a settled failure
+        # is reported, as before any other CI result.
+        It 'returns <Outcome> when the pull request is <Change> before a settled failure is reported' -ForEach @(
+            @{ Change = 'pushed to'; State = 'OPEN'; Head = 'head3'; Outcome = 'HeadMoved' }
+            @{ Change = 'closed'; State = 'CLOSED'; Head = 'head2'; Outcome = 'Closed' }
+        ) {
+            InModuleScope KitReview -Parameters @{ State = $State; Head = $Head; Outcome = $Outcome } {
+                param($State, $Head, $Outcome)
+                $script:later = New-StatusFake @{ State = $State; HeadSha = $Head }
+                $settled = New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'gitleaks'; Result = 'Failed'; RunId = 10 }); PendingRuns = @('mutation'); SettledFailures = @('gitleaks') }
+                $script:settled = $settled
+                Mock Get-PullRequestStatus { $script:settled } -ParameterFilter { $WithRuns }
+                Mock Get-PullRequestStatus { $script:later }
+                Mock Start-Sleep {}
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 5 -IntervalSeconds 20
+
+                $result.Event | Should -Be $Outcome
+            }
+        }
+
+        # The reviewer agent's plan review: a failure that a re-run or a later run can still replace doesn't end the wait
+        # (a re-run's job that needs another starts minutes after the run is queued again, and no ordering of a group's
+        # runs is safe while one is going). The time-out still names every failure seen, so none goes unreported.
+        It 'keeps waiting on <Case>, and its time-out names the failure' -ForEach @(
+            @{ Case = 'a failed check whose run is queued again for a re-run'; Failed = @('build'); Pending = @('ci')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":2,"status":"queued","conclusion":null}]}'
+                Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs still going: ci' }
+            # Seen on PR 117 (2026-11-19): just after `gh run rerun`, the run read queued and still said run_attempt 1; seconds
+            # later it read in_progress, attempt 2. So the attempt number can't tell a first attempt from a re-run.
+            @{ Case = 'a failed check whose run is queued again, its attempt not yet raised'; Failed = @('build'); Pending = @('ci')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"queued","conclusion":null}]}'
+                Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs still going: ci' }
+            @{ Case = 'a failed check whose run and another run of its group are both going'; Failed = @('build'); Pending = @('ci')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":9,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":2,"status":"queued","conclusion":null},{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs still going: ci' }
+            @{ Case = 'a failed check whose going run has no attempt number'; Failed = @('build'); Pending = @('ci')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","status":"in_progress","conclusion":null}]}'
+                Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs still going: ci' }
+            @{ Case = 'a failed check whose run isn''t listed'; Failed = @('build'); Pending = @('mutation')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 99; id = 1 })
+                Runs = '{"workflow_runs":[{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}'
+                Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs still going: mutation' }
+            @{ Case = 'a failed run while another run of its group is queued'; Failed = @('ci'); Pending = @('ci')
+                Checks = @()
+                Runs = '{"workflow_runs":[{"id":9,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":2,"status":"queued","conclusion":null},{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"}]}'
+                Expected = 'failed so far: workflow runs failed: ci; workflow runs still going: ci' }
+            # The reviewer agent's branch review: a queued re-run of an older run can keep its first start time, so a newer
+            # completed run sorts as the latest until the re-run starts and replaces it (M1).
+            @{ Case = 'a failed check of a completed run while an older run of its group is queued again'; Failed = @('build', 'ci'); Pending = @('ci')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":9,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":2,"status":"queued","conclusion":null},{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"}]}'
+                Expected = 'failed so far: 1 of 1 checks failed: build; workflow runs failed: ci; workflow runs still going: ci' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Checks = $Checks; Runs = $Runs; Failed = $Failed; Pending = $Pending; Expected = $Expected } {
+                param($Checks, $Runs, $Failed, $Pending, $Expected)
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = ConvertTo-RollupJson -Checks $Checks
+                $script:runsJson = $Runs
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'TimedOut'
+                $result.FailedChecks | Should -Be $Failed
+                $result.PendingChecks | Should -Be $Pending
+                $result.Message | Should -Be "Timed out after 1 minute at head2: $Expected."
+            }
+        }
+
+        # The reviewer agent's plan review: once a failure is reported, an agent that answers it rather than fixing it (a red
+        # non-required run is a finding to answer, ADR-0062) still has to learn how the rest of CI ends. Failures it names
+        # in -KnownFailures don't end the wait; a new one does, and so does CI finishing. A run whose failed check is known
+        # doesn't come back as the run's own failure. Names compare case-sensitively, as check names do.
+        It 'with -KnownFailures, returns <Expected> on <Case>' -ForEach @(
+            @{ Case = 'a known failure while another workflow still runs'; Expected = 'TimedOut'; Known = @('gitleaks')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"success"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
+            @{ Case = 'a known failed check whose run then failed, while another workflow still runs'; Expected = 'TimedOut'; Known = @('gitleaks')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
+            @{ Case = 'a new failure besides a known one'; Expected = 'ChecksFailed'; Known = @('gitleaks')
+                Checks = @(
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 }
+                    @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 2 }
+                )
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
+            @{ Case = 'a failure named only in another case'; Expected = 'ChecksFailed'; Known = @('Gitleaks')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
+            # The reviewer agent's branch review: a known check hides only its own run's failure, not another run's (M5).
+            @{ Case = 'another workflow''s startup failure besides a known check'; Expected = 'ChecksFailed'; Known = @('gitleaks')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"},{"id":11,"name":"labeler","workflow_id":14,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"startup_failure"},{"id":20,"name":"mutation","workflow_id":13,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"in_progress","conclusion":null}]}' }
+            @{ Case = 'a known failure once CI is done'; Expected = 'ChecksFailed'; Known = @('gitleaks')
+                Checks = @(@{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'gitleaks'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 })
+                Runs = '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"}]}' }
+        ) {
+            InModuleScope KitReview -Parameters @{ Checks = $Checks; Runs = $Runs; Known = $Known; Expected = $Expected } {
+                param($Checks, $Runs, $Known, $Expected)
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $script:view = ConvertTo-RollupJson -Checks $Checks
+                $script:runsJson = $Runs
+                Mock Invoke-Gh { $script:view } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { $script:runsJson } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20 -KnownFailures $Known
+
+                $result.Event | Should -Be $Expected
+            }
+        }
+
+        # The reviewer agent's branch review: finish-work says to wait once more after a time-out, and a wait without the
+        # known failures would end at once on the same one, a wasted call.
+        It 'says in its time-out to pass the same -KnownFailures to the next wait' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'gitleaks'; Result = 'Failed'; RunId = 10 }); PendingRuns = @('mutation'); SettledFailures = @('gitleaks') } }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20 -KnownFailures 'gitleaks'
+
+                $result.Message | Should -Be 'Timed out after 1 minute at head2: failed so far: 1 of 1 checks failed: gitleaks; workflow runs still going: mutation. Pass the same -KnownFailures to the next wait.'
+            }
+        }
+
+        # The reviewer agent's branch review: once every run has completed, the checks are read again, and a re-run asked for
+        # between the reads shows there as a new pending check of a run the runs read called completed. That read is stale,
+        # so the old attempt's failure isn't settled on that poll.
+        It 'settles no failure when the checks read again show a run the runs read called completed going again' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                $failed = @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'build'; status = 'COMPLETED'; conclusion = 'FAILURE'; runId = 10; id = 1 }
+                $rerun = @{ __typename = 'CheckRun'; workflowName = 'ci'; name = 'find'; status = 'QUEUED'; conclusion = $null; runId = 10; id = 2 }
+                $script:views = @((ConvertTo-RollupJson -Checks @($failed)), (ConvertTo-RollupJson -Checks @($failed, $rerun)))
+                $script:viewCalls = 0
+                Mock Invoke-Gh { $script:views[[Math]::Min($script:viewCalls++, 1)] } -ParameterFilter { "$args" -match 'statusCheckRollup' }
+                Mock Invoke-Gh { '{"workflow_runs":[{"id":10,"name":"ci","workflow_id":12,"event":"pull_request","head_branch":"feat/a","run_attempt":1,"status":"completed","conclusion":"failure"}]}' } -ParameterFilter { "$($args[1])" -like '*/actions/runs*' }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Checks -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.Event | Should -Be 'TimedOut'
+            }
+        }
+
+        # The reviewer agent's plan review: a wait for Copilot's review alone says nothing about CI when it times out.
+        It 'names no failed check when a wait for a review times out' {
+            InModuleScope KitReview {
+                $script:now = [DateTimeOffset]'2026-11-14T00:00:00Z'
+                Mock Get-KitUtcNow { $script:now }
+                Mock Start-Sleep { $script:now = $script:now.AddSeconds($Seconds) }
+                Mock Get-PullRequestStatus { New-StatusFake @{ State = 'OPEN'; HeadSha = 'head2'; Checks = @([pscustomobject]@{ Name = 'build'; Result = 'Failed'; RunId = 10 }) } }
+                Mock Get-CopilotReviewOf { }
+
+                $result = Wait-PullRequest -Repository 'o/r' -Number 5 -For Review -TimeoutMinutes 1 -IntervalSeconds 20
+
+                $result.FailedChecks | Should -BeNullOrEmpty
+                $result.Message | Should -Be 'Timed out after 1 minute at head2: no review from Copilot of head2 yet.'
             }
         }
 

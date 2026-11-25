@@ -1,0 +1,38 @@
+name: secret scan
+description: >-
+  Scans every commit HEAD reaches for secrets with gitleaks (ADR-0024). The caller checks out first, with
+  fetch-depth: 0 and persist-credentials: false. A kit shared workflow calls it as `uses: $/.github/actions/secret-scan`:
+  the .NET CI's required "Secret scan (gitleaks)" job, and the scan of every push to a branch other than main or a tag.
+runs:
+  using: composite
+  steps:
+    # The gitleaks CLI (MIT) from its official image, pinned by tag and digest in the kit's .config/gitleaks/Dockerfile,
+    # where Dependabot moves both (ADR-0024, ADR-0060). Nothing builds that file; a FROM line without both fails here.
+    # The kit is three folders up from this action, at the shared workflow's own commit, as for kit-tools. This action
+    # uses no other action: Dependabot's github-actions updater reads only .github/workflows.
+    # The GIT_CONFIG_* variables mark the mounted checkout as safe for git inside the container.
+    # It scans every commit HEAD reaches: on a pull request, the merge commit (main's history and the PR's commits);
+    # on a push, the pushed commit. Without --log-opts, gitleaks runs `git log -p -U0 --full-history --all
+    # --diff-filter=tuxdb` (sources/git.go at v8.30.1; the lower-case letters leave out type changes and unmerged,
+    # unknown, deleted and broken file pairs), so every fetched branch was scanned and one branch's known false
+    # positives failed every PR. These options are that default with HEAD in place of --all; gitleaks splits them on
+    # single spaces. Recheck them against sources/git.go when the image's version moves (ADR-0024).
+    - name: Scan every commit HEAD reaches
+      shell: bash
+      run: |
+        # A shallow checkout holds only part of HEAD's history, and the scan would pass on what it never read.
+        if [ "$(git -C "$GITHUB_WORKSPACE" rev-parse --is-shallow-repository)" != false ]; then
+          echo "::error::The secret scan needs all of HEAD's history: check out with fetch-depth: 0"
+          exit 1
+        fi
+        kit="$(cd "$GITHUB_ACTION_PATH/../../.." && pwd)"
+        dockerfile="$kit/.config/gitleaks/Dockerfile"
+        image="$(sed -n -E 's#^FROM (ghcr\.io/gitleaks/gitleaks:v[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64})$#\1#p' "$dockerfile")"
+        if [ "$(grep -c '^FROM ' "$dockerfile")" -ne 1 ] || [ -z "$image" ]; then
+          echo "::error::$dockerfile must have one FROM line, naming the gitleaks image by tag and digest"
+          exit 1
+        fi
+        docker run --rm \
+          -v "$GITHUB_WORKSPACE:/repo" \
+          -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+          "$image" git /repo --redact --verbose --log-opts="--full-history --diff-filter=tuxdb HEAD"
