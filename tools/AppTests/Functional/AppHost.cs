@@ -15,7 +15,7 @@ internal static partial class AppHost
     /// </summary>
     public static partial IAppUnderTest Start(string environment, IReadOnlyDictionary<string, string> settings, Action<IServiceCollection> services);
 
-    /// <summary>Gets the route patterns that allow anonymous callers (SEC-007), as each endpoint's RoutePattern.RawText.</summary>
+    /// <summary>Gets the route patterns that allow anonymous callers (SEC-017), as each endpoint's RoutePattern.RawText.</summary>
     public static partial IReadOnlyCollection<string> AnonymousRoutes { get; }
 
     /// <summary>
@@ -38,6 +38,10 @@ internal static partial class AppHost
     /// fallback authorization policy. The authorization checks skip when it's false, as in a public website.
     /// </summary>
     public static partial bool MostEndpointsRequireSignIn { get; }
+
+    /// <summary>The reason the authorization checks give when they skip.</summary>
+    public const string MostEndpointsArePublic =
+        "Most of the app's endpoints are public (AppHost.MostEndpointsRequireSignIn), so SEC-017's fallback policy doesn't apply.";
 
     /// <summary>Starts the app in an environment, as it is.</summary>
     public static IAppUnderTest Start(string environment) => Start(environment, new Dictionary<string, string>(), _ => { });

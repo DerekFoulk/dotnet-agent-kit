@@ -8,14 +8,18 @@ using Microsoft.Extensions.Options;
 namespace Kit.AppTests.Functional;
 
 /// <summary>
-/// Sign-in is required by default (SEC-007): a fallback authorization policy that requires a signed-in user, and only
-/// the endpoints the app lists in its part of <see cref="AppHost"/> opt out with AllowAnonymous.
+/// Sign-in is required by default (SEC-017): a fallback authorization policy that requires a signed-in user, and only
+/// the endpoints the app lists in its part of <see cref="AppHost"/> opt out with AllowAnonymous. SEC-017 asks for this
+/// only where most or all endpoints require authentication, so both checks skip in an app whose endpoints are mostly
+/// public (<see cref="AppHost.MostEndpointsRequireSignIn"/>).
 /// </summary>
 public sealed class AuthorizationTests
 {
     [Fact]
     public void TheFallbackPolicyRequiresASignedInUser()
     {
+        Assert.SkipUnless(AppHost.MostEndpointsRequireSignIn, AppHost.MostEndpointsArePublic);
+
         using IAppUnderTest app = AppHost.Start(Environments.Production);
 
         AuthorizationPolicy? fallback = app.Services.GetRequiredService<IOptions<AuthorizationOptions>>().Value.FallbackPolicy;
@@ -28,6 +32,8 @@ public sealed class AuthorizationTests
     [Fact]
     public void OnlyTheEndpointsTheAppListsAllowAnonymousCallers()
     {
+        Assert.SkipUnless(AppHost.MostEndpointsRequireSignIn, AppHost.MostEndpointsArePublic);
+
         using IAppUnderTest app = AppHost.Start(Environments.Development);
 
         IEnumerable<string?> anonymous = app.Services.GetRequiredService<EndpointDataSource>().Endpoints
