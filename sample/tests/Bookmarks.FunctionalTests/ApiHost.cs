@@ -1,30 +1,25 @@
 using System.Net.Http.Headers;
 using Kit.AppTests.Functional;
+using Bookmarks.TestDatabase;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.FunctionalTests;
 
 /// <summary>
-/// Hosts the API in memory with its own in-memory SQLite database. Its <see cref="Client"/> signs in as "alice"
+/// Hosts the API in memory with a new database of its own on the tests' SQL Server (DAT-005). Its <see cref="Client"/> signs in as "alice"
 /// with a token from <see cref="TestTokens"/>; <see cref="CreateClient"/> makes a client with any other token, or none.
 /// </summary>
 internal sealed class ApiHost : IAppUnderTest
 {
-    private readonly SqliteConnection _keepAlive;
     private readonly WebApplicationFactory<Program> _baseFactory = new ApiFactory();
     private readonly WebApplicationFactory<Program> _factory;
 
     public ApiHost(string environment = "Development", IReadOnlyDictionary<string, string>? settings = null, Action<IServiceCollection>? services = null)
     {
-        string connectionString = $"DataSource=bookmarks-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
-
-        // An in-memory SQLite database lives as long as one connection to it stays open.
-        _keepAlive = new SqliteConnection(connectionString);
-        _keepAlive.Open();
+        string connectionString = SqlServerTestDatabase.Create();
         _factory = _baseFactory.WithWebHostBuilder(host =>
         {
             // The container checks the registrations it can when the app starts (not a factory's dependencies, nor open
@@ -86,6 +81,5 @@ internal sealed class ApiHost : IAppUnderTest
         Client.Dispose();
         _factory.Dispose();
         _baseFactory.Dispose();
-        _keepAlive.Dispose();
     }
 }

@@ -1,4 +1,5 @@
 using System.Net;
+using Bookmarks.TestDatabase;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -32,7 +33,7 @@ public sealed class ContentRootTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseContentRoot(Path.Combine(Path.GetTempPath(), "no-such-folder-" + Guid.NewGuid().ToString("N")))
-                .UseSetting("ConnectionStrings:Bookmarks", "DataSource=:memory:");
+                .UseSetting("ConnectionStrings:Bookmarks", SqlServerTestDatabase.Create());
             base.ConfigureWebHost(builder);
         }
     }
