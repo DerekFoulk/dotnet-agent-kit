@@ -11,7 +11,7 @@ internal static class BookmarkEndpoints
 {
     public static IEndpointRouteBuilder MapBookmarks(this IEndpointRouteBuilder app)
     {
-        // Each endpoint needs a signed-in user with a sub claim (SEC-007, SEC-009), so each may answer 401 or 403.
+        // Each endpoint needs a signed-in user with a sub claim (SEC-009, SEC-017), so each may answer 401 or 403.
         RouteGroupBuilder bookmarks = app.MapGroup("/bookmarks").WithTags("Bookmarks")
             .ProducesProblem(StatusCodes.Status401Unauthorized).ProducesProblem(StatusCodes.Status403Forbidden);
         bookmarks.MapPost("/", CreateAsync).WithName("CreateBookmark")

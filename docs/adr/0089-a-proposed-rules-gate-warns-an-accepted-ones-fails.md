@@ -16,8 +16,8 @@ The inventory on 2026-11-18: 19 `kind: gate` enforcement parts on 18 proposed ru
   - DAT-003 (`Test-SafeMigrations.ps1`);
   - OPS-004 (`Test-Runbook.ps1`);
   - CS-023 and HST-003, whose gates are `build:` gates (see the table below);
-  - SEC-007's shared part, the shared host checks in `tools/AppTests/Functional`. **Held for the owner**: it stays failing while he decides.
-- **7 are the kit's own sample or fixture tests**, unchanged: API-006, SEC-007's sample part, SEC-008, SEC-009, SEC-010, UI-003, TST-007.
+  - SEC-007's shared part, the shared host checks in `tools/AppTests/Functional`. **Held for the owner**: it stays failing while he decides. Since then the owner retired SEC-007 (2026-11-18), and the checks moved to SEC-017, which keeps Microsoft's condition: they run only in an app whose `AppHost` part says most or all of its endpoints require sign-in (`MostEndpointsRequireSignIn`), and skip, with a reason, elsewhere. They still fail there while SEC-017 is proposed, held as before.
+- **7 are the kit's own sample or fixture tests**, unchanged: API-006, SEC-007's sample part (SEC-017's now), SEC-008, SEC-009, SEC-010, UI-003, TST-007.
 - **4 are CI machinery**, unchanged: SUP-009 (the SBOM), SUP-010 (Scorecard), SUP-011 (the workload pin), UI-002 (Playwright and axe).
 
 Every analyzer a proposed rule's `build:` gate names today is already in force through an accepted rule. These are all the `kind: gate` parts on proposed rules whose `how` starts with `build:`, read from `docs/standards` on 2026-11-18:
@@ -71,7 +71,7 @@ Option 1, as the owner set out on 2026-11-18:
 - `tools/KitRuleStatus.psm1` exports `Get-RuleStatus` and `Write-RuleFinding`. A warning can name the finding's file, line and column (GitHub's `file`, `line` and `col`), so it shows on that line of the diff; the message and the properties are escaped, so a finding stays one annotation.
 - `Test-CodeShape.ps1` maps each finding to its rule from the tool's error code (CRF011 is CRF-011, STY005 is STY-005), and a test checks that every code in `RuleCodes.cs` names a rule `rule-status.json` lists; Kit.CodeShape already tagged its findings, so the C# tool is unchanged. Its warnings name the file relative to the repo root. `Test-EmptyProjects.ps1` (ARC-009), `Test-SafeMigrations.ps1` (DAT-003), `Test-Runbook.ps1` (OPS-004) and `Get-UiProject.ps1`'s reference check (ARC-010) use the module too; `Get-UiProject.ps1`'s listing of UI projects is CI machinery and unchanged, and so is `Test-EmptyProjects.ps1`'s failure on a project the solution lists but that isn't there, which is a broken solution rather than ARC-009's concern. Each takes `-RuleStatusPath`, for a test's own statuses, and its summary says how many findings were warnings because their rule is proposed.
 - **The per-finding warning covers the check scripts only.** A build gate isn't per finding: the compiler fails the build on a diagnostic, whichever rule asked for it. So a proposed rule's `build:` gate must name only diagnostics, bans or build properties that an accepted rule already puts in force: STY-003's AnalysisLevel latest-all and root `.globalconfig`, SEC-014's security analyzers, CRF-010's `BannedSymbols.txt`, and `TreatWarningsAsErrors`. A new diagnostic, ban or property a proposed rule needs is turned on only in the pull request that accepts the rule. Code review checks this, and the same for a `.globalconfig`, `.editorconfig`, `BannedSymbols.txt` or `Directory.Build.props` change that touches no rule; a breach of either is Blocking (`docs/code-review.md`; owner, 2026-11-18).
-- SEC-007's shared host check is unchanged, held for the owner.
+- SEC-007's shared host check is unchanged, held for the owner. With SEC-007 retired, it is SEC-017's, and skips in an app whose endpoints are mostly public.
 
 ## Consequences
 
@@ -88,7 +88,7 @@ Option 1, as the owner set out on 2026-11-18:
 
 - **Operational excellence:** CI fails only on rules in force. A check script's findings for a proposed rule still show, as warnings on the pull request, so nothing it finds goes unseen while the owner decides. A build gate never lowers anything, so every analyzer that's on stays a build failure.
 - **Reliability:** an unknown rule id or status, or a missing statuses file, throws, so a typo can't turn a gate into warnings.
-- **Security:** no security check changes: SEC-007's shared check is held, every accepted rule's gate still fails, and no analyzer severity is lowered.
+- **Security:** no security check is lowered to a warning: the shared authorization check (SEC-007's, now SEC-017's) is held, and skips only where SEC-017 doesn't apply; every accepted rule's gate still fails, and no analyzer severity is lowered.
 - **Cost, performance:** n/a.
 
 ## Sources

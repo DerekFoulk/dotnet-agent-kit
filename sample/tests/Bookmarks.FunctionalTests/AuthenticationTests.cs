@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.FunctionalTests;
 
-/// <summary>Who may call the API: only a caller with a valid access token (SEC-007, SEC-008, ADR-0048).</summary>
+/// <summary>Who may call the API: only a caller with a valid access token (SEC-008, SEC-017, ADR-0048).</summary>
 public sealed class AuthenticationTests : IDisposable
 {
     private readonly ApiHost _host = new();

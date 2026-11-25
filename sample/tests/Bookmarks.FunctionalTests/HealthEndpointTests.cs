@@ -15,7 +15,7 @@ public sealed class HealthEndpointTests : IDisposable
     private readonly ApiHost _host = new();
     private readonly HttpClient _probe;
 
-    // Probes call without a token, so every test here does too (SEC-007: the health endpoints are anonymous).
+    // Probes call without a token, so every test here does too (SEC-017: the health endpoints are anonymous).
     public HealthEndpointTests() => _probe = _host.CreateClient(token: null);
 
     [Fact]

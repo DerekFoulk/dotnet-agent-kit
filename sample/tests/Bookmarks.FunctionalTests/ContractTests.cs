@@ -72,7 +72,7 @@ public sealed class ContractTests : IDisposable
     [Fact]
     public async Task TheDocumentSaysEveryOperationNeedsABearerTokenAndMayAnswer401Or403()
     {
-        // SEC-007 and SEC-008: every documented operation needs a signed-in user, so a client generated from the
+        // SEC-008 and SEC-017: every documented operation needs a signed-in user, so a client generated from the
         // document must know to send a bearer token, and what it gets without a valid one.
         JsonNode document = JsonNode.Parse(await _host.Client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken))!;
 
