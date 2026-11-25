@@ -21,6 +21,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'KitIntake.psm1') -Force
 
 # The probe for each app type the job checks: the kit's own reference app of that type (ADR-0095). Name is the app's
 # name; From is the kit folder whose src/ and tests/ become the app's.
