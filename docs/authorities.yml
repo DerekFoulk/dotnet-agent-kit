@@ -122,7 +122,7 @@ licenses:
   - id: CC-BY-SA-4.0
     name: CC BY-SA 4.0
     url: https://creativecommons.org/licenses/by-sa/4.0/
-    note: its ShareAlike term covers adapted material; the quotes are copied unchanged (ADR-0094).
+    note: its ShareAlike term covers adapted material; the quotes are copied unchanged (the kit's ADR-0094).
   - id: MIT
     name: MIT License
     url: https://opensource.org/license/mit
@@ -130,7 +130,7 @@ licenses:
   - id: Apache-2.0
     name: Apache License 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
-    note: its full text is at the link.
+    note: its text is below.
   - id: LicenseRef-W3C-Document-License-2023
     name: W3C Document License (2023)
     url: https://www.w3.org/copyright/document-license-2023/
@@ -141,7 +141,8 @@ licenses:
     note: >-
       these pages' source repos aren't public and the pages name no license of their own, so only Microsoft's terms
       of use apply, which allow copying for personal, non-commercial use. The kit quotes a sentence or two from each,
-      credited and linked, to show what each rule rests on; ADR-0094 records this and the owner's decision on it.
+      credited and linked, to show what each rule rests on. Whether to keep them as quotes is an open question for
+      the owner, recorded in the kit's ADR-0094.
 
 # Each work the rules' quotes come from (ADR-0082), with what its license asks a copy to name: its title, author and
 # source, with links, and its license (ADR-0094). tools/Build-AuthoritiesPage.ps1 fills the quotes block of
@@ -151,7 +152,8 @@ licenses:
 #   stated     where its license is stated, read on 'checked'.
 #   copyright  the work's copyright line, when it has one.
 #   notice     any other text its license asks a copy to keep.
-#   match      URL prefixes of its pages; the longest that matches a quote's page wins.
+#   match      URL prefixes of its pages; the longest that matches a quote's page wins. Keep each to the folders
+#              its source repo serves: Learn serves other repos' pages under the same top folder.
 # A Microsoft Learn page's license is its source repo's: the page's "original_content_git_url" names the repo, and a
 # private "-pr" repo's public mirror holds the LICENSE.
 works:
@@ -162,7 +164,11 @@ works:
     stated: https://github.com/dotnet/docs/blob/main/LICENSE
     checked: 2026-11-25
     match:
-      - https://learn.microsoft.com/dotnet/
+      - https://learn.microsoft.com/dotnet/architecture/
+      - https://learn.microsoft.com/dotnet/core/
+      - https://learn.microsoft.com/dotnet/csharp/
+      - https://learn.microsoft.com/dotnet/fundamentals/
+      - https://learn.microsoft.com/dotnet/standard/
   - title: .NET MAUI documentation
     author: Microsoft and contributors
     source: https://learn.microsoft.com/dotnet/maui/
@@ -178,7 +184,7 @@ works:
     stated: https://github.com/dotnet/AspNetCore.Docs/blob/main/LICENSE
     checked: 2026-11-25
     match:
-      - https://learn.microsoft.com/aspnet/
+      - https://learn.microsoft.com/aspnet/core/
   - title: Entity Framework Core documentation
     author: Microsoft and contributors
     source: https://learn.microsoft.com/ef/core/
@@ -220,7 +226,7 @@ works:
     stated: https://github.com/MicrosoftDocs/entra-docs/blob/main/LICENSE
     checked: 2026-11-25
     match:
-      - https://learn.microsoft.com/entra/
+      - https://learn.microsoft.com/entra/identity-platform/
   - title: Azure Well-Architected Framework
     author: Microsoft
     source: https://learn.microsoft.com/azure/well-architected/
@@ -282,9 +288,10 @@ works:
       - https://github.com/OWASP/ASVS/
   - title: OWASP API Security Top 10 2023
     author: The OWASP API Security Project (Erez Yallon, Inon Shkedy, Paulo Silva) and contributors
+    copyright: Copyright © 2003-2023 The OWASP Foundation
     source: https://api-security.owasp.org/
     license: CC-BY-SA-4.0
-    stated: https://github.com/OWASP/API-Security/blob/master/editions/2023/en/0x00-header.md
+    stated: https://github.com/OWASP/API-Security/blob/master/editions/2023/en/0x01-about-owasp.md
     checked: 2026-11-25
     match:
       - https://api-security.owasp.org/
