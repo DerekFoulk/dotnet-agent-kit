@@ -313,13 +313,26 @@ function ConvertTo-NoticesBlock {
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.AddRange([string[]] @("The rules quote $($Quoted.Count) passages from $($byWork.Count) works.", ''))
     $lines.AddRange([string[]] @('| Work | Author | License | License stated in | Quotes | Quoted in |', '|---|---|---|---|---|---|'))
-    foreach ($work in $Works | Where-Object { $byWork.ContainsKey($_.psobject.BaseObject) } | Sort-Object { "$($_['title'])" }) {
+    $quotedWorks = @($Works | Where-Object { $byWork.ContainsKey($_.psobject.BaseObject) } | Sort-Object { "$($_['title'])" })
+    foreach ($work in $quotedWorks) {
         $quotes = $byWork[$work.psobject.BaseObject]
         $license = $licenseById["$($work['license'])"]
         $licenseText = if ($license) { "[$($license['name'])]($($license['url']))" } else { "$($work['license'])" }
+        $author = if ($work.Contains('copyright') -and (Test-Present $work['copyright'])) { "$($work['author']); $($work['copyright'])" } else { "$($work['author'])" }
         $files = @($quotes | ForEach-Object File | Sort-Object -Unique | ForEach-Object { "[$_](docs/standards/$_)" }) -join ', '
-        $lines.Add("| [$($work['title'])]($($work['source'])) | $($work['author']) | $licenseText | <$($work['stated'])>, checked $(ConvertTo-DateText $work['checked']) | $($quotes.Count) | $files |")
+        $lines.Add("| [$($work['title'])]($($work['source'])) | $author | $licenseText | <$($work['stated'])>, checked $(ConvertTo-DateText $work['checked']) | $($quotes.Count) | $files |")
     }
+
+    # What a license asks beyond the row (its 'note'), for each license a quoted work uses, in the order the licenses
+    # are listed; then each work's own notice, such as the copyright and status lines the W3C's license asks for.
+    $usedIds = @($quotedWorks | ForEach-Object { "$($_['license'])" })
+    $notes = @(
+        $Licenses | Where-Object { "$($_['id'])" -in $usedIds -and $_.Contains('note') -and (Test-Present $_['note']) } |
+            ForEach-Object { "- [$($_['name'])]($($_['url'])): $($_['note'])" }
+        $quotedWorks | Where-Object { $_.Contains('notice') -and (Test-Present $_['notice']) } |
+            ForEach-Object { "- [$($_['title'])]($($_['source'])): $($_['notice'])" }
+    )
+    if ($notes) { $lines.Add(''); $lines.AddRange([string[]] $notes) }
     ($lines -join "`n") + "`n"
 }
 
