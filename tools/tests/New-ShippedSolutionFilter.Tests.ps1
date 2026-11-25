@@ -91,6 +91,19 @@ Describe 'New-ShippedSolutionFilter.ps1' {
             Should -Throw '*src/Bad/Bad.csproj*'
     }
 
+    # Review 1 of PR 129: MSBuild prints nothing, its errors included, while it writes a result file, so the failure must
+    # still carry MSBuild's own reason (MSB4025 for a file that isn't a project).
+    It 'says why MSBuild couldn''t read a project' {
+        Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        $unreadable = Join-Path $TestDrive 'unreadable'
+        New-Item -ItemType Directory -Force -Path (Join-Path $unreadable 'src/Bad') | Out-Null
+        'not a project' | Set-Content -LiteralPath (Join-Path $unreadable 'src/Bad/Bad.csproj')
+        '<Solution><Project Path="src/Bad/Bad.csproj" /></Solution>' | Set-Content -LiteralPath (Join-Path $unreadable 'Bad.slnx')
+
+        { New-ShippedSolutionFilter -Solution (Join-Path $unreadable 'Bad.slnx') -Destination (Join-Path $TestDrive 'out9') } |
+            Should -Throw '*MSB4025*'
+    }
+
     # Review 2 of PR 48: MSBuild prints an evaluation warning before the value, so the whole output isn't the value.
     It 'reads the value past an MSBuild warning, and keeps one shipped project as a list' {
         Get-Command New-ShippedSolutionFilter -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
