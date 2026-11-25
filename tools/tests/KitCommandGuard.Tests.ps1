@@ -443,6 +443,19 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
     }
 }
 
+Describe 'Get-CommandGuardDecision for a rule written with quotes' {
+    It 'asks in <Tool> for <Command>, which an ask rule written with double quotes around a word with a space covers' -ForEach @(
+        # The kit's rule "pwsh -NoProfile -Command ""Install-PSResource *" spells the quotes Claude Code usually writes.
+        # Another quoting of the same word reaches pwsh as the same text, so it asks too.
+        @{ Tool = 'PowerShell'; Command = "pwsh -NoProfile -Command 'Install-PSResource Pester'" }
+        @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile -Command "Install-PSResource Pester"' }
+        @{ Tool = 'Bash'; Command = "pwsh -NoProfile -Command 'Install-PSResource Pester'" }
+        @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -Command Install-PSResource\ Pester' }
+    ) {
+        Get-KitDecision -Tool $Tool -Command $Command | Should -BeLike '*Install-PSResource*'
+    }
+}
+
 Describe 'Test-PermissionRuleMatch' {
     # Claude Code's rule syntax, from its permissions page: '*' matches any text, a trailing ' *' also matches the
     # bare command, and a trailing ':*' is the older prefix form.
