@@ -1,5 +1,9 @@
+using System.Buffers.Text;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Hosting;
 
 namespace Kit.AppTests.Functional;
@@ -74,9 +78,35 @@ public sealed class TokenTests
         return token;
     }
 
-    private static string? Changed(string caller, string token) => caller switch
+    private static string? Changed(string caller, string token)
     {
-        NoToken => null,
-        _ => token,
-    };
+        string[] parts = token.Split('.');
+        return caller switch
+        {
+            NoToken => null,
+            Unsigned => $"{Encoded(new JsonObject { ["alg"] = "none", ["typ"] = "JWT" })}.{parts[1]}.",
+            ClaimsChanged => $"{parts[0]}.{Encoded(WithClaim(parts[1]))}.{parts[2]}",
+            OtherKey => SignedWithANewKey(parts[1]),
+            _ => throw new ArgumentOutOfRangeException(nameof(caller), caller, "No such change."),
+        };
+    }
+
+    // The same claims, and one more, so the signature no longer matches them.
+    private static JsonObject WithClaim(string payload)
+    {
+        JsonObject claims = JsonNode.Parse(Base64Url.DecodeFromChars(payload))!.AsObject();
+        claims["kit_changed"] = true;
+        return claims;
+    }
+
+    // A well-formed RS256 token whose key the host has never seen: made here, with an id of its own, and dropped.
+    private static string SignedWithANewKey(string payload)
+    {
+        using RSA key = RSA.Create(2048);
+        string signed = $"{Encoded(new JsonObject { ["alg"] = "RS256", ["typ"] = "JWT", ["kid"] = Guid.NewGuid().ToString("N") })}.{payload}";
+        byte[] signature = key.SignData(Encoding.ASCII.GetBytes(signed), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        return $"{signed}.{Base64Url.EncodeToString(signature)}";
+    }
+
+    private static string Encoded(JsonObject json) => Base64Url.EncodeToString(Encoding.UTF8.GetBytes(json.ToJsonString()));
 }
