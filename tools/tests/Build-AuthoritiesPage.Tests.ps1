@@ -546,6 +546,14 @@ Describe 'Build-AuthoritiesPage.ps1' {
             Find-SourceEntry -Url 'https://example.com/page' -Entries $entries | Should -BeNullOrEmpty
         }
 
+        It 'matches a folder prefix to the folder''s own page, cited without its trailing slash, but not to a longer name' {
+            $entries = @(New-Entry -Name 'Scorecard Action' -Class 'project' -Match 'https://github.com/ossf/scorecard-action/')
+
+            Get-EntryName 'https://github.com/ossf/scorecard-action' $entries | Should -Be 'Scorecard Action'
+            Get-EntryName 'https://github.com/ossf/scorecard-action/blob/main/README.md' $entries | Should -Be 'Scorecard Action'
+            Find-SourceEntry -Url 'https://github.com/ossf/scorecard-actions' -Entries $entries | Should -BeNullOrEmpty
+        }
+
         It 'matches a prefix whatever the case of the URL' {
             Get-EntryName 'https://LEARN.microsoft.com/dotnet/x' @(New-Entry -Name 'Microsoft Learn' -Match 'https://learn.microsoft.com/') |
                 Should -Be 'Microsoft Learn'
