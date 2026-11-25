@@ -16,4 +16,7 @@ internal static partial class AppHost
     public static partial string SignedInRoute => "/bookmarks";
 
     public static partial bool ServesHttpApi => true;
+
+    // Every bookmarks endpoint needs a signed-in user; only the probes and the Development document are public.
+    public static partial bool MostEndpointsRequireSignIn => true;
 }

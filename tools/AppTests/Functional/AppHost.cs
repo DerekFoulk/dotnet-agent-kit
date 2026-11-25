@@ -33,6 +33,12 @@ internal static partial class AppHost
     /// <summary>The reason the API's own checks give when they skip.</summary>
     public const string NoHttpApi = "The app serves no HTTP API (AppHost.ServesHttpApi), so API-002 and API-003 don't apply.";
 
+    /// <summary>
+    /// Gets whether most or all of the app's endpoints require a signed-in user, which is when SEC-017 asks for a
+    /// fallback authorization policy. The authorization checks skip when it's false, as in a public website.
+    /// </summary>
+    public static partial bool MostEndpointsRequireSignIn { get; }
+
     /// <summary>Starts the app in an environment, as it is.</summary>
     public static IAppUnderTest Start(string environment) => Start(environment, new Dictionary<string, string>(), _ => { });
 
