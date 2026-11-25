@@ -488,6 +488,23 @@ Describe 'Build-AuthoritiesPage.ps1' {
             { Read-AuthoritiesData -Path $path } | Should -Throw "*'$Key' isn't a list*"
         }
 
+        It 'reads an empty works and licenses as no entries' {
+            $path = Join-Path $TestDrive "authorities-$(New-Guid).yml"
+            Set-Content -Path $path -Value "sources: []`nworks:`nlicenses:`n"
+
+            $data = Read-AuthoritiesData -Path $path
+
+            $data.Works.Count | Should -Be 0
+            $data.Licenses.Count | Should -Be 0
+        }
+
+        It 'stops with the reason when <Key> has an entry that isn''t a mapping' -ForEach @(@{ Key = 'works' }, @{ Key = 'licenses' }) {
+            $path = Join-Path $TestDrive "authorities-$(New-Guid).yml"
+            Set-Content -Path $path -Value "sources: []`n${Key}:`n  - just text`n"
+
+            { Read-AuthoritiesData -Path $path } | Should -Throw "*'$Key' has an entry that isn't a mapping*"
+        }
+
         It 'reports a license with no <Field>, and a license no work uses' -ForEach @(@{ Field = 'id' }, @{ Field = 'name' }, @{ Field = 'url' }) {
             $license = New-License
             $license.Remove($Field)
