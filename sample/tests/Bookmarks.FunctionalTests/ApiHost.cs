@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Xunit.Sdk;
 
 namespace Bookmarks.FunctionalTests;
 
@@ -19,7 +20,21 @@ internal sealed class ApiHost : IAppUnderTest
 
     public ApiHost(string environment = "Development", IReadOnlyDictionary<string, string>? settings = null, Action<IServiceCollection>? services = null)
     {
-        string connectionString = SqlServerTestDatabase.Create();
+        // The app needs no database to start (DAT-004). So without Docker it still starts, here, and a test of how it
+        // starts sees the real outcome (the kit's DependencyInjectionTests expect the start itself to fail); every
+        // other test is skipped once it has (Docker's absence, below).
+        string connectionString;
+        SkipException? withoutDocker = null;
+        try
+        {
+            connectionString = SqlServerTestDatabase.Create();
+        }
+        catch (SkipException skip)
+        {
+            withoutDocker = skip;
+            connectionString = ApiFactory.UnreachableDatabase;
+        }
+
         _factory = _baseFactory.WithWebHostBuilder(host =>
         {
             // The container checks the registrations it can when the app starts (not a factory's dependencies, nor open
@@ -53,6 +68,11 @@ internal sealed class ApiHost : IAppUnderTest
             }
         });
         Client = CreateClient(TestTokens.For());
+        if (withoutDocker is not null)
+        {
+            Dispose();
+            throw withoutDocker;
+        }
     }
 
     /// <summary>A client signed in as "alice".</summary>

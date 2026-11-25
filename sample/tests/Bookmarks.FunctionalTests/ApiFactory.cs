@@ -13,6 +13,12 @@ namespace Bookmarks.FunctionalTests;
 /// </summary>
 internal class ApiFactory : WebApplicationFactory<Program>
 {
+    /// <summary>
+    /// A database nothing answers for: nothing listens on port 1, and the client waits a second. The app starts with it,
+    /// since it never touches its database to start (DAT-004).
+    /// </summary>
+    public const string UnreachableDatabase = "Server=127.0.0.1,1;Database=Bookmarks;Connect Timeout=1;Encrypt=False";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder) =>
         builder.UseSolutionRelativeContentRoot(Path.Combine("sample", "src", typeof(Program).Assembly.GetName().Name!));
 }
