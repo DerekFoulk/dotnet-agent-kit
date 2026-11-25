@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kit.AppTests.Functional;
@@ -40,6 +41,12 @@ internal abstract class HostUnderTest
     /// no API of its own.
     /// </summary>
     public abstract bool ServesHttpApi { get; }
+
+    /// <summary>
+    /// Gets the assemblies of the types the host's endpoints may accept and return (SEC-013), such as its Contracts
+    /// project's, besides .NET's own. A host that serves no HTTP API has none.
+    /// </summary>
+    public abstract IReadOnlyCollection<Assembly> ContractAssemblies { get; }
 
     /// <summary>
     /// Starts the host in memory in an environment, with these settings, and these services added after its own.
