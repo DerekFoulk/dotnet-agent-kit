@@ -106,6 +106,11 @@ function Get-BasisProblem {
 # ADR-0090: how strongly a rule applies, from its source's words. A gate on a must rule fails, on a should rule warns,
 # and a consider rule is advice only.
 $script:Strengths = 'must', 'should', 'consider'
+# The words that let an authority rule be a must: the one list of them (ADR-0090's table, with the build's additions
+# SHALL, REQUIRED, "required" and an instruction's "always", the opposite of "never"). The capitals of RFC 2119 and the
+# Framework Design Guidelines count only in capitals, so a plain "do" doesn't. A must-word in a descriptive clause
+# still passes: this check only stops a must that no quote supports, and code review judges the rest.
+$script:MustWords = '(?-i:\bDO\b|\bMUST\b|\bSHALL\b|\bREQUIRED\b)|(?i:\bmust(n''t)?\b|\bshall\b|\brequired\b|\bnever\b|\bdo not\b|\bdon''t\b|\bverify that\b|\balways\b)'
 
 function Get-StrengthProblem {
     param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
@@ -117,6 +122,12 @@ function Get-StrengthProblem {
     $strength = "$($Rule['strength'])"
     if ($strength -cnotin $script:Strengths) {
         return "strength '$strength' must be one of: $($script:Strengths -join ', ') (ADR-0090)"
+    }
+    if ($strength -ceq 'must' -and "$($Rule['basis'])" -eq 'authority') {
+        $texts = @(@($(if ($Rule.Contains('quotes')) { $Rule['quotes'] })) | Where-Object { $_ -is [System.Collections.IDictionary] } | ForEach-Object { "$($_['text'])" })
+        if (-not @($texts | Where-Object { $_ -match $script:MustWords }).Count) {
+            "strength 'must', but no quote holds a must-word (DO, DO NOT, MUST, SHALL, REQUIRED, must, never, don't, Verify that, always): the page's own strength stands, should or consider, and a kit rule says what the kit adds (ADR-0090)"
+        }
     }
 }
 
