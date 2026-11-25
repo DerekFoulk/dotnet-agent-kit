@@ -292,7 +292,7 @@ rules:
         how: "ci: the sample's FunctionalTests check that every bookmarks endpoint answers 401 without a valid token"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): AuthorizationTests checks that the fallback policy requires a signed-in user, and that only the routes the app lists in AppHost allow anonymous callers; both skip, with a reason, in an app whose AppHost part says most of its endpoints are public (MostEndpointsRequireSignIn is false); HealthTests and OpenApiTests check that the probes and the Development document answer without a token; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): AuthorizationTests checks that the fallback policy requires a signed-in user, and that only the routes the app lists in AppHost allow anonymous callers; both skip, with a reason, in an app whose AppHost part says most of its endpoints are public (MostEndpointsRequireSignIn is false); an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
         how: "code review checks that an app's MostEndpointsRequireSignIn answer matches its endpoints, and that each AllowAnonymous endpoint is intentionally public"

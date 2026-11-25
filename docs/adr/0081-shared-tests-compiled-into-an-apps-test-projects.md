@@ -139,6 +139,8 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 
 **Update (2026-11-18): CRF-014 split.** ADR-0082 split CRF-014: it keeps Microsoft's encapsulation, gated by the analyzers, and the owner's tightening (state kept valid, a persistence-ignorant domain) is CRF-021. The domain's persistence check named above as CRF-014's now gates CRF-021.
 
+**Update (2026-11-25): SEC-007 retired, the authorization checks are SEC-017's.** The owner retired SEC-007, which asked for a fallback policy in every app; SEC-017 asks for one only in a server-side app where most or all endpoints require authentication. So the app's part of `AppHost` gains a fifth member, `MostEndpointsRequireSignIn`, and `AuthorizationTests` (SEC-017 now, where the list above says SEC-007) skip, with a reason, when it's false, as in a public website. `HealthTests` and `OpenApiTests` check the anonymous probes and Development document for OPS-002 and API-003, not for SEC-017. **An app that already has a FunctionalTests project** adds the member at its next sync: its build fails until it does (a partial property with no implementation), so the change shows on the sync PR. It answers `true` when most or all of its endpoints require a signed-in user, as the sample's do, and `false` otherwise. `tools/tests/SharedHostChecks.Tests.ps1` runs the checks against a public fixture site, where they skip, and against the same site declared as signed-in, where the fallback check fails.
+
 ## Pillars affected
 
 - **Reliability and Operational Excellence:** an app gets the kit's architecture gates from its first Architecture.Tests project, in its own `dotnet test`, and keeps them current through the sync.

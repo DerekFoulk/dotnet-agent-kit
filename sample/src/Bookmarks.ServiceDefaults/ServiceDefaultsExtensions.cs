@@ -111,7 +111,7 @@ public static class ServiceDefaultsExtensions
         app.UseOutputCache();
         RouteGroupBuilder health = app.MapGroup(string.Empty);
         // Probes call without a token, so the health endpoints stay public when the app requires a signed-in user
-        // everywhere else (SEC-017).
+        // everywhere else (OPS-002, SEC-017).
         // Not rate limited: a platform's probes come from one address, and limiting them would get a healthy app
         // restarted; the output cache already bounds what a flood of probes costs.
         health.CacheOutput(HealthPolicy).WithRequestTimeout(HealthPolicy).AllowAnonymous().DisableRateLimiting();
