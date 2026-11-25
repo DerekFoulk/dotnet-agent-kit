@@ -103,6 +103,23 @@ function Get-BasisProblem {
     }
 }
 
+# ADR-0090: how strongly a rule applies, from its source's words. A gate on a must rule fails, on a should rule warns,
+# and a consider rule is advice only.
+$script:Strengths = 'must', 'should', 'consider'
+
+function Get-StrengthProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
+
+    if ("$($Rule['status'])" -eq 'retired') { return }
+    if (-not $Rule.Contains('strength') -or -not (Test-Present $Rule['strength'])) {
+        return "is missing 'strength': must, should or consider, from its source's words (ADR-0090)"
+    }
+    $strength = "$($Rule['strength'])"
+    if ($strength -cnotin $script:Strengths) {
+        return "strength '$strength' must be one of: $($script:Strengths -join ', ') (ADR-0090)"
+    }
+}
+
 # ADR-0082: layer says whose rule it is. An authority's rule is the outside layer and a preference is the owner's;
 # a floor rule (law, safety, security, privacy, licenses) can be either.
 $script:LayersForBasis = @{ authority = @('outside', 'floor'); preference = @('owner', 'floor') }
@@ -317,6 +334,9 @@ function Get-RuleSourceProblem {
                 New-Problem -File $file.Name -RuleId $ruleId -Message "basis '$basis' can't have layer '$($rule['layer'])': use $($script:LayersForBasis[$basis] -join ' or ') (ADR-0082)"
             }
             foreach ($message in @(Get-ScopeProblem -Rule $rule -Known $appTypes.Ids)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
+            }
+            foreach ($message in @(Get-StrengthProblem -Rule $rule)) {
                 New-Problem -File $file.Name -RuleId $ruleId -Message $message
             }
             foreach ($message in @(Get-RatifiedProblem -Rule $rule -AdrPath $AdrPath)) {
