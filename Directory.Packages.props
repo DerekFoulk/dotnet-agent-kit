@@ -21,7 +21,8 @@
     <!-- Authentication (ADR-0048, auto mode): JWT bearer, named by Microsoft's "Configure JWT bearer authentication". -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.15" />
+    <!-- The database (GAP-025, ADR-0053, ADR-0054): EF Core's SQL Server provider. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
     <!-- Service defaults (ADR-0037, auto mode): named by Microsoft's health-check and OpenTelemetry docs. -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.15" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
@@ -53,6 +54,8 @@
     <!-- Containers for tests (ADR-0003, DAT-005): Testcontainers for .NET (MIT). The web UI fixture starts one inside the
          Playwright image, where CI runs it (GAP-047). -->
     <PackageVersion Include="Testcontainers" Version="4.17.0" />
+    <!-- The sample's integration and functional tests on SQL Server, the engine it runs on (DAT-005, ADR-0054, GAP-025). -->
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.17.0" />
     <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.5" />
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>

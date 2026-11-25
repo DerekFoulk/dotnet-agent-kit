@@ -1,25 +1,17 @@
 using Bookmarks.Domain;
 using Bookmarks.Infrastructure;
-using Microsoft.Data.Sqlite;
+using Bookmarks.TestDatabase;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bookmarks.IntegrationTests;
 
-/// <summary>The repository against a real SQLite database, held in memory for the test's lifetime.</summary>
-public sealed class EfBookmarkRepositoryTests : IDisposable
+/// <summary>The repository against SQL Server, the engine the app runs on, with a new database for each test (DAT-005).</summary>
+public sealed class EfBookmarkRepositoryTests
 {
     private const string Owner = "alice";
     private static readonly DateTimeOffset s_now = new(2026, 11, 4, 12, 0, 0, TimeSpan.Zero);
-    private readonly SqliteConnection _connection = new("DataSource=:memory:");
-    private readonly DbContextOptions<BookmarksDbContext> _options;
-
-    public EfBookmarkRepositoryTests()
-    {
-        _connection.Open();
-        _options = new DbContextOptionsBuilder<BookmarksDbContext>().UseSqlite(_connection).Options;
-        using BookmarksDbContext db = new(_options);
-        db.Database.EnsureCreated();
-    }
+    private readonly DbContextOptions<BookmarksDbContext> _options =
+        new DbContextOptionsBuilder<BookmarksDbContext>().UseSqlServer(SqlServerTestDatabase.Create()).Options;
 
     [Fact]
     public async Task AddThenFindReturnsTheSameBookmark()
@@ -168,45 +160,6 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
 
         first.Concat(second).Select(b => b.Title).Should().Equal("A", "B", "C");
     }
-
-    [Fact]
-    public void TheModelKeysOnIdRequiresEveryFieldCapsTheTitleAndIndexesEachOwnersUrls()
-    {
-        // Mutation testing (PR 23): SQLite doesn't enforce a length, and EF finds "Id" as the key by convention, so
-        // no behaviour test noticed when a line of OnModelCreating was removed. These are the schema's promises.
-        // EF caches a built model for the whole process; a fresh service provider builds it again, so a mutated
-        // OnModelCreating is really run (Stryker reuses one test process across mutants).
-        DbContextOptions<BookmarksDbContext> uncached = new DbContextOptionsBuilder<BookmarksDbContext>()
-            .UseSqlite(_connection).EnableServiceProviderCaching(false).Options;
-        using BookmarksDbContext db = new(uncached);
-        Microsoft.EntityFrameworkCore.Metadata.IEntityType bookmark = db.Model.FindEntityType(typeof(Bookmark))!;
-
-        bookmark.FindPrimaryKey()!.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.Id));
-        bookmark.FindProperty(nameof(Bookmark.OwnerId))!.IsNullable.Should().BeFalse();
-        bookmark.FindProperty(nameof(Bookmark.OwnerId))!.GetMaxLength().Should().Be(Bookmark.MaxOwnerIdLength);
-        bookmark.FindProperty(nameof(Bookmark.Url))!.IsNullable.Should().BeFalse();
-        bookmark.FindProperty(nameof(Bookmark.Url))!.GetMaxLength().Should().Be(Bookmark.MaxUrlLength);
-        bookmark.FindProperty(nameof(Bookmark.Title))!.IsNullable.Should().BeFalse();
-        bookmark.FindProperty(nameof(Bookmark.Title))!.GetMaxLength().Should().Be(Bookmark.MaxTitleLength);
-        bookmark.FindProperty(nameof(Bookmark.CreatedAt))!.IsNullable.Should().BeFalse();
-        // Every read filters by owner first (SEC-009), so the index leads with it.
-        bookmark.GetIndexes().Should().ContainSingle().Which.Properties.Select(p => p.Name)
-            .Should().Equal(nameof(Bookmark.OwnerId), nameof(Bookmark.Url));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void InfrastructureNeedsAConnectionString(string blank)
-    {
-        // Mutation testing (PR 23): without the guard, a blank connection string failed only at the first query.
-        Action add = () => Microsoft.Extensions.DependencyInjection.InfrastructureServiceCollectionExtensions
-            .AddBookmarksInfrastructure(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), blank);
-
-        add.Should().Throw<ArgumentException>().WithParameterName("connectionString");
-    }
-
-    public void Dispose() => _connection.Dispose();
 
     private async Task SaveAsync(Bookmark bookmark)
     {

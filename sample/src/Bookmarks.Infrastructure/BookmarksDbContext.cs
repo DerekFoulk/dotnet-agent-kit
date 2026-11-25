@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bookmarks.Infrastructure;
 
-/// <summary>The bookmarks database (SQLite).</summary>
+/// <summary>The bookmarks database (SQL Server).</summary>
 public sealed class BookmarksDbContext(DbContextOptions<BookmarksDbContext> options) : DbContext(options)
 {
     /// <summary>Every user's bookmarks; the repository reads only the owner's (SEC-009).</summary>
