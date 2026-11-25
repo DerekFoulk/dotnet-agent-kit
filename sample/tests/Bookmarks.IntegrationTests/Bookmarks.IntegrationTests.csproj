@@ -8,4 +8,6 @@
     <ProjectReference Include="..\..\src\Bookmarks.Infrastructure\Bookmarks.Infrastructure.csproj" />
   </ItemGroup>
 
+  <Import Project="../SqlServer/SqlServerTests.props" />
+
 </Project>
