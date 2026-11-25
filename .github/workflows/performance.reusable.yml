@@ -138,8 +138,9 @@ jobs:
       - name: Build the app (Release)
         run: dotnet build "$PROJECT" --configuration Release
 
-      # SEC-008, SEC-017: an app that turns this on requires a signed-in user, so its load test needs a bearer token. dotnet user-jwts (in the .NET SDK) issues one, signed with a
-      # key it keeps in the project's user secrets on this runner. Only Development reads user secrets, and the app
+      # SEC-008, SEC-017: an app that turns this on requires a signed-in user, so its load test needs a bearer token.
+      # dotnet user-jwts (in the .NET SDK) issues one, signed with a key it keeps in the project's user secrets on this
+      # runner. Only Development reads user secrets, and the app
       # runs in Production, so the JWT bearer handler gets that key, its issuer and the audience through the
       # environment. The token and key are masked before anything else sees them, and die with the runner.
       - name: Issue a token for this run (dotnet user-jwts)

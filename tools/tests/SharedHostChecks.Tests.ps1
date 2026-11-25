@@ -43,11 +43,12 @@ Describe 'the kit''s shared authorization checks' {
         $script:buildExit = $LASTEXITCODE
 
         # Runs the authorization checks in the built copy, with the fixture's sign-in setting, and returns the exit code
-        # and output.
+        # and output. --no-ansi: on GitHub's runner the test platform colors "failed", which splits it from the test's
+        # name in the text the assertions read.
         function Invoke-AuthorizationCheck([bool] $MostEndpointsRequireSignIn) {
             $env:KIT_FIXTURE_SIGN_IN = "$MostEndpointsRequireSignIn".ToLowerInvariant()
             try {
-                $output = dotnet test --project (Join-Path $site 'tests' 'Contoso.Site.FunctionalTests') --no-build `
+                $output = dotnet test --project (Join-Path $site 'tests' 'Contoso.Site.FunctionalTests') --no-build --no-ansi `
                     --filter-class Kit.AppTests.Functional.AuthorizationTests 2>&1 | Out-String
                 [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
             }
