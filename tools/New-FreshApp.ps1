@@ -78,6 +78,37 @@ function Get-FreshAppAnswer {
     $answers
 }
 
+# Copies the probe's src/ and tests/ into the app, from a clean checkout of the commit, as Export-KitApp copies the
+# kit's files, so an unfinished local edit can't reach the app. Lock files stay behind: the app's first restore writes
+# its own, against the app's own Directory.Packages.props.
+function Copy-FreshAppProbe {
+    param(
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [Parameter(Mandatory)] [string] $Commit,
+        [Parameter(Mandatory)] [string] $From,
+        [Parameter(Mandatory)] [string] $Destination
+    )
+
+    $files = @(git -C $KitRoot ls-tree -r --name-only $Commit -- "$From/src" "$From/tests" |
+            Where-Object { $_ -notmatch '(^|/)packages\.lock\.json$' })
+    if ($LASTEXITCODE -ne 0) { throw "git ls-tree failed for $Commit in $KitRoot." }
+    if (-not $files) { throw "The kit at $Commit has no $From/src or $From/tests." }
+
+    $checkout = Join-Path ([IO.Path]::GetTempPath()) "kit-probe-$([guid]::NewGuid().ToString('N'))"
+    git -C $KitRoot worktree add --quiet --detach $checkout $Commit
+    if ($LASTEXITCODE -ne 0) { throw "Couldn't check out $Commit from $KitRoot." }
+    try {
+        foreach ($file in $files) {
+            $target = Join-Path $Destination $file.Substring($From.Length + 1)
+            New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+            Copy-Item -LiteralPath (Join-Path $checkout $file) -Destination $target
+        }
+    }
+    finally {
+        git -C $KitRoot worktree remove --force $checkout
+    }
+}
+
 function New-FreshApp {
     param(
         [Parameter(Mandatory)] [string] $Type,
@@ -103,6 +134,9 @@ function New-FreshApp {
     & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $probe.Name -Destination $Destination -KitRef $commit -KitRoot $KitRoot -AppProfile $profileText
     if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
     New-KitAppFirstCommit -Path $Destination
+
+    # The probe, as an app's first task would add its projects, after the first commit.
+    Copy-FreshAppProbe -KitRoot $KitRoot -Commit $commit -From $probe.From -Destination $Destination
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
