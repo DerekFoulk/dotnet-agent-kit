@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- The sample's tests that reach SQL Server, the engine it runs on (DAT-005, ADR-0098): the integration and functional
+       test projects import this file. It compiles SqlServerTestDatabase.cs into each. -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)SqlServerTestDatabase.cs" Link="SqlServer/SqlServerTestDatabase.cs" />
+  </ItemGroup>
+
+</Project>
