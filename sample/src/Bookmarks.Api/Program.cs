@@ -1,6 +1,5 @@
 using Bookmarks.Api;
 using Bookmarks.Application.Features.Bookmarks;
-using Bookmarks.Infrastructure;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
@@ -42,11 +41,8 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 
-// The sample creates its schema on startup; a real app would use migrations.
-using (IServiceScope scope = app.Services.CreateScope())
-{
-    scope.ServiceProvider.GetRequiredService<BookmarksDbContext>().Database.EnsureCreated();
-}
+// The app never changes its database's schema here: the deployment applies the migrations with a migration bundle,
+// before this version takes traffic (DAT-004), and a developer runs dotnet ef database update (sample/README.md).
 
 app.MapDefaultEndpoints();
 // The OpenAPI document maps the whole API, so it is served in Development only (API-003); the contract test

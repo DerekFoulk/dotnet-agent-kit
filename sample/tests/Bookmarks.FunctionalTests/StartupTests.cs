@@ -9,6 +9,7 @@ namespace Bookmarks.FunctionalTests;
 /// </summary>
 public sealed class StartupTests
 {
+
     [Fact]
     public async Task TheAppStartsWithoutTouchingItsDatabase()
     {
@@ -21,14 +22,12 @@ public sealed class StartupTests
         alive.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    /// <summary>The API with a database nothing answers for: nothing listens on port 1, and the client waits a second.</summary>
+    /// <summary>The API with <see cref="UnreachableDatabase"/>.</summary>
     private sealed class UnreachableDatabaseFactory : ApiFactory
     {
-        public const string ConnectionString = "Server=127.0.0.1,1;Database=Bookmarks;Connect Timeout=1;Encrypt=False";
-
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseSetting("ConnectionStrings:Bookmarks", ConnectionString);
+            builder.UseSetting("ConnectionStrings:Bookmarks", UnreachableDatabase);
             base.ConfigureWebHost(builder);
         }
     }
