@@ -161,6 +161,31 @@ public sealed class EfBookmarkRepositoryTests
         first.Concat(second).Select(b => b.Title).Should().Equal("A", "B", "C");
     }
 
+    [Fact]
+    public async Task PagesComeInCreationOrderWhateverOrderTheKeysSortIn()
+    {
+        // API-004: SQL Server compares a uniqueidentifier by its last six bytes first, which a UUID version 7 fills at
+        // random, so these keys sort there in the opposite order to their creation times (api-design.md).
+        await SaveAsync(CreatedWithLastBytes(s_now, 3, "A"));
+        await SaveAsync(CreatedWithLastBytes(s_now.AddMinutes(1), 2, "B"));
+        await SaveAsync(CreatedWithLastBytes(s_now.AddMinutes(2), 1, "C"));
+
+        await using BookmarksDbContext db = new(_options);
+        EfBookmarkRepository repository = new(db);
+        IReadOnlyList<Bookmark> first = await repository.ListAsync(Owner, 0, 2, TestContext.Current.CancellationToken);
+        IReadOnlyList<Bookmark> second = await repository.ListAsync(Owner, 2, 2, TestContext.Current.CancellationToken);
+
+        first.Concat(second).Select(b => b.Title).Should().Equal("A", "B", "C");
+    }
+
+    // A bookmark whose UUID version 7 id ends in six copies of the given byte, where its random bits are.
+    private static Bookmark CreatedWithLastBytes(DateTimeOffset createdAt, byte last, string title)
+    {
+        byte[] id = Guid.CreateVersion7(createdAt).ToByteArray(bigEndian: true);
+        id.AsSpan(10).Fill(last);
+        return Bookmark.Create(new Guid(id, bigEndian: true), Owner, new Uri($"https://example.com/{title}"), title, createdAt);
+    }
+
     private async Task SaveAsync(Bookmark bookmark)
     {
         await using BookmarksDbContext db = new(_options);
