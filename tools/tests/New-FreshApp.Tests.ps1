@@ -26,8 +26,8 @@ Describe 'New-FreshApp' {
     }
 
     Context 'a fresh <Type> app' -ForEach @(
-        @{ Type = 'web-api'; Name = 'Fresh.WebApi' }
-        @{ Type = 'blazor'; Name = 'Fresh.Blazor' }
+        @{ Type = 'web-api'; Name = 'Fresh.WebApi'; From = 'sample' }
+        @{ Type = 'blazor'; Name = 'Fresh.Blazor'; From = 'fixtures/WebUi' }
     ) {
         BeforeAll {
             $kit = Join-Path $TestDrive 'kit'
@@ -43,6 +43,14 @@ Describe 'New-FreshApp' {
             git -C $kit commit -q -m 'chore: kit fixture'
             $commit = (git -C $kit rev-parse HEAD).Trim()
 
+            # An edit nobody committed must not reach the app.
+            $edited = @(git -C $kit ls-tree -r --name-only $commit -- "$From/src" | Where-Object { $_ -like '*.cs' })[0]
+            Add-Content -LiteralPath (Join-Path $kit $edited) -Value '// uncommitted-edit-marker'
+
+            # The expected bytes: a clean checkout of the commit, line endings as .gitattributes gives them.
+            $checkout = Join-Path $TestDrive 'checkout'
+            git -C $kit worktree add -q --detach $checkout $commit
+
             # A developer's preferences must not reach the app: a run here and CI's give the same app.
             Mock Read-KitPreference { throw 'New-FreshApp read a preferences file.' }
 
@@ -50,6 +58,10 @@ Describe 'New-FreshApp' {
             New-FreshApp -Type $Type -Destination $app -KitRef $commit -KitRoot $kit
             $profilePath = Join-Path $app 'docs' 'app-profile.md'
             $intake = Get-Content -Raw -LiteralPath (Join-Path $kit 'templates' 'app-intake.json') | ConvertFrom-Json -AsHashtable
+        }
+
+        AfterAll {
+            git -C $kit worktree remove --force $checkout
         }
 
         It 'gets the core ruleset and its own type''s, from a profile of the intake''s defaults' {
@@ -71,7 +83,26 @@ Describe 'New-FreshApp' {
             git -C $app branch --show-current | Should -Be 'main'
             @(git -C $app log --format=%s) | Should -Be @('chore: start from dotnet-agent-kit unreleased')
             (git -C $app ls-files --stage -- .githooks/commit-msg) | Should -Match '^100755 '
-            git -C $app status --porcelain | Should -BeNullOrEmpty
+            # The kit's files only, as New-KitApp's first commit; the probe comes after it.
+            @(git -C $app ls-tree -r --name-only HEAD -- src tests | Where-Object { $_ -ne 'tests/Directory.Build.props' }) | Should -BeNullOrEmpty
+        }
+
+        # The probe is the kit's own reference app of the type (ADR-0095): its src/ and tests/ become the app's. Lock
+        # files stay behind: the app's first restore writes its own, against the app's Directory.Packages.props.
+        It 'holds the probe''s src and tests from the chosen commit, without their lock files' {
+            $expected = @(git -C $kit ls-tree -r --name-only $commit -- "$From/src" "$From/tests" |
+                    Where-Object { $_ -notmatch '(^|/)packages\.lock\.json$' })
+            $expected.Count | Should -BeGreaterThan 5
+            foreach ($file in $expected) {
+                $target = Join-Path $app $file.Substring($From.Length + 1)
+                $target | Should -Exist
+                [IO.File]::ReadAllBytes($target) | Should -Be ([IO.File]::ReadAllBytes((Join-Path $checkout $file))) -Because "$file is copied unchanged"
+            }
+            $copied = @(Get-ChildItem -LiteralPath (Join-Path $app 'src'), (Join-Path $app 'tests') -Recurse -File |
+                    ForEach-Object { [IO.Path]::GetRelativePath($app, $_.FullName).Replace('\', '/') })
+            @($copied | Where-Object { $_ -ne 'tests/Directory.Build.props' } | Sort-Object) |
+                Should -Be @($expected | ForEach-Object { $_.Substring($From.Length + 1) } | Sort-Object)
+            (Get-Content -Raw -LiteralPath (Join-Path $app $edited.Substring($From.Length + 1))) | Should -Not -Match 'uncommitted-edit-marker'
         }
     }
 }
