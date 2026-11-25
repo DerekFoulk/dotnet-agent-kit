@@ -119,7 +119,7 @@ In review mode, also ask the owner first before you:
 | List the solution's MAUI and desktop (UI) projects, which CI builds on Windows and macOS and the coverage gate exempts (ARC-010) | `./tools/Get-UiProject.ps1 -Solution dotnet-agent-kit.slnx` |
 | Regenerate agent rule files after editing a standard or this file | `./tools/Build-AgentRules.ps1` |
 | Check generated files are current | `./tools/Build-AgentRules.ps1 -Check` |
-| Every source the rules cite is classed by its publisher in `docs/authorities.yml`, every `authority` rule cites a page from an authority or a tool's own vendor, and `docs/authorities.md` is current; without `-Check` it rewrites the page (ADR-0073) | `./tools/Build-AuthoritiesPage.ps1 -Check` |
+| Every source the rules cite is classed by its publisher in `docs/authorities.yml`, every `authority` rule cites a page from an authority or a tool's own vendor, and `docs/authorities.md` is current; every stored quote's work has its license there too, and `THIRD-PARTY-NOTICES.md`'s quotes block is current (ADR-0094); without `-Check` it rewrites both (ADR-0073) | `./tools/Build-AuthoritiesPage.ps1 -Check` |
 | PR title and commit subjects are Conventional Commits | `./tools/Test-ConventionalTitle.ps1 -Range origin/main..HEAD` |
 | Every red commit is made green | `./tools/Test-RedGreenOrder.ps1 -Range origin/main..HEAD` |
 | No deprecated NuGet packages | `./tools/Test-DeprecatedPackages.ps1 -Path dotnet-agent-kit.slnx` |
