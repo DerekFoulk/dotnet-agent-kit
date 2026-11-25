@@ -15,6 +15,7 @@ Describe 'Test-RuleSources.ps1' {
                 layer       = 'owner'
                 basis       = 'preference'
                 status      = 'accepted'
+                strength    = 'should'
                 sources     = @('owner, 2026-10-26', 'ADR-0007')
                 enforcement = @(
                     [ordered]@{ kind = 'gate'; in = @('kit', 'app'); how = 'ruleset: merge-method rule (merge commit only)' }
@@ -160,6 +161,45 @@ types:
             New-StandardsFile -Rules @(New-Rule -Override @{ $Field = $Value })
 
             (Get-Problem | ForEach-Object Message) | Should -BeLike "*$Field*$Value*"
+        }
+    }
+
+    # ADR-0090: a strength says how strongly a rule applies, from its source's words: must, should or consider.
+    Context 'strength' {
+        It 'accepts strength <Strength>' -ForEach @(
+            @{ Strength = 'should' }
+            @{ Strength = 'consider' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = $Strength; enforcement = @([ordered]@{ kind = 'advisory'; in = @('kit'); how = 'code review' }) })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports a rule in force with no strength' {
+            New-StandardsFile -Rules @(New-Rule -Remove 'strength')
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*missing 'strength'*must, should or consider*ADR-0090*"
+        }
+
+        It 'reports strength <Strength>' -ForEach @(
+            @{ Strength = 'may' }
+            @{ Strength = 'MUST' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = $Strength })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*strength '$Strength'*must, should, consider*"
+        }
+
+        It 'needs no strength on a retired rule' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ status = 'retired' } -Remove 'strength')
+
+            Get-Problem | Should -BeNullOrEmpty
         }
     }
 
