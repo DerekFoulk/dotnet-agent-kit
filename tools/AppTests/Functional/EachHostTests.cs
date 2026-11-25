@@ -15,7 +15,7 @@ public sealed class EachHostTests
             .Where(type => type.Namespace == typeof(EachHostTests).Namespace && type != typeof(EachHostTests))
             .SelectMany(type => type.GetMethods())
             .Where(method => method.GetCustomAttribute<FactAttribute>() is not null)
-            .Where(method => !method.GetCustomAttributes().Any(attribute => attribute.GetType().Name == "EachHostAttribute")
+            .Where(method => !method.GetCustomAttributes<EachHostAttribute>().Any()
                 || method.GetParameters() is not [{ Name: "host", ParameterType: var type }, ..] || type != typeof(string))
             .Select(method => $"{method.DeclaringType!.Name}.{method.Name}");
 

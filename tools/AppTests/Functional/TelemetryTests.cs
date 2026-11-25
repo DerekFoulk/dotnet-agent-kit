@@ -14,25 +14,25 @@ using OpenTelemetry.Trace;
 namespace Kit.AppTests.Functional;
 
 /// <summary>The OpenTelemetry logs, metrics and traces the app's service defaults set up (OPS-001, ADR-0037).</summary>
-public sealed class TelemetryTests : IDisposable
+public sealed class TelemetryTests
 {
     // The HttpClient names the OTLP exporter documents for its trace, metric and log exporters.
     private static readonly string[] s_otlpClients = ["OtlpTraceExporter", "OtlpMetricExporter", "OtlpLogExporter"];
 
-    private readonly IAppUnderTest _host = AppHost.Start(Environments.Development);
-
-    [Fact]
-    public void OpenTelemetryCollectsTracesMetricsAndLogs()
+    [Theory]
+    [EachHost]
+    public void OpenTelemetryCollectsTracesMetricsAndLogs(string host)
     {
-        _host.Services.GetService<TracerProvider>().Should().NotBeNull("traces are collected");
-        _host.Services.GetService<MeterProvider>().Should().NotBeNull("metrics are collected");
-        _host.Services.GetServices<ILoggerProvider>().Should().ContainItemsAssignableTo<OpenTelemetryLoggerProvider>("logs go through OpenTelemetry too");
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Development);
+        app.Services.GetService<TracerProvider>().Should().NotBeNull("traces are collected");
+        app.Services.GetService<MeterProvider>().Should().NotBeNull("metrics are collected");
+        app.Services.GetServices<ILoggerProvider>().Should().ContainItemsAssignableTo<OpenTelemetryLoggerProvider>("logs go through OpenTelemetry too");
     }
 
     [Theory]
-    [InlineData("http://127.0.0.1:9", true)]
-    [InlineData("", false)]
-    public void TracesAreExportedOverOtlpOnlyWhenAnEndpointIsSet(string endpoint, bool exported)
+    [EachHost("http://127.0.0.1:9", true)]
+    [EachHost("", false)]
+    public void TracesAreExportedOverOtlpOnlyWhenAnEndpointIsSet(string host, string endpoint, bool exported)
     {
         // Review 1 of PR 21: traces leave the app only with OTEL_EXPORTER_OTLP_ENDPOINT set. The exporter sends them
         // through the named HttpClient "OtlpTraceExporter", which its README documents for this (v1.20.1, "Configure
@@ -49,7 +49,7 @@ public sealed class TelemetryTests : IDisposable
 
         // Metrics and logs go to the recorder too, through their own documented client names, so nothing reaches the
         // network.
-        using IAppUnderTest host = AppHost.Start(Environments.Development, settings, services =>
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Development, settings, services =>
         {
             foreach (string client in s_otlpClients)
             {
@@ -59,8 +59,8 @@ public sealed class TelemetryTests : IDisposable
 
         // A span from the app's own source, which the service defaults trace, ended before the flush, so the flush
         // has a finished span to export whatever the timing of the host.
-        TracerProvider tracing = host.Services.GetRequiredService<TracerProvider>();
-        using (ActivitySource source = new(host.Services.GetRequiredService<IHostEnvironment>().ApplicationName))
+        TracerProvider tracing = app.Services.GetRequiredService<TracerProvider>();
+        using (ActivitySource source = new(app.Services.GetRequiredService<IHostEnvironment>().ApplicationName))
         using (Activity? span = source.StartActivity("work"))
         {
             span.Should().NotBeNull("the app's own source is traced");
@@ -79,13 +79,14 @@ public sealed class TelemetryTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/health", false)]
-    [InlineData("/alive", false)]
-    [InlineData("/kit-any-other-path", true)]
-    public void HealthProbesAreNotTracedButOtherRequestsAre(string path, bool traced)
+    [EachHost("/health", false)]
+    [EachHost("/alive", false)]
+    [EachHost("/kit-any-other-path", true)]
+    public void HealthProbesAreNotTracedButOtherRequestsAre(string host, string path, bool traced)
     {
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Development);
         // Review 1 of PR 21: probes call the health endpoints often, so the trace filter leaves them out.
-        Func<HttpContext, bool>? filter = _host.Services.GetRequiredService<IOptionsMonitor<AspNetCoreTraceInstrumentationOptions>>()
+        Func<HttpContext, bool>? filter = app.Services.GetRequiredService<IOptionsMonitor<AspNetCoreTraceInstrumentationOptions>>()
             .Get(Options.DefaultName).Filter;
         DefaultHttpContext context = new();
         context.Request.Path = path;
@@ -94,17 +95,17 @@ public sealed class TelemetryTests : IDisposable
         filter!(context).Should().Be(traced);
     }
 
-    [Fact]
-    public void LogsKeepTheirFormattedMessageAndScopes()
+    [Theory]
+    [EachHost]
+    public void LogsKeepTheirFormattedMessageAndScopes(string host)
     {
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Development);
         // Mutation testing (PR 23): nothing noticed when OpenTelemetry logs lost the formatted message or scopes.
-        OpenTelemetryLoggerOptions logging = _host.Services.GetRequiredService<IOptionsMonitor<OpenTelemetryLoggerOptions>>().CurrentValue;
+        OpenTelemetryLoggerOptions logging = app.Services.GetRequiredService<IOptionsMonitor<OpenTelemetryLoggerOptions>>().CurrentValue;
 
         logging.IncludeFormattedMessage.Should().BeTrue();
         logging.IncludeScopes.Should().BeTrue();
     }
-
-    public void Dispose() => _host.Dispose();
 
     /// <summary>
     /// An OTLP collector that answers 200 and records the path of each export it gets. The exporter sends

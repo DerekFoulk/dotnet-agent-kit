@@ -11,12 +11,13 @@ namespace Kit.AppTests.Functional;
 /// </summary>
 public sealed class DependencyInjectionTests
 {
-    [Fact]
-    public void TheTestsCatchASingletonThatCapturesAScopedServiceInProduction()
+    [Theory]
+    [EachHost]
+    public void TheTestsCatchASingletonThatCapturesAScopedServiceInProduction(string host)
     {
         Action start = () =>
         {
-            using IAppUnderTest app = AppHost.Start(Environments.Production, services => services
+            using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production, services => services
                 .AddScoped<ScopedProbe>()
                 .AddSingleton<CapturingProbe>());
         };
@@ -25,10 +26,11 @@ public sealed class DependencyInjectionTests
             .WithInnerException<InvalidOperationException>().WithMessage("*scoped service*singleton*");
     }
 
-    [Fact]
-    public void TheTestsCatchAScopedServiceResolvedFromTheRootInProduction()
+    [Theory]
+    [EachHost]
+    public void TheTestsCatchAScopedServiceResolvedFromTheRootInProduction(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production, services => services.AddScoped<ScopedProbe>());
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production, services => services.AddScoped<ScopedProbe>());
 
         Action resolve = () => app.Services.GetRequiredService<ScopedProbe>();
 

@@ -11,13 +11,13 @@ public sealed class OpenApiTests
     private static readonly Uri s_document = new("/openapi/v1.json", UriKind.Relative);
 
     [Theory]
-    [InlineData("Development", true, HttpStatusCode.OK)]
-    [InlineData("Development", false, HttpStatusCode.OK)]
-    [InlineData("Production", true, HttpStatusCode.NotFound)]
-    public async Task TheDocumentIsServedInDevelopmentOnly(string environment, bool signedIn, HttpStatusCode expected)
+    [EachHost("Development", true, HttpStatusCode.OK)]
+    [EachHost("Development", false, HttpStatusCode.OK)]
+    [EachHost("Production", true, HttpStatusCode.NotFound)]
+    public async Task TheDocumentIsServedInDevelopmentOnly(string host, string environment, bool signedIn, HttpStatusCode expected)
     {
-        Assert.SkipUnless(AppHost.ServesHttpApi, AppHost.NoHttpApi);
-        using IAppUnderTest app = AppHost.Start(environment);
+        Assert.SkipUnless(AppHost.Named(host).ServesHttpApi, AppHost.NoHttpApi);
+        using IAppUnderTest app = AppHost.Named(host).Start(environment);
         using HttpClient client = app.CreateClient(signedIn);
 
         using HttpResponseMessage response = await client.GetAsync(s_document, TestContext.Current.CancellationToken);
