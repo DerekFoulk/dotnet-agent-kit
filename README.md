@@ -452,12 +452,12 @@ It checks first, before changing anything: the app and repo names, an empty fold
 2. Writes the intake answers to `docs/app-profile.md`, which the app owns: the kit sync never changes it.
 3. Makes the first commit, `chore: start from dotnet-agent-kit <version>`, with the commit hook stored as executable for Linux and macOS.
 4. Creates the repo, private for now, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
-5. Pushes `main`.
-6. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved. It doesn't request Copilot code review: the reviewer agent reviews instead (ADR-0067).
-7. Adds the "release tags" ruleset (`templates/github/release-tags.json`): nobody may move or delete a `v*` tag, so a release keeps meaning one commit; creating one stays open, so release-please tags each release with the workflow's own token (ADR-0097).
-8. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
-9. Requires every GitHub Action in a workflow to be pinned to a full commit SHA (`templates/github/actions.json`, SUP-008).
-10. Lets GitHub Actions create and approve pull requests, so release-please can open the app's release PR with the workflow's own token, and keeps workflow tokens read-only by default (`templates/github/workflow-permissions.json`, ADR-0096).
+5. Lets GitHub Actions create and approve pull requests, so release-please can open the app's release PR with the workflow's own token, and keeps workflow tokens read-only by default (`templates/github/workflow-permissions.json`, ADR-0096). It comes before the push, which starts the first `release.yml` run.
+6. Pushes `main`.
+7. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved. It doesn't request Copilot code review: the reviewer agent reviews instead (ADR-0067).
+8. Adds the "release tags" ruleset (`templates/github/release-tags.json`): nobody may move or delete a `v*` tag, so a release keeps meaning one commit; creating one stays open, so release-please tags each release with the workflow's own token (ADR-0097).
+9. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
+10. Requires every GitHub Action in a workflow to be pinned to a full commit SHA (`templates/github/actions.json`, SUP-008).
 11. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, requires approval before any fork's PR runs (`templates/github/public.json`), and adds a "code scanning" ruleset that blocks a merge on a CodeQL error or a high security alert (`templates/github/code-scanning.json`, SEC-006). A private app doesn't run CodeQL, and a rule requiring it would block every merge, so it doesn't get that ruleset. Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
 12. Turns the commit hook on in the local copy.
 
