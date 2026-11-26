@@ -48,6 +48,74 @@ Describe 'New-FreshApp' {
         git -C $kit worktree remove --force $checkout
     }
 
+    # The kit's CI exports a fresh app of every type New-FreshApp has a probe for, and checks it with the shared workflows'
+    # app-bundle input (ADR-0095). Not required: the kit's ruleset is the owner's call.
+    Context 'the kit''s fresh-app jobs' {
+        BeforeAll {
+            Import-Module powershell-yaml
+            $ci = ConvertFrom-Yaml (Get-Content -Raw -LiteralPath (Join-Path $root '.github' 'workflows' 'ci.yml'))
+            $jobs = $ci['jobs']
+            $probeMatrix = @($script:Probes.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value.Name)" } | Sort-Object)
+            function Get-MatrixEntry($Job) { @($Job['strategy']['matrix']['include'] | ForEach-Object { "$($_['type'])=$($_['name'])" } | Sort-Object) }
+        }
+
+        It 'exports a fresh app of every type with a probe, and no other, and uploads its bundle' {
+            $export = $jobs['fresh-app']
+
+            $export | Should -Not -BeNullOrEmpty
+            Get-MatrixEntry $export | Should -Be $probeMatrix
+            $export['strategy']['fail-fast'] | Should -BeFalse
+            $steps = @($export['steps'])
+            ($steps | Where-Object { "$($_['run'])" -match '\./tools/New-FreshApp\.ps1 -Type \$env:TYPE' }) | Should -HaveCount 1
+            ($steps | Where-Object { "$($_['run'])" -match 'dotnet restore .*-p:RestoreLockedMode=false' }) | Should -HaveCount 1
+            ($steps | Where-Object { "$($_['run'])" -match 'git bundle create' }) | Should -HaveCount 1
+            $upload = @($steps | Where-Object { "$($_['uses'])" -like 'actions/upload-artifact@*' })
+            $upload | Should -HaveCount 1
+            $upload[0]['with']['name'] | Should -Be 'fresh-app-${{ matrix.type }}'
+            $upload[0]['with']['if-no-files-found'] | Should -Be 'error'
+            # A runner has no git identity, and the app's commits need one.
+            foreach ($variable in 'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL') {
+                $export['env'][$variable] | Should -Not -BeNullOrEmpty
+            }
+        }
+
+        It 'checks each one with the shared .NET CI and app checks, as an app''s own workflows call them' {
+            foreach ($check in @(
+                    @{ Id = 'fresh-dotnet'; Uses = './.github/workflows/dotnet-ci.reusable.yml' }
+                    @{ Id = 'fresh-app-checks'; Uses = './.github/workflows/app-checks.reusable.yml' })) {
+                $job = $jobs[$check.Id]
+
+                $job | Should -Not -BeNullOrEmpty -Because "ci.yml has a $($check.Id) job"
+                $job['uses'] | Should -Be $check.Uses
+                @($job['needs']) | Should -Be @('fresh-app')
+                Get-MatrixEntry $job | Should -Be $probeMatrix
+                $job['strategy']['fail-fast'] | Should -BeFalse
+                $job['with']['app-bundle'] | Should -Be 'fresh-app-${{ matrix.type }}'
+            }
+            $jobs['fresh-dotnet']['with']['solution'] | Should -Be '${{ matrix.name }}.slnx'
+        }
+
+        It 'leaves the kit''s own checks on the kit''s checkout' {
+            foreach ($id in 'dotnet', 'kit') {
+                $with = if ($jobs[$id].Contains('with')) { $jobs[$id]['with'] } else { @{} }
+                $with.Contains('app-bundle') | Should -BeFalse
+            }
+        }
+
+        # Every app type either has a probe or waits, with its reason, and GAP-049 stays open while one waits.
+        It 'covers every app type, or says why one waits, while GAP-049 stays open for it' {
+            $types = @((ConvertFrom-Yaml (Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'standards' 'app-types.yml')))['types'] | ForEach-Object { $_['id'] } | Sort-Object)
+            @(@($script:Probes.Keys) + @($script:Waiting.Keys) | Sort-Object) | Should -Be $types
+            $scorecard = Get-Content -Raw -LiteralPath (Join-Path $root 'docs' 'quality' 'scorecard.md')
+            $gap = [regex]::Match($scorecard, '(?ms)^\s+- id: GAP-049\r?\n\s+gap: "(?<gap>[^"]*)"\r?\n\s+status: (?<status>\w+)')
+            $gap.Success | Should -BeTrue
+            if ($script:Waiting.Count) {
+                $gap.Groups['status'].Value | Should -Be 'proposed'
+                foreach ($type in $script:Waiting.Keys) { $gap.Groups['gap'].Value | Should -Match "\b$type\b" -Because "GAP-049 names the $type leg that waits" }
+            }
+        }
+    }
+
     # MAUI's leg waits for GAP-028 (the Windows and macOS jobs proven), and the owner put MAUI after the practice run.
     It 'refuses an app type it has no probe for, naming the gap that waits for it' {
         { New-FreshApp -Type maui -Destination (Join-Path $TestDrive 'maui') -KitRef HEAD -KitRoot $root } |
