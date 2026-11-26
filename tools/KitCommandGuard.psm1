@@ -649,12 +649,36 @@ function Read-BashHeredocBody {
 }
 
 # Where a command's program is in its words: past PowerShell's "&" or "." invocation operator, or past what Claude
-# Code's permissions page says it strips from a Bash command before matching a rule (Get-BashInnerStart).
+# Code's permissions page says it strips from a Bash command before matching a rule (Get-BashInnerStart); and past a
+# kit script that runs a command of its own (Get-RunnerCommandStart).
 function Get-InnerStart {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool)
 
-    if ($Tool -eq 'Bash') { return Get-BashInnerStart -Words $Words }
-    [int] ($Words.Count -and $Words[0] -cin '&', '.')
+    $start = if ($Tool -eq 'Bash') { Get-BashInnerStart -Words $Words } else { [int] ($Words.Count -and $Words[0] -cin '&', '.') }
+    Get-RunnerCommandStart -Words $Words -Start $start
+}
+
+# The kit scripts that run the words after their own parameters as a command: Invoke-WithPlaywrightImage.ps1 runs it
+# on the host when no project uses Playwright. Each of their parameters takes a value.
+$script:CommandRunnerScript = @('Invoke-WithPlaywrightImage.ps1')
+
+# Where the command a kit runner script runs starts (CommandRunnerScript), when the program at Start is one, directly
+# or through pwsh -File: past the script's parameters and their values, and a "--". Otherwise Start.
+function Get-RunnerCommandStart {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words, [Parameter(Mandatory)] [int] $Start)
+
+    $leaf = { param($word) $word.Replace('\', '/').Substring($word.Replace('\', '/').LastIndexOf('/') + 1) }
+    $i = $Start
+    if ($i -lt $Words.Count -and (& $leaf $Words[$i]) -match '^(?i:pwsh(\.exe)?)$') {
+        $i++
+        while ($i -lt $Words.Count -and $Words[$i] -notmatch '^(?i:-f|-file)$') { $i++ }
+        $i++
+    }
+    if ($i -ge $Words.Count -or (& $leaf $Words[$i]) -notin $script:CommandRunnerScript) { return $Start }
+    $i++
+    while ($i -lt $Words.Count -and $Words[$i].StartsWith('-') -and $Words[$i] -ne '--') { $i += if ($Words[$i].Contains(':')) { 1 } else { 2 } }
+    if ($i -lt $Words.Count -and $Words[$i] -eq '--') { $i++ }
+    if ($i -lt $Words.Count) { $i } else { $Start }
 }
 
 # Where a Bash command's program is, past what Claude Code's permissions page says it strips before matching a rule:
