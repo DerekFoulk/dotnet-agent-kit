@@ -68,7 +68,7 @@ Describe 'New-FreshApp' {
             $steps = @($export['steps'])
             ($steps | Where-Object { "$($_['run'])" -match '\./tools/New-FreshApp\.ps1 -Type \$env:TYPE' }) | Should -HaveCount 1
             ($steps | Where-Object { "$($_['run'])" -match 'dotnet restore .*-p:RestoreLockedMode=false' }) | Should -HaveCount 1
-            ($steps | Where-Object { "$($_['run'])" -match 'git bundle create' }) | Should -HaveCount 1
+            ($steps | Where-Object { "$($_['run'])" -match 'git (-C \S+ )?bundle create' }) | Should -HaveCount 1
             $upload = @($steps | Where-Object { "$($_['uses'])" -like 'actions/upload-artifact@*' })
             $upload | Should -HaveCount 1
             $upload[0]['with']['name'] | Should -Be 'fresh-app-${{ matrix.type }}'
