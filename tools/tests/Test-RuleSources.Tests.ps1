@@ -255,6 +255,15 @@ conditions:
             $problems[0].Message | Should -BeLike "*strength 'consider'*gate*advisory*should*ADR-0090*"
         }
 
+        It 'reports status proposed, saying strength replaced it' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ status = 'proposed' })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*status 'proposed'*strength*accepted*ADR-0090*"
+        }
+
         It 'needs no strength on a retired rule' {
             New-StandardsFile -Rules @(New-Rule -Override @{ status = 'retired' } -Remove 'strength')
 
