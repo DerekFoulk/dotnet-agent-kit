@@ -527,7 +527,8 @@ function Test-BashFixedSubstitution {
     $false
 }
 
-# $((...)) or ${...}, kept as written: from the '$' to the bracket that closes the first one.
+# $((...)) or ${...}, kept as written: from the '$' to the bracket that closes the first one. Bash runs the $( ) and
+# backquote substitutions inside it as it expands it (${X:-$(cmd)}), so their commands are read as commands of their own.
 function Read-BashBracketed {
     param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [char] $Open, [Parameter(Mandatory)] [char] $Close)
 
@@ -535,7 +536,10 @@ function Read-BashBracketed {
     $start = $Reader.Index
     $depth = 0
     for ($i = $start + 1; $i -lt $text.Length; $i++) {
-        if ($text[$i] -eq $Open) { $depth++ }
+        $substitution = $text[$i] -eq '$' -and $i + 1 -lt $text.Length -and $text[$i + 1] -eq '(' -and -not ($i + 2 -lt $text.Length -and $text[$i + 2] -eq '(')
+        if ($substitution) { $Reader.Index = $i; [void] (Read-BashSubstitution -Reader $Reader); $i = $Reader.Index - 1 }
+        elseif ($text[$i] -eq '`') { $Reader.Index = $i + 1; [void] (Read-BashBackquote -Reader $Reader); $i = $Reader.Index - 1 }
+        elseif ($text[$i] -eq $Open) { $depth++ }
         elseif ($text[$i] -eq $Close -and --$depth -eq 0) {
             $Reader.Index = $i + 1
             return $text.Substring($start, $Reader.Index - $start)
