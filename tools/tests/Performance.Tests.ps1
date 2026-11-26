@@ -257,20 +257,21 @@ Describe 'Performance tests (GAP-012)' {
             $run | Should -Match 'ConnectionStrings__\$\(\$env:CONNECTION_STRING_NAME\)='
         }
 
-        # CRF-003: dotnet-ef at the version the kit's tool manifest pins, as the mutation job installs Stryker.
-        It 'builds a migration bundle with the kit''s pinned dotnet-ef, and applies it to the database' {
+        # CRF-003: dotnet-ef at the version a tool manifest pins (the caller's, else the kit's), as the mutation job installs
+        # Stryker.
+        It 'builds a migration bundle with the caller''s pinned dotnet-ef, or the kit''s, and applies it to the database' {
             $migrate = Find-Step $load 'Apply the migrations (migration bundle)'
             $migrate | Should -HaveCount 1
             $run = $migrate[0]['run']
 
-            $run | Should -Match "\.tools\.'dotnet-ef'\.version"
+            $run | Should -Match '\$tools\.''dotnet-ef''\.version'
             $run | Should -Match 'dotnet tool install dotnet-ef --version \$version --tool-path'
             $run | Should -Match 'migrations bundle --project \$env:MIGRATIONS --startup-project \$env:PROJECT --configuration Release'
             # The bundle reads the connection string from the job's environment, as the app does, so the password is on
             # no command line.
             $run | Should -Not -Match '--connection'
             # The caller's own dotnet-ef, matching its own EF Core, when its tool manifest has one; else the kit's.
-            $run | Should -Match "Join-Path \$env:GITHUB_WORKSPACE '\.config' 'dotnet-tools\.json'"
+            $run | Should -Match 'Join-Path \$env:GITHUB_WORKSPACE ''\.config'' ''dotnet-tools\.json'''
             $migrate[0]['env']['MIGRATIONS'] | Should -Be '${{ inputs.load-test-migrations-project }}'
         }
     }

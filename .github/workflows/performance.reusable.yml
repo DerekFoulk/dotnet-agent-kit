@@ -212,24 +212,29 @@ jobs:
           "ConnectionStrings__$($env:CONNECTION_STRING_NAME)=$connection" >> $env:GITHUB_ENV
 
       # DAT-004: the schema comes from the app's migrations, applied by a migration bundle before the app takes traffic,
-      # as a deployment applies it. dotnet-ef is installed for this run only, at the version the kit's tool manifest
-      # pins, as the mutation job installs Stryker.
+      # as a deployment applies it. dotnet-ef is installed for this run only, at the version the caller's own tool
+      # manifest pins, which matches its EF Core, or else the kit's, as the mutation job installs Stryker. The bundle
+      # reads the connection string from the job's environment, as the app does, so the password is on no command line.
       - name: Apply the migrations (migration bundle)
         if: inputs.load-test-sql-server-pin != ''
         shell: pwsh
         env:
           KIT: ${{ steps.kit.outputs.path }}
           MIGRATIONS: ${{ inputs.load-test-migrations-project }}
-          CONNECTION_STRING_NAME: ${{ inputs.load-test-connection-string }}
         run: |
           if (-not $env:MIGRATIONS) { "::error::Set load-test-migrations-project to the project with the app's migrations."; exit 1 }
-          $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.'dotnet-ef'.version
+          $manifest = Join-Path $env:GITHUB_WORKSPACE '.config' 'dotnet-tools.json'
+          $tools = if (Test-Path -LiteralPath $manifest) { (Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json).tools } else { $null }
+          if (-not ($tools -and $tools.PSObject.Properties['dotnet-ef'])) {
+            $tools = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools
+          }
+          $version = $tools.'dotnet-ef'.version
           dotnet tool install dotnet-ef --version $version --tool-path "$env:RUNNER_TEMP/dotnet-ef"
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $bundle = Join-Path $env:RUNNER_TEMP 'efbundle'
           & "$env:RUNNER_TEMP/dotnet-ef/dotnet-ef" migrations bundle --project $env:MIGRATIONS --startup-project $env:PROJECT --configuration Release --output $bundle --force --verbose
           if ($LASTEXITCODE -ne 0) { "::error::dotnet ef couldn't build the migration bundle."; exit 1 }
-          & $bundle --connection ([Environment]::GetEnvironmentVariable("ConnectionStrings__$($env:CONNECTION_STRING_NAME)"))
+          & $bundle
           if ($LASTEXITCODE -ne 0) { "::error::The migration bundle failed."; exit 1 }
 
       # Microsoft: load test a Release build in Production, never Debug or Development, which log more (ASP.NET Core

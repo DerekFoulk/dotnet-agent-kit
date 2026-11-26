@@ -33,7 +33,8 @@ updates:
     # its own version of the others, and EF Core's with the dotnet-ef tool that runs its design-time code.
     groups:
       roslyn:
-        patterns: ['Microsoft.CodeAnalysis*']
+        # By name: a wildcard would catch Microsoft.CodeAnalysis.BannedApiAnalyzers too, which has a version line of its own.
+        patterns: ['Microsoft.CodeAnalysis.Common', 'Microsoft.CodeAnalysis.CSharp', 'Microsoft.CodeAnalysis.CSharp.Workspaces', 'Microsoft.CodeAnalysis.Workspaces.Common', 'Microsoft.CodeAnalysis.Workspaces.MSBuild']
       ef-core:
         patterns: ['Microsoft.EntityFrameworkCore*', 'dotnet-ef']
 
