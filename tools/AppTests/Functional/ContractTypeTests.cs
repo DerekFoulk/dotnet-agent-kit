@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -75,29 +76,32 @@ public sealed class ContractTypeTests
 
     // ApiExplorer gives an endpoint with no response metadata a default 200 without a type, which an untyped IResult
     // gets too, so that doesn't count; a typed 2xx does, and so does a 2xx the endpoint declares, with or without a body
-    // (TypedResults.NoContent, Ok() or Produces(302) for a redirect).
+    // (TypedResults.NoContent, Ok() or Produces(302) for a redirect). MVC's [Produces("application/json")] names a
+    // content type, not a response, so it doesn't count either.
     [Theory]
-    [EachHost(200, typeof(void), 0, false)]
-    [EachHost(200, typeof(void), 401, false)]
-    [EachHost(200, typeof(void), 200, true)]
-    [EachHost(204, typeof(void), 204, true)]
-    [EachHost(200, typeof(string), 0, true)]
-    [EachHost(302, typeof(void), 302, true)]
-    [EachHost(204, typeof(void), -204, true)]
-    public void OnlyADeclaredSuccessCounts(string host, int status, Type answer, int declared, bool counts)
+    [EachHost(200, typeof(void), "", false)]
+    [EachHost(200, typeof(void), "Produces 401", false)]
+    [EachHost(200, typeof(void), "Produces 200", true)]
+    [EachHost(204, typeof(void), "Produces 204", true)]
+    [EachHost(200, typeof(string), "", true)]
+    [EachHost(302, typeof(void), "Produces 302", true)]
+    [EachHost(204, typeof(void), "[ProducesResponseType] 204", true)]
+    [EachHost(200, typeof(void), "[Produces] application/json", false)]
+    public void OnlyADeclaredSuccessCounts(string host, int status, Type answer, string declared, bool counts)
     {
         ArgumentNullException.ThrowIfNull(answer);
+        ArgumentNullException.ThrowIfNull(declared);
         ApiDescription endpoint = new() { ActionDescriptor = new ActionDescriptor() };
         endpoint.SupportedResponseTypes.Add(new ApiResponseType { StatusCode = status, Type = answer });
-        if (declared != 0)
+        endpoint.ActionDescriptor.EndpointMetadata = declared.Split(' ') switch
         {
-            // A positive status as a minimal API declares it, a negative one as an MVC action's attribute does.
-            endpoint.ActionDescriptor.EndpointMetadata = declared > 0
-                ? [new ProducesResponseTypeMetadata(declared, typeof(void))]
-                : [new ProducesResponseTypeAttribute(-declared)];
-        }
+            ["Produces", var code] => [new ProducesResponseTypeMetadata(int.Parse(code, CultureInfo.InvariantCulture), typeof(void))],
+            ["[ProducesResponseType]", var code] => [new ProducesResponseTypeAttribute(int.Parse(code, CultureInfo.InvariantCulture))],
+            ["[Produces]", var contentType] => [new ProducesAttribute(contentType)],
+            _ => [],
+        };
 
-        DeclaresSuccess(endpoint).Should().Be(counts, $"for {host}, a {status} of {answer.Name} declared as {declared}");
+        DeclaresSuccess(endpoint).Should().Be(counts, $"for {host}, a {status} of {answer.Name} declared as '{declared}'");
     }
 
     private static bool DeclaresSuccess(ApiDescription endpoint) =>
