@@ -12,8 +12,8 @@
     review the owner asks for (ADR-0064, ADR-0067), and .github/copilot-instructions.md as a copy of AGENTS.md,
     because Visual Studio reads that file but doesn't document reading AGENTS.md. It also fills each
     "rules from docs/standards/<file>.md" block in AGENTS.md and templates/app/AGENTS.md with that standard's
-    rules, leaving the rest of those files alone (ADR-0065). Proposed and retired rules aren't in force, so they're
-    left out. It writes every rule's strength, scope and when to tools/rule-strength.json (.kit/tools in an app), which
+    rules, leaving the rest of those files alone (ADR-0065). Retired rules aren't in force, so they're left out;
+    every other rule is written with its strength (ADR-0090). It writes every rule's strength, scope and when to tools/rule-strength.json (.kit/tools in an app), which
     the checks read to fail a must rule's findings, warn on a should rule's, and skip a rule the app doesn't get (ADR-0090). Generated files carry a marker; generated files no standard produces any more are removed.
     ADR-0084: an app gets only the core ruleset (rules with scope core) and the rulesets of the app types on the
     "App types:" line of its docs/app-profile.md; a repo with no such line, such as the kit, gets every rule. Each "<!-- ruleset: <type> -->" block in docs/adr is filled with that ruleset's rules.

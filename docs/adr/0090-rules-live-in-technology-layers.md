@@ -37,8 +37,8 @@ The kit hasn't released v0.1.0, and no app depends on a rule ID yet. Changing th
 
   | Strength | Taken from the source's wording | A gate on it | The reviewer |
   |---|---|---|---|
-  | `must` | DO, DO NOT, MUST, MUST NOT, never, required; OWASP ASVS's "Verify that" | fails the PR | ranks a breach Blocking |
-  | `should` | CONSIDER, AVOID, SHOULD, SHOULD NOT, recommended, prefer | warns on the PR | ranks a breach Should fix |
+  | `must` | DO, DO NOT, MUST, MUST NOT, never, required; OWASP ASVS's "Verify that"; added at the build, for the owner's yes on its pull request: SHALL, and "always" as an instruction ("Always dispose..."), the opposite of "never" | fails the PR | ranks a breach Blocking |
+  | `should` | CONSIDER, AVOID, SHOULD, SHOULD NOT, recommended, prefer; added at the build: a plain imperative ("Use X") on a page of recommendations | warns on the PR | ranks a breach Should fix |
   | `consider` | MAY, can, optionally, and tips | none: the rule is advice in the agent's instructions | ranks it Consider |
 
   - **Authority rules take their strength from their own quote,** so they're in force once the quote check passes, with no wait on the owner. A check fails a `must` whose quote holds no must-word, so an agent can't make a source sound stricter than it is. Where a page's wording is weaker than the kit wants, the rule keeps the page's strength, and a kit rule says what the kit adds ("authority" says only what the page says, owner 2026-11-17).

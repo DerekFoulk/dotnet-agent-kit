@@ -94,7 +94,7 @@ rules:
         how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): LayerTests and SharedLibraryTests fail when business code depends on infrastructure, UI or the API (ARC-001, ARC-003); an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
-        how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests once it's accepted"
+        how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-007
@@ -336,7 +336,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests once it's accepted"
+        how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-019

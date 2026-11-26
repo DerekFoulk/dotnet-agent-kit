@@ -404,6 +404,7 @@ rules:
     basis: authority
     status: accepted
     strength: must
+    when: [has-sign-in]
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0"

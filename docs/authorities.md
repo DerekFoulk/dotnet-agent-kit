@@ -37,7 +37,7 @@ This page isn't [`docs/sources.md`](sources.md). That one is a reading list: the
 - a rule with `basis: authority` cites no page from an authority or a tool or project page (ADR-0063);
 - the block below is out of date.
 
-When a rule cites a new publisher, add an entry to [`docs/authorities.yml`](authorities.yml), with its name, publisher, kind, what it covers and the URL prefixes of its pages; then run `./tools/Build-AuthoritiesPage.ps1` and commit this page. Rules that are `proposed` aren't in force yet: they're listed, marked "(proposed)". Retired rules are left out.
+When a rule cites a new publisher, add an entry to [`docs/authorities.yml`](authorities.yml), with its name, publisher, kind, what it covers and the URL prefixes of its pages; then run `./tools/Build-AuthoritiesPage.ps1` and commit this page. Every rule listed is in force at its strength (ADR-0090); retired rules are left out.
 
 ## Every source
 

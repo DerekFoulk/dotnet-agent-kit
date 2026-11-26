@@ -525,7 +525,9 @@
     "scope": [
       "blazor"
     ],
-    "when": []
+    "when": [
+      "has-sign-in"
+    ]
   },
   "BLZ-017": {
     "strength": "should",
