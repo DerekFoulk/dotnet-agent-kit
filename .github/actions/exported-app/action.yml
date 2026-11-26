@@ -23,6 +23,15 @@ runs:
           echo "::error::No app bundle at $BUNDLE"
           exit 1
         fi
+        # Emptying the workspace would delete a bundle inside it, and the clone would then fail with the kit's files gone.
+        workspace="$(cd "$GITHUB_WORKSPACE" && pwd -P)"
+        bundle_dir="$(cd "$(dirname "$BUNDLE")" && pwd -P)"
+        case "$bundle_dir/" in
+          "$workspace"/*)
+            echo "::error::The app bundle $BUNDLE must be outside the workspace, which this empties"
+            exit 1
+            ;;
+        esac
         if ! git bundle list-heads "$BUNDLE" refs/heads/main | grep -q ' refs/heads/main$'; then
           echo "::error::The app bundle $BUNDLE has no main branch"
           exit 1
