@@ -30,12 +30,16 @@ $script:KitAppFunctions = & {
     @{ 'New-KitAppFirstCommit' = ${function:New-KitAppFirstCommit}; 'Invoke-KitGit' = ${function:Invoke-KitGit} }
 }
 foreach ($function in $script:KitAppFunctions.GetEnumerator()) { Set-Item -Path "function:script:$($function.Key)" -Value $function.Value }
+# Export-KitApp's pattern for a labelled package group, loaded the same way.
+$script:PackageGroupPattern = & { . (Join-Path $PSScriptRoot 'Export-KitApp.ps1'); ${function:Get-KitPackageGroupPattern} }
+Set-Item -Path 'function:script:Get-KitPackageGroupPattern' -Value $script:PackageGroupPattern
 
 # The probe for each app type the job checks: the kit's own reference app of that type (ADR-0095). Name is the app's
-# name; From is the kit folder whose src/ and tests/ become the app's.
+# name; From is the kit folder whose src/ and tests/ become the app's; PackageGroups are the labelled groups of the
+# kit's Directory.Packages.props that Export-KitApp leaves out and the probe uses.
 $script:Probes = [ordered]@{
-    'web-api' = @{ Name = 'Fresh.WebApi'; From = 'sample' }
-    'blazor'  = @{ Name = 'Fresh.Blazor'; From = 'fixtures/WebUi' }
+    'web-api' = @{ Name = 'Fresh.WebApi'; From = 'sample'; PackageGroups = @('Sample app') }
+    'blazor'  = @{ Name = 'Fresh.Blazor'; From = 'fixtures/WebUi'; PackageGroups = @() }
 }
 
 # App types in docs/standards/app-types.yml that have no probe yet, and why (GAP-049 stays open for them).
@@ -109,6 +113,29 @@ function Copy-FreshAppProbe {
     }
 }
 
+# Puts the kit's labelled package groups, each with its comment, back into an app's Directory.Packages.props, before
+# its closing tag.
+function Add-FreshAppPackageGroup {
+    param(
+        [Parameter(Mandatory)] [string] $PropsText,
+        [Parameter(Mandatory)] [string] $KitPropsText,
+        [string[]] $Label = @()
+    )
+
+    $groups = foreach ($name in $Label) {
+        $match = [regex]::Match($KitPropsText, (Get-KitPackageGroupPattern -Label $name))
+        if (-not $match.Success) { throw "The kit's Directory.Packages.props has no ItemGroup labelled '$name'." }
+        $match.Value.TrimEnd()
+    }
+    if (-not $groups) { return $PropsText }
+    $close = [regex]::Match($PropsText, '(?m)^</Project>\s*$')
+    if (-not $close.Success) { throw "The app's Directory.Packages.props has no closing </Project> line." }
+    $newline = if ($PropsText.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $text = $PropsText.Substring(0, $close.Index) + (($groups -join "$newline$newline") -replace '\r?\n', $newline) + "$newline$newline" + $PropsText.Substring($close.Index)
+    [xml] $text | Out-Null # still well-formed
+    $text
+}
+
 function New-FreshApp {
     param(
         [Parameter(Mandatory)] [string] $Type,
@@ -137,6 +164,11 @@ function New-FreshApp {
 
     # The probe, as an app's first task would add its projects, after the first commit.
     Copy-FreshAppProbe -KitRoot $KitRoot -Commit $commit -From $probe.From -Destination $Destination
+    $props = Join-Path $Destination 'Directory.Packages.props'
+    $kitProps = git -C $KitRoot show "${commit}:Directory.Packages.props" | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "The kit at $commit has no Directory.Packages.props." }
+    $text = Add-FreshAppPackageGroup -PropsText ([IO.File]::ReadAllText($props)) -KitPropsText $kitProps -Label $probe.PackageGroups
+    [IO.File]::WriteAllText($props, $text, [Text.UTF8Encoding]::new($false))
 }
 
 if ($MyInvocation.InvocationName -ne '.') {

@@ -260,6 +260,14 @@ function Get-KitAppSettingsText {
     "$($json -replace "`r`n", "`n")`n"
 }
 
+# A labelled package group in Directory.Packages.props, with the comment line above it and one blank line after it, as
+# a regex. New-FreshApp adds the "Sample app" group back for its web-api probe with the same pattern (ADR-0095).
+function Get-KitPackageGroupPattern {
+    param([Parameter(Mandatory)] [string] $Label)
+
+    '(?ms)(^[ \t]*<!--[^\r\n]*-->\r?\n)?^[ \t]*<ItemGroup Label="{0}">.*?</ItemGroup>\r?\n(\r?\n)?' -f [regex]::Escape($Label)
+}
+
 # Drops the package groups that are only the kit's, each with the comment line above it, from Directory.Packages.props:
 # "Sample app" (the kit's sample's packages) and "Kit tools" (its own checking tools', which build with the kit's own
 # props: from the kit's download in CI, and from the copy in .kit on an app's machine (GAP-022), so the app's own
@@ -268,10 +276,9 @@ function Get-KitAppSettingsText {
 function Remove-KitSamplePackage {
     param([Parameter(Mandatory)] [string] $PropsText)
 
-    $group = '(?ms)(^[ \t]*<!--[^\r\n]*-->\r?\n)?^[ \t]*<ItemGroup Label="{0}">.*?</ItemGroup>\r?\n(\r?\n)?'
-    $sample = $group -f 'Sample app'
+    $sample = Get-KitPackageGroupPattern -Label 'Sample app'
     if (-not [regex]::IsMatch($PropsText, $sample)) { throw "The kit's Directory.Packages.props has no ItemGroup labelled 'Sample app'." }
-    $text = [regex]::Replace([regex]::Replace($PropsText, $sample, ''), ($group -f 'Kit tools'), '')
+    $text = [regex]::Replace([regex]::Replace($PropsText, $sample, ''), (Get-KitPackageGroupPattern -Label 'Kit tools'), '')
     [xml] $text | Out-Null # still well-formed
     $text
 }

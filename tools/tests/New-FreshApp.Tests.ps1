@@ -17,6 +17,35 @@ Describe 'New-FreshApp' {
     BeforeAll {
         $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
         . (Join-Path $root 'tools' 'New-FreshApp.ps1')
+
+        # One kit fixture for every app type: copying the kit is most of these tests' time.
+        $kit = Join-Path $TestDrive 'kit'
+        foreach ($file in $kitFiles) {
+            $source = Join-Path $root $file
+            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue } # deleted but not yet staged
+            $target = Join-Path $kit $file
+            New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+            Copy-Item -LiteralPath $source -Destination $target
+        }
+        git -C $kit init -q -b main
+        git -C $kit add -A
+        git -C $kit commit -q -m 'chore: kit fixture'
+        $commit = (git -C $kit rev-parse HEAD).Trim()
+
+        # An edit nobody committed must not reach an app: one in each probe's src.
+        $editedFiles = @{}
+        foreach ($from in 'sample', 'fixtures/WebUi') {
+            $editedFiles[$from] = @(git -C $kit ls-tree -r --name-only $commit -- "$from/src" | Where-Object { $_ -like '*.cs' })[0]
+            Add-Content -LiteralPath (Join-Path $kit $editedFiles[$from]) -Value '// uncommitted-edit-marker'
+        }
+
+        # The expected bytes: a clean checkout of the commit, line endings as .gitattributes gives them.
+        $checkout = Join-Path $TestDrive 'checkout'
+        git -C $kit worktree add -q --detach $checkout $commit
+    }
+
+    AfterAll {
+        git -C $kit worktree remove --force $checkout
     }
 
     # MAUI's leg waits for GAP-028 (the Windows and macOS jobs proven), and the owner put MAUI after the practice run.
@@ -30,38 +59,15 @@ Describe 'New-FreshApp' {
         @{ Type = 'blazor'; Name = 'Fresh.Blazor'; From = 'fixtures/WebUi' }
     ) {
         BeforeAll {
-            $kit = Join-Path $TestDrive 'kit'
-            foreach ($file in $kitFiles) {
-                $source = Join-Path $root $file
-                if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue } # deleted but not yet staged
-                $target = Join-Path $kit $file
-                New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-                Copy-Item -LiteralPath $source -Destination $target
-            }
-            git -C $kit init -q -b main
-            git -C $kit add -A
-            git -C $kit commit -q -m 'chore: kit fixture'
-            $commit = (git -C $kit rev-parse HEAD).Trim()
-
-            # An edit nobody committed must not reach the app.
-            $edited = @(git -C $kit ls-tree -r --name-only $commit -- "$From/src" | Where-Object { $_ -like '*.cs' })[0]
-            Add-Content -LiteralPath (Join-Path $kit $edited) -Value '// uncommitted-edit-marker'
-
-            # The expected bytes: a clean checkout of the commit, line endings as .gitattributes gives them.
-            $checkout = Join-Path $TestDrive 'checkout'
-            git -C $kit worktree add -q --detach $checkout $commit
+            $edited = $editedFiles[$From]
 
             # A developer's preferences must not reach the app: a run here and CI's give the same app.
             Mock Read-KitPreference { throw 'New-FreshApp read a preferences file.' }
 
-            $app = Join-Path $TestDrive 'app'
+            $app = Join-Path $TestDrive "app-$Type"
             New-FreshApp -Type $Type -Destination $app -KitRef $commit -KitRoot $kit
             $profilePath = Join-Path $app 'docs' 'app-profile.md'
             $intake = Get-Content -Raw -LiteralPath (Join-Path $kit 'templates' 'app-intake.json') | ConvertFrom-Json -AsHashtable
-        }
-
-        AfterAll {
-            git -C $kit worktree remove --force $checkout
         }
 
         It 'gets the core ruleset and its own type''s, from a profile of the intake''s defaults' {
