@@ -70,7 +70,7 @@ Describe 'Test-CodeShape.ps1' {
         BeforeAll {
             function New-StatusFile([string] $Crf011) {
                 $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""CRF-011"": ""$Crf011"", ""STY-005"": ""accepted"" }"
+                Set-Content -LiteralPath $path -Value "{ ""CRF-011"": { ""strength"": ""$(@{ proposed = 'should'; accepted = 'must' }[$Crf011])"", ""scope"": [""core""], ""when"": [] }, ""STY-005"": { ""strength"": ""must"", ""scope"": [""core""], ""when"": [] } }"
                 $path
             }
             $script:shapeLine = 'C:\app\Deep.cs(7,74): error CRF011: Run nests 5 levels deep; the limit is 3 (CRF-011). [C:\app\Deep.csproj]'

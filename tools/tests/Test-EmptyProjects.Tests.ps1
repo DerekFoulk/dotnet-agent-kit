@@ -247,7 +247,7 @@ Describe 'Test-EmptyProjects.ps1' {
             # ADR-0089: whether ARC-009 is in force comes from a fixture, not the real rule's status.
             function New-StatusFile([string] $Status) {
                 $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""ARC-009"": ""$Status"" }"
+                Set-Content -LiteralPath $path -Value "{ ""ARC-009"": { ""strength"": ""$(@{ proposed = 'should'; accepted = 'must' }[$Status])"", ""scope"": [""core""], ""when"": [] } }"
                 $path
             }
         }

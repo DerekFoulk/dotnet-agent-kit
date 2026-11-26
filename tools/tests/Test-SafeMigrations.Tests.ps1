@@ -231,7 +231,7 @@ Describe 'Test-SafeMigrations.ps1' {
         BeforeAll {
             function New-StatusFile([string] $Status) {
                 $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""DAT-003"": ""$Status"" }"
+                Set-Content -LiteralPath $path -Value "{ ""DAT-003"": { ""strength"": ""$(@{ proposed = 'should'; accepted = 'must' }[$Status])"", ""scope"": [""web-api"", ""blazor""], ""when"": [] } }"
                 $path
             }
         }

@@ -113,7 +113,7 @@ Describe 'Get-UiProject.ps1' {
         BeforeAll {
             function New-StatusFile([string] $Status) {
                 $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""ARC-010"": ""$Status"" }"
+                Set-Content -LiteralPath $path -Value "{ ""ARC-010"": { ""strength"": ""$(@{ proposed = 'should'; accepted = 'must' }[$Status])"", ""scope"": [""maui""], ""when"": [] } }"
                 $path
             }
             function New-ReferencingSolution {

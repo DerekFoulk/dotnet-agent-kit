@@ -354,7 +354,7 @@ Describe 'Test-Runbook.ps1' {
         BeforeAll {
             function New-StatusFile([string] $Status) {
                 $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""OPS-004"": ""$Status"" }"
+                Set-Content -LiteralPath $path -Value "{ ""OPS-004"": { ""strength"": ""$(@{ proposed = 'should'; accepted = 'must' }[$Status])"", ""scope"": [""web-api"", ""blazor""], ""when"": [] } }"
                 $path
             }
         }
