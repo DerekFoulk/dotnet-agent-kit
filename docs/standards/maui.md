@@ -389,4 +389,4 @@ MAU-001 only says which package to use when an app takes the local database page
 
 Blocking on a task and `async void` have their own rule, STY-011, which the performance page's guidance agrees with. WCAG 2.2 for native UI is UI-001, and the MAUI accessibility page's advice (semantic properties, where not to set a Description, large fonts, color cues) is UI-004.
 
-These rules are `proposed` until the owner accepts them, and a proposed rule isn't in force.
+Every rule here has its page's strength (ADR-0090).

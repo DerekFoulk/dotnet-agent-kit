@@ -365,6 +365,6 @@ An app can mix styles, for example an HTTP API for its UI and SignalR for live u
 
 ## Pending ratification
 
-API-001, API-005, API-006 and API-008 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them, as does API-012, the Microsoft half of API-005. You accepted API-002 to API-004 on 2026-11-09, and chose to wait on API-001, API-005 and API-006 until the first real app uses them. API-009, API-010 and API-011 are the Microsoft halves split from API-003, API-002 and API-004, and carry your acceptance of them. API-007 and API-013 came from the rules audit, which you accepted on 2026-11-12.
+API-001, API-005, API-006 and API-008 were added in auto mode (ADR-0035), so they're `should` until you make one a `must` (ADR-0090), and API-012, the Microsoft half of API-005, has its page's strength. You accepted API-002 to API-004 on 2026-11-09, and chose to wait on API-001, API-005 and API-006 until the first real app uses them. API-009, API-010 and API-011 are the Microsoft halves split from API-003, API-002 and API-004, and carry your acceptance of them. API-007 and API-013 came from the rules audit, which you accepted on 2026-11-12.
 
 A rule with `basis: authority` says only what its cited page says, at the page's strength, and stores the sentence; the kit's own numbers and tightenings are preferences beside it (API-002 and API-010, API-003 and API-009, API-004 and API-011, API-005 and API-012, API-007 and API-013).

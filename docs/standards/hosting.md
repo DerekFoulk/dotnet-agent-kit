@@ -130,6 +130,6 @@ rules:
 
 Rules for apps built on the .NET generic host and the Microsoft.Extensions libraries: dependency injection, logging, caching, the HTTP client factory, and options for libraries. The generic host runs web apps (and Worker Services and console apps, which aren't supported app types yet), so a rule about hosting is scoped to `web-api` and `blazor`, and one about a library MAUI's builder offers too (`AddHttpClient`, `builder.Logging`) is `core`.
 
-Every rule here is proposed, and stays proposed until the owner accepts it. Each states only what its cited Microsoft page says, at the page's own strength.
+Each rule here states only what its cited Microsoft page says, at the page's own strength (ADR-0090).
 
 Other pages on this topic already have a rule: the DI guidelines are CRF-013 and CRF-009, options validation is OPS-006, HttpClient through the factory and its resilience defaults are OPS-003, and the generated logger is OPS-007.

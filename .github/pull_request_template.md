@@ -23,7 +23,7 @@
 
 ## For the owner
 
-<!-- Decisions to make (each with a recommendation and a reason), `proposed` rules to ratify, dependencies or settings that need your OK. Write "None" if there's nothing. -->
+<!-- Decisions to make (each with a recommendation and a reason), kit rules to make a `must`, dependencies or settings that need your OK. Write "None" if there's nothing. -->
 
 ## Not verified
 

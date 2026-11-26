@@ -82,7 +82,7 @@ rules:
     enforcement:
       - kind: gate
         in: [app]
-        how: "ci: Test-Runbook.ps1 in app-checks.reusable.yml fails on a missing runbook, status or review date, a missing or empty section, and a placeholder left once In use; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
+        how: "ci: Test-Runbook.ps1 in app-checks.reusable.yml fails on a missing runbook, status or review date, a missing or empty section, and a placeholder left once In use; it's a must (owner, 2026-11-25), so each finding fails the check, and an app whose profile rules the rule out skips it (ADR-0089, ADR-0090)"
       - kind: advisory
         in: [app]
         how: "that the status turns In use before the first production deployment, until the production workflow (GAP-015) refuses a Draft, and whether the steps are right, which code review and a practised restore check"
@@ -470,4 +470,4 @@ An `authority` rule here says only what its cited page says, at the page's stren
 
 ## Pending ratification
 
-OPS-004 and OPS-012 were added in auto mode (ADR-0035), and OPS-013 to OPS-017 come from the 2026-11-17 review of Microsoft's deployment pages, so they stay `proposed` until you accept them. OPS-017 conflicts with how OPS-002 maps the health endpoints today; settle that when you accept it.
+OPS-004 was added in auto mode (ADR-0035), and you made it a `must` on 2026-11-25; OPS-012 to OPS-017 come from Microsoft's pages and have their strength (ADR-0090). OPS-017 conflicts with how OPS-002 maps the health endpoints today; settle that when you accept it.

@@ -319,7 +319,7 @@ Each area in the front matter above has:
 
 ## The score
 
-`tools/Test-Scorecard.ps1 -Update` writes this table from the rules. A rule counts as **advisory** when every part of its `enforcement` is advisory: only the agents' instructions and code review stand behind it. A rule with any gate part counts as **checked by a tool**, even when another part is advisory or the gate runs only in the kit, so that number is an upper bound (ADR-0063). Proposed rules aren't in force yet, so they're counted apart. A rule can serve more than one area, so the rows add up to more than the overall line, which counts each rule once.
+`tools/Test-Scorecard.ps1 -Update` writes this table from the rules. A rule counts as **advisory** when every part of its `enforcement` is advisory: only the agents' instructions and code review stand behind it. A rule with any gate part counts as **checked by a tool**, even when another part is advisory or the gate runs only in the kit, so that number is an upper bound (ADR-0063). Every rule in force is counted by its strength, must, should or consider (ADR-0090). A rule can serve more than one area, so the rows add up to more than the overall line, which counts each rule once.
 
 <!-- scorecard-table:start -->
 | Area | Rules in force | Must | Should | Consider | Checked by a tool | Advisory | Open gaps |
@@ -373,7 +373,7 @@ Open gaps:
 
 ## Keeping it current
 
-- Every rule in force must be named by at least one area here, or the check fails in CI. A proposed rule can wait until it's accepted.
+- Every rule in force must be named by at least one area here, or the check fails in CI.
 - Closing a gap is its own pull request: it adds or changes rules and marks the gap `closed`. Gaps that need cost or cloud resources wait for the owner's OK in both modes; in review mode, so do gaps that need a package or a CI change (ADR-0035).
 - After changing a rule or an area, run `./tools/Test-Scorecard.ps1 -Update` and commit the table.
 

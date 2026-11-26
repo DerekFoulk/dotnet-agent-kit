@@ -27,4 +27,4 @@ Rules from Microsoft's .NET fundamentals and runtime pages that no other standar
 pages say is already held elsewhere (analyzer rules by STY-003, STY-009 and SEC-014; ASP.NET Core practices by OPS-007;
 HttpClient lifetime, the cookie case and a single resilience handler by OPS-008), so it isn't repeated here.
 
-All rules are proposed until the owner accepts them.
+Every rule here has its page's strength (ADR-0090).

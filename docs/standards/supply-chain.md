@@ -340,4 +340,4 @@ rules:
 
 # Supply chain
 
-Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project and accepted its items for all repos on 2026-11-09. SUP-009 and SUP-010 came later, and stay proposed until he accepts them. SUP-013 to SUP-018 each say only what the cited pages say, with the quotes, beside the kit's own rule they came from (SUP-003, SUP-004, SUP-007, SUP-009, SUP-010, SUP-012); SUP-016 and SUP-017 are proposed.
+Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project and accepted its items for all repos on 2026-11-09. SUP-009 and SUP-010 came later, so they're `should` until he makes one a `must` (ADR-0090). SUP-013 to SUP-018 each say only what the cited pages say, with the quotes, beside the kit's own rule they came from (SUP-003, SUP-004, SUP-007, SUP-009, SUP-010, SUP-012); each has its page's strength.

@@ -623,4 +623,4 @@ rules:
 
 What Microsoft's ASP.NET Core documentation says an app should do, beyond what the kit's API (API-), security (SEC-), operations (OPS-), data (DAT-) and craft (CRF-) rules already state. Each rule says only what its cited page says, at that page's strength, and stores the sentence that says it.
 
-Every rule here is proposed until the owner accepts it. Pages whose guidance an existing rule already carries are not repeated: the best practices page (OPS-007), the Kestrel and HTTPS pages (SEC-011), JWT bearer tokens (SEC-008), error handling (API-002), the options and HttpClient pages (OPS-006, OPS-003) and the general dependency injection guidelines (CRF-020). The Identity UI rule for Blazor apps is BLZ-015.
+Every rule here has its page's strength (ADR-0090). Pages whose guidance an existing rule already carries are not repeated: the best practices page (OPS-007), the Kestrel and HTTPS pages (SEC-011), JWT bearer tokens (SEC-008), error handling (API-002), the options and HttpClient pages (OPS-006, OPS-003) and the general dependency injection guidelines (CRF-020). The Identity UI rule for Blazor apps is BLZ-015.

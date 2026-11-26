@@ -245,4 +245,4 @@ Don't rely on color alone to carry meaning (1.4.1): an error is red *and* says s
 
 ## Pending ratification
 
-UI-001 to UI-004 are `proposed` until you accept them: UI-001 and UI-002 were added in auto mode (ADR-0035), and UI-003 and UI-004 hold what the WCAG, WCAG2ICT and Microsoft MAUI pages say, split out of UI-001 on 2026-11-17 so that UI-001 and UI-002 are the owner's decisions (level AA for every UI; the axe test on every page) and the others are the pages' words. A proposed rule isn't in force, and `Build-AgentRules.ps1` writes no rule file for it; once accepted, the file it generates loads only for UI files.
+UI-001 and UI-002 are `should` until you make one a `must`, and UI-003 and UI-004 have their pages' strength (ADR-0090): UI-001 and UI-002 were added in auto mode (ADR-0035), and UI-003 and UI-004 hold what the WCAG, WCAG2ICT and Microsoft MAUI pages say, split out of UI-001 on 2026-11-17 so that UI-001 and UI-002 are the owner's decisions (level AA for every UI; the axe test on every page) and the others are the pages' words. The rule file `Build-AgentRules.ps1` generates for them loads only for UI files.

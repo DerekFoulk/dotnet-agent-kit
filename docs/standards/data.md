@@ -75,7 +75,7 @@ rules:
     enforcement:
       - kind: gate
         in: [app]
-        how: "ci: Test-SafeMigrations.ps1 in app-checks.reusable.yml fails on each call in a migration's Up to an operation in the script's $UnsafeOperations list (drops, renames, alters, data changes and raw SQL) that has no DAT-003 comment with a reason. Gates aren't per app type (ADR-0084), so the check also runs on a .NET MAUI app's migrations of its device database, which this rule leaves out: such a call needs a DAT-003 comment saying the database is on the device. A fix for device databases is GAP-030; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
+        how: "ci: Test-SafeMigrations.ps1 in app-checks.reusable.yml fails on each call in a migration's Up to an operation in the script's $UnsafeOperations list (drops, renames, alters, data changes and raw SQL) that has no DAT-003 comment with a reason. Gates aren't per app type (ADR-0084), so the check also runs on a .NET MAUI app's migrations of its device database, which this rule leaves out: such a call needs a DAT-003 comment saying the database is on the device. A fix for device databases is GAP-030; while this rule is a should, each finding is a warning on the pull request instead of a failure (ADR-0089, ADR-0090)"
       - kind: advisory
         in: [app]
         how: "whether the reason is true, and a tightened constraint (a new foreign key, unique or check constraint the running version's writes could break), which code review checks"
@@ -295,7 +295,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [app]
-        how: "code review checks that a breaking schema change is split across releases; Test-SafeMigrations.ps1 (DAT-003) reports each drop, rename, alter, data change or raw SQL in a migration's Up that has no DAT-003 reason, as a warning while DAT-003 is proposed and a failure once it's accepted (ADR-0089)"
+        how: "code review checks that a breaking schema change is split across releases; Test-SafeMigrations.ps1 (DAT-003) reports each drop, rename, alter, data change or raw SQL in a migration's Up that has no DAT-003 reason, as a warning while DAT-003 is a should (ADR-0089, ADR-0090)"
     scope: [web-api, blazor]
     paths: ["**/Migrations/**"]
   - id: DAT-014
@@ -611,7 +611,7 @@ While a release rolls out, and again after a rollback, the version that was runn
    migrationBuilder.DropColumn(name: "Notes", table: "Orders");
    ```
 
-`Test-SafeMigrations.ps1` runs in the shared app checks (`app-checks.reusable.yml`). An app runs it as `./.kit/tools/Test-SafeMigrations.ps1 -Path .`. It reads each migration's `Up` method and reports each call to an operation that removes or changes what the running version uses, unless that call has a `// DAT-003:` comment with a reason: it warns while DAT-003 is proposed, and fails once it's accepted (ADR-0089). The operations are listed once, in the script's `$UnsafeOperations`: drops, renames and alters, changes to existing data, and raw `Sql`, which could do anything. It can't tell whether the reason is true, or whether a new constraint (a foreign key, unique or check constraint) would reject the running version's writes; code review checks those. It reads the C# as text, so a migration that builds its operations in a helper method isn't checked.
+`Test-SafeMigrations.ps1` runs in the shared app checks (`app-checks.reusable.yml`). An app runs it as `./.kit/tools/Test-SafeMigrations.ps1 -Path .`. It reads each migration's `Up` method and reports each call to an operation that removes or changes what the running version uses, unless that call has a `// DAT-003:` comment with a reason: it warns while DAT-003 is a `should`, fails if it becomes a `must`, and skips an app whose profile answers `has-server-database=no` (ADR-0089, ADR-0090). The operations are listed once, in the script's `$UnsafeOperations`: drops, renames and alters, changes to existing data, and raw `Sql`, which could do anything. It can't tell whether the reason is true, or whether a new constraint (a foreign key, unique or check constraint) would reject the running version's writes; code review checks those. It reads the C# as text, so a migration that builds its operations in a helper method isn't checked.
 
 Generate each migration with `dotnet ef migrations add <Name>`, read it before committing, and keep the model snapshot that comes with it. A test that calls `context.Database.HasPendingModelChanges()` fails when someone changes the model and forgets the migration.
 
@@ -639,4 +639,4 @@ The sample app still uses SQLite, with `EnsureCreated` at startup. Moving it to 
 
 ## Pending ratification
 
-DAT-001 to DAT-006 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them, as do DAT-011 to DAT-014 and DAT-017 to DAT-024, which re-source those rules and add EF Core's guidance (2026-11-17). DAT-007 to DAT-010, and DAT-015 and DAT-016, which split from DAT-007 and DAT-008, came from the rules audit, which you accepted on 2026-11-12.
+DAT-001 to DAT-006 were added in auto mode (ADR-0035), so they're `should` until you make one a `must`, and DAT-011 to DAT-014 and DAT-017 to DAT-024, which re-source those rules and add EF Core's guidance (2026-11-17), have their pages' strength (ADR-0090). DAT-007 to DAT-010, and DAT-015 and DAT-016, which split from DAT-007 and DAT-008, came from the rules audit, which you accepted on 2026-11-12.

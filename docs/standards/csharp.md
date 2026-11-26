@@ -869,5 +869,5 @@ The coding conventions, identifier names, async scenarios and exception pages ar
 Design Guidelines are STY-009 and STY-010; secure coding, cryptography and serialization are SEC-014. Each rule states
 only what its cited page says, at the page's strength, and quotes the sentence.
 
-Every rule here is **proposed**: none is in force until the owner accepts it. Language-reference pages count only for
+Every rule here has its page's strength (ADR-0090). Language-reference pages count only for
 their explicit recommendations, not the feature description.

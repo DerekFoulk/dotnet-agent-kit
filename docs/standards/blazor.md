@@ -658,4 +658,4 @@ rules:
 
 Rules from Microsoft's ASP.NET Core Blazor documentation (aspnetcore-10.0): component design, rendering, JavaScript interop, state, forms, security and hosting for Blazor Web Apps, and for Razor components in Blazor Hybrid apps. Each rule states what its cited page says, at the page's strength, and stores the sentences that say it. Accessibility is in `ui.md` (UI-); general security is in `security.md` (SEC-).
 
-All rules here are `status: proposed` until the owner accepts them.
+Every rule here has its page's strength (ADR-0090).
