@@ -9,10 +9,10 @@
     "- **Last reviewed:** " line; and a non-empty "## " section for each task in $RequiredSections, each a
     how-to guide. A "## " line inside a fenced code block is code, not a heading. A Draft may keep the
     template's "[fill in: ...]" placeholders. An In use runbook, the status from the app's first production
-    deployment on, may not, and its review date must be YYYY-MM-DD. While OPS-004 is proposed, each problem
-    is a GitHub warning annotation and the check passes; once it's accepted, the same problems fail it (ADR-0089).
-    -RuleStatusPath names another rule-status.json than the one beside this script. Exit code: 0 when the runbook
-    passes or OPS-004 is proposed, otherwise 1.
+    deployment on, may not, and its review date must be YYYY-MM-DD. While OPS-004 is a should rule, each problem
+    is a GitHub warning annotation and the check passes; at must, as it is now, the same problems fail it (ADR-0089, ADR-0090).
+    -RuleStrengthPath names another rule-strength.json than the one beside this script. Exit code: 0 when the runbook
+    passes, OPS-004 is a should rule or the app's profile rules it out, otherwise 1.
 
 .EXAMPLE
     ./.kit/tools/Test-Runbook.ps1 -Path ./docs/runbook.md
@@ -20,12 +20,12 @@
 [CmdletBinding()]
 param(
     [string] $Path = 'docs/runbook.md',
-    [string] $RuleStatusPath
+    [string] $RuleStrengthPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStrength.psm1') -Force
 
 $script:RequiredSections = @(
     'Where it runs', 'How to deploy a release', 'How to roll back a release', 'How to check its health',
@@ -158,17 +158,17 @@ function Get-RunbookProblem {
 
 # Prints every problem and returns 0 when the runbook passes, otherwise 1.
 function Invoke-RunbookCheck {
-    param([Parameter(Mandatory)] [string] $Path, [string] $RuleStatusPath)
+    param([Parameter(Mandatory)] [string] $Path, [string] $RuleStrengthPath)
 
     $problems = @(Get-RunbookProblem -Path $Path)
-    $counted = @($problems | Where-Object { Write-RuleFinding -Id 'OPS-004' -Message $_.Message -Path $RuleStatusPath }).Count
+    $counted = @($problems | Where-Object { Write-RuleFinding -Id 'OPS-004' -Message $_.Message -Path $RuleStrengthPath }).Count
 
     if ($counted) {
         Write-Host "`n$counted runbook problem(s) in $Path." -ForegroundColor Red
         return 1
     }
     if ($problems) {
-        Write-Host "`n$($problems.Count) runbook problem(s) in $Path, shown as warnings because OPS-004 is proposed; they'll fail the check once it's accepted." -ForegroundColor Yellow
+        Write-Host "`n$($problems.Count) runbook problem(s) in $Path, shown as warnings because OPS-004 is a should rule; they'd fail the check at must." -ForegroundColor Yellow
         return 0
     }
 
@@ -178,5 +178,5 @@ function Invoke-RunbookCheck {
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
-    exit (Invoke-RunbookCheck -Path $Path -RuleStatusPath $RuleStatusPath)
+    exit (Invoke-RunbookCheck -Path $Path -RuleStrengthPath $RuleStrengthPath)
 }

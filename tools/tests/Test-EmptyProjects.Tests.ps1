@@ -245,40 +245,40 @@ Describe 'Test-EmptyProjects.ps1' {
             $script:check = Join-Path $PSScriptRoot '..' 'Test-EmptyProjects.ps1'
 
             # ADR-0089: whether ARC-009 is in force comes from a fixture, not the real rule's status.
-            function New-StatusFile([string] $Status) {
-                $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""ARC-009"": { ""strength"": ""$(@{ proposed = 'should'; accepted = 'must' }[$Status])"", ""scope"": [""core""], ""when"": [] } }"
+            function New-StrengthFile([string] $Status) {
+                $path = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+                Set-Content -LiteralPath $path -Value "{ ""ARC-009"": { ""strength"": ""$Status"", ""scope"": [""core""], ""when"": [] } }"
                 $path
             }
         }
 
-        It 'prints each problem and exits 1 once ARC-009 is accepted' {
+        It 'prints each problem and exits 1 while ARC-009 is a must rule' {
             $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Domain' = @{} }
 
-            $output = pwsh -NoProfile -File $script:check -Solution $solution -RuleStatusPath (New-StatusFile 'accepted') 2>&1 | Out-String
+            $output = pwsh -NoProfile -File $script:check -Solution $solution -RuleStrengthPath (New-StrengthFile 'must') 2>&1 | Out-String
 
             $LASTEXITCODE | Should -Be 1 -Because $output
             $output | Should -Match 'App\.Domain.*has no source'
             $output | Should -Not -Match '::warning::'
         }
 
-        It 'prints each problem as a warning and exits 0 while ARC-009 is proposed' {
+        It 'prints each problem as a warning and exits 0 while ARC-009 is a should rule' {
             $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Domain' = @{} }
 
-            $output = pwsh -NoProfile -File $script:check -Solution $solution -RuleStatusPath (New-StatusFile 'proposed') 2>&1 | Out-String
+            $output = pwsh -NoProfile -File $script:check -Solution $solution -RuleStrengthPath (New-StrengthFile 'should') 2>&1 | Out-String
 
             $LASTEXITCODE | Should -Be 0 -Because $output
             $output | Should -Match '(?m)^::warning::ARC-009: src/App\.Domain/App\.Domain\.csproj has no source files of its own'
-            $output | Should -Match '1 empty-project problem.*warning.*ARC-009 is proposed'
+            $output | Should -Match '1 empty-project problem.*warning.*ARC-009 is a should rule'
         }
 
         # Review of the branch: a project the solution lists but that isn't there is a broken solution, not ARC-009's
         # concern, so it fails whatever ARC-009's status.
-        It 'fails on a project the solution lists but that isn''t there, while ARC-009 is proposed' {
+        It 'fails on a project the solution lists but that isn''t there, while ARC-009 is a should rule' {
             $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Gone' = @{ 'Gone.cs' = 'class Gone { }' } }
             Remove-Item -LiteralPath (Join-Path (Split-Path $solution) 'src' 'App.Gone') -Recurse
 
-            $output = pwsh -NoProfile -File $script:check -Solution $solution -RuleStatusPath (New-StatusFile 'proposed') 2>&1 | Out-String
+            $output = pwsh -NoProfile -File $script:check -Solution $solution -RuleStrengthPath (New-StrengthFile 'should') 2>&1 | Out-String
 
             $LASTEXITCODE | Should -Be 1 -Because $output
             $output | Should -Match 'src/App\.Gone/App\.Gone\.csproj is in the solution but isn''t there'
@@ -288,11 +288,11 @@ Describe 'Test-EmptyProjects.ps1' {
         # Review of the branch: when the only failure is a missing project, the summary mustn't blame ARC-009.
         It 'sums up a missing project as a broken solution, not an ARC-009 problem' {
             Mock Write-Host {}
-            Mock Write-Host {} -ModuleName KitRuleStatus
+            Mock Write-Host {} -ModuleName KitRuleStrength
             $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Gone' = @{ 'Gone.cs' = 'class Gone { }' } }
             Remove-Item -LiteralPath (Join-Path (Split-Path $solution) 'src' 'App.Gone') -Recurse
 
-            Invoke-EmptyProjectsCheck -Solution $solution -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 1
+            Invoke-EmptyProjectsCheck -Solution $solution -RuleStrengthPath (New-StrengthFile 'should') | Should -Be 1
 
             Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 project the solution lists isn't there.*fix the solution" }
             Should -Invoke Write-Host -Times 0 -Exactly -ParameterFilter { "$Object" -match 'ARC-009|Remove a project' }

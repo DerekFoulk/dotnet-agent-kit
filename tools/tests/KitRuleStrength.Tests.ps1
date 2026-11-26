@@ -1,14 +1,14 @@
 #Requires -Version 7.6
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
-# KitRuleStatus.psm1 tells a check how the rule it enforces applies (ADR-0090): a must rule's findings fail, a should
+# KitRuleStrength.psm1 tells a check how the rule it enforces applies (ADR-0090): a must rule's findings fail, a should
 # rule's are warnings, and a rule whose scope or when doesn't fit the app is skipped. The strengths come from
 # tools/rule-strength.json, which Build-AgentRules.ps1 writes from docs/standards; these tests use a file of their own,
 # so they don't depend on any real rule's strength.
 
-Describe 'KitRuleStatus.psm1' {
+Describe 'KitRuleStrength.psm1' {
     BeforeAll {
-        $script:modulePath = Join-Path $PSScriptRoot '..' 'KitRuleStatus.psm1'
+        $script:modulePath = Join-Path $PSScriptRoot '..' 'KitRuleStrength.psm1'
         Import-Module $script:modulePath -Force
         $script:strengthFile = Join-Path $TestDrive 'rule-strength.json'
         Set-Content -LiteralPath $script:strengthFile -Value @'
@@ -77,19 +77,19 @@ Describe 'KitRuleStatus.psm1' {
         BeforeEach {
             # A fresh module each test: it reports a skipped rule once per run.
             Import-Module $script:modulePath -Force
-            Mock Write-Host {} -ModuleName KitRuleStatus
+            Mock Write-Host {} -ModuleName KitRuleStrength
         }
 
         It 'writes a should rule''s finding as a GitHub warning and doesn''t count it' {
             Write-RuleFinding -Id 'ARC-009' -Message 'src/App.Domain has no source files of its own' -Path $script:strengthFile -ProfilePath $script:noProfile | Should -BeFalse
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::ARC-009: src/App.Domain has no source files of its own' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::ARC-009: src/App.Domain has no source files of its own' }
         }
 
         It 'writes a must rule''s finding as an error, as it is, and counts it' {
             Write-RuleFinding -Id 'STY-005' -Message 'App.cs(3,1): error STY005: a #nullable directive' -Path $script:strengthFile -ProfilePath $script:noProfile | Should -BeTrue
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter {
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter {
                 "$Object" -ceq 'App.cs(3,1): error STY005: a #nullable directive' -and $ForegroundColor -eq 'Red'
             }
         }
@@ -98,32 +98,32 @@ Describe 'KitRuleStatus.psm1' {
         It 'keeps a warning on one line, escaping what GitHub would read as the end of the command' {
             Write-RuleFinding -Id 'ARC-009' -Message "100% empty`r`nsecond line" -Path $script:strengthFile -ProfilePath $script:noProfile | Should -BeFalse
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::ARC-009: 100%25 empty%0D%0Asecond line' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::ARC-009: 100%25 empty%0D%0Asecond line' }
         }
 
         It 'names the file, line and column in a warning, as GitHub''s warning command takes them' {
             Write-RuleFinding -Id 'ARC-009' -Message 'Run nests 5 levels deep' -File 'src/App/Deep.cs' -Line 7 -Column 74 -Path $script:strengthFile -ProfilePath $script:noProfile | Should -BeFalse
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning file=src/App/Deep.cs,line=7,col=74::ARC-009: Run nests 5 levels deep' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning file=src/App/Deep.cs,line=7,col=74::ARC-009: Run nests 5 levels deep' }
         }
 
         It 'names only the file when no line is given' {
             Write-RuleFinding -Id 'ARC-009' -Message 'no source' -File 'src/App.Domain/App.Domain.csproj' -Path $script:strengthFile -ProfilePath $script:noProfile | Should -BeFalse
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning file=src/App.Domain/App.Domain.csproj::ARC-009: no source' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning file=src/App.Domain/App.Domain.csproj::ARC-009: no source' }
         }
 
         # A property ends at a comma, and its name at a colon, so those are escaped too, as @actions/core does.
         It 'escapes what GitHub would read as the end of a property in the file name' {
             Write-RuleFinding -Id 'ARC-009' -Message 'odd' -File 'src/a,b:c%.cs' -Line 1 -Path $script:strengthFile -ProfilePath $script:noProfile | Should -BeFalse
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning file=src/a%2Cb%3Ac%25.cs,line=1::ARC-009: odd' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning file=src/a%2Cb%3Ac%25.cs,line=1::ARC-009: odd' }
         }
 
         It 'writes a must rule''s finding as it is, whatever place it names' {
             Write-RuleFinding -Id 'STY-005' -Message 'App.cs(3,1): error STY005: x' -File 'App.cs' -Line 3 -Column 1 -Path $script:strengthFile -ProfilePath $script:noProfile | Should -BeTrue
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq 'App.cs(3,1): error STY005: x' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq 'App.cs(3,1): error STY005: x' }
         }
 
         It 'throws for a <Strength> rule, whose check shouldn''t run' -ForEach @(
@@ -144,8 +144,8 @@ Describe 'KitRuleStatus.psm1' {
             Write-RuleFinding -Id 'OPS-004' -Message 'first' -Path $script:strengthFile -ProfilePath $appProfile | Should -BeFalse
             Write-RuleFinding -Id 'OPS-004' -Message 'second' -Path $script:strengthFile -ProfilePath $appProfile | Should -BeFalse
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::notice::OPS-004 skipped: its scope is web-api, blazor, and the app profile names the app types maui' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::notice::OPS-004 skipped: its scope is web-api, blazor, and the app profile names the app types maui' }
         }
 
         It 'skips a rule whose when the app profile answers no' {
@@ -153,7 +153,7 @@ Describe 'KitRuleStatus.psm1' {
 
             Write-RuleFinding -Id 'DAT-003' -Message 'drops a column' -Path $script:strengthFile -ProfilePath $appProfile | Should -BeFalse
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::notice::DAT-003 skipped: it holds only where has-server-database, and the app profile answers has-server-database=no' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::notice::DAT-003 skipped: it holds only where has-server-database, and the app profile answers has-server-database=no' }
         }
 
         It 'applies a rule whose when the app profile answers <Case>' -ForEach @(
@@ -166,7 +166,7 @@ Describe 'KitRuleStatus.psm1' {
 
             Write-RuleFinding -Id 'DAT-003' -Message 'drops a column' -Path $script:strengthFile -ProfilePath $appProfile | Should -BeFalse
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::DAT-003: drops a column' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::DAT-003: drops a column' }
         }
 
         It 'applies a scoped rule in an app whose profile names <Case>' -ForEach @(
@@ -197,7 +197,7 @@ Describe 'KitRuleStatus.psm1' {
             }
             finally { $env:GITHUB_WORKSPACE = $saved }
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -like '::notice::OPS-004 skipped:*maui*' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -like '::notice::OPS-004 skipped:*maui*' }
         }
     }
 }

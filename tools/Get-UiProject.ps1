@@ -6,9 +6,9 @@
 .DESCRIPTION
     A UI project is one whose project file sets UseMaui, UseWPF, UseWindowsForms or UseWinUI to true. The coverage
     gate exempts UI projects, and the shared .NET CI builds them on Windows and macOS. This is the one place they're
-    found, so both agree. It fails if any other project references a UI project (ARC-010); while ARC-010 is proposed,
-    each such reference is a GitHub warning annotation instead, and the listing goes on (ADR-0089). -RuleStatusPath
-    names another rule-status.json than the one beside this script. With -FilterPath, it also
+    found, so both agree. It fails if any other project references a UI project (ARC-010); while ARC-010 is a should rule,
+    each such reference is a GitHub warning annotation instead, and the listing goes on (ADR-0089). -RuleStrengthPath
+    names another rule-strength.json than the one beside this script. With -FilterPath, it also
     writes a solution filter of every other project, which the Linux CI job builds and tests. With -Runner too (a
     GitHub runner label, such as macos-latest), the filter also holds the UI projects that runner builds.
 
@@ -23,13 +23,13 @@ param(
     [string] $Solution,
     [string] $FilterPath,
     [string] $Runner,
-    [string] $RuleStatusPath
+    [string] $RuleStrengthPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
-Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStrength.psm1') -Force
 
 # The MSBuild property that makes a project a UI project, its kind, and the GitHub runners that build it.
 $script:UiKinds = @(
@@ -40,7 +40,7 @@ $script:UiKinds = @(
 )
 
 function Get-UiProject {
-    param([Parameter(Mandatory)] [string] $Solution, [string] $FilterPath, [string] $Runner, [string] $RuleStatusPath)
+    param([Parameter(Mandatory)] [string] $Solution, [string] $FilterPath, [string] $Runner, [string] $RuleStrengthPath)
 
     $projects = foreach ($listed in Get-SolutionProject -Solution $Solution) {
         $path = $listed.Path
@@ -55,7 +55,7 @@ function Get-UiProject {
 
     $ui = @($projects | Where-Object Kind)
     # ARC-010: nothing references a UI project. MSBuild paths are relative to the project and may use either slash.
-    # While ARC-010 is proposed, a reference is a warning and the listing goes on (ADR-0089).
+    # While ARC-010 is a should rule, a reference is a warning and the listing goes on (ADR-0089, ADR-0090).
     $references = foreach ($project in $projects) {
         foreach ($reference in $project.Xml.SelectNodes('//ItemGroup/ProjectReference')) {
             $target = [IO.Path]::GetFullPath((Join-Path (Split-Path $project.File) ($reference.GetAttribute('Include') -replace '\\', '/')))
@@ -66,10 +66,10 @@ function Get-UiProject {
         }
     }
     $references = @($references)
-    $counted = @($references | Where-Object { Write-RuleFinding -Id 'ARC-010' -Message $_ -Path $RuleStatusPath })
+    $counted = @($references | Where-Object { Write-RuleFinding -Id 'ARC-010' -Message $_ -Path $RuleStrengthPath })
     if ($counted) { throw ($counted -join "`n") }
     if ($references) {
-        Write-Host "$($references.Count) reference(s) to a UI project, shown as warnings because ARC-010 is proposed; they'll fail the check once it's accepted." -ForegroundColor Yellow
+        Write-Host "$($references.Count) reference(s) to a UI project, shown as warnings because ARC-010 is a should rule; they'd fail the check at must." -ForegroundColor Yellow
     }
 
     # A solution filter (.slnf) names its solution and the projects, relative to the solution's folder, to load.
@@ -92,5 +92,5 @@ function Get-UiProject {
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $Solution) { throw 'Give the solution file to read, with -Solution.' }
-    Get-UiProject -Solution $Solution -FilterPath $FilterPath -Runner $Runner -RuleStatusPath $RuleStatusPath
+    Get-UiProject -Solution $Solution -FilterPath $FilterPath -Runner $Runner -RuleStrengthPath $RuleStrengthPath
 }

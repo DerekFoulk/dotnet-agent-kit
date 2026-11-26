@@ -58,7 +58,7 @@ $script:KitTools = @(
     'KitFrontMatter.psm1', 'Set-AgentMode.ps1', 'Test-Runbook.ps1', 'Test-ArchitectureDiagram.ps1',
     'Test-EmptyProjects.ps1', 'Test-SafeMigrations.ps1', 'Get-UiProject.ps1', 'KitSolution.psm1',
     'Test-BenchmarkBudget.ps1', 'Test-LoadBudget.ps1', 'Test-CodeShape.ps1', 'Test-Duplication.ps1',
-    'Test-PackageLicenses.ps1', 'package-licenses.json', 'KitRuleStatus.psm1', 'rule-status.json'
+    'Test-PackageLicenses.ps1', 'package-licenses.json', 'KitRuleStrength.psm1', 'rule-strength.json'
 )
 
 # Kit tool source an app builds on its own machine, kept under .kit at its kit path: Kit.CodeShape, which the code
