@@ -202,6 +202,7 @@ rules:
     basis: authority
     status: proposed
     strength: should
+    unconditional: "'native apps that target the Windows desktop' describes what WinUI 3 builds; the statement carries its own condition, a new general-purpose Windows desktop app"
     sources: ["https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/what-is-maui?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"

@@ -431,6 +431,7 @@ rules:
     basis: authority
     status: proposed
     strength: must
+    unconditional: "'when the application project is platform-specific' is about the project, and the statement carries it ('In a platform-specific app that uses EF Core migrations')"
     sources: ["https://learn.microsoft.com/ef/core/managing-schemas/migrations/projects, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/managing-schemas/migrations/projects"
@@ -455,6 +456,7 @@ rules:
     basis: authority
     status: proposed
     strength: must
+    unconditional: "'even if your application normally uses asynchronous APIs' widens the rule to every app rather than limiting it"
     sources: ["https://learn.microsoft.com/ef/core/modeling/data-seeding, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/ef/core/modeling/data-seeding"

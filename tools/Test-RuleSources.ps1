@@ -333,11 +333,30 @@ function Read-Condition {
     $result
 }
 
+# ADR-0090 decision 8's two forms of a condition about the app, "for a server-side app where..." and "if the app...",
+# and "apps that...".
+$script:AppCondition = '(?i)\bfor (a|an) ([\w-]+ ){0,3}(app|application)s?\b|\b(if|when|unless|where) (the|your|an?) ([\w-]+ ){0,2}(app|application|site)s?\b|\b(apps?|applications?) that\b'
+
 # ADR-0090: when is a list of the conditions in conditions.yml, all of which must hold for the rule to apply.
 function Get-WhenProblem {
     param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Known)
 
-    if (-not $Rule.Contains('when')) { return }
+    $hasUnconditional = $Rule.Contains('unconditional') -and "$($Rule['unconditional'])" -match '\S'
+    if ($hasUnconditional -and $Rule.Contains('when')) {
+        "unconditional and when say opposite things: a rule has a when, or a reason it holds for every app, not both"
+    }
+    if (-not $Rule.Contains('when')) {
+        # Decision 8: a rule carries its source's conditions. The pattern is narrow and still finds descriptions ("when
+        # the app starts"), so a rule whose phrase isn't a condition on which apps it holds for says why in unconditional.
+        if ("$($Rule['basis'])" -eq 'authority' -and "$($Rule['status'])" -ne 'retired' -and -not $hasUnconditional) {
+            $texts = @(@($(if ($Rule.Contains('quotes')) { $Rule['quotes'] })) | Where-Object { $_ -is [System.Collections.IDictionary] } | ForEach-Object { "$($_['text'])" })
+            $phrases = @($texts | ForEach-Object { [regex]::Matches($_, $script:AppCondition) | ForEach-Object Value } | Select-Object -Unique)
+            if ($phrases) {
+                "a quote names a condition about the app ('$($phrases -join "', '")'), and the rule has no when: add the conditions from conditions.yml, or unconditional with the reason the phrase isn't one (ADR-0090)"
+            }
+        }
+        return
+    }
     $when = $Rule['when']
     if ($when -is [string] -or $when -is [System.Collections.IDictionary]) {
         return "when must be a list of conditions, such as [has-sign-in]"

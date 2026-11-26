@@ -101,6 +101,7 @@ rules:
     basis: authority
     status: proposed
     strength: should
+    unconditional: "'when the app starts' describes startup, not which apps the rule holds for"
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0"

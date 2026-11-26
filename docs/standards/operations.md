@@ -192,6 +192,7 @@ rules:
     basis: authority
     status: accepted
     strength: should
+    unconditional: "'If your app requires cookies' limits one clause, which the statement carries ('If an app requires cookies'); the rest holds for every app"
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/resilience/http-resilience, retrieved 2026-11-17"]
     quotes:
@@ -252,6 +253,7 @@ rules:
     basis: authority
     status: accepted
     strength: should
+    unconditional: "'if the app is running normally' and 'if an app has crashed' describe the two health states; the statement carries its condition, 'In some hosting scenarios'"
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -349,6 +351,7 @@ rules:
     basis: authority
     status: proposed
     strength: should
+    unconditional: "'when the app restarts' describes what happens to keys held in memory, not which apps the rule holds for"
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0"

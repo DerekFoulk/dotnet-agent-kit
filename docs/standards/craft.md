@@ -245,6 +245,7 @@ rules:
     basis: authority
     status: accepted
     strength: should
+    unconditional: "'any other part of the application that requires this behavior' is about the code, not which apps the rule holds for"
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:

@@ -249,6 +249,7 @@ rules:
     basis: authority
     status: accepted
     strength: must
+    unconditional: "'unless the app is running in the Development environment' and 'when the app runs in production' name environments every app has; the statement carries them"
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/error-handling-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
