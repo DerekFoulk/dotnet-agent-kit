@@ -116,6 +116,16 @@ Describe 'New-FreshApp' {
         }
     }
 
+    # Export-KitApp cleans up after its own failures; a later step's failure must too, or a rerun is refused as "isn't empty".
+    It 'removes the app it was writing when a step after the export fails' {
+        Mock Copy-FreshAppProbe { throw 'probe copy failed' }
+        $destination = Join-Path $TestDrive 'failed-app'
+
+        { New-FreshApp -Type web-api -Destination $destination -KitRef $commit -KitRoot $kit } | Should -Throw -ExpectedMessage '*probe copy failed*'
+
+        $destination | Should -Not -Exist
+    }
+
     # A project path is an XML attribute: a character such as & would break the solution file.
     It 'escapes each project''s path in the solution, so the file stays well-formed' {
         $folder = Join-Path $TestDrive 'escaped'
