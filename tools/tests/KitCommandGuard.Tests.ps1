@@ -10,6 +10,12 @@ BeforeAll {
     $settingsPath = Join-Path $PSScriptRoot '..' '..' '.claude' 'settings.json'
     $script:KitAskRules = @((Get-Content -Path $settingsPath -Raw | ConvertFrom-Json -AsHashtable)['permissions']['ask'])
     $script:KitRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+    # A file's 8.3 short name, from cmd's %~snx, or nothing where Windows made none.
+    function Get-ShortName([string] $Path) {
+        if (-not $IsWindows) { return }
+        $short = cmd /c "for %I in (""$Path"") do @echo %~snxI"
+        if ($short -and $short -ne (Split-Path -Leaf $Path)) { $short }
+    }
     function Get-KitDecision([string] $Tool, [string] $Command) {
         Get-CommandGuardDecision -Tool $Tool -Command $Command -AskRules $script:KitAskRules -WorkingDirectory $script:KitRoot
     }
@@ -189,15 +195,6 @@ Describe 'Get-BashCommand' {
 }
 
 Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
-    BeforeAll {
-        # A file's 8.3 short name, from cmd's %~snx, or nothing where Windows made none.
-        function Get-ShortName([string] $Path) {
-            if (-not $IsWindows) { return }
-            $short = cmd /c "for %I in (""$Path"") do @echo %~snxI"
-            if ($short -and $short -ne (Split-Path -Leaf $Path)) { $short }
-        }
-    }
-
     # Review round 1: each of these runs the asked script or program, yet its spelling matched no ask rule.
     It 'asks for <Tool> command <Command>, which names an asked script or program another way' -ForEach @(
         @{ Tool = 'PowerShell'; Command = './tools/./New-KitApp.ps1 -Name x' }
@@ -226,7 +223,7 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
     ) {
         $short = Get-ShortName -Path (Join-Path $script:KitRoot 'tools' $Script)
         if (-not $short) { Set-ItResult -Skipped -Because "$Script has no 8.3 short name here"; return }
-        Get-KitDecision -Tool $Tool -Command ($Command -f $short) | Should -Not -BeNullOrEmpty
+        Get-KitDecision -Tool $Tool -Command ($Command -f $short) | Should -BeLike "*$Script*"
     }
 
     It 'leaves a glob that expands to no asked script to the rules' {
@@ -506,8 +503,19 @@ Describe 'Get-CommandGuardDecision for a kit script that runs a command' {
         @{ Tool = 'PowerShell'; Command = './tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx git reset --hard HEAD~3' }
         @{ Tool = 'PowerShell'; Command = "./.kit/tools/Invoke-WithPlaywrightImage.ps1 -Solution:x.slnx -Pin p -- git push --for'ce'" }
         @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- git clean -fdx' }
+        # Review round 2: a switch before its parameters, or the script named by a glob, still runs the command.
+        @{ Tool = 'PowerShell'; Command = './tools/Invoke-WithPlaywrightImage.ps1 -Verbose -Solution x.slnx -- git clean -fdx' }
+        @{ Tool = 'PowerShell'; Command = './tools/Invoke-WithPlaywrightImage.ps1 -Debug -Solution x.slnx winget install foo' }
+        @{ Tool = 'PowerShell'; Command = './tools/Invoke-WithPlaywright*.ps1 -Solution x.slnx -- git clean -fdx' }
+        @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/Invoke-WithPlaywright*.ps1 -Solution x.slnx -- git clean -fdx' }
     ) {
         Get-KitDecision -Tool $Tool -Command $Command | Should -Not -BeNullOrEmpty
+    }
+
+    It 'asks for the command Invoke-WithPlaywrightImage.ps1 runs when the script is named by its Windows short name' {
+        $short = Get-ShortName -Path (Join-Path $script:KitRoot 'tools' 'Invoke-WithPlaywrightImage.ps1')
+        if (-not $short) { Set-ItResult -Skipped -Because 'Invoke-WithPlaywrightImage.ps1 has no 8.3 short name here'; return }
+        Get-KitDecision -Tool 'PowerShell' -Command "./tools/$short -Solution x.slnx -- git clean -fdx" | Should -BeLike '*git clean*'
     }
 
     It 'leaves <Command> to the rules, since the command it runs is one they allow' -ForEach @(
