@@ -250,6 +250,11 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         @{ Command = 'pwsh -NoProfile -File ./tools/[!X]ew-KitApp.ps1 -Name x' }
         @{ Command = 'pwsh -NoProfile -File ./tools/[[:upper:]]et-AgentMode.ps1 -Mode Review' }
         @{ Command = 'pwsh -NoProfile -File ./tools/[^X]nitialize-DevMachine.ps1 -Install' }
+        # Review round 6: an escaped or quoted ']' is a member of the set, and [=c=] and [.c.] are classes too.
+        @{ Command = 'pwsh -NoProfile -File ./tools/[N\]]ew-KitApp.ps1 -Name x' }
+        @{ Command = 'pwsh -NoProfile -File ./tools/[N'']'']ew-KitApp.ps1 -Name x' }
+        @{ Command = 'pwsh -NoProfile -File ./tools/[[=N=]]ew-KitApp.ps1 -Name x' }
+        @{ Command = 'pwsh -NoProfile -File ./tools/[[.S.]]et-AgentMode.ps1 -Mode Review' }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*resolved this command*'
     }
