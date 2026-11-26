@@ -8,6 +8,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0008", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures"
@@ -29,6 +30,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0008", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/architecture/microservices/architect-microservice-container-applications/data-sovereignty-per-microservice, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/microservices/architect-microservice-container-applications/data-sovereignty-per-microservice"
@@ -47,6 +49,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0008"]
     enforcement:
       - kind: gate
@@ -61,6 +64,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0005", "ADR-0008", "https://learn.microsoft.com/azure/well-architected/reliability/simplify, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/reliability/simplify"
@@ -79,6 +83,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0016"]
     enforcement:
       - kind: gate
@@ -96,6 +101,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0016"]
     enforcement:
       - kind: advisory
@@ -110,6 +116,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0016"]
     enforcement:
       - kind: advisory
@@ -124,6 +131,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-16", "ADR-0080", "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/datetime/choosing-between-datetime, retrieved 2026-11-15", "https://learn.microsoft.com/visualstudio/msbuild/build-process-overview#evaluation-phase, retrieved 2026-11-16"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps"
@@ -145,6 +153,7 @@ rules:
     basis: preference
     status: proposed
     strength: must
+    ratified: "owner, 2026-11-25"
     sources: ["ADR-0052", "ADR-0008"]
     enforcement:
       - kind: gate
@@ -223,6 +232,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-11", "owner, 2026-11-12", "ADR-0058", "https://learn.microsoft.com/azure/well-architected/cost-optimization/principles, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/cost-optimization/principles"
@@ -244,6 +254,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "ADR-0016", "https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals"

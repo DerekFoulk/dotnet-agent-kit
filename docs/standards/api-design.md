@@ -88,6 +88,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0038", "owner, 2026-11-09", "https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-07", "https://learn.microsoft.com/aspnet/core/fundamentals/error-handling-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -108,6 +109,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0038", "owner, 2026-11-09", "https://learn.microsoft.com/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-10.0"
@@ -132,6 +134,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0038", "owner, 2026-11-09", "https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-data-pagination-and-filtering, retrieved 2026-11-17", "https://learn.microsoft.com/azure/architecture/best-practices/api-implementation#handling-large-requests-and-responses, retrieved 2026-11-17", "https://learn.microsoft.com/sql/connect/ado-net/sql/compare-guid-uniqueidentifier-values, retrieved 2026-11-08"]
     enforcement:
       - kind: gate
@@ -320,6 +323,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     enforcement:
       - kind: advisory

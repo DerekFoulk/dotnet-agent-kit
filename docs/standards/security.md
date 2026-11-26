@@ -8,6 +8,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0024"]
     scope: core
     enforcement:
@@ -25,6 +26,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01"]
     scope: core
     enforcement:
@@ -42,6 +44,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-07", "owner, 2026-11-09", "ADR-0032", "ADR-0035"]
     scope: core
     enforcement:
@@ -59,6 +62,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0017"]
     scope: core
     enforcement:
@@ -76,6 +80,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     when: [is-commercial]
     sources: ["ADR-0004", "ADR-0079"]
     scope: core
@@ -94,6 +99,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     when: [is-public-repo]
     sources: ["ADR-0036", "owner, 2026-11-09"]
     scope: core
@@ -178,6 +184,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: [web-api, blazor]
     enforcement:
@@ -201,6 +208,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: core
     enforcement:
@@ -215,6 +223,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: [web-api]
     enforcement:
@@ -235,6 +244,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: core
     enforcement:
@@ -252,6 +262,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: core
     enforcement:

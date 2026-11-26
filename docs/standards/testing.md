@@ -8,6 +8,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-10-26", "ADR-0018"]
     enforcement:
       - kind: gate
@@ -28,6 +29,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0018"]
     enforcement:
       - kind: advisory
@@ -42,6 +44,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-10-25", "owner, 2026-10-26", "owner, 2026-11-11", "ADR-0058"]
     enforcement:
       - kind: gate
@@ -62,6 +65,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
@@ -83,6 +87,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0003", "ADR-0057", "ADR-0058"]
     enforcement:
       - kind: advisory
@@ -97,6 +102,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "ADR-0011"]
     enforcement:
       - kind: advisory
@@ -225,6 +231,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-09", "owner, 2026-11-12"]
     enforcement:
       - kind: advisory

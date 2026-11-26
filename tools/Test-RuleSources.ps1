@@ -139,12 +139,12 @@ function Get-RatifiedProblem {
     param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [Parameter(Mandatory)] [string] $AdrPath)
 
     $hasRatified = $Rule.Contains('ratified') -and "$($Rule['ratified'])" -match '\S'
-    if ("$($Rule['basis'])" -ne 'authority') {
-        if ($hasRatified) { "ratified is for an authority rule; a preference's sources already name the owner or the ADR" }
-        return
-    }
     if (-not $hasRatified) {
-        if ("$($Rule['status'])" -eq 'accepted') {
+        # ADR-0090: an agent can add a kit rule at should, and only the owner moves one to must.
+        if ("$($Rule['basis'])" -eq 'preference' -and "$($Rule['strength'])" -ceq 'must' -and "$($Rule['status'])" -ne 'retired') {
+            "a kit rule at strength must needs ratified: 'owner, YYYY-MM-DD' or 'ADR-NNNN', the owner's move to must (ADR-0090)"
+        }
+        elseif ("$($Rule['basis'])" -eq 'authority' -and "$($Rule['status'])" -eq 'accepted') {
             "an accepted authority rule needs ratified: 'owner, YYYY-MM-DD' or 'ADR-NNNN', who accepted it"
         }
         return

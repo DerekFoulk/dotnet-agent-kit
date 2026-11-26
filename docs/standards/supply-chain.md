@@ -8,6 +8,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0020"]
     scope: core
     enforcement:
@@ -28,6 +29,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0020", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -42,6 +44,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -56,6 +59,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -70,6 +74,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0025"]
     scope: core
     enforcement:
@@ -87,6 +92,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0019", "ADR-0022", "owner, 2026-11-04"]
     scope: core
     enforcement:
@@ -101,6 +107,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0016"]
     scope: core
     enforcement:
@@ -118,6 +125,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-11", "ADR-0041", "ADR-0060"]
     scope: core
     enforcement:
@@ -181,6 +189,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "ADR-0066"]
     scope: core
     enforcement:

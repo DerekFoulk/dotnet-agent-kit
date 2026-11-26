@@ -8,6 +8,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-10-27", "ADR-0009", "https://github.com/dotnet/runtime/blob/860eddba936f4a7e8a04cb12ee3bc54385216cab/.editorconfig, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -22,6 +23,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-10-27", "owner, 2026-11-12", "ADR-0009", "https://github.com/dotnet/runtime/blob/860eddba936f4a7e8a04cb12ee3bc54385216cab/.editorconfig, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -36,6 +38,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0009", "ADR-0043", "ADR-0049", "owner, 2026-11-16", "https://learn.microsoft.com/dotnet/core/project-sdk/msbuild-props#analysislevel, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/base-types/best-practices-regex, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/native-interop/best-practices, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -50,6 +53,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0009", "owner, 2026-11-09"]
     enforcement:
       - kind: gate
@@ -64,6 +68,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-10-27", "owner, 2026-11-09", "owner, 2026-11-16"]
     enforcement:
       - kind: gate
@@ -81,6 +86,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0009"]
     enforcement:
       - kind: advisory
@@ -207,6 +213,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "ADR-0069"]
     enforcement:
       - kind: gate
@@ -221,6 +228,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-13", "ADR-0070", "owner, 2026-11-16", "https://learn.microsoft.com/dotnet/standard/design-guidelines/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/code-quality-rule-options#api_surface, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/collections/thread-safe/, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -287,6 +295,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-16", "ADR-0076"]
     enforcement:
       - kind: gate
@@ -307,6 +316,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-16", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/standard/exceptions/best-practices-for-exceptions, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/base-types/best-practices-strings, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/base-types/best-practices-display-data, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/base-types/best-practices-regex, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/threading/managed-threading-best-practices, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/task-based-asynchronous-pattern-tap, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/implementing-the-task-based-asynchronous-pattern, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/garbage-collection/implementing-dispose, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/garbage-collection/implementing-disposeasync, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/memory-and-spans/memory-t-usage-guidelines, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/datetime/choosing-between-datetime, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/extensions/options, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/csharp/fundamentals/exceptions/creating-and-throwing-exceptions, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/csharp/programming-guide/statements-expressions-operators/how-to-define-value-equality-for-a-type, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/csharp/fundamentals/types/records, retrieved 2026-11-17"]
     enforcement:
       - kind: advisory
@@ -346,6 +356,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "owner, 2026-11-16", "ADR-0076", "https://learn.microsoft.com/dotnet/standard/design-guidelines/names-of-type-members#names-of-fields, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1707, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -363,6 +374,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["ADR-0069", "owner, 2026-11-12"]
     enforcement:
       - kind: gate
@@ -377,6 +389,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-13"]
     enforcement:
       - kind: advisory

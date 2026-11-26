@@ -163,6 +163,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     when: [has-server-database]
     sources: ["owner, 2026-11-12"]
     enforcement:
@@ -178,6 +179,7 @@ rules:
     basis: preference
     status: accepted
     strength: must
+    ratified: ADR-0090
     when: [has-database]
     sources: ["owner, 2026-11-12"]
     enforcement:
