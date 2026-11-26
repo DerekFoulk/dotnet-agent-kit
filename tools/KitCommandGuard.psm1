@@ -729,6 +729,7 @@ function Get-PlainPathWord {
             while ($word.Contains('/./')) { $word = $word.Replace('/./', '/') }
             $word = [regex]::Replace($word, '(?<=.)/{2,}', '/')
         }
+        if ($word.Contains('/') -and $word.Contains('~') -and $WorkingDirectory) { $word = Expand-ShortPathName -Path $word -WorkingDirectory $WorkingDirectory }
         if ($word.Contains('/') -and $WorkingDirectory) {
             $expanded = @(Expand-PathGlob -Path $word -WorkingDirectory $WorkingDirectory)
             if ($expanded.Count) { $expanded; continue }
@@ -739,6 +740,21 @@ function Get-PlainPathWord {
         }
         $word
     }
+}
+
+# A path with each part that may be a Windows 8.3 short name (one with "~", such as NEW-KI~1.PS1) in its long form,
+# where that file or folder exists: Path.GetFullPath expands a short name to the long one, as its docs say. Other
+# parts keep their spelling, and on Linux and macOS, which have no short names, so does the whole path.
+function Expand-ShortPathName {
+    param([Parameter(Mandatory)] [string] $Path, [Parameter(Mandatory)] [string] $WorkingDirectory)
+
+    $parts = $Path.Split('/')
+    for ($i = 0; $i -lt $parts.Count; $i++) {
+        if (-not $parts[$i].Contains('~')) { continue }
+        try { $parts[$i] = Split-Path -Leaf ([IO.Path]::GetFullPath(($parts[0..$i] -join '/'), $WorkingDirectory)) }
+        catch { continue }
+    }
+    $parts -join '/'
 }
 
 # The files a path with a glob (*, ? or [) in its last part names, relative to the working directory and spelled with
