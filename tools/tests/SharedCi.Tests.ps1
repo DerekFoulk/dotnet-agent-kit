@@ -1085,11 +1085,13 @@ Describe 'Shared CI for app repos' {
         }
 
         It 'fails, leaving the kit''s checkout alone, when the bundle is missing or has no main' {
-            foreach ($missing in (Join-Path $TestDrive 'none.bundle'), $noMain) {
-                $result = Invoke-ExportedApp -Bundle $missing
+            foreach ($case in @(
+                    @{ Bundle = (Join-Path $TestDrive 'none.bundle'); Error = '::error::No app bundle at' }
+                    @{ Bundle = $noMain; Error = '::error::.*has no main branch' })) {
+                $result = Invoke-ExportedApp -Bundle $case.Bundle
 
                 $result.Exit | Should -Not -Be 0
-                $result.Output | Should -Match '::error::'
+                $result.Output | Should -Match $case.Error
                 Join-Path $result.Workspace 'kit-file.txt' | Should -Exist
             }
         }

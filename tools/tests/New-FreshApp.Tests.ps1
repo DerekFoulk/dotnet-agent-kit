@@ -116,6 +116,17 @@ Describe 'New-FreshApp' {
         }
     }
 
+    # A project path is an XML attribute: a character such as & would break the solution file.
+    It 'escapes each project''s path in the solution, so the file stays well-formed' {
+        $folder = Join-Path $TestDrive 'escaped'
+        New-Item -ItemType Directory -Force -Path (Join-Path $folder 'src' 'A&B') | Out-Null
+        Set-Content -LiteralPath (Join-Path $folder 'src' 'A&B' 'A&B.csproj') -Value '<Project />'
+
+        [xml] $solution = Get-FreshAppSolutionText -Destination $folder
+
+        @($solution.SelectNodes('//Project') | ForEach-Object { $_.GetAttribute('Path') }) | Should -Be @('src/A&B/A&B.csproj')
+    }
+
     # MAUI's leg waits for GAP-028 (the Windows and macOS jobs proven), and the owner put MAUI after the practice run.
     It 'refuses an app type it has no probe for, naming the gap that waits for it' {
         { New-FreshApp -Type maui -Destination (Join-Path $TestDrive 'maui') -KitRef HEAD -KitRoot $root } |
