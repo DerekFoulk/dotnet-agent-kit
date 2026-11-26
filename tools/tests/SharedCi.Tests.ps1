@@ -1002,6 +1002,30 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # The fresh-app jobs call the shared workflows directly (ADR-0095), so the app's own callers are checked here: a
+    # required input a template left out would fail every app's CI, while the kit's stayed green.
+    It 'passes every required input of each shared workflow an app''s template workflow calls' {
+        $callers = @(Get-ChildItem -LiteralPath (Join-Path $root 'templates' 'app' '.github' 'workflows') -Filter *.yml)
+        $checked = 0
+        foreach ($caller in $callers) {
+            $yaml = ConvertFrom-Yaml ((Get-Content -Raw -LiteralPath $caller.FullName) -replace '\{\{[A-Za-z]+\}\}', 'X')
+            foreach ($job in $yaml['jobs'].GetEnumerator()) {
+                if ("$($job.Value['uses'])" -notmatch '^DerekFoulk/dotnet-agent-kit/\.github/workflows/([^@]+)@') { continue }
+                $sharedFile = $Matches[1]
+                $shared = (Read-Yaml ".github/workflows/$sharedFile").Yaml
+                $on = if ($shared.ContainsKey('on')) { $shared['on'] } else { $shared[$true] }
+                $inputs = if ($on['workflow_call'] -is [Collections.IDictionary] -and $on['workflow_call'].Contains('inputs')) { $on['workflow_call']['inputs'] } else { @{} }
+                $with = if ($job.Value.Contains('with')) { $job.Value['with'] } else { @{} }
+                foreach ($input in $inputs.GetEnumerator() | Where-Object { $_.Value['required'] }) {
+                    $with.Contains($input.Key) | Should -BeTrue -Because "$($caller.Name)'s $($job.Key) job must pass $sharedFile's required '$($input.Key)'"
+                }
+                $with.Contains('app-bundle') | Should -BeFalse -Because 'app-bundle is the kit CI''s alone'
+                $checked++
+            }
+        }
+        $checked | Should -BeGreaterThan 3
+    }
+
     # ADR-0095: the step is run here as CI runs it, against real bundles, in a workspace that holds another checkout.
     Context 'the exported-app action' {
         BeforeAll {
