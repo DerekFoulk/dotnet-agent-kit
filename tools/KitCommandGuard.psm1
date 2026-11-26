@@ -156,6 +156,23 @@ function Get-PowerShellCommand {
             $value = if ($elements[$i].Argument) { $elements[$i].Argument } elseif ($i + 1 -lt $elements.Count) { $elements[$i + 1] }
             if ($value -is [Management.Automation.Language.StringConstantExpressionAst]) { [void] $fromCommand.Add($value.Value.TrimStart('+')) }
         }
+        # A pipeline fills a variable too: Tee-Object's -Variable, or Set-Variable or New-Variable after a "|", where
+        # each name it's given counts (its value comes from the pipe).
+        $piped = $commandAst.Parent -is [Management.Automation.Language.PipelineAst] -and $commandAst.Parent.PipelineElements.IndexOf($commandAst) -gt 0
+        $name = $commandAst.GetCommandName()
+        if ($piped -and $name -match '^(?i:Tee-Object|tee)$') {
+            for ($i = 1; $i -lt $elements.Count; $i++) {
+                if ($elements[$i] -isnot [Management.Automation.Language.CommandParameterAst] -or -not 'Variable'.StartsWith($elements[$i].ParameterName, [StringComparison]::OrdinalIgnoreCase)) { continue }
+                $value = if ($elements[$i].Argument) { $elements[$i].Argument } elseif ($i + 1 -lt $elements.Count) { $elements[$i + 1] }
+                if ($value -is [Management.Automation.Language.StringConstantExpressionAst]) { [void] $fromCommand.Add($value.Value) }
+            }
+        }
+        if ($piped -and $name -match '^(?i:Set-Variable|sv|New-Variable|nv)$') {
+            foreach ($element in $elements | Select-Object -Skip 1) {
+                $value = if ($element -is [Management.Automation.Language.CommandParameterAst]) { $element.Argument } else { $element }
+                if ($value -is [Management.Automation.Language.StringConstantExpressionAst]) { [void] $fromCommand.Add($value.Value) }
+            }
+        }
     }
 
     foreach ($commandAst in $ast.FindAll($isCommand, $true)) {
