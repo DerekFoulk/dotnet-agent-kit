@@ -127,5 +127,16 @@ Describe 'New-FreshApp' {
             }
             $versions.ContainsKey('Microsoft.CodeAnalysis.CSharp') | Should -BeFalse -Because 'the kit tools'' packages stay out of an app'
         }
+
+        # The shared CI builds and checks what the solution lists, so a probe project left out would go unchecked.
+        It 'lists every probe project in the app''s solution, and nothing else' {
+            [xml] $solution = Get-Content -Raw -LiteralPath (Join-Path $app "$Name.slnx")
+            $listed = @($solution.SelectNodes('//Project') | ForEach-Object { $_.GetAttribute('Path') } | Sort-Object)
+            $projects = @(Get-ChildItem -LiteralPath (Join-Path $app 'src'), (Join-Path $app 'tests') -Recurse -Filter *.csproj |
+                    ForEach-Object { [IO.Path]::GetRelativePath($app, $_.FullName).Replace('\', '/') } | Sort-Object)
+
+            $projects.Count | Should -BeGreaterThan 1
+            $listed | Should -Be $projects
+        }
     }
 }
