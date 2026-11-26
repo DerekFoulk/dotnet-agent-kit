@@ -320,8 +320,15 @@ types:
             Get-Problem | Should -BeNullOrEmpty
         }
 
+        # ADR-0090: an authority rule is in force once its quotes are on its pages; ratified, where present, is history.
+        It 'accepts an accepted authority rule with no ratified' {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{ basis = 'authority'; layer = 'outside'; status = 'accepted'; sources = @($url); quotes = New-QuotesFor $url })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
         It 'reports an accepted authority rule with ratified <Case>' -ForEach @(
-            @{ Case = 'missing'; Ratified = $null; Expected = "*accepted*authority*ratified*" }
             @{ Case = 'not an owner date or an ADR'; Ratified = 'the owner'; Expected = "*ratified 'the owner'*owner, YYYY-MM-DD*ADR*" }
             @{ Case = 'an owner with no real date'; Ratified = 'owner, 2026-13-45'; Expected = "*ratified*owner, YYYY-MM-DD*" }
             @{ Case = 'an ADR that doesn''t exist'; Ratified = 'ADR-9999'; Expected = "*ratified*ADR-9999*not found*" }
