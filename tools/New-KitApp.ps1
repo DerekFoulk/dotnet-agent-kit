@@ -104,6 +104,19 @@ function Invoke-KitGit {
     if ($LASTEXITCODE -ne 0) { throw "git $($Arguments -join ' ') failed: $($output.Trim())" }
 }
 
+# An exported app's first commit, on main, naming the kit version from its manifest. New-FreshApp makes the same one,
+# through this function, so the kit's CI checks the history an app starts with (ADR-0095).
+function New-KitAppFirstCommit {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $version = (Get-Content -Raw -LiteralPath (Join-Path $Path '.kit/manifest.json') | ConvertFrom-Json).kitVersion
+    Invoke-KitGit -Path $Path -Arguments 'init', '-q', '-b', 'main'
+    Invoke-KitGit -Path $Path -Arguments 'add', '-A'
+    # Windows doesn't record the executable bit, and git on Linux and macOS skips a hook without it.
+    Invoke-KitGit -Path $Path -Arguments 'add', '--chmod=+x', '.githooks/commit-msg'
+    Invoke-KitGit -Path $Path -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
+}
+
 function New-KitApp {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -188,15 +201,7 @@ function New-KitApp {
                 if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
             }
         }
-        [pscustomobject]@{ Description = 'Make the first commit'; Action = {
-                $version = (Get-Content -Raw -LiteralPath (Join-Path $Destination '.kit/manifest.json') | ConvertFrom-Json).kitVersion
-                Invoke-KitGit -Path $Destination -Arguments 'init', '-q', '-b', 'main'
-                Invoke-KitGit -Path $Destination -Arguments 'add', '-A'
-                # Windows doesn't record the executable bit, and git on Linux and macOS skips a hook without it.
-                Invoke-KitGit -Path $Destination -Arguments 'add', '--chmod=+x', '.githooks/commit-msg'
-                Invoke-KitGit -Path $Destination -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
-            }
-        }
+        [pscustomobject]@{ Description = 'Make the first commit'; Action = { New-KitAppFirstCommit -Path $Destination } }
         # Always private at first: a public app is made public only once main is pushed and its ruleset is added, so a
         # failure before then leaves a private repo.
         [pscustomobject]@{ Description = "Create the private repo with the kit's merge settings"; Action = {

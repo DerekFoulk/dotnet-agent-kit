@@ -181,6 +181,8 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 - Name each host's `ContractAssemblies`.
 - Move its snapshot, if it kept one, to `Contract/<host name>/openapi-v1.json`, and drop its own `ProjectDirectory` metadata item, which `tests/Directory.Build.props` now adds.
 
+**Update (2026-11-25): the hosting part.** `tools/AppTests/Hosting` holds `ProjectFolder`, which `tests/Directory.Build.props` compiles into every `*.FunctionalTests` and `*.E2E.Tests` project, the ones that host the app. A `WebApplicationFactory` sets its content root with `ProjectFolder.Find(AppContext.BaseDirectory, <the app's assembly name>)`: the nearest `src/<assembly name>` folder above the tests. It replaces a path relative to the solution, which holds in one repo's layout only: the kit's fresh-app jobs (ADR-0095) found that the sample's and the web UI fixture's factories, which named `sample/src` and `fixtures/WebUi/src`, failed every hosted test in an app made from the kit. It assumes ADR-0032's layout, each project in `src/<its assembly name>`; an app that names a project's folder otherwise gets a `DirectoryNotFoundException` naming the project, and passes its own path instead.
+
 ## Pillars affected
 
 - **Reliability and Operational Excellence:** an app gets the kit's architecture gates from its first Architecture.Tests project, in its own `dotnet test`, and keeps them current through the sync.

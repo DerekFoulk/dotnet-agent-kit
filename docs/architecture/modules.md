@@ -29,8 +29,14 @@ flowchart LR
     tools -->|.kit/tools| apps
     codeshape -->|source, built in .kit| apps
     apptests["tools/AppTests<br/>(shared tests)"] -->|compiled into Architecture.Tests and FunctionalTests| sample
+    apptests -->|compiled into E2E.Tests| webui
     apptests -->|.kit/tools/AppTests| apps
     ci -->|reusable workflows| apps
+    fresh["fresh apps<br/>(New-FreshApp: web-api, blazor)"]
+    tools -->|New-FreshApp exports, with a probe| fresh
+    sample -->|web-api probe| fresh
+    webui -->|blazor probe| fresh
+    ci -->|reusable workflows, app-bundle input| fresh
 ```
 
 ## The sample's layers
