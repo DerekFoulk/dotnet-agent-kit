@@ -167,6 +167,11 @@ function Invoke-RunbookCheck {
         Write-Host "`n$counted runbook problem(s) in $Path." -ForegroundColor Red
         return 1
     }
+    $skip = if ($problems) { Get-RuleSkip -Id 'OPS-004' -Path $RuleStrengthPath }
+    if ($skip) {
+        Write-Host "`n$($problems.Count) runbook problem(s) in $Path not judged: OPS-004 doesn't apply to this app ($skip)." -ForegroundColor Yellow
+        return 0
+    }
     if ($problems) {
         Write-Host "`n$($problems.Count) runbook problem(s) in $Path, shown as warnings because OPS-004 is a should rule; they'd fail the check at must." -ForegroundColor Yellow
         return 0

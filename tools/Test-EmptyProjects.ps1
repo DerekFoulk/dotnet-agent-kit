@@ -112,8 +112,13 @@ function Invoke-EmptyProjectsCheck {
         if ($broken -eq 1) { Write-Host "`n1 project the solution lists isn't there, in $Solution; fix the solution file." -ForegroundColor Red }
         elseif ($broken) { Write-Host "`n$broken projects the solution lists aren't there, in $Solution; fix the solution file." -ForegroundColor Red }
         if ($empty) { Write-Host "`n$empty empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red }
-        if ($warned) { Write-Host "$warned more empty-project problem(s) were warnings, because ARC-009 is a should rule." -ForegroundColor Yellow }
+        if ($warned) { Write-Host "$warned more empty-project problem(s) weren't counted: ARC-009 is a should rule, or doesn't apply to this app." -ForegroundColor Yellow }
         return 1
+    }
+    $skip = if ($problems) { Get-RuleSkip -Id 'ARC-009' -Path $RuleStrengthPath }
+    if ($skip) {
+        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution not judged: ARC-009 doesn't apply to this app ($skip)." -ForegroundColor Yellow
+        return 0
     }
     if ($problems) {
         Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution, shown as warnings because ARC-009 is a should rule; they'd fail the check at must." -ForegroundColor Yellow

@@ -99,6 +99,16 @@ function Get-DefaultProfilePath {
     Join-Path $root 'docs' 'app-profile.md'
 }
 
+# Why rule Id doesn't apply to the app whose profile is at -ProfilePath (by default the one Get-DefaultProfilePath finds),
+# or nothing when it does: a check asks once, to sum up its findings truly.
+function Get-RuleSkip {
+    [OutputType([string])]
+    param([Parameter(Mandatory)] [string] $Id, [string] $Path, [string] $ProfilePath)
+
+    if (-not $ProfilePath) { $ProfilePath = Get-DefaultProfilePath }
+    Get-RuleSkipReason -Entry (Get-RuleEntry -Id $Id -Path $Path) -AppProfile (Read-AppProfile -Path $ProfilePath)
+}
+
 # Writes one finding of rule Id and returns whether it counts toward the check's failure; the rule's strength alone
 # decides. A rule that doesn't apply to the app (its scope doesn't name the app's types, or the profile answers one of
 # its when conditions no) is skipped: a GitHub notice says why, once per rule, and nothing counts. A should rule's
@@ -145,4 +155,4 @@ function Write-RuleFinding {
     $true
 }
 
-Export-ModuleMember -Function Get-RuleStrength, Read-AppProfile, Write-RuleFinding
+Export-ModuleMember -Function Get-RuleStrength, Get-RuleSkip, Read-AppProfile, Write-RuleFinding

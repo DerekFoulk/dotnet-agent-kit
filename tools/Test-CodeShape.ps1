@@ -135,6 +135,7 @@ function Write-CodeShapeResult {
 
     $counted = 0
     $warned = 0
+    $skipped = 0
     foreach ($line in $Output -split '\r?\n' | Where-Object { $_ }) {
         $finding = [regex]::Match($line, '^(?<file>.+)\((?<line>\d+),(?<column>\d+)\): error (?<code>[A-Z]+\d+): ')
         if (-not $finding.Success) {
@@ -147,17 +148,25 @@ function Write-CodeShapeResult {
             Line   = [int] $finding.Groups['line'].Value
             Column = [int] $finding.Groups['column'].Value
         }
-        if (Write-RuleFinding -Id $rule -Message $line -Path $RuleStrengthPath @place) { $counted++ } else { $warned++ }
+        if (Write-RuleFinding -Id $rule -Message $line -Path $RuleStrengthPath @place) { $counted++ }
+        elseif (Get-RuleSkip -Id $rule -Path $RuleStrengthPath) { $skipped++ }
+        else { $warned++ }
     }
 
     if ($ExitCode -ne 1) { return $ExitCode }
-    if ($counted + $warned -eq 0) { return 1 }
+    if ($counted + $warned + $skipped -eq 0) { return 1 }
+    $notJudged = if ($skipped) { "; $skipped more not judged, because their rule doesn't apply to this app" } else { '' }
     if ($counted) {
         $more = if ($warned) { "; $warned more were warnings, because their rule is a should rule" } else { '' }
+        $more += $notJudged
         Write-Host "`n$counted code shape finding(s) fail the check$more." -ForegroundColor Red
         return 1
     }
-    Write-Host "`n$warned code shape finding(s), shown as warnings because their rule is a should rule; they'd fail the check at must." -ForegroundColor Yellow
+    if (-not $warned) {
+        Write-Host "`n$skipped code shape finding(s) not judged, because their rule doesn't apply to this app (see each notice)." -ForegroundColor Yellow
+        return 0
+    }
+    Write-Host "`n$warned code shape finding(s), shown as warnings because their rule is a should rule; they'd fail the check at must$notJudged." -ForegroundColor Yellow
     0
 }
 

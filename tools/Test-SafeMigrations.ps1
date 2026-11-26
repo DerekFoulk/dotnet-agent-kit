@@ -127,6 +127,11 @@ function Invoke-SafeMigrationsCheck {
     $problems = @(Get-MigrationProblem -Path $Path)
     $counted = @($problems | Where-Object { Write-RuleFinding -Id 'DAT-003' -Message $_.Message -Path $RuleStrengthPath }).Count
 
+    $skip = if ($problems -and -not $counted) { Get-RuleSkip -Id 'DAT-003' -Path $RuleStrengthPath }
+    if ($skip) {
+        Write-Host "`n$($problems.Count) migration problem(s) under $Path not judged: DAT-003 doesn't apply to this app ($skip)." -ForegroundColor Yellow
+        return 0
+    }
     if ($problems -and -not $counted) {
         Write-Host "`n$($problems.Count) migration problem(s) under $Path, shown as warnings because DAT-003 is a should rule; they'd fail the check at must." -ForegroundColor Yellow
         return 0

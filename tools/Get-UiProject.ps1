@@ -68,7 +68,11 @@ function Get-UiProject {
     $references = @($references)
     $counted = @($references | Where-Object { Write-RuleFinding -Id 'ARC-010' -Message $_ -Path $RuleStrengthPath })
     if ($counted) { throw ($counted -join "`n") }
-    if ($references) {
+    $skip = if ($references) { Get-RuleSkip -Id 'ARC-010' -Path $RuleStrengthPath }
+    if ($skip) {
+        Write-Host "$($references.Count) reference(s) to a UI project not judged: ARC-010 doesn't apply to this app ($skip)." -ForegroundColor Yellow
+    }
+    elseif ($references) {
         Write-Host "$($references.Count) reference(s) to a UI project, shown as warnings because ARC-010 is a should rule; they'd fail the check at must." -ForegroundColor Yellow
     }
 
