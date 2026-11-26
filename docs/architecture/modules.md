@@ -28,7 +28,7 @@ flowchart LR
     templates --> apps
     tools -->|.kit/tools| apps
     codeshape -->|source, built in .kit| apps
-    apptests["tools/AppTests<br/>(shared tests)"] -->|compiled into Architecture.Tests, FunctionalTests and E2E.Tests| sample
+    apptests["tools/AppTests<br/>(shared tests)"] -->|compiled into Architecture.Tests and FunctionalTests| sample
     apptests -->|compiled into E2E.Tests| webui
     apptests -->|.kit/tools/AppTests| apps
     ci -->|reusable workflows| apps

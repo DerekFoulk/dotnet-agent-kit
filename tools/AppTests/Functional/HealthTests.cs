@@ -25,11 +25,11 @@ public sealed class HealthTests
     // Probes call without a token, and need the endpoints in production; details would tell an attacker what the app
     // depends on.
     [Theory]
-    [InlineData(Alive)]
-    [InlineData(Health)]
-    public async Task AHealthEndpointAnswersAnAnonymousProbeWithTheStatusOnlyInProduction(string path)
+    [EachHost(Alive)]
+    [EachHost(Health)]
+    public async Task AHealthEndpointAnswersAnAnonymousProbeWithTheStatusOnlyInProduction(string host, string path)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
         using HttpClient probe = app.CreateClient(signedIn: false);
 
         using HttpResponseMessage response = await probe.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
@@ -40,11 +40,11 @@ public sealed class HealthTests
 
     // An anonymous endpoint that runs every check on each call needs a short output cache, so probes can't overload it.
     [Theory]
-    [InlineData(Alive)]
-    [InlineData(Health)]
-    public async Task ASecondProbeWithinTheCacheWindowIsServedFromTheCache(string path)
+    [EachHost(Alive)]
+    [EachHost(Health)]
+    public async Task ASecondProbeWithinTheCacheWindowIsServedFromTheCache(string host, string path)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
         using HttpClient probe = app.CreateClient(signedIn: false);
         using HttpResponseMessage first = await probe.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
 
@@ -56,11 +56,11 @@ public sealed class HealthTests
     // Each endpoint is time-boxed, by any of the ways ASP.NET Core documents (a named or inline timeout, a policy, or
     // the default policy); the test below sees a timeout cut a slow check off, through /health.
     [Theory]
-    [InlineData(Alive)]
-    [InlineData(Health)]
-    public void AHealthEndpointIsTimeBoxed(string path)
+    [EachHost(Alive)]
+    [EachHost(Health)]
+    public void AHealthEndpointIsTimeBoxed(string host, string path)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
 
         Endpoint endpoint = app.Services.GetRequiredService<EndpointDataSource>().Endpoints
             .Single(candidate => (candidate as RouteEndpoint)?.RoutePattern.RawText == path);
@@ -71,10 +71,11 @@ public sealed class HealthTests
 
     // A check that waits 30 seconds meets every request timeout policy shortened to 100 ms, so the test stays fast
     // whatever the app names its policy. (The timeout middleware doesn't fire under a debugger.)
-    [Fact]
-    public async Task ASlowHealthCheckIsCutOffWithAGatewayTimeout()
+    [Theory]
+    [EachHost]
+    public async Task ASlowHealthCheckIsCutOffWithAGatewayTimeout(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production, services =>
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production, services =>
         {
             services.AddHealthChecks().AddAsyncCheck("kit-slow", async cancellationToken =>
             {
@@ -93,10 +94,11 @@ public sealed class HealthTests
     }
 
     // A failing dependency takes the app out of rotation, but a liveness check that ran it would restart the app.
-    [Fact]
-    public async Task AliveStaysHealthyWhileAReadinessCheckFails()
+    [Theory]
+    [EachHost]
+    public async Task AliveStaysHealthyWhileAReadinessCheckFails(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production, services => services.AddHealthChecks()
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production, services => services.AddHealthChecks()
             .AddCheck("kit-dependency", () => HealthCheckResult.Unhealthy("down")));
         using HttpClient probe = app.CreateClient(signedIn: false);
         using HttpResponseMessage health = await probe.GetAsync(s_health, TestContext.Current.CancellationToken);
