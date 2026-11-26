@@ -50,9 +50,11 @@ namespace Bookmarks.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
                     b.HasIndex("OwnerId", "CreatedAt");
 
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("OwnerId", "CreatedAt"), new[] { "Url" });
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("OwnerId", "CreatedAt"));
 
                     b.ToTable("Bookmarks");
                 });

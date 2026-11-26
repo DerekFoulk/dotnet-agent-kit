@@ -23,14 +23,15 @@ namespace Bookmarks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Bookmarks", x => x.Id);
+                    table.PrimaryKey("PK_Bookmarks", x => x.Id)
+                        .Annotation("SqlServer:Clustered", false);
                 });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Bookmarks_OwnerId_CreatedAt",
                 table: "Bookmarks",
                 columns: new[] { "OwnerId", "CreatedAt" })
-                .Annotation("SqlServer:Include", new[] { "Url" });
+                .Annotation("SqlServer:Clustered", true);
         }
 
         /// <inheritdoc />

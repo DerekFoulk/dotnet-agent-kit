@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Bookmarks.Infrastructure.Migrations
 {
     [DbContext(typeof(BookmarksDbContext))]
-    [Migration("20261126062349_InitialCreate")]
+    [Migration("20261126090120_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -53,9 +53,11 @@ namespace Bookmarks.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
                     b.HasIndex("OwnerId", "CreatedAt");
 
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("OwnerId", "CreatedAt"), new[] { "Url" });
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("OwnerId", "CreatedAt"));
 
                     b.ToTable("Bookmarks");
                 });
