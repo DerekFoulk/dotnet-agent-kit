@@ -6,8 +6,8 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: read
+# Nothing at the top level, so no job gets a write it doesn't ask for (OpenSSF Scorecard's Token-Permissions check).
+permissions: {}
 
 jobs:
   release-please:
