@@ -101,7 +101,7 @@ areas:
         status: closed
         needs: "packages and a CI change"
       - id: GAP-025
-        gap: "The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need. Closed by ADR-0098: the sample runs on SQL Server with EF Core migrations and a HasPendingModelChanges test; its integration and functional tests run on SQL Server in a container (Testcontainers.MsSql), skipped locally without Docker and failed in CI; the load test applies a migration bundle first; and Initialize-DevMachine.ps1 reports whether Docker is running."
+        gap: "The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need. Closed by ADR-0098: the sample runs on SQL Server with EF Core migrations and a HasPendingModelChanges test; its integration and functional tests run on SQL Server in a container (Testcontainers.MsSql), skipped locally without Docker and failed in CI; the load test applies the migrations first; and Initialize-DevMachine.ps1 reports whether Docker is running."
         status: closed
         needs: "packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests"
       - id: GAP-037

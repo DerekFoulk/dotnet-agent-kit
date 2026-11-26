@@ -3,8 +3,8 @@
 #   benchmark-budget.json beside it;
 # - load: a Locust load test of the app the caller names, started here in Release and Production, checked against the
 #   load-budget.json beside its locustfile. Off unless the caller sets load-test-project. With load-test-sql-server-pin,
-#   the app runs on SQL Server in a container, its schema applied by a migration bundle first, as a deployment applies
-#   it (DAT-004, DAT-005).
+#   the app runs on SQL Server in a container, its schema applied from its migrations before it starts (DAT-004,
+#   DAT-005).
 # Shared runners vary from run to run, so this is never a required check: budgets leave room for that, and a red run
 # is a finding to answer, not a flaky gate (ADR-0062).
 # Called by this repo's performance.yml, and by app repos pinned to the commit a kit release tag points to:
@@ -37,7 +37,7 @@ on:
       load-test-sql-server-pin:
         description: >-
           A Dockerfile whose FROM line names the SQL Server image the app's database runs on. The job starts it, applies
-          the app's EF Core migrations with a migration bundle, and hands the app its connection string. Empty: no database.
+          the app's EF Core migrations with dotnet ef, and hands the app its connection string. Empty: no database.
         type: string
         default: ''
       load-test-migrations-project:
@@ -45,7 +45,7 @@ on:
         type: string
         default: ''
       load-test-connection-string:
-        description: The name of the app's connection string, under ConnectionStrings, which the job sets for the app and the bundle.
+        description: The name of the app's connection string, under ConnectionStrings, which the job sets for the app and dotnet ef.
         type: string
         default: ''
 
@@ -211,11 +211,14 @@ jobs:
           $connection = "Server=localhost,1433;Database=LoadTest;User Id=sa;Password=$password;TrustServerCertificate=True"
           "ConnectionStrings__$($env:CONNECTION_STRING_NAME)=$connection" >> $env:GITHUB_ENV
 
-      # DAT-004: the schema comes from the app's migrations, applied by a migration bundle before the app takes traffic,
-      # as a deployment applies it. dotnet-ef is installed for this run only, at the version the caller's own tool
-      # manifest pins, which matches its EF Core, or else the kit's, as the mutation job installs Stryker. The bundle
-      # reads the connection string from the job's environment, as the app does, so the password is on no command line.
-      - name: Apply the migrations (migration bundle)
+      # DAT-004: the schema comes from the app's migrations, applied before the app takes traffic. A deployment applies a
+      # migration bundle; this applies the same migrations with dotnet ef database update, to the Release build above,
+      # because a bundle publishes for a runtime identifier, which the repo's locked restore (RestoreLockedMode in CI)
+      # refuses for projects whose lock files have none (ADR-0098). dotnet-ef is installed for this run only, at the
+      # version the caller's own tool manifest pins, which matches its EF Core, or else the kit's, as the mutation job
+      # installs Stryker. It reads the connection string from the job's environment, as the app does, so the password is
+      # on no command line.
+      - name: Apply the migrations (dotnet ef)
         if: inputs.load-test-sql-server-pin != ''
         shell: pwsh
         env:
@@ -231,11 +234,8 @@ jobs:
           $version = $tools.'dotnet-ef'.version
           dotnet tool install dotnet-ef --version $version --tool-path "$env:RUNNER_TEMP/dotnet-ef"
           if ($LASTEXITCODE -ne 0) { exit 1 }
-          $bundle = Join-Path $env:RUNNER_TEMP 'efbundle'
-          & "$env:RUNNER_TEMP/dotnet-ef/dotnet-ef" migrations bundle --project $env:MIGRATIONS --startup-project $env:PROJECT --configuration Release --output $bundle --force --verbose
-          if ($LASTEXITCODE -ne 0) { "::error::dotnet ef couldn't build the migration bundle."; exit 1 }
-          & $bundle
-          if ($LASTEXITCODE -ne 0) { "::error::The migration bundle failed."; exit 1 }
+          & "$env:RUNNER_TEMP/dotnet-ef/dotnet-ef" database update --project $env:MIGRATIONS --startup-project $env:PROJECT --configuration Release --no-build --verbose
+          if ($LASTEXITCODE -ne 0) { "::error::dotnet ef couldn't apply the migrations; its output above says why."; exit 1 }
 
       # Microsoft: load test a Release build in Production, never Debug or Development, which log more (ASP.NET Core
       # load/stress testing). /health is ServiceDefaults' readiness endpoint (OPS-002): up once the app can serve.

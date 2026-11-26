@@ -24,7 +24,7 @@ One module in Clean Architecture (ARC-001):
 | `tests/SqlServer` | Not a project: the SQL Server image the tests and the load test run, pinned by digest (`Dockerfile`), and the helper both test projects compile in (`SqlServerTestDatabase.cs`, ADR-0098) |
 | `tests/Bookmarks.Architecture.Tests` | Architecture: the kit's shared tests (`tools/AppTests/Architecture`, ArchUnitNET): layers depend only inward, shared libraries reference no UI or platform package, no namespace cycles. Its `AppLayers.cs` names the sample's assemblies by layer |
 | `tests/Bookmarks.Benchmarks` | Performance: BenchmarkDotNet times `Bookmark.Create` against `benchmark-budget.json` (TST-009, ADR-0062). Not a test project; `.github/workflows/performance.yml` runs it |
-| `tests/load` | Load: a Locust test of the API (`locustfile.py`), its load (`locust.conf`) and its budget (`load-budget.json`). `.github/workflows/performance.yml` starts SQL Server from the tests' pin, applies the migrations with a migration bundle, starts the API in Release and Production, and runs it |
+| `tests/load` | Load: a Locust test of the API (`locustfile.py`), its load (`locust.conf`) and its budget (`load-budget.json`). `.github/workflows/performance.yml` starts SQL Server from the tests' pin, applies the migrations with `dotnet ef database update`, starts the API in Release and Production, and runs it |
 
 ## Run it
 
