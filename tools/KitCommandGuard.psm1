@@ -830,56 +830,44 @@ function Expand-PathGlob {
     $directory = Join-Path $WorkingDirectory $folder
     try {
         # A file either shell would expand the glob to: PowerShell's wildcards or Bash's pattern matching, whose
-        # bracket expressions also negate ([!x], [^x]) and name classes ([[:upper:]]). Both ignore case here, as
-        # Windows opens a file whatever its case, so the guard tries every file either could mean.
+        # bracket expressions also negate ([!x], [^x]) and name classes ([[:upper:]]), read as a superset by
+        # ConvertFrom-BashGlob. Both ignore case here, as Windows opens a file whatever its case, so the guard tries
+        # every file either could mean.
         $pattern = [Management.Automation.WildcardPattern]::new($leaf, [Management.Automation.WildcardOptions]::IgnoreCase)
-        $bash = ConvertFrom-BashGlob -Glob $leaf
+        $bash = @(ConvertFrom-BashGlob -Glob $leaf)
         Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop |
-            Where-Object { $pattern.IsMatch($_.Name) -or ($bash -and [regex]::IsMatch($_.Name, $bash, 'IgnoreCase, CultureInvariant')) } |
+            # A pattern PowerShell can't read matches nothing for PowerShell, and leaves Bash's readings to decide.
+            Where-Object { $name = $_.Name; (& { try { $pattern.IsMatch($name) } catch { $false } }) -or @($bash | Where-Object { [regex]::IsMatch($name, $_, 'IgnoreCase, CultureInvariant') }).Count } |
             Sort-Object Name | ForEach-Object { $folder + $_.Name }
     }
     catch { return }
 }
 
-# The regex for one path part that is a Bash glob (pattern matching, Bash's manual 3.5.8.1): '*', '?', a '\' escape,
-# and a bracket expression with '!' or '^' negating it, ranges, and the classes alpha, digit, alnum, upper, lower,
-# space, blank, punct, xdigit, word, cntrl, graph and print. $null for a part Bash would leave as typed, an unclosed
-# bracket aside (that '[' is literal), such as one naming another class.
+# Regexes that together match every name Bash could expand one path part to (pattern matching, Bash's manual
+# 3.5.8.1), as a superset: '*' and '?' as Bash reads them, and each bracket expression as any one character, closed at
+# any later ']' or left as a literal '['. Bash's own reading of a bracket (negation, classes, [=c=], [.c.], and a
+# quoted ']' inside it, whose quotes are gone by now) is always one of these, so a glob can make the guard try more
+# files, never fewer. Past 64 readings, one regex that matches any name.
 function ConvertFrom-BashGlob {
-    param([Parameter(Mandatory)] [string] $Glob)
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Glob, [hashtable] $Read = [hashtable]::new([StringComparer]::Ordinal))
 
-    $classes = @{
-        alpha = 'a-zA-Z'; digit = '0-9'; alnum = 'a-zA-Z0-9'; upper = 'A-Z'; lower = 'a-z'; space = '\s'; blank = ' \t'
-        punct = '\p{P}\p{S}'; xdigit = '0-9A-Fa-f'; word = '\w'; cntrl = '\x00-\x1f\x7f'; graph = '\x21-\x7e'; print = '\x20-\x7e'
-    }
-    $regex = [Text.StringBuilder]::new('\A')
+    # Each tail of the glob is read once (Read holds them), so many brackets cost no more than their readings.
+    if ($Read.ContainsKey($Glob)) { return $Read[$Glob] }
+    $prefix = ''
     for ($i = 0; $i -lt $Glob.Length; $i++) {
         $c = $Glob[$i]
-        if ($c -eq '*') { [void] $regex.Append('.*'); continue }
-        if ($c -eq '?') { [void] $regex.Append('.'); continue }
-        if ($c -eq '\' -and $i + 1 -lt $Glob.Length) { $i++; [void] $regex.Append([regex]::Escape([string] $Glob[$i])); continue }
-        if ($c -ne '[') { [void] $regex.Append([regex]::Escape([string] $c)); continue }
-        # A bracket expression: an optional '!' or '^', then a ']' that comes first is literal, up to the next ']'.
-        $j = $i + 1
-        $negate = $j -lt $Glob.Length -and $Glob[$j] -in '!', '^'
-        if ($negate) { $j++ }
-        $set = [Text.StringBuilder]::new()
-        $first = $true
-        while ($j -lt $Glob.Length -and ($Glob[$j] -ne ']' -or $first)) {
-            $class = [regex]::Match($Glob.Substring($j), '\A\[:([a-z]+):\]')
-            if ($class.Success) {
-                if (-not $classes.ContainsKey($class.Groups[1].Value)) { return $null }
-                [void] $set.Append($classes[$class.Groups[1].Value]); $j += $class.Length
-            }
-            else { [void] $set.Append($(if ($Glob[$j] -eq '-') { '-' } else { [regex]::Escape([string] $Glob[$j]).Replace(']', '\]') })); $j++ }
-            $first = $false
-        }
-        if ($j -ge $Glob.Length) { [void] $regex.Append('\['); continue }
-        [void] $regex.Append('[').Append($(if ($negate) { '^' } else { '' })).Append($set.ToString()).Append(']')
-        $i = $j
+        if ($c -ne '[') { $prefix += switch ($c) { '*' { '.*' } '?' { '.' } default { [regex]::Escape([string] $c) } }; continue }
+        # Each later ']' could close this bracket, which then matches one character, or the '[' is literal; the rest
+        # of the glob is read again from there.
+        $tails = @(for ($k = $i + 1; $k -lt $Glob.Length; $k++) { if ($Glob[$k] -eq ']') { , @('.', ($k + 1)) } }) + , @('\[', ($i + 1))
+        $readings = @(foreach ($tail in $tails) {
+                foreach ($rest in ConvertFrom-BashGlob -Glob $Glob.Substring($tail[1]) -Read $Read) { "\A$prefix$($tail[0])$($rest.Substring(2, $rest.Length - 4))\z" }
+            }) | Select-Object -Unique
+        $Read[$Glob] = if (@($readings).Count -gt 64) { '\A.*\z' } else { $readings }
+        return $Read[$Glob]
     }
-    [void] $regex.Append('\z')
-    $regex.ToString()
+    $Read[$Glob] = "\A$prefix\z"
+    $Read[$Glob]
 }
 
 # The spellings of one resolved command that the ask rules are matched against: each of its word forms joined by
