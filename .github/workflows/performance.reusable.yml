@@ -227,7 +227,7 @@ jobs:
           dotnet tool install dotnet-ef --version $version --tool-path "$env:RUNNER_TEMP/dotnet-ef"
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $bundle = Join-Path $env:RUNNER_TEMP 'efbundle'
-          & "$env:RUNNER_TEMP/dotnet-ef/dotnet-ef" migrations bundle --project $env:MIGRATIONS --startup-project $env:PROJECT --configuration Release --output $bundle --force
+          & "$env:RUNNER_TEMP/dotnet-ef/dotnet-ef" migrations bundle --project $env:MIGRATIONS --startup-project $env:PROJECT --configuration Release --output $bundle --force --verbose
           if ($LASTEXITCODE -ne 0) { "::error::dotnet ef couldn't build the migration bundle."; exit 1 }
           & $bundle --connection ([Environment]::GetEnvironmentVariable("ConnectionStrings__$($env:CONNECTION_STRING_NAME)"))
           if ($LASTEXITCODE -ne 0) { "::error::The migration bundle failed."; exit 1 }
