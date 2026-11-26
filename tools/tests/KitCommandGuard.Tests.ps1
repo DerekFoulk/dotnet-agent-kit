@@ -433,6 +433,8 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         @{ Command = "Set-Variable p --force; git push origin `$p" }
         @{ Command = "Write-Output '--force' -OutVariable p; git push origin `$p" }
         @{ Command = "`$p = 'push'; git -C . `$p --force origin main" }
+        # The program ./*playwright.ps1 names, with a built subcommand that could be "install".
+        @{ Command = './fixtures/x/playwright.ps1 $a' }
         # A splat past a one-word rule, *Initialize-DevMachine*-I*: its program is its first literal part.
         @{ Command = "`$o = @{ Install = `$true }; ./tools/Initialize-DevMachine.ps1 @o" }
     ) {
@@ -464,6 +466,9 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
     }
 
     It 'leaves <Command> to the rules: its variable holds a value the input chose, and no ask rule names its command' -ForEach @(
+        # Review round 3: ./*playwright.ps1 install* names a playwright.ps1 script, not every ./ script.
+        @{ Command = './tools/Invoke-KitTests.ps1 -Path $p' }
+        @{ Command = '.\tools\Test-Scorecard.ps1 -Path $x' }
         @{ Command = "`$n = 92; Wait-PullRequest -Repository a/b -Number `$n -For Checks" }
         @{ Command = "`$m = 'fix: x'; git commit -m `$m" }
     ) {
