@@ -124,7 +124,7 @@ conditions:
         ) {
             $layer = if ($Basis -eq 'authority') { 'outside' } else { 'owner' }
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    sources = @($Source); basis = $Basis; layer = $layer; status = 'proposed'; quotes = New-QuotesFor $Source
+                    sources = @($Source); basis = $Basis; layer = $layer; status = 'accepted'; quotes = New-QuotesFor $Source
                 })
 
             Get-Problem | Should -BeNullOrEmpty
@@ -152,7 +152,7 @@ conditions:
 
     Context 'values' {
         It 'accepts layer <Layer> and status <Status>' -ForEach @(
-            @{ Layer = 'floor'; Status = 'proposed'; Basis = 'preference' }
+            @{ Layer = 'floor'; Status = 'accepted'; Basis = 'preference' }
             @{ Layer = 'owner'; Status = 'accepted'; Basis = 'preference' }
             @{ Layer = 'outside'; Status = 'retired'; Basis = 'authority' }
         ) {
@@ -167,6 +167,7 @@ conditions:
             @{ Field = 'layer'; Value = 'team' }
             @{ Field = 'basis'; Value = 'taste' }
             @{ Field = 'status'; Value = 'draft' }
+            @{ Field = 'status'; Value = 'proposed' }
         ) {
             New-StandardsFile -Rules @(New-Rule -Override @{ $Field = $Value })
 
@@ -266,7 +267,7 @@ conditions:
     Context 'basis' {
         It 'accepts an authority rule that cites a URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; layer = 'outside'; status = 'proposed'
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'
                     sources = @('https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01')
                     quotes = New-QuotesFor 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01'
                 })
@@ -276,7 +277,7 @@ conditions:
 
         It 'accepts an authority rule that cites an http URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; layer = 'outside'; status = 'proposed'; sources = @('http://example.com/guide, retrieved 2026-11-01')
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'; sources = @('http://example.com/guide, retrieved 2026-11-01')
                     quotes = New-QuotesFor 'http://example.com/guide, retrieved 2026-11-01'
                 })
 
@@ -291,7 +292,7 @@ conditions:
         ) {
             $url = 'https://example.com/guide, retrieved 2026-11-01'
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; layer = 'outside'; status = 'proposed'; sources = @($url, $Source); quotes = New-QuotesFor $url
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'; sources = @($url, $Source); quotes = New-QuotesFor $url
                 })
 
             $problems = @(Get-Problem)
@@ -306,7 +307,7 @@ conditions:
         ) {
             $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = $Basis; layer = $Layer; status = 'proposed'; sources = $sources; quotes = New-QuotesFor $sources
+                    basis = $Basis; layer = $Layer; status = 'accepted'; sources = $sources; quotes = New-QuotesFor $sources
                 })
 
             $problems = @(Get-Problem)
@@ -321,7 +322,7 @@ conditions:
         ) {
             $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = $Basis; layer = 'floor'; status = 'proposed'; sources = $sources; quotes = New-QuotesFor $sources
+                    basis = $Basis; layer = 'floor'; status = 'accepted'; sources = $sources; quotes = New-QuotesFor $sources
                 })
 
             Get-Problem | Should -BeNullOrEmpty
@@ -429,7 +430,7 @@ conditions:
             function New-AuthorityRule {
                 param([hashtable] $Override = @{}, [string[]] $Remove = @())
                 $rule = New-Rule -Override @{
-                    basis = 'authority'; layer = 'outside'; status = 'proposed'
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'
                     sources = @('https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17'); quotes = @(New-Quote)
                 }
                 foreach ($key in $Override.Keys) { $rule[$key] = $Override[$key] }
