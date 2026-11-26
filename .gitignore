@@ -489,7 +489,7 @@ $RECYCLE.BIN/
 # The sample API's local SQLite database
 sample/**/bookmarks.db*
 
-# Contract test output to review (see ContractTests.cs)
+# Contract test output to review (see tools/AppTests/Functional/OpenApiTests.cs)
 *.received.json
 
 # Each person's own working mode and Claude Code settings (Set-AgentMode.ps1, ADR-0035)

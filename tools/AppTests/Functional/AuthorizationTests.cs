@@ -13,10 +13,11 @@ namespace Kit.AppTests.Functional;
 /// </summary>
 public sealed class AuthorizationTests
 {
-    [Fact]
-    public void TheFallbackPolicyRequiresASignedInUser()
+    [Theory]
+    [EachHost]
+    public void TheFallbackPolicyRequiresASignedInUser(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
 
         AuthorizationPolicy? fallback = app.Services.GetRequiredService<IOptions<AuthorizationOptions>>().Value.FallbackPolicy;
 
@@ -25,16 +26,17 @@ public sealed class AuthorizationTests
     }
 
     // An endpoint added to the app's list is a decision, made in review, that the whole internet may call it.
-    [Fact]
-    public void OnlyTheEndpointsTheAppListsAllowAnonymousCallers()
+    [Theory]
+    [EachHost]
+    public void OnlyTheEndpointsTheAppListsAllowAnonymousCallers(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Development);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Development);
 
         IEnumerable<string?> anonymous = app.Services.GetRequiredService<EndpointDataSource>().Endpoints
             .OfType<RouteEndpoint>()
             .Where(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null)
             .Select(endpoint => endpoint.RoutePattern.RawText);
 
-        anonymous.Should().BeEquivalentTo(AppHost.AnonymousRoutes);
+        anonymous.Should().BeEquivalentTo(AppHost.Named(host).AnonymousRoutes);
     }
 }
