@@ -132,8 +132,9 @@ Describe 'Release configuration' {
 
             @($granted.Keys | Sort-Object) | Should -Be @($asked.Keys | Sort-Object)
             foreach ($scope in @($asked.Keys)) { $granted[$scope] | Should -Be $asked[$scope] -Because "the shared job asks for '${scope}: $($asked[$scope])'" }
-            @($caller.Yaml['permissions'].Keys) | Should -Be @('contents')
-            $caller.Yaml['permissions']['contents'] | Should -Be 'read'
+            # OpenSSF Scorecard's Token-Permissions check: nothing at the top level, where every job would get it.
+            $caller.Yaml.ContainsKey('permissions') | Should -BeTrue
+            @($caller.Yaml['permissions'].Keys) | Should -HaveCount 0
         }
     }
 
