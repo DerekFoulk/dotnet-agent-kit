@@ -212,7 +212,8 @@ Describe 'Performance tests (GAP-012)' {
     }
 
     # GAP-025, DAT-004, DAT-005: an app on SQL Server is load tested on SQL Server, with its schema applied the way a
-    # deployment applies it, by a migration bundle, before the app starts. Off unless the caller names a pin.
+    # deployment would, before the app starts, by dotnet ef: a migration bundle publishes for a runtime identifier,
+    # which the repo's locked restore refuses (ADR-0098). Off unless the caller names a pin.
     Context 'performance.reusable.yml: the load test''s SQL Server' {
         BeforeAll {
             $workflow = Read-Yaml '.github/workflows/performance.reusable.yml'
@@ -230,14 +231,14 @@ Describe 'Performance tests (GAP-012)' {
 
         It 'starts SQL Server and applies the migrations only when given a pin, before the app starts' {
             $start = Find-Step $load 'Start SQL Server (from the pin)'
-            $migrate = Find-Step $load 'Apply the migrations (migration bundle)'
+            $migrate = Find-Step $load 'Apply the migrations (dotnet ef)'
 
             $start | Should -HaveCount 1
             $migrate | Should -HaveCount 1
             $start[0]['if'] | Should -Be "inputs.load-test-sql-server-pin != ''"
             $migrate[0]['if'] | Should -Be "inputs.load-test-sql-server-pin != ''"
-            $names.IndexOf('Start SQL Server (from the pin)') | Should -BeLessThan $names.IndexOf('Apply the migrations (migration bundle)')
-            $names.IndexOf('Apply the migrations (migration bundle)') | Should -BeLessThan $names.IndexOf('Start the app (Release, Production)')
+            $names.IndexOf('Start SQL Server (from the pin)') | Should -BeLessThan $names.IndexOf('Apply the migrations (dotnet ef)')
+            $names.IndexOf('Apply the migrations (dotnet ef)') | Should -BeLessThan $names.IndexOf('Start the app (Release, Production)')
         }
 
         # SEC-001, SEC-002: the password is made on the runner for this run, masked before anything could print it, and
@@ -259,15 +260,16 @@ Describe 'Performance tests (GAP-012)' {
 
         # CRF-003: dotnet-ef at the version a tool manifest pins (the caller's, else the kit's), as the mutation job installs
         # Stryker.
-        It 'builds a migration bundle with the caller''s pinned dotnet-ef, or the kit''s, and applies it to the database' {
-            $migrate = Find-Step $load 'Apply the migrations (migration bundle)'
+        It 'applies the migrations with the caller''s pinned dotnet-ef, or the kit''s, to the app''s Release build' {
+            $migrate = Find-Step $load 'Apply the migrations (dotnet ef)'
             $migrate | Should -HaveCount 1
             $run = $migrate[0]['run']
 
             $run | Should -Match '\$tools\.''dotnet-ef''\.version'
             $run | Should -Match 'dotnet tool install dotnet-ef --version \$version --tool-path'
-            $run | Should -Match 'migrations bundle --project \$env:MIGRATIONS --startup-project \$env:PROJECT --configuration Release'
-            # The bundle reads the connection string from the job's environment, as the app does, so the password is on
+            $run | Should -Match 'database update --project \$env:MIGRATIONS --startup-project \$env:PROJECT --configuration Release --no-build'
+            $run | Should -Not -Match 'migrations bundle'
+            # dotnet ef reads the connection string from the job's environment, as the app does, so the password is on
             # no command line.
             $run | Should -Not -Match '--connection'
             # The caller's own dotnet-ef, matching its own EF Core, when its tool manifest has one; else the kit's.
