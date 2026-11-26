@@ -594,7 +594,7 @@ Describe 'New-KitApp run' {
             $lines = "$runError" -split "`r?`n"
             $lines | Should -Contain "Done: Export the kit's files at $commit, with the intake answers in docs/app-profile.md; Make the first commit; Create the private repo with the kit's merge settings; Push main."
             # The repo stays private: making it public comes after the ruleset.
-            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn on Dependabot alerts and security updates; Require actions pinned to a full commit SHA; Let GitHub Actions open the release PR; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Require CodeQL results to merge; Turn the commit hook on in the local copy."
+            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Add the 'release tags' ruleset; Turn on Dependabot alerts and security updates; Require actions pinned to a full commit SHA; Let GitHub Actions open the release PR; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Require CodeQL results to merge; Turn the commit hook on in the local copy."
             @($script:calls.Arguments) | Should -Not -Match '--method PATCH'
             (git -C $app config --local --get core.hooksPath) | Should -BeNullOrEmpty -Because 'no step runs after a failure'
         }

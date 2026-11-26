@@ -1,15 +1,17 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Creates an app repo on GitHub with the kit's files, settings and "main protection" ruleset (PR D2b, ADR-0033).
+    Creates an app repo on GitHub with the kit's files, settings, and "main protection" and "release tags" rulesets
+    (PR D2b, ADR-0033, ADR-0097).
 
 .DESCRIPTION
     Exports the app's files with Export-KitApp, commits them, creates the repo on your own GitHub account
-    with the kit's merge settings, pushes main, adds the ruleset (review threads resolved before merging),
+    with the kit's merge settings, pushes main, adds the ruleset (review threads resolved before merging) and the
+    one that keeps v* release tags from being moved or deleted,
     turns on Dependabot alerts and security updates, requires actions pinned to a full commit SHA, and lets GitHub
     Actions open the release PR (ADR-0096). The app
     is public, with secret scanning, push protection and a ruleset requiring CodeQL results to merge, unless
-    -Private says otherwise. The settings and both rulesets come from
+    -Private says otherwise. The settings and the rulesets come from
     templates/github at the same kit commit as the files.
 
 .EXAMPLE
@@ -163,7 +165,7 @@ function New-KitApp {
     if ($existing.Error -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Error)" }
     # The settings and ruleset come from the same kit commit as the files.
     $github = @{}
-    foreach ($file in 'repo.json', 'main-protection.json', 'actions.json', 'workflow-permissions.json', 'public.json', 'code-scanning.json') {
+    foreach ($file in 'repo.json', 'main-protection.json', 'release-tags.json', 'actions.json', 'workflow-permissions.json', 'public.json', 'code-scanning.json') {
         $text = git -C $KitRoot show "${commit}:templates/github/$file" 2>$null | Out-String
         if ($LASTEXITCODE -ne 0 -or -not $text.Trim()) {
             throw "The kit at $KitRef has no templates/github/$file, so it's older than this New-KitApp. Pass a newer -KitRef."
@@ -172,6 +174,7 @@ function New-KitApp {
     }
     $settingsText = $github['repo.json']
     $rulesetText = $github['main-protection.json']
+    $releaseTagsText = $github['release-tags.json']
     $actionsText = $github['actions.json']
     $workflowPermissionsText = $github['workflow-permissions.json']
     $publicText = $github['public.json']
@@ -213,6 +216,12 @@ function New-KitApp {
         # After the push: before it, the ruleset would reject the first push.
         [pscustomobject]@{ Description = "Add the 'main protection' ruleset"; Action = {
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $rulesetText | Out-Null
+            }
+        }
+        # Private or public, before the app's first release: nobody may move or delete a v* tag, which MinVer builds a
+        # version from (ADR-0097). Creating one stays open, so release-please can tag each release with the workflow's token.
+        [pscustomobject]@{ Description = "Add the 'release tags' ruleset"; Action = {
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/rulesets", '--method', 'POST', '--input', '-' -InputText $releaseTagsText | Out-Null
             }
         }
         # Private or public: security updates skip Dependabot's 7- and 14-day wait, so a known vulnerability gets
