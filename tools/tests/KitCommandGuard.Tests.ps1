@@ -508,8 +508,19 @@ Describe 'Get-CommandGuardDecision for a kit script that runs a command' {
         @{ Tool = 'PowerShell'; Command = './tools/Invoke-WithPlaywrightImage.ps1 -Debug -Solution x.slnx winget install foo' }
         @{ Tool = 'PowerShell'; Command = './tools/Invoke-WithPlaywright*.ps1 -Solution x.slnx -- git clean -fdx' }
         @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/Invoke-WithPlaywright*.ps1 -Solution x.slnx -- git clean -fdx' }
+        # Review round 3: pwsh runs its first argument that isn't an option as the script, -File or not.
+        @{ Tool = 'Bash'; Command = 'pwsh ./tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- git clean -fdx' }
+        @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile ./tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- git clean -fdx' }
     ) {
         Get-KitDecision -Tool $Tool -Command $Command | Should -Not -BeNullOrEmpty
+    }
+
+    It 'asks for <Command>, whose command the script runs takes a value built as it runs' -ForEach @(
+        # Review round 3: a variable or a method call in the command the script runs, as in any asked command.
+        @{ Command = './tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- git push origin $b' }
+        @{ Command = "./tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- git push origin '--forXe'.Replace('X','c')" }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*builds an argument*'
     }
 
     It 'asks for the command Invoke-WithPlaywrightImage.ps1 runs when the script is named by its Windows short name' {
