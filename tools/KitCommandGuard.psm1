@@ -771,19 +771,23 @@ function Get-CommandWordForm {
         $forms = @(, $words) + @(if ($inner.Count -and $inner.Count -ne $words.Count) { , [string[]] $inner })
         foreach ($form in $forms) {
             , $form
-            # A glob that matches several files is also tried with each one alone in its place, as the shell runs it
-            # where only that one matches: the guard's reading of a glob can match more files than the shell's.
+            # Each word's plain spelling, once: the program as Get-PlainPathWord names it, the rest as arguments.
+            $plainOf = @(for ($i = 0; $i -lt $form.Count; $i++) {
+                    $one = if ($i -eq 0) { @(Get-PlainPathWord -Words @($form[0]) -WorkingDirectory $WorkingDirectory) }
+                    else { @(Get-PlainPathWord -Words @('-', $form[$i]) -WorkingDirectory $WorkingDirectory | Select-Object -Skip 1) }
+                    , [string[]] $one
+                })
+            # A bracket glob that matches several files is also tried with each one alone in its place, as the shell
+            # runs it where only that one matches: the guard reads a bracket more widely than Bash (ConvertFrom-BashGlob).
+            # A '*' or '?' it reads as the shell does, so its files stay together, in the order the shell passes them.
             for ($i = 0; $i -lt $form.Count; $i++) {
-                $files = @(Get-PlainPathWord -Words @('-', $form[$i]) -WorkingDirectory $WorkingDirectory | Select-Object -Skip 1)
-                if ($files.Count -lt 2) { continue }
-                foreach ($file in $files) {
-                    $one = [string[]] $form.Clone()
-                    $one[$i] = $file
-                    , [string[]] @(Get-PlainPathWord -Words $one -WorkingDirectory $WorkingDirectory)
+                if (-not $form[$i].Contains('[') -or $plainOf[$i].Count -lt 2) { continue }
+                foreach ($file in $plainOf[$i]) {
+                    , [string[]] @(for ($j = 0; $j -lt $form.Count; $j++) { if ($j -eq $i) { $file } else { $plainOf[$j] } })
                 }
             }
-            $plain = @(Get-PlainPathWord -Words $form -WorkingDirectory $WorkingDirectory)
-            if (($plain -join "`0") -cne ($form -join "`0")) { , [string[]] $plain }
+            $plain = [string[]] @($plainOf | ForEach-Object { $_ })
+            if (($plain -join "`0") -cne ($form -join "`0")) { , $plain }
         }
     }
 }
@@ -804,7 +808,9 @@ function Get-PlainPathWord {
         }
         if ($word.Contains('/') -and $word.Contains('~') -and $WorkingDirectory) { $word = Expand-ShortPathName -Path $word -WorkingDirectory $WorkingDirectory }
         if ($word.Contains('/') -and $WorkingDirectory) {
-            $expanded = @(Expand-PathGlob -Path $word -WorkingDirectory $WorkingDirectory)
+            # Bash splits a glob only at '/', so there a '\' (quoted, in a bracket: [N\\]) is part of a name, not a folder.
+            $globs = @($word) + @(if ($Words[$i].Contains('\') -and $Words[$i] -match '[*?[]') { [regex]::Replace($Words[$i].Replace('/./', '/'), '(?<=.)/{2,}', '/') })
+            $expanded = @($globs | ForEach-Object { Expand-PathGlob -Path $_ -WorkingDirectory $WorkingDirectory } | Select-Object -Unique)
             if ($expanded.Count) { $expanded; continue }
         }
         if ($i -eq 0) {
