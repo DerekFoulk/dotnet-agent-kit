@@ -175,18 +175,28 @@ function New-FreshApp {
     $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers (Get-FreshAppAnswer -Intake $intake -Type $Type)
     $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name $probe.Name -KitCommit $commit
 
+    # Export-KitApp refuses a folder that isn't empty, and removes what it wrote when it fails itself.
+    $created = -not (Test-Path -LiteralPath $Destination)
     & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $probe.Name -Destination $Destination -KitRef $commit -KitRoot $KitRoot -AppProfile $profileText
     if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
-    New-KitAppFirstCommit -Path $Destination
+    try {
+        New-KitAppFirstCommit -Path $Destination
 
-    # The probe, as an app's first task would add its projects, after the first commit.
-    Copy-FreshAppProbe -KitRoot $KitRoot -Commit $commit -From $probe.From -Destination $Destination
-    $props = Join-Path $Destination 'Directory.Packages.props'
-    $kitProps = git -C $KitRoot show "${commit}:Directory.Packages.props" | Out-String
-    if ($LASTEXITCODE -ne 0) { throw "The kit at $commit has no Directory.Packages.props." }
-    $text = Add-FreshAppPackageGroup -PropsText ([IO.File]::ReadAllText($props)) -KitPropsText $kitProps -Label $probe.PackageGroups
-    [IO.File]::WriteAllText($props, $text, [Text.UTF8Encoding]::new($false))
-    [IO.File]::WriteAllText((Join-Path $Destination "$($probe.Name).slnx"), (Get-FreshAppSolutionText -Destination $Destination), [Text.UTF8Encoding]::new($false))
+        # The probe, as an app's first task would add its projects, after the first commit.
+        Copy-FreshAppProbe -KitRoot $KitRoot -Commit $commit -From $probe.From -Destination $Destination
+        $props = Join-Path $Destination 'Directory.Packages.props'
+        $kitProps = git -C $KitRoot show "${commit}:Directory.Packages.props" | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "The kit at $commit has no Directory.Packages.props." }
+        $text = Add-FreshAppPackageGroup -PropsText ([IO.File]::ReadAllText($props)) -KitPropsText $kitProps -Label $probe.PackageGroups
+        [IO.File]::WriteAllText($props, $text, [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $Destination "$($probe.Name).slnx"), (Get-FreshAppSolutionText -Destination $Destination), [Text.UTF8Encoding]::new($false))
+    }
+    catch {
+        # A half-written app would block the rerun; remove only what this run made, as Export-KitApp does.
+        if ($created) { Remove-Item -LiteralPath $Destination -Recurse -Force }
+        else { Get-ChildItem -LiteralPath $Destination -Force | Remove-Item -Recurse -Force }
+        throw
+    }
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
