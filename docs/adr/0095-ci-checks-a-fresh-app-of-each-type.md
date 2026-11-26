@@ -67,6 +67,7 @@ Accepted as recommended, in auto mode (the owner asked for the job on 2026-11-25
 
 - `tools/New-FreshApp.ps1` (kit only) and its tests; `.github/actions/exported-app`; `app-bundle` on `dotnet-ci.reusable.yml` and `app-checks.reusable.yml`; three jobs in `ci.yml`.
 - New-KitApp's first commit is one function, `New-KitAppFirstCommit`, which New-FreshApp calls too; Export-KitApp's pattern for a labelled package group is one function, `Get-KitPackageGroupPattern`.
+- The first runs caught two things, both fixed in this PR: the export job needs `powershell-yaml` for the app's own `Build-AgentRules.ps1`, and the probes' test hosts named the kit's folders (`sample/src`, `fixtures/WebUi/src`) for their content root, so every hosted test failed in an app. They now use `tools/AppTests/Hosting`'s `ProjectFolder` (ADR-0081's update of 2026-11-25), which apps get too.
 - GAP-049 narrows to the MAUI leg.
 - A kit change that breaks an app's required checks for web-api or blazor fails the kit's PR.
 
