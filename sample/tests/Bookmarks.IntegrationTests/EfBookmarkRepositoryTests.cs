@@ -140,6 +140,21 @@ public sealed class EfBookmarkRepositoryTests
     }
 
     [Fact]
+    public async Task TheLongestOwnerIdAndUrlSaveAndAreFound()
+    {
+        // SQL Server caps a nonclustered index key at 1,700 bytes, and the longest owner id and URL the domain allows
+        // take 4,606 as nvarchar, so an index on both would refuse this row.
+        const string Site = "https://example.com/";
+        string owner = new('o', Bookmark.MaxOwnerIdLength);
+        Uri url = new(Site + new string('a', Bookmark.MaxUrlLength - Site.Length));
+        Bookmark bookmark = Bookmark.Create(Guid.CreateVersion7(s_now), owner, url, "Long", s_now);
+
+        await FluentActions.Awaiting(() => SaveAsync(bookmark)).Should().NotThrowAsync();
+        await using BookmarksDbContext db = new(_options);
+        (await new EfBookmarkRepository(db).FindByUrlAsync(owner, url, TestContext.Current.CancellationToken))!.Id.Should().Be(bookmark.Id);
+    }
+
+    [Fact]
     public async Task ListReturnsEverySavedBookmark()
     {
         await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now));
