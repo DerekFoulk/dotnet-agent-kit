@@ -322,32 +322,32 @@ Each area in the front matter above has:
 `tools/Test-Scorecard.ps1 -Update` writes this table from the rules. A rule counts as **advisory** when every part of its `enforcement` is advisory: only the agents' instructions and code review stand behind it. A rule with any gate part counts as **checked by a tool**, even when another part is advisory or the gate runs only in the kit, so that number is an upper bound (ADR-0063). Proposed rules aren't in force yet, so they're counted apart. A rule can serve more than one area, so the rows add up to more than the overall line, which counts each rule once.
 
 <!-- scorecard-table:start -->
-| Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |
-|---|---|---|---|---|---|
-| Architecture | 29 | 9 | 20 | 0 | 4 |
-| Craft | 21 | 12 | 9 | 0 | 0 |
-| Proportion | 3 | 1 | 2 | 0 | 0 |
-| Code | 45 | 15 | 30 | 0 | 0 |
-| Tests | 14 | 5 | 9 | 0 | 4 |
-| Security | 55 | 14 | 41 | 0 | 2 |
-| Reliability | 40 | 6 | 34 | 0 | 1 |
-| Observability | 4 | 2 | 2 | 0 | 1 |
-| API design | 12 | 5 | 7 | 0 | 0 |
-| Performance | 25 | 3 | 22 | 0 | 0 |
-| Supply chain and build | 21 | 12 | 9 | 0 | 1 |
-| Delivery | 9 | 1 | 8 | 0 | 3 |
-| Docs and decisions | 6 | 3 | 3 | 0 | 0 |
-| UI and accessibility | 9 | 3 | 6 | 0 | 1 |
-| Process | 17 | 6 | 11 | 0 | 1 |
+| Area | Rules in force | Must | Should | Consider | Checked by a tool | Advisory | Open gaps |
+|---|---|---|---|---|---|---|---|
+| Architecture | 29 | 15 | 14 | 0 | 9 | 20 | 4 |
+| Craft | 21 | 15 | 6 | 0 | 12 | 9 | 0 |
+| Proportion | 3 | 3 | 0 | 0 | 1 | 2 | 0 |
+| Code | 45 | 21 | 24 | 0 | 15 | 30 | 0 |
+| Tests | 14 | 9 | 5 | 0 | 5 | 9 | 4 |
+| Security | 55 | 43 | 12 | 0 | 14 | 41 | 2 |
+| Reliability | 40 | 25 | 14 | 1 | 6 | 34 | 1 |
+| Observability | 4 | 4 | 0 | 0 | 2 | 2 | 1 |
+| API design | 12 | 6 | 6 | 0 | 5 | 7 | 0 |
+| Performance | 25 | 11 | 14 | 0 | 3 | 22 | 0 |
+| Supply chain and build | 21 | 14 | 7 | 0 | 12 | 9 | 1 |
+| Delivery | 9 | 6 | 3 | 0 | 1 | 8 | 3 |
+| Docs and decisions | 6 | 5 | 1 | 0 | 3 | 3 | 0 |
+| UI and accessibility | 9 | 4 | 5 | 0 | 3 | 6 | 1 |
+| Process | 17 | 17 | 0 | 0 | 6 | 11 | 1 |
 
-**Overall:** 292 rules in force, 88 checked by a tool and 204 advisory; 0 proposed; 18 open gaps.
+**Overall:** 292 rules in force (183 must, 108 should, 1 consider), 88 checked by a tool and 204 advisory; 18 open gaps.
 
-| Ruleset | Rules in force | Proposed rules |
-|---|---|---|
-| Core (every app type) | 168 | 0 |
-| ASP.NET Core Web API | 240 | 0 |
-| Blazor Web App | 259 | 0 |
-| .NET MAUI | 192 | 0 |
+| Ruleset | Rules in force | Must | Should | Consider |
+|---|---|---|---|---|
+| Core (every app type) | 168 | 113 | 54 | 1 |
+| ASP.NET Core Web API | 240 | 158 | 81 | 1 |
+| Blazor Web App | 259 | 165 | 93 | 1 |
+| .NET MAUI | 192 | 122 | 69 | 1 |
 
 Open gaps:
 
