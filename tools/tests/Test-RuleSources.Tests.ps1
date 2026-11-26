@@ -631,6 +631,44 @@ conditions:
             $problems[0].Message | Should -BeLike $Expected
         }
 
+        # Decision 8: a rule carries its source's conditions. A quote that limits itself to some apps needs a when, or a
+        # reason the phrase isn't a condition on which apps the rule holds for (a code condition, a description).
+        It 'reports an authority rule whose quote says <Text>, with no when' -ForEach @(
+            @{ Text = 'For a server-side app where most endpoints require authentication, set a fallback policy.' }
+            @{ Text = 'If your app requires cookies, avoid IHttpClientFactory.' }
+            @{ Text = 'Applications that connect to your database should expect transient errors.' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; sources = @($url)
+                    quotes = @([ordered]@{ source = 'https://example.com/guide'; retrieved = '2026-11-01'; text = $Text })
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*quote*condition about the app*when*unconditional*ADR-0090*"
+        }
+
+        It 'accepts an authority rule whose quote names a condition, with <Case>' -ForEach @(
+            @{ Case = 'a when'; Field = 'when'; Value = @('has-sign-in') }
+            @{ Case = 'a reason it holds for every app'; Field = 'unconditional'; Value = '"the app" is described, not a condition' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; sources = @($url); $Field = $Value
+                    quotes = @([ordered]@{ source = 'https://example.com/guide'; retrieved = '2026-11-01'; text = 'If your app requires cookies, avoid IHttpClientFactory.' })
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports unconditional on a rule that also has a when' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ when = @('has-sign-in'); unconditional = 'no condition' })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*unconditional*when*both*'
+        }
+
         It 'reports a conditions file that <Case>' -ForEach @(
             @{ Case = 'is missing'; Yaml = $null; Expected = '*conditions.yml*missing*' }
             @{ Case = 'lists no conditions'; Yaml = 'conditions: []'; Expected = '*conditions.yml*no conditions*' }
