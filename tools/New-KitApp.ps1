@@ -6,7 +6,8 @@
 .DESCRIPTION
     Exports the app's files with Export-KitApp, commits them, creates the repo on your own GitHub account
     with the kit's merge settings, pushes main, adds the ruleset (review threads resolved before merging),
-    turns on Dependabot alerts and security updates, and requires actions pinned to a full commit SHA. The app
+    turns on Dependabot alerts and security updates, requires actions pinned to a full commit SHA, and lets GitHub
+    Actions open the release PR (ADR-0096). The app
     is public, with secret scanning, push protection and a ruleset requiring CodeQL results to merge, unless
     -Private says otherwise. The settings and both rulesets come from
     templates/github at the same kit commit as the files.
@@ -162,7 +163,7 @@ function New-KitApp {
     if ($existing.Error -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Error)" }
     # The settings and ruleset come from the same kit commit as the files.
     $github = @{}
-    foreach ($file in 'repo.json', 'main-protection.json', 'actions.json', 'public.json', 'code-scanning.json') {
+    foreach ($file in 'repo.json', 'main-protection.json', 'actions.json', 'workflow-permissions.json', 'public.json', 'code-scanning.json') {
         $text = git -C $KitRoot show "${commit}:templates/github/$file" 2>$null | Out-String
         if ($LASTEXITCODE -ne 0 -or -not $text.Trim()) {
             throw "The kit at $KitRef has no templates/github/$file, so it's older than this New-KitApp. Pass a newer -KitRef."
@@ -172,6 +173,7 @@ function New-KitApp {
     $settingsText = $github['repo.json']
     $rulesetText = $github['main-protection.json']
     $actionsText = $github['actions.json']
+    $workflowPermissionsText = $github['workflow-permissions.json']
     $publicText = $github['public.json']
     $codeScanningText = $github['code-scanning.json']
 
@@ -225,6 +227,13 @@ function New-KitApp {
         # code (SUP-008), as the kit requires of itself (templates/github/actions.json).
         [pscustomobject]@{ Description = 'Require actions pinned to a full commit SHA'; Action = {
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/actions/permissions", '--method', 'PUT', '--input', '-' -InputText $actionsText | Out-Null
+            }
+        }
+        # Private or public: release-please opens the release PR with the workflow's own token, which GitHub allows only
+        # when GitHub Actions may create pull requests (ADR-0022, ADR-0096). Workflow tokens stay read-only by default;
+        # each workflow asks for what it needs (templates/github/workflow-permissions.json).
+        [pscustomobject]@{ Description = 'Let GitHub Actions open the release PR'; Action = {
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/actions/permissions/workflow", '--method', 'PUT', '--input', '-' -InputText $workflowPermissionsText | Out-Null
             }
         }
         # Public unless -Private: CI is free on public repos, and GitHub Free offers rulesets only there
