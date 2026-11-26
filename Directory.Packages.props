@@ -25,13 +25,6 @@
          dotnet ef needs in the startup project to scaffold and bundle migrations (DAT-002, DAT-004). Design moves with
          dotnet-ef in .config/dotnet-tools.json (tools/tests/Performance.Tests.ps1 checks they match). -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15" />
-    <!-- Roslyn's workspace packages, which the Design package pulls in, at the version transitive pinning holds
-         Microsoft.CodeAnalysis.CSharp to (Kit tools, below): each requires exactly its own Roslyn version, so they all
-         move together (dependabot.yml's roslyn group). -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="5.12.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.12.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.12.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
     <!-- Service defaults (ADR-0037, auto mode): named by Microsoft's health-check and OpenTelemetry docs. -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.15" />
@@ -50,6 +43,13 @@
   <ItemGroup Label="Kit tools">
     <!-- Parses and binds C# for the code shape check (CRF-011, ADR-0050): Microsoft's, from dotnet/roslyn. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.12.0" />
+    <!-- Roslyn's other packages at the same version: each requires exactly its own Roslyn version, and EF Core's Design
+         package (the sample's) pulls them in, so with CSharp pinned here they're pinned beside it; an app without this
+         group gets Design's own, matching set. They move together (dependabot.yml's roslyn group). -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="5.12.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.12.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.12.0" />
   </ItemGroup>
 
   <!-- Tests: the kit toolset (TST-005) and Microsoft's test pieces (owner approved, 2026-11-04). -->
