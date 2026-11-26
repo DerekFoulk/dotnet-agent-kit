@@ -177,6 +177,15 @@ Describe 'Get-BashCommand' {
 }
 
 Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
+    BeforeAll {
+        # A file's 8.3 short name, from cmd's %~snx, or nothing where Windows made none.
+        function Get-ShortName([string] $Path) {
+            if (-not $IsWindows) { return }
+            $short = cmd /c "for %I in (""$Path"") do @echo %~snxI"
+            if ($short -and $short -ne (Split-Path -Leaf $Path)) { $short }
+        }
+    }
+
     # Review round 1: each of these runs the asked script or program, yet its spelling matched no ask rule.
     It 'asks for <Tool> command <Command>, which names an asked script or program another way' -ForEach @(
         @{ Tool = 'PowerShell'; Command = './tools/./New-KitApp.ps1 -Name x' }
@@ -194,6 +203,18 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         @{ Tool = 'PowerShell'; Command = './tools/New-K*.ps1 -Name x' }
     ) {
         Get-KitDecision -Tool $Tool -Command $Command | Should -Not -BeNullOrEmpty
+    }
+
+    # Review of the rebased branch: Windows opens a file by its 8.3 short name too (NEW-KI~1.PS1), where the volume
+    # makes them. Skipped where there's none: on Linux and macOS, or on a volume with short names turned off.
+    It 'asks in <Tool> for <Script> named by its Windows short name, as in <Command>' -ForEach @(
+        @{ Tool = 'PowerShell'; Script = 'New-KitApp.ps1'; Command = './tools/{0} -Name x' }
+        @{ Tool = 'PowerShell'; Script = 'Set-AgentMode.ps1'; Command = './tools/{0} -Mode Review' }
+        @{ Tool = 'Bash'; Script = 'Set-AgentMode.ps1'; Command = 'pwsh -NoProfile -File ./tools/{0} -Mode Review' }
+    ) {
+        $short = Get-ShortName -Path (Join-Path $script:KitRoot 'tools' $Script)
+        if (-not $short) { Set-ItResult -Skipped -Because "$Script has no 8.3 short name here"; return }
+        Get-KitDecision -Tool $Tool -Command ($Command -f $short) | Should -Not -BeNullOrEmpty
     }
 
     It 'leaves a glob that expands to no asked script to the rules' {
