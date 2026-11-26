@@ -70,7 +70,7 @@ The owner set the goal on 2026-11-25 (quoted in Context) and asked for an existi
 - No doc promises a version number for future work any more: each release takes the number its commits earn. ADR-0050, ADR-0078 and ADR-0081 said the kit's move to a .NET tool would be "v0.2.0"; they now say a later release.
 - `tools/tests/ReleaseConfig.Tests.ps1` checks the shared workflow, both callers and the config, including that `bump-patch-for-minor-pre-major` stays unset. `tools/tests/Export-KitApp.Tests.ps1` and `tools/tests/New-KitApp.Tests.ps1` check the export and the new step.
 - Not verified: that a `Release-As` footer on a PR's own commit is read through a merge commit, as release-please reads the PR's other commits (ADR-0022); and an app's first release end to end (release PR, approved CI runs, tag, MinVer version). The first app release proves it, as the kit's release PR 10 will for the shared workflow in the kit.
-- Protecting the `v*` tags release-please makes is a separate change, a tag ruleset, which waits for the owner's yes.
+- Protecting the `v*` tags release-please makes is a separate change, a tag ruleset, which waits for the owner's yes (ADR-0097).
 
 ## Pillars affected
 
