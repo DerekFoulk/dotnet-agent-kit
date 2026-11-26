@@ -54,9 +54,12 @@ If you prefer another option that fits the answers above (PostgreSQL, a paid tie
 - **Cosmos DB free tier:** 1000 RU/s is shared by every container in the account, only one account per subscription can have it, and storage past 25 GB bills at the regular price.
 - **PostgreSQL free account:** it ends after 12 months, and then bills at the paid price without asking.
 
-## SQL Server and Azure SQL Database: one license entry
+## SQL Server and Azure SQL Database: two Microsoft licenses
 
-EF Core's SQL Server provider pulls in `Microsoft.Data.SqlClient`, which brings `Microsoft.Identity.Client.NativeInterop` (MSAL's broker, through `Azure.Identity`). Its Microsoft license terms allow any number of copies to be installed and used, but not shared or distributed, so the license check (SEC-005) fails it until the repo says so. A server app, which only its owner deploys, adds it to `.config/package-licenses.json` with that reason; the kit's own `.config/package-licenses.json` has the entry to copy, pinned to the license file's hash. An app that ships to users, such as a MAUI or desktop app, shouldn't use it. `Microsoft.Data.SqlClient.SNI.runtime` is in the kit's policy already: its terms make it distributable code (ADR-0098).
+EF Core's SQL Server provider pulls in `Microsoft.Data.SqlClient`, which brings two packages under Microsoft's own license terms rather than an open one. The kit's license policy (`tools/package-licenses.json`, SEC-005) allows both, pinned to their license files, so an app on this database passes the license check:
+
+- `Microsoft.Data.SqlClient.SNI.runtime`: its terms make it distributable code an app may ship.
+- `Microsoft.Identity.Client.NativeInterop` (MSAL's broker, through `Azure.Identity`): its terms allow any number of copies to be installed and used, but not shared or distributed. A server app, which only its owner deploys, only uses it. An app that ships to users, such as a MAUI or desktop app, must not ship it, so it doesn't reach SQL Server through SqlClient (ADR-0098).
 
 ## SQLite: set its busy timeout
 

@@ -37,6 +37,11 @@
       "reason": "Microsoft's license terms for the SqlClient SNI library: any number of copies to develop and test, and it's distributable code an app may ship, unmodified and not on its own; EF Core's SQL Server provider needs it (GAP-025)."
     },
     {
+      "id": "Microsoft.Identity.Client.NativeInterop",
+      "license": "file LICENSE sha256:0fe665c2ada5962fd01190ab5b2947b9a9d2c625a9f8225577441eb3256e14e3",
+      "reason": "Microsoft's license terms for MSAL's native broker interop: any number of copies may be installed and used, but not shared or distributed. Microsoft.Data.SqlClient brings it in (through Azure.Identity's broker), so every app on SQL Server or Azure SQL Database, the database guide's default, has it; a server app only uses it. An app shipped to users, such as a MAUI or desktop app, must not ship it (docs/database-guide.md, GAP-025)."
+    },
+    {
       "id": "FluentAssertions",
       "license": "file LICENSE sha256:17ac3bc2c02976982c7309ed66137805293a4fbb043a095b4479a5d631f476da",
       "commercialUse": false,
