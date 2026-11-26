@@ -68,11 +68,11 @@ function Get-AskedCommand {
 }
 
 # Whether a resolved command could be one the ask rules name (Get-AskedCommand): its program, by any of its spellings
-# (Get-PlainPathWord, with a short name or a glob resolved in WorkingDirectory), matches an asked program, and the rule names no subcommand, or one of the command's words is
-# that subcommand (a path by its last part: .../playwright.ps1), or the subcommand's place holds a word built when the
-# command runs. That place is the first word after the program that isn't an option, read both ways: with every
-# option taking no value (git --no-pager $p) and with each taking the next word (git -C . $p). A program that is
-# itself built could be anything.
+# (Get-PlainPathWord, with a short name or a glob resolved in WorkingDirectory), matches an asked program, and the rule
+# names no subcommand, or one of the command's words is that subcommand (a path by its last part: .../playwright.ps1),
+# or the subcommand's place holds a word built when the command runs. That place is the first word after the program
+# that isn't an option, read both ways: with every option taking no value (git --no-pager $p) and with each taking the
+# next word (git -C . $p). A program that is itself built could be anything.
 function Test-AskedCommand {
     param(
         [Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool,
