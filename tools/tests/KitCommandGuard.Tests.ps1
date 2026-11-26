@@ -255,6 +255,9 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         @{ Command = 'pwsh -NoProfile -File ./tools/[N'']'']ew-KitApp.ps1 -Name x' }
         @{ Command = 'pwsh -NoProfile -File ./tools/[[=N=]]ew-KitApp.ps1 -Name x' }
         @{ Command = 'pwsh -NoProfile -File ./tools/[[.S.]]et-AgentMode.ps1 -Mode Review' }
+        # Review round 7: Bash splits a pattern only at '/', so a quoted '\' is a member of the set, not a folder.
+        @{ Command = 'pwsh -NoProfile -File ./tools/[N\\]ew-KitApp.ps1 -Name x' }
+        @{ Command = 'pwsh -NoProfile -File ./tools/[S''\'']et-AgentMode.ps1 -Mode Review' }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*resolved this command*'
     }
@@ -264,6 +267,12 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         # must still be tried alone in the glob's place, where the rule expects it.
         $command = 'pwsh -NoProfile -File ./tools/[N][e][w]-[K][i][t][A][p][p].ps1 -Name x'
         Get-KitDecision -Tool 'Bash' -Command $command | Should -BeLike '*"pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name x"*'
+    }
+
+    It 'leaves a * glob whose first match, which the shell runs, is no asked script to the rules' {
+        # Review round 7: Bash runs Export-KitApp.ps1 here, with the others as its arguments; only a bracket glob,
+        # which the guard reads more widely than Bash, has each match tried alone.
+        Get-KitDecision -Tool 'Bash' -Command 'pwsh -NoProfile -File ./tools/*-K*.ps1 -Name x' | Should -BeNullOrEmpty
     }
 
     It 'leaves a glob that expands to no asked script to the rules' {
