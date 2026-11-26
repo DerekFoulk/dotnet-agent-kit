@@ -248,7 +248,7 @@ Describe 'Performance tests (GAP-012)' {
             $run = $start[0]['run']
 
             $start[0]['env']['PIN'] | Should -Be '${{ inputs.load-test-sql-server-pin }}'
-            $run | Should -Match "'\^FROM\s\+'"
+            $run | Should -Match "'\^FROM\\s\+'"
             $run | Should -Match 'RandomNumberGenerator'
             $run | Should -Match '-e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD '
             $run.IndexOf('::add-mask::$password') | Should -BeGreaterThan -1
