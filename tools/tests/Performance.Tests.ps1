@@ -266,7 +266,11 @@ Describe 'Performance tests (GAP-012)' {
             $run | Should -Match "\.tools\.'dotnet-ef'\.version"
             $run | Should -Match 'dotnet tool install dotnet-ef --version \$version --tool-path'
             $run | Should -Match 'migrations bundle --project \$env:MIGRATIONS --startup-project \$env:PROJECT --configuration Release'
-            $run | Should -Match '--connection'
+            # The bundle reads the connection string from the job's environment, as the app does, so the password is on
+            # no command line.
+            $run | Should -Not -Match '--connection'
+            # The caller's own dotnet-ef, matching its own EF Core, when its tool manifest has one; else the kit's.
+            $run | Should -Match "Join-Path \$env:GITHUB_WORKSPACE '\.config' 'dotnet-tools\.json'"
             $migrate[0]['env']['MIGRATIONS'] | Should -Be '${{ inputs.load-test-migrations-project }}'
         }
     }

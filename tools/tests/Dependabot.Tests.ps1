@@ -76,7 +76,8 @@ Describe 'Dependabot configuration' {
     # GAP-025: packages that only work at one another's versions move in one PR: Roslyn's, each of which requires
     # exactly its own version of the others, and EF Core's with the dotnet-ef tool that runs its design-time code.
     It 'moves <Group> together, in the kit''s NuGet updates' -ForEach @(
-        @{ Group = 'roslyn'; Patterns = @('Microsoft.CodeAnalysis*') }
+        # By name: a wildcard would also catch Microsoft.CodeAnalysis.BannedApiAnalyzers, on a version line of its own.
+        @{ Group = 'roslyn'; Patterns = @('Microsoft.CodeAnalysis.Common', 'Microsoft.CodeAnalysis.CSharp', 'Microsoft.CodeAnalysis.CSharp.Workspaces', 'Microsoft.CodeAnalysis.Workspaces.Common', 'Microsoft.CodeAnalysis.Workspaces.MSBuild') }
         @{ Group = 'ef-core'; Patterns = @('Microsoft.EntityFrameworkCore*', 'dotnet-ef') }
     ) {
         $nuget = @(Get-Update '.github/dependabot.yml' | Where-Object { $_['package-ecosystem'] -eq 'nuget' })
