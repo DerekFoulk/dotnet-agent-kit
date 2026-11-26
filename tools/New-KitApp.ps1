@@ -31,6 +31,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'KitIntake.psm1') -Force
+Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
 
 # Every GitHub call goes through here, using the owner's existing gh sign-in; the tests replace it.
 function Invoke-KitGh {
@@ -151,6 +152,10 @@ function New-KitApp {
     catch { throw "The intake answers in $intakePath aren't valid JSON: $($_.Exception.Message)" }
     if ($answers -isnot [Collections.IDictionary]) { throw "The intake answers in $intakePath aren't a JSON object." }
     $resolved = Resolve-KitIntakeAnswer -Intake (Get-KitIntake -Text $intakeText) -Answers $answers
+    # ADR-0090: the conditions a rule's when names, from the same kit commit, so the profile answers each one. A kit
+    # from before conditions.yml has none, and its profile no Conditions line.
+    $conditionsText = git -C $KitRoot show "${commit}:docs/standards/conditions.yml" 2>$null | Out-String
+    $conditions = if ($LASTEXITCODE -eq 0 -and $conditionsText.Trim()) { @((ConvertFrom-Yaml -Yaml $conditionsText)['conditions']) } else { @() }
     $signIn = Invoke-KitGh -Arguments 'auth', 'status'
     if ($signIn.ExitCode -ne 0) {
         throw "gh isn't signed in to GitHub: $($signIn.Error)`nSigning in is your step: run 'gh auth login', then run this again."
@@ -181,7 +186,7 @@ function New-KitApp {
         # The intake answers go to docs/app-profile.md, app-owned and out of the manifest. The export writes it before
         # it generates the rule files, which hold only the core ruleset and the app's app types' rulesets (ADR-0084).
         [pscustomobject]@{ Description = "Export the kit's files at $commit, with the intake answers in docs/app-profile.md"; Action = {
-                $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name $Name -KitCommit $commit
+                $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name $Name -KitCommit $commit -Conditions $conditions
                 & (Join-Path $PSScriptRoot 'Export-KitApp.ps1') -Name $Name -Destination $Destination -KitRef $KitRef -KitRoot $KitRoot -AppProfile $profileText
                 if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
             }
