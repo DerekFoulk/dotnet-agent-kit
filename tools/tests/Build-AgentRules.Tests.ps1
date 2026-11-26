@@ -6,9 +6,9 @@ Describe 'Build-AgentRules.ps1' {
         . (Join-Path $PSScriptRoot '..' 'Build-AgentRules.ps1')
 
         function New-Rule {
-            param([string] $Id, [string] $Statement, [string] $Status = 'accepted', [string[]] $Paths = @('**'), [object] $Scope = 'core')
+            param([string] $Id, [string] $Statement, [string] $Status = 'accepted', [string[]] $Paths = @('**'), [object] $Scope = 'core', [string] $Strength = 'must')
             [ordered]@{
-                id = $Id; statement = $Statement; why = 'Because.'; layer = 'owner'; status = $Status; strength = 'must'
+                id = $Id; statement = $Statement; why = 'Because.'; layer = 'owner'; status = $Status; strength = $Strength
                 sources = @('owner, 2026-11-01'); enforcement = 'advisory: test'; scope = $Scope; paths = $Paths
             }
         }
@@ -41,8 +41,8 @@ Describe 'Build-AgentRules.ps1' {
 
             $content | Should -Not -Match '^---'
             $content | Should -Match '(?m)^# Git$'
-            $content | Should -Match '(?m)^- GIT-001: Merge with a merge commit\.$'
-            $content | Should -Match '(?m)^- GIT-002: Use GitHub Flow\.$'
+            $content | Should -Match '(?m)^- GIT-001 \(must\): Merge with a merge commit\.$'
+            $content | Should -Match '(?m)^- GIT-002 \(must\): Use GitHub Flow\.$'
         }
 
         It 'writes each path-scoped rule to .claude/rules/TOPIC-ID.md with only its own paths' {
@@ -55,10 +55,10 @@ Describe 'Build-AgentRules.ps1' {
             $second = (Get-File '.claude/rules/code-style-sty-002.md').Content
 
             $first | Should -Match "(?s)^---`npaths:`n  - '\*\*/\*\.cs'`n  - '\.editorconfig'`n---`n"
-            $first | Should -Match '(?m)^- STY-001: Follow the baseline\.$'
+            $first | Should -Match '(?m)^- STY-001 \(must\): Follow the baseline\.$'
             $first | Should -Not -Match 'STY-002'
             $second | Should -Match "(?s)^---`npaths:`n  - '\*\*/\*\.cs'`n---`n"
-            $second | Should -Match '(?m)^- STY-002: Never use var\.$'
+            $second | Should -Match '(?m)^- STY-002 \(must\): Never use var\.$'
             Get-AgentRuleFile -StandardsPath $script:standards | Where-Object Path -EQ '.claude/rules/code-style.md' | Should -BeNullOrEmpty
         }
 
@@ -70,8 +70,8 @@ Describe 'Build-AgentRules.ps1' {
 
             $content = (Get-File '.claude/rules/testing-tst-003.md').Content
 
-            $content | Should -Match '(?m)^- TST-003: Every kind\.$'
-            $content | Should -Match '(?m)^- TST-007: Same paths\.$'
+            $content | Should -Match '(?m)^- TST-003 \(must\): Every kind\.$'
+            $content | Should -Match '(?m)^- TST-007 \(must\): Same paths\.$'
             Get-AgentRuleFile -StandardsPath $script:standards | Where-Object Path -EQ '.claude/rules/testing-tst-007.md' | Should -BeNullOrEmpty
         }
 
@@ -82,8 +82,8 @@ Describe 'Build-AgentRules.ps1' {
             (Get-File '.github/instructions/git-git-009.instructions.md').Content | Should -Match "(?m)^applyTo: 'docs/it''s/\*\*'$"
         }
 
-        It 'leaves out rules that are <Status>, because only accepted rules are in force' -ForEach @(
-            @{ Status = 'proposed' }, @{ Status = 'retired' }
+        It 'leaves out a retired rule, which isn''t in force' -ForEach @(
+            @{ Status = 'retired' }
         ) {
             New-StandardsFile -Topic 'git' -Title 'Git' -Rules @(
                 (New-Rule -Id 'GIT-001' -Statement 'In force.')
@@ -93,8 +93,16 @@ Describe 'Build-AgentRules.ps1' {
             (Get-File '.claude/rules/git.md').Content | Should -Not -Match 'GIT-003'
         }
 
-        It 'writes no file for a topic with no accepted rules' {
-            New-StandardsFile -Topic 'git' -Title 'Git' -Rules @((New-Rule -Id 'GIT-003' -Statement 'Proposed.' -Status 'proposed'))
+        # ADR-0090: every rule in force goes to the agents, should and consider rules too, each line with its strength, so
+        # an agent and the reviewer know how strongly it applies.
+        It 'writes a <Strength> rule with its strength' -ForEach @(@{ Strength = 'should' }, @{ Strength = 'consider' }) {
+            New-StandardsFile -Topic 'git' -Title 'Git' -Rules @((New-Rule -Id 'GIT-004' -Statement 'Advice.' -Strength $Strength))
+
+            (Get-File '.claude/rules/git.md').Content | Should -Match "(?m)^- GIT-004 \($Strength\): Advice\.$"
+        }
+
+        It 'writes no file for a topic with no rules in force' {
+            New-StandardsFile -Topic 'git' -Title 'Git' -Rules @((New-Rule -Id 'GIT-003' -Statement 'Retired.' -Status 'retired'))
 
             @(Get-AgentRuleFile -StandardsPath $script:standards).Count | Should -Be 0
         }
@@ -213,8 +221,8 @@ types:
 
             $content = (Get-AgentRuleFile -StandardsPath $script:standards -AppType 'maui' | Where-Object Path -EQ '.claude/rules/data.md').Content
 
-            $content | Should -Match '(?m)^- DAT-001: Everywhere\.$'
-            $content | Should -Match '(?m)^- DAT-003: MAUI and Blazor\.$'
+            $content | Should -Match '(?m)^- DAT-001 \(must\): Everywhere\.$'
+            $content | Should -Match '(?m)^- DAT-003 \(must\): MAUI and Blazor\.$'
             $content | Should -Not -Match 'DAT-002'
         }
 
@@ -255,6 +263,28 @@ types:
             { Get-AppType -RepoRoot $root -Known 'web-api', 'maui' } | Should -Throw "*silverlight*"
         }
 
+        # ADR-0090 decision 8: an app gets only the rules whose when holds for it; a condition its profile answers
+        # unknown, or doesn't answer, holds.
+        It 'leaves out a rule whose when the app profile answers no, and keeps it when the answer is <Answer>' -ForEach @(
+            @{ Answer = 'yes'; Line = 'Conditions: has-sign-in=yes' }
+            @{ Answer = 'unknown'; Line = 'Conditions: has-sign-in=unknown' }
+            @{ Answer = 'missing'; Line = 'Conditions: has-database=no' }
+        ) {
+            $signIn = New-Rule -Id 'SEC-008' -Statement 'Sign in with OIDC.'
+            $signIn['when'] = @('has-sign-in')
+            New-StandardsFile -Topic 'security' -Title 'Security' -Rules @($signIn)
+            $no = Join-Path $TestDrive "profile-$(New-Guid).md"
+            Set-Content -Path $no -Value "App types: web-api`nConditions: has-sign-in=no`n"
+            $other = Join-Path $TestDrive "profile-$(New-Guid).md"
+            Set-Content -Path $other -Value "App types: web-api`n$Line`n"
+
+            $without = Get-AgentRuleFile -StandardsPath $script:standards -AppProfile (Read-AppProfile -Path $no) | Where-Object Path -EQ '.claude/rules/security.md'
+            $with = (Get-AgentRuleFile -StandardsPath $script:standards -AppProfile (Read-AppProfile -Path $other) | Where-Object Path -EQ '.claude/rules/security.md').Content
+
+            $without | Should -BeNullOrEmpty
+            $with | Should -Match 'SEC-008'
+        }
+
         It 'gives a MAUI app no web-only rule when it builds' {
             Mock Write-Host {}
             $root = Join-Path $TestDrive "repo-$(New-Guid)"
@@ -282,19 +312,19 @@ types:
                 New-StandardsFile -Topic 'data' -Title 'Data' -Rules @(
                     (New-Rule -Id 'DAT-001' -Statement 'Everywhere.')
                     (New-Rule -Id 'DAT-002' -Statement 'Web only.' -Scope @('web-api'))
-                    (New-Rule -Id 'DAT-003' -Statement 'MAUI, proposed.' -Scope @('maui', 'web-api') -Status 'proposed')
+                    (New-Rule -Id 'DAT-003' -Statement 'MAUI, a should.' -Scope @('maui', 'web-api') -Strength 'should')
                     (New-Rule -Id 'DAT-004' -Statement 'Retired.' -Scope @('maui') -Status 'retired')
                 )
             }
         }
 
-        It 'fills a type''s block with every rule naming it, in force or proposed, and leaves the text around it alone' {
+        It 'fills a type''s block with every rule in force naming it, with its strength, and leaves the text around it alone' {
             New-RulesetStandards
             $text = "# ADR`n`n<!-- ruleset: maui -->`nold`n<!-- end ruleset -->`n`nAfter.`n"
 
             $filled = Update-RulesetBlock -Text $text -StandardsPath $script:standards
 
-            $filled | Should -Match '(?m)^- \[DAT-003\]\(\.\./standards/data\.md\) \(proposed\): MAUI, proposed\.$'
+            $filled | Should -Match '(?m)^- \[DAT-003\]\(\.\./standards/data\.md\) \(should\): MAUI, a should\.$'
             $filled | Should -Not -Match 'DAT-001|DAT-002|DAT-004|old'
             $filled | Should -Match '(?m)^After\.$'
         }
@@ -304,7 +334,7 @@ types:
 
             $filled = Update-RulesetBlock -Text "<!-- ruleset: core -->`n<!-- end ruleset -->`n" -StandardsPath $script:standards
 
-            $filled | Should -Match '(?m)^- \[DAT-001\]\(\.\./standards/data\.md\) \(accepted\): Everywhere\.$'
+            $filled | Should -Match '(?m)^- \[DAT-001\]\(\.\./standards/data\.md\) \(must\): Everywhere\.$'
             $filled | Should -Not -Match 'DAT-002|DAT-003'
         }
 
@@ -422,9 +452,9 @@ types:
 
             Invoke-AgentRuleBuild -RepoRoot $root | Should -Be 0
 
-            Get-Content -Raw (Join-Path $root 'AGENTS.md') | Should -Match '(?m)^- GIT-001: Merge\.$'
-            Get-Content -Raw (Join-Path $root 'templates' 'app' 'AGENTS.md') | Should -Match '(?m)^- GIT-001: Merge\.$'
-            Get-Content -Raw (Join-Path $root '.github' 'copilot-instructions.md') | Should -Match '(?m)^- GIT-001: Merge\.$'
+            Get-Content -Raw (Join-Path $root 'AGENTS.md') | Should -Match '(?m)^- GIT-001 \(must\): Merge\.$'
+            Get-Content -Raw (Join-Path $root 'templates' 'app' 'AGENTS.md') | Should -Match '(?m)^- GIT-001 \(must\): Merge\.$'
+            Get-Content -Raw (Join-Path $root '.github' 'copilot-instructions.md') | Should -Match '(?m)^- GIT-001 \(must\): Merge\.$'
             Get-Content -Raw (Join-Path $root 'AGENTS.md') | Should -Not -Match 'an old copy'
         }
 
@@ -602,7 +632,7 @@ types:
             $content = (Get-File '.github/instructions/git.instructions.md').Content
 
             $content | Should -Match "(?s)^---`napplyTo: '\*\*'`n---`n"
-            $content | Should -Match '(?m)^- GIT-001: Merge\.$'
+            $content | Should -Match '(?m)^- GIT-001 \(must\): Merge\.$'
         }
 
         It 'writes path-scoped rules with comma-separated applyTo globs' {
