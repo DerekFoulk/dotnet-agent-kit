@@ -37,7 +37,7 @@ The owner chose on 2026-11-25 to build this before v0.1.0, as an exception to th
 - **Reversibility:** easy.
 - **Risk:** red from day one for reasons unrelated to the kit's output.
 
-### Ways to run the app's checks, considered with option 1
+Ways to run the app's checks, considered with option 1:
 
 - **A script that mirrors the workflows' steps:** a second copy of every gate, which drifts from the one apps run. Rejected (CRF-003).
 - **`act` (runs workflows locally in containers):** a new tool, large runner images, and it doesn't resolve the kit's `$/` action references. Rejected.
