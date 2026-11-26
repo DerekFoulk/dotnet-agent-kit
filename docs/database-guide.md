@@ -56,10 +56,10 @@ If you prefer another option that fits the answers above (PostgreSQL, a paid tie
 
 ## SQL Server and Azure SQL Database: two Microsoft licenses
 
-EF Core's SQL Server provider pulls in `Microsoft.Data.SqlClient`, which brings two packages under Microsoft's own license terms rather than an open one. The kit's license policy (`tools/package-licenses.json`, SEC-005) allows both, pinned to their license files, so an app on this database passes the license check:
+EF Core's SQL Server provider pulls in `Microsoft.Data.SqlClient`, which brings two packages under Microsoft's own license terms rather than an open one:
 
-- `Microsoft.Data.SqlClient.SNI.runtime`: its terms make it distributable code an app may ship.
-- `Microsoft.Identity.Client.NativeInterop` (MSAL's broker, through `Azure.Identity`): its terms allow any number of copies to be installed and used, but not shared or distributed. A server app, which only its owner deploys, only uses it. An app that ships to users, such as a MAUI or desktop app, must not ship it, so it doesn't reach SQL Server through SqlClient (ADR-0098).
+- `Microsoft.Data.SqlClient.SNI.runtime`: its terms make it distributable code an app may ship. The kit's license policy (`tools/package-licenses.json`, SEC-005) allows it.
+- `Microsoft.Identity.Client.NativeInterop` (MSAL's broker, through `Azure.Identity`): its terms allow any number of copies to be installed and used, but not shared, published, distributed or transferred. So the license check fails it until the app says it only uses it. An app whose builds stay with its owner, such as a server app deployed from a private pipeline, adds it to its own `.config/package-licenses.json` with that reason; the kit's own file has the entry, pinned to the license file's hash. A public container image or binary release of the app, a build handed to a customer to host, or an app shipped to users (a MAUI or desktop app) distributes it, so such an app doesn't take the package. The deployment pipeline (GAP-015) decides what an app publishes (ADR-0098).
 
 ## SQLite: set its busy timeout
 
