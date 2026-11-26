@@ -13,6 +13,8 @@
     <ProjectReference Include="..\Bookmarks.ServiceDefaults\Bookmarks.ServiceDefaults.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <!-- Only for dotnet ef, which needs it in the startup project; never shipped (EF Core's migration docs). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

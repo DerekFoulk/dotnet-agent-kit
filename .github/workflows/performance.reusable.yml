@@ -2,7 +2,9 @@
 # - benchmarks: each BenchmarkDotNet project in the solution (its name ends in .Benchmarks), checked against the
 #   benchmark-budget.json beside it;
 # - load: a Locust load test of the app the caller names, started here in Release and Production, checked against the
-#   load-budget.json beside its locustfile. Off unless the caller sets load-test-project.
+#   load-budget.json beside its locustfile. Off unless the caller sets load-test-project. With load-test-sql-server-pin,
+#   the app runs on SQL Server in a container, its schema applied by a migration bundle first, as a deployment applies
+#   it (DAT-004, DAT-005).
 # Shared runners vary from run to run, so this is never a required check: budgets leave room for that, and a red run
 # is a finding to answer, not a flaky gate (ADR-0062).
 # Called by this repo's performance.yml, and by app repos pinned to the commit a kit release tag points to:
@@ -32,6 +34,20 @@ on:
         description: Issue a bearer token for this run with dotnet user-jwts, and hand it to Locust as LOAD_TEST_TOKEN.
         type: boolean
         default: false
+      load-test-sql-server-pin:
+        description: >-
+          A Dockerfile whose FROM line names the SQL Server image the app's database runs on. The job starts it, applies
+          the app's EF Core migrations with a migration bundle, and hands the app its connection string. Empty: no database.
+        type: string
+        default: ''
+      load-test-migrations-project:
+        description: The project with the app's DbContext and its migrations (dotnet ef --project); the startup project is load-test-project.
+        type: string
+        default: ''
+      load-test-connection-string:
+        description: The name of the app's connection string, under ConnectionStrings, which the job sets for the app and the bundle.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -165,6 +181,56 @@ jobs:
           }
           'Authentication__Schemes__Bearer__ValidIssuer=dotnet-user-jwts' >> $env:GITHUB_ENV
           "Authentication__Schemes__Bearer__ValidAudiences__0=$env:URL" >> $env:GITHUB_ENV
+
+      # DAT-005: the app's own engine, from the image its tests pin (by tag and digest, so Docker checks what it pulls).
+      # The sa password is made here for this run, masked before anything could print it, and handed to Docker by name,
+      # so it's on no command line; it dies with the runner. SQL Server's policy wants three of four character classes.
+      # The connection string goes into the job's environment, where dotnet ef (next step) and the app read it.
+      - name: Start SQL Server (from the pin)
+        if: inputs.load-test-sql-server-pin != ''
+        shell: pwsh
+        env:
+          PIN: ${{ inputs.load-test-sql-server-pin }}
+          CONNECTION_STRING_NAME: ${{ inputs.load-test-connection-string }}
+        run: |
+          if (-not $env:CONNECTION_STRING_NAME) { "::error::Set load-test-connection-string to the app's connection string name."; exit 1 }
+          $from = @(Get-Content -LiteralPath $env:PIN | Where-Object { $_ -match '^FROM\s+' })
+          if ($from.Count -ne 1) { "::error::$env:PIN needs one FROM line naming the SQL Server image."; exit 1 }
+          $image = ($from[0] -replace '^FROM\s+', '').Trim()
+          $password = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(16)) + 'a!'
+          "::add-mask::$password"
+          $env:MSSQL_SA_PASSWORD = $password
+          docker run --detach --name load-test-sql -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD --publish 1433:1433 $image
+          if ($LASTEXITCODE -ne 0) { "::error::Docker couldn't start $image."; exit 1 }
+          $ready = $false
+          foreach ($attempt in 1..60) {
+            if (docker logs load-test-sql 2>&1 | Select-String -SimpleMatch 'SQL Server is now ready for client connections') { $ready = $true; break }
+            Start-Sleep -Seconds 2
+          }
+          if (-not $ready) { "::error::SQL Server didn't say it was ready within two minutes; its log follows."; docker logs load-test-sql; exit 1 }
+          $connection = "Server=localhost,1433;Database=LoadTest;User Id=sa;Password=$password;TrustServerCertificate=True"
+          "ConnectionStrings__$($env:CONNECTION_STRING_NAME)=$connection" >> $env:GITHUB_ENV
+
+      # DAT-004: the schema comes from the app's migrations, applied by a migration bundle before the app takes traffic,
+      # as a deployment applies it. dotnet-ef is installed for this run only, at the version the kit's tool manifest
+      # pins, as the mutation job installs Stryker.
+      - name: Apply the migrations (migration bundle)
+        if: inputs.load-test-sql-server-pin != ''
+        shell: pwsh
+        env:
+          KIT: ${{ steps.kit.outputs.path }}
+          MIGRATIONS: ${{ inputs.load-test-migrations-project }}
+          CONNECTION_STRING_NAME: ${{ inputs.load-test-connection-string }}
+        run: |
+          if (-not $env:MIGRATIONS) { "::error::Set load-test-migrations-project to the project with the app's migrations."; exit 1 }
+          $version = (Get-Content -Raw -LiteralPath "$env:KIT/.config/dotnet-tools.json" | ConvertFrom-Json).tools.'dotnet-ef'.version
+          dotnet tool install dotnet-ef --version $version --tool-path "$env:RUNNER_TEMP/dotnet-ef"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $bundle = Join-Path $env:RUNNER_TEMP 'efbundle'
+          & "$env:RUNNER_TEMP/dotnet-ef/dotnet-ef" migrations bundle --project $env:MIGRATIONS --startup-project $env:PROJECT --configuration Release --output $bundle --force
+          if ($LASTEXITCODE -ne 0) { "::error::dotnet ef couldn't build the migration bundle."; exit 1 }
+          & $bundle --connection ([Environment]::GetEnvironmentVariable("ConnectionStrings__$($env:CONNECTION_STRING_NAME)"))
+          if ($LASTEXITCODE -ne 0) { "::error::The migration bundle failed."; exit 1 }
 
       # Microsoft: load test a Release build in Production, never Debug or Development, which log more (ASP.NET Core
       # load/stress testing). /health is ServiceDefaults' readiness endpoint (OPS-002): up once the app can serve.
