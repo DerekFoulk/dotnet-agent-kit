@@ -176,7 +176,7 @@ function New-KitApp {
     $existing = Invoke-KitGh -Arguments 'api', "repos/$repo"
     if ($existing.ExitCode -eq 0) { throw "$repo already exists. New-KitApp only creates new repos, so it never changes an existing one's settings." }
     if ($existing.Error -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Error)" }
-    # The settings and ruleset come from the same kit commit as the files.
+    # The settings and rulesets come from the same kit commit as the files.
     $github = @{}
     foreach ($file in 'repo.json', 'main-protection.json', 'release-tags.json', 'actions.json', 'workflow-permissions.json', 'public.json', 'code-scanning.json') {
         $text = git -C $KitRoot show "${commit}:templates/github/$file" 2>$null | Out-String

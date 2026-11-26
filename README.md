@@ -532,10 +532,18 @@ Prepared 2026-11-25, not applied: applying a ruleset is the owner's step (ADR-00
 |---|---|---|
 | "release tags" ruleset (`templates/github/release-tags.json`) | Tags matching `refs/tags/v*`: restrict updates and deletions, no bypass; creations not restricted | A release tag can't be moved or deleted, so a version and an app's kit pin keep meaning one commit (ADR-0031); release-please still creates each new tag. Every app `New-KitApp` creates gets the same ruleset |
 
-To apply it, from a kit checkout on `main`:
+To apply it, from a kit checkout on `main`: check it isn't there yet (this prints nothing), post it, then check it's on (this prints `active`):
+
+```powershell
+gh api repos/DerekFoulk/dotnet-agent-kit/rulesets --jq '.[] | select(.name == "release tags") | .enforcement'
+```
 
 ```powershell
 gh api --method POST repos/DerekFoulk/dotnet-agent-kit/rulesets --input templates/github/release-tags.json
+```
+
+```powershell
+gh api repos/DerekFoulk/dotnet-agent-kit/rulesets --jq '.[] | select(.name == "release tags") | .enforcement'
 ```
 
 Then move its row to an "Applied" table with the date. Applied before release PR 10 merges, that release proves release-please can still create its tag; if it can't, ADR-0097 says how to recover.
