@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
-using Kit.AppTests.Functional;
 using Bookmarks.TestDatabase;
+using Kit.AppTests.Functional;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
