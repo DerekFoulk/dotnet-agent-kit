@@ -32,6 +32,11 @@
       "reason": "The Microsoft .NET Library license: any number of copies, to design, develop and test your applications, commercial ones included; the coverage gate's collector (TST-004)."
     },
     {
+      "id": "Microsoft.Data.SqlClient.SNI.runtime",
+      "license": "file LICENSE.txt sha256:9335e8bad875dd7be4eebd55d2335eb6433d1cea61aadb3817af7807bef8932a",
+      "reason": "Microsoft's license terms for the SqlClient SNI library: any number of copies to develop and test, and it's distributable code an app may ship, unmodified and not on its own; EF Core's SQL Server provider needs it (GAP-025)."
+    },
+    {
       "id": "FluentAssertions",
       "license": "file LICENSE sha256:17ac3bc2c02976982c7309ed66137805293a4fbb043a095b4479a5d631f476da",
       "commercialUse": false,
