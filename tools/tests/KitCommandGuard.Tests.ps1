@@ -284,6 +284,16 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         Get-CommandGuardDecision -Tool 'Bash' -Command 'ls ./many/[a-z]*' -AskRules @() -WorkingDirectory $TestDrive | Should -BeLike '*more than 200*'
     }
 
+    It 'asks for bracket globs that together match more than 200 files in one command' {
+        # Review round 9: the cost grows with all the files the command's bracket globs try, not one glob's.
+        foreach ($name in 'a', 'b') {
+            $folder = Join-Path $TestDrive $name
+            New-Item -ItemType Directory -Path $folder | Out-Null
+            1..101 | ForEach-Object { New-Item -ItemType File -Path (Join-Path $folder "f$_.txt") | Out-Null }
+        }
+        Get-CommandGuardDecision -Tool 'Bash' -Command 'ls ./a/[a-z]* ./b/[a-z]*' -AskRules @() -WorkingDirectory $TestDrive | Should -BeLike '*more than 200*'
+    }
+
     It 'leaves a glob that expands to no asked script to the rules' {
         Get-KitDecision -Tool 'Bash' -Command 'ls ./tools/*.ps1' | Should -BeNullOrEmpty
     }
