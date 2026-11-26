@@ -238,11 +238,11 @@ Describe 'New-KitApp run' {
             (git -C $remote log -1 --format=%s main) | Should -Match '^chore: start from dotnet-agent-kit'
 
             $writes = Get-WriteCall
-            @($writes.Arguments)[0..1] | Should -Be @('api user/repos --method POST --input -', 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -')
+            @($writes.Arguments)[0..2] | Should -Be @('api user/repos --method POST --input -', 'api repos/fixture-owner/Contoso.Orders/actions/permissions/workflow --method PUT --input -', 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -')
             ($writes[0].Input | ConvertFrom-Json).name | Should -Be 'Contoso.Orders'
             ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
-            $writes[1].Pushed | Should -BeTrue -Because 'the ruleset would reject the first push'
-            ($writes[1].Input | ConvertFrom-Json).name | Should -Be 'main protection'
+            $writes[2].Pushed | Should -BeTrue -Because 'the ruleset would reject the first push'
+            ($writes[2].Input | ConvertFrom-Json).name | Should -Be 'main protection'
         }
 
         # The owner, 2026-11-09 (ADR-0041): Dependabot security updates skip the 7- and 14-day wait version
@@ -251,11 +251,11 @@ Describe 'New-KitApp run' {
         It 'then turns on Dependabot alerts and security updates, private or public' {
             @((Get-WriteCall).Arguments) | Should -Be @(
                 'api user/repos --method POST --input -'
+                'api repos/fixture-owner/Contoso.Orders/actions/permissions/workflow --method PUT --input -'
                 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -'
                 'api repos/fixture-owner/Contoso.Orders/vulnerability-alerts --method PUT'
                 'api repos/fixture-owner/Contoso.Orders/automated-security-fixes --method PUT'
                 'api repos/fixture-owner/Contoso.Orders/actions/permissions --method PUT --input -'
-                'api repos/fixture-owner/Contoso.Orders/actions/permissions/workflow --method PUT --input -'
             )
         }
 
@@ -268,6 +268,8 @@ Describe 'New-KitApp run' {
             $settings = $workflow[0].Input | ConvertFrom-Json
             $settings.can_approve_pull_request_reviews | Should -BeTrue
             $settings.default_workflow_permissions | Should -Be 'read'
+            # Review 1: the push starts release.yml, whose release-please would be refused if the setting came later.
+            $workflow[0].Pushed | Should -BeFalse -Because 'the first push runs release.yml, which opens the release PR'
         }
 
         # The owner, 2026-11-10: new apps get the kit's merge protections. A workflow may use an action only at
@@ -321,18 +323,18 @@ Describe 'New-KitApp run' {
             $writes = Get-WriteCall
             @($writes.Arguments) | Should -Be @(
                 'api user/repos --method POST --input -'
+                'api repos/fixture-owner/Public.Orders/actions/permissions/workflow --method PUT --input -'
                 'api repos/fixture-owner/Public.Orders/rulesets --method POST --input -'
                 'api repos/fixture-owner/Public.Orders/vulnerability-alerts --method PUT'
                 'api repos/fixture-owner/Public.Orders/automated-security-fixes --method PUT'
                 'api repos/fixture-owner/Public.Orders/actions/permissions --method PUT --input -'
-                'api repos/fixture-owner/Public.Orders/actions/permissions/workflow --method PUT --input -'
                 'api repos/fixture-owner/Public.Orders --method PATCH --input -'
                 'api repos/fixture-owner/Public.Orders --method PATCH --input -'
                 'api repos/fixture-owner/Public.Orders/actions/permissions/fork-pr-contributor-approval --method PUT --input -'
                 'api repos/fixture-owner/Public.Orders/rulesets --method POST --input -'
             )
             ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
-            ($writes[1].Pushed) | Should -BeTrue
+            ($writes[2].Pushed) | Should -BeTrue
             ($writes[6].Input | ConvertFrom-Json).private | Should -BeFalse
         }
 
@@ -565,9 +567,9 @@ Describe 'New-KitApp run' {
             "$runError" | Should -Match "Add the 'main protection' ruleset failed: .*HTTP 422"
             # Exactly: a failed step listed as done would tell the owner main is protected when it isn't.
             $lines = "$runError" -split "`r?`n"
-            $lines | Should -Contain "Done: Export the kit's files at $commit, with the intake answers in docs/app-profile.md; Make the first commit; Create the private repo with the kit's merge settings; Push main."
+            $lines | Should -Contain "Done: Export the kit's files at $commit, with the intake answers in docs/app-profile.md; Make the first commit; Create the private repo with the kit's merge settings; Let GitHub Actions open the release PR; Push main."
             # The repo stays private: making it public comes after the ruleset.
-            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn on Dependabot alerts and security updates; Require actions pinned to a full commit SHA; Let GitHub Actions open the release PR; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Require CodeQL results to merge; Turn the commit hook on in the local copy."
+            $lines | Should -Contain "Left: Add the 'main protection' ruleset; Turn on Dependabot alerts and security updates; Require actions pinned to a full commit SHA; Make the repo public; Turn on secret scanning and push protection, and require approval for fork PRs; Require CodeQL results to merge; Turn the commit hook on in the local copy."
             @($script:calls.Arguments) | Should -Not -Match '--method PATCH'
             (git -C $app config --local --get core.hooksPath) | Should -BeNullOrEmpty -Because 'no step runs after a failure'
         }
