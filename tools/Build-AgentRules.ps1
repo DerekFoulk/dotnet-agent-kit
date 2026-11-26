@@ -260,6 +260,31 @@ function Get-RuleStatusFile {
     [pscustomobject]@{ Path = "$folder/rule-status.json"; Content = ((ConvertTo-Json -InputObject $sorted) -replace "`r`n", "`n") + "`n" }
 }
 
+# ADR-0090: every rule's strength, scope and when, as JSON, so a check can tell how its rule applies: a must rule's
+# findings fail, a should rule's warn, and a rule whose scope or when doesn't fit the app is skipped. A retired rule's
+# strength is "retired". JSON, and beside the scripts that read it (KitRuleStatus.psm1), for the reasons above.
+function Get-RuleStrengthFile {
+    param([Parameter(Mandatory)] [string] $RepoRoot, [Parameter(Mandatory)] [string] $StandardsPath)
+
+    $entries = @{}
+    foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
+        foreach ($rule in @((Read-FrontMatter -Path $file.FullName)['rules'])) {
+            $id = "$($rule['id'])"
+            if ($entries.ContainsKey($id)) { throw "Rule $id is in docs/standards more than once; each id names one rule." }
+            $strength = if ("$($rule['status'])" -eq 'retired') { 'retired' } else { "$($rule['strength'])" }
+            $when = @(@(if ($rule.Contains('when')) { $rule['when'] }) | Where-Object { $_ } | ForEach-Object { "$_" })
+            $entries[$id] = [ordered]@{ strength = $strength; scope = @(Get-RuleScope -Rule $rule); when = $when }
+        }
+    }
+    [string[]] $ids = @($entries.Keys)
+    [Array]::Sort($ids, [StringComparer]::Ordinal)
+    $sorted = [ordered]@{}
+    foreach ($id in $ids) { $sorted[$id] = $entries[$id] }
+
+    $folder = if (Test-Path -LiteralPath (Join-Path $RepoRoot '.kit' 'tools') -PathType Container) { '.kit/tools' } else { 'tools' }
+    [pscustomobject]@{ Path = "$folder/rule-strength.json"; Content = ((ConvertTo-Json -InputObject $sorted -Depth 3) -replace "`r`n", "`n") + "`n" }
+}
+
 # Visual Studio reads .github/copilot-instructions.md but doesn't document reading AGENTS.md, so the
 # repository instructions are a generated copy of AGENTS.md: one source, no drift.
 # -Text is AGENTS.md with its rule blocks already filled, so the copy matches what the build writes.
@@ -319,6 +344,7 @@ function Invoke-AgentRuleBuild {
         }
         $expected += Get-CopilotInstructionsFile -Text $agentsText
         $expected += Get-RuleStatusFile -RepoRoot $RepoRoot -StandardsPath $standardsPath
+        $expected += Get-RuleStrengthFile -RepoRoot $RepoRoot -StandardsPath $standardsPath
         # An app made before ADR-0064 has no docs/code-review.md until the kit sync brings it.
         $codeReview = Join-Path $RepoRoot 'docs' 'code-review.md'
         if (Test-Path -LiteralPath $codeReview) { $expected += Get-CodeReviewInstructionsFile -SourcePath $codeReview }

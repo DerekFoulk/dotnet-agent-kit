@@ -1,0 +1,2189 @@
+{
+  "API-001": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-002": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-003": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-004": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-005": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-006": {
+    "strength": "should",
+    "scope": [
+      "web-api"
+    ],
+    "when": []
+  },
+  "API-007": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-008": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-009": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-010": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-011": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-012": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "API-013": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ARC-001": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ARC-002": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ARC-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-004": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-006": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-007": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-008": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-009": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-010": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "ARC-011": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "ARC-012": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-013": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-014": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "ARC-015": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-016": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ARC-017": {
+    "strength": "must",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "ARC-018": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ARC-019": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "ASP-001": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-002": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-003": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-004": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-005": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-006": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-007": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-008": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-009": {
+    "strength": "must",
+    "scope": [
+      "web-api"
+    ],
+    "when": []
+  },
+  "ASP-010": {
+    "strength": "must",
+    "scope": [
+      "web-api"
+    ],
+    "when": []
+  },
+  "ASP-011": {
+    "strength": "must",
+    "scope": [
+      "web-api"
+    ],
+    "when": []
+  },
+  "ASP-012": {
+    "strength": "must",
+    "scope": [
+      "web-api"
+    ],
+    "when": []
+  },
+  "ASP-015": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-016": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-017": {
+    "strength": "must",
+    "scope": [
+      "web-api"
+    ],
+    "when": [
+      "uses-grpc"
+    ]
+  },
+  "ASP-018": {
+    "strength": "should",
+    "scope": [
+      "web-api"
+    ],
+    "when": [
+      "uses-grpc"
+    ]
+  },
+  "ASP-019": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "uses-signalr"
+    ]
+  },
+  "ASP-020": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "uses-signalr"
+    ]
+  },
+  "ASP-021": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": [
+      "has-sign-in"
+    ]
+  },
+  "ASP-023": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "ASP-024": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-001": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-002": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-003": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-004": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-005": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-006": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-007": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-008": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-009": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-010": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": [
+      "has-server-interactivity"
+    ]
+  },
+  "BLZ-011": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": [
+      "has-server-interactivity"
+    ]
+  },
+  "BLZ-012": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-013": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-014": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-015": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": [
+      "uses-aspnet-core-identity"
+    ]
+  },
+  "BLZ-016": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-017": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-018": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-019": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-020": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-021": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-022": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-023": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-024": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "BLZ-025": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": [
+      "localizes-by-user-culture"
+    ]
+  },
+  "BLZ-026": {
+    "strength": "must",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "COM-001": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "COM-002": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "COM-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "COM-004": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "COM-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "COM-006": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "COM-007": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-001": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-002": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-004": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-006": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-007": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-008": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-009": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-010": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-011": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-012": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-013": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "CRF-014": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-015": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-016": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-017": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-018": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-019": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-020": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CRF-021": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-001": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-002": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-003": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-004": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-005": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-006": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-007": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-008": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-009": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-010": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-011": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-012": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-013": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-014": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-015": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-016": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-017": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-018": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-019": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-020": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-021": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-022": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-023": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-024": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-025": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-026": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-027": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-028": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-029": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-030": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-031": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-032": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-033": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": [
+      "publishes-native-aot"
+    ]
+  },
+  "CS-034": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": [
+      "ships-nuget-package"
+    ]
+  },
+  "CS-035": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": [
+      "ships-nuget-package"
+    ]
+  },
+  "CS-036": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-038": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "CS-039": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-001": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-002": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-server-database",
+      "has-relational-database"
+    ]
+  },
+  "DAT-003": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-server-database"
+    ]
+  },
+  "DAT-004": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": [
+      "has-database"
+    ]
+  },
+  "DAT-005": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-server-database"
+    ]
+  },
+  "DAT-006": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-cloud-database"
+    ]
+  },
+  "DAT-007": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-server-database"
+    ]
+  },
+  "DAT-008": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": [
+      "has-database"
+    ]
+  },
+  "DAT-009": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-010": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-011": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-012": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-013": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "DAT-014": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "DAT-015": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-database"
+    ]
+  },
+  "DAT-016": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-017": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-018": {
+    "strength": "must",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "DAT-019": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-020": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-021": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-022": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-023": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DAT-024": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DOD-001": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DOD-002": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DOD-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DOD-004": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DOD-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "DOD-006": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "GIT-001": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "GIT-002": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "GIT-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "GIT-004": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "GIT-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "HST-001": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "HST-002": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "HST-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "HST-004": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "HST-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "MAU-001": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-002": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-004": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-005": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-006": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-007": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-008": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-009": {
+    "strength": "must",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-010": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-011": {
+    "strength": "must",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-012": {
+    "strength": "must",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-013": {
+    "strength": "must",
+    "scope": [
+      "maui"
+    ],
+    "when": [
+      "has-sign-in"
+    ]
+  },
+  "MAU-014": {
+    "strength": "must",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-015": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "MAU-016": {
+    "strength": "must",
+    "scope": [
+      "maui"
+    ],
+    "when": [
+      "publishes-native-aot"
+    ]
+  },
+  "NET-002": {
+    "strength": "consider",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "OPS-001": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-002": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-003": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-004": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-005": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-006": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-007": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-008": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "OPS-009": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-long-running-operations"
+    ]
+  },
+  "OPS-010": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-011": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "OPS-012": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-013": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-015": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": [
+      "publishes-trimmed"
+    ]
+  },
+  "OPS-016": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "OPS-017": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "SEC-001": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SEC-002": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SEC-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SEC-004": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SEC-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": [
+      "is-commercial"
+    ]
+  },
+  "SEC-006": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": [
+      "is-public-repo"
+    ]
+  },
+  "SEC-007": {
+    "strength": "retired",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "SEC-008": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-sign-in"
+    ]
+  },
+  "SEC-009": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-sign-in"
+    ]
+  },
+  "SEC-010": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "SEC-011": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "SEC-012": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SEC-013": {
+    "strength": "must",
+    "scope": [
+      "web-api"
+    ],
+    "when": []
+  },
+  "SEC-014": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SEC-015": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SEC-016": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SEC-017": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": [
+      "has-sign-in"
+    ]
+  },
+  "SEC-018": {
+    "strength": "must",
+    "scope": [
+      "web-api"
+    ],
+    "when": [
+      "has-sign-in"
+    ]
+  },
+  "SEC-019": {
+    "strength": "must",
+    "scope": [
+      "web-api"
+    ],
+    "when": [
+      "has-sign-in"
+    ]
+  },
+  "SEC-020": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "SEC-021": {
+    "strength": "must",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "SEC-022": {
+    "strength": "should",
+    "scope": [
+      "web-api",
+      "blazor"
+    ],
+    "when": []
+  },
+  "SEC-023": {
+    "strength": "must",
+    "scope": [
+      "web-api"
+    ],
+    "when": []
+  },
+  "SEC-024": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SEC-025": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-001": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-002": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-004": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-006": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-007": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-008": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-009": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-010": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-011": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-012": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-013": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-014": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-015": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-016": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-017": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "STY-018": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-001": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-002": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-004": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-006": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-007": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-008": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-009": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-010": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": [
+      "is-public-repo"
+    ]
+  },
+  "SUP-011": {
+    "strength": "should",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  },
+  "SUP-012": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-013": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-014": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-015": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-016": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-017": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "SUP-018": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-001": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-002": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-003": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-004": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-005": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-006": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-007": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-008": {
+    "strength": "retired",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-009": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-010": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-011": {
+    "strength": "must",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "TST-012": {
+    "strength": "should",
+    "scope": [
+      "core"
+    ],
+    "when": []
+  },
+  "UI-001": {
+    "strength": "should",
+    "scope": [
+      "blazor",
+      "maui"
+    ],
+    "when": []
+  },
+  "UI-002": {
+    "strength": "should",
+    "scope": [
+      "blazor"
+    ],
+    "when": []
+  },
+  "UI-003": {
+    "strength": "should",
+    "scope": [
+      "blazor",
+      "maui"
+    ],
+    "when": []
+  },
+  "UI-004": {
+    "strength": "must",
+    "scope": [
+      "maui"
+    ],
+    "when": []
+  }
+}
