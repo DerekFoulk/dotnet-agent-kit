@@ -829,10 +829,57 @@ function Expand-PathGlob {
     if ($leaf -notmatch '[*?[]' -or $folder -match '[*?[]') { return }
     $directory = Join-Path $WorkingDirectory $folder
     try {
+        # A file either shell would expand the glob to: PowerShell's wildcards or Bash's pattern matching, whose
+        # bracket expressions also negate ([!x], [^x]) and name classes ([[:upper:]]). Both ignore case here, as
+        # Windows opens a file whatever its case, so the guard tries every file either could mean.
         $pattern = [Management.Automation.WildcardPattern]::new($leaf, [Management.Automation.WildcardOptions]::IgnoreCase)
-        Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop | Where-Object { $pattern.IsMatch($_.Name) } | Sort-Object Name | ForEach-Object { $folder + $_.Name }
+        $bash = ConvertFrom-BashGlob -Glob $leaf
+        Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop |
+            Where-Object { $pattern.IsMatch($_.Name) -or ($bash -and [regex]::IsMatch($_.Name, $bash, 'IgnoreCase, CultureInvariant')) } |
+            Sort-Object Name | ForEach-Object { $folder + $_.Name }
     }
     catch { return }
+}
+
+# The regex for one path part that is a Bash glob (pattern matching, Bash's manual 3.5.8.1): '*', '?', a '\' escape,
+# and a bracket expression with '!' or '^' negating it, ranges, and the classes alpha, digit, alnum, upper, lower,
+# space, blank, punct, xdigit, word, cntrl, graph and print. $null for a part Bash would leave as typed, an unclosed
+# bracket aside (that '[' is literal), such as one naming another class.
+function ConvertFrom-BashGlob {
+    param([Parameter(Mandatory)] [string] $Glob)
+
+    $classes = @{
+        alpha = 'a-zA-Z'; digit = '0-9'; alnum = 'a-zA-Z0-9'; upper = 'A-Z'; lower = 'a-z'; space = '\s'; blank = ' \t'
+        punct = '\p{P}\p{S}'; xdigit = '0-9A-Fa-f'; word = '\w'; cntrl = '\x00-\x1f\x7f'; graph = '\x21-\x7e'; print = '\x20-\x7e'
+    }
+    $regex = [Text.StringBuilder]::new('\A')
+    for ($i = 0; $i -lt $Glob.Length; $i++) {
+        $c = $Glob[$i]
+        if ($c -eq '*') { [void] $regex.Append('.*'); continue }
+        if ($c -eq '?') { [void] $regex.Append('.'); continue }
+        if ($c -eq '\' -and $i + 1 -lt $Glob.Length) { $i++; [void] $regex.Append([regex]::Escape([string] $Glob[$i])); continue }
+        if ($c -ne '[') { [void] $regex.Append([regex]::Escape([string] $c)); continue }
+        # A bracket expression: an optional '!' or '^', then a ']' that comes first is literal, up to the next ']'.
+        $j = $i + 1
+        $negate = $j -lt $Glob.Length -and $Glob[$j] -in '!', '^'
+        if ($negate) { $j++ }
+        $set = [Text.StringBuilder]::new()
+        $first = $true
+        while ($j -lt $Glob.Length -and ($Glob[$j] -ne ']' -or $first)) {
+            $class = [regex]::Match($Glob.Substring($j), '\A\[:([a-z]+):\]')
+            if ($class.Success) {
+                if (-not $classes.ContainsKey($class.Groups[1].Value)) { return $null }
+                [void] $set.Append($classes[$class.Groups[1].Value]); $j += $class.Length
+            }
+            else { [void] $set.Append($(if ($Glob[$j] -eq '-') { '-' } else { [regex]::Escape([string] $Glob[$j]).Replace(']', '\]') })); $j++ }
+            $first = $false
+        }
+        if ($j -ge $Glob.Length) { [void] $regex.Append('\['); continue }
+        [void] $regex.Append('[').Append($(if ($negate) { '^' } else { '' })).Append($set.ToString()).Append(']')
+        $i = $j
+    }
+    [void] $regex.Append('\z')
+    $regex.ToString()
 }
 
 # The spellings of one resolved command that the ask rules are matched against: each of its word forms joined by
