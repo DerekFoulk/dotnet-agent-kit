@@ -244,6 +244,16 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         Get-KitDecision -Tool 'PowerShell' -Command $Command.Replace('{0}', $short) | Should -BeLike '*builds an argument*'
     }
 
+    # Review round 5: Bash's bracket expressions negate with ! or ^ and name classes such as [:upper:], which
+    # PowerShell's wildcards don't, so the glob matched nothing and kept its spelling.
+    It 'asks for <Command>, whose Bash bracket glob expands to an asked script' -ForEach @(
+        @{ Command = 'pwsh -NoProfile -File ./tools/[!X]ew-KitApp.ps1 -Name x' }
+        @{ Command = 'pwsh -NoProfile -File ./tools/[[:upper:]]et-AgentMode.ps1 -Mode Review' }
+        @{ Command = 'pwsh -NoProfile -File ./tools/[^X]nitialize-DevMachine.ps1 -Install' }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*resolved this command*'
+    }
+
     It 'leaves a glob that expands to no asked script to the rules' {
         Get-KitDecision -Tool 'Bash' -Command 'ls ./tools/*.ps1' | Should -BeNullOrEmpty
     }
