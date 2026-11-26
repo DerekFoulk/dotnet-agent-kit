@@ -1000,6 +1000,84 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # ADR-0095: the step is run here as CI runs it, against real bundles, in a workspace that holds another checkout.
+    Context 'the exported-app action' {
+        BeforeAll {
+            $exported = Read-Yaml '.github/actions/exported-app/action.yml'
+            $steps = if ($exported.Yaml.ContainsKey('runs')) { @($exported.Yaml['runs']['steps']) } else { @() }
+            # On Windows, Git's own bash: the one on PATH may be WSL's, with no Linux installed.
+            $bash = if ($IsWindows) { Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin' 'bash.exe' } else { 'bash' }
+
+            function Invoke-ExportedApp([string] $Bundle, [switch] $InWorkspace) {
+                $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+                git init -q $workspace
+                git -C $workspace commit -q --allow-empty -m 'chore: the kit'
+                Set-Content -LiteralPath (Join-Path $workspace 'kit-file.txt') -Value 'from the kit'
+                if ($InWorkspace) {
+                    New-Item -ItemType Directory -Path (Join-Path $workspace 'app-bundle') | Out-Null
+                    $Bundle = Copy-Item -LiteralPath $Bundle -Destination (Join-Path $workspace 'app-bundle') -PassThru | ForEach-Object FullName
+                }
+                $script = Join-Path $TestDrive "clone-$(New-Guid).sh"
+                Set-Content -LiteralPath $script -Value ($steps[0]['run'] -replace "`r`n", "`n") -NoNewline
+                try {
+                    $env:GITHUB_WORKSPACE = $workspace -replace '\\', '/'
+                    $env:BUNDLE = $Bundle -replace '\\', '/'
+                    $output = & $bash --noprofile --norc -e -o pipefail $script 2>&1
+                    [pscustomobject]@{ Exit = $LASTEXITCODE; Output = "$output"; Workspace = $workspace }
+                }
+                finally { Remove-Item Env:GITHUB_WORKSPACE, Env:BUNDLE -ErrorAction SilentlyContinue }
+            }
+
+            $app = Join-Path $TestDrive 'app'
+            git init -q -b main $app
+            foreach ($n in 1, 2) { Set-Content -LiteralPath (Join-Path $app 'file.txt') -Value $n; git -C $app add -A; git -C $app commit -q -m "chore: app commit $n" }
+            $bundle = Join-Path $TestDrive 'app.bundle'
+            git -C $app bundle create -q $bundle main
+            git -C $app switch -q -c other
+            $noMain = Join-Path $TestDrive 'no-main.bundle'
+            git -C $app bundle create -q $noMain other
+        }
+
+        It 'is one bash step that uses no other action, reading the bundle''s path from its input' {
+            $exported.Yaml['runs']['using'] | Should -Be 'composite'
+            $steps | Should -HaveCount 1
+            $steps[0]['shell'] | Should -Be 'bash'
+            $steps[0].ContainsKey('uses') | Should -BeFalse
+            $steps[0]['env']['BUNDLE'] | Should -Be '${{ inputs.bundle }}'
+            $exported.Yaml['inputs']['bundle']['required'] | Should -BeTrue
+        }
+
+        It 'replaces the workspace with a clone of the bundle''s main, with its whole history' {
+            $result = Invoke-ExportedApp -Bundle $bundle
+
+            $result.Exit | Should -Be 0 -Because $result.Output
+            Join-Path $result.Workspace 'kit-file.txt' | Should -Not -Exist
+            git -C $result.Workspace rev-parse HEAD | Should -Be (git -C $app rev-parse main)
+            @(git -C $result.Workspace log --format=%s) | Should -Be @('chore: app commit 2', 'chore: app commit 1')
+            git -C $result.Workspace rev-parse --is-shallow-repository | Should -Be 'false'
+        }
+
+        It 'fails, leaving the kit''s checkout alone, when the bundle is missing or has no main' {
+            foreach ($missing in (Join-Path $TestDrive 'none.bundle'), $noMain) {
+                $result = Invoke-ExportedApp -Bundle $missing
+
+                $result.Exit | Should -Not -Be 0
+                $result.Output | Should -Match '::error::'
+                Join-Path $result.Workspace 'kit-file.txt' | Should -Exist
+            }
+        }
+
+        # Emptying the workspace would delete a bundle downloaded into it, and the clone would fail after the kit's
+        # checkout was gone.
+        It 'refuses a bundle inside the workspace, before emptying it' {
+            $result = Invoke-ExportedApp -Bundle $bundle -InWorkspace
+
+            $result.Exit | Should -Not -Be 0
+            $result.Output | Should -Match '::error::.*outside the workspace'
+            Join-Path $result.Workspace 'kit-file.txt' | Should -Exist
+        }
+    }
+
     # GAP-049 (ADR-0095): the kit's CI checks a fresh app through these same workflows, which then check the app's git
     # bundle instead of the kit's checkout. Apps leave the input out, and its steps skip.
     Context 'app-bundle input of <Name>' -ForEach @(
