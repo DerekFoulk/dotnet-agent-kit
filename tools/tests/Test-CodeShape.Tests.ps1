@@ -104,6 +104,22 @@ Describe 'Test-CodeShape.ps1' {
             Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 code shape finding.*not judged.*rule doesn't apply to this app" }
             Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }
         }
+        It 'names the not-judged findings beside <Case>' -ForEach @(
+            @{ Case = 'a failing one'; Sty005 = 'must'; Exit = 1; Expected = "1 code shape finding\(s\) fail the check; 1 more not judged, because their rule doesn't apply to this app" }
+            @{ Case = 'a warning'; Sty005 = 'should'; Exit = 0; Expected = "1 code shape finding\(s\), shown as warnings.*; 1 more not judged, because their rule doesn't apply to this app" }
+        ) {
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'App types: maui'
+            $strengths = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+            Set-Content -LiteralPath $strengths -Value "{ ""CRF-011"": { ""strength"": ""must"", ""scope"": [""web-api""], ""when"": [] }, ""STY-005"": { ""strength"": ""$Sty005"", ""scope"": [""core""], ""when"": [] } }"
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $result = Write-CodeShapeResult -ExitCode 1 -Output "$script:shapeLine`n$script:nullableLine" -RuleStrengthPath $strengths }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+
+            $result | Should -Be $Exit
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match $Expected }
+        }
         It 'fails on the same breach while CRF-011 is a must rule' {
             Write-CodeShapeResult -ExitCode 1 -Output $script:shapeLine -RuleStrengthPath (New-StrengthFile 'must') | Should -Be 1
 

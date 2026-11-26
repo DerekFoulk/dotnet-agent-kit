@@ -145,8 +145,9 @@ Describe 'Get-UiProject.ps1' {
             $strengths = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
             Set-Content -LiteralPath $strengths -Value '{ "ARC-010": { "strength": "must", "scope": ["maui"], "when": [] } }'
             $saved = $env:GITHUB_WORKSPACE
-            try { $env:GITHUB_WORKSPACE = $workspace; $result = @(Get-UiProject -Solution $solution -RuleStrengthPath $strengths).Count - 1 }
+            try { $env:GITHUB_WORKSPACE = $workspace; $found = @(Get-UiProject -Solution $solution -RuleStrengthPath $strengths); $result = 0 }
             finally { $env:GITHUB_WORKSPACE = $saved }
+            $found.Name | Should -Be @('App.Maui')
             $result | Should -Be 0
             Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 reference.*UI project.*not judged.*ARC-010 doesn't apply to this app" }
             Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }

@@ -63,7 +63,7 @@ areas:
     rules: [CRF-004, ARC-009, ARC-019]
     gaps:
       - id: GAP-002
-        gap: "No rule says how much structure a small app should get, so an agent can build every layer for a tiny app. Closed by ADR-0052: ARC-009 sizes an app's modules, projects and patterns to its requirements, and the shared .NET CI runs Test-EmptyProjects.ps1, which reports a C# project with no code of its own, or one that keeps the class library template's empty Class1: a warning while ARC-009 is proposed, a failure once it's accepted (ADR-0089)."
+        gap: "No rule says how much structure a small app should get, so an agent can build every layer for a tiny app. Closed by ADR-0052: ARC-009 sizes an app's modules, projects and patterns to its requirements, and the shared .NET CI runs Test-EmptyProjects.ps1, which reports a C# project with no code of its own, or one that keeps the class library template's empty Class1: a failure, since ARC-009 is a must (owner, 2026-11-25; ADR-0089, ADR-0090)."
         status: closed
   - id: code
     name: Code
