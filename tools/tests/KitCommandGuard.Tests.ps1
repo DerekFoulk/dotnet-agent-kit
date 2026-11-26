@@ -226,6 +226,24 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         Get-KitDecision -Tool $Tool -Command ($Command -f $short) | Should -BeLike "*$Script*"
     }
 
+    # Review round 4: a splat leaves no option text for the rule, so only the built-value check can ask, and it must
+    # know the script by the same spellings.
+    It 'asks for a splat onto <Command>, an asked script named by a glob' -ForEach @(
+        @{ Command = "`$p = @{ Mode = 'Review' }; ./tools/Set-Agent*.ps1 @p" }
+        @{ Command = "`$o = @{ Install = `$true }; ./tools/Initialize-Dev*.ps1 @o" }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*builds an argument*'
+    }
+
+    It 'asks for a splat onto <Script> named by its Windows short name' -ForEach @(
+        @{ Script = 'Set-AgentMode.ps1'; Command = "`$p = @{ Mode = 'Review' }; ./tools/{0} @p" }
+        @{ Script = 'Initialize-DevMachine.ps1'; Command = "`$o = @{ Install = `$true }; ./tools/{0} @o" }
+    ) {
+        $short = Get-ShortName -Path (Join-Path $script:KitRoot 'tools' $Script)
+        if (-not $short) { Set-ItResult -Skipped -Because "$Script has no 8.3 short name here"; return }
+        Get-KitDecision -Tool 'PowerShell' -Command $Command.Replace('{0}', $short) | Should -BeLike '*builds an argument*'
+    }
+
     It 'leaves a glob that expands to no asked script to the rules' {
         Get-KitDecision -Tool 'Bash' -Command 'ls ./tools/*.ps1' | Should -BeNullOrEmpty
     }
