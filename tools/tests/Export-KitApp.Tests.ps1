@@ -264,8 +264,8 @@ Describe 'Export-KitApp' {
         Test-Path -LiteralPath $profilePath | Should -BeTrue -Because 'the export writes the profile it was given'
         Get-Content -Raw $profilePath | Should -Be $profileText
         $rules = (Get-ChildItem -LiteralPath (Join-Path $mauiApp '.claude/rules') -File | Get-Content -Raw) -join "`n"
-        $rules | Should -Match '(?m)^- GIT-001:'
-        $rules | Should -Not -Match '(?m)^- API-002:'
+        $rules | Should -Match '(?m)^- GIT-001 \('
+        $rules | Should -Not -Match '(?m)^- API-002 \('
         & pwsh -NoProfile -File (Join-Path $mauiApp '.kit/tools/Build-AgentRules.ps1') -RepoRoot $mauiApp -Check | Out-Null
         $LASTEXITCODE | Should -Be 0
     }
