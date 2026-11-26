@@ -86,11 +86,12 @@ jobs:
           name: fresh-app-${{ matrix.type }}
           path: ${{ runner.temp }}/bundle/app.bundle
           if-no-files-found: error
-          retention-days: 1
+          # Long enough to re-run a failed check job later in the week.
+          retention-days: 7
 
   # The app's three required checks (templates/github/main-protection.json), on the fresh app's bundle.
   fresh-dotnet:
-    name: Fresh ${{ matrix.type }} app
+    name: Fresh ${{ matrix.type }} app (.NET)
     needs: fresh-app
     strategy:
       fail-fast: false
@@ -104,7 +105,7 @@ jobs:
       app-bundle: fresh-app-${{ matrix.type }}
 
   fresh-app-checks:
-    name: Fresh ${{ matrix.type }} app
+    name: Fresh ${{ matrix.type }} app (app checks)
     needs: fresh-app
     strategy:
       fail-fast: false
