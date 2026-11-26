@@ -1,0 +1,10 @@
+{
+  "about": "This repo's own additions to the kit's license policy (tools/package-licenses.json), read by Test-PackageLicenses.ps1 (SEC-005, ADR-0079).",
+  "packages": [
+    {
+      "id": "Microsoft.Identity.Client.NativeInterop",
+      "license": "file LICENSE sha256:0fe665c2ada5962fd01190ab5b2947b9a9d2c625a9f8225577441eb3256e14e3",
+      "reason": "Microsoft's license terms for MSAL's native broker interop: any number of copies may be installed and used, but not shared or distributed. The sample's API runs on its owner's server and is never shipped to anyone, so it can use it; Microsoft.Data.SqlClient pulls it in, through Azure.Identity's broker (GAP-025). It's here, not in the kit's policy, because an app that ships to users (a MAUI or desktop app) couldn't."
+    }
+  ]
+}
