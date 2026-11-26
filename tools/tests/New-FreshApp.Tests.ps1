@@ -73,6 +73,14 @@ Describe 'New-FreshApp' {
             $upload | Should -HaveCount 1
             $upload[0]['with']['name'] | Should -Be 'fresh-app-${{ matrix.type }}'
             $upload[0]['with']['if-no-files-found'] | Should -Be 'error'
+            # The export runs the app's own Build-AgentRules, which imports powershell-yaml: the kit checks' pinned version,
+            # installed before the export (CI's first run failed here).
+            $pin = [regex]::Match((Get-Content -Raw -LiteralPath (Join-Path $root '.github' 'workflows' 'kit-checks.reusable.yml')), 'Install-PSResource -Name powershell-yaml -Version [\d.]+').Value
+            $pin | Should -Not -BeNullOrEmpty
+            $install = [array]::FindIndex($steps, [Predicate[object]] { param($s) "$($s['run'])".Contains($pin) })
+            $exportAt = [array]::FindIndex($steps, [Predicate[object]] { param($s) "$($s['run'])" -match 'New-FreshApp\.ps1' })
+            $install | Should -BeGreaterOrEqual 0 -Because "the job runs '$pin'"
+            $install | Should -BeLessThan $exportAt
             # A runner has no git identity, and the app's commits need one.
             foreach ($variable in 'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL') {
                 $export['env'][$variable] | Should -Not -BeNullOrEmpty
