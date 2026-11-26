@@ -13,5 +13,17 @@ internal static class ProjectFolder
     /// Gets the nearest src/<paramref name="projectName"/> folder in <paramref name="start"/> or a folder above it, such
     /// as a test's AppContext.BaseDirectory.
     /// </summary>
-    public static string Find(string start, string projectName) => Path.Combine(start, "src", projectName);
+    public static string Find(string start, string projectName)
+    {
+        for (DirectoryInfo? folder = new(start); folder is not null; folder = folder.Parent)
+        {
+            string candidate = Path.Combine(folder.FullName, "src", projectName);
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new DirectoryNotFoundException($"No src folder above {start} holds the project {projectName}.");
+    }
 }
