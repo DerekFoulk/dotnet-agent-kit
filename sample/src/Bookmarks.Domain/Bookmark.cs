@@ -60,8 +60,8 @@ public sealed class Bookmark
     /// </exception>
     public static Bookmark Create(Guid id, string ownerId, Uri url, string title, DateTimeOffset createdAt)
     {
-        // A UUID version 7 starts with its creation time (to the millisecond), so on SQLite ordering by Id is creation
-        // order (API-004).
+        // A UUID version 7 starts with its creation time (to the millisecond), so the id's own bytes, and its text, sort
+        // in creation order (API-004), wherever a store compares them that way.
         if (id.Version != 7 || MillisecondsOf(id) != createdAt.ToUnixTimeMilliseconds())
         {
             throw new ArgumentException("A bookmark's id is a UUID version 7 made from its creation time.", nameof(id));
