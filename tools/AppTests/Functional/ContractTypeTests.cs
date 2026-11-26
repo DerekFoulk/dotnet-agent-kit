@@ -1,3 +1,8 @@
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,10 +35,28 @@ public sealed class ContractTypeTests
             .SelectMany(TypesOf)
             .SelectMany(Unwrapped)
             .Distinct()
-            .Where(type => !described.ContractAssemblies.Contains(type.Assembly) && !IsDotNets(type))
+            .Where(type => !Passes(type, described.ContractAssemblies))
             .Select(type => type.FullName ?? type.Name);
 
         others.Should().BeEmpty("an endpoint accepts and returns only Contracts types, never a domain entity (SEC-013)");
+    }
+
+    // .NET's own types carry no entity: plain values, collections of them, Problem Details and files. A type that can
+    // carry anything, such as object or a JSON document, or any other framework or library type, isn't one.
+    [Theory]
+    [EachHost(typeof(object), false)]
+    [EachHost(typeof(JsonElement), false)]
+    [EachHost(typeof(JsonObject), false)]
+    [EachHost(typeof(HttpContext), false)]
+    [EachHost(typeof(string), true)]
+    [EachHost(typeof(Guid), true)]
+    [EachHost(typeof(List<>), true)]
+    [EachHost(typeof(ProblemDetails), true)]
+    public void OnlyPlainDotNetTypesPassBesideTheContracts(string host, Type type, bool passes)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        Passes(type, AppHost.Named(host).ContractAssemblies).Should().Be(passes, $"{type.Name} is {(passes ? string.Empty : "not ")}a plain .NET type");
     }
 
     private static IEnumerable<Type> TypesOf(ApiDescription endpoint) =>
@@ -49,6 +72,9 @@ public sealed class ContractTypeTests
         type.IsArray ? Unwrapped(type.GetElementType()!)
         : type.IsConstructedGenericType ? type.GenericTypeArguments.SelectMany(Unwrapped).Prepend(type.GetGenericTypeDefinition())
         : [type];
+
+    private static bool Passes(Type type, IReadOnlyCollection<Assembly> contracts) =>
+        contracts.Contains(type.Assembly) || IsDotNets(type);
 
     private static bool IsDotNets(Type type) =>
         type.Assembly.GetName().GetPublicKeyToken() is { Length: > 0 } token && s_microsoftKeys.Contains(Convert.ToHexStringLower(token));
