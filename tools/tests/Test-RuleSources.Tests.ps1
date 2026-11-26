@@ -65,6 +65,16 @@ types:
     name: .NET MAUI
     docs: https://learn.microsoft.com/dotnet/maui/
 '@
+        # ADR-0090: the conditions a rule's when can name, kept beside the standards.
+        Set-Content -Path (Join-Path $script:standards 'conditions.yml') -Value @'
+conditions:
+  - id: has-sign-in
+    meaning: The app signs users in.
+    intake: { card: signIn, yes: [entra-id], no: [none] }
+  - id: holds-personal-data
+    meaning: The app holds personal data.
+    recordedBy: Not asked by the intake yet.
+'@
     }
 
     Context 'structure' {
@@ -590,6 +600,49 @@ types:
             @{ Case = 'names a type core'; Yaml = "types:`n  - { id: core, name: A, docs: 'https://learn.microsoft.com/a' }"; Expected = "*app-types.yml*'core'*reserved*" }
         ) {
             $path = Join-Path $script:standards 'app-types.yml'
+            if ($null -eq $Yaml) { Remove-Item -LiteralPath $path } else { Set-Content -LiteralPath $path -Value $Yaml }
+            New-StandardsFile
+
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike $Expected
+        }
+    }
+
+    # ADR-0090: a rule that holds only for some apps says so in when, a list of the conditions in conditions.yml.
+    Context 'when' {
+        It 'accepts a rule whose when names <Case>' -ForEach @(
+            @{ Case = 'one condition'; When = @('has-sign-in') }
+            @{ Case = 'two conditions'; When = @('has-sign-in', 'holds-personal-data') }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ when = $When })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports when <Case>' -ForEach @(
+            @{ Case = 'written as one string'; When = 'has-sign-in'; Expected = "*when*list*" }
+            @{ Case = 'empty'; When = @(); Expected = "*when*empty*leave it out*" }
+            @{ Case = 'naming an unknown condition'; When = @('has-cats'); Expected = "*condition 'has-cats'*conditions.yml*has-sign-in*" }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ when = $When })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike $Expected
+        }
+
+        It 'reports a conditions file that <Case>' -ForEach @(
+            @{ Case = 'is missing'; Yaml = $null; Expected = '*conditions.yml*missing*' }
+            @{ Case = 'lists no conditions'; Yaml = 'conditions: []'; Expected = '*conditions.yml*no conditions*' }
+            @{ Case = 'has an id not in lower-case-with-dashes'; Yaml = "conditions:`n  - { id: HasSignIn, meaning: A, recordedBy: B }"; Expected = "*conditions.yml*HasSignIn*lower-case*" }
+            @{ Case = 'repeats an id'; Yaml = "conditions:`n  - { id: a, meaning: A, recordedBy: B }`n  - { id: a, meaning: A, recordedBy: B }"; Expected = "*conditions.yml*'a'*more than once*" }
+            @{ Case = 'has a condition with no meaning'; Yaml = "conditions:`n  - { id: a, recordedBy: B }"; Expected = "*conditions.yml*'a'*meaning*" }
+            @{ Case = 'says neither how the intake records a condition nor where else'; Yaml = "conditions:`n  - { id: a, meaning: A }"; Expected = "*conditions.yml*'a'*intake*recordedBy*" }
+            @{ Case = 'says both'; Yaml = "conditions:`n  - { id: a, meaning: A, recordedBy: B, intake: { card: signIn, yes: [x], no: [none] } }"; Expected = "*conditions.yml*'a'*intake*recordedBy*" }
+            @{ Case = 'has an intake with no card'; Yaml = "conditions:`n  - { id: a, meaning: A, intake: { yes: [x], no: [none] } }"; Expected = "*conditions.yml*'a'*card*" }
+            @{ Case = 'has an intake option both yes and no'; Yaml = "conditions:`n  - { id: a, meaning: A, intake: { card: signIn, yes: [x], no: [x] } }"; Expected = "*conditions.yml*'a'*'x'*yes and no*" }
+        ) {
+            $path = Join-Path $script:standards 'conditions.yml'
             if ($null -eq $Yaml) { Remove-Item -LiteralPath $path } else { Set-Content -LiteralPath $path -Value $Yaml }
             New-StandardsFile
 
