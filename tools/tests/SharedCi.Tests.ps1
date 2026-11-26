@@ -1004,7 +1004,8 @@ Describe 'Shared CI for app repos' {
     Context 'the exported-app action' {
         BeforeAll {
             $exported = Read-Yaml '.github/actions/exported-app/action.yml'
-            $steps = if ($exported.Yaml.ContainsKey('runs')) { @($exported.Yaml['runs']['steps']) } else { @() }
+            # @() outside the if: assigning an if's output unrolls a one-step list into the step itself.
+            $steps = @(if ($exported.Yaml.ContainsKey('runs')) { $exported.Yaml['runs']['steps'] })
             # On Windows, Git's own bash: the one on PATH may be WSL's, with no Linux installed.
             $bash = if ($IsWindows) { Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin' 'bash.exe' } else { 'bash' }
 
