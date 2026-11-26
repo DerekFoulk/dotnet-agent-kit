@@ -31,6 +31,7 @@ flowchart LR
     apptests["tools/AppTests<br/>(shared tests)"] -->|compiled into Architecture.Tests and FunctionalTests| sample
     apptests -->|compiled into E2E.Tests| webui
     apptests -->|.kit/tools/AppTests| apps
+    sqlserver["sample/tests/SqlServer<br/>(test database helper, image pin)"] -->|compiled into IntegrationTests and FunctionalTests| sample
     ci -->|reusable workflows| apps
     fresh["fresh apps<br/>(New-FreshApp: web-api, blazor)"]
     tools -->|New-FreshApp exports, with a probe| fresh

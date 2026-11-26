@@ -55,7 +55,7 @@ Proposed (auto mode, ADR-0035), with DAT-003 to DAT-005; the owner accepts or ch
 - `tools/Test-SafeMigrations.ps1`, with Pester tests. Export-KitApp copies it to every app's `.kit/tools/`, and `app-checks.reusable.yml` runs it on every pull request and push; an app with no migrations passes.
 - DAT-003 and DAT-004 cover server databases. An app whose database lives on the user's device migrates it at startup, since no deployment reaches it, and only one version ever opens it.
 - DAT-004 is advisory until the production workflow (GAP-015) applies a migration bundle before the new version takes traffic.
-- DAT-005 is advisory until the sample proves it: its move to SQL Server with migrations and Testcontainers is GAP-025. Then local `dotnet test` needs Docker running, which `Initialize-DevMachine.ps1` should report.
+- DAT-005 is advisory until the sample proves it: its move to SQL Server with migrations and Testcontainers is GAP-025. Then local `dotnet test` needs Docker running, which `Initialize-DevMachine.ps1` should report. **Update (2026-11-25):** done (GAP-025, ADR-0098). The sample's integration and functional tests run on SQL Server through Testcontainers.MsSql, each on a new database with the migrations applied; a local run without Docker skips them, and CI fails them. `Initialize-DevMachine.ps1` reports whether Docker is running. The load test applies the migrations with a bundle before the app starts, DAT-004's mechanism.
 - **Follow-up:** Option 4, once apps deploy; GAP-015's entry in the scorecard carries it.
 
 ## Pillars affected

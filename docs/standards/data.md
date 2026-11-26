@@ -22,9 +22,12 @@ rules:
     status: proposed
     sources: ["owner, 2026-11-10", "ADR-0053"]
     enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's IntegrationTests fail when its model has a change no migration covers (HasPendingModelChanges), and every test database the sample's tests use is built by its migrations, never EnsureCreated"
       - kind: advisory
-        in: [kit, app]
-        how: "code review checks for EnsureCreated and for a HasPendingModelChanges test, until the sample follows (GAP-025)"
+        in: [app]
+        how: "code review checks for EnsureCreated and for a HasPendingModelChanges test, which the sample's InfrastructureRegistrationTests show"
     scope: [web-api, blazor]
     paths: ["**/*Infrastructure*/**", "**/Migrations/**", "**/Program.cs"]
   - id: DAT-011
@@ -96,9 +99,12 @@ rules:
     status: proposed
     sources: ["ADR-0054", "owner, 2026-11-12", "https://learn.microsoft.com/azure/cosmos-db/emulator-linux, retrieved 2026-11-11"]
     enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's integration and functional tests run on SQL Server in a container (Testcontainers.MsSql, the image pinned in sample/tests/SqlServer/Dockerfile), each on a new database with the migrations applied, and fail in CI when Docker is missing; its load test runs on the same image (performance.reusable.yml)"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks the test projects' database setup and the app's local development setup (a container or the emulator, not SQLite or the in-memory provider), until the sample proves it (GAP-025)"
+        how: "code review checks the test projects' database setup and the app's local development setup (a container or the emulator, not SQLite or the in-memory provider), as sample/tests/SqlServer and sample/README.md show"
     scope: [web-api, blazor]
     paths: ["**/*Tests*/**", "**/*AppHost*/**", "**/compose*.yaml", "**/docker-compose*.yml"]
   - id: DAT-012
@@ -151,9 +157,12 @@ rules:
     status: accepted
     sources: ["owner, 2026-11-12"]
     enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's InfrastructureRegistrationTests check that its database is SQL Server with an execution strategy that retries transient failures"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks the provider's registration and any explicit transaction; the sample's SQLite provider has no execution strategy, so the check waits for the sample's move to SQL Server (GAP-025)"
+        how: "code review checks the provider's registration and any explicit transaction"
     scope: [web-api, blazor]
     paths: ["**/*Infrastructure*/**"]
   - id: DAT-008
@@ -342,9 +351,12 @@ rules:
         retrieved: "2026-11-17"
         text: "Enabling retry on failure causes EF to internally buffer the resultset, which may significantly increase memory requirements for queries returning large resultsets."
     enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's InfrastructureRegistrationTests check that its database is SQL Server with an execution strategy that retries transient failures"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks the provider's registration and any explicit transaction; the sample's SQLite provider has no execution strategy, so the check waits for the sample's move to SQL Server (GAP-025)"
+        how: "code review checks the provider's registration and any explicit transaction"
     scope: [web-api, blazor]
     paths: ["**/*Infrastructure*/**"]
   - id: DAT-016
@@ -394,7 +406,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "code review checks that a migration was read and its model snapshot kept; no CI step runs has-pending-model-changes yet, and the HasPendingModelChanges test in DAT-002 waits for the sample (GAP-025)"
+        how: "code review checks that a migration was read and its model snapshot kept; in place of a has-pending-model-changes step, the sample's IntegrationTests run HasPendingModelChanges, the same comparison of the model with the last migration's snapshot (DAT-002), and an app adds that test"
     scope: core
     paths: ["**/Migrations/**", ".github/workflows/**"]
   - id: DAT-018
@@ -597,9 +609,17 @@ These need Docker on the developer's machine. GitHub's `ubuntu-latest` runners h
 
 The free offers and the setting that keeps each free are in `docs/database-guide.md`. Creating a cloud resource is the owner's call (SEC-003), so an agent writes the setting into the plan, or the infrastructure code once apps have it (GAP-016), and the owner creates the resource.
 
-## Not yet in the sample
+## In the sample
 
-The sample app still uses SQLite, with `EnsureCreated` at startup. Moving it to SQL Server with migrations and Testcontainers, to prove DAT-002 and DAT-005 the way the sample proves the other rules, is GAP-025.
+The sample app runs on SQL Server, and proves DAT-002, DAT-004, DAT-005 and DAT-007 (GAP-025, ADR-0098):
+
+- **Migrations:** `sample/src/Bookmarks.Infrastructure/Migrations` holds them, scaffolded by `dotnet ef migrations add`. `InfrastructureRegistrationTests` fails when the model has a change no migration covers (`HasPendingModelChanges`), and `MigrationTests` takes them back off. EF Core writes migrations in its own style, so `.editorconfig` marks every `Migrations` folder as generated code, and the analyzers leave them alone.
+- **No schema at startup:** `Program.cs` never calls `EnsureCreated` or `Migrate`, and `StartupTests` starts the app with a database nothing answers for. The load test applies the migrations with a migration bundle before the app starts, as a deployment does (`performance.reusable.yml`'s `load-test-sql-server-pin`).
+- **The real engine:** the integration and functional tests start one SQL Server container per test process (`sample/tests/SqlServer`, `Testcontainers.MsSql`, the image pinned by digest in its `Dockerfile`), and give each test or host a new database with the migrations applied. Without Docker, a local run skips them and says to start Docker; a CI run fails them. `Initialize-DevMachine.ps1` reports whether Docker is running.
+- **What the engine changed:** SQL Server's default collation ignores case, so the owner id and the URL use a binary one (SEC-009: "Alice" never reads alice's bookmarks). It compares a `uniqueidentifier` by its last six bytes first, so pages are ordered by creation time with the key as the tie-breaker (API-004). And it caps an index key at 1,700 bytes, so the index is on the owner and creation time, with the URL included rather than a key column. SQLite hid all three.
+- **Retries:** the registration uses SQL Server's retrying execution strategy, and the service makes each key itself, so a retried commit can't add a second row.
+
+To run it yourself, start SQL Server from the pinned image in Docker, put its connection string in the API's user secrets (`dotnet user-secrets set ConnectionStrings:Bookmarks "<connection string>" --project sample/src/Bookmarks.Api`), and apply the migrations with `dotnet ef database update --project sample/src/Bookmarks.Infrastructure --startup-project sample/src/Bookmarks.Api` (after `dotnet tool restore`, which installs the pinned `dotnet-ef`). `sample/README.md` has the commands.
 
 ## Pending ratification
 

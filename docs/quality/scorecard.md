@@ -101,8 +101,8 @@ areas:
         status: closed
         needs: "packages and a CI change"
       - id: GAP-025
-        gap: "The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need."
-        status: proposed
+        gap: "The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need. Closed by ADR-0098: the sample runs on SQL Server with EF Core migrations and a HasPendingModelChanges test; its integration and functional tests run on SQL Server in a container (Testcontainers.MsSql), skipped locally without Docker and failed in CI; the load test applies a migration bundle first; and Initialize-DevMachine.ps1 reports whether Docker is running."
+        status: closed
         needs: "packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests"
       - id: GAP-037
         gap: "Some rules are gated only by the kit's sample, so in an app they're advisory: parts a shared check could still take on, with a hook in the app's part of AppHost. The OpenAPI document's checks: API-002's declared errors as Problem Details, API-003's snapshot and SEC-013's schemas. SEC-008's token rejections that need no app key, and its bearer scheme in the document. A second host, such as a web UI beside an API, which the host checks don't start. Narrowed by ADR-0081's update of 2026-11-16: the architecture tests (part 1) and tools/AppTests/Functional's host checks, compiled into every *.FunctionalTests project, gate ARC-001, ARC-003, CRF-006, CRF-007, CRF-021 (CRF-014 on that date, before the owner's tightening of it moved to CRF-021), SEC-013's endpoint part, API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 and SEC-011 in apps. The app's own behavior (API-004, API-006, API-007, SEC-009, SEC-010, OPS-006), SEC-011's rate limit and /health's database check stay with the app's own tests by design; TST-003 is GAP-027's and UI-001 is UI-002's. Closed by ADR-0081's update of 2026-11-25: the app's part of AppHost lists every host (an API, a web UI beside it), and each shared check runs once for each; for each host that serves an HTTP API, OpenApiTests compares the document with Contract/<host>/openapi-v1.json (API-003), OpenApiDocumentTests checks its declared errors are Problem Details (API-002) and its Bearer scheme on every protected operation (SEC-008), ContractTypeTests checks every endpoint's types are Contracts types or .NET's own (SEC-013), and TokenTests sends no token, an unsigned one, a changed one and one signed with a new key, made from the host's own token, and expects a 401 Problem (SEC-008). Tokens only the app's key can sign (expired, another issuer or audience) stay with the app's own tests by design."
@@ -333,7 +333,7 @@ Each area in the front matter above has:
 | Code | 21 | 15 | 6 | 0 | 0 |
 | Tests | 9 | 4 | 5 | 2 | 3 |
 | Security | 19 | 10 | 9 | 4 | 2 |
-| Reliability | 12 | 5 | 7 | 2 | 1 |
+| Reliability | 12 | 7 | 5 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 1 |
 | API design | 8 | 4 | 4 | 3 | 0 |
 | Performance | 4 | 2 | 2 | 1 | 0 |
