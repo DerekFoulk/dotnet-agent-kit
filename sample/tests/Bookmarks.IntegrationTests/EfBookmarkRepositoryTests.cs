@@ -196,12 +196,7 @@ public sealed class EfBookmarkRepositoryTests
         await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now));
         await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now.AddMinutes(1)), Owner, new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
 
-        await using BookmarksDbContext db = new(_options);
-        EfBookmarkRepository repository = new(db);
-        IReadOnlyList<Bookmark> first = await repository.ListAsync(Owner, 0, 2, TestContext.Current.CancellationToken);
-        IReadOnlyList<Bookmark> second = await repository.ListAsync(Owner, 2, 2, TestContext.Current.CancellationToken);
-
-        first.Concat(second).Select(b => b.Title).Should().Equal("A", "B", "C");
+        (await TitlesInPagesOfTwoAsync()).Should().Equal("A", "B", "C");
     }
 
     [Fact]
@@ -213,12 +208,17 @@ public sealed class EfBookmarkRepositoryTests
         await SaveAsync(CreatedWithLastBytes(s_now.AddMinutes(1), 2, "B"));
         await SaveAsync(CreatedWithLastBytes(s_now.AddMinutes(2), 1, "C"));
 
+        (await TitlesInPagesOfTwoAsync()).Should().Equal("A", "B", "C");
+    }
+
+    // The owner's bookmarks' titles, read two to a page, as a client following nextLink reads them.
+    private async Task<IReadOnlyList<string>> TitlesInPagesOfTwoAsync()
+    {
         await using BookmarksDbContext db = new(_options);
         EfBookmarkRepository repository = new(db);
         IReadOnlyList<Bookmark> first = await repository.ListAsync(Owner, 0, 2, TestContext.Current.CancellationToken);
         IReadOnlyList<Bookmark> second = await repository.ListAsync(Owner, 2, 2, TestContext.Current.CancellationToken);
-
-        first.Concat(second).Select(b => b.Title).Should().Equal("A", "B", "C");
+        return [.. first.Concat(second).Select(b => b.Title)];
     }
 
     // A bookmark whose UUID version 7 id ends in six copies of the given byte, where its random bits are.
