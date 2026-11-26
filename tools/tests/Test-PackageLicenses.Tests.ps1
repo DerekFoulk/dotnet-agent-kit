@@ -239,13 +239,11 @@ Describe 'package-licenses.json' {
         $sni[0]['license'] | Should -Be 'file LICENSE.txt sha256:9335e8bad875dd7be4eebd55d2335eb6433d1cea61aadb3817af7807bef8932a'
     }
 
-    # GAP-025: Microsoft.Data.SqlClient brings MSAL's broker interop too, under terms that allow use but not distribution.
-    # A server app only uses it, and every web app on the database guide's default database gets it, so the kit allows it.
-    It 'allows MSAL''s broker interop under its use-only terms, pinned' {
-        $interop = @($kitPolicy['packages'] | Where-Object { $_['id'] -eq 'Microsoft.Identity.Client.NativeInterop' })
-
-        $interop | Should -HaveCount 1
-        $interop[0]['license'] | Should -Be 'file LICENSE sha256:0fe665c2ada5962fd01190ab5b2947b9a9d2c625a9f8225577441eb3256e14e3'
+    # GAP-025: Microsoft.Data.SqlClient brings MSAL's broker interop too, under terms that allow installing and using it but
+    # not distributing it. Whether an app distributes it (a shipped client, a public image or release, a build handed to
+    # a customer) is that app's to say, so the kit's policy, which every app gets, leaves it out (review round 4).
+    It 'leaves MSAL''s broker interop to each app, whose use-only terms the kit can''t judge for it' {
+        @($kitPolicy['packages'] | Where-Object { $_['id'] -eq 'Microsoft.Identity.Client.NativeInterop' }) | Should -BeNullOrEmpty
     }
 
     It 'allows FluentAssertions 8 only outside a commercial repo, naming AwesomeAssertions (ADR-0004)' {
