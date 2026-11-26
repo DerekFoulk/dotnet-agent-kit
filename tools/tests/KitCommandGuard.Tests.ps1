@@ -457,6 +457,10 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         @{ Command = "`$b = Get-Content ./.env -Raw; Add-ReviewReply -Body `$b" }
         @{ Command = "Get-Content ./.env -Raw -OutVariable b; Add-ReviewReply -Body `$b" }
         @{ Command = "Get-Content ./.env -Raw -ov:+b; Add-ReviewReply -Body `$b" }
+        # Review of the rebased branch: a pipeline fills a variable too.
+        @{ Command = "Get-Content ./.env -Raw | Tee-Object -Variable b; Add-ReviewReply -Body `$b" }
+        @{ Command = "Get-Content ./.env -Raw | Set-Variable b; Add-ReviewReply -Body `$b" }
+        @{ Command = "Get-Content ./.env -Raw | sv -Name b; Add-ReviewReply -Body `$b" }
         @{ Command = "foreach (`$line in (Get-Content ./.env)) { Add-ReviewReply -Body `$line }" }
     ) {
         Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @() | Should -BeLike '*builds an argument*'
