@@ -1081,6 +1081,34 @@ Describe 'Shared CI for app repos' {
         }
     }
 
+    # ADR-0095: with a fresh app's bundle, the pull request steps don't skip: they check the app's own history, which
+    # holds New-KitApp's first commit and the probe's, since the kit's PR range names commits the app doesn't have.
+    Context 'app-checks.reusable.yml with an app bundle' {
+        BeforeAll {
+            $prSteps = @(Get-Steps $app.Yaml | Where-Object { "$($_['run'])" -match 'Test-ConventionalTitle|Test-RedGreenOrder' })
+        }
+
+        It 'runs the title, commit subject and red-to-green checks on the app''s whole history' {
+            $prSteps | Should -HaveCount 3
+            foreach ($step in $prSteps) {
+                $step['if'] | Should -Be "github.event_name == 'pull_request' || inputs.app-bundle != ''"
+            }
+            foreach ($step in @($prSteps | Where-Object { $_['env'].Contains('RANGE') })) {
+                $step['env']['RANGE'] | Should -Be "`${{ inputs.app-bundle != '' && 'HEAD' || format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) }}"
+            }
+            @($prSteps | Where-Object { $_['env'].Contains('RANGE') }) | Should -HaveCount 2
+        }
+
+        It 'checks HEAD''s subject as the title, read from git, never pasted into the script' {
+            $title = @($prSteps | Where-Object { $_['env'].Contains('PR_TITLE') })
+
+            $title | Should -HaveCount 1
+            $title[0]['env']['APP_BUNDLE'] | Should -Be '${{ inputs.app-bundle }}'
+            $title[0]['run'] | Should -Match ([regex]::Escape('if ($env:APP_BUNDLE) { $env:PR_TITLE = git -C $env:GITHUB_WORKSPACE log -1 --format=%s }'))
+            $title[0]['run'] | Should -Not -Match '\$\{\{'
+        }
+    }
+
     # GAP-049 (ADR-0095): the kit's CI checks a fresh app through these same workflows, which then check the app's git
     # bundle instead of the kit's checkout. Apps leave the input out, and its steps skip.
     Context 'app-bundle input of <Name>' -ForEach @(
