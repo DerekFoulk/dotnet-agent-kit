@@ -331,7 +331,7 @@ Each area in the front matter above has:
 | Craft | 20 | 11 | 9 | 1 | 0 |
 | Proportion | 1 | 0 | 1 | 1 | 0 |
 | Code | 21 | 15 | 6 | 0 | 0 |
-| Tests | 9 | 4 | 5 | 2 | 3 |
+| Tests | 9 | 4 | 5 | 2 | 2 |
 | Security | 19 | 10 | 9 | 4 | 2 |
 | Reliability | 12 | 7 | 5 | 2 | 1 |
 | Observability | 2 | 1 | 1 | 0 | 1 |
@@ -343,7 +343,7 @@ Each area in the front matter above has:
 | UI and accessibility | 3 | 1 | 2 | 2 | 1 |
 | Process | 17 | 6 | 11 | 0 | 1 |
 
-**Overall:** 130 rules in force, 70 checked by a tool and 60 advisory; 163 proposed; 18 open gaps.
+**Overall:** 130 rules in force, 72 checked by a tool and 58 advisory; 163 proposed; 17 open gaps.
 
 | Ruleset | Rules in force | Proposed rules |
 |---|---|---|
@@ -358,7 +358,6 @@ Open gaps:
 - **GAP-028** (Architecture, proposed; needs a MAUI workload on the owner's machine to make the fixture's lock files, and a CI change): No MAUI sample or fixture runs the shared CI's Windows and macOS jobs, so they're proven only when the first MAUI app does: the iOS compile on Windows without a Mac, the macOS runner's default Xcode, the runners' Android SDK, and the checks that move to Windows (code shape, duplicate code with PMD's batch launcher, the SBOM) are untested (ADR-0059).
 - **GAP-031** (Architecture, proposed): The new-app intake (ADR-0058) treats a MAUI app like a web app: its hosting card offers only web hosts, with no app-store distribution or its prices, and its UI and functional test kinds default to browser and WebApplicationFactory tools, which don't test a MAUI app (ADR-0059).
 - **GAP-048** (Architecture, proposed; needs per type: rules sourced from its docs/inventory pages, a ruleset ADR and an app-types.yml entry): No rulesets yet for the app types ADR-0084 lists as not supported: WPF, Windows Forms, WinUI 3, Blazor Hybrid, Razor Pages and MVC, and workers and console apps. Their Microsoft Learn pages are inventoried in docs/inventory/, marked as not a supported type yet, and the rules first written for them were removed from docs/standards. Each type needs its rules sourced from its inventory pages (the source-a-rule skill), its own ruleset ADR and an entry in docs/standards/app-types.yml. The owner, 2026-11-18: "We want to be sure to author the rules for the 'unsupported' app types in the future. Please don't let us forget that!"
-- **GAP-025** (Tests, proposed; needs packages (EF Core SQL Server, Testcontainers.MsSql), Docker for local tests): The sample app still uses SQLite with EnsureCreated, so nothing proves DAT-002 (migrations) or DAT-005 (tests on the production engine) end to end: it should move to SQL Server with EF Core migrations, and test with Testcontainers. Initialize-DevMachine.ps1 should then report whether Docker is running, which local tests will need.
 - **GAP-027** (Tests, proposed; needs a kit check and a CI change): No check enforces TST-003's test matrix in an app: a production project without its test projects goes unnoticed until review. TST-003's enforcement plans the check; it waits for ARC-009 (ADR-0052), which settles which projects an app has, to be accepted.
 - **GAP-049** (Tests, proposed; needs the maui leg: a MAUI probe and its fresh-app jobs on Windows and macOS, after GAP-028): No check proves the kit's output: CI should generate a fresh app of each supported type from the kit (Export-KitApp, no GitHub repo), build it, and run every gate, its secret scan included (a quote the kit skips only by a `.gitleaksignore` fingerprint would still fail an app's scan, ADR-0024), so a kit change that would produce an app failing its own rules fails the kit's CI first. Narrowed by ADR-0095: the kit's CI exports a fresh web-api app and a fresh blazor app with tools/New-FreshApp.ps1, each with the kit's own reference app of its type as its probe (the sample, and the web UI fixture), and runs an app's three required checks on each through the shared workflows' app-bundle input; the jobs aren't required, but a red one blocks a merge. Open for the maui leg: it needs the Windows and macOS jobs proven first (GAP-028), and the owner put MAUI after the practice run.
 - **GAP-041** (Security, proposed; needs a Dockerfile for the sample on a chiseled base image, a Trivy scan in CI, and an ADR): Containers: the brief promised chiseled, non-root images and an image scan (Trivy), but no app builds an image yet. It belongs with the deployment pipeline (GAP-015) (rules audit, 2026-11-12).
