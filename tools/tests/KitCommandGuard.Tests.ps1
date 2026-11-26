@@ -486,6 +486,25 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
     }
 }
 
+Describe 'Get-CommandGuardDecision for a kit script that runs a command' {
+    # Review of the rebased branch: Invoke-WithPlaywrightImage.ps1 runs the words after its own parameters on the host
+    # when no project uses Playwright, under the ./tools/* allow.
+    It 'asks in <Tool> for <Command>, whose command the script runs is asked' -ForEach @(
+        @{ Tool = 'PowerShell'; Command = './tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- git clean -fdx' }
+        @{ Tool = 'PowerShell'; Command = './tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx git reset --hard HEAD~3' }
+        @{ Tool = 'PowerShell'; Command = "./.kit/tools/Invoke-WithPlaywrightImage.ps1 -Solution:x.slnx -Pin p -- git push --for'ce'" }
+        @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- git clean -fdx' }
+    ) {
+        Get-KitDecision -Tool $Tool -Command $Command | Should -Not -BeNullOrEmpty
+    }
+
+    It 'leaves <Command> to the rules, since the command it runs is one they allow' -ForEach @(
+        @{ Command = './tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- dotnet test --no-build' }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Get-CommandGuardDecision for a rule written with quotes' {
     It 'asks in <Tool> for <Command>, which an ask rule written with double quotes around a word with a space covers' -ForEach @(
         # The kit's rule "pwsh -NoProfile -Command ""Install-PSResource *" spells the quotes Claude Code usually writes.
