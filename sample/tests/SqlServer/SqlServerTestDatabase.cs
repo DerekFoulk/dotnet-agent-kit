@@ -22,15 +22,16 @@ internal static class SqlServerTestDatabase
     private static readonly Lazy<Task<MsSqlContainer>> s_server = new(() => Task.Run(StartServerAsync));
 
     /// <summary>
-    /// A connection string to a new database on the shared server, with the app's schema in it. Without Docker, the
-    /// calling test is skipped on a developer's machine and fails in CI (<see cref="WithoutDocker"/>).
+    /// A connection string to a new database on the shared server, with the app's migrations applied, as a deployment
+    /// applies them (DAT-002, DAT-005). Without Docker, the calling test is skipped on a developer's machine and fails in
+    /// CI (<see cref="WithoutDocker"/>).
     /// </summary>
     public static string Create()
     {
         string connectionString = NewDatabase();
         DbContextOptions<BookmarksDbContext> options = new DbContextOptionsBuilder<BookmarksDbContext>().UseSqlServer(connectionString).Options;
         using BookmarksDbContext db = new(options);
-        db.Database.EnsureCreated();
+        db.Database.Migrate();
         return connectionString;
     }
 
