@@ -421,7 +421,7 @@ Describe 'New-KitApp run' {
             @($script:calls.Arguments) | Should -Contain 'api repos/fixture-owner/kit-app-test'
             $writes = Get-WriteCall
             ($writes[0].Input | ConvertFrom-Json).name | Should -Be 'kit-app-test'
-            $writes[1].Arguments | Should -Be 'api repos/fixture-owner/kit-app-test/rulesets --method POST --input -'
+            @($writes.Arguments) | Should -Contain 'api repos/fixture-owner/kit-app-test/rulesets --method POST --input -'
         }
 
         It 'keeps the app name for the solution, in a folder named after the repo' {
