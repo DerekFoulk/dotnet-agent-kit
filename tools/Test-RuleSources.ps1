@@ -125,6 +125,12 @@ function Get-StrengthProblem {
     if ($strength -cnotin $script:Strengths) {
         return "strength '$strength' must be one of: $($script:Strengths -join ', ') (ADR-0090)"
     }
+    if ($strength -ceq 'consider') {
+        $gates = @(@($(if ($Rule.Contains('enforcement')) { $Rule['enforcement'] })) | Where-Object { $_ -is [System.Collections.IDictionary] -and "$($_['kind'])" -eq 'gate' })
+        if ($gates) {
+            "strength 'consider' is advice, so it can't have a gate: make the part advisory, or the rule should or must if its source's words say so (ADR-0090)"
+        }
+    }
     if ($strength -ceq 'must' -and "$($Rule['basis'])" -eq 'authority') {
         $texts = @(@($(if ($Rule.Contains('quotes')) { $Rule['quotes'] })) | Where-Object { $_ -is [System.Collections.IDictionary] } | ForEach-Object { "$($_['text'])" })
         if (-not @($texts | Where-Object { $_ -match $script:MustWords }).Count) {
