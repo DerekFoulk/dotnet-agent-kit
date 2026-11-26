@@ -259,6 +259,13 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*resolved this command*'
     }
 
+    It 'tries each file a glob matches on its own, as Bash runs it when only that one matches' {
+        # Ten brackets give more readings than the guard keeps, so it matches every file in tools/; the asked script
+        # must still be tried alone in the glob's place, where the rule expects it.
+        $command = 'pwsh -NoProfile -File ./tools/[N][e][w]-[K][i][t][A][p][p].ps1 -Name x'
+        Get-KitDecision -Tool 'Bash' -Command $command | Should -BeLike '*"pwsh -NoProfile -File ./tools/New-KitApp.ps1 -Name x"*'
+    }
+
     It 'leaves a glob that expands to no asked script to the rules' {
         Get-KitDecision -Tool 'Bash' -Command 'ls ./tools/*.ps1' | Should -BeNullOrEmpty
     }
