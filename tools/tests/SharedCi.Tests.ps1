@@ -997,4 +997,46 @@ Describe 'Shared CI for app repos' {
             $step[0].ContainsKey('if') | Should -BeFalse
         }
     }
+
+    # GAP-049 (ADR-0095): the kit's CI checks a fresh app through these same workflows, which then check the app's git
+    # bundle instead of the kit's checkout. Apps leave the input out, and its steps skip.
+    Context 'app-bundle input of <Name>' -ForEach @(
+        @{ Name = 'dotnet-ci.reusable.yml'; File = '.github/workflows/dotnet-ci.reusable.yml' }
+        @{ Name = 'app-checks.reusable.yml'; File = '.github/workflows/app-checks.reusable.yml' }
+    ) {
+        BeforeAll {
+            $workflow = Read-Yaml $File
+            $on = if ($workflow.Yaml.ContainsKey('on')) { $workflow.Yaml['on'] } elseif ($workflow.Yaml.ContainsKey($true)) { $workflow.Yaml[$true] } else { @{} }
+            $inputs = if ($on['workflow_call'] -is [Collections.IDictionary] -and $on['workflow_call'].Contains('inputs')) { $on['workflow_call']['inputs'] } else { @{} }
+        }
+
+        It 'takes an optional app-bundle, empty unless the kit''s CI names one' {
+            $inputs.Contains('app-bundle') | Should -BeTrue
+            $inputs['app-bundle']['type'] | Should -Be 'string'
+            $inputs['app-bundle']['required'] | Should -BeFalse
+            $inputs['app-bundle']['default'] | Should -Be ''
+            $inputs['app-bundle']['description'] | Should -Match 'ADR-0095'
+        }
+
+        # Right after the checkout, before setup-dotnet reads global.json or any step reads the workspace, and in every
+        # job that checks out, so no job checks the kit while the others check the app.
+        It 'in every job that checks out, downloads the bundle outside the workspace and clones it, right after the checkout' {
+            $jobs = @($workflow.Yaml['jobs'].GetEnumerator() | Where-Object { @($_.Value['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' }) })
+            $jobs.Count | Should -BeGreaterThan 0
+            foreach ($job in $jobs) {
+                $steps = @($job.Value['steps'])
+                $at = [array]::FindIndex($steps, [Predicate[object]] { param($s) "$($s['uses'])" -like 'actions/checkout@*' })
+                $download = $steps[$at + 1]
+                $clone = $steps[$at + 2]
+
+                "$($download['uses'])" | Should -Match '^actions/download-artifact@[0-9a-f]{40}$' -Because "$($job.Key) downloads the bundle next"
+                $download['if'] | Should -Be "inputs.app-bundle != ''"
+                $download['with']['name'] | Should -Be '${{ inputs.app-bundle }}'
+                $download['with']['path'] | Should -Be '${{ runner.temp }}/app-bundle' -Because 'the clone empties the workspace'
+                $clone['uses'] | Should -Be '$/.github/actions/exported-app' -Because "$($job.Key) clones it next"
+                $clone['if'] | Should -Be "inputs.app-bundle != ''"
+                $clone['with']['bundle'] | Should -Be '${{ runner.temp }}/app-bundle/app.bundle'
+            }
+        }
+    }
 }
