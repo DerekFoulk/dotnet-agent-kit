@@ -782,6 +782,10 @@ function Get-CommandWordForm {
             # A '*' or '?' it reads as the shell does, so its files stay together, in the order the shell passes them.
             for ($i = 0; $i -lt $form.Count; $i++) {
                 if (-not $form[$i].Contains('[') -or $plainOf[$i].Count -lt 2) { continue }
+                # Each match tried alone costs more with each other file, and a hook that times out checks nothing.
+                if ($plainOf[$i].Count -gt 200) {
+                    throw "the bracket glob $($form[$i]) matches more than 200 files, more than it tries one by one."
+                }
                 foreach ($file in $plainOf[$i]) {
                     , [string[]] @(for ($j = 0; $j -lt $form.Count; $j++) { if ($j -eq $i) { $file } else { $plainOf[$j] } })
                 }
@@ -936,7 +940,9 @@ function Get-CommandGuardDecision {
         if ($built.Count -and (Test-AskedCommand -Resolved $resolved -Tool $Tool -Asked $asked -WorkingDirectory $WorkingDirectory)) {
             return "The command guard (ADR-0077) asks because this command, which an ask rule names, builds an argument when it runs, which no rule can read: $($built[0])"
         }
-        foreach ($spelling in Get-CommandSpelling -Resolved $resolved -Tool $Tool -WorkingDirectory $WorkingDirectory | Select-Object -Unique) {
+        try { $spellings = @(Get-CommandSpelling -Resolved $resolved -Tool $Tool -WorkingDirectory $WorkingDirectory) }
+        catch { return "The command guard (ADR-0077) can't check this command, so it asks: $($_.Exception.Message)" }
+        foreach ($spelling in $spellings | Select-Object -Unique) {
             foreach ($rule in $AskRules) {
                 if (Test-PermissionRuleMatch -Rule $rule -Tool $Tool -Command $spelling -IgnoreCase) {
                     return "The command guard (ADR-0077) resolved this command to ""$spelling"", which the ask rule ""$rule"" covers."
