@@ -229,6 +229,16 @@ Describe 'package-licenses.json' {
         }
     }
 
+    # GAP-025: EF Core's SQL Server provider needs Microsoft.Data.SqlClient's native SNI library, under Microsoft's own
+    # terms: distributable code an app may ship, so every app on SQL Server or Azure SQL Database (the database guide's
+    # default) can use it.
+    It 'allows Microsoft.Data.SqlClient''s SNI library under its distributable-code terms, pinned' {
+        $sni = @($kitPolicy['packages'] | Where-Object { $_['id'] -eq 'Microsoft.Data.SqlClient.SNI.runtime' })
+
+        $sni | Should -HaveCount 1
+        $sni[0]['license'] | Should -Be 'file LICENSE.txt sha256:9335e8bad875dd7be4eebd55d2335eb6433d1cea61aadb3817af7807bef8932a'
+    }
+
     It 'allows FluentAssertions 8 only outside a commercial repo, naming AwesomeAssertions (ADR-0004)' {
         $kitPolicy.ContainsKey('packages') | Should -BeTrue
         $fluent = @($kitPolicy['packages'] | Where-Object { $_['id'] -eq 'FluentAssertions' })
