@@ -36,10 +36,12 @@ Set-Item -Path 'function:script:Get-KitPackageGroupPattern' -Value $script:Packa
 
 # The probe for each app type the job checks: the kit's own reference app of that type (ADR-0095). Name is the app's
 # name; From is the kit folder whose src/ and tests/ become the app's; PackageGroups are the labelled groups of the
-# kit's Directory.Packages.props that Export-KitApp leaves out and the probe uses.
+# kit's Directory.Packages.props that Export-KitApp leaves out and the probe uses; RepoFiles are the kit repo's own files
+# the probe needs as an app has them: the sample's license entries (.config/package-licenses.json, ADR-0098), which a
+# server app on SQL Server adds for itself.
 $script:Probes = [ordered]@{
-    'web-api' = @{ Name = 'Fresh.WebApi'; From = 'sample'; PackageGroups = @('Sample app') }
-    'blazor'  = @{ Name = 'Fresh.Blazor'; From = 'fixtures/WebUi'; PackageGroups = @() }
+    'web-api' = @{ Name = 'Fresh.WebApi'; From = 'sample'; PackageGroups = @('Sample app'); RepoFiles = @('.config/package-licenses.json') }
+    'blazor'  = @{ Name = 'Fresh.Blazor'; From = 'fixtures/WebUi'; PackageGroups = @(); RepoFiles = @() }
 }
 
 # App types in docs/standards/app-types.yml that have no probe yet, and why (GAP-049 stays open for them).
@@ -90,7 +92,9 @@ function Copy-FreshAppProbe {
         [Parameter(Mandatory)] [string] $KitRoot,
         [Parameter(Mandatory)] [string] $Commit,
         [Parameter(Mandatory)] [string] $From,
-        [Parameter(Mandatory)] [string] $Destination
+        [Parameter(Mandatory)] [string] $Destination,
+        # Files at the kit repo's root that the probe needs, copied to the same path in the app.
+        [string[]] $RepoFiles = @()
     )
 
     $files = @(git -C $KitRoot ls-tree -r --name-only $Commit -- "$From/src" "$From/tests" |
@@ -106,6 +110,13 @@ function Copy-FreshAppProbe {
             $target = Join-Path $Destination $file.Substring($From.Length + 1)
             New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
             Copy-Item -LiteralPath (Join-Path $checkout $file) -Destination $target
+        }
+        foreach ($file in $RepoFiles) {
+            $source = Join-Path $checkout $file
+            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "The kit at $Commit has no $file." }
+            $target = Join-Path $Destination $file
+            New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+            Copy-Item -LiteralPath $source -Destination $target
         }
     }
     finally {
@@ -183,7 +194,7 @@ function New-FreshApp {
         New-KitAppFirstCommit -Path $Destination
 
         # The probe, as an app's first task would add its projects, after the first commit.
-        Copy-FreshAppProbe -KitRoot $KitRoot -Commit $commit -From $probe.From -Destination $Destination
+        Copy-FreshAppProbe -KitRoot $KitRoot -Commit $commit -From $probe.From -Destination $Destination -RepoFiles $probe.RepoFiles
         $props = Join-Path $Destination 'Directory.Packages.props'
         $kitProps = git -C $KitRoot show "${commit}:Directory.Packages.props" | Out-String
         if ($LASTEXITCODE -ne 0) { throw "The kit at $commit has no Directory.Packages.props." }
