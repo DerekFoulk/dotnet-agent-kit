@@ -57,7 +57,8 @@ function Get-AskedCommand {
         $parts = @($pattern.Split(' ') | Where-Object { $_ })
         if ($parts.Count -and $parts[0] -cin '&', '.') { $parts = @($parts | Select-Object -Skip 1) }
         if (-not $parts.Count) { continue }
-        $program = [regex]::Match($parts[0], '\A\**[^*]+\*')
+        # Up to the first literal part with a name in it: ./*playwright.ps1 is one program, not "./*".
+        $program = [regex]::Match($parts[0], '\A(?:[^*A-Za-z0-9]*\*)*[^*]*[A-Za-z0-9][^*]*\*')
         $subcommand = if ($parts.Count -gt 1) { $parts[1].TrimStart('*').Split('*')[0] }
         [pscustomobject]@{
             Program    = if ($program.Success) { $program.Value } else { $parts[0] }
