@@ -28,8 +28,11 @@ public sealed class BookmarksDbContext(DbContextOptions<BookmarksDbContext> opti
                 .HasConversion(url => url.OriginalString, text => new Uri(text));
             bookmark.Property(b => b.Title).IsRequired().HasMaxLength(Bookmark.MaxTitleLength);
             bookmark.Property(b => b.CreatedAt).IsRequired();
-            // Every read filters by owner first (SEC-009), then by URL or by key.
-            bookmark.HasIndex(b => new { b.OwnerId, b.Url });
+            // Every read filters by owner first (SEC-009); a page then comes in creation order (API-004), and a lookup by
+            // URL reads the URL from the index. The URL is included, not a key column: SQL Server caps an index key at
+            // 1,700 bytes, and the longest owner id and URL take 4,606. SQL Server adds the clustered key, Id, to the
+            // index's key, so the page's tie-breaker is in it too.
+            bookmark.HasIndex(b => new { b.OwnerId, b.CreatedAt }).IncludeProperties(b => b.Url);
         });
     }
 }

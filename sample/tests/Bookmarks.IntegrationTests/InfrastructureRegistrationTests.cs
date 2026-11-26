@@ -2,6 +2,7 @@ using Bookmarks.Domain;
 using Bookmarks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.IntegrationTests;
@@ -25,7 +26,7 @@ public sealed class InfrastructureRegistrationTests
     }
 
     [Fact]
-    public void TheModelKeysOnIdRequiresEveryFieldCapsTheTitleAndIndexesEachOwnersUrls()
+    public void TheModelKeysOnIdRequiresEveryFieldCapsTheTitleAndIndexesEachOwnersPages()
     {
         // Mutation testing (PR 23): EF finds "Id" as the key by convention, and no behaviour test noticed when a line
         // of OnModelCreating was removed. These are the schema's promises. EF caches a built model for the whole
@@ -34,7 +35,8 @@ public sealed class InfrastructureRegistrationTests
         DbContextOptions<BookmarksDbContext> uncached = new DbContextOptionsBuilder<BookmarksDbContext>()
             .UseSqlServer(UnusedConnectionString).EnableServiceProviderCaching(false).Options;
         using BookmarksDbContext db = new(uncached);
-        Microsoft.EntityFrameworkCore.Metadata.IEntityType bookmark = db.Model.FindEntityType(typeof(Bookmark))!;
+        // The design-time model, which keeps SQL Server's index settings (the included columns) the read-optimized one drops.
+        Microsoft.EntityFrameworkCore.Metadata.IEntityType bookmark = db.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(Bookmark))!;
 
         bookmark.FindPrimaryKey()!.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.Id));
         bookmark.FindProperty(nameof(Bookmark.OwnerId))!.IsNullable.Should().BeFalse();
@@ -44,9 +46,11 @@ public sealed class InfrastructureRegistrationTests
         bookmark.FindProperty(nameof(Bookmark.Title))!.IsNullable.Should().BeFalse();
         bookmark.FindProperty(nameof(Bookmark.Title))!.GetMaxLength().Should().Be(Bookmark.MaxTitleLength);
         bookmark.FindProperty(nameof(Bookmark.CreatedAt))!.IsNullable.Should().BeFalse();
-        // Every read filters by owner first (SEC-009), so the index leads with it.
-        bookmark.GetIndexes().Should().ContainSingle().Which.Properties.Select(p => p.Name)
-            .Should().Equal(nameof(Bookmark.OwnerId), nameof(Bookmark.Url));
+        // Every read filters by owner first (SEC-009), so the index leads with it, then pages in creation order, and
+        // carries the URL a lookup compares.
+        Microsoft.EntityFrameworkCore.Metadata.IIndex index = bookmark.GetIndexes().Should().ContainSingle().Subject;
+        index.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.OwnerId), nameof(Bookmark.CreatedAt));
+        index.GetIncludeProperties().Should().Equal(nameof(Bookmark.Url));
     }
 
     [Theory]
