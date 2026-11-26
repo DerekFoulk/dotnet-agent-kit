@@ -383,6 +383,51 @@ Describe 'ConvertTo-KitAppProfile' {
         $profileText | Should -Match '(?m)^App types: web-api, blazor$'
     }
 
+    # ADR-0090 decision 8: the profile answers each condition a rule's when can name, yes, no or unknown, from the cards
+    # conditions.yml maps; KitRuleStrength's Write-RuleFinding and Build-AgentRules skip a rule only where it says no.
+    It 'answers every condition on the Conditions line, from the cards that settle it' {
+        Import-Module powershell-yaml
+        $conditions = @((ConvertFrom-Yaml (Get-Content -Raw (Join-Path $root 'docs' 'standards' 'conditions.yml')))['conditions'])
+        $noSignIn = [ordered]@{} + $answers
+        $noSignIn['signIn'] = 'none'
+        $noSignIn['database'] = 'sqlite'
+
+        $line = @((ConvertTo-KitAppProfile -Resolved (Resolve-KitIntakeAnswer -Intake $intake -Answers $noSignIn) -Name 'Contoso.Orders' -KitCommit 'abc1234' -Conditions $conditions) -split "`n" | Where-Object { $_ -like 'Conditions:*' })
+
+        $line.Count | Should -Be 1
+        $line[0] | Should -Match '(^Conditions:|, )has-sign-in=no(,|$)'
+        $line[0] | Should -Match '(^Conditions: |, )has-database=yes(,|$)'
+        $line[0] | Should -Match '(^Conditions: |, )has-server-database=no(,|$)'
+        $line[0] | Should -Match '(^Conditions: |, )holds-personal-data=unknown(,|$)'
+        @($line[0] -replace '^Conditions: ' -split ', ').Count | Should -Be $conditions.Count
+    }
+
+    It 'answers a condition unknown when its card''s answer is Other' {
+        Import-Module powershell-yaml
+        $conditions = @((ConvertFrom-Yaml (Get-Content -Raw (Join-Path $root 'docs' 'standards' 'conditions.yml')))['conditions'])
+        $other = [ordered]@{} + $answers
+        $other['signIn'] = 'Other: our own SAML provider'
+
+        $text = ConvertTo-KitAppProfile -Resolved (Resolve-KitIntakeAnswer -Intake $intake -Answers $other) -Name 'Contoso.Orders' -KitCommit 'abc1234' -Conditions $conditions
+
+        $text | Should -Match '(?m)^Conditions: .*\bhas-sign-in=unknown\b'
+    }
+
+    # One source per fact (CRF-003): conditions.yml maps each condition to the intake's own cards and options.
+    It 'maps each condition only to cards and options the intake has' {
+        Import-Module powershell-yaml
+        $conditions = @((ConvertFrom-Yaml (Get-Content -Raw (Join-Path $root 'docs' 'standards' 'conditions.yml')))['conditions'])
+
+        foreach ($condition in @($conditions | Where-Object { $_.Contains('intake') })) {
+            $card = @($intake['cards'] | Where-Object { $_['id'] -eq $condition['intake']['card'] })
+            $card.Count | Should -Be 1 -Because "$($condition['id']) names the card $($condition['intake']['card'])"
+            $options = @($card[0]['options'] | ForEach-Object { $_['id'] })
+            foreach ($option in @($condition['intake']['yes']) + @($condition['intake']['no'])) {
+                $options | Should -Contain $option -Because "$($condition['id']) names $option"
+            }
+        }
+    }
+
     It 'names no app types for an Other app type, so the app gets every rule until an ADR sets them' {
         $other = [ordered]@{ appType = 'Other: A Unity game'; data = 'none'; database = 'none'; signIn = 'none'; hosting = 'none' }
 
