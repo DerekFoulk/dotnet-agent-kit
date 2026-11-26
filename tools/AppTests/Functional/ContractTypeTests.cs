@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,10 +67,36 @@ public sealed class ContractTypeTests
             .ApiDescriptionGroups.Items.SelectMany(group => group.Items)];
 
         endpoints.Should().NotBeEmpty("a host that serves an HTTP API describes its endpoints");
-        endpoints.Where(endpoint => !endpoint.SupportedResponseTypes.Any(response => response.StatusCode is >= 200 and < 300))
+        endpoints.Where(endpoint => !DeclaresSuccess(endpoint))
             .Select(endpoint => $"{endpoint.HttpMethod} {endpoint.RelativePath}")
             .Should().BeEmpty("each endpoint declares its success response with typed results (API-003), so its type is checked (SEC-013)");
     }
+
+    // ApiExplorer gives an endpoint with no response metadata a default 200 without a type, which an untyped IResult
+    // gets too, so that doesn't count; a typed 2xx does, and so does a 2xx the endpoint declares, with or without a body
+    // (TypedResults.NoContent, Ok() or Produces(302) for a redirect).
+    [Theory]
+    [EachHost(200, typeof(void), 0, false)]
+    [EachHost(200, typeof(void), 401, false)]
+    [EachHost(200, typeof(void), 200, true)]
+    [EachHost(204, typeof(void), 204, true)]
+    [EachHost(200, typeof(string), 0, true)]
+    [EachHost(302, typeof(void), 302, true)]
+    public void OnlyADeclaredSuccessCounts(string host, int status, Type answer, int declared, bool counts)
+    {
+        ArgumentNullException.ThrowIfNull(answer);
+        ApiDescription endpoint = new() { ActionDescriptor = new ActionDescriptor() };
+        endpoint.SupportedResponseTypes.Add(new ApiResponseType { StatusCode = status, Type = answer });
+        if (declared != 0)
+        {
+            endpoint.ActionDescriptor.EndpointMetadata = [new ProducesResponseTypeAttribute(declared)];
+        }
+
+        DeclaresSuccess(endpoint).Should().Be(counts, $"for {host}, a {status} of {answer.Name} declared as {declared}");
+    }
+
+    private static bool DeclaresSuccess(ApiDescription endpoint) =>
+        endpoint.SupportedResponseTypes.Any(response => response.StatusCode is >= 200 and < 300);
 
     // .NET's own types carry no entity: plain values, collections of them, Problem Details and files. A type that can
     // carry anything, such as object or a JSON document, or any other framework or library type (IdentityUser, say),
@@ -83,6 +110,8 @@ public sealed class ContractTypeTests
     [EachHost(typeof(Guid), true)]
     [EachHost(typeof(List<>), true)]
     [EachHost(typeof(ProblemDetails), true)]
+    [EachHost(typeof(DayOfWeek), true)]
+    [EachHost(typeof(IFormCollection), true)]
     public void OnlyPlainDotNetTypesPassBesideTheContracts(string host, Type type, bool passes)
     {
         ArgumentNullException.ThrowIfNull(type);
