@@ -239,7 +239,8 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sbom
+          # Unique within the run: the kit's CI runs this workflow for each fresh app too (ADR-0095).
+          name: ${{ inputs.app-bundle == '' && 'sbom' || format('sbom-{0}', inputs.app-bundle) }}
           path: ${{ runner.temp }}/sbom/sbom.cdx.json
           if-no-files-found: error
 
@@ -450,7 +451,8 @@ jobs:
         if: steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sbom
+          # Unique within the run: the kit's CI runs this workflow for each fresh app too (ADR-0095).
+          name: ${{ inputs.app-bundle == '' && 'sbom' || format('sbom-{0}', inputs.app-bundle) }}
           path: ${{ runner.temp }}/sbom/sbom.cdx.json
           if-no-files-found: error
 
