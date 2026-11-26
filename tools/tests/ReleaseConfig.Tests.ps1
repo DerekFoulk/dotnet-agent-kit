@@ -95,6 +95,18 @@ Describe 'Release configuration' {
             foreach ($script in $scripts) { $script | Should -Not -Match '\$\{\{' }
         }
 
+        # Two merges seconds apart start two runs that both update the release PR's branch, and the later update fails
+        # (run 45787504174, 2026-11-26). One run at a time per repo; a waiting run isn't cancelled, and the newest one
+        # still reads every commit, so nothing is lost when GitHub drops an older pending run.
+        It 'runs one release job at a time in each repo, never cancelling one in progress' {
+            $sharedJob | Should -Not -BeNullOrEmpty -Because 'the shared workflow has a release-please job'
+            $concurrency = $sharedJob['concurrency']
+
+            $concurrency | Should -Not -BeNullOrEmpty
+            $concurrency['group'] | Should -Match '\$\{\{ github\.repository \}\}'
+            $concurrency['cancel-in-progress'] | Should -BeFalse
+        }
+
         # If GitHub ever stops creating the waiting runs, the release PR would block with no signal.
         It 'fails when the release PR has no CI run at all, instead of warning' {
             $shared.Text | Should -Match '::error::'
