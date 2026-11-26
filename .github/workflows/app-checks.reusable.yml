@@ -60,25 +60,30 @@ jobs:
         uses: $/.github/actions/kit-tools
 
       # The title comes in through an environment variable, never inline, so it can't inject commands.
+      # With an app bundle (kit CI only, ADR-0095), these three steps check the exported app's own history instead of
+      # the kit PR's: HEAD's subject as the title, and every commit HEAD reaches.
       - name: PR title is a Conventional Commit
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || inputs.app-bundle != ''
         env:
           KIT: ${{ steps.kit.outputs.path }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: '& "$env:KIT/tools/Test-ConventionalTitle.ps1" -Title $env:PR_TITLE'
+          APP_BUNDLE: ${{ inputs.app-bundle }}
+        run: |
+          if ($env:APP_BUNDLE) { $env:PR_TITLE = git -C $env:GITHUB_WORKSPACE log -1 --format=%s }
+          & "$env:KIT/tools/Test-ConventionalTitle.ps1" -Title $env:PR_TITLE
 
       - name: Commit subjects are Conventional Commits
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || inputs.app-bundle != ''
         env:
           KIT: ${{ steps.kit.outputs.path }}
-          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+          RANGE: ${{ inputs.app-bundle != '' && 'HEAD' || format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) }}
         run: '& "$env:KIT/tools/Test-ConventionalTitle.ps1" -Range $env:RANGE'
 
       - name: Every red commit is made green
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || inputs.app-bundle != ''
         env:
           KIT: ${{ steps.kit.outputs.path }}
-          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+          RANGE: ${{ inputs.app-bundle != '' && 'HEAD' || format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) }}
         run: '& "$env:KIT/tools/Test-RedGreenOrder.ps1" -Range $env:RANGE'
 
       - name: ADR sections
