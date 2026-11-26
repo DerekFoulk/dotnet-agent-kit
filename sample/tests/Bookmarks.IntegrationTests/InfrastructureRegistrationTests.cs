@@ -26,6 +26,18 @@ public sealed class InfrastructureRegistrationTests
     }
 
     [Fact]
+    public void TheModelHasNoChangeThatNoMigrationCovers()
+    {
+        // DAT-002, DAT-017: a change to the model without its migration fails here, long before a deployment would
+        // find it. It compares the model with the last migration's snapshot, so it needs no database.
+        using ServiceProvider services = new ServiceCollection().AddBookmarksInfrastructure(UnusedConnectionString).BuildServiceProvider();
+        using IServiceScope scope = services.CreateScope();
+        DatabaseFacade database = scope.ServiceProvider.GetRequiredService<BookmarksDbContext>().Database;
+
+        database.HasPendingModelChanges().Should().BeFalse("every change to the model comes with its migration (dotnet ef migrations add)");
+    }
+
+    [Fact]
     public void TheModelKeysOnIdRequiresEveryFieldCapsTheTitleAndIndexesEachOwnersPages()
     {
         // Mutation testing (PR 23): EF finds "Id" as the key by convention, and no behaviour test noticed when a line
