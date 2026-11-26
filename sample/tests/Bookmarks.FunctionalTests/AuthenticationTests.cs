@@ -4,7 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.FunctionalTests;
 
-/// <summary>Who may call the API: only a caller with a valid access token (SEC-007, SEC-008, ADR-0048).</summary>
+/// <summary>
+/// Who may call the API: only a caller with a valid access token (SEC-007, SEC-008, ADR-0048). The kit's shared
+/// TokenTests send an unsigned token, a changed one and one signed with another key; these send no token, and the tokens
+/// only the sample's key can sign, to every bookmarks endpoint.
+/// </summary>
 public sealed class AuthenticationTests : IDisposable
 {
     private readonly ApiHost _host = new();
@@ -15,8 +19,6 @@ public sealed class AuthenticationTests : IDisposable
         { "an expired token", TestTokens.For(expiresIn: TimeSpan.FromHours(-1)) },
         { "a token from another issuer", TestTokens.For(issuer: "https://login.other.test/") },
         { "a token for another API", TestTokens.For(audience: "api://another-api") },
-        { "a token signed with a key the API doesn't trust", TestTokens.For(key: TestTokens.NewKey()) },
-        { "an unsigned token", TestTokens.For(isSigned: false) },
     };
 
     [Theory]

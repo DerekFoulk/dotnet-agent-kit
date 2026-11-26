@@ -111,7 +111,7 @@ rules:
         how: "ci: the sample's FunctionalTests check that every bookmarks endpoint answers 401 without a valid token"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): AuthorizationTests checks that the fallback policy requires a signed-in user, and that only the routes the app lists in AppHost allow anonymous callers; HealthTests and OpenApiTests check that the probes and the Development document answer without a token; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): AuthorizationTests checks that the fallback policy requires a signed-in user, and that only the routes the app lists in AppHost allow anonymous callers; HealthTests and OpenApiTests check that the probes and the Development document answer without a token; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
         how: "each opt-out's comment saying why, which code review checks"
@@ -127,10 +127,13 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's FunctionalTests send no token, and an expired, wrong-issuer, wrong-audience, wrong-key and unsigned one, to every bookmarks endpoint and expect a 401 Problem, and check that the OpenAPI document declares the bearer scheme"
+        how: "ci: the sample's FunctionalTests send no token, and an expired, wrong-issuer and wrong-audience one, which only its key can sign, to every bookmarks endpoint and expect a 401 Problem"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): for each host that serves an HTTP API, TokenTests sends the host's signed-in route no token, an unsigned token, the signed-in client's token with a claim added and one signed with a new key, each made from that client's own token so none needs the app's key, and expects a 401 Problem naming the Bearer scheme, while the untouched token gets through; OpenApiDocumentTests checks that the OpenAPI document declares the Bearer scheme and that every operation not on an anonymous route requires it and declares 401 and 403; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "until the app follows the sample"
+        how: "an expired, wrong-issuer or wrong-audience token, which need the app's key to sign, until the app's own FunctionalTests send them, as the sample's do; the OpenID Connect provider, AddJwtBearer's settings under Authentication:Schemes:Bearer and dotnet user-jwts, which code review checks"
     paths: ["**/Program.cs", "**/appsettings*.json", "**/*.csproj", "**/*Security*.cs"]
   - id: SEC-009
     statement: "Every read or change of a user's data is limited to that user's data in the query itself, in the application and data layers, not only in the endpoint; the user's id is the token's sub claim, which the fallback policy requires (unique within one issuer, so an app that trusts more than one keys on the issuer and sub together), and another user's item answers 404, as one that doesn't exist does."
@@ -178,7 +181,7 @@ rules:
         how: "ci: the sample's FunctionalTests (HostingSecurityTests) check that a flood from one caller gets 429 with Retry-After as Problem Details, whether the caller has a valid token, no token or a forged one, that the health probes are never limited, and that a rate limit below one stops the app at startup"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): HostingSecurityTests checks that another host gets a 400 and an HTTPS response carries HSTS in Production, that a cross-origin preflight to a route the app names gets no permission, and that Kestrel sends no Server header and caps the request body at 1 MB or less; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): HostingSecurityTests checks that another host gets a 400 and an HTTPS response carries HSTS in Production, that a cross-origin preflight to a route the app names gets no permission, and that Kestrel sends no Server header and caps the request body at 1 MB or less; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
         how: "the rate limit, whose settings are the app's own, until its own FunctionalTests check it, as the sample's do"
@@ -209,14 +212,14 @@ rules:
     scope: [web-api]
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's ContractTests check that every schema in the OpenAPI document is a Contracts type or one of ASP.NET Core's Problem Details types"
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): for each host that serves an HTTP API, ContractTypeTests checks that every type its endpoints take as a body or form, or answer with, and each generic argument and array element of it, comes from an assembly the host lists as its contracts or is a plain .NET type (a primitive, a .NET enum, string, Guid, date or time, Uri, a BCL collection, ProblemDetails, a form file or a Stream; never object or a JSON document), and that every endpoint declares what it answers on success (a typed 2xx, or a 2xx or 3xx it declares), so an untyped IResult, which gets only ApiExplorer's default 200, can't hide its type; the types are ApiExplorer's, which the OpenAPI document is made from, so every endpoint the document describes counts, wherever it's mapped; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): EndpointTests fails when a presentation class named ...Endpoints or ...Controller uses a domain type, or when an API (an assembly named .Api) has no such class; endpoints mapped elsewhere, such as in Program.cs, are code review's; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): EndpointTests fails when a presentation class named ...Endpoints or ...Controller uses a domain type, or when an API (an assembly named .Api) has no such class; endpoints mapped elsewhere, such as in Program.cs, are ContractTypeTests'; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
-        in: [app]
-        how: "the OpenAPI document's schemas, until the app follows the sample's ContractTests"
+        in: [kit, app]
+        how: "an endpoint left out of the OpenAPI document (ExcludeFromDescription), which ApiExplorer doesn't describe, or one that declares a success without a type and still answers with a body, so code review checks what it accepts and returns"
     paths: ["**/*Endpoints*.cs", "**/*Contracts*/**"]
   - id: SEC-014
     statement: "The security analyzers stay on and fail the build: every CA2xxx, CA3xxx and CA5xxx security rule that AnalysisLevel latest-all turns on, the SYSLIB obsoletions of unsafe APIs (BinaryFormatter, obsolete cryptography and TLS types), and BannedSymbols.txt's bans of the APIs those rules miss (Aes.Create, whose CBC needs an HMAC nothing checks for, algorithms named at run time, the accept-any-certificate validator, DTD parsing and the legacy XML resolver and reader); a suppression of one names its reason where it lives."
