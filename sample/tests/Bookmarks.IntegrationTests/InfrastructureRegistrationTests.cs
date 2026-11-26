@@ -58,11 +58,12 @@ public sealed class InfrastructureRegistrationTests
         bookmark.FindProperty(nameof(Bookmark.Title))!.IsNullable.Should().BeFalse();
         bookmark.FindProperty(nameof(Bookmark.Title))!.GetMaxLength().Should().Be(Bookmark.MaxTitleLength);
         bookmark.FindProperty(nameof(Bookmark.CreatedAt))!.IsNullable.Should().BeFalse();
-        // Every read filters by owner first (SEC-009), so the index leads with it, then pages in creation order, and
-        // carries the URL a lookup compares.
+        // Every read filters by owner first (SEC-009), then pages in creation order, so the table is clustered that way.
+        // Not on the key: SQL Server sorts a UUID version 7 by its random bits, so each insert would land at random.
         Microsoft.EntityFrameworkCore.Metadata.IIndex index = bookmark.GetIndexes().Should().ContainSingle().Subject;
         index.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.OwnerId), nameof(Bookmark.CreatedAt));
-        index.GetIncludeProperties().Should().Equal(nameof(Bookmark.Url));
+        index.IsClustered().Should().BeTrue();
+        bookmark.FindPrimaryKey()!.IsClustered().Should().BeFalse();
     }
 
     [Theory]
