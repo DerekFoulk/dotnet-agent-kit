@@ -382,6 +382,19 @@ Describe 'Test-Runbook.ps1' {
             Should -Invoke Write-Host -ModuleName KitRuleStrength -ParameterFilter { "$Object" -like "*'How to restore its data' is missing*" -and "$Object" -notlike '::warning::*' }
         }
 
+        # ADR-0090: where the app's profile rules the rule out, the check says so, and calls nothing a warning.
+        It 'returns 0 and says OPS-004 doesn''t apply, in an app its scope leaves out' {
+            New-Runbook -Omit 'How to restore its data'
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'App types: maui'
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $result = Invoke-RunbookCheck -Path $script:runbook -RuleStrengthPath (New-StrengthFile 'must') }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+            $result | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 runbook problem.*not judged.*OPS-004 doesn't apply to this app" }
+            Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }
+        }
         It 'returns 0 and prints each problem as a warning while OPS-004 is a should rule' {
             New-Runbook -Omit 'How to restore its data'
 

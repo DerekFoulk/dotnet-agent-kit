@@ -136,6 +136,21 @@ Describe 'Get-UiProject.ps1' {
                 Should -Throw '*tests/App.Maui.Tests/App.Maui.Tests.csproj references the UI project src/App.Maui/App.Maui.csproj*ARC-010*'
         }
 
+        # ADR-0090: where the app's profile rules the rule out, the check says so, and calls nothing a warning.
+        It 'lists the UI projects and says ARC-010 doesn''t apply, in an app its scope leaves out' {
+            $solution = New-ReferencingSolution
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'App types: web-api'
+            $strengths = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+            Set-Content -LiteralPath $strengths -Value '{ "ARC-010": { "strength": "must", "scope": ["maui"], "when": [] } }'
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $result = @(Get-UiProject -Solution $solution -RuleStrengthPath $strengths).Count - 1 }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+            $result | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 reference.*UI project.*not judged.*ARC-010 doesn't apply to this app" }
+            Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }
+        }
         It 'warns while ARC-010 is a should rule, and still lists the UI projects and writes the filter' {
             $solution = New-ReferencingSolution
             $filter = Join-Path $TestDrive "filter-$(New-Guid).slnf"

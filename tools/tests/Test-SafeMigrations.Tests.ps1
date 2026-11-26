@@ -231,7 +231,7 @@ Describe 'Test-SafeMigrations.ps1' {
         BeforeAll {
             function New-StrengthFile([string] $Status) {
                 $path = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""DAT-003"": { ""strength"": ""$Status"", ""scope"": [""web-api"", ""blazor""], ""when"": [] } }"
+                Set-Content -LiteralPath $path -Value "{ ""DAT-003"": { ""strength"": ""$Status"", ""scope"": [""web-api"", ""blazor""], ""when"": [""has-server-database""] } }"
                 $path
             }
         }
@@ -255,6 +255,19 @@ Describe 'Test-SafeMigrations.ps1' {
             Should -Invoke Write-Host -ModuleName KitRuleStrength -ParameterFilter { "$Object" -like '*Up calls DropTable*' -and "$Object" -notlike '::warning::*' }
         }
 
+        # ADR-0090: where the app's profile rules the rule out, the check says so, and calls nothing a warning.
+        It 'returns 0 and says DAT-003 doesn''t apply, in an app whose profile answers its condition no' {
+            New-Migration -Up 'migrationBuilder.DropTable(name: "Orders");'
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'Conditions: has-server-database=no'
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $result = Invoke-SafeMigrationsCheck -Path $script:repo -RuleStrengthPath (New-StrengthFile 'must') }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+            $result | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 migration problem.*not judged.*DAT-003 doesn't apply to this app" }
+            Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }
+        }
         It 'returns 0 and prints each problem as a warning while DAT-003 is a should rule' {
             New-Migration -Up 'migrationBuilder.DropTable(name: "Orders");'
 

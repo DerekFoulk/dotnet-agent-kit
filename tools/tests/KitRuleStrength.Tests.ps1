@@ -73,6 +73,21 @@ Describe 'KitRuleStrength.psm1' {
         }
     }
 
+    # A check sums up its findings at the end, so it asks once whether its rule applies to the app at all.
+    Context 'Get-RuleSkip' {
+        It 'gives the reason a rule doesn''t apply to the app' {
+            Get-RuleSkip -Id 'OPS-004' -Path $script:strengthFile -ProfilePath (New-Profile 'App types: maui') |
+                Should -BeExactly 'its scope is web-api, blazor, and the app profile names the app types maui'
+        }
+
+        It 'gives nothing for a rule that applies, <Case>' -ForEach @(
+            @{ Case = 'core in a typed app'; Id = 'STY-005'; Line = 'App types: maui' }
+            @{ Case = 'scoped to the app''s type'; Id = 'OPS-004'; Line = 'App types: blazor' }
+        ) {
+            Get-RuleSkip -Id $Id -Path $script:strengthFile -ProfilePath (New-Profile $Line) | Should -BeNullOrEmpty
+        }
+    }
+
     Context 'Write-RuleFinding' {
         BeforeEach {
             # A fresh module each test: it reports a skipped rule once per run.
@@ -167,6 +182,13 @@ Describe 'KitRuleStrength.psm1' {
             Write-RuleFinding -Id 'DAT-003' -Message 'drops a column' -Path $script:strengthFile -ProfilePath $appProfile | Should -BeFalse
 
             Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq '::warning::DAT-003: drops a column' }
+        }
+
+        # Review of the branch: a mutant that skipped core rules in every typed app survived the tests above.
+        It 'applies a core rule in an app whose profile names app types' {
+            $appProfile = New-Profile 'App types: maui'
+
+            Write-RuleFinding -Id 'STY-005' -Message 'App.cs(3,1): error STY005: x' -Path $script:strengthFile -ProfilePath $appProfile | Should -BeTrue
         }
 
         It 'applies a scoped rule in an app whose profile names <Case>' -ForEach @(

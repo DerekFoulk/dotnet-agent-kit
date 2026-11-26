@@ -89,6 +89,21 @@ Describe 'Test-CodeShape.ps1' {
             Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 code shape finding.*warning.*should rule' }
         }
 
+        # ADR-0090: where the app's profile rules the rule out, the check says so, and calls nothing a warning.
+        It 'passes, and says CRF-011 doesn''t apply, in an app its scope leaves out' {
+
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'App types: maui'
+            $strengths = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+            Set-Content -LiteralPath $strengths -Value '{ "CRF-011": { "strength": "must", "scope": ["web-api"], "when": [] }, "STY-005": { "strength": "must", "scope": ["core"], "when": [] } }'
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $result = Write-CodeShapeResult -ExitCode 1 -Output $script:shapeLine -RuleStrengthPath $strengths }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+            $result | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 code shape finding.*not judged.*rule doesn't apply to this app" }
+            Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }
+        }
         It 'fails on the same breach while CRF-011 is a must rule' {
             Write-CodeShapeResult -ExitCode 1 -Output $script:shapeLine -RuleStrengthPath (New-StrengthFile 'must') | Should -Be 1
 

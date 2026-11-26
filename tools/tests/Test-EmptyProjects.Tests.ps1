@@ -272,6 +272,23 @@ Describe 'Test-EmptyProjects.ps1' {
             $output | Should -Match '1 empty-project problem.*warning.*ARC-009 is a should rule'
         }
 
+        # ADR-0090: where the app's profile rules the rule out, the check says so, and calls nothing a warning.
+        It 'returns 0 and says ARC-009 doesn''t apply, in an app its scope leaves out' {
+            Mock Write-Host {}
+            Mock Write-Host {} -ModuleName KitRuleStrength
+            $solution = New-Solution @{ 'App.Api' = @{ 'Program.cs' = 'return;' }; 'App.Domain' = @{} }
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'App types: maui'
+            $strengths = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+            Set-Content -LiteralPath $strengths -Value '{ "ARC-009": { "strength": "must", "scope": ["web-api"], "when": [] } }'
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $result = Invoke-EmptyProjectsCheck -Solution $solution -RuleStrengthPath $strengths }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+            $result | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 empty-project problem.*not judged.*ARC-009 doesn't apply to this app" }
+            Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }
+        }
         # Review of the branch: a project the solution lists but that isn't there is a broken solution, not ARC-009's
         # concern, so it fails whatever ARC-009's status.
         It 'fails on a project the solution lists but that isn''t there, while ARC-009 is a should rule' {
