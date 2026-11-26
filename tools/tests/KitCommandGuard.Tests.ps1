@@ -275,6 +275,15 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         Get-KitDecision -Tool 'Bash' -Command 'pwsh -NoProfile -File ./tools/*-K*.ps1 -Name x' | Should -BeNullOrEmpty
     }
 
+    It 'asks, rather than risk the hook''s time-out, for a bracket glob that matches more than 200 files' {
+        # Review round 8: each match is tried alone, so the cost grows with the square of the files, and a hook that
+        # times out leaves the call unchecked.
+        $folder = Join-Path $TestDrive 'many'
+        New-Item -ItemType Directory -Path $folder | Out-Null
+        1..201 | ForEach-Object { New-Item -ItemType File -Path (Join-Path $folder "f$_.txt") | Out-Null }
+        Get-CommandGuardDecision -Tool 'Bash' -Command 'ls ./many/[a-z]*' -AskRules @() -WorkingDirectory $TestDrive | Should -BeLike '*more than 200*'
+    }
+
     It 'leaves a glob that expands to no asked script to the rules' {
         Get-KitDecision -Tool 'Bash' -Command 'ls ./tools/*.ps1' | Should -BeNullOrEmpty
     }
