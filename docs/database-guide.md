@@ -54,6 +54,10 @@ If you prefer another option that fits the answers above (PostgreSQL, a paid tie
 - **Cosmos DB free tier:** 1000 RU/s is shared by every container in the account, only one account per subscription can have it, and storage past 25 GB bills at the regular price.
 - **PostgreSQL free account:** it ends after 12 months, and then bills at the paid price without asking.
 
+## SQL Server and Azure SQL Database: one license entry
+
+EF Core's SQL Server provider pulls in `Microsoft.Data.SqlClient`, which brings `Microsoft.Identity.Client.NativeInterop` (MSAL's broker, through `Azure.Identity`). Its Microsoft license terms allow any number of copies to be installed and used, but not shared or distributed, so the license check (SEC-005) fails it until the repo says so. A server app, which only its owner deploys, adds it to `.config/package-licenses.json` with that reason; the kit's own `.config/package-licenses.json` has the entry to copy, pinned to the license file's hash. An app that ships to users, such as a MAUI or desktop app, shouldn't use it. `Microsoft.Data.SqlClient.SNI.runtime` is in the kit's policy already: its terms make it distributable code (ADR-0098).
+
 ## SQLite: set its busy timeout
 
 SQLite takes one write at a time. Microsoft.Data.Sqlite answers a write that finds the lock taken by sleeping a fixed 150 ms before it tries again, so two writes that meet cost the second one at least 150 ms. Have SQLite wait for the lock itself instead: in a `DbConnectionInterceptor`, override `ConnectionOpened` and `ConnectionOpenedAsync` to call `SQLitePCL.raw.sqlite3_busy_timeout(connection.Handle, 1000)` on the `SqliteConnection`, and add the interceptor with `AddInterceptors` next to `UseSqlite`. Keep it short, a second: SQLite's busy timeout applies to each statement, while Microsoft.Data.Sqlite's command timeout covers the whole command. The kit's sample does this in `sample/src/Bookmarks.Infrastructure/SqliteBusyTimeoutInterceptor.cs`, and the kit's ADR-0072 explains why ([kit repository](https://github.com/DerekFoulk/dotnet-agent-kit)).
