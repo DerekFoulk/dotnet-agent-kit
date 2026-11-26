@@ -112,6 +112,34 @@ public sealed class EfBookmarkRepositoryTests
     }
 
     [Fact]
+    public async Task OwnerIdsThatDifferOnlyByCaseAreDifferentOwners()
+    {
+        // SEC-009: a user's id (the token's sub) is compared exactly, so "Alice" never reads alice's bookmarks. SQL
+        // Server's default collation ignores case.
+        Bookmark mine = Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "Mine", s_now);
+        await SaveAsync(mine);
+
+        await using BookmarksDbContext db = new(_options);
+        EfBookmarkRepository repository = new(db);
+
+        (await repository.FindAsync("Alice", mine.Id, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await repository.FindByUrlAsync("Alice", mine.Url, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await repository.ListAsync("Alice", 0, 10, TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UrlsThatDifferOnlyByCaseAreDifferentBookmarks()
+    {
+        // A URL's path and query are case-sensitive, so /A isn't a copy of /a. SQL Server's default collation ignores case.
+        await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "a", s_now));
+
+        await using BookmarksDbContext db = new(_options);
+        Bookmark? found = await new EfBookmarkRepository(db).FindByUrlAsync(Owner, new Uri("https://example.com/A"), TestContext.Current.CancellationToken);
+
+        found.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ListReturnsEverySavedBookmark()
     {
         await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now));
