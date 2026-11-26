@@ -771,6 +771,17 @@ function Get-CommandWordForm {
         $forms = @(, $words) + @(if ($inner.Count -and $inner.Count -ne $words.Count) { , [string[]] $inner })
         foreach ($form in $forms) {
             , $form
+            # A glob that matches several files is also tried with each one alone in its place, as the shell runs it
+            # where only that one matches: the guard's reading of a glob can match more files than the shell's.
+            for ($i = 0; $i -lt $form.Count; $i++) {
+                $files = @(Get-PlainPathWord -Words @('-', $form[$i]) -WorkingDirectory $WorkingDirectory | Select-Object -Skip 1)
+                if ($files.Count -lt 2) { continue }
+                foreach ($file in $files) {
+                    $one = [string[]] $form.Clone()
+                    $one[$i] = $file
+                    , [string[]] @(Get-PlainPathWord -Words $one -WorkingDirectory $WorkingDirectory)
+                }
+            }
             $plain = @(Get-PlainPathWord -Words $form -WorkingDirectory $WorkingDirectory)
             if (($plain -join "`0") -cne ($form -join "`0")) { , [string[]] $plain }
         }
