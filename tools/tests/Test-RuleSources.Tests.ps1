@@ -234,6 +234,16 @@ types:
             $problems[0].Message | Should -BeLike "*strength 'must'*no quote*must-word*should*ADR-0090*"
         }
 
+        # A consider rule is advice: no gate runs on it, so a gate part on one would fail a change for advice.
+        It 'reports a consider rule with a gate' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = 'consider' })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*strength 'consider'*gate*advisory*should*ADR-0090*"
+        }
+
         It 'needs no strength on a retired rule' {
             New-StandardsFile -Rules @(New-Rule -Override @{ status = 'retired' } -Remove 'strength')
 
