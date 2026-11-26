@@ -390,12 +390,13 @@ Describe 'ConvertTo-KitAppProfile' {
         $conditions = @((ConvertFrom-Yaml (Get-Content -Raw (Join-Path $root 'docs' 'standards' 'conditions.yml')))['conditions'])
         $noSignIn = [ordered]@{} + $answers
         $noSignIn['signIn'] = 'none'
+        $noSignIn['data'] = 'device'
         $noSignIn['database'] = 'sqlite'
 
         $line = @((ConvertTo-KitAppProfile -Resolved (Resolve-KitIntakeAnswer -Intake $intake -Answers $noSignIn) -Name 'Contoso.Orders' -KitCommit 'abc1234' -Conditions $conditions) -split "`n" | Where-Object { $_ -like 'Conditions:*' })
 
         $line.Count | Should -Be 1
-        $line[0] | Should -Match '(^Conditions:|, )has-sign-in=no(,|$)'
+        $line[0] | Should -Match '(^Conditions: |, )has-sign-in=no(,|$)'
         $line[0] | Should -Match '(^Conditions: |, )has-database=yes(,|$)'
         $line[0] | Should -Match '(^Conditions: |, )has-server-database=no(,|$)'
         $line[0] | Should -Match '(^Conditions: |, )holds-personal-data=unknown(,|$)'

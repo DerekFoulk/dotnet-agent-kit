@@ -138,12 +138,14 @@ function Select-KitPick {
     [pscustomobject]@{ Pick = $Recommendation['agent']['pick']; From = 'agent'; Notes = @($notes) }
 }
 
-# Writes the app's docs/app-profile.md from the resolved answers.
+# Writes the app's docs/app-profile.md from the resolved answers. -Conditions is the kit's docs/standards/conditions.yml,
+# parsed: with it, the profile answers each condition yes, no or unknown (ADR-0090).
 function ConvertTo-KitAppProfile {
     param(
         [Parameter(Mandatory)] [object] $Resolved,
         [Parameter(Mandatory)] [string] $Name,
-        [Parameter(Mandatory)] [string] $KitCommit
+        [Parameter(Mandatory)] [string] $KitCommit,
+        [object[]] $Conditions
     )
 
     $cardRows = foreach ($answer in $Resolved.Cards) {
@@ -189,6 +191,31 @@ function ConvertTo-KitAppProfile {
         "None chosen yet, so the app gets every kit rule. Name its app types from the kit's ``docs/standards/app-types.yml`` in an ADR, then add a line here that reads ``App types: <id>, <id>`` (kit ADR-0084)."
     }
 
+    # ADR-0090 decision 8: each condition a rule's when can name, answered from the card conditions.yml maps it to: yes
+    # or no by the option chosen, unknown for an Other answer, an option it doesn't list, or a condition the intake
+    # doesn't ask. A gate skips a rule only on no, so unknown never drops one.
+    $conditionLines = @()
+    if ($Conditions) {
+        $pairs = foreach ($condition in $Conditions) {
+            $answer = 'unknown'
+            if ($condition.Contains('intake') -and $condition['intake']) {
+                $card = @($Resolved.Cards | Where-Object { $_.Card['id'] -eq $condition['intake']['card'] }) | Select-Object -First 1
+                if ($card -and -not $card.Other) {
+                    $option = "$($card.Option['id'])"
+                    if ($option -in @($condition['intake']['yes'])) { $answer = 'yes' }
+                    elseif ($option -in @($condition['intake']['no'])) { $answer = 'no' }
+                }
+            }
+            "$($condition['id'])=$answer"
+        }
+        $conditionLines = @(
+            ''
+            "Each condition a kit rule's ``when`` can name (kit ``docs/standards/conditions.yml``, ADR-0090), answered from the choices above: a check skips a rule only where its condition is ``no``, and ``unknown`` holds. ``Build-AgentRules.ps1`` and the checks read the next line; change it only with an ADR."
+            ''
+            "Conditions: $($pairs -join ', ')"
+        )
+    }
+
     $lines = @(
         "# App profile: $Name"
         ''
@@ -205,6 +232,7 @@ function ConvertTo-KitAppProfile {
         '## App types'
         ''
         $typeLines
+        $conditionLines
         ''
         '## Test tools'
         ''
