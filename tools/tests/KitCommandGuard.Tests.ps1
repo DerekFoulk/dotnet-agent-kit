@@ -313,6 +313,12 @@ Describe 'Get-CommandGuardDecision for Bash' {
         Get-KitDecision -Tool 'Bash' -Command $command | Should -BeLike '*builds an argument*'
     }
 
+    It 'leaves a quoted heredoc that ends at its one delimiter line, in an asked command, to the rules' {
+        # Its output is fixed text, so it's no built value even where an ask rule names the command.
+        $command = "git push origin ""`$(cat <<'EOF'`nfeat/x`nEOF`n)"""
+        Get-KitDecision -Tool 'Bash' -Command $command | Should -BeNullOrEmpty
+    }
+
     # A built value matters only where it could make an asked command: replaying the kit's sessions showed these
     # forms in routine work, and no ask rule names their program and subcommand.
     It 'leaves <Command> to the rules: it builds a value, but no ask rule names its command' -ForEach @(
@@ -449,6 +455,8 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
     It 'asks for <Command>, which passes a command''s output through a variable, whatever the command it reaches' -ForEach @(
         # Review round 1: the nested-command ask, moved one statement earlier.
         @{ Command = "`$b = Get-Content ./.env -Raw; Add-ReviewReply -Body `$b" }
+        @{ Command = "Get-Content ./.env -Raw -OutVariable b; Add-ReviewReply -Body `$b" }
+        @{ Command = "Get-Content ./.env -Raw -ov:+b; Add-ReviewReply -Body `$b" }
         @{ Command = "foreach (`$line in (Get-Content ./.env)) { Add-ReviewReply -Body `$line }" }
     ) {
         Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @() | Should -BeLike '*builds an argument*'
