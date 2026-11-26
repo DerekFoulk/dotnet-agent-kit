@@ -869,11 +869,13 @@ Describe 'Shared CI for app repos' {
             $steps = @($secrets['steps'])
 
             $secrets['name'] | Should -Be 'Secret scan (gitleaks)'
-            $steps | Should -HaveCount 2
+            # Between them, the two steps that check an exported app's bundle instead, in the kit's CI only (ADR-0095).
+            $steps | Should -HaveCount 4
             $steps[0]['uses'] | Should -Match '^actions/checkout@[0-9a-f]{40}$'
             $steps[0]['with']['fetch-depth'] | Should -Be 0 -Because 'the scan needs all of HEAD''s history'
             $steps[0]['with']['persist-credentials'] | Should -BeFalse
-            $steps[1]['uses'] | Should -Be '$/.github/actions/secret-scan'
+            @($steps[1..2] | ForEach-Object { $_['if'] }) | Should -Be @("inputs.app-bundle != ''", "inputs.app-bundle != ''")
+            $steps[3]['uses'] | Should -Be '$/.github/actions/secret-scan'
         }
     }
 
