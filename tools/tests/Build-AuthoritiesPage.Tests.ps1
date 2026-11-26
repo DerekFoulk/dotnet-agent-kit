@@ -171,9 +171,9 @@ Describe 'Build-AuthoritiesPage.ps1' {
             $cited = @(
                 [pscustomobject]@{ Url = 'https://learn.microsoft.com/b'; RuleId = 'SEC-002'; Status = 'accepted'; Basis = 'authority'; File = 'security.md' }
                 [pscustomobject]@{ Url = 'https://learn.microsoft.com/a'; RuleId = 'API-002'; Status = 'accepted'; Basis = 'authority'; File = 'api-design.md' }
-                [pscustomobject]@{ Url = 'https://learn.microsoft.com/a'; RuleId = 'API-001'; Status = 'proposed'; Basis = 'authority'; File = 'api-design.md' }
+                [pscustomobject]@{ Url = 'https://learn.microsoft.com/a'; RuleId = 'API-001'; Status = 'accepted'; Basis = 'authority'; File = 'api-design.md' }
                 [pscustomobject]@{ Url = 'https://learn.microsoft.com/b'; RuleId = 'API-002'; Status = 'accepted'; Basis = 'authority'; File = 'api-design.md' }
-                [pscustomobject]@{ Url = 'https://github.com/dequelabs/axe-core'; RuleId = 'UI-002'; Status = 'proposed'; Basis = 'authority'; File = 'ui.md' }
+                [pscustomobject]@{ Url = 'https://github.com/dequelabs/axe-core'; RuleId = 'UI-002'; Status = 'accepted'; Basis = 'authority'; File = 'ui.md' }
                 [pscustomobject]@{ Url = 'https://martinfowler.com/bliki/Yagni.html'; RuleId = 'CRF-004'; Status = 'accepted'; Basis = 'preference'; File = 'craft.md' }
             )
             $block = ConvertTo-AuthoritiesBlock -Cited $cited -Entries $entries
@@ -184,13 +184,13 @@ Describe 'Build-AuthoritiesPage.ps1' {
         }
 
         It 'gives each source a row in its class, with its publisher, what it covers and the rules citing it, each once and sorted' {
-            $block | Should -Match '(?s)### Authorities\n.*\| \[Microsoft Learn\]\(#microsoft-learn\) \| Microsoft \| What Microsoft Learn covers \| \[API-001\]\(standards/api-design\.md\) \(proposed\), \[API-002\]\(standards/api-design\.md\), \[SEC-002\]\(standards/security\.md\) \|\n.*### Tool and project pages'
+            $block | Should -Match '(?s)### Authorities\n.*\| \[Microsoft Learn\]\(#microsoft-learn\) \| Microsoft \| What Microsoft Learn covers \| \[API-001\]\(standards/api-design\.md\), \[API-002\]\(standards/api-design\.md\), \[SEC-002\]\(standards/security\.md\) \|\n.*### Tool and project pages'
             $block | Should -Match '(?s)### Tool and project pages\n.*\| \[axe-core\]\(#axe-core\) \| Deque Systems \|.*### Practitioners'
             $block | Should -Match '(?s)### Practitioners and references\n.*\| \[Fowler\]\(#fowler\) \| Martin Fowler \|'
         }
 
         It 'lists each source''s pages, sorted, with the rules citing each' {
-            $block | Should -Match '(?s)#### Microsoft Learn\n\n\| Page \| Cited by \|\n\|---\|---\|\n\| <https://learn\.microsoft\.com/a> \| \[API-001\]\(standards/api-design\.md\) \(proposed\), \[API-002\]\(standards/api-design\.md\) \|\n\| <https://learn\.microsoft\.com/b> \| \[API-002\]\(standards/api-design\.md\), \[SEC-002\]\(standards/security\.md\) \|\n'
+            $block | Should -Match '(?s)#### Microsoft Learn\n\n\| Page \| Cited by \|\n\|---\|---\|\n\| <https://learn\.microsoft\.com/a> \| \[API-001\]\(standards/api-design\.md\), \[API-002\]\(standards/api-design\.md\) \|\n\| <https://learn\.microsoft\.com/b> \| \[API-002\]\(standards/api-design\.md\), \[SEC-002\]\(standards/security\.md\) \|\n'
         }
 
         It 'counts the pages, sources and rules' {
