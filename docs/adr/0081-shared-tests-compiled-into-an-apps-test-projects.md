@@ -56,7 +56,7 @@ A kit tool, like Kit.CodeShape, reads the app's built assemblies after the build
 
 ### Option 4: Publish the shared tests as a NuGet test library
 
-- **Trade-offs:** The usual way to share test code. But it means publishing a package, which is the owner's call, and a release pipeline before the kit's v0.2.0 move to a .NET tool (ADR-0078, Option 2).
+- **Trade-offs:** The usual way to share test code. But it means publishing a package, which is the owner's call, and a release pipeline before the kit's move to a .NET tool (ADR-0078, Option 2).
 - **Reversibility:** Medium.
 - **Risk:** Medium.
 

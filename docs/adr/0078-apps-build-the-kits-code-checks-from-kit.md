@@ -12,7 +12,7 @@ The code shape check (CRF-011, ADR-0050) and the duplicate code check (CRF-003, 
 - The tool can't simply be copied into an app. MSBuild takes the nearest `Directory.Build.props` and `Directory.Packages.props` above a project, so a copy would build with the app's files. The app's `Directory.Packages.props` deliberately leaves out the "Kit tools" group, so `Microsoft.CodeAnalysis.CSharp` would have no version (NU1010).
 - The duplicate code check also needs Java and PMD. Those are the developer's own install, and installing software is the owner's call ("Always ask").
 
-ADR-0050 expected this to wait for the kit's move to a .NET tool (v0.2.0). The owner chose on 2026-11-16 to finish the free gaps before v0.1.0, and GAP-022 is one of them.
+ADR-0050 expected this to wait for the kit's move to a .NET tool, in a later release (ADR-0096: each release takes the version number its commits earn, so no version is promised to it). The owner chose on 2026-11-16 to finish the free gaps before v0.1.0, and GAP-022 is one of them.
 
 ## Options
 
@@ -37,7 +37,7 @@ Pack the tool as a NuGet package. The app's `.config/dotnet-tools.json` pins it,
 - **Trade-offs:** This is the usual way to share a .NET command-line tool, and there's nothing to build on the app's machine. But it needs a feed:
   - Publishing to nuget.org is a public release, which is the owner's call (SEC-003).
   - GitHub Packages' NuGet feed needs a token to restore, even a public package, so every app's CI and every developer would need one.
-  - Each kit release would also need a package release step. That is the shape of the kit's planned v0.2.0 move to a .NET tool, which will carry the whole kit, not just this check.
+  - Each kit release would also need a package release step. That is the shape of the kit's planned move to a .NET tool, which will carry the whole kit, not just this check.
 - **Reversibility:** Medium. A published version stays on nuget.org; it can only be unlisted.
 - **Risk:** Medium. The release pipeline and the publishing credentials are new, and this tool would come first, ahead of the kit-wide design.
 
@@ -49,7 +49,7 @@ Pack the tool as a NuGet package. The app's `.config/dotnet-tools.json` pins it,
 
 ## Recommendation
 
-Option 1: it closes the gap with no publish and no token, and builds the tool exactly as CI does. The kit-wide .NET tool (v0.2.0) can replace it later.
+Option 1: it closes the gap with no publish and no token, and builds the tool exactly as CI does. The kit-wide .NET tool can replace it later.
 
 ## Decision
 
@@ -64,7 +64,7 @@ Accepted (auto mode, 2026-11-16): the owner asked for the free gaps to be finish
 - `.kit/Directory.Build.props`, `CodeMetricsConfig.txt` and `BannedSymbols.txt` repeat the app root's own copies. They're kept so that lines an app adds to its root `Directory.Build.props` (ADR-0044) can't change how the kit's tool builds.
 - **CodeQL scans the tool's source in every public app.** The shared CodeQL workflow adds C# once `git ls-files -- '*.cs'` finds a file, so an app's C# job now runs from its first commit, over `.kit`'s C# too. An alert there would show in the app's Security tab, but the fix is the kit's, and the kit's own CodeQL scans the same code first. Leaving `.kit` out (`':!.kit/**'` in the detection and CodeQL's `paths-ignore`) would keep an app's results to its own code. That narrows a CI check, which is the owner's call (AGENTS.md, "Working modes"), so it isn't done here. It's listed for him in the PR.
 - ADR-0050's note that an app can't run the check on its own machine, and craft.md's "Apps run it only in CI for now", are updated. GAP-022 is closed.
-- When the kit moves to a .NET tool (v0.2.0), Kit.CodeShape moves with it. The `.kit` copies then go, by the same sync.
+- When the kit moves to a .NET tool, Kit.CodeShape moves with it. The `.kit` copies then go, by the same sync.
 
 ## Pillars affected
 
