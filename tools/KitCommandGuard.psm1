@@ -157,7 +157,9 @@ function Get-PowerShellCommand {
             # and either way is known only when the command runs. So is any other value that isn't written out as
             # text, such as a method call, an index or a list on a literal ('--forXe'.Replace('X','c')).
             $variable = $element.Find({ param($node) $node -is [Management.Automation.Language.VariableExpressionAst] }, $true)
-            $built.Add($(if ($variable) { $variable.Extent.Text } elseif (-not (Test-PowerShellLiteral -Element $element)) { $element.Extent.Text }))
+            # Assigned first: $( ) of an if that writes nothing would add an empty entry, not $null.
+            $builtBy = if ($variable) { $variable.Extent.Text } elseif (-not (Test-PowerShellLiteral -Element $element)) { $element.Extent.Text } else { $null }
+            $built.Add($builtBy)
         }
         $name = $words[$words.Count - $commandAst.CommandElements.Count]
         $runs = $commandAst.Find({ param($node) $node.GetType() -in $script:ComputedArgumentAst }, $true)
@@ -688,21 +690,22 @@ function Get-RunnerCommand {
 
     $words = $Resolved.Words
     $leaf = { param($word) $word.Replace('\', '/').Substring($word.Replace('\', '/').LastIndexOf('/') + 1) }
-    $i = Get-InnerStart -Words $words -Tool $Tool
-    if ($i -lt $words.Count -and (& $leaf $words[$i]) -match '^(?i:pwsh(\.exe)?)$') {
-        while ($i -lt $words.Count -and $words[$i] -notmatch '^(?i:-f|-file)$') { $i++ }
-        $i++
-    }
-    if ($i -ge $words.Count) { return }
-    $names = @(Get-PlainPathWord -Words @('-', $words[$i]) -WorkingDirectory $WorkingDirectory | Select-Object -Skip 1 | ForEach-Object { & $leaf $_ })
-    if (-not @($names | Where-Object { $_ -in $script:CommandRunnerScript }).Count) { return }
+    $start = Get-InnerStart -Words $words -Tool $Tool
+    if ($start -ge $words.Count) { return }
+    # pwsh runs as its script the word after -File, or its first argument that isn't an option: any later word may be it.
+    $places = if ((& $leaf $words[$start]) -match '^(?i:pwsh(\.exe)?)$') { @(($start + 1)..($words.Count - 1)) } else { @($start) }
+    $isRunner = { param($word) @(Get-PlainPathWord -Words @('-', $word) -WorkingDirectory $WorkingDirectory | Select-Object -Skip 1 | Where-Object { (& $leaf $_) -in $script:CommandRunnerScript }).Count }
+    $i = @($places | Where-Object { $_ -lt $words.Count -and (& $isRunner $words[$_]) } | Select-Object -First 1)
+    if (-not $i.Count) { return }
+    $i = $i[0]
     for ($j = $i + 1; $j -lt $words.Count; $j++) {
         if ($words[$j].StartsWith('-')) { continue }
-        $command = [string[]] @($words | Select-Object -Skip $j)
+        $command = [string[]] @($words[$j..($words.Count - 1)])
         [pscustomobject]@{
             Words      = $command
             PlainWords = $command
-            Built      = @($Resolved.Built | Select-Object -Skip $j)
+            # By index: a pipeline would drop the list's empty entries and shift the rest.
+            Built      = @($Resolved.Built[$j..($words.Count - 1)])
             Native     = -not (Test-PowerShellCommandName -Name $command[0])
         }
     }
