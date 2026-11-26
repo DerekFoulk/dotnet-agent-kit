@@ -10,9 +10,11 @@
     owner or ADR source. Enforcement is a list of parts, each with kind (gate or advisory), in (kit, app or
     both) and how (ADR-0063). Ids are unique.
     ADR-0082: an authority rule cites pages only (URLs), has layer outside or floor, and stores quotes: for each
-    cited page, the page's own words with that source's URL and retrieval date, one contiguous passage each. An
-    accepted authority rule names who accepted it in ratified. A preference has layer owner or floor. Every rule in
-    force names its scope: core, or app types from app-types.yml in the same folder (never every one; ADR-0084).
+    cited page, the page's own words with that source's URL and retrieval date, one contiguous passage each. A
+    preference has layer owner or floor. Every rule in force names its scope: core, or app types from app-types.yml in
+    the same folder (never every one; ADR-0084).
+    ADR-0090: every rule in force has a strength, must, should or consider. An authority must needs a must-word in a
+    quote, and a kit (preference) must needs ratified, the owner's move to must.
     Exit code: 0 when every rule is traceable, otherwise 1.
 
 .EXAMPLE
@@ -143,9 +145,6 @@ function Get-RatifiedProblem {
         # ADR-0090: an agent can add a kit rule at should, and only the owner moves one to must.
         if ("$($Rule['basis'])" -eq 'preference' -and "$($Rule['strength'])" -ceq 'must' -and "$($Rule['status'])" -ne 'retired') {
             "a kit rule at strength must needs ratified: 'owner, YYYY-MM-DD' or 'ADR-NNNN', the owner's move to must (ADR-0090)"
-        }
-        elseif ("$($Rule['basis'])" -eq 'authority' -and "$($Rule['status'])" -eq 'accepted') {
-            "an accepted authority rule needs ratified: 'owner, YYYY-MM-DD' or 'ADR-NNNN', who accepted it"
         }
         return
     }
