@@ -68,19 +68,22 @@ function Get-AskedCommand {
 }
 
 # Whether a resolved command could be one the ask rules name (Get-AskedCommand): its program, by any of its spellings
-# (Get-PlainPathWord), matches an asked program, and the rule names no subcommand, or one of the command's words is
+# (Get-PlainPathWord, with a short name or a glob resolved in WorkingDirectory), matches an asked program, and the rule names no subcommand, or one of the command's words is
 # that subcommand (a path by its last part: .../playwright.ps1), or the subcommand's place holds a word built when the
 # command runs. That place is the first word after the program that isn't an option, read both ways: with every
 # option taking no value (git --no-pager $p) and with each taking the next word (git -C . $p). A program that is
 # itself built could be anything.
 function Test-AskedCommand {
-    param([Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool, [AllowEmptyCollection()] [object[]] $Asked)
+    param(
+        [Parameter(Mandatory)] [pscustomobject] $Resolved, [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool,
+        [AllowEmptyCollection()] [object[]] $Asked, [string] $WorkingDirectory
+    )
 
     $words = $Resolved.Words
     $start = Get-InnerStart -Words $words -Tool $Tool
     if ($start -ge $words.Count) { return $false }
     if ($Resolved.Built[$start]) { return $true }
-    $names = @($words[$start]) + @(Get-PlainPathWord -Words @($words[$start]))
+    $names = @($words[$start]) + @(Get-PlainPathWord -Words @($words[$start]) -WorkingDirectory $WorkingDirectory)
     $rest = @($words | Select-Object -Skip ($start + 1))
     $places = @(Get-SubcommandPlace -Words $words -Start ($start + 1))
     $builtSubcommand = [bool] @($places | Where-Object { $Resolved.Built[$_] }).Count
@@ -878,7 +881,7 @@ function Get-CommandGuardDecision {
             return "The command guard (ADR-0077) asks because this command builds an argument when it runs, from code inside it that Claude Code's rules may not check: $($resolved.Runs)"
         }
         $built = @($resolved.Built | Where-Object { $_ })
-        if ($built.Count -and (Test-AskedCommand -Resolved $resolved -Tool $Tool -Asked $asked)) {
+        if ($built.Count -and (Test-AskedCommand -Resolved $resolved -Tool $Tool -Asked $asked -WorkingDirectory $WorkingDirectory)) {
             return "The command guard (ADR-0077) asks because this command, which an ask rule names, builds an argument when it runs, which no rule can read: $($built[0])"
         }
         foreach ($spelling in Get-CommandSpelling -Resolved $resolved -Tool $Tool -WorkingDirectory $WorkingDirectory | Select-Object -Unique) {
