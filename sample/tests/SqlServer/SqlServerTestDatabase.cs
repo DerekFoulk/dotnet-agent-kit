@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Security.Cryptography;
 using Bookmarks.Infrastructure;
 using DotNet.Testcontainers.Builders;
 using Microsoft.Data.SqlClient;
@@ -72,10 +73,15 @@ internal static class SqlServerTestDatabase
 
     private static async Task<MsSqlContainer> StartServerAsync()
     {
-        MsSqlContainer server = new MsSqlBuilder(Image()).Build();
+        MsSqlContainer server = new MsSqlBuilder(Image()).WithPassword(NewPassword()).Build();
         await server.StartAsync().ConfigureAwait(false);
         return server;
     }
+
+    // Testcontainers' default sa password is published in its source, and Docker publishes the server's port on every
+    // interface, so each run makes its own: random hex, plus the lower-case letter and symbol SQL Server's password policy
+    // asks for beside the digits and upper-case letters hex holds.
+    private static string NewPassword() => Convert.ToHexString(RandomNumberGenerator.GetBytes(16)) + "a!";
 
     // GitHub Actions sets CI=true, and the shared CI passes it into the Playwright container the tests run in.
     private static bool InCi() => string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase);
