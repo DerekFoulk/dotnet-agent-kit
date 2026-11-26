@@ -57,6 +57,11 @@ jobs:
         with:
           global-json-file: global.json
 
+      # The export runs the app's own Build-AgentRules, which reads the standards with powershell-yaml: the version the
+      # kit checks pin.
+      - name: Install PowerShell modules
+        run: Install-PSResource -Name powershell-yaml -Version 0.4.12 -Scope CurrentUser -Repository PSGallery -TrustRepository
+
       # The export, New-KitApp's first commit, and the probe's files, package versions and solution entries.
       - name: Export the app
         run: ./tools/New-FreshApp.ps1 -Type $env:TYPE -Destination "$env:RUNNER_TEMP/app"
