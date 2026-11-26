@@ -191,7 +191,7 @@ Describe 'Mutation testing in CI' {
             $mutate = @($steps | Where-Object { $_['name'] -eq 'Mutation test' })
 
             $restore | Should -HaveCount 1
-            $restore[0]['run'] | Should -Be 'dotnet restore "$SOLUTION"'
+            $restore[0]['run'] | Should -Be 'dotnet restore "$SOLUTION" --locked-mode' -Because 'a locked restore pins every package by its lock file''s hash (SUP-001; OpenSSF Scorecard''s Pinned-Dependencies check)'
             $mutate | Should -HaveCount 1
             $mutate[0]['shell'] | Should -Be 'pwsh'
             $mutate[0]['env']['KIT'] | Should -Be '${{ steps.kit.outputs.path }}'

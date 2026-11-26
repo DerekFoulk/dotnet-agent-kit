@@ -10,18 +10,19 @@ on:
   push:
     branches: [main]
 
-# release-please needs contents, pull-requests and issues (labels); the approval step needs actions.
-# There's one job, so these are its permissions.
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-  actions: write
+# Nothing at the top level, so no job gets a write it doesn't ask for (OpenSSF Scorecard's Token-Permissions check).
+permissions: {}
 
 jobs:
   release-please:
     name: release-please
     runs-on: ubuntu-latest
+    # release-please needs contents, pull-requests and issues (labels); the approval step needs actions.
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release

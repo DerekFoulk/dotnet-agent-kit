@@ -33,8 +33,15 @@ Describe 'Release configuration' {
             $workflowText | Should -Not -Match 'uses: [^\s#]+@(v\d+|main|master)\s'
         }
 
-        It 'asks for only the permissions release-please and the approval step need' {
-            $permissions = $workflow['permissions']
+        # OpenSSF Scorecard's Token-Permissions check: no write at the top level, where every job would get it.
+        It 'grants nothing at the top level' {
+            $workflow.ContainsKey('permissions') | Should -BeTrue
+            @($workflow['permissions'].Keys) | Should -HaveCount 0
+        }
+
+        It 'asks, on its one job, for only the permissions release-please and the approval step need' {
+            @($workflow['jobs'].Keys) | Should -Be @('release-please')
+            $permissions = $workflow['jobs']['release-please']['permissions']
 
             $permissions | Should -Not -BeNullOrEmpty
             @($permissions.Keys | Sort-Object) | Should -Be @('actions', 'contents', 'issues', 'pull-requests')
