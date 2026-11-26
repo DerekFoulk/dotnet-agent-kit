@@ -312,6 +312,7 @@ function Get-DevMachineCheck {
         -InstallCommand 'code --install-extension ms-vscode.powershell'
     New-DevMachineCheck -Name 'Docker' -Required $false -Test { Test-CommandAvailable -Name 'docker' } `
         -InstallCommand 'winget install --id Docker.DockerDesktop --exact'
+    New-DevMachineCheck -Name 'Docker running' -Required $true -Test { $false }
 }
 
 function Invoke-DevMachineCheck {
