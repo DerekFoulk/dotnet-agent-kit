@@ -8,7 +8,7 @@ Describe 'Build-AgentRules.ps1' {
         function New-Rule {
             param([string] $Id, [string] $Statement, [string] $Status = 'accepted', [string[]] $Paths = @('**'), [object] $Scope = 'core')
             [ordered]@{
-                id = $Id; statement = $Statement; why = 'Because.'; layer = 'owner'; status = $Status
+                id = $Id; statement = $Statement; why = 'Because.'; layer = 'owner'; status = $Status; strength = 'must'
                 sources = @('owner, 2026-11-01'); enforcement = 'advisory: test'; scope = $Scope; paths = $Paths
             }
         }
@@ -384,6 +384,32 @@ types:
             Set-Content -LiteralPath $path -Value ($text -replace '"ARC-009": "proposed"', '"ARC-009": "accepted"') -NoNewline
             Invoke-AgentRuleBuild -RepoRoot $root -Check | Should -Be 1
             Should -Invoke Write-Host -ParameterFilter { "$Object" -match 'out of date: tools/rule-status\.json' }
+        }
+
+        # ADR-0090: a gate reads its rule's strength, scope and when, so it fails a must, warns on a should, and skips an
+        # app the rule doesn't apply to.
+        It 'writes every rule''s strength, scope and when to tools/rule-strength.json, sorted by id, and -Check finds it stale' {
+            $root = New-Repo
+            $later = New-Rule -Id 'GIT-002' -Statement 'Later.' -Scope @('web-api', 'blazor')
+            $later['strength'] = 'should'; $later['when'] = @('has-sign-in')
+            $gone = New-Rule -Id 'GIT-003' -Statement 'Gone.' -Status 'retired'
+            $gone.Remove('strength')
+            New-StandardsFile -Topic 'git' -Title 'Git' -Rules @($later, (New-Rule -Id 'GIT-001' -Statement 'Merge.'), $gone)
+            New-StandardsFile -Topic 'architecture' -Title 'Architecture' -Rules @((New-Rule -Id 'ARC-009' -Statement 'No empty projects.'))
+            $path = Join-Path $root 'tools' 'rule-strength.json'
+
+            Invoke-AgentRuleBuild -RepoRoot $root | Should -Be 0
+
+            $path | Should -Exist
+            $text = Get-Content -Raw -LiteralPath $path
+            $json = $text | ConvertFrom-Json -AsHashtable
+            @($json.Keys) | Should -Be @('ARC-009', 'GIT-001', 'GIT-002', 'GIT-003')
+            $json['GIT-001'] | ConvertTo-Json -Compress | Should -BeExactly '{"strength":"must","scope":["core"],"when":[]}'
+            $json['GIT-002'] | ConvertTo-Json -Compress | Should -BeExactly '{"strength":"should","scope":["web-api","blazor"],"when":["has-sign-in"]}'
+            $json['GIT-003'] | ConvertTo-Json -Compress | Should -BeExactly '{"strength":"retired","scope":["core"],"when":[]}'
+            Set-Content -LiteralPath $path -Value ($text -replace '"should"', '"must"') -NoNewline
+            Invoke-AgentRuleBuild -RepoRoot $root -Check | Should -Be 1
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match 'out of date: tools/rule-strength\.json' }
         }
 
         # An app keeps the kit's scripts in .kit/tools, so the file sits beside them there (ADR-0032).
