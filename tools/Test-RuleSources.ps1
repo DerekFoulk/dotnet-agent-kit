@@ -38,7 +38,8 @@ $script:RequiredFields = 'id', 'statement', 'layer', 'basis', 'status', 'sources
 $script:AllowedValues = [ordered]@{
     layer  = 'floor', 'owner', 'outside'
     basis  = 'authority', 'preference'
-    status = 'proposed', 'accepted', 'retired'
+    # ADR-0090: strength replaces 'proposed'; a rule is in force (accepted) or retired.
+    status = 'accepted', 'retired'
 }
 # ADR-0063: each enforcement part is a gate (a tool fails the change) or advisory (a person or code review
 # checks it), and says where it applies: in the kit, in apps, or both.

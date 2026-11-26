@@ -6,7 +6,7 @@ rules:
     why: "Each style fits different callers, and switching later rewrites every client (GAP-010). The owner, 2026-11-17: gRPC, SignalR, controllers or GraphQL only \"if recommended or asked for specifically\"."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["owner, 2026-11-17", "ADR-0038"]
     enforcement:
@@ -20,7 +20,7 @@ rules:
     why: "Each style fits different callers; Microsoft's pages name the scenarios each one suits, and the kit's choice among them (API-001) starts from these."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -150,7 +150,7 @@ rules:
     why: "Versioning from day one adds a package and routes nobody uses yet, but a breaking change without a new version breaks every existing client; Azure's guidance says that no versioning can work for some internal APIs, and to introduce a new version on a breaking change (API-012, GAP-011)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["ADR-0038", "https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-versioning, retrieved 2026-11-17"]
     quotes:
@@ -168,7 +168,7 @@ rules:
     why: "Validation in one place, from attributes the OpenAPI document also shows, instead of checks scattered through handlers; it is built into .NET 10, so it needs no package (GAP-011). Microsoft's pages describe what the built-in validation does and allows; they don't recommend it over other validation, so this is the kit's choice (ADR-0038)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["ADR-0038", "https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-10.0#validation-support-in-minimal-apis, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/fundamentals/validation?view=aspnetcore-10.0, retrieved 2026-11-17"]
     enforcement:
@@ -301,7 +301,7 @@ rules:
     why: "Microsoft's microservices API design page says so. API-005, the kit's rule, decides when versioning starts and who picks the scheme."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/azure/architecture/microservices/design/api-design#api-versioning, retrieved 2026-11-17"]
     quotes:

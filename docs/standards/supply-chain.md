@@ -141,7 +141,7 @@ rules:
     why: "When a package is found vulnerable, the SBOM answers which builds ship it; the kit's way of keeping the SBOM the Microsoft cloud security benchmark guidance asks for (SUP-016) (GAP-013)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["ADR-0055"]
     scope: core
@@ -155,7 +155,7 @@ rules:
     why: "Scorecard checks the supply-chain practices from outside, with a public score that shows drift (GAP-014); publishing needs the action's workflow restrictions (SUP-017)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     when: [is-public-repo]
     sources: ["ADR-0056"]
@@ -173,7 +173,7 @@ rules:
     why: "Unpinned workloads change under a build without any commit; a workload set ships with each SDK release and moves with the SDK pin. sdk.workloadVersion in global.json would pin it too, but every build then fails on a machine without that set (ADR-0059)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["ADR-0059"]
     scope: [maui]
@@ -274,7 +274,7 @@ rules:
     why: "When a package is found vulnerable, the SBOM answers which builds ship it (GAP-013)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/security/benchmark/azure/mcsb-v2-devops-security, retrieved 2026-11-17"]
     quotes:
@@ -292,7 +292,7 @@ rules:
     why: "Scorecard's API checks the producing workflow against these rules and may reject the results otherwise."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://github.com/ossf/scorecard-action, retrieved 2026-11-17"]
     quotes:

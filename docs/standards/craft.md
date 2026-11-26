@@ -168,7 +168,7 @@ rules:
     why: "Deep nesting, long members and files, types with many members, files that hold several public types, and classes whose members don't work together are where code gets hard to read and change (CRF-008's metrics don't measure them); a tool that enforces them keeps them from drifting, and an exception that carries its reason keeps a rare real case possible without hiding it (CRF-001)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["owner, 2026-11-11", "owner, 2026-11-12", "ADR-0050", "ADR-0071"]
     enforcement:

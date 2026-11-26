@@ -6,7 +6,7 @@ rules:
     why: "Microsoft's auto-activation page gives these as best practices for services the host creates at startup."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation, retrieved 2026-11-17"]
     quotes:
@@ -30,7 +30,7 @@ rules:
     why: "Microsoft's IHttpClientFactory troubleshooting page lists these as DO NOT and CONSIDER items: a client captured for longer than its handler's lifetime misses DNS changes, scope data in a handler can leak sensitive information, and a second registration of a typed client overwrites the one the factory added. OPS-003 covers using the factory at all, and its cookie exception."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting, retrieved 2026-11-17"]
     quotes:
@@ -63,7 +63,7 @@ rules:
     why: "Microsoft's logging page recommends the category name so logs relate back to the code that produced them, and says string interpolation can cause performance issues. OPS-007 covers the generated, high-performance logger."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/logging/overview, retrieved 2026-11-17"]
     quotes:
@@ -90,7 +90,7 @@ rules:
     why: "Microsoft's caching page says so in a caution. It is an in-process cache that doesn't share entries across servers."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/caching, retrieved 2026-11-17"]
     quotes:
@@ -108,7 +108,7 @@ rules:
     why: "Microsoft's options guidance for library authors gives both as DO NOT items, so a library's extensions don't collide with or pose as Microsoft's."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/options-library-authors, retrieved 2026-11-17"]
     quotes:

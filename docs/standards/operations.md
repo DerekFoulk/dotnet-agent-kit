@@ -74,7 +74,7 @@ rules:
     why: "Under pressure, whoever is on call follows written, tested steps instead of improvising (GAP-017). The kit's layout is the owner's choice; OPS-012 holds what the Well-Architected Framework says about documenting operations."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: must
     ratified: "owner, 2026-11-25"
     sources: ["ADR-0047", "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/manage/ready-cloud-operations, retrieved 2026-11-11", "https://diataxis.fr/how-to-guides/, retrieved 2026-11-11"]
@@ -304,7 +304,7 @@ rules:
     why: "Under pressure, whoever is on call follows written steps instead of improvising (GAP-017); the page on safe deployments notes that rolling back changes, especially database, schema or other stateful component changes, can be complex. These fit an app the team hosts and deploys, so the rule is scoped to the web app types. OPS-004 is the kit's own runbook layout."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks, retrieved 2026-11-17", "https://learn.microsoft.com/azure/well-architected/operational-excellence/incident-response, retrieved 2026-11-17", "https://learn.microsoft.com/azure/well-architected/operational-excellence/safe-deployments, retrieved 2026-11-17"]
     quotes:
@@ -349,7 +349,7 @@ rules:
     why: "If data protection isn't configured, the keys are held in memory and discarded when the app restarts; users then have to sign in again, and data protected with the old keys, which can include anti-forgery tokens, can no longer be decrypted."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     unconditional: "'when the app restarts' describes what happens to keys held in memory, not which apps the rule holds for"
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0, retrieved 2026-11-17"]
@@ -374,7 +374,7 @@ rules:
     why: "The trimmer works on compiled assemblies, so a compiler-only suppression is invisible to it; an unfixed trim warning can change behavior or crash the app after trimming."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [publishes-trimmed]
     sources: ["https://learn.microsoft.com/dotnet/core/deploying/trimming/fixing-warnings, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/deploying/native-aot/diagnostics, retrieved 2026-11-17"]
@@ -408,7 +408,7 @@ rules:
     why: "Other signals might result in abrupt termination, which cuts off in-flight work (OPS-005, OPS-009)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -426,7 +426,7 @@ rules:
     why: "Aspire's service defaults disable the two endpoints in non-development environments by default, and this is what its page recommends if you enable them. The kit's OPS-002 maps them anonymously in every environment, with the status word only, and the owner's decision there goes further than this page."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://aspire.dev/fundamentals/health-checks/, retrieved 2026-11-17"]
     quotes:

@@ -6,7 +6,7 @@ rules:
     why: "The owner chose level AA of WCAG 2.2, W3C's current Recommendation, for every UI (ADR-0046, GAP-018). WCAG defines level AA as satisfying all the level A and AA criteria, WCAG2ICT says how to apply them to software that isn't web content, and Microsoft's MAUI checklist tells apps to follow WCAG. 2.2 adds six level A and AA criteria to 2.1, among them focus not obscured, target size and accessible authentication."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["ADR-0046", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -30,7 +30,7 @@ rules:
     why: "axe finds, in a real browser, on every pull request and for free, the WCAG failures a tool can find in a rendered page: missing names and labels, text contrast, the page's language and title, autocomplete values, target size. A test must check the page loaded first, because axe passes an error page. Keyboard order, focus movement and whether names make sense need a test written for them or a person (ADR-0061, GAP-004)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["ADR-0061", "https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://github.com/dequelabs/axe-core/blob/develop/doc/API.md, retrieved 2026-11-17", "https://github.com/dequelabs/axe-core-nuget/blob/develop/packages/playwright/README.md, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/test?view=aspnetcore-10.0, retrieved 2026-11-12"]
     scope: [blazor]
@@ -47,7 +47,7 @@ rules:
     why: "Microsoft's MAUI page calls WCAG the global accessibility standard and legal benchmark for web and mobile; these are the criteria a UI most often fails, not the whole standard, and each keeps the exceptions its page lists (GAP-018)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://www.w3.org/TR/WCAG22/, retrieved 2026-11-17", "https://www.w3.org/TR/wcag2ict-22/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -137,7 +137,7 @@ rules:
     why: "Microsoft's MAUI accessibility page warns that a Description on a Label stops its Text being spoken by the screen reader, and that one on an Entry or Editor on Android stops TalkBack actions functioning."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/accessibility?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:

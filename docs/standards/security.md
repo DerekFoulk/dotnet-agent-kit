@@ -129,7 +129,7 @@ rules:
     why: "Password storage and token issuing are where home-made sign-in goes wrong; the kit settles on one provider type and one JWT bearer setup (ADR-0048), on top of what Microsoft and ASVS say about creating and validating tokens (SEC-018) (GAP-006)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     when: [has-sign-in]
     sources: ["ADR-0048"]
@@ -147,7 +147,7 @@ rules:
     why: "An id in a URL is easy to change, and a filter in the query is a check no endpoint can skip; a 404 doesn't even confirm that someone else's id exists; the kit's design on top of what OWASP, ASVS and Microsoft say (SEC-019) (GAP-006)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     when: [has-sign-in]
     sources: ["ADR-0048"]
@@ -165,7 +165,7 @@ rules:
     why: "Unbounded input fills the database and memory, an easy denial of service, and an error that repeats input invites reflected injection; the kit's exact bounds and error shape on top of what OWASP says (SEC-020) (GAP-006)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["ADR-0048"]
     scope: [web-api, blazor]
@@ -303,7 +303,7 @@ rules:
     why: "The fallback policy applies to endpoints that carry no authorization metadata, so a new endpoint that forgets it isn't public by accident (GAP-006)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [has-sign-in]
     sources: ["https://learn.microsoft.com/aspnet/core/security/authorization/policies?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/authorization/secure-data?view=aspnetcore-10.0, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x17-V8-Authorization.md, retrieved 2026-11-17"]
@@ -334,7 +334,7 @@ rules:
     why: "Self-made tokens that don't follow established standards can lead to security vulnerabilities; the API is where a token's signature, issuer, audience and lifetime are checked (GAP-006)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [has-sign-in]
     sources: ["https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x18-V9-Self-contained-Tokens.md, retrieved 2026-11-17"]
@@ -386,7 +386,7 @@ rules:
     why: "Broken object-level authorization is OWASP's top API risk, and an id in a URL is easy to change (GAP-006)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [has-sign-in]
     sources: ["https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x17-V8-Authorization.md, retrieved 2026-11-17", "https://learn.microsoft.com/entra/identity-platform/id-token-claims-reference, retrieved 2026-11-17"]
@@ -420,7 +420,7 @@ rules:
     why: "Unbounded input is an easy denial of service (OWASP API4), and a check that only runs in the client isn't one (GAP-006)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x11-V2-Validation-and-Business-Logic.md, retrieved 2026-11-17"]
     quotes:

@@ -151,7 +151,7 @@ rules:
     why: "Microsoft's pages say not to use CQRS and DDD patterns everywhere and to justify every design decision with a business requirement (ARC-019); the sizes the kit gives, down to when a module or a project may exist, are its own (ADR-0052). An agent following ARC-001 to the letter can still build every layer and pattern for a tiny app (GAP-002)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: must
     ratified: "owner, 2026-11-25"
     sources: ["ADR-0052", "ADR-0008"]
@@ -169,7 +169,7 @@ rules:
     why: "No plain test project can load a UI project, and Linux CI can't build one; with the logic in libraries it's tested and covered like any other code, and the UI project has nothing left to cover."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["ADR-0008", "ADR-0059", "https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-17"]
     enforcement:
@@ -186,7 +186,7 @@ rules:
     why: "One UI stack across phone and desktop shares the most code and the kit's CI and rules. The kit supports three app types, web-api, blazor and maui (docs/standards/app-types.yml, ADR-0084); WinUI 3, WPF and Windows Forms aren't among them yet. ARC-014 holds what Microsoft recommends for a new Windows desktop app. The kit says \"WinUI 3\", never just \"WinUI\" (owner, 2026-11-17), because WinUI 2 is a different library, for UWP apps."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["ADR-0008", "ADR-0059", "owner, 2026-11-17"]
     enforcement:
@@ -200,7 +200,7 @@ rules:
     why: "The UI framework is the hardest choice to undo in a desktop app: asked whether a WinUI 3 app can later integrate .NET MAUI for cross-platform scenarios, Microsoft's FAQ answers \"Not at this time.\" ARC-011 holds the kit's own rule, which keeps desktop apps on .NET MAUI while WinUI 3 isn't a supported app type."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     unconditional: "'native apps that target the Windows desktop' describes what WinUI 3 builds; the statement carries its own condition, a new general-purpose Windows desktop app"
     sources: ["https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/what-is-maui?view=net-maui-10.0, retrieved 2026-11-17"]
@@ -294,7 +294,7 @@ rules:
     why: "Microsoft's modern web apps guide says so, for monolithic applications built on ASP.NET Core's dependency injection. ARC-001 is the kit's own shape for it."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-17"]
     quotes:
@@ -321,7 +321,7 @@ rules:
     why: "Microsoft's MVVM page gives these as tips, so view models are tested in isolation."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-17"]
     quotes:
@@ -367,7 +367,7 @@ rules:
     why: "Microsoft's Well-Architected simplicity page and its microservices guide say so; the guide adds that many subsystems are simpler and can be implemented more easily using simple CRUD services or another approach. Split from ARC-009, which gives the kit's own sizes (modules, projects, patterns) and gates empty projects."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/azure/well-architected/reliability/simplify, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/eshoponcontainers-cqrs-ddd-microservice, retrieved 2026-11-17"]
     quotes:

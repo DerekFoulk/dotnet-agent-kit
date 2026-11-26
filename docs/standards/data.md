@@ -6,7 +6,7 @@ rules:
     why: "The database is the hardest part of an app to change later, and the cheapest one that fits is the one to start with; asking the same questions in the same order makes the choice repeatable and cheap to review (owner, 2026-11-10; GAP-008)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/azure/architecture/guide/technology-choices/data-store-decision-tree, retrieved 2026-11-11"]
     enforcement:
@@ -20,7 +20,7 @@ rules:
     why: "Migrations are the reviewable, repeatable record of every schema change, so every environment reaches the same schema the same way (owner, 2026-11-10). EF Core's own guidance (DAT-011) leaves EnsureCreated to data that can be dropped and says not to mix it with migrations; the kit goes further and picks EF Core and migrations for every server relational database. A database on the user's device is the app's own choice: .NET MAUI's local database docs use sqlite-net-pcl, not EF Core (MAU rules)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     when: [has-server-database, has-relational-database]
     sources: ["owner, 2026-11-10", "ADR-0053"]
@@ -35,7 +35,7 @@ rules:
     why: "EF Core's page says that if any tables exist, EnsureCreated won't initialize the schema, so it can't carry existing data through a model change; migrations update the schema incrementally while preserving existing data."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/ef/core/managing-schemas/migrations/, retrieved 2026-11-17", "https://learn.microsoft.com/ef/core/managing-schemas/ensure-created, retrieved 2026-11-17"]
     quotes:
@@ -68,7 +68,7 @@ rules:
     why: "During a deployment, and after a rollback, the old version runs against the new schema; a migration that drops or renames what it reads breaks it (GAP-008). The expand, migrate, contract split is Microsoft's (DAT-013); the comment on each risky call and the CI check that demands it are the kit's (ADR-0054)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     when: [has-server-database]
     sources: ["ADR-0054"]
@@ -86,7 +86,7 @@ rules:
     why: "Migrating at startup races when several instances start at once on versions of EF Core before 9, needs the app to run with rights to change the schema, and hides a failed migration inside a failed start (GAP-008). EF Core's page leaves startup migration open as a tradeoff (DAT-014); the kit shuts it for server databases and requires the deployment to apply migrations before the new version takes traffic (ADR-0054)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     when: [has-database]
     sources: ["ADR-0054"]
@@ -101,7 +101,7 @@ rules:
     why: "A fake behaves differently from the real engine (case sensitivity, translations, transactions, raw SQL), so tests pass and production fails. EF Core recommends testing against the production database system and discourages the in-memory provider (DAT-012); it still allows a SQLite in-memory fake when a repository layer isn't viable, and ASP.NET Core's integration-test page calls SQLite the recommended choice for in-memory testing. The kit rules SQLite out as a stand-in for another engine, because it differs from that engine in the same ways (GAP-008, ADR-0054), and runs local development on the same engine, so what a developer sees is what production does (owner O8, rules audit 2026-11-12: \"Anything that we can run in docker should probably run in docker\")."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     when: [has-server-database]
     sources: ["ADR-0054", "owner, 2026-11-12", "https://learn.microsoft.com/azure/cosmos-db/emulator-linux, retrieved 2026-11-11"]
@@ -116,7 +116,7 @@ rules:
     why: "A database fake can pass where the production engine fails, for example on case-sensitive comparison, provider-specific functions or raw SQL; EF Core's own testing guidance weighs the options in this order."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/ef/core/testing/choosing-a-testing-strategy, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/test/integration-tests?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -146,7 +146,7 @@ rules:
     why: "A free offer that silently starts billing is the most common surprise cost; the guard is a setting chosen when the resource is created, and a budget only alerts, it doesn't stop spending (owner, 2026-11-10; SEC-003)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     when: [has-cloud-database]
     sources: ["owner, 2026-11-10", "ADR-0053", "https://learn.microsoft.com/azure/azure-sql/database/free-offer, retrieved 2026-11-11", "https://learn.microsoft.com/azure/cosmos-db/free-tier, retrieved 2026-11-11", "https://learn.microsoft.com/azure/cosmos-db/limit-total-account-throughput, retrieved 2026-11-11", "https://learn.microsoft.com/azure/cost-management-billing/costs/tutorial-acm-create-budgets, retrieved 2026-11-11"]
@@ -285,7 +285,7 @@ rules:
     why: "During a deployment, and after a rollback, the old version runs against the new schema; the split keeps both versions working (GAP-008). The kit's check of each risky call in a migration is DAT-003."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/azure/aks/zero-downtime-migration, retrieved 2026-11-17"]
     quotes:
@@ -303,7 +303,7 @@ rules:
     why: "A bundle runs without the SDK or the source and a script can be reviewed first, while startup migration needs the application to have elevated access to change the schema. The kit's tighter rule for server databases, that startup migration is never used outside local development, is DAT-004."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying, retrieved 2026-11-17"]
     quotes:
@@ -402,7 +402,7 @@ rules:
     why: "A migration may drop a column when the intent was to rename it, or may fail for various reasons when applied to a database; a model change that no migration covers is what the CI check finds before deployment."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying, retrieved 2026-11-17", "https://learn.microsoft.com/ef/core/managing-schemas/migrations/managing, retrieved 2026-11-17"]
     quotes:
@@ -429,7 +429,7 @@ rules:
     why: "EF Core's page says mobile, browser, desktop, function and RID-specific projects can require a workload or native host that dotnet ef can't execute. This applies only where an app chooses EF Core: .NET MAUI's local database docs use sqlite-net-pcl, not EF Core."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     unconditional: "'when the application project is platform-specific' is about the project, and the statement carries it ('In a platform-specific app that uses EF Core migrations')"
     sources: ["https://learn.microsoft.com/ef/core/managing-schemas/migrations/projects, retrieved 2026-11-17"]
@@ -454,7 +454,7 @@ rules:
     why: "EF Core's tooling and bundles rely on the synchronous delegate; seeding in normal app execution can cause concurrency issues when several instances run, and needs permission to change the schema."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     unconditional: "'even if your application normally uses asynchronous APIs' widens the rule to every app rather than limiting it"
     sources: ["https://learn.microsoft.com/ef/core/modeling/data-seeding, retrieved 2026-11-17"]
@@ -479,7 +479,7 @@ rules:
     why: "Code that touches both is more complicated and must keep foreign keys and navigations consistent in every case."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/ef/core/change-tracking/relationship-changes, retrieved 2026-11-17"]
     quotes:
@@ -503,7 +503,7 @@ rules:
     why: "An empty collection already says that no related entities exist, so a null list adds a second way to say it."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/ef/core/miscellaneous/nullable-reference-types, retrieved 2026-11-17"]
     quotes:
@@ -521,7 +521,7 @@ rules:
     why: "The page says the constant version continuously pollutes the cache and causes other queries to be re-compiled, slowing them down as well."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/ef/core/performance/advanced-performance-topics, retrieved 2026-11-17"]
     quotes:
@@ -542,7 +542,7 @@ rules:
     why: "A benchmark on a database that doesn't look like production may not represent actual performance in production."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/ef/core/performance/performance-diagnosis, retrieved 2026-11-17"]
     quotes:
@@ -566,7 +566,7 @@ rules:
     why: "Tests that share one database interfere with each other when they run in parallel or leave committed data behind, and the failures look random."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/ef/core/testing/testing-with-the-database, retrieved 2026-11-17"]
     quotes:

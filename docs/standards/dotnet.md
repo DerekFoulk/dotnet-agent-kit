@@ -6,7 +6,7 @@ rules:
     why: "Stacked resilience handlers multiply retries and timeouts. OPS-008 holds the page's advice to add only one resilience handler and avoid stacking handlers; this rule holds what the page says to consider when one isn't enough."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: consider
     sources: ["https://learn.microsoft.com/dotnet/core/resilience/http-resilience, retrieved 2026-11-17"]
     quotes:

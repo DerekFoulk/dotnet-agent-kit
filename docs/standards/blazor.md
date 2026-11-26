@@ -6,7 +6,7 @@ rules:
     why: "A component that assumes where it runs breaks when an app picks a different render mode, and a library component that sets a render mode takes the choice from the app developer."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/render-modes?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/components/class-libraries-and-static-server-side-rendering?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -31,7 +31,7 @@ rules:
     why: "A parameter is a channel from parent to child: a value the component writes to its own parameter is overwritten when the parent rerenders."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/data-binding?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/components/?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -56,7 +56,7 @@ rules:
     why: "The modifiers run a component's own logic when a bound value changes without a hand-written property setter, and Blazor provides built-in support to render values in the current culture."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/data-binding?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -81,7 +81,7 @@ rules:
     why: "Components run on a synchronization context; blocking it stalls rendering, and updating state outside it is not safe."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/synchronization-context?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -103,7 +103,7 @@ rules:
     why: "A component that stays subscribed or holds undisposed objects after it is removed leaks memory."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/component-disposal?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -125,7 +125,7 @@ rules:
     why: "Hand-written render tree logic must be correct in ways the compiler otherwise guarantees."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/advanced-scenarios?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/fundamentals/handle-errors?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -147,7 +147,7 @@ rules:
     why: "Every change to one large cascaded object affects every component that subscribes to it."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/cascading-values-and-parameters?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -169,7 +169,7 @@ rules:
     why: "Rendering cost grows with how many components render and how often they rerender."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/performance/rendering?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -200,7 +200,7 @@ rules:
     why: "Script kept in modules beside its component is easier to load and maintain than inline script, each interop call has its own overhead, and a JS call made during disposal can fail once the connection or the DOM is gone."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/location-of-javascript?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-dotnet-from-javascript?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/fundamentals/navigation?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/performance/javascript-interoperability?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -237,7 +237,7 @@ rules:
     why: "Interop calls from an interactive server component travel over the network connection."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [has-server-interactivity]
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-dotnet-from-javascript?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-javascript-from-dotnet?view=aspnetcore-10.0, retrieved 2026-11-17"]
@@ -263,7 +263,7 @@ rules:
     why: "Blazor apps don't have the request and connection time-outs that guard a regular web app, and a client controls its circuit's events and JS interop calls."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [has-server-interactivity]
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0, retrieved 2026-11-17"]
@@ -298,7 +298,7 @@ rules:
     why: "Each of these lets user input reach the page as markup or a navigation target, which is cross-site scripting or open redirect."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/components/?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/hybrid/security/security-considerations?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -329,7 +329,7 @@ rules:
     why: "A CSP limits what script and framing a page allows, which reduces cross-site scripting and clickjacking risk."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/content-security-policy?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -351,7 +351,7 @@ rules:
     why: "Client-side code can be modified or read by the user, so it can't enforce rules or hold secrets."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/security/webassembly/?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -376,7 +376,7 @@ rules:
     why: "Identity is designed for HTTP request and response communication, which generally isn't how a Blazor app's client and server talk. The kit's note: the Blazor Web App template's Individual Accounts option generates its account pages as Razor components, so an app that keeps them should check them against this rule (ADR-0087)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     when: [uses-aspnet-core-identity]
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/security/?view=aspnetcore-10.0, retrieved 2026-11-17"]
@@ -402,7 +402,7 @@ rules:
     why: "An in-memory token cache is lost on restart and not shared across instances."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -424,7 +424,7 @@ rules:
     why: "A component in the Auto or WebAssembly render mode runs in either place, so it can't assume one."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/call-web-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -446,7 +446,7 @@ rules:
     why: "A scoped service in a component lives as long as the circuit (or the app, on the client), not as long as the component."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/fundamentals/dependency-injection?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -465,7 +465,7 @@ rules:
     why: "Error detail shown to users can reveal how the app works; a narrow boundary keeps one failure from replacing the whole page."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/fundamentals/handle-errors?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -487,7 +487,7 @@ rules:
     why: "Persisted prerendered state is sent to the browser; a long-running load delays the whole prerendered response."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/state-management/prerendered-state-persistence?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/components/lifecycle?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -509,7 +509,7 @@ rules:
     why: "A form needs a unique name to bind to its handler, and binding straight to an entity lets a client set fields the form doesn't show."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/forms/?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -531,7 +531,7 @@ rules:
     why: "A whole-file read lets a large upload exhaust the server's memory, and an unchecked file offered for download can carry malware to other users."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/file-uploads?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/file-downloads?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -553,7 +553,7 @@ rules:
     why: "The trimmer removes types that only reflection reaches; disabling integrity checks hides a real delivery problem instead of fixing it."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/configure-trimmer?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/host-and-deploy/webassembly/bundle-caching-and-integrity-check-failures?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -575,7 +575,7 @@ rules:
     why: "Interactive server rendering keeps a user's state in a circuit on one server, which the user's connection must keep reaching."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/tooling?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/security/interactive-server-side-rendering?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/blazor/security/blazor-web-app-with-oidc?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -603,7 +603,7 @@ rules:
     why: "A cookie lets the WebSocket connection carry the culture, which a culture kept in the URL path or query string might not."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     when: [localizes-by-user-culture]
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/globalization-localization?view=aspnetcore-10.0, retrieved 2026-11-17"]
@@ -629,7 +629,7 @@ rules:
     why: "A host-agnostic library works across Blazor Server, WebAssembly, Hybrid and static server-side rendering."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/blazor/hybrid/class-libraries-best-practices?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:

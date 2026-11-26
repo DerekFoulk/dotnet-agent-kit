@@ -6,7 +6,7 @@ rules:
     why: "A discard assignment doesn't observe the task's exception or make it a supported fire-and-forget operation, so a failure goes unseen."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/patterns/discards, retrieved 2026-11-17"]
     quotes:
@@ -27,7 +27,7 @@ rules:
     why: "A variable or type named _ can change how a discard is read."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/patterns/discards, retrieved 2026-11-17"]
     quotes:
@@ -48,7 +48,7 @@ rules:
     why: "Raw string literals are easier to read and write."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/types/built-in-types, retrieved 2026-11-17"]
     quotes:
@@ -66,7 +66,7 @@ rules:
     why: "Errors the compiler normally catches become run-time exceptions."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/fundamentals/types/built-in-types, retrieved 2026-11-17"]
     quotes:
@@ -84,7 +84,7 @@ rules:
     why: "The message is shown as part of the warning or error."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general, retrieved 2026-11-17"]
     quotes:
@@ -102,7 +102,7 @@ rules:
     why: "Module initializers give source generators a standard place for their initialization code; overload priority needs a deep understanding of overload resolution, or unexpected errors result."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/general, retrieved 2026-11-17"]
     quotes:
@@ -123,7 +123,7 @@ rules:
     why: "The default value of an enum is 0."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/enum, retrieved 2026-11-17"]
     quotes:
@@ -141,7 +141,7 @@ rules:
     why: "A with expression copies the instance, so a value computed at creation would describe the original, not the copy."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/record, retrieved 2026-11-17"]
     quotes:
@@ -159,7 +159,7 @@ rules:
     why: "Structure types have value semantics."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/struct, retrieved 2026-11-17"]
     quotes:
@@ -180,7 +180,7 @@ rules:
     why: "Passing a large struct by reference avoids copying it."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/advanced-topics/performance/, retrieved 2026-11-17"]
     quotes:
@@ -201,7 +201,7 @@ rules:
     why: "Repeated stack allocation can overflow the stack."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/operators/stackalloc, retrieved 2026-11-17"]
     quotes:
@@ -222,7 +222,7 @@ rules:
     why: "A shared or publicly reachable lock object can cause deadlock or lock contention."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/statements/lock, retrieved 2026-11-17"]
     quotes:
@@ -255,7 +255,7 @@ rules:
     why: "Blocking there risks deadlock."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/static-constructors, retrieved 2026-11-17"]
     quotes:
@@ -273,7 +273,7 @@ rules:
     why: "Until you unsubscribe, the publisher holds a reference to the subscriber's handler, so the subscriber can't be collected."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/programming-guide/events/how-to-subscribe-to-and-unsubscribe-from-events, retrieved 2026-11-17"]
     quotes:
@@ -294,7 +294,7 @@ rules:
     why: "A query runs when it is enumerated, so side effects happen at a time and number of times the code doesn't show."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/csharp/linq/get-started/write-linq-queries, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/linq/mixed-declarative-imperative-code-bugs, retrieved 2026-11-17"]
     quotes:
@@ -315,7 +315,7 @@ rules:
     why: "Functionality added through extension methods leaves the assembly's version unchanged, which hides the change from the library's versioning."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/extension-methods, retrieved 2026-11-17"]
     quotes:
@@ -333,7 +333,7 @@ rules:
     why: "Overload resolution can pick the derived method when the caller meant the base method, or the reverse."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/programming-guide/classes-and-structs/versioning-with-the-override-and-new-keywords, retrieved 2026-11-17"]
     quotes:
@@ -351,7 +351,7 @@ rules:
     why: "Two overrides of a default interface method make a call ambiguous for a class that implements both interfaces."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/advanced-topics/interface-implementation/mixins-with-default-interface-methods, retrieved 2026-11-17"]
     quotes:
@@ -369,7 +369,7 @@ rules:
     why: "The attributes state a null contract the type alone can't express."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/csharp/language-reference/attributes/nullable-analysis, retrieved 2026-11-17"]
     quotes:
@@ -390,7 +390,7 @@ rules:
     why: "A call on the wrong platform throws at run time; the analyzer's diagnostics point out where."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/analyzers/platform-compat-analyzer, retrieved 2026-11-17"]
     quotes:
@@ -411,7 +411,7 @@ rules:
     why: "The consumer knows its threading environment and can make an informed choice."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/async-wrappers-for-synchronous-methods, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/synchronous-wrappers-for-asynchronous-methods, retrieved 2026-11-17"]
     quotes:
@@ -432,7 +432,7 @@ rules:
     why: "A task that is never completed makes callers wait forever, and an unobserved background operation fails silently."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/complete-your-tasks, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/asynchronous-programming-patterns/keep-async-methods-alive, retrieved 2026-11-17"]
     quotes:
@@ -456,7 +456,7 @@ rules:
     why: "A source-generated regex is built at compile time instead of at run time."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/base-types/regular-expression-source-generators, retrieved 2026-11-17"]
     quotes:
@@ -477,7 +477,7 @@ rules:
     why: "Only a test email shows the address exists."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/base-types/how-to-verify-that-strings-are-in-valid-email-format, retrieved 2026-11-17"]
     quotes:
@@ -501,7 +501,7 @@ rules:
     why: "Best-fit mapping has security risks, and a text encoding can corrupt binary data."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/base-types/character-encoding, retrieved 2026-11-17"]
     quotes:
@@ -534,7 +534,7 @@ rules:
     why: "The provider is free to choose the notification order, and an exception from an observer goes unhandled."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/events/observer-design-pattern-best-practices, retrieved 2026-11-17"]
     quotes:
@@ -558,7 +558,7 @@ rules:
     why: "An undisposed source holds unmanaged resources, and a caller can only cancel an operation that takes its token."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/threading/cancellation-in-managed-threads, retrieved 2026-11-17"]
     quotes:
@@ -582,7 +582,7 @@ rules:
     why: "Parallelism sometimes runs slower, and shared state, waiting iterations and a blocked UI thread cause races and deadlocks."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/parallel-programming/potential-pitfalls-in-data-and-task-parallelism, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/parallel-programming/potential-pitfalls-with-plinq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/parallel-programming/exception-handling-task-parallel-library, retrieved 2026-11-17"]
     quotes:
@@ -615,7 +615,7 @@ rules:
     why: "Large temporary objects fragment the large object heap, and segment sizes are implementation-specific and can change at any time."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/garbage-collection/weak-references, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/garbage-collection/large-object-heap, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/garbage-collection/fundamentals, retrieved 2026-11-17"]
     quotes:
@@ -642,7 +642,7 @@ rules:
     why: "Extraction helpers don't enforce size or entry limits and don't guarantee containment on disk, so path traversal and decompression bombs are the caller's to stop; ZipCrypto has known weaknesses."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/io/zip-tar-best-practices, retrieved 2026-11-17"]
     quotes:
@@ -669,7 +669,7 @@ rules:
     why: "DTDs and schemas are inherently vulnerable to denial-of-service attacks, and an error description can reveal data, file names or implementation details."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/linq/linq-xml-security, retrieved 2026-11-17"]
     quotes:
@@ -696,7 +696,7 @@ rules:
     why: "DSA is not as secure as RSA, and MD5 and SHA-1 have been found to be insecure."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/security/cryptographic-services, retrieved 2026-11-17"]
     quotes:
@@ -717,7 +717,7 @@ rules:
     why: "Certain reflection APIs can't be used in Native AOT applications."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [publishes-native-aot]
     sources: ["https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/reflection-vs-source-generation, retrieved 2026-11-17"]
@@ -736,7 +736,7 @@ rules:
     why: "A dependency policy affects framework libraries even when the library doesn't reference them directly, and branching removes the feature and support choice for users."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [ships-nuget-package]
     sources: ["https://learn.microsoft.com/dotnet/standard/library-guidance/dependencies-net, retrieved 2026-11-17"]
@@ -764,7 +764,7 @@ rules:
     why: "Consumers must be able to update packages and use them across frameworks and versions reliably."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [ships-nuget-package]
     sources: ["https://learn.microsoft.com/dotnet/standard/library-guidance/nuget-package-compatibility-rules, retrieved 2026-11-17"]
@@ -798,7 +798,7 @@ rules:
     why: "Microsoft's page names .NET 11 as the version to go to. Its reach-against-features trade-off: .NET Standard 2.0 is supported by all modern platforms, and 1.x limits features for little extra reach."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/standard/net-standard, retrieved 2026-11-17"]
     quotes:
@@ -822,7 +822,7 @@ rules:
     why: "An uncompleted reader or writer leaves its counterpart waiting."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/io/pipelines, retrieved 2026-11-17"]
     quotes:
@@ -843,7 +843,7 @@ rules:
     why: "The page lists these among the guidance that helps avoid common marshalling issues."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/standard/native-interop/customize-struct-marshalling, retrieved 2026-11-17"]
     quotes:

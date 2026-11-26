@@ -115,7 +115,7 @@ rules:
     why: "One source for the tools the new-app intake offers and the standard names (CRF-003); the owner wants paid options listed with their price beside a free default."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["owner, 2026-11-11", "ADR-0058"]
     enforcement:
@@ -142,7 +142,7 @@ rules:
     why: "A budget is a requirement only when something checks it; shared runners vary, so the check runs off the required path, with exact allocation budgets and time budgets that leave room for the runner (ADR-0062)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
     strength: should
     sources: ["owner, 2026-11-11", "ADR-0057", "ADR-0062"]
     enforcement:
@@ -244,7 +244,7 @@ rules:
     why: "Tests that depend on each other fail for reasons the failing test doesn't show, and can't run alone or in parallel."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/core/testing/order-unit-tests, retrieved 2026-11-17"]
     quotes:

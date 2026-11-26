@@ -6,7 +6,7 @@ rules:
     why: "Several NuGet packages have similar names, and the page's example is built on sqlite-net-pcl."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/data-cloud/database-sqlite?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -27,7 +27,7 @@ rules:
     why: "A binding without x:DataType isn't compiled and costs runtime performance, and the warnings that report one stay silent unless strict XAML compilation is on."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/data-binding/compiled-bindings?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -54,7 +54,7 @@ rules:
     why: "A simulator can distort the numbers, and one device's measurements won't show the performance of another."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -78,7 +78,7 @@ rules:
     why: "A splash screen tells the user the app is starting, and work that isn't needed to start delays the first screen."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -99,7 +99,7 @@ rules:
     why: "Page-specific resources in the app dictionary are parsed at startup instead of when a page needs them."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     unconditional: "'when the app starts' describes startup, not which apps the rule holds for"
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
@@ -124,7 +124,7 @@ rules:
     why: "Updating a UI element off the UI thread throws, and waiting on asynchronous work at startup delays the first screen."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -148,7 +148,7 @@ rules:
     why: "An event subscription keeps its subscriber reachable, and on iOS and Mac Catalyst a strong reference cycle can keep objects from ever being collected."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -169,7 +169,7 @@ rules:
     why: "Bindings aren't cost efficient, extra layouts cause unnecessary layout calculations, and images held longer than needed use memory."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/performance?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -193,7 +193,7 @@ rules:
     why: "Nested scrolling controls compete for the same scroll gestures, and a bindable layout has no scrolling, selection or virtualization of its own."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/user-interface/controls/scrollview?view=net-maui-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/user-interface/layouts/?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -220,7 +220,7 @@ rules:
     why: "The lifecycle page gives an action for each of these events, and its table of Android methods marks the ones whose override must call the base implementation; skipping them keeps work running in the background, leaves subscriptions behind or loses state the system would have kept."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/app-lifecycle?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -256,7 +256,7 @@ rules:
     why: "A permission prompt before the first page appears has no screen to explain it, and a permission without its manifest or plist entry can't be granted."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/platform-integration/appmodel/permissions?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -283,7 +283,7 @@ rules:
     why: "A client secret shipped inside a mobile app can be extracted; a web backend keeps it server-side."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [has-sign-in]
     sources: ["https://learn.microsoft.com/dotnet/maui/platform-integration/communication/authentication?view=net-maui-10.0, retrieved 2026-11-17"]
@@ -308,7 +308,7 @@ rules:
     why: "A navigation call that isn't awaited races the code after it; QueryPropertyAttribute breaks under trimming; and screen readers announce a generic value or none when the text is hidden."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/shell/navigation?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -335,7 +335,7 @@ rules:
     why: "The MAUI page marks MessagingCenter deprecated and names its replacement."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: should
     sources: ["https://learn.microsoft.com/dotnet/maui/fundamentals/messagingcenter?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
@@ -356,7 +356,7 @@ rules:
     why: "A trimming or AOT warning means the app might not work correctly under Native AOT; conditioning PublishAot makes the feature switches differ between configurations, so code behaves differently."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
     strength: must
     when: [publishes-native-aot]
     sources: ["https://learn.microsoft.com/dotnet/maui/deployment/nativeaot?view=net-maui-10.0, retrieved 2026-11-17"]
