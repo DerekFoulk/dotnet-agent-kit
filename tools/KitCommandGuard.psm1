@@ -171,9 +171,10 @@ function Get-PowerShellCommand {
             $plain = ConvertTo-PowerShellPlainWord -Element $element
             if ($null -ne $plain) { $plainWords.Add($plain) }
             # Any variable: the tool keeps none between calls, so its value comes from this input or the environment,
-            # and either way is known only when the command runs.
+            # and either way is known only when the command runs. So is any other value that isn't written out as
+            # text, such as a method call, an index or a list on a literal ('--forXe'.Replace('X','c')).
             $variable = $element.Find({ param($node) $node -is [Management.Automation.Language.VariableExpressionAst] }, $true)
-            $built.Add($(if ($variable) { $variable.Extent.Text }))
+            $built.Add($(if ($variable) { $variable.Extent.Text } elseif (-not (Test-PowerShellLiteral -Element $element)) { $element.Extent.Text }))
         }
         $name = $words[$words.Count - $commandAst.CommandElements.Count]
         $runs = $commandAst.Find({ param($node) $node.GetType() -in $script:ComputedArgumentAst }, $true)
@@ -188,6 +189,19 @@ function Get-PowerShellCommand {
             Runs       = if ($runs) { $runs.Extent.Text } else { $null }
         }
     }
+}
+
+# Whether a PowerShell command's argument is written out as the text it passes: a string or a number, or a parameter
+# with no value or such a value. A string's own expansions are variables or code inside it, which are seen apart.
+function Test-PowerShellLiteral {
+    param([Parameter(Mandatory)] [Management.Automation.Language.Ast] $Element)
+
+    if ($Element -is [Management.Automation.Language.CommandParameterAst]) {
+        return -not $Element.Argument -or (Test-PowerShellLiteral -Element $Element.Argument)
+    }
+    $Element -is [Management.Automation.Language.StringConstantExpressionAst] -or
+    $Element -is [Management.Automation.Language.ExpandableStringExpressionAst] -or
+    $Element -is [Management.Automation.Language.ConstantExpressionAst]
 }
 
 # A variable's name without its scope ($script:f is f); a drive-qualified one keeps its drive ($env:F).
