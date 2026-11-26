@@ -413,7 +413,8 @@ function Get-RuleSourceProblem {
             }
             foreach ($field in $script:AllowedValues.Keys) {
                 if ($rule.Contains($field) -and (Test-Present $rule[$field]) -and "$($rule[$field])" -notin $script:AllowedValues[$field]) {
-                    New-Problem -File $file.Name -RuleId $ruleId -Message "$field '$($rule[$field])' must be one of: $($script:AllowedValues[$field] -join ', ')"
+                    $replaced = if ($field -eq 'status' -and "$($rule[$field])" -eq 'proposed') { ": strength replaced it, so a rule in force is accepted, at the strength its source's words give (ADR-0090)" } else { '' }
+                    New-Problem -File $file.Name -RuleId $ruleId -Message "$field '$($rule[$field])' must be one of: $($script:AllowedValues[$field] -join ', ')$replaced"
                 }
             }
             if ($rule.Contains('enforcement') -and (Test-Present $rule['enforcement'])) {
