@@ -16,12 +16,13 @@ public sealed class HostingSecurityTests
     private const string AllowedHost = "kit-app.example";
     private const string OtherHost = "attacker.example";
 
-    [Fact]
-    public async Task ARequestForAnotherHostIsRejectedInProduction()
+    [Theory]
+    [EachHost]
+    public async Task ARequestForAnotherHostIsRejectedInProduction(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
         using HttpClient client = app.CreateClient(signedIn: true);
-        using HttpRequestMessage request = new(HttpMethod.Get, AppHost.SignedInRoute);
+        using HttpRequestMessage request = new(HttpMethod.Get, AppHost.Named(host).SignedInRoute);
         request.Headers.Host = OtherHost;
 
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -30,24 +31,26 @@ public sealed class HostingSecurityTests
     }
 
     // UseHsts leaves localhost out, so the request names a host a deployment would allow.
-    [Fact]
-    public async Task AnHttpsResponseCarriesHstsInProduction()
+    [Theory]
+    [EachHost]
+    public async Task AnHttpsResponseCarriesHstsInProduction(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production, new Dictionary<string, string> { ["AllowedHosts"] = AllowedHost });
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production, new Dictionary<string, string> { ["AllowedHosts"] = AllowedHost });
         using HttpClient client = app.CreateClient(signedIn: true);
-        using HttpRequestMessage request = new(HttpMethod.Get, new Uri($"https://{AllowedHost}{AppHost.SignedInRoute}"));
+        using HttpRequestMessage request = new(HttpMethod.Get, new Uri($"https://{AllowedHost}{AppHost.Named(host).SignedInRoute}"));
 
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.Headers.Contains("Strict-Transport-Security").Should().BeTrue();
     }
 
-    [Fact]
-    public async Task ACrossOriginPreflightGetsNoPermission()
+    [Theory]
+    [EachHost]
+    public async Task ACrossOriginPreflightGetsNoPermission(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
         using HttpClient client = app.CreateClient(signedIn: true);
-        using HttpRequestMessage preflight = new(HttpMethod.Options, AppHost.SignedInRoute);
+        using HttpRequestMessage preflight = new(HttpMethod.Options, AppHost.Named(host).SignedInRoute);
         preflight.Headers.Add("Origin", $"https://{OtherHost}");
         preflight.Headers.Add("Access-Control-Request-Method", "POST");
 
@@ -56,10 +59,11 @@ public sealed class HostingSecurityTests
         response.Headers.Contains("Access-Control-Allow-Origin").Should().BeFalse();
     }
 
-    [Fact]
-    public void KestrelSendsNoServerHeaderAndCapsTheRequestBody()
+    [Theory]
+    [EachHost]
+    public void KestrelSendsNoServerHeaderAndCapsTheRequestBody(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
 
         KestrelServerOptions kestrel = app.Services.GetRequiredService<IOptions<KestrelServerOptions>>().Value;
 

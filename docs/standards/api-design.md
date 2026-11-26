@@ -89,13 +89,13 @@ rules:
     enforcement:
       - kind: gate
         in: [kit]
-        how: "ci: the sample's FunctionalTests check that a 400, 404, 409, 415 and 500 are Problem Details, that malformed input is a 400 in Development, that a 500 in Production hides the exception, and that every error the OpenAPI document declares is Problem Details"
+        how: "ci: the sample's FunctionalTests check that a 400, 404, 409, 415 and 500 are Problem Details, that malformed input is a 400 in Development and that a 500 in Production hides the exception"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): ErrorTests checks that a route that doesn't exist is a 404 Problem, and that an unhandled exception is a 500 Problem without its message in Production, unless the app says it serves no HTTP API; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): for each host that serves an HTTP API, ErrorTests checks that a route that doesn't exist is a 404 Problem, and that an unhandled exception is a 500 Problem without its message in Production, and OpenApiDocumentTests that every error its OpenAPI document declares (a 4xx or 5xx, or the default response) is Problem Details; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "the app's own errors (malformed input a 400 in Development too, its other 4xx, and the errors its OpenAPI document declares), until its own FunctionalTests check them, as the sample's do"
+        how: "the app's own errors (malformed input a 400 in Development too, and its other 4xx), until its own FunctionalTests check them, as the sample's do"
     scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*Error*.cs"]
   - id: API-003
@@ -111,14 +111,11 @@ rules:
         text: "The OpenAPI endpoint is restricted to the Development environment to minimize the risk of exposing sensitive information and reduce the vulnerabilities in production."
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's ContractTests compare the document with its snapshot"
-      - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): OpenApiTests checks that the document is served in Development, to an anonymous caller too, and not in Production, unless the app says it serves no HTTP API; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): for each host that serves an HTTP API, OpenApiTests checks that the document is served in Development, to an anonymous caller too, and not in Production, and that it matches the snapshot committed as Contract/<host>/openapi-v1.json in the FunctionalTests project, writing openapi-v1.received.json beside it when it doesn't, and ContractTypeTests that every endpoint the document describes declares what it answers on success, a typed 2xx or a declared 2xx or 3xx, as typed results and Produces do, not only ApiExplorer's default 200; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "the snapshot of the document and typed results, until the app's own ContractTests snapshot it, as the sample's do"
+        how: "typed results beyond a declared success response, such as each error's, which code review checks"
     scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/Contract/**"]
   - id: API-004

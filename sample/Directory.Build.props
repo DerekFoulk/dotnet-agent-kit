@@ -35,6 +35,9 @@
 
   <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.FunctionalTests'))">
     <Compile Include="$(KitAppTests)Functional/**/*.cs" Link="Kit/Functional/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- The contract snapshot test finds Contract/<host>/openapi-v1.json here. [CallerFilePath] won't do: CI builds map
+         source paths to /_/. -->
+    <AssemblyMetadata Include="ProjectDirectory" Value="$(MSBuildProjectDirectory)" />
   </ItemGroup>
 
   <!-- Benchmarks projects: BenchmarkDotNet console apps, each with a benchmark-budget.json beside it (ADR-0062). Not
