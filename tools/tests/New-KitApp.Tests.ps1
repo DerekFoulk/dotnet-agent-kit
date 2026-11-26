@@ -98,6 +98,23 @@ Describe 'New-KitApp settings' {
         $tools[0].security_alerts_threshold | Should -Be 'high_or_higher'
     }
 
+    # ADR-0097 (owner, 2026-11-25: "Yes, protect v* tags"): a release tag is what MinVer builds a version from and what
+    # an app's kit pin is trusted by (ADR-0031), so nobody may move or delete one. Creating one stays open: release-please
+    # creates each tag through the Releases API with the workflow's own token, and a bypass would let any workflow move tags.
+    It 'has a release tags ruleset that blocks moving or deleting a v* tag, for everyone, and still lets release-please create one' {
+        $path = Join-Path $root 'templates' 'github' 'release-tags.json'
+        Test-Path -LiteralPath $path | Should -BeTrue -Because 'the tag ruleset is data in templates/github, for the kit and every app'
+        $ruleset = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+
+        $ruleset.name | Should -Be 'release tags'
+        $ruleset.target | Should -Be 'tag'
+        $ruleset.enforcement | Should -Be 'active'
+        @($ruleset.bypass_actors) | Should -BeNullOrEmpty
+        @($ruleset.conditions.ref_name.include) | Should -Be @('refs/tags/v*')
+        @($ruleset.conditions.ref_name.exclude) | Should -BeNullOrEmpty
+        @($ruleset.rules.type | Sort-Object) | Should -Be @('deletion', 'update')
+    }
+
     It 'requires every review thread to be resolved before merging, as the kit''s ruleset does' {
         # The owner, 2026-11-10: new apps get the merge protections the kit has (README, "GitHub settings").
         $pullRequest = ((Get-Content -Raw -LiteralPath $rulesetPath | ConvertFrom-Json).rules | Where-Object type -EQ 'pull_request').parameters
@@ -238,11 +255,19 @@ Describe 'New-KitApp run' {
             (git -C $remote log -1 --format=%s main) | Should -Match '^chore: start from dotnet-agent-kit'
 
             $writes = Get-WriteCall
-            @($writes.Arguments)[0..1] | Should -Be @('api user/repos --method POST --input -', 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -')
+            @($writes.Arguments)[0..2] | Should -Be @('api user/repos --method POST --input -', 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -', 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -')
             ($writes[0].Input | ConvertFrom-Json).name | Should -Be 'Contoso.Orders'
             ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
             $writes[1].Pushed | Should -BeTrue -Because 'the ruleset would reject the first push'
             ($writes[1].Input | ConvertFrom-Json).name | Should -Be 'main protection'
+        }
+
+        It 'then protects the release tags, private or public, before the app can make its first release' {
+            $writes = Get-WriteCall
+            $writes[2].Arguments | Should -Be 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -'
+            ($writes[2].Input | ConvertFrom-Json).name | Should -Be 'release tags'
+            ($writes[2].Input | ConvertFrom-Json).target | Should -Be 'tag'
+            $writes[2].Pushed | Should -BeTrue
         }
 
         # The owner, 2026-11-09 (ADR-0041): Dependabot security updates skip the 7- and 14-day wait version
@@ -251,6 +276,7 @@ Describe 'New-KitApp run' {
         It 'then turns on Dependabot alerts and security updates, private or public' {
             @((Get-WriteCall).Arguments) | Should -Be @(
                 'api user/repos --method POST --input -'
+                'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -'
                 'api repos/fixture-owner/Contoso.Orders/rulesets --method POST --input -'
                 'api repos/fixture-owner/Contoso.Orders/vulnerability-alerts --method PUT'
                 'api repos/fixture-owner/Contoso.Orders/automated-security-fixes --method PUT'
@@ -322,6 +348,7 @@ Describe 'New-KitApp run' {
             @($writes.Arguments) | Should -Be @(
                 'api user/repos --method POST --input -'
                 'api repos/fixture-owner/Public.Orders/rulesets --method POST --input -'
+                'api repos/fixture-owner/Public.Orders/rulesets --method POST --input -'
                 'api repos/fixture-owner/Public.Orders/vulnerability-alerts --method PUT'
                 'api repos/fixture-owner/Public.Orders/automated-security-fixes --method PUT'
                 'api repos/fixture-owner/Public.Orders/actions/permissions --method PUT --input -'
@@ -333,26 +360,26 @@ Describe 'New-KitApp run' {
             )
             ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
             ($writes[1].Pushed) | Should -BeTrue
-            ($writes[6].Input | ConvertFrom-Json).private | Should -BeFalse
+            ($writes[7].Input | ConvertFrom-Json).private | Should -BeFalse
         }
 
         It 'then turns on secret scanning and push protection, free on public repos (ADR-0031)' {
-            @(Get-WriteCall).Count | Should -Be 10
-            $security = ((Get-WriteCall)[7].Input | ConvertFrom-Json).security_and_analysis
+            @(Get-WriteCall).Count | Should -Be 11
+            $security = ((Get-WriteCall)[8].Input | ConvertFrom-Json).security_and_analysis
             $security.secret_scanning.status | Should -Be 'enabled'
             $security.secret_scanning_push_protection.status | Should -Be 'enabled'
         }
 
         It 'runs no fork''s PR until the owner approves it' {
-            @(Get-WriteCall).Count | Should -Be 10
-            ((Get-WriteCall)[8].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
+            @(Get-WriteCall).Count | Should -Be 11
+            ((Get-WriteCall)[9].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
         }
 
         # The owner, 2026-11-10: new apps get the kit's merge protections. Only once public: CodeQL runs only on
         # a public app, and a rule requiring it would block every merge in a private one.
         It 'last, requires CodeQL results to merge, now that CodeQL runs' {
-            @(Get-WriteCall).Count | Should -Be 10
-            ((Get-WriteCall)[9].Input | ConvertFrom-Json).name | Should -Be 'code scanning'
+            @(Get-WriteCall).Count | Should -Be 11
+            ((Get-WriteCall)[10].Input | ConvertFrom-Json).name | Should -Be 'code scanning'
         }
     }
 
