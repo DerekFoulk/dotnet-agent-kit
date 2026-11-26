@@ -37,6 +37,12 @@
     <Compile Include="$(KitAppTests)Functional/**/*.cs" Link="Kit/Functional/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <!-- A test host's content root, found from the test's own folder in any repo's layout (ADR-0095): every project that
+       hosts the app, FunctionalTests and E2E.Tests. -->
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.FunctionalTests')) Or $(MSBuildProjectName.EndsWith('.E2E.Tests'))">
+    <Compile Include="$(KitAppTests)Hosting/**/*.cs" Link="Kit/Hosting/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <!-- Benchmarks projects: BenchmarkDotNet console apps, each with a benchmark-budget.json beside it (ADR-0062). Not
        test projects, so dotnet test leaves them alone; the coverage gate and the SBOM leave them out by name. The name
        rule's source is Test-BenchmarksProject in the kit's tools/KitSolution.psm1 (.kit/tools in an app), which the
