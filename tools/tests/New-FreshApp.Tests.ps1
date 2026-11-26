@@ -225,6 +225,16 @@ Describe 'New-FreshApp' {
             $versions.ContainsKey('Microsoft.CodeAnalysis.CSharp') | Should -BeFalse -Because 'the kit tools'' packages stay out of an app'
         }
 
+        # The web-api probe is the sample, a server app only its owner runs, so it carries the license entries this repo
+        # adds for the sample (.config/package-licenses.json: MSAL's broker interop, ADR-0098), as an app on SQL Server
+        # adds its own. The web UI fixture needs none.
+        It 'carries the kit repo''s license entries only when its probe is the sample' {
+            $policy = Join-Path $app '.config' 'package-licenses.json'
+
+            if ($Type -eq 'web-api') { $policy | Should -Exist; [IO.File]::ReadAllBytes($policy) | Should -Be ([IO.File]::ReadAllBytes((Join-Path $checkout '.config' 'package-licenses.json'))) }
+            else { $policy | Should -Not -Exist }
+        }
+
         # The shared CI builds and checks what the solution lists, so a probe project left out would go unchecked.
         It 'lists every probe project in the app''s solution, and nothing else' {
             [xml] $solution = Get-Content -Raw -LiteralPath (Join-Path $app "$Name.slnx")
