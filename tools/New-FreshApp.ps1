@@ -136,6 +136,23 @@ function Add-FreshAppPackageGroup {
     $text
 }
 
+# The app's solution with every project under src/ and tests/, in a folder for each, as an app's first task would list
+# them. The export's solution has no projects (ADR-0032), so the whole file is written.
+function Get-FreshAppSolutionText {
+    param([Parameter(Mandatory)] [string] $Destination)
+
+    $lines = @('<Solution>')
+    foreach ($folder in 'src', 'tests') {
+        $projects = @(Get-ChildItem -LiteralPath (Join-Path $Destination $folder) -Recurse -Filter *.csproj -ErrorAction SilentlyContinue |
+                ForEach-Object { [IO.Path]::GetRelativePath($Destination, $_.FullName).Replace('\', '/') } | Sort-Object)
+        if (-not $projects) { continue }
+        $lines += "  <Folder Name=""/$folder/"">"
+        $lines += @($projects | ForEach-Object { "    <Project Path=""$([Security.SecurityElement]::Escape($_))"" />" })
+        $lines += '  </Folder>'
+    }
+    (($lines + '</Solution>') -join "`n") + "`n"
+}
+
 function New-FreshApp {
     param(
         [Parameter(Mandatory)] [string] $Type,
@@ -169,6 +186,7 @@ function New-FreshApp {
     if ($LASTEXITCODE -ne 0) { throw "The kit at $commit has no Directory.Packages.props." }
     $text = Add-FreshAppPackageGroup -PropsText ([IO.File]::ReadAllText($props)) -KitPropsText $kitProps -Label $probe.PackageGroups
     [IO.File]::WriteAllText($props, $text, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $Destination "$($probe.Name).slnx"), (Get-FreshAppSolutionText -Destination $Destination), [Text.UTF8Encoding]::new($false))
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
