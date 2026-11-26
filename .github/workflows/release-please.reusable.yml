@@ -17,6 +17,12 @@ jobs:
   release-please:
     name: release-please
     runs-on: ubuntu-latest
+    # One run at a time in each repo: two merges seconds apart start two runs, and both update the release PR's branch,
+    # so the later update fails (2026-11-26). A run in progress is never cancelled; GitHub keeps only the newest waiting
+    # run, which reads every commit since the last release, so nothing is lost. A dropped run shows as cancelled, not failed.
+    concurrency:
+      group: release-please-${{ github.repository }}
+      cancel-in-progress: false
     # release-please needs contents, pull-requests and issues (labels); the approval step needs actions. The caller's
     # job must grant each of them.
     permissions:
