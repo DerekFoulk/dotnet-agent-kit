@@ -148,9 +148,10 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 - **The OpenAPI document's checks**, for each host that serves an HTTP API:
   - `OpenApiTests` (API-003) compares the Development document with `Contract/<host name>/openapi-v1.json` in the FunctionalTests project. On a mismatch it writes `openapi-v1.received.json` beside it, which git ignores. `tests/Directory.Build.props` records the project's folder as `ProjectDirectory` assembly metadata for every `*.FunctionalTests` project; the sample's project file did that before. The sample's snapshot moved to `Contract/Bookmarks.Api/`.
   - `OpenApiDocumentTests` checks that every error the document declares is Problem Details (API-002): a 4xx, a 5xx, a range, and the default response. It also checks the Bearer scheme, and that every operation not on one of the host's anonymous routes requires it and declares 401 and 403 (SEC-007, SEC-008). Route constraints are stripped before the two are compared.
-  - `ContractTypeTests` (SEC-013) reads the types from ApiExplorer, which the document is made from. Every type an endpoint takes as a body or form, or answers with, must come from the host's `ContractAssemblies` or be .NET's own, and so must its generic arguments and array elements. ".NET's own" means signed with one of Microsoft's public key tokens, which covers ProblemDetails.
+  - `ContractTypeTests` (SEC-013) reads the types from ApiExplorer, which the document is made from. Every type an endpoint takes as a body or form, or answers with, must come from the host's `ContractAssemblies` or be a plain .NET type, and so must its generic arguments and array elements. The plain types are a named list: primitives, string, decimal, Guid, dates and times, Uri, Nullable, the BCL's collections, ProblemDetails, HttpValidationProblemDetails, form files and Stream. object, a JSON document and any other framework or library type, such as Identity's IdentityUser, fail: a Contracts type wraps what the endpoint needs. Every described endpoint must declare a success response (typed results, API-003), so an untyped IResult can't hide its type, and an API host must describe at least one endpoint. An endpoint left out of the document (`ExcludeFromDescription`) isn't described, so code review checks it.
+    - **Why a list, not Microsoft's signing keys:** review 1 found that the keys pass Identity's and EF Core's types, which can carry a password hash or an entity.
     - **Why types, not schema names:** ASP.NET Core composes the names of generic schemas (`OkOfArrayOfTodo`), and its customization page says those details may change. A name check would fail an app with a generic page type in its Contracts.
-    - **Why ApiExplorer:** it's in the shared framework, so the check compiles in every app without the OpenAPI package. It also covers endpoints mapped in `Program.cs`, which the architecture tests' EndpointTests don't see.
+    - **Why ApiExplorer:** it's in the shared framework, so the check compiles in every app without the OpenAPI package. It also covers described endpoints mapped in `Program.cs`, which the architecture tests' EndpointTests don't see.
 - **SEC-008's token checks:** `TokenTests` sends four callers to the host's signed-in route and expects a 401 Problem that names the Bearer scheme:
   - no token;
   - an unsigned token (`alg: none`);
@@ -168,7 +169,8 @@ The sync PR's CI build fails until then, so the change shows on that PR.
   - dropping the bearer document transformer;
   - declaring a bare 404;
   - answering with a list of domain `Bookmark`s;
-  - accepting any signature.
+  - accepting any signature;
+  - an endpoint answering with an untyped `IResult`.
 - **Not verified:**
   - a real second host. The sample has one, so only `EachHostTests` shows the rows for two.
   - an exported app's FunctionalTests, for the reason the first host-checks update gives.

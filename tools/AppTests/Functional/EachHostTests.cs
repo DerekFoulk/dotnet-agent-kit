@@ -39,6 +39,7 @@ public sealed class EachHostTests
     [InlineData("Shop.Api|Shop.Api")]
     [InlineData("Shop Api")]
     [InlineData("Shop/Api")]
+    [InlineData("Shop.Api|Shop.Api.")]
     [InlineData("Shop.Api|")]
     public void HostsNeedNamesOfTheirOwnThatCanNameAFolder(string names)
     {

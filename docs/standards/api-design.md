@@ -111,14 +111,11 @@ rules:
         text: "The OpenAPI endpoint is restricted to the Development environment to minimize the risk of exposing sensitive information and reduce the vulnerabilities in production."
     enforcement:
       - kind: gate
-        in: [kit]
-        how: "ci: the sample's ContractTests check that the document shows the create request's limits (SEC-010)"
-      - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): for each host that serves an HTTP API, OpenApiTests checks that the document is served in Development, to an anonymous caller too, and not in Production, and that it matches the snapshot committed as Contract/<host>/openapi-v1.json in the FunctionalTests project, writing openapi-v1.received.json beside it when it doesn't; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): for each host that serves an HTTP API, OpenApiTests checks that the document is served in Development, to an anonymous caller too, and not in Production, and that it matches the snapshot committed as Contract/<host>/openapi-v1.json in the FunctionalTests project, writing openapi-v1.received.json beside it when it doesn't, and ContractTypeTests that every endpoint the document describes declares its success response, as typed results do; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
-        how: "typed results, which code review checks"
+        how: "typed results beyond a declared success response, such as each error's, which code review checks"
     scope: [web-api, blazor]
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/Contract/**"]
   - id: API-004

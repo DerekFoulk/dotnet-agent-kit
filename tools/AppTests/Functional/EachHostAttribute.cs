@@ -47,5 +47,5 @@ internal sealed class EachHostAttribute(params object?[] values) : DataAttribute
     public override bool SupportsDiscoveryEnumeration() => true;
 
     private static bool CanNameAFolder(string name) =>
-        name.Trim('.').Length > 0 && name.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '-' or '_');
+        name.Trim('.').Length > 0 && !name.EndsWith('.') && name.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '-' or '_');
 }
