@@ -108,9 +108,10 @@ public sealed class ContractTypeTests
         endpoint.SupportedResponseTypes.Any(response => response.StatusCode is >= 200 and < 300 && response.Type is { } type && type != typeof(void))
         || endpoint.ActionDescriptor.EndpointMetadata.Any(metadata => metadata switch
         {
-            // A minimal API's Produces and typed results, and an MVC action's [ProducesResponseType].
+            // A minimal API's Produces and typed results, and an MVC action's [ProducesResponseType]; not MVC's
+            // [Produces], whose 200 only names a content type, nor an API convention, which isn't endpoint metadata.
             IProducesResponseTypeMetadata declared => declared.StatusCode is >= 200 and < 400,
-            IApiResponseMetadataProvider declared => declared.StatusCode is >= 200 and < 400,
+            ProducesResponseTypeAttribute declared => declared.StatusCode is >= 200 and < 400,
             _ => false,
         });
 

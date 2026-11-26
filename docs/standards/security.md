@@ -219,7 +219,7 @@ rules:
         how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): EndpointTests fails when a presentation class named ...Endpoints or ...Controller uses a domain type, or when an API (an assembly named .Api) has no such class; endpoints mapped elsewhere, such as in Program.cs, are ContractTypeTests'; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
-        how: "an endpoint left out of the OpenAPI document (ExcludeFromDescription), which ApiExplorer doesn't describe, so code review checks what it accepts and returns"
+        how: "an endpoint left out of the OpenAPI document (ExcludeFromDescription), which ApiExplorer doesn't describe, or one that declares a success without a type and still answers with a body, so code review checks what it accepts and returns"
     paths: ["**/*Endpoints*.cs", "**/*Contracts*/**"]
   - id: SEC-014
     statement: "The security analyzers stay on and fail the build: every CA2xxx, CA3xxx and CA5xxx security rule that AnalysisLevel latest-all turns on, the SYSLIB obsoletions of unsafe APIs (BinaryFormatter, obsolete cryptography and TLS types), and BannedSymbols.txt's bans of the APIs those rules miss (Aes.Create, whose CBC needs an HMAC nothing checks for, algorithms named at run time, the accept-any-certificate validator, DTD parsing and the legacy XML resolver and reader); a suppression of one names its reason where it lives."
