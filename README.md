@@ -454,11 +454,12 @@ It checks first, before changing anything: the app and repo names, an empty fold
 4. Creates the repo, private for now, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
 5. Pushes `main`.
 6. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved. It doesn't request Copilot code review: the reviewer agent reviews instead (ADR-0067).
-7. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
-8. Requires every GitHub Action in a workflow to be pinned to a full commit SHA (`templates/github/actions.json`, SUP-008).
-9. Lets GitHub Actions create and approve pull requests, so release-please can open the app's release PR with the workflow's own token, and keeps workflow tokens read-only by default (`templates/github/workflow-permissions.json`, ADR-0096).
-10. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, requires approval before any fork's PR runs (`templates/github/public.json`), and adds a "code scanning" ruleset that blocks a merge on a CodeQL error or a high security alert (`templates/github/code-scanning.json`, SEC-006). A private app doesn't run CodeQL, and a rule requiring it would block every merge, so it doesn't get that ruleset. Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
-11. Turns the commit hook on in the local copy.
+7. Adds the "release tags" ruleset (`templates/github/release-tags.json`): nobody may move or delete a `v*` tag, so a release keeps meaning one commit; creating one stays open, so release-please tags each release with the workflow's own token (ADR-0097).
+8. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
+9. Requires every GitHub Action in a workflow to be pinned to a full commit SHA (`templates/github/actions.json`, SUP-008).
+10. Lets GitHub Actions create and approve pull requests, so release-please can open the app's release PR with the workflow's own token, and keeps workflow tokens read-only by default (`templates/github/workflow-permissions.json`, ADR-0096).
+11. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, requires approval before any fork's PR runs (`templates/github/public.json`), and adds a "code scanning" ruleset that blocks a merge on a CodeQL error or a high security alert (`templates/github/code-scanning.json`, SEC-006). A private app doesn't run CodeQL, and a rule requiring it would block every merge, so it doesn't get that ruleset. Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
+12. Turns the commit hook on in the local copy.
 
 If a step fails, it stops and says what's done and what's left, and whether the repo or the folder is kept. It never deletes a repo. Claude Code asks before running it.
 
@@ -522,6 +523,20 @@ Applied 2026-11-12 with the owner's OK, and removed 2026-11-14 on his yes:
 | Setting | Value | Why |
 |---|---|---|
 | "main protection" ruleset: automatically request Copilot code review | Off: the rule is removed | From 2026-11-12 it asked Copilot for a review of each PR and each push to it (ADR-0064). Each used the owner's GitHub AI credits, and they ran out; the reviewer agent reviews instead (ADR-0067) |
+
+Prepared 2026-11-25, not applied: applying a ruleset is the owner's step (ADR-0097):
+
+| Setting | Value | Why |
+|---|---|---|
+| "release tags" ruleset (`templates/github/release-tags.json`) | Tags matching `refs/tags/v*`: restrict updates and deletions, no bypass; creations not restricted | A release tag can't be moved or deleted, so a version and an app's kit pin keep meaning one commit (ADR-0031); release-please still creates each new tag. Every app `New-KitApp` creates gets the same ruleset |
+
+To apply it, from a kit checkout on `main`:
+
+```powershell
+gh api --method POST repos/DerekFoulk/dotnet-agent-kit/rulesets --input templates/github/release-tags.json
+```
+
+Then move its row to an "Applied" table with the date. Applied before release PR 10 merges, that release proves release-please can still create its tag; if it can't, ADR-0097 says how to recover.
 
 ## Run the tests
 
