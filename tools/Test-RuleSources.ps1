@@ -285,6 +285,70 @@ function Get-ScopeProblem {
     }
 }
 
+# ADR-0090: the conditions a rule's when can name, from docs/standards/conditions.yml, the one list of them. Each has an
+# id, a meaning, and either intake (the intake card whose answer settles it, with the options that make it hold and not
+# hold) or recordedBy (where else it's recorded). Returns the ids, and the file's problems as messages.
+function Read-Condition {
+    param([Parameter(Mandatory)] [string] $StandardsPath)
+
+    $path = Join-Path $StandardsPath 'conditions.yml'
+    $result = [pscustomobject]@{ Ids = [System.Collections.Generic.List[string]]::new(); Problems = [System.Collections.Generic.List[string]]::new() }
+    if (-not (Test-Path -LiteralPath $path)) {
+        $result.Problems.Add("conditions.yml is missing from $StandardsPath; it lists the conditions a rule's when names (ADR-0090)")
+        return $result
+    }
+    $yaml = ConvertFrom-Yaml -Yaml (Get-Content -LiteralPath $path -Raw)
+    $conditions = $null
+    if ($yaml -is [System.Collections.IDictionary] -and $yaml.Contains('conditions')) { $conditions = $yaml['conditions'] }
+    foreach ($condition in @($conditions | Where-Object { $null -ne $_ })) {
+        if ($condition -isnot [System.Collections.IDictionary] -or "$($condition['id'])" -cnotmatch '^[a-z0-9]+(-[a-z0-9]+)*$') {
+            $id = if ($condition -is [System.Collections.IDictionary]) { $condition['id'] } else { $condition }
+            $result.Problems.Add("conditions.yml has an entry whose id '$id' isn't in lower-case-with-dashes")
+            continue
+        }
+        $id = "$($condition['id'])"
+        if ($result.Ids.Contains($id)) { $result.Problems.Add("conditions.yml lists '$id' more than once") }
+        else { $result.Ids.Add($id) }
+        if ("$($condition['meaning'])" -notmatch '\S') { $result.Problems.Add("conditions.yml condition '$id' has no meaning") }
+        $hasIntake = $condition.Contains('intake') -and $null -ne $condition['intake']
+        $hasRecordedBy = $condition.Contains('recordedBy') -and "$($condition['recordedBy'])" -match '\S'
+        if ($hasIntake -eq $hasRecordedBy) {
+            $result.Problems.Add("conditions.yml condition '$id' needs either intake (the card that settles it) or recordedBy (where else it's recorded), not both or neither")
+            continue
+        }
+        if ($hasIntake) {
+            $intake = $condition['intake']
+            if ($intake -isnot [System.Collections.IDictionary] -or "$($intake['card'])" -notmatch '\S') {
+                $result.Problems.Add("conditions.yml condition '$id' has an intake with no card")
+                continue
+            }
+            $yes = @(@($intake['yes']) | Where-Object { $_ } | ForEach-Object { "$_" })
+            $no = @(@($intake['no']) | Where-Object { $_ } | ForEach-Object { "$_" })
+            foreach ($option in @($yes | Where-Object { $_ -in $no })) {
+                $result.Problems.Add("conditions.yml condition '$id' lists the option '$option' as both yes and no")
+            }
+        }
+    }
+    if ($result.Ids.Count -eq 0 -and $result.Problems.Count -eq 0) { $result.Problems.Add("conditions.yml lists no conditions") }
+    $result
+}
+
+# ADR-0090: when is a list of the conditions in conditions.yml, all of which must hold for the rule to apply.
+function Get-WhenProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Known)
+
+    if (-not $Rule.Contains('when')) { return }
+    $when = $Rule['when']
+    if ($when -is [string] -or $when -is [System.Collections.IDictionary]) {
+        return "when must be a list of conditions, such as [has-sign-in]"
+    }
+    $ids = @(@($when) | Where-Object { "$_" -match '\S' } | ForEach-Object { "$_" })
+    if (-not $ids) { return "when is empty: leave it out for a rule that holds for every app" }
+    foreach ($id in $ids) {
+        if ($id -cnotin $Known) { "condition '$id' isn't one of conditions.yml's: $($Known -join ', ')" }
+    }
+}
+
 function New-Problem {
     param([string] $File, [string] $RuleId, [string] $Message)
     [pscustomobject]@{ File = $File; RuleId = $RuleId; Message = $Message }
@@ -298,6 +362,8 @@ function Get-RuleSourceProblem {
 
     $appTypes = Read-AppType -StandardsPath $StandardsPath
     foreach ($message in $appTypes.Problems) { New-Problem -File 'app-types.yml' -Message $message }
+    $conditions = Read-Condition -StandardsPath $StandardsPath
+    foreach ($message in $conditions.Problems) { New-Problem -File 'conditions.yml' -Message $message }
     $seen = @{}
     foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
         $frontMatter = Read-FrontMatter -Path $file.FullName
@@ -350,6 +416,9 @@ function Get-RuleSourceProblem {
                 New-Problem -File $file.Name -RuleId $ruleId -Message "basis '$basis' can't have layer '$($rule['layer'])': use $($script:LayersForBasis[$basis] -join ' or ') (ADR-0082)"
             }
             foreach ($message in @(Get-ScopeProblem -Rule $rule -Known $appTypes.Ids)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
+            }
+            foreach ($message in @(Get-WhenProblem -Rule $rule -Known $conditions.Ids)) {
                 New-Problem -File $file.Name -RuleId $ruleId -Message $message
             }
             foreach ($message in @(Get-StrengthProblem -Rule $rule)) {
