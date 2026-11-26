@@ -138,42 +138,8 @@ function Get-PowerShellCommand {
     $ast = [Management.Automation.Language.Parser]::ParseInput($Command, [ref] $tokens, [ref] $errors)
     if ($errors.Count) { throw "PowerShell can't parse it: $($errors[0].Message)" }
 
-    # The variables the input fills from a command's output: an assignment or a foreach over one, or a common
-    # parameter such as -OutVariable that names the variable a command fills.
-    $fromCommand = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $fromCommand = Get-PowerShellFilledVariable -Ast $ast
     $isCommand = { param($node) $node -is [Management.Automation.Language.CommandAst] }
-    foreach ($node in $ast.FindAll({ param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] }, $true)) {
-        $target, $source = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable, $node.Condition } else { $node.Left, $node.Right }
-        if (-not $source.Find($isCommand, $true)) { continue }
-        foreach ($variable in $target.FindAll({ param($v) $v -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
-            [void] $fromCommand.Add((Get-PowerShellVariableName -Variable $variable))
-        }
-    }
-    foreach ($commandAst in $ast.FindAll($isCommand, $true)) {
-        $elements = $commandAst.CommandElements
-        for ($i = 0; $i -lt $elements.Count; $i++) {
-            if ($elements[$i] -isnot [Management.Automation.Language.CommandParameterAst] -or $elements[$i].ParameterName -notmatch '^(?i:OutV|ov$|PipelineV|pv$|ErrorV|ev$|WarningV|wv$|InformationV|iv$)') { continue }
-            $value = if ($elements[$i].Argument) { $elements[$i].Argument } elseif ($i + 1 -lt $elements.Count) { $elements[$i + 1] }
-            if ($value -is [Management.Automation.Language.StringConstantExpressionAst]) { [void] $fromCommand.Add($value.Value.TrimStart('+')) }
-        }
-        # A pipeline fills a variable too: Tee-Object's -Variable, or Set-Variable or New-Variable after a "|", where
-        # each name it's given counts (its value comes from the pipe).
-        $piped = $commandAst.Parent -is [Management.Automation.Language.PipelineAst] -and $commandAst.Parent.PipelineElements.IndexOf($commandAst) -gt 0
-        $name = $commandAst.GetCommandName()
-        if ($piped -and $name -match '^(?i:Tee-Object|tee)$') {
-            for ($i = 1; $i -lt $elements.Count; $i++) {
-                if ($elements[$i] -isnot [Management.Automation.Language.CommandParameterAst] -or -not 'Variable'.StartsWith($elements[$i].ParameterName, [StringComparison]::OrdinalIgnoreCase)) { continue }
-                $value = if ($elements[$i].Argument) { $elements[$i].Argument } elseif ($i + 1 -lt $elements.Count) { $elements[$i + 1] }
-                if ($value -is [Management.Automation.Language.StringConstantExpressionAst]) { [void] $fromCommand.Add($value.Value) }
-            }
-        }
-        if ($piped -and $name -match '^(?i:Set-Variable|sv|New-Variable|nv)$') {
-            foreach ($element in $elements | Select-Object -Skip 1) {
-                $value = if ($element -is [Management.Automation.Language.CommandParameterAst]) { $element.Argument } else { $element }
-                if ($value -is [Management.Automation.Language.StringConstantExpressionAst]) { [void] $fromCommand.Add($value.Value) }
-            }
-        }
-    }
 
     foreach ($commandAst in $ast.FindAll($isCommand, $true)) {
         $words = [Collections.Generic.List[string]]::new()
@@ -219,6 +185,38 @@ function Test-PowerShellLiteral {
     $Element -is [Management.Automation.Language.StringConstantExpressionAst] -or
     $Element -is [Management.Automation.Language.ExpandableStringExpressionAst] -or
     $Element -is [Management.Automation.Language.ConstantExpressionAst]
+}
+
+# The variables a PowerShell input fills from a command's output: an assignment or a foreach over one; a common
+# parameter such as -OutVariable that names the variable a command fills; and a pipeline's Tee-Object -Variable, or
+# Set-Variable or New-Variable after a "|", where each name it's given counts (its value comes from the pipe).
+function Get-PowerShellFilledVariable {
+    param([Parameter(Mandatory)] [Management.Automation.Language.Ast] $Ast)
+
+    $filled = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $isCommand = { param($node) $node -is [Management.Automation.Language.CommandAst] }
+    foreach ($node in $Ast.FindAll({ param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] }, $true)) {
+        $target, $source = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable, $node.Condition } else { $node.Left, $node.Right }
+        if (-not $source.Find($isCommand, $true)) { continue }
+        foreach ($variable in $target.FindAll({ param($v) $v -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
+            [void] $filled.Add((Get-PowerShellVariableName -Variable $variable))
+        }
+    }
+    foreach ($commandAst in $Ast.FindAll($isCommand, $true)) {
+        $elements = $commandAst.CommandElements
+        $piped = $commandAst.Parent -is [Management.Automation.Language.PipelineAst] -and $commandAst.Parent.PipelineElements.IndexOf($commandAst) -gt 0
+        $tee = $piped -and $commandAst.GetCommandName() -match '^(?i:Tee-Object|tee)$'
+        $setter = $piped -and $commandAst.GetCommandName() -match '^(?i:Set-Variable|sv|New-Variable|nv)$'
+        for ($i = 1; $i -lt $elements.Count; $i++) {
+            $parameter = if ($elements[$i] -is [Management.Automation.Language.CommandParameterAst]) { $elements[$i].ParameterName }
+            $names = $parameter -and ($parameter -match '^(?i:OutV|ov$|PipelineV|pv$|ErrorV|ev$|WarningV|wv$|InformationV|iv$)' -or ($tee -and 'Variable'.StartsWith($parameter, [StringComparison]::OrdinalIgnoreCase)))
+            $value = $null
+            if ($names) { $value = if ($elements[$i].Argument) { $elements[$i].Argument } elseif ($i + 1 -lt $elements.Count) { $elements[$i + 1] } }
+            elseif ($setter) { $value = if ($parameter) { $elements[$i].Argument } else { $elements[$i] } }
+            if ($value -is [Management.Automation.Language.StringConstantExpressionAst]) { [void] $filled.Add($value.Value.TrimStart('+')) }
+        }
+    }
+    , $filled
 }
 
 # A variable's name without its scope ($script:f is f); a drive-qualified one keeps its drive ($env:F).
