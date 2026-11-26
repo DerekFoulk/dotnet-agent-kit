@@ -5,4 +5,4 @@ applyTo: '**/*Infrastructure*/**,**/Program.cs,**/MauiProgram.cs'
 
 # Data
 
-- DAT-019: UseSeeding and UseAsyncSeeding are the recommended way of seeding the database with initial data when working with EF Core; always implement UseSeeding even if the app normally uses asynchronous APIs. Custom seeding code, for when those methods aren't a good solution, should not be part of the normal app execution.
+- DAT-019 (must): UseSeeding and UseAsyncSeeding are the recommended way of seeding the database with initial data when working with EF Core; always implement UseSeeding even if the app normally uses asynchronous APIs. Custom seeding code, for when those methods aren't a good solution, should not be part of the normal app execution.

@@ -5,4 +5,4 @@ applyTo: '**/*Filter*.cs,**/Controllers/**,**/Pages/**'
 
 # ASP.NET Core
 
-- ASP-010: In controller-based APIs, prefer configuring authorization policies or writing a custom authorization policy over writing a custom filter, and prefer middleware for exception handling. Do not throw exceptions within authorization filters. Avoid creating and using filters purely for logging purposes.
+- ASP-010 (must): In controller-based APIs, prefer configuring authorization policies or writing a custom authorization policy over writing a custom filter, and prefer middleware for exception handling. Do not throw exceptions within authorization filters. Avoid creating and using filters purely for logging purposes.

@@ -7,4 +7,4 @@ paths:
 
 # ASP.NET Core
 
-- ASP-007: Don't store files that require authorization in wwwroot and rely only on MapStaticAssets().RequireAuthorization() to protect them. Disabling directory browsing in production is highly recommended. Don't rely on file extension filtering to protect private files.
+- ASP-007 (must): Don't store files that require authorization in wwwroot and rely only on MapStaticAssets().RequireAuthorization() to protect them. Disabling directory browsing in production is highly recommended. Don't rely on file extension filtering to protect private files.

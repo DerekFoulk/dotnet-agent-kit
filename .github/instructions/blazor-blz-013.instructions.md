@@ -5,4 +5,4 @@ applyTo: '**/Program.cs,**/App.razor,**/Components/**'
 
 # Blazor
 
-- BLZ-013: A Content Security Policy (CSP) is recommended for Blazor apps. Avoid setting the frame-ancestors directive value to 'null' when WebSocket compression is enabled (compression is the default), because it makes the app vulnerable to malicious script injection and clickjacking attacks.
+- BLZ-013 (should): A Content Security Policy (CSP) is recommended for Blazor apps. Avoid setting the frame-ancestors directive value to 'null' when WebSocket compression is enabled (compression is the default), because it makes the app vulnerable to malicious script injection and clickjacking attacks.

@@ -5,5 +5,5 @@ applyTo: '**'
 
 # Testing
 
-- TST-001: Write the test first: commit it failing on an assertion (red), then commit the change that makes the full suite pass (green), then refactor on green.
-- TST-002: Every plan includes a test list; turn one item at a time into a failing test, never the whole list up front.
+- TST-001 (must): Write the test first: commit it failing on an assertion (red), then commit the change that makes the full suite pass (green), then refactor on green.
+- TST-002 (must): Every plan includes a test list; turn one item at a time into a failing test, never the whole list up front.

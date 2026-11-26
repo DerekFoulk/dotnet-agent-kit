@@ -5,4 +5,4 @@ applyTo: '**/*.cs,**/*.razor,**/.editorconfig'
 
 # ASP.NET Core
 
-- ASP-016: Do not suppress a warning from ASP0003, ASP0004, ASP0006, ASP0008, ASP0009, ASP0010 or BL0005. Using the types in the Microsoft.AspNetCore.Components.RenderTree namespace is not recommended in user code.
+- ASP-016 (must): Do not suppress a warning from ASP0003, ASP0004, ASP0006, ASP0008, ASP0009, ASP0010 or BL0005. Using the types in the Microsoft.AspNetCore.Components.RenderTree namespace is not recommended in user code.

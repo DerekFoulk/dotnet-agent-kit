@@ -7,4 +7,4 @@ paths:
 
 # ASP.NET Core
 
-- ASP-009: HTTP response caching should only be enabled for content that doesn't change based on a user's identity or whether a user is signed in. Responses containing content for authenticated clients must be marked as not cacheable, to prevent the response caching middleware from storing and serving them.
+- ASP-009 (must): HTTP response caching should only be enabled for content that doesn't change based on a user's identity or whether a user is signed in. Responses containing content for authenticated clients must be marked as not cacheable, to prevent the response caching middleware from storing and serving them.

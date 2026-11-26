@@ -5,4 +5,4 @@ applyTo: '**/*Infrastructure*/**,**/Migrations/**,**/Program.cs'
 
 # Data
 
-- DAT-002: An app with a server relational database reaches it through EF Core, and its schema changes only through EF Core code-first migrations kept in the repo, never EnsureCreated (tests apply the migrations too, DAT-005); a test fails when the model has changes no migration covers.
+- DAT-002 (should): An app with a server relational database reaches it through EF Core, and its schema changes only through EF Core code-first migrations kept in the repo, never EnsureCreated (tests apply the migrations too, DAT-005); a test fails when the model has changes no migration covers.

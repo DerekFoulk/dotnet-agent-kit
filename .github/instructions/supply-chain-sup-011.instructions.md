@@ -5,4 +5,4 @@ applyTo: '.github/workflows/**,global.json'
 
 # Supply chain
 
-- SUP-011: Workloads such as MAUI install at the workload set whose version is the SDK's own (dotnet workload restore --version with the version dotnet --version prints), never the latest.
+- SUP-011 (should): Workloads such as MAUI install at the workload set whose version is the SDK's own (dotnet workload restore --version with the version dotnet --version prints), never the latest.

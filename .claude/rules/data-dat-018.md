@@ -7,4 +7,4 @@ paths:
 
 # Data
 
-- DAT-018: In a platform-specific app that uses EF Core migrations, such as a .NET MAUI or WinUI app, storing the migrations in a different project from the one containing the DbContext is recommended. Don't use the platform-specific application project as the startup project for EF tools, and prefer an AnyCPU migrations project.
+- DAT-018 (must): In a platform-specific app that uses EF Core migrations, such as a .NET MAUI or WinUI app, storing the migrations in a different project from the one containing the DbContext is recommended. Don't use the platform-specific application project as the startup project for EF tools, and prefer an AnyCPU migrations project.

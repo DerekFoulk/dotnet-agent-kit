@@ -5,4 +5,4 @@ applyTo: '**'
 
 # Blazor
 
-- BLZ-024: A Blazor Web App is recommended for all new Blazor development in .NET 8 or later. For interactive server-side rendering, WebSockets is the recommended transport protocol, and selecting a proxy or gateway that supports WebSockets is recommended. Server-side Blazor Web Apps hosted in a web farm or cluster of machines must adopt session affinity to maintain Blazor circuits.
+- BLZ-024 (must): A Blazor Web App is recommended for all new Blazor development in .NET 8 or later. For interactive server-side rendering, WebSockets is the recommended transport protocol, and selecting a proxy or gateway that supports WebSockets is recommended. Server-side Blazor Web Apps hosted in a web farm or cluster of machines must adopt session affinity to maintain Blazor circuits.

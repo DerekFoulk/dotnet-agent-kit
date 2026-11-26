@@ -5,4 +5,4 @@ applyTo: '**/*Tests*/**,**/*AppHost*/**,**/compose*.yaml,**/docker-compose*.yml'
 
 # Data
 
-- DAT-005: Integration and functional tests of an app with a server database, and its local development, run against the production database engine, in a container (Testcontainers for tests) or its official emulator (the Azure Cosmos DB emulator), with the app's migrations applied; never the EF Core in-memory provider, and never SQLite standing in for another engine.
+- DAT-005 (should): Integration and functional tests of an app with a server database, and its local development, run against the production database engine, in a container (Testcontainers for tests) or its official emulator (the Azure Cosmos DB emulator), with the app's migrations applied; never the EF Core in-memory provider, and never SQLite standing in for another engine.

@@ -7,4 +7,4 @@ paths:
 
 # Operations
 
-- OPS-015: An app that uses trimming shouldn't produce any trim warnings. Don't use SuppressMessage or #pragma warning disable for trim warnings; to suppress one, always use UnconditionalSuppressMessage. With too many trim warnings to address, consider whether trimming is appropriate for the app. When publishing with Native AOT, it's recommended to develop, debug and test as usual and publish with Native AOT as one of the last steps.
+- OPS-015 (must): An app that uses trimming shouldn't produce any trim warnings. Don't use SuppressMessage or #pragma warning disable for trim warnings; to suppress one, always use UnconditionalSuppressMessage. With too many trim warnings to address, consider whether trimming is appropriate for the app. When publishing with Native AOT, it's recommended to develop, debug and test as usual and publish with Native AOT as one of the last steps.

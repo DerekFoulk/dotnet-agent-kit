@@ -5,4 +5,4 @@ applyTo: '**/*Infrastructure*/**,**/Directory.Packages.props'
 
 # Data
 
-- DAT-001: Every app that stores data picks its database with docs/database-guide.md, answering in order where the data lives, what shape it has, then any preference; the plan names the database, its price label (Free, Free tier or Paid) and why, and a paid option is listed beside the free default, never dropped (ARC-012, the cost rule).
+- DAT-001 (should): Every app that stores data picks its database with docs/database-guide.md, answering in order where the data lives, what shape it has, then any preference; the plan names the database, its price label (Free, Free tier or Paid) and why, and a paid option is listed beside the free default, never dropped (ARC-012, the cost rule).

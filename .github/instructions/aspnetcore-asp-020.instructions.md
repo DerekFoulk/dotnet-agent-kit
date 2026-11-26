@@ -5,4 +5,4 @@ applyTo: '**/Program.cs,**/*Hub*.cs'
 
 # ASP.NET Core
 
-- ASP-020: When SignalR runs on a server farm, sticky sessions must be used, and the Redis backplane is the recommended scale-out approach for apps hosted on your own infrastructure. In a SignalR app's CORS policy, allow the specific expected origins: allowing any origin is possible but not secure or recommended. Always use HTTPS between the client and the server, and exception messages should not be exposed to the client in production apps.
+- ASP-020 (must): When SignalR runs on a server farm, sticky sessions must be used, and the Redis backplane is the recommended scale-out approach for apps hosted on your own infrastructure. In a SignalR app's CORS policy, allow the specific expected origins: allowing any origin is possible but not secure or recommended. Always use HTTPS between the client and the server, and exception messages should not be exposed to the client in production apps.

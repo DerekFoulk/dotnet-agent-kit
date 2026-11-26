@@ -8,4 +8,4 @@ paths:
 
 # .NET MAUI
 
-- MAU-001: When a .NET MAUI app uses SQLite-net for a local SQLite database, use the sqlite-net-pcl NuGet package, despite the package name.
+- MAU-001 (should): When a .NET MAUI app uses SQLite-net for a local SQLite database, use the sqlite-net-pcl NuGet package, despite the package name.

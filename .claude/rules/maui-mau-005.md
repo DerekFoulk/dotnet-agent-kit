@@ -10,4 +10,4 @@ paths:
 
 # .NET MAUI
 
-- MAU-005: Before a MAUI app displays its initial UI, it should provide a splash screen, and its activation logic should only perform the work needed to let the user start using the app.
+- MAU-005 (should): Before a MAUI app displays its initial UI, it should provide a splash screen, and its activation logic should only perform the work needed to let the user start using the app.

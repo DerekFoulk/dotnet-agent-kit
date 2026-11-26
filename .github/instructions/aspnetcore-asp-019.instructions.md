@@ -5,4 +5,4 @@ applyTo: '**/*Hub*.cs'
 
 # ASP.NET Core
 
-- ASP-019: In SignalR hubs, don't store state in a property of the hub class, because each hub method call is executed on a new hub instance, and don't instantiate a hub directly via DI. You must ensure that a hub's methods don't execute concurrent database operations on the same context instance, because DbContext isn't thread-safe.
+- ASP-019 (must): In SignalR hubs, don't store state in a property of the hub class, because each hub method call is executed on a new hub instance, and don't instantiate a hub directly via DI. You must ensure that a hub's methods don't execute concurrent database operations on the same context instance, because DbContext isn't thread-safe.

@@ -5,4 +5,4 @@ applyTo: '**/*.csproj,**/Program.cs,**/*ServiceDefaults*/**'
 
 # Operations
 
-- OPS-001: Every ASP.NET Core app sends its logs, metrics and traces through OpenTelemetry, set up in one ServiceDefaults project, and exports them over OTLP when OTEL_EXPORTER_OTLP_ENDPOINT is set.
+- OPS-001 (must): Every ASP.NET Core app sends its logs, metrics and traces through OpenTelemetry, set up in one ServiceDefaults project, and exports them over OTLP when OTEL_EXPORTER_OTLP_ENDPOINT is set.

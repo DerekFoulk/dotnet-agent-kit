@@ -5,4 +5,4 @@ applyTo: '**/*.cs,**/*.razor'
 
 # Blazor
 
-- BLZ-006: Prefer .razor files and let the compiler deal with sequence numbers; manual render tree builder logic is advanced and unsafe, and not recommended for general component development.
+- BLZ-006 (should): Prefer .razor files and let the compiler deal with sequence numbers; manual render tree builder logic is advanced and unsafe, and not recommended for general component development.

@@ -8,4 +8,4 @@ paths:
 
 # Code style
 
-- STY-009: Code follows the Framework Design Guidelines wherever an analyzer checks them: the Design, Naming and Usage rules, CA1815 and CA1819 check internal APIs as well as public and protected ones, a struct whose members are all read-only is declared readonly, and the non-generic collections (ArrayList, Hashtable, Queue, Stack) give way to the generic ones.
+- STY-009 (must): Code follows the Framework Design Guidelines wherever an analyzer checks them: the Design, Naming and Usage rules, CA1815 and CA1819 check internal APIs as well as public and protected ones, a struct whose members are all read-only is declared readonly, and the non-generic collections (ArrayList, Hashtable, Queue, Stack) give way to the generic ones.

@@ -7,4 +7,4 @@ paths:
 
 # Blazor
 
-- BLZ-023: To avoid .NET trimming problems in scenarios that rely on reflection, such as JS interop and JSON serialization, use custom types defined in non-trimmable libraries or preserve the types through linker configuration. In most cases, don't disable integrity checking of a Blazor WebAssembly app's downloaded resources.
+- BLZ-023 (should): To avoid .NET trimming problems in scenarios that rely on reflection, such as JS interop and JSON serialization, use custom types defined in non-trimmable libraries or preserve the types through linker configuration. In most cases, don't disable integrity checking of a Blazor WebAssembly app's downloaded resources.

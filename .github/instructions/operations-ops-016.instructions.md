@@ -5,4 +5,4 @@ applyTo: '**/*.service,**/docs/runbook.md'
 
 # Operations
 
-- OPS-016: When a systemd unit runs a .NET app, avoid setting KillSignal=SIGINT: .NET lifetime integrations listen for SIGTERM to start a graceful shutdown.
+- OPS-016 (should): When a systemd unit runs a .NET app, avoid setting KillSignal=SIGINT: .NET lifetime integrations listen for SIGTERM to start a graceful shutdown.

@@ -5,4 +5,4 @@ applyTo: 'Directory.Packages.props,**/*.csproj'
 
 # Supply chain
 
-- SUP-002: Package versions live only in Directory.Packages.props (central package management), with transitive pinning on.
+- SUP-002 (must): Package versions live only in Directory.Packages.props (central package management), with transitive pinning on.

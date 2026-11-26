@@ -5,4 +5,4 @@ applyTo: '**/Program.cs,**/*Endpoints*.cs,**/*Contracts*/**'
 
 # API design
 
-- API-006: A Minimal API validates its inputs with the built-in validation (AddValidation and DataAnnotations attributes on parameters and request types), so invalid input gets a 400 validation problem before the handler runs; a domain rule (such as a bookmark's URL being http or https) stays in the domain, and the endpoint turns its exception into a 400 Problem.
+- API-006 (should): A Minimal API validates its inputs with the built-in validation (AddValidation and DataAnnotations attributes on parameters and request types), so invalid input gets a 400 validation problem before the handler runs; a domain rule (such as a bookmark's URL being http or https) stays in the domain, and the endpoint turns its exception into a 400 Problem.

@@ -7,4 +7,4 @@ paths:
 
 # Blazor
 
-- BLZ-015: ASP.NET Core apps that use ASP.NET Core Identity for user management should use Razor Pages instead of Razor components for Identity-related UI, such as user registration, login, logout and other user management tasks. Building Razor components that directly handle Identity tasks isn't recommended or supported by Microsoft.
+- BLZ-015 (should): ASP.NET Core apps that use ASP.NET Core Identity for user management should use Razor Pages instead of Razor components for Identity-related UI, such as user registration, login, logout and other user management tasks. Building Razor components that directly handle Identity tasks isn't recommended or supported by Microsoft.

@@ -2,4 +2,4 @@
 
 # .NET MAUI
 
-- MAU-004: Avoid profiling a MAUI app in a simulator, as the simulator may distort the app's performance. Ideally, profiling should be performed on a variety of devices, and at a minimum on a device that has the lowest anticipated specification.
+- MAU-004 (should): Avoid profiling a MAUI app in a simulator, as the simulator may distort the app's performance. Ideally, profiling should be performed on a variety of devices, and at a minimum on a device that has the lowest anticipated specification.

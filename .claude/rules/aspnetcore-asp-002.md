@@ -8,4 +8,4 @@ paths:
 
 # ASP.NET Core
 
-- ASP-002: Never store passwords or other sensitive data in configuration provider code or in plain text configuration files, and don't use production secrets in development or test environments. Secrets shouldn't be deployed with the app. Using environment variables to store a production connection string is recommended against, as it's not the most secure approach. In complex app configuration scenarios, grouping and reading related hierarchical configuration data with the Options pattern is recommended.
+- ASP-002 (must): Never store passwords or other sensitive data in configuration provider code or in plain text configuration files, and don't use production secrets in development or test environments. Secrets shouldn't be deployed with the app. Using environment variables to store a production connection string is recommended against, as it's not the most secure approach. In complex app configuration scenarios, grouping and reading related hierarchical configuration data with the Options pattern is recommended.

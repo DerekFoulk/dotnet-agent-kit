@@ -8,4 +8,4 @@ paths:
 
 # .NET MAUI
 
-- MAU-002: In .NET MAUI XAML, setting the x:DataType attribute at the same level in the view hierarchy as the BindingContext is set is recommended, and adding x:DataType to all elements where the binding context changes is best practice. Consider changing the compiled-binding warnings, such as XC0022 and XC0023, to build errors with the $(WarningsAsErrors) build property; XC0022 and XC0023 are always suppressed unless $(MauiStrictXamlCompilation) is true.
+- MAU-002 (should): In .NET MAUI XAML, setting the x:DataType attribute at the same level in the view hierarchy as the BindingContext is set is recommended, and adding x:DataType to all elements where the binding context changes is best practice. Consider changing the compiled-binding warnings, such as XC0022 and XC0023, to build errors with the $(WarningsAsErrors) build property; XC0022 and XC0023 are always suppressed unless $(MauiStrictXamlCompilation) is true.

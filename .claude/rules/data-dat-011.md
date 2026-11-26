@@ -9,4 +9,4 @@ paths:
 
 # Data
 
-- DAT-011: EF Core's EnsureCreated and EnsureDeleted (and their Async forms) are useful when the data is transient and can be dropped when the schema changes, for example during prototyping, in tests, or for local caches. EnsureCreated and migrations don't work well together: if you're using migrations, don't use EnsureCreated to initialize the schema, and if you anticipate using migrations in the future, it's best to start with migrations instead of EnsureCreated.
+- DAT-011 (must): EF Core's EnsureCreated and EnsureDeleted (and their Async forms) are useful when the data is transient and can be dropped when the schema changes, for example during prototyping, in tests, or for local caches. EnsureCreated and migrations don't work well together: if you're using migrations, don't use EnsureCreated to initialize the schema, and if you anticipate using migrations in the future, it's best to start with migrations instead of EnsureCreated.

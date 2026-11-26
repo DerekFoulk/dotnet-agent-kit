@@ -5,4 +5,4 @@ applyTo: 'Directory.Packages.props,**/*.csproj,.config/package-licenses.json'
 
 # Security
 
-- SEC-005: A repo marked commercial uses no package whose license isn't free for commercial use.
+- SEC-005 (must): A repo marked commercial uses no package whose license isn't free for commercial use.

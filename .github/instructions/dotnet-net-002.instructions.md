@@ -5,4 +5,4 @@ applyTo: '**/*.cs'
 
 # .NET fundamentals
 
-- NET-002: If you need to add multiple resilience handlers to an HTTP client, you should consider using the AddResilienceHandler extension method.
+- NET-002 (consider): If you need to add multiple resilience handlers to an HTTP client, you should consider using the AddResilienceHandler extension method.

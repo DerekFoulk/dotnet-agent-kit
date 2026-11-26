@@ -5,4 +5,4 @@ applyTo: '.editorconfig'
 
 # Code style
 
-- STY-006: Don't loosen a kit rule in a repo's own .editorconfig; an exception needs an ADR.
+- STY-006 (must): Don't loosen a kit rule in a repo's own .editorconfig; an exception needs an ADR.

@@ -6,4 +6,4 @@ paths:
 
 # ASP.NET Core
 
-- ASP-012: Controller-based web API controllers should typically derive from ControllerBase rather than Controller; if the same controller must support views and web APIs, derive from Controller. Don't use [FromRoute] when values might contain %2f (that is /); use [FromQuery] if the value might contain %2f.
+- ASP-012 (must): Controller-based web API controllers should typically derive from ControllerBase rather than Controller; if the same controller must support views and web APIs, derive from Controller. Don't use [FromRoute] when values might contain %2f (that is /); use [FromQuery] if the value might contain %2f.

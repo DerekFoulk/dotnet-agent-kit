@@ -7,7 +7,7 @@ paths:
 
 # Data
 
-- DAT-008: An entity that two users or requests can change at the same time carries a concurrency token (a rowversion with IsRowVersion, or IsConcurrencyToken on a property the app changes), and a conflict is reported to the caller (a 409 in an HTTP API) or retried with fresh values, never silently overwritten.
-- DAT-016: To implement optimistic concurrency in EF Core, the application must properly handle the case where a concurrency conflict occurs and SaveChanges throws a DbUpdateConcurrencyException: it must catch and handle the exception appropriately, possibly by retrying the entire operation on the new data.
-- DAT-020: Manipulating a relationship in EF Core through its navigations, leaving foreign key values to be updated automatically, is the recommended way. Don't write code to manipulate all navigations and foreign key values each time a relationship changes, and avoid manipulating both navigations and foreign key values.
-- DAT-021: In an EF Core model with nullable reference types, collection navigations should always be non-nullable: an empty collection means that no related entities exist, and the list itself should never be null.
+- DAT-008 (must): An entity that two users or requests can change at the same time carries a concurrency token (a rowversion with IsRowVersion, or IsConcurrencyToken on a property the app changes), and a conflict is reported to the caller (a 409 in an HTTP API) or retried with fresh values, never silently overwritten.
+- DAT-016 (must): To implement optimistic concurrency in EF Core, the application must properly handle the case where a concurrency conflict occurs and SaveChanges throws a DbUpdateConcurrencyException: it must catch and handle the exception appropriately, possibly by retrying the entire operation on the new data.
+- DAT-020 (must): Manipulating a relationship in EF Core through its navigations, leaving foreign key values to be updated automatically, is the recommended way. Don't write code to manipulate all navigations and foreign key values each time a relationship changes, and avoid manipulating both navigations and foreign key values.
+- DAT-021 (should): In an EF Core model with nullable reference types, collection navigations should always be non-nullable: an empty collection means that no related entities exist, and the list itself should never be null.

@@ -7,4 +7,4 @@ paths:
 
 # .NET MAUI
 
-- MAU-016: When building a MAUI app for Native AOT deployment on iOS or Mac Catalyst, you should review and correct all trimming and AOT warnings; all binding expressions must use compiled bindings, rather than a binding path that's set to a string; and the $(PublishAot) build property shouldn't be conditioned by build configuration. You should develop, debug and test the app as usual, and publish the final app with Native AOT as one of the last steps.
+- MAU-016 (must): When building a MAUI app for Native AOT deployment on iOS or Mac Catalyst, you should review and correct all trimming and AOT warnings; all binding expressions must use compiled bindings, rather than a binding path that's set to a string; and the $(PublishAot) build property shouldn't be conditioned by build configuration. You should develop, debug and test the app as usual, and publish the final app with Native AOT as one of the last steps.

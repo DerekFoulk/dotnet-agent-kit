@@ -5,4 +5,4 @@ applyTo: '**/*.razor,**/*.razor.cs,**/*.js'
 
 # Blazor
 
-- BLZ-009: Avoiding inline event handlers in favor of assigning handlers in JavaScript with addEventListener is recommended. JS collocation combined with JS modules is recommended, and inline JavaScript isn't recommended for Blazor apps. Maintaining a reference to a JSObjectReference requires disposing of it, to avoid leaking JS memory on the client. Don't execute JS interop code for DOM cleanup tasks during component disposal or when handling location changes. Avoid excessively fine-grained JS interop calls.
+- BLZ-009 (must): Avoiding inline event handlers in favor of assigning handlers in JavaScript with addEventListener is recommended. JS collocation combined with JS modules is recommended, and inline JavaScript isn't recommended for Blazor apps. Maintaining a reference to a JSObjectReference requires disposing of it, to avoid leaking JS memory on the client. Don't execute JS interop code for DOM cleanup tasks during component disposal or when handling location changes. Avoid excessively fine-grained JS interop calls.

@@ -6,4 +6,4 @@ paths:
 
 # Testing
 
-- TST-006: Every kit script and check has Pester tests, written first.
+- TST-006 (must): Every kit script and check has Pester tests, written first.

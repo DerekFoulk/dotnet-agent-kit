@@ -9,4 +9,4 @@ paths:
 
 # Security
 
-- SEC-017: For a server-side app where most or all endpoints require authentication, set a fallback authorization policy that requires an authenticated user; it is secure by default and protects newly added endpoints. Apply AllowAnonymous to an endpoint that is intentionally public. ASVS 8.2.1: function-level access is restricted to consumers with explicit permissions.
+- SEC-017 (must): For a server-side app where most or all endpoints require authentication, set a fallback authorization policy that requires an authenticated user; it is secure by default and protects newly added endpoints. Apply AllowAnonymous to an endpoint that is intentionally public. ASVS 8.2.1: function-level access is restricted to consumers with explicit permissions.

@@ -7,4 +7,4 @@ paths:
 
 # Blazor
 
-- BLZ-025: If the app should localize resources based on storing a user's culture setting, use a localization culture cookie.
+- BLZ-025 (should): If the app should localize resources based on storing a user's culture setting, use a localization culture cookie.

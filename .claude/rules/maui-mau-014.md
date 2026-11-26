@@ -7,4 +7,4 @@ paths:
 
 # .NET MAUI
 
-- MAU-014: In a MAUI Shell app, always await the GoToAsync method. Receiving navigation data using the QueryPropertyAttribute isn't trim safe and shouldn't be used with full trimming or NativeAOT; instead, types that need to accept query parameters should implement the IQueryAttributable interface. Setting an explicit AccessibilityLabel is recommended whenever IconOverride is set or TextOverride is hidden.
+- MAU-014 (must): In a MAUI Shell app, always await the GoToAsync method. Receiving navigation data using the QueryPropertyAttribute isn't trim safe and shouldn't be used with full trimming or NativeAOT; instead, types that need to accept query parameters should implement the IQueryAttributable interface. Setting an explicit AccessibilityLabel is recommended whenever IconOverride is set or TextOverride is hidden.

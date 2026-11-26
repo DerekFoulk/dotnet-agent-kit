@@ -5,4 +5,4 @@ applyTo: '**/Program.cs'
 
 # Blazor
 
-- BLZ-016: Production web apps and web APIs should use a production distributed token cache (for example Redis, SQL Server or Azure Cosmos DB). Always replace the in-memory distributed token caches with a real token cache provider when deploying the app to a production environment.
+- BLZ-016 (must): Production web apps and web APIs should use a production distributed token cache (for example Redis, SQL Server or Azure Cosmos DB). Always replace the in-memory distributed token caches with a real token cache provider when deploying the app to a production environment.

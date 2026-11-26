@@ -7,4 +7,4 @@ paths:
 
 # Data
 
-- DAT-023: With an EF Core performance problem, it's important to carefully diagnose and investigate it before jumping to any conclusions, and to avoid assuming where the root of the issue is. When benchmarking, it's strongly recommended to use the BenchmarkDotNet library, and always make sure to have data in the database that is similar to production data.
+- DAT-023 (must): With an EF Core performance problem, it's important to carefully diagnose and investigate it before jumping to any conclusions, and to avoid assuming where the root of the issue is. When benchmarking, it's strongly recommended to use the BenchmarkDotNet library, and always make sure to have data in the database that is similar to production data.

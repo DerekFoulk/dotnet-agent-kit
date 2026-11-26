@@ -5,4 +5,4 @@ applyTo: 'global.json'
 
 # Supply chain
 
-- SUP-005: global.json pins the SDK with rollForward latestPatch and no prereleases.
+- SUP-005 (must): global.json pins the SDK with rollForward latestPatch and no prereleases.

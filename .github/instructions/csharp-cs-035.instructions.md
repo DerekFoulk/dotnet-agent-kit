@@ -5,4 +5,4 @@ applyTo: '**/*.csproj,**/*.cs'
 
 # C# and .NET library guidance
 
-- CS-035: A package's assemblies for compatible frameworks must expose the same (or a superset of) API surface; never decrease the assembly version across releases, and change it with each release, unless the package overlaps with a .NET shared framework; avoid binary breaking changes to the public API and avoid removing package dependencies between compatible versions; and consider enabling Package Validation with a baseline version.
+- CS-035 (must): A package's assemblies for compatible frameworks must expose the same (or a superset of) API surface; never decrease the assembly version across releases, and change it with each release, unless the package overlaps with a .NET shared framework; avoid binary breaking changes to the public API and avoid removing package dependencies between compatible versions; and consider enabling Package Validation with a baseline version.

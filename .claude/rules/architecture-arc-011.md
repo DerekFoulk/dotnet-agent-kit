@@ -6,5 +6,5 @@ paths:
 
 # Architecture
 
-- ARC-011: A desktop app is a .NET MAUI app (Windows and Mac Catalyst), the same stack as mobile: WinUI 3, WPF and Windows Forms aren't supported app types yet, so a desktop app on any of them, like any other app type the kit doesn't support, needs an ADR.
-- ARC-014: A new general-purpose Windows desktop app is recommended to use WinUI 3, the native UI framework delivered with the Windows App SDK; a team expecting to target several platforms should start with .NET MAUI or React Native for Desktop; .NET MAUI uses WinUI 3 when running on Windows.
+- ARC-011 (should): A desktop app is a .NET MAUI app (Windows and Mac Catalyst), the same stack as mobile: WinUI 3, WPF and Windows Forms aren't supported app types yet, so a desktop app on any of them, like any other app type the kit doesn't support, needs an ADR.
+- ARC-014 (should): A new general-purpose Windows desktop app is recommended to use WinUI 3, the native UI framework delivered with the Windows App SDK; a team expecting to target several platforms should start with .NET MAUI or React Native for Desktop; .NET MAUI uses WinUI 3 when running on Windows.

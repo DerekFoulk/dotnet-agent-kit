@@ -7,4 +7,4 @@ paths:
 
 # ASP.NET Core
 
-- ASP-018: gRPC services should only listen and respond over secured ports, and exception messages shouldn't be exposed to the client in production apps. For gRPC services secured by client certificates, the Microsoft.AspNetCore.Authentication.Certificate package is recommended.
+- ASP-018 (should): gRPC services should only listen and respond over secured ports, and exception messages shouldn't be exposed to the client in production apps. For gRPC services secured by client certificates, the Microsoft.AspNetCore.Authentication.Certificate package is recommended.

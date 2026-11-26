@@ -5,4 +5,4 @@ applyTo: '**/*.razor,**/*.razor.cs,**/Controllers/**'
 
 # Blazor
 
-- BLZ-022: Outside of processing a small file, avoid reading the incoming file stream directly into memory all at once. Don't receive files from users or other untrusted sources and then make them available for immediate download without performing security checks on them. ASP-006 covers the rest of safe upload handling, including never using a client-supplied file name for saving a file.
+- BLZ-022 (must): Outside of processing a small file, avoid reading the incoming file stream directly into memory all at once. Don't receive files from users or other untrusted sources and then make them available for immediate download without performing security checks on them. ASP-006 covers the rest of safe upload handling, including never using a client-supplied file name for saving a file.

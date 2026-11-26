@@ -7,4 +7,4 @@ paths:
 
 # Security
 
-- SEC-006: Every public repo runs CodeQL code scanning on its pull requests and on main, over its GitHub Actions workflows and its C#.
+- SEC-006 (must): Every public repo runs CodeQL code scanning on its pull requests and on main, over its GitHub Actions workflows and its C#.

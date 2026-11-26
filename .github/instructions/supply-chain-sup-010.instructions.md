@@ -5,5 +5,5 @@ applyTo: '.github/workflows/**'
 
 # Supply chain
 
-- SUP-010: Every public repo runs OpenSSF Scorecard through the kit's scorecard.reusable.yml on each push to main and weekly, publishing its score and uploading its findings to code scanning, with only the security-events and id-token write permissions the action documents; a private repo skips it.
-- SUP-017: When a Scorecard workflow publishes its results, give it no workflow-level write permissions and only the job with ossf/scorecard-action the id-token: write permission; that job should run on one of the Ubuntu hosted runners.
+- SUP-010 (should): Every public repo runs OpenSSF Scorecard through the kit's scorecard.reusable.yml on each push to main and weekly, publishing its score and uploading its findings to code scanning, with only the security-events and id-token write permissions the action documents; a private repo skips it.
+- SUP-017 (should): When a Scorecard workflow publishes its results, give it no workflow-level write permissions and only the job with ossf/scorecard-action the id-token: write permission; that job should run on one of the Ubuntu hosted runners.

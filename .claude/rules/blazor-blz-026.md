@@ -6,4 +6,4 @@ paths:
 
 # Blazor
 
-- BLZ-026: Never reference the MAUI library from a Razor class library (RCL). RCLs should adopt host-agnostic design and shouldn't depend on specific hosting infrastructure or platform APIs. For an RCL's abstractions, prefer interfaces over abstract classes for flexibility.
+- BLZ-026 (must): Never reference the MAUI library from a Razor class library (RCL). RCLs should adopt host-agnostic design and shouldn't depend on specific hosting infrastructure or platform APIs. For an RCL's abstractions, prefer interfaces over abstract classes for flexibility.

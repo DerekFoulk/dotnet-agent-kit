@@ -5,4 +5,4 @@ applyTo: 'Directory.Build.props'
 
 # Supply chain
 
-- SUP-004: NuGet audits direct and transitive packages, and any known vulnerability fails the build.
+- SUP-004 (must): NuGet audits direct and transitive packages, and any known vulnerability fails the build.

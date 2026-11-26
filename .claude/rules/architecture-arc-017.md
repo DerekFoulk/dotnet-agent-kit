@@ -7,4 +7,4 @@ paths:
 
 # Architecture
 
-- ARC-017: In a .NET MAUI app that uses MVVM, keep view models and views independent: don't reference view types, such as Button and ListView, from view models. Avoid enabling and disabling UI elements in the code-behind: enable and disable them by binding to view model properties instead.
+- ARC-017 (must): In a .NET MAUI app that uses MVVM, keep view models and views independent: don't reference view types, such as Button and ListView, from view models. Avoid enabling and disabling UI elements in the code-behind: enable and disable them by binding to view model properties instead.

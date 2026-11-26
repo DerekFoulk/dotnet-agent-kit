@@ -5,5 +5,5 @@ applyTo: '.github/workflows/**,.config/dotnet-tools.json'
 
 # Supply chain
 
-- SUP-009: Every build of a solution with projects writes a CycloneDX SBOM of its shipped projects, leaving out every project MSBuild marks as a test project and every benchmarks project (ADR-0062), and keeps it as the run's 'sbom' artifact.
-- SUP-016: Maintain a Software Bill of Materials (SBOM) in an industry-standard format (SPDX or CycloneDX) for regulatory compliance and incident response readiness.
+- SUP-009 (should): Every build of a solution with projects writes a CycloneDX SBOM of its shipped projects, leaving out every project MSBuild marks as a test project and every benchmarks project (ADR-0062), and keeps it as the run's 'sbom' artifact.
+- SUP-016 (should): Maintain a Software Bill of Materials (SBOM) in an industry-standard format (SPDX or CycloneDX) for regulatory compliance and incident response readiness.

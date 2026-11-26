@@ -5,4 +5,4 @@ applyTo: '**/Program.cs,**/*Extensions*.cs'
 
 # Operations
 
-- OPS-013: Even if Data Protection APIs aren't called by user code, data protection should be configured to create a persistent cryptographic key store: the ASP.NET Core Data Protection stack is used by several ASP.NET Core middlewares, including authentication middleware (for example, cookie middleware) and cross-site request forgery (CSRF) protections.
+- OPS-013 (should): Even if Data Protection APIs aren't called by user code, data protection should be configured to create a persistent cryptographic key store: the ASP.NET Core Data Protection stack is used by several ASP.NET Core middlewares, including authentication middleware (for example, cookie middleware) and cross-site request forgery (CSRF) protections.

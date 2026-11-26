@@ -7,4 +7,4 @@ paths:
 
 # .NET MAUI
 
-- MAU-012: In a MAUI app, permissions shouldn't be requested from the MauiProgram or App class, and should only be requested once the first page of the app has appeared. It's best practice to explain to the user why the app needs a specific permission. On Android, permissions must have the matching attributes set in the Android Manifest file; on iOS and Mac Catalyst, permissions must have a matching string in the Info.plist file.
+- MAU-012 (must): In a MAUI app, permissions shouldn't be requested from the MauiProgram or App class, and should only be requested once the first page of the app has appeared. It's best practice to explain to the user why the app needs a specific permission. On Android, permissions must have the matching attributes set in the Android Manifest file; on iOS and Mac Catalyst, permissions must have a matching string in the Info.plist file.

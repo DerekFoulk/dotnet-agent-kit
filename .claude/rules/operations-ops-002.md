@@ -8,4 +8,4 @@ paths:
 
 # Operations
 
-- OPS-002: Every ASP.NET Core app maps /health (readiness: every check, its database included) and /alive (liveness: only checks tagged live) in every environment, answering with the status word only; a Healthy answer is cached briefly, and a slow check is cut off with a 504.
+- OPS-002 (must): Every ASP.NET Core app maps /health (readiness: every check, its database included) and /alive (liveness: only checks tagged live) in every environment, answering with the status word only; a Healthy answer is cached briefly, and a slow check is cut off with a 504.

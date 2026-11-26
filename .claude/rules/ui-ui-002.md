@@ -8,4 +8,4 @@ paths:
 
 # UI and accessibility
 
-- UI-002: Every page of a web UI (Blazor, Razor) has a Playwright test in the app's E2E.Tests project that opens it, checks it loaded, and runs axe's WCAG 2.2 level A and AA rules (the tags wcag2a, wcag2aa, wcag21a, wcag21aa and wcag22aa), failing on any violation; what a person does that axe can't see, such as where focus goes after a link or the first Tab, gets its own Playwright test.
+- UI-002 (should): Every page of a web UI (Blazor, Razor) has a Playwright test in the app's E2E.Tests project that opens it, checks it loaded, and runs axe's WCAG 2.2 level A and AA rules (the tags wcag2a, wcag2aa, wcag21a, wcag21aa and wcag22aa), failing on any violation; what a person does that axe can't see, such as where focus goes after a link or the first Tab, gets its own Playwright test.

@@ -5,5 +5,5 @@ applyTo: '**/*Endpoints*.cs,**/Contract/**'
 
 # API design
 
-- API-005: An HTTP API isn't versioned until its first breaking change to a contract that another app or a released client depends on; that change gets an ADR that picks how versions are told apart (URI, query string or header) and the package, a new version, and the earlier version stays until its callers move.
-- API-012: Support versioning in the API contract: when you introduce a breaking API change, introduce a new API version, continue to support the previous version, and let clients select which version to call. Make API changes backward compatible when possible.
+- API-005 (should): An HTTP API isn't versioned until its first breaking change to a contract that another app or a released client depends on; that change gets an ADR that picks how versions are told apart (URI, query string or header) and the package, a new version, and the earlier version stays until its callers move.
+- API-012 (should): Support versioning in the API contract: when you introduce a breaking API change, introduce a new API version, continue to support the previous version, and let clients select which version to call. Make API changes backward compatible when possible.

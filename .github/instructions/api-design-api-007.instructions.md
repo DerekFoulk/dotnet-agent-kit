@@ -5,6 +5,6 @@ applyTo: '**/Program.cs,**/*Endpoints*.cs'
 
 # API design
 
-- API-007: In an HTTP API, when possible, base resource URIs on nouns and not verbs, and avoid using verbs in URIs to represent operations; a POST that creates a resource synchronously should return 201 Created and identify the resource in the Location header; GET, HEAD, PUT and DELETE must be idempotent; and for work that takes time, consider making the method asynchronous: an asynchronous method should return 202 Accepted, include the status endpoint's URI in the 202's Location header, and if the operation creates a new resource, the status endpoint should return 303 See Other after it completes, with a Location header that gives the new resource's URI.
-- API-009: OpenAPI user interfaces (Swagger UI, ReDoc, Scalar) should only be enabled in development environments.
-- API-013: An HTTP API's URIs name a collection with a plural noun, and use a verb sparingly, only for an operation that isn't a resource.
+- API-007 (must): In an HTTP API, when possible, base resource URIs on nouns and not verbs, and avoid using verbs in URIs to represent operations; a POST that creates a resource synchronously should return 201 Created and identify the resource in the Location header; GET, HEAD, PUT and DELETE must be idempotent; and for work that takes time, consider making the method asynchronous: an asynchronous method should return 202 Accepted, include the status endpoint's URI in the 202's Location header, and if the operation creates a new resource, the status endpoint should return 303 See Other after it completes, with a Location header that gives the new resource's URI.
+- API-009 (should): OpenAPI user interfaces (Swagger UI, ReDoc, Scalar) should only be enabled in development environments.
+- API-013 (must): An HTTP API's URIs name a collection with a plural noun, and use a verb sparingly, only for an operation that isn't a resource.

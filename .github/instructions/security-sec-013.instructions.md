@@ -5,5 +5,5 @@ applyTo: '**/*Endpoints*.cs,**/*Contracts*/**'
 
 # Security
 
-- SEC-013: An HTTP endpoint accepts and returns only Contracts types, never a domain entity, so a field added to the domain never reaches a client by accident.
-- SEC-023: When an API endpoint exposes an object, always make sure the user should have access to each property you expose: avoid generic serialization methods and cherry-pick the properties to return, avoid (if possible) functions that automatically bind client input to objects, allow changes only to the properties the client should update, and keep returned data structures to the bare minimum.
+- SEC-013 (must): An HTTP endpoint accepts and returns only Contracts types, never a domain entity, so a field added to the domain never reaches a client by accident.
+- SEC-023 (must): When an API endpoint exposes an object, always make sure the user should have access to each property you expose: avoid generic serialization methods and cherry-pick the properties to return, avoid (if possible) functions that automatically bind client input to objects, allow changes only to the properties the client should update, and keep returned data structures to the bare minimum.

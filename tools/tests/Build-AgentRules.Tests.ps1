@@ -132,7 +132,7 @@ Describe 'Build-AgentRules.ps1' {
 
             $filled = Update-RuleBlock -Text $text -StandardsPath $script:standards
 
-            $filled | Should -BeExactly "## Git`n`n$script:open`n- GIT-001: Merge with a merge commit.`n- GIT-003: Never force-push.`n<!-- end rules -->`n`nHand-written note.`n"
+            $filled | Should -BeExactly "## Git`n`n$script:open`n- GIT-001 (must): Merge with a merge commit.`n- GIT-003 (must): Never force-push.`n<!-- end rules -->`n`nHand-written note.`n"
         }
 
         # AGENTS.md's "Generated files" note quotes the marker in a sentence; only a marker that starts a line opens a block.
@@ -463,7 +463,7 @@ types:
             $agents = Join-Path $root 'AGENTS.md'
             Set-Content -Path $agents -Value "# Agent instructions`n`n<!-- rules from docs/standards/git.md: generated -->`n- GIT-001: Merge.`n<!-- end rules -->`n" -NoNewline
             Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
-            $stale = (Get-Content -Raw $agents) -replace 'GIT-001: Merge\.', 'GIT-001: An edit by hand.'
+            $stale = (Get-Content -Raw $agents) -replace 'GIT-001 \(must\): Merge\.', 'GIT-001 (must): An edit by hand.'
             Set-Content -Path $agents -Value $stale -NoNewline
 
             Invoke-AgentRuleBuild -RepoRoot $root -Check | Should -Be 1

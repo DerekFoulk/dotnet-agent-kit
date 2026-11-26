@@ -5,4 +5,4 @@ applyTo: '**/*.xaml'
 
 # .NET MAUI
 
-- MAU-006: Resources used throughout a MAUI app should be stored in the app's resource dictionary to avoid duplication. XAML that's specific to a page shouldn't be included in the app's resource dictionary, because it is then parsed at app startup instead of when a page needs it; a resource used by a page that isn't the startup page should be placed in that page's resource dictionary.
+- MAU-006 (should): Resources used throughout a MAUI app should be stored in the app's resource dictionary to avoid duplication. XAML that's specific to a page shouldn't be included in the app's resource dictionary, because it is then parsed at app startup instead of when a page needs it; a resource used by a page that isn't the startup page should be placed in that page's resource dictionary.

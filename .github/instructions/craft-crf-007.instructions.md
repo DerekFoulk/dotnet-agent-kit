@@ -5,5 +5,5 @@ applyTo: '**/*.cs,**/*.csproj'
 
 # Craft
 
-- CRF-007: Namespaces depend on each other without cycles; dependencies point toward the more stable, more abstract code; and each project holds classes that change together and are reused together (high cohesion, low coupling).
-- CRF-021: Types keep their state behind members that keep it valid (encapsulation, CRF-014), and the domain is persistence-ignorant, its code unaffected by the choice of persistence technology: a domain assembly references no persistence library (EF Core, ADO.NET), and its types carry no persistence attributes and no constructor only the database needs.
+- CRF-007 (must): Namespaces depend on each other without cycles; dependencies point toward the more stable, more abstract code; and each project holds classes that change together and are reused together (high cohesion, low coupling).
+- CRF-021 (must): Types keep their state behind members that keep it valid (encapsulation, CRF-014), and the domain is persistence-ignorant, its code unaffected by the choice of persistence technology: a domain assembly references no persistence library (EF Core, ADO.NET), and its types carry no persistence attributes and no constructor only the database needs.
