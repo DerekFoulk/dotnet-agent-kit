@@ -10,10 +10,11 @@ namespace Kit.AppTests.Functional;
 /// </summary>
 public sealed class ShutdownTests
 {
-    [Fact]
-    public void TheShutdownTimeoutEndsBeforeThePlatformsGracePeriod()
+    [Theory]
+    [EachHost]
+    public void TheShutdownTimeoutEndsBeforeThePlatformsGracePeriod(string host)
     {
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
 
         HostOptions options = app.Services.GetRequiredService<IOptions<HostOptions>>().Value;
 
