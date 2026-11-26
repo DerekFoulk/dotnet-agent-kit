@@ -779,12 +779,15 @@ function Get-CommandWordForm {
                 })
             # A bracket glob that matches several files is also tried with each one alone in its place, as the shell
             # runs it where only that one matches: the guard reads a bracket more widely than Bash (ConvertFrom-BashGlob).
-            # A '*' or '?' it reads as the shell does, so its files stay together, in the order the shell passes them.
+            # A '*' or '?' it reads nearly as the shell does, so its files stay together, in the order it sorts them.
+            $tried = 0
             for ($i = 0; $i -lt $form.Count; $i++) {
                 if (-not $form[$i].Contains('[') -or $plainOf[$i].Count -lt 2) { continue }
-                # Each match tried alone costs more with each other file, and a hook that times out checks nothing.
-                if ($plainOf[$i].Count -gt 200) {
-                    throw "the bracket glob $($form[$i]) matches more than 200 files, more than it tries one by one."
+                # Each match tried alone costs more with each other file, and a hook that times out checks nothing, so
+                # past 200 files across the command's bracket globs the guard asks instead.
+                $tried += $plainOf[$i].Count
+                if ($tried -gt 200) {
+                    throw "its bracket globs (from $($form[$i])) match more than 200 files, more than it tries one by one."
                 }
                 foreach ($file in $plainOf[$i]) {
                     , [string[]] @(for ($j = 0; $j -lt $form.Count; $j++) { if ($j -eq $i) { $file } else { $plainOf[$j] } })
