@@ -645,12 +645,14 @@ Describe 'Shared CI for app repos' {
             foreach ($step in $sbomSteps) { $step['if'] | Should -Be "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'" }
         }
 
-        It 'uploads the SBOM it wrote as the "sbom" artifact, failing when it''s missing' {
+        # An artifact name is unique within a run, and the kit's CI runs this workflow once for the kit and once for each
+        # fresh app (ADR-0095), so a fresh app's SBOM is named after its bundle; an app's stays "sbom".
+        It 'uploads the SBOM it wrote as the "sbom" artifact (or "sbom-<bundle>" for a fresh app), failing when it''s missing' {
             $upload = @($steps | Where-Object { "$($_['uses'])" -like 'actions/upload-artifact@*' })
             $output = [regex]::Match($sbomRun, '--output "([^"]+)"').Groups[1].Value -replace '\$env:RUNNER_TEMP', '${{ runner.temp }}'
 
             $upload | Should -HaveCount 1
-            $upload[0]['with']['name'] | Should -Be 'sbom'
+            $upload[0]['with']['name'] | Should -Be "`${{ inputs.app-bundle == '' && 'sbom' || format('sbom-{0}', inputs.app-bundle) }}"
             $upload[0]['with']['if-no-files-found'] | Should -Be 'error'
             $output | Should -Not -BeNullOrEmpty
             $upload[0]['with']['path'] | Should -Be "$output/sbom.cdx.json"
