@@ -208,6 +208,14 @@ function New-KitApp {
                 $created = Invoke-KitGhChecked -Arguments 'api', 'user/repos', '--method', 'POST', '--input', '-' -InputText $request | ConvertFrom-Json
             }
         }
+        # Private or public: release-please opens the release PR with the workflow's own token, which GitHub allows only
+        # when GitHub Actions may create pull requests (ADR-0022, ADR-0096). Workflow tokens stay read-only by default;
+        # each workflow asks for what it needs (templates/github/workflow-permissions.json). Before the push, which starts the
+        # first release.yml run: set later, its release-please would be refused (review 1).
+        [pscustomobject]@{ Description = 'Let GitHub Actions open the release PR'; Action = {
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/actions/permissions/workflow", '--method', 'PUT', '--input', '-' -InputText $workflowPermissionsText | Out-Null
+            }
+        }
         [pscustomobject]@{ Description = 'Push main'; Action = {
                 Invoke-KitGit -Path $Destination -Arguments 'remote', 'add', 'origin', $created.clone_url
                 Invoke-KitGit -Path $Destination -Arguments 'push', '-q', '-u', 'origin', 'main'
@@ -236,13 +244,6 @@ function New-KitApp {
         # code (SUP-008), as the kit requires of itself (templates/github/actions.json).
         [pscustomobject]@{ Description = 'Require actions pinned to a full commit SHA'; Action = {
                 Invoke-KitGhChecked -Arguments 'api', "repos/$repo/actions/permissions", '--method', 'PUT', '--input', '-' -InputText $actionsText | Out-Null
-            }
-        }
-        # Private or public: release-please opens the release PR with the workflow's own token, which GitHub allows only
-        # when GitHub Actions may create pull requests (ADR-0022, ADR-0096). Workflow tokens stay read-only by default;
-        # each workflow asks for what it needs (templates/github/workflow-permissions.json).
-        [pscustomobject]@{ Description = 'Let GitHub Actions open the release PR'; Action = {
-                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/actions/permissions/workflow", '--method', 'PUT', '--input', '-' -InputText $workflowPermissionsText | Out-Null
             }
         }
         # Public unless -Private: CI is free on public repos, and GitHub Free offers rulesets only there

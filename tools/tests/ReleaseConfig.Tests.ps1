@@ -86,6 +86,15 @@ Describe 'Release configuration' {
             $approve['run'] | Should -Match 'release-please--branches--main'
         }
 
+        # A ${{ }} expression in a run: script is pasted in before the shell parses it (script injection).
+        It 'never pastes a ${{ }} value into a run: script; values come in through env' {
+            $sharedJob | Should -Not -BeNullOrEmpty -Because 'the shared workflow has a release-please job'
+            $scripts = @($sharedJob['steps'] | Where-Object { $_.ContainsKey('run') } | ForEach-Object { $_['run'] })
+
+            $scripts | Should -Not -BeNullOrEmpty
+            foreach ($script in $scripts) { $script | Should -Not -Match '\$\{\{' }
+        }
+
         # If GitHub ever stops creating the waiting runs, the release PR would block with no signal.
         It 'fails when the release PR has no CI run at all, instead of warning' {
             $shared.Text | Should -Match '::error::'
@@ -153,6 +162,14 @@ Describe 'Release configuration' {
         # Under SemVer 2.0.0, a feature before 1.0.0 is a new minor version, as after it (ADR-0096).
         It 'bumps the minor version for a feature before 1.0.0, not the patch' {
             $config.ContainsKey('bump-patch-for-minor-pre-major') | Should -BeFalse
+        }
+
+        # Every app gets this file, kit-managed (ADR-0096), so a forced version here would reach every app with the next
+        # sync. 1.0.0 is declared with a Release-As footer on a commit of the repo's own instead (review 1).
+        It 'never forces a version, which every app would get with the file' {
+            $config | Should -Not -BeNullOrEmpty
+            $config.ContainsKey('release-as') | Should -BeFalse
+            foreach ($package in @($config['packages'].Values)) { $package.ContainsKey('release-as') | Should -BeFalse }
         }
 
         It 'releases the repo root as one package' {
