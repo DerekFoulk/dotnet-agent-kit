@@ -255,7 +255,19 @@ Describe 'New-KitApp run' {
                 'api repos/fixture-owner/Contoso.Orders/vulnerability-alerts --method PUT'
                 'api repos/fixture-owner/Contoso.Orders/automated-security-fixes --method PUT'
                 'api repos/fixture-owner/Contoso.Orders/actions/permissions --method PUT --input -'
+                'api repos/fixture-owner/Contoso.Orders/actions/permissions/workflow --method PUT --input -'
             )
+        }
+
+        # ADR-0096: release-please opens the app's release PR with the workflow's own token, which GitHub allows only
+        # when the repo lets GitHub Actions create pull requests, as the kit's does (ADR-0022). The token stays read-only
+        # by default; the release workflow asks for what it needs.
+        It 'then lets GitHub Actions open the release PR, with read-only workflow tokens by default' {
+            $workflow = @(Get-WriteCall | Where-Object Arguments -Match '/actions/permissions/workflow ')
+            $workflow | Should -HaveCount 1
+            $settings = $workflow[0].Input | ConvertFrom-Json
+            $settings.can_approve_pull_request_reviews | Should -BeTrue
+            $settings.default_workflow_permissions | Should -Be 'read'
         }
 
         # The owner, 2026-11-10: new apps get the kit's merge protections. A workflow may use an action only at
@@ -313,6 +325,7 @@ Describe 'New-KitApp run' {
                 'api repos/fixture-owner/Public.Orders/vulnerability-alerts --method PUT'
                 'api repos/fixture-owner/Public.Orders/automated-security-fixes --method PUT'
                 'api repos/fixture-owner/Public.Orders/actions/permissions --method PUT --input -'
+                'api repos/fixture-owner/Public.Orders/actions/permissions/workflow --method PUT --input -'
                 'api repos/fixture-owner/Public.Orders --method PATCH --input -'
                 'api repos/fixture-owner/Public.Orders --method PATCH --input -'
                 'api repos/fixture-owner/Public.Orders/actions/permissions/fork-pr-contributor-approval --method PUT --input -'
@@ -320,26 +333,26 @@ Describe 'New-KitApp run' {
             )
             ($writes[0].Input | ConvertFrom-Json).private | Should -BeTrue
             ($writes[1].Pushed) | Should -BeTrue
-            ($writes[5].Input | ConvertFrom-Json).private | Should -BeFalse
+            ($writes[6].Input | ConvertFrom-Json).private | Should -BeFalse
         }
 
         It 'then turns on secret scanning and push protection, free on public repos (ADR-0031)' {
-            @(Get-WriteCall).Count | Should -Be 9
-            $security = ((Get-WriteCall)[6].Input | ConvertFrom-Json).security_and_analysis
+            @(Get-WriteCall).Count | Should -Be 10
+            $security = ((Get-WriteCall)[7].Input | ConvertFrom-Json).security_and_analysis
             $security.secret_scanning.status | Should -Be 'enabled'
             $security.secret_scanning_push_protection.status | Should -Be 'enabled'
         }
 
         It 'runs no fork''s PR until the owner approves it' {
-            @(Get-WriteCall).Count | Should -Be 9
-            ((Get-WriteCall)[7].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
+            @(Get-WriteCall).Count | Should -Be 10
+            ((Get-WriteCall)[8].Input | ConvertFrom-Json).approval_policy | Should -Be 'all_external_contributors'
         }
 
         # The owner, 2026-11-10: new apps get the kit's merge protections. Only once public: CodeQL runs only on
         # a public app, and a rule requiring it would block every merge in a private one.
         It 'last, requires CodeQL results to merge, now that CodeQL runs' {
-            @(Get-WriteCall).Count | Should -Be 9
-            ((Get-WriteCall)[8].Input | ConvertFrom-Json).name | Should -Be 'code scanning'
+            @(Get-WriteCall).Count | Should -Be 10
+            ((Get-WriteCall)[9].Input | ConvertFrom-Json).name | Should -Be 'code scanning'
         }
     }
 
