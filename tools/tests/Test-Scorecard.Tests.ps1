@@ -12,9 +12,9 @@ Describe 'Test-Scorecard.ps1' {
 
         function New-Rule {
             # One enforcement part per kind (ADR-0063).
-            param([string] $Id, [string] $Status = 'accepted', [string[]] $Kinds = @('gate'))
+            param([string] $Id, [string] $Status = 'accepted', [string[]] $Kinds = @('gate'), [string] $Strength = 'must')
             [ordered]@{
-                id = $Id; statement = "Rule $Id."; layer = 'owner'; basis = 'preference'; status = $Status
+                id = $Id; statement = "Rule $Id."; layer = 'owner'; basis = 'preference'; status = $Status; strength = $Strength
                 sources = @('owner, 2026-11-07')
                 enforcement = @($Kinds | ForEach-Object { [ordered]@{ kind = $_; in = @('kit', 'app'); how = "a $_ part" } })
             }
@@ -90,10 +90,10 @@ Describe 'Test-Scorecard.ps1' {
         $problems[0].Message | Should -BeLike '*STY-002*retired*'
     }
 
-    It 'reports a rule in force that no area names, but not a proposed one' {
-        # A new rule must say which quality area it serves; a proposed rule isn't in force yet.
+    It 'reports a rule in force that no area names, but not a retired one' {
+        # A new rule must say which quality area it serves; a retired rule isn't in force.
         $paths = New-Fixture -Rules @(
-            (New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002'), (New-Rule -Id 'STY-003' -Status 'proposed'))
+            (New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002'), (New-Rule -Id 'STY-003' -Status 'retired'))
 
         $problems = @(Get-Problem $paths)
 
@@ -300,13 +300,13 @@ Describe 'Test-Scorecard.ps1' {
         @(Get-ScorecardRow -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards) | Should -BeNullOrEmpty
     }
 
-    It 'counts each area''s rules from the standards: in force, checked by a tool, advisory, proposed, open gaps' {
+    It 'counts each area''s rules from the standards: in force, by strength, checked by a tool, advisory, open gaps' {
         # A rule with any gate part is checked by a tool, even when another part is advisory (ADR-0063).
         $paths = New-Fixture -Rules @(
             (New-Rule -Id 'STY-001' -Kinds 'gate'),
             (New-Rule -Id 'STY-002' -Kinds 'advisory'),
             (New-Rule -Id 'STY-003' -Kinds 'advisory', 'gate'),
-            (New-Rule -Id 'STY-004' -Status 'proposed' -Kinds 'gate')
+            (New-Rule -Id 'STY-004' -Strength 'should' -Kinds 'gate')
         ) -Areas @(New-Area -Override @{
                 rules = @('STY-001', 'STY-002', 'STY-003', 'STY-004')
                 gaps  = @([ordered]@{ id = 'GAP-001'; gap = 'Open.'; status = 'planned' }, [ordered]@{ id = 'GAP-002'; gap = 'Done.'; status = 'closed' })
@@ -317,10 +317,12 @@ Describe 'Test-Scorecard.ps1' {
 
         $rows | Should -HaveCount 1
         $rows[0].Area | Should -Be 'Code'
-        $rows[0].InForce | Should -Be 3
-        $rows[0].CheckedByTool | Should -Be 2
+        $rows[0].InForce | Should -Be 4
+        $rows[0].Must | Should -Be 3
+        $rows[0].Should | Should -Be 1
+        $rows[0].Consider | Should -Be 0
+        $rows[0].CheckedByTool | Should -Be 3
         $rows[0].Advisory | Should -Be 1
-        $rows[0].Proposed | Should -Be 1
         $rows[0].OpenGaps | Should -Be 1
     }
 
@@ -363,7 +365,7 @@ Describe 'Test-Scorecard.ps1' {
 
         It 'shows a row per area and a summary over every rule, each rule counted once' {
             $paths = New-Fixture -Rules @((New-Rule -Id 'STY-001'), (New-Rule -Id 'STY-002' -Kinds 'advisory'),
-                (New-Rule -Id 'STY-003' -Status 'proposed')) -Areas @(
+                (New-Rule -Id 'STY-003' -Strength 'should')) -Areas @(
                 (New-Area -Override @{ rules = @('STY-001', 'STY-002', 'STY-003') }),
                 (New-Area -Override @{ id = 'tests'; name = 'Tests'; rules = @('STY-001'); gaps = @([ordered]@{ id = 'GAP-001'; gap = 'Mutation.'; status = 'proposed' }) })
             ) -Body "`n$start`n$end`n"
@@ -372,17 +374,17 @@ Describe 'Test-Scorecard.ps1' {
             Update-ScorecardTable -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards
             $lines = (Get-Content -Raw -LiteralPath $paths.Scorecard) -split "`r?`n"
 
-            $lines | Should -Contain '| Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |'
-            $lines | Should -Contain '| Code | 2 | 1 | 1 | 1 | 0 |'
-            $lines | Should -Contain '| Tests | 1 | 1 | 0 | 0 | 1 |'
+            $lines | Should -Contain '| Area | Rules in force | Must | Should | Consider | Checked by a tool | Advisory | Open gaps |'
+            $lines | Should -Contain '| Code | 3 | 2 | 1 | 0 | 2 | 1 | 0 |'
+            $lines | Should -Contain '| Tests | 1 | 1 | 0 | 0 | 1 | 0 | 1 |'
             # STY-001 is in two areas but is one rule.
-            $lines | Should -Contain '**Overall:** 2 rules in force, 1 checked by a tool and 1 advisory; 1 proposed; 1 open gap.'
+            $lines | Should -Contain '**Overall:** 3 rules in force (2 must, 1 should, 0 consider), 2 checked by a tool and 1 advisory; 1 open gap.'
         }
 
         # ADR-0084: an app gets the core ruleset and its types' rulesets, so the scorecard shows what each type gets.
-        It 'counts the rules an app of each app type gets, in force and proposed' {
+        It 'counts the rules an app of each app type gets, by strength' {
             $web = New-Rule -Id 'STY-002'; $web['scope'] = @('web-api')
-            $maui = New-Rule -Id 'STY-003' -Status 'proposed'; $maui['scope'] = @('maui')
+            $maui = New-Rule -Id 'STY-003' -Strength 'should'; $maui['scope'] = @('maui')
             $common = New-Rule -Id 'STY-001'; $common['scope'] = 'core'
             $paths = New-Fixture -Rules @($common, $web, $maui) -Areas @(New-Area -Override @{ rules = @('STY-001', 'STY-002', 'STY-003') }) -Body "`n$start`n$end`n"
             Set-Content -LiteralPath (Join-Path $paths.Standards 'app-types.yml') -Value @'
@@ -394,10 +396,10 @@ types:
             Update-ScorecardTable -ScorecardPath $paths.Scorecard -StandardsPath $paths.Standards
             $lines = (Get-Content -Raw -LiteralPath $paths.Scorecard) -split "`r?`n"
 
-            $lines | Should -Contain '| Ruleset | Rules in force | Proposed rules |'
-            $lines | Should -Contain '| Core (every app type) | 1 | 0 |'
-            $lines | Should -Contain '| ASP.NET Core Web API | 2 | 0 |'
-            $lines | Should -Contain '| .NET MAUI | 1 | 1 |'
+            $lines | Should -Contain '| Ruleset | Rules in force | Must | Should | Consider |'
+            $lines | Should -Contain '| Core (every app type) | 1 | 1 | 0 | 0 |'
+            $lines | Should -Contain '| ASP.NET Core Web API | 2 | 2 | 0 | 0 |'
+            $lines | Should -Contain '| .NET MAUI | 2 | 1 | 1 | 0 |'
         }
 
         It 'lists the open gaps under the table, with their area, status and what they need, but not closed ones' {
