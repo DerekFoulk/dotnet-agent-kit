@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
@@ -29,7 +30,7 @@ public sealed class ContractTypeTests
         typeof(IEnumerable<>), typeof(IAsyncEnumerable<>), typeof(ICollection<>), typeof(IReadOnlyCollection<>), typeof(IList<>),
         typeof(IReadOnlyList<>), typeof(List<>), typeof(ISet<>), typeof(IReadOnlySet<>), typeof(HashSet<>),
         typeof(IDictionary<,>), typeof(IReadOnlyDictionary<,>), typeof(Dictionary<,>),
-        typeof(ProblemDetails), typeof(HttpValidationProblemDetails), typeof(IFormFile), typeof(IFormFileCollection), typeof(Stream),
+        typeof(ProblemDetails), typeof(HttpValidationProblemDetails), typeof(IFormFile), typeof(IFormFileCollection), typeof(IFormCollection), typeof(Stream),
     ];
 
     [Theory]
@@ -69,7 +70,7 @@ public sealed class ContractTypeTests
         endpoints.Should().NotBeEmpty("a host that serves an HTTP API describes its endpoints");
         endpoints.Where(endpoint => !DeclaresSuccess(endpoint))
             .Select(endpoint => $"{endpoint.HttpMethod} {endpoint.RelativePath}")
-            .Should().BeEmpty("each endpoint declares its success response with typed results (API-003), so its type is checked (SEC-013)");
+            .Should().BeEmpty("each endpoint declares what it answers on success with typed results (API-003), so its type is checked (SEC-013); a file or a redirect declares its status with Produces");
     }
 
     // ApiExplorer gives an endpoint with no response metadata a default 200 without a type, which an untyped IResult
@@ -82,6 +83,7 @@ public sealed class ContractTypeTests
     [EachHost(204, typeof(void), 204, true)]
     [EachHost(200, typeof(string), 0, true)]
     [EachHost(302, typeof(void), 302, true)]
+    [EachHost(204, typeof(void), -204, true)]
     public void OnlyADeclaredSuccessCounts(string host, int status, Type answer, int declared, bool counts)
     {
         ArgumentNullException.ThrowIfNull(answer);
@@ -89,14 +91,24 @@ public sealed class ContractTypeTests
         endpoint.SupportedResponseTypes.Add(new ApiResponseType { StatusCode = status, Type = answer });
         if (declared != 0)
         {
-            endpoint.ActionDescriptor.EndpointMetadata = [new ProducesResponseTypeAttribute(declared)];
+            // A positive status as a minimal API declares it, a negative one as an MVC action's attribute does.
+            endpoint.ActionDescriptor.EndpointMetadata = declared > 0
+                ? [new ProducesResponseTypeMetadata(declared, typeof(void))]
+                : [new ProducesResponseTypeAttribute(-declared)];
         }
 
         DeclaresSuccess(endpoint).Should().Be(counts, $"for {host}, a {status} of {answer.Name} declared as {declared}");
     }
 
     private static bool DeclaresSuccess(ApiDescription endpoint) =>
-        endpoint.SupportedResponseTypes.Any(response => response.StatusCode is >= 200 and < 300);
+        endpoint.SupportedResponseTypes.Any(response => response.StatusCode is >= 200 and < 300 && response.Type is { } type && type != typeof(void))
+        || endpoint.ActionDescriptor.EndpointMetadata.Any(metadata => metadata switch
+        {
+            // A minimal API's Produces and typed results, and an MVC action's [ProducesResponseType].
+            IProducesResponseTypeMetadata declared => declared.StatusCode is >= 200 and < 400,
+            IApiResponseMetadataProvider declared => declared.StatusCode is >= 200 and < 400,
+            _ => false,
+        });
 
     // .NET's own types carry no entity: plain values, collections of them, Problem Details and files. A type that can
     // carry anything, such as object or a JSON document, or any other framework or library type (IdentityUser, say),
@@ -136,5 +148,7 @@ public sealed class ContractTypeTests
     private static bool Passes(Type type, IReadOnlyCollection<Assembly> contracts) =>
         contracts.Contains(type.Assembly) || IsDotNets(type);
 
-    private static bool IsDotNets(Type type) => type.IsPrimitive || s_plain.Contains(type);
+    // .NET's own enums, such as DayOfWeek, are plain values too; an app's enums pass as its Contracts'.
+    private static bool IsDotNets(Type type) =>
+        type.IsPrimitive || s_plain.Contains(type) || (type.IsEnum && type.Assembly == typeof(object).Assembly);
 }
