@@ -156,6 +156,18 @@ Describe 'Get-BashCommand' {
         ($commands | ForEach-Object { $_.Words -join ' ' }) | Should -Contain 'ls -a'
     }
 
+    It 'also resolves the command inside <Command>, which Bash runs as it expands it' -ForEach @(
+        # Review of the rebased branch: unset X; echo ${X:-$(echo ran)} prints "ran".
+        @{ Command = "echo `${X:-`$(git push --for'ce')}" }
+        @{ Command = "echo ""`${X:-`$(git push --for'ce')}""" }
+        @{ Command = ": `${X:=``git push --for'ce'``}" }
+        @{ Command = "echo `$(( `$(git push --for'ce') ))" }
+        @{ Command = "echo `${X:-`${Y:-`$(git push --for'ce')}}" }
+    ) {
+        $commands = @(InModuleScope KitCommandGuard -Parameters @{ Text = $Command } { param($Text) Get-BashCommand -Command $Text })
+        ($commands | ForEach-Object { $_.Words -join ' ' }) | Should -Contain 'git push --force'
+    }
+
     It 'reads a heredoc''s body as data, so its quotes and parentheses don''t end the command' {
         # The form Claude Code's own commits use.
         $text = "git commit -m ""`$(cat <<'EOF'`nfix: don't (stop)`nEOF`n)"" && git push --for'ce'"
