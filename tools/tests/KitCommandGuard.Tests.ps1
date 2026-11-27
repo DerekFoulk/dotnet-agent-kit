@@ -530,6 +530,7 @@ Describe 'Get-CommandGuardDecision for Bash' {
         @{ Command = 'echo $((0x1+i)) $((16#ff+i))' }
         @{ Command = '[[ ${#a[i]} -gt 0 ]]' }
         @{ Command = 'echo $(( $0x1 ))' }
+        @{ Command = 'echo $(( $- ))' }
     ) {
         Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument when it runs, from code inside it*'
     }
