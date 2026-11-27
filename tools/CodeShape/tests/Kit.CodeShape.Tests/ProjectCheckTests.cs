@@ -104,8 +104,9 @@ public sealed class ProjectCheckTests : IDisposable
     [Fact]
     public void AFolderNamedMigrationsAboveTheProjectExemptsNothing()
     {
-        string legacy = Write(Path.Join("Migrations", "App", "Legacy.cs"), "#nullable disable\nclass Legacy { }\n");
-        string marked = Write(Path.Join("Migrations", "App", "Marked.g.cs"), "class Marked { }");
+        // EF Core's own names, so only where the folder sits decides.
+        string legacy = Write(Path.Join("Migrations", "App", "20261116000000_Legacy.cs"), "#nullable disable\nclass Legacy { }\n");
+        string marked = Write(Path.Join("Migrations", "App", "20261116000000_Marked.Designer.cs"), "class Marked { }");
 
         ProjectCheck.Check(new ProjectFiles(Path.Join(_folder.FullName, "Migrations", "App", "App.csproj"), [], [legacy, marked]))
             .Should().HaveCount(2);

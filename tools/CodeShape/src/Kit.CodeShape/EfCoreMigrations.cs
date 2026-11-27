@@ -27,7 +27,7 @@ internal static class EfCoreMigrations
     /// <summary>A migration's name starts with its timestamp and an underscore before its own name (its Designer file's
     /// too), as .editorconfig's [0-9]*_*.cs matches it; the snapshot's ends in ModelSnapshot.cs.</summary>
     private static bool IsEfCoreName(string name) =>
-        name.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-        && ((name.Length > 0 && char.IsAsciiDigit(name[0]) && name.Contains('_', StringComparison.Ordinal))
+        name.EndsWith(".cs", StringComparison.Ordinal)
+        && ((char.IsAsciiDigit(name[0]) && name.Contains('_', StringComparison.Ordinal))
             || name.EndsWith(SnapshotSuffix, StringComparison.Ordinal));
 }
