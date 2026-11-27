@@ -401,8 +401,9 @@ conditions:
         $saved = $global:PSNativeCommandUseErrorActionPreference, $global:ErrorActionPreference
         $global:PSNativeCommandUseErrorActionPreference = $true
         $global:ErrorActionPreference = 'Stop'
-        try { { Get-KitCondition -KitRoot $kit -Commit $before } | Should -Not -Throw }
+        try { { $script:underStop = Get-KitCondition -KitRoot $kit -Commit $before } | Should -Not -Throw }
         finally { $global:PSNativeCommandUseErrorActionPreference, $global:ErrorActionPreference = $saved }
+        $script:underStop.Count | Should -Be 0
     }
 }
 
