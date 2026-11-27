@@ -454,7 +454,7 @@ It checks first, before changing anything: the app and repo names, an empty fold
 2. Writes the intake answers to `docs/app-profile.md`, which the app owns: the kit sync never changes it.
 3. Makes the first commit, `chore: start from dotnet-agent-kit <version>`, with the commit hook stored as executable for Linux and macOS.
 4. Creates the repo, private for now, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
-5. Lets GitHub Actions create and approve pull requests, so release-please can open the app's release PR with the workflow's own token, and keeps workflow tokens read-only by default (`templates/github/workflow-permissions.json`, ADR-0096). It comes before the push, which starts the first `release.yml` run.
+5. Lets GitHub Actions create and approve pull requests, so release-please can open the app's release PR with the workflow's own token, and keeps workflow tokens read-only by default (`templates/github/workflow-permissions.json`, ADR-0096). It comes before the push, which starts the first `release.yml` run. The setting is one checkbox, "Allow GitHub Actions to create and approve pull requests" (Settings › Actions › General › Workflow permissions), off by default on a new personal repo. Nothing approves or merges the release PR itself: what the release job approves is that PR's waiting CI runs, a different permission, and the release PR is the owner's to merge. Turning the setting off means giving release-please a GitHub App or personal access token instead, and the shared release job takes no token yet, so it also means changing `release.yml`; until then, no release PR opens. Turn it off before adding required approving reviews, since a workflow could otherwise approve a pull request to meet them. ADR-0096 ("Update (2026-11-27)") says what changes and which files.
 6. Pushes `main`.
 7. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved. It doesn't request Copilot code review: the reviewer agent reviews instead (ADR-0067).
 8. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
@@ -518,6 +518,12 @@ Applied 2026-11-09 with the owner's OK:
 | "main protection" ruleset: require code scanning results | CodeQL; blocks on an alert of severity error, or a security alert high or higher, on lines the pull request changes, or while CodeQL's analysis is in progress or missing | Enforces SEC-006 at merge time; CodeQL runs on every pull request |
 | "main protection" ruleset: require conversation resolution | On | Every review thread is resolved before merging; that each one was answered with evidence (DOD-005) is still the agents' job |
 | Dependabot alerts and security updates | On | A known vulnerability gets its fix PR at once, without the 7- and 14-day wait version updates have (ADR-0041); New-KitApp turns both on for every app |
+
+Set for release-please with the owner's OK (ADR-0022), read 2026-11-25, and kept on by the owner 2026-11-27:
+
+| Setting | Value | Why |
+|---|---|---|
+| Actions › General › Workflow permissions | Workflow tokens read-only by default (`default_workflow_permissions: read`); "Allow GitHub Actions to create and approve pull requests" on | release-please opens the release PR with the workflow's own token. What the release job approves is that PR's waiting CI runs (`actions: write`, not this setting); nothing approves or merges the PR itself. New-KitApp sets the same on every app. To turn it off, and before adding required approving reviews, see ADR-0096 ("Update (2026-11-27)") |
 
 Applied 2026-11-12 with the owner's OK, and removed 2026-11-14 on his yes:
 

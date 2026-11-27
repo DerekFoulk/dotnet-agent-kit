@@ -37,7 +37,7 @@ paths:
 - CS-029 (should): Avoid using weak references as an automatic solution to memory management problems (develop an effective caching policy instead) and avoid weak references to small objects; allocating a pool of large objects that you reuse instead of allocating temporary ones is recommended; and an app should never make assumptions about or depend on a particular garbage collector segment size.
 - CS-030 (must): When extracting an untrusted ZIP or TAR archive, always enforce limits on decompressed size and entry count, applications should check that extracted entry names conform to an acceptable pattern, and don't use ExtractToDirectory (iterate the entries manually); when creating encrypted ZIP entries, always prefer Aes256.
 - CS-031 (should): If you must process untrusted XML from unknown sources, using an XmlReader configured to filter out known XML denial-of-service attacks is recommended; you should not accept DTDs or XSD schemas from untrusted sources; and error messages should not be exposed to callers that aren't trusted: you should catch all errors and report them with your own custom error messages.
-- CS-032 (should): Prefer RSA over DSA, and prefer SHA-2 (SHA256, SHA384, SHA512) over MD5 and SHA-1.
+- CS-032 (should): Prefer RSA over DSA.
 - CS-033 (must): Use System.Text.Json source generation in Native AOT apps.
 - CS-038 (must): When you use System.IO.Pipelines, always complete the PipeReader and PipeWriter (including an exception where applicable), and always call AdvanceTo after ReadAsync.
 - CS-039 (must): When you marshal native structures, avoid using classes to express complex native types through inheritance, and use InlineArray to define fixed-size buffers in modern .NET (C# 12 and later).
