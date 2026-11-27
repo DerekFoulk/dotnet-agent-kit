@@ -73,7 +73,7 @@ public sealed class TokenTests
     }
 
     // Saying the host signs nobody in skips the checks above, so the statement is checked against the host: none of its
-    // endpoints may require authorization, which only a signed-in user could pass.
+    // endpoints may require authorization, which only a signed-in user could pass, and it can't also say that most do.
     [Theory]
     [EachHost]
     public void AHostThatSignsNobodyInHasNoEndpointThatRequiresAuthorization(string host)
@@ -82,6 +82,7 @@ public sealed class TokenTests
         Assert.SkipWhen(described.SignsUsersIn, SignsUsersIn);
         using IAppUnderTest app = described.Start(Environments.Development);
 
+        described.MostEndpointsRequireSignIn.Should().BeFalse("most endpoints can't require sign-in in a host that signs nobody in");
         IEnumerable<string> authorized = EndpointAuthorization.Protected(app.Services)
             .Select(endpoint => $"{string.Join(',', endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? ["*"])} {endpoint.RoutePattern.RawText}");
 
