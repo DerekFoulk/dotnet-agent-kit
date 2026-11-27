@@ -356,6 +356,56 @@ Describe 'Get-KitIntake' {
     }
 }
 
+# ADR-0090: the conditions New-KitApp and New-FreshApp write on the profile's Conditions line, from conditions.yml at
+# the kit commit an app is made from.
+Describe 'Get-KitCondition' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+        $savedGit = Set-TestGitEnvironment
+        $kit = Join-Path $TestDrive 'conditions-kit'
+        New-Item -ItemType Directory -Force -Path (Join-Path $kit 'docs' 'standards') | Out-Null
+        git -C $kit init -q -b main
+        Set-Content -LiteralPath (Join-Path $kit 'README.md') -Value 'A kit from before conditions.yml.'
+        git -C $kit add -A
+        git -C $kit commit -q -m 'chore: before conditions'
+        $before = (git -C $kit rev-parse HEAD).Trim()
+        Set-Content -LiteralPath (Join-Path $kit 'docs' 'standards' 'conditions.yml') -Value @'
+conditions:
+  - id: has-sign-in
+    question: Do users sign in?
+  - id: uses-grpc
+    question: Does it serve gRPC?
+'@
+        git -C $kit add -A
+        git -C $kit commit -q -m 'chore: conditions'
+        $after = (git -C $kit rev-parse HEAD).Trim()
+    }
+    AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
+
+    It 'reads each condition conditions.yml lists at the commit' {
+        $conditions = Get-KitCondition -KitRoot $kit -Commit $after
+
+        @($conditions | ForEach-Object { $_['id'] }) | Should -Be @('has-sign-in', 'uses-grpc')
+    }
+
+    It 'gives none for a kit commit from before conditions.yml, so the profile has no Conditions line' {
+        $conditions = Get-KitCondition -KitRoot $kit -Commit $before
+
+        $conditions.Count | Should -Be 0
+    }
+
+    # git show's exit code for a missing file is an answer read here, so a caller's native-command preference mustn't
+    # turn it into an error first (as TestGit.psm1's helpers guard against).
+    It 'gives none for an older kit even where the caller turns a native command''s failure into an error' {
+        $saved = $global:PSNativeCommandUseErrorActionPreference, $global:ErrorActionPreference
+        $global:PSNativeCommandUseErrorActionPreference = $true
+        $global:ErrorActionPreference = 'Stop'
+        try { { Get-KitCondition -KitRoot $kit -Commit $before } | Should -Not -Throw }
+        finally { $global:PSNativeCommandUseErrorActionPreference, $global:ErrorActionPreference = $saved }
+    }
+}
+
 Describe 'ConvertTo-KitAppProfile' {
     BeforeAll {
         Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
