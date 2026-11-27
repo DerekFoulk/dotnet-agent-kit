@@ -263,13 +263,21 @@ function Get-PowerShellFilledVariable {
     # Then each assignment, foreach and switch whose source holds a command or a variable already filled, until none
     # adds more, so a copy of a filled variable ($c = $b) is filled too. A foreach also fills $foreach, and a switch $_,
     # $PSItem, $Matches and $switch, from what it walks (about_Automatic_Variables).
-    $fills = { param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] -or $node -is [Management.Automation.Language.SwitchStatementAst] }
+    # A redirection to the variable: drive (> variable:b) fills that variable with the command's output.
+    foreach ($redirection in $Ast.FindAll({ param($n) $n -is [Management.Automation.Language.FileRedirectionAst] }, $true)) {
+        $location = $redirection.Location
+        if ($location -is [Management.Automation.Language.StringConstantExpressionAst] -and $location.Value -match '\A(?i:variable):(?<name>.+)\z') { [void] $filled.Add($Matches['name']) }
+    }
+    $match = [Management.Automation.Language.TokenKind[]] @('Imatch', 'Cmatch', 'Inotmatch', 'Cnotmatch')
+    $fills = { param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] -or $node -is [Management.Automation.Language.SwitchStatementAst] -or ($node -is [Management.Automation.Language.BinaryExpressionAst] -and $node.Operator -in $match) }
     $fromFilled = { param($n) (& $isCommand $n) -or ($n -is [Management.Automation.Language.VariableExpressionAst] -and $filled.Contains((Get-PowerShellVariableName -Variable $n))) }
     do {
         $count = $filled.Count
         foreach ($node in $Ast.FindAll($fills, $true)) {
-            $source = if ($node -is [Management.Automation.Language.AssignmentStatementAst]) { $node.Right } else { $node.Condition }
+            $source = if ($node -is [Management.Automation.Language.AssignmentStatementAst]) { $node.Right } elseif ($node -is [Management.Automation.Language.BinaryExpressionAst]) { $node.Left } else { $node.Condition }
             if (-not $source.Find($fromFilled, $true)) { continue }
+            # -match and -notmatch fill $Matches from what they match (about_Comparison_Operators).
+            if ($node -is [Management.Automation.Language.BinaryExpressionAst]) { [void] $filled.Add('Matches'); continue }
             if ($node -is [Management.Automation.Language.SwitchStatementAst]) { foreach ($name in '_', 'PSItem', 'Matches', 'switch') { [void] $filled.Add($name) }; continue }
             if ($node -is [Management.Automation.Language.ForEachStatementAst]) { [void] $filled.Add('foreach') }
             $target = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable } else { $node.Left }
@@ -300,11 +308,13 @@ function Test-PowerShellIndirectCall {
     if ($Node -is [Management.Automation.Language.SwitchStatementAst]) {
         return [bool] ($Node.Flags -band [Management.Automation.Language.SwitchFlags]::File)
     }
-    if ($Node -isnot [Management.Automation.Language.CommandAst] -or $Node.GetCommandName() -notmatch '^(?i:ForEach-Object|%|foreach)$') { return $false }
+    # By its own name, its module's (Microsoft.PowerShell.Core\ForEach-Object) or an alias.
+    if ($Node -isnot [Management.Automation.Language.CommandAst] -or $Node.GetCommandName() -notmatch '(?:\A|\\)(?i:ForEach-Object)\z|\A(?:%|foreach)\z') { return $false }
     $arguments = @($Node.CommandElements | Select-Object -Skip 1)
     [bool] @($arguments | Where-Object {
             ($_ -is [Management.Automation.Language.CommandParameterAst] -and $_.ParameterName.Length -ge 1 -and 'MemberName'.StartsWith($_.ParameterName, [StringComparison]::OrdinalIgnoreCase)) -or
-            $_ -is [Management.Automation.Language.StringConstantExpressionAst] -or $_ -is [Management.Automation.Language.ExpandableStringExpressionAst]
+            $_ -is [Management.Automation.Language.StringConstantExpressionAst] -or $_ -is [Management.Automation.Language.ExpandableStringExpressionAst] -or
+            $_ -is [Management.Automation.Language.VariableExpressionAst]
         }).Count
 }
 
