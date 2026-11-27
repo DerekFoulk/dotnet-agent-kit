@@ -21,5 +21,5 @@ internal class ApiFactory : WebApplicationFactory<Program>
     public const string UnreachableDatabase = "Server=127.0.0.1,1;Database=Bookmarks;Connect Timeout=1;Encrypt=False";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) =>
-        builder.UseContentRoot(ProjectFolder.Find(AppContext.BaseDirectory, typeof(Program).Assembly.GetName().Name!));
+        builder.UseContentRoot(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "sample", "src", "Bookmarks.Api"));
 }
