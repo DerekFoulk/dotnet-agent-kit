@@ -2,7 +2,8 @@
 # tools the shared .NET CI downloads itself (ADR-0060): PMD, pinned in .config/pmd/pom.xml, and the gitleaks image,
 # pinned by tag and digest in .config/gitleaks/Dockerfile, and Locust for the shared load tests, pinned by hash in
 # .config/locust (ADR-0062), and the Playwright image the kit's browser tests run in, pinned by tag and digest in
-# .config/playwright/Dockerfile (GAP-033), current (SUP-008, ADR-0025).
+# .config/playwright/Dockerfile (GAP-033), and the SQL Server image the sample's tests run, pinned by digest in
+# sample/tests/SqlServer/Dockerfile (GAP-025), current (SUP-008, ADR-0025).
 # The "chore" prefix makes each PR title a Conventional Commit, which CI requires, and "include: scope" adds
 # "(deps)": "chore(deps): bump ...". The NuGet updater ignores the scope for now (dependabot-core#15158), so
 # NuGet PRs come as "chore: Bump ...", which CI accepts too; keep "include: scope" for when that's fixed.
@@ -14,8 +15,8 @@
 # Security updates, on since 2026-11-09, don't wait. Shortening any wait here (a semver-minor-days or
 # semver-patch-days below 7 too), or narrowing it with an exclude or include list, is a guardrail change: an agent
 # merges it only on the owner's yes. Agents merge NuGet, .NET tool and SDK patch and minor updates in auto mode; majors,
-# 0.x packages (BenchmarkDotNet among them), GitHub Actions bumps, and PMD, gitleaks, Playwright image and Locust (pip)
-# bumps are the owner's, so a Microsoft.Playwright update, which moves with the Playwright image, is too.
+# 0.x packages (BenchmarkDotNet among them), GitHub Actions bumps, and PMD, gitleaks, Playwright image, SQL Server image
+# and Locust (pip) bumps are the owner's, so a Microsoft.Playwright update, which moves with the Playwright image, is too.
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -28,6 +29,14 @@ updates:
     cooldown:
       default-days: 7
       semver-major-days: 14
+    # Packages that only work at one another's versions, in one PR each (GAP-025): Roslyn's, each of which requires exactly
+    # its own version of the others, and EF Core's with the dotnet-ef tool that runs its design-time code.
+    groups:
+      roslyn:
+        # By name: a wildcard would catch Microsoft.CodeAnalysis.BannedApiAnalyzers too, which has a version line of its own.
+        patterns: ['Microsoft.CodeAnalysis.Common', 'Microsoft.CodeAnalysis.CSharp', 'Microsoft.CodeAnalysis.CSharp.Workspaces', 'Microsoft.CodeAnalysis.Workspaces.Common', 'Microsoft.CodeAnalysis.Workspaces.MSBuild']
+      ef-core:
+        patterns: ['Microsoft.EntityFrameworkCore*', 'dotnet-ef']
 
   - package-ecosystem: github-actions
     directory: /
@@ -81,6 +90,18 @@ updates:
   # The gitleaks image for the secret scan (ADR-0024). Docker takes no semver-*-days, so every update waits 7.
   - package-ecosystem: docker
     directory: /.config/gitleaks
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
+
+  # The SQL Server image the sample's tests and load test run (GAP-025). Its tag moves (2025-latest), so updates come
+  # as a new digest. It's on MCR too, so, like the Playwright image's, its updates may come with no cooldown (GAP-046).
+  - package-ecosystem: docker
+    directory: /sample/tests/SqlServer
     schedule:
       interval: weekly
     commit-message:

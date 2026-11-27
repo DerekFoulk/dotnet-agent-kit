@@ -17,10 +17,11 @@ public sealed class EfBookmarkRepository(BookmarksDbContext db) : IBookmarkRepos
     public Task<Bookmark?> FindByUrlAsync(string ownerId, Uri url, CancellationToken cancellationToken) =>
         Owned(ownerId).FirstOrDefaultAsync(b => b.Url == url, cancellationToken);
 
-    // Paged in the database, ordered by the key so pages never overlap. (SQLite can't order by a DateTimeOffset.)
+    // Paged in the database, in creation order with the key as the tie-breaker, so pages never overlap (API-004). Not by
+    // the key alone: SQL Server compares a uniqueidentifier by its last six bytes first, a UUID version 7's random part.
     /// <inheritdoc/>
     public async Task<IReadOnlyList<Bookmark>> ListAsync(string ownerId, int offset, int limit, CancellationToken cancellationToken) =>
-        await Owned(ownerId).OrderBy(b => b.Id).Skip(offset).Take(limit)
+        await Owned(ownerId).OrderBy(b => b.CreatedAt).ThenBy(b => b.Id).Skip(offset).Take(limit)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc/>

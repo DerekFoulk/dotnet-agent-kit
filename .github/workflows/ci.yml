@@ -22,6 +22,106 @@ jobs:
   kit:
     uses: ./.github/workflows/kit-checks.reusable.yml
 
+  # GAP-049 (ADR-0095): a fresh app of each app type the kit can check on Linux, exported from this commit with
+  # tools/Export-KitApp.ps1 (no GitHub repo), with the kit's own reference app of that type as its probe, then checked by
+  # the same shared workflows an app's CI calls. Not in the ruleset (the owner's call), but a red one blocks a merge just
+  # the same (AGENTS.md). MAUI waits for GAP-028. Keep the matrix in step with New-FreshApp.ps1's probes; its tests check.
+  fresh-app:
+    name: Export a fresh app (${{ matrix.type }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { type: web-api, name: Fresh.WebApi }
+          - { type: blazor, name: Fresh.Blazor }
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      TYPE: ${{ matrix.type }}
+      SOLUTION: ${{ matrix.name }}.slnx
+      # A runner has no git identity; these sign the fresh app's two commits.
+      GIT_AUTHOR_NAME: dotnet-agent-kit CI
+      GIT_AUTHOR_EMAIL: fresh-app@dotnet-agent-kit.invalid
+      GIT_COMMITTER_NAME: dotnet-agent-kit CI
+      GIT_COMMITTER_EMAIL: fresh-app@dotnet-agent-kit.invalid
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      # The export runs the app's own Build-AgentRules, which reads the standards with powershell-yaml: the version the
+      # kit checks pin.
+      - name: Install PowerShell modules
+        run: Install-PSResource -Name powershell-yaml -Version 0.4.12 -Scope CurrentUser -Repository PSGallery -TrustRepository
+
+      # The export, New-KitApp's first commit, and the probe's files, package versions and solution entries.
+      - name: Export the app
+        run: ./tools/New-FreshApp.ps1 -Type $env:TYPE -Destination "$env:RUNNER_TEMP/app"
+
+      # The app's first restore writes its own lock files, against its own Directory.Packages.props, as an agent's
+      # first task would. Unlocked here only: the shared CI's restore is locked.
+      - name: Restore, writing the app's lock files
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          Set-Location "$env:RUNNER_TEMP/app"
+          dotnet restore $env:SOLUTION -p:RestoreLockedMode=false
+
+      # The probe in its own commit, as an app's first task adds its projects; the bundle holds main's whole history.
+      - name: Commit the probe and bundle the app
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          $app = "$env:RUNNER_TEMP/app"
+          git -C $app add -A
+          git -C $app commit -q -m "feat: add the $env:TYPE probe from the kit"
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP/bundle" | Out-Null
+          git -C $app bundle create -q "$env:RUNNER_TEMP/bundle/app.bundle" main
+          git -C $app log --format='%h %s'
+          "Files in the app: $(@(git -C $app ls-files).Count)"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fresh-app-${{ matrix.type }}
+          path: ${{ runner.temp }}/bundle/app.bundle
+          if-no-files-found: error
+          # Long enough to re-run a failed check job later in the week.
+          retention-days: 7
+
+  # The app's three required checks (templates/github/main-protection.json), on the fresh app's bundle.
+  fresh-dotnet:
+    name: Fresh ${{ matrix.type }} app (.NET)
+    needs: fresh-app
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { type: web-api, name: Fresh.WebApi }
+          - { type: blazor, name: Fresh.Blazor }
+    uses: ./.github/workflows/dotnet-ci.reusable.yml
+    with:
+      solution: ${{ matrix.name }}.slnx
+      app-bundle: fresh-app-${{ matrix.type }}
+
+  fresh-app-checks:
+    name: Fresh ${{ matrix.type }} app (app checks)
+    needs: fresh-app
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { type: web-api, name: Fresh.WebApi }
+          - { type: blazor, name: Fresh.Blazor }
+    uses: ./.github/workflows/app-checks.reusable.yml
+    with:
+      app-bundle: fresh-app-${{ matrix.type }}
+
   # CodeQL code scanning (ADR-0036): free here, because the kit is public.
   codeql:
     permissions:

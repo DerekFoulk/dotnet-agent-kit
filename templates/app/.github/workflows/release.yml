@@ -1,0 +1,21 @@
+# {{Name}}'s releases, from dotnet-agent-kit's shared release job (kit ADR-0096). release-please keeps a release PR
+# open with the next version and its notes, from the Conventional Commits merged since the last release; merging it
+# tags vX.Y.Z and publishes a GitHub Release, and MinVer builds take their version from that tag. The kit is pinned
+# to the commit its release tag points to (ADR-0031); Dependabot moves the pin with each kit release (kit ADR-0045).
+name: release
+
+on:
+  push:
+    branches: [main]
+
+# Nothing at the top level, so no job gets a write it doesn't ask for (OpenSSF Scorecard's Token-Permissions check).
+permissions: {}
+
+jobs:
+  release-please:
+    uses: DerekFoulk/dotnet-agent-kit/.github/workflows/release-please.reusable.yml@{{KitCommit}} # {{KitVersion}}
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write

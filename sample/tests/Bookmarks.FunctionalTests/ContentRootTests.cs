@@ -32,7 +32,7 @@ public sealed class ContentRootTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseContentRoot(Path.Combine(Path.GetTempPath(), "no-such-folder-" + Guid.NewGuid().ToString("N")))
-                .UseSetting("ConnectionStrings:Bookmarks", "DataSource=:memory:");
+                .UseSetting("ConnectionStrings:Bookmarks", UnreachableDatabase);
             base.ConfigureWebHost(builder);
         }
     }

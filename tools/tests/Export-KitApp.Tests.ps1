@@ -119,6 +119,32 @@ Describe 'Export-KitApp' {
         $checks | Should -Match ([regex]::Escape("uses: DerekFoulk/dotnet-agent-kit/.github/workflows/app-checks.reusable.yml@$commit # unreleased"))
     }
 
+    # ADR-0096: an app releases as the kit does, so it takes SemVer numbers from its own Conventional Commits.
+    It 'gives the app the kit''s release workflow and release-please config, which the kit manages' {
+        $release = Join-Path $app '.github/workflows/release.yml'
+        Test-Path -LiteralPath $release | Should -BeTrue -Because 'every app gets a release workflow'
+        Get-Content -Raw $release | Should -Match ([regex]::Escape("uses: DerekFoulk/dotnet-agent-kit/.github/workflows/release-please.reusable.yml@$commit # unreleased"))
+
+        # One release policy, the kit's own config (CRF-003): the app's is a copy the sync keeps current.
+        $config = @($map | Where-Object Target -EQ 'release-please-config.json')
+        $config | Should -HaveCount 1
+        $config[0].Source | Should -Be 'release-please-config.json'
+        $config[0].Owner | Should -Be 'Kit'
+        @($map | Where-Object Target -EQ '.github/workflows/release.yml').Owner | Should -Be 'Kit'
+    }
+
+    # release-please writes the version it released to its manifest, so the file is the app's from the start: the
+    # kit's own manifest holds the kit's version, never an app's.
+    It 'starts the app''s release-please manifest at 0.0.0, so its first release is 0.1.0, and leaves it to the app' {
+        $path = Join-Path $app '.release-please-manifest.json'
+        Test-Path -LiteralPath $path | Should -BeTrue -Because 'release-please reads the current version from it'
+        $manifest = Get-Content -Raw $path | ConvertFrom-Json -AsHashtable
+
+        @($manifest.Keys) | Should -Be @('.')
+        $manifest['.'] | Should -Be '0.0.0'
+        @($map | Where-Object Target -EQ '.release-please-manifest.json').Owner | Should -Be 'App'
+    }
+
     It 'starts with a solution that has no projects' {
         Test-Path -LiteralPath (Join-Path $app 'Contoso.Orders.slnx') | Should -BeTrue -Because 'the solution should be exported'
         $solution = [xml](Get-Content -Raw (Join-Path $app 'Contoso.Orders.slnx'))

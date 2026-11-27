@@ -26,3 +26,7 @@ jobs:
       load-test-path: sample/tests/load
       load-test-url: http://localhost:5191
       load-test-user-jwt: true
+      # GAP-025: on SQL Server, from the image the sample's tests pin, with its migrations applied first.
+      load-test-sql-server-pin: sample/tests/SqlServer/Dockerfile
+      load-test-migrations-project: sample/src/Bookmarks.Infrastructure/Bookmarks.Infrastructure.csproj
+      load-test-connection-string: Bookmarks

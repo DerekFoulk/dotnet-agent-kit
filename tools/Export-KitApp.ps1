@@ -36,7 +36,9 @@ $script:KitCopies = @(
     '.globalconfig', 'CodeMetricsConfig.txt', 'BannedSymbols.txt', 'BannedSymbols.Pure.txt',
     'CLAUDE.md', '.mcp.json', '.vscode/mcp.json', '.vscode/settings.json',
     '.claude/agents/reviewer.md', '.claude/skills/', 'docs/standards/', '.githooks/',
-    '.github/pull_request_template.md', 'docs/adr/0000-template.md', 'docs/database-guide.md', 'docs/code-review.md'
+    '.github/pull_request_template.md', 'docs/adr/0000-template.md', 'docs/database-guide.md', 'docs/code-review.md',
+    # The kit's release policy, which every app releases by (ADR-0096).
+    'release-please-config.json'
 )
 
 # Kit skills an app doesn't get, though it gets the rest of .claude/skills/: new-app runs New-KitApp, which only the
@@ -77,10 +79,11 @@ $script:KitBuildRoot = @('Directory.Build.props', 'Directory.Packages.props', 'C
 
 # Templates the app owns from the start: the sync job never changes them. The app fills in its runbook (OPS-004) and
 # its architecture diagram (ARC-013), and
-# names its load test in performance.yml (ADR-0062); Dependabot still moves that file's kit pin.
+# names its load test in performance.yml (ADR-0062); Dependabot still moves that file's kit pin. release-please writes
+# each release's version to .release-please-manifest.json (ADR-0096).
 $script:AppOwnedTemplates = @('README.md', 'App.slnx', 'docs/corrections-log.md', 'docs/runbook.md', 'docs/architecture/modules.md',
     '.github/dependabot.yml',
-    '.github/workflows/performance.yml')
+    '.github/workflows/performance.yml', '.release-please-manifest.json')
 
 # Where the app's own Build-AgentRules writes the rule files it generates from the kit's standards. The kit
 # manages them, but they're rebuilt, never edited, so the sync job never merges them.
@@ -288,6 +291,14 @@ function Get-KitAppSettingsText {
     "$($json -replace "`r`n", "`n")`n"
 }
 
+# A labelled package group in Directory.Packages.props, with the comment line above it and one blank line after it, as
+# a regex. New-FreshApp adds the "Sample app" group back for its web-api probe with the same pattern (ADR-0095).
+function Get-KitPackageGroupPattern {
+    param([Parameter(Mandatory)] [string] $Label)
+
+    '(?ms)(^[ \t]*<!--[^\r\n]*-->\r?\n)?^[ \t]*<ItemGroup Label="{0}">.*?</ItemGroup>\r?\n(\r?\n)?' -f [regex]::Escape($Label)
+}
+
 # Drops the package groups that are only the kit's, each with the comment line above it, from Directory.Packages.props:
 # "Sample app" (the kit's sample's packages) and "Kit tools" (its own checking tools', which build with the kit's own
 # props: from the kit's download in CI, and from the copy in .kit on an app's machine (GAP-022), so the app's own
@@ -296,10 +307,9 @@ function Get-KitAppSettingsText {
 function Remove-KitSamplePackage {
     param([Parameter(Mandatory)] [string] $PropsText)
 
-    $group = '(?ms)(^[ \t]*<!--[^\r\n]*-->\r?\n)?^[ \t]*<ItemGroup Label="{0}">.*?</ItemGroup>\r?\n(\r?\n)?'
-    $sample = $group -f 'Sample app'
+    $sample = Get-KitPackageGroupPattern -Label 'Sample app'
     if (-not [regex]::IsMatch($PropsText, $sample)) { throw "The kit's Directory.Packages.props has no ItemGroup labelled 'Sample app'." }
-    $text = [regex]::Replace([regex]::Replace($PropsText, $sample, ''), ($group -f 'Kit tools'), '')
+    $text = [regex]::Replace([regex]::Replace($PropsText, $sample, ''), (Get-KitPackageGroupPattern -Label 'Kit tools'), '')
     [xml] $text | Out-Null # still well-formed
     $text
 }

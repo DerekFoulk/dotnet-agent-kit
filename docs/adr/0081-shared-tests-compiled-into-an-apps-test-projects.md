@@ -56,7 +56,7 @@ A kit tool, like Kit.CodeShape, reads the app's built assemblies after the build
 
 ### Option 4: Publish the shared tests as a NuGet test library
 
-- **Trade-offs:** The usual way to share test code. But it means publishing a package, which is the owner's call, and a release pipeline before the kit's v0.2.0 move to a .NET tool (ADR-0078, Option 2).
+- **Trade-offs:** The usual way to share test code. But it means publishing a package, which is the owner's call, and a release pipeline before the kit's move to a .NET tool (ADR-0078, Option 2).
 - **Reversibility:** Medium.
 - **Risk:** Medium.
 
@@ -180,6 +180,8 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 - Turn its `AppHost.cs` into a `Hosts` list of `HostUnderTest`s, as the sample's.
 - Name each host's `ContractAssemblies`.
 - Move its snapshot, if it kept one, to `Contract/<host name>/openapi-v1.json`, and drop its own `ProjectDirectory` metadata item, which `tests/Directory.Build.props` now adds.
+
+**Update (2026-11-25): the hosting part.** `tools/AppTests/Hosting` holds `ProjectFolder`, which `tests/Directory.Build.props` compiles into every `*.FunctionalTests` and `*.E2E.Tests` project, the ones that host the app. A `WebApplicationFactory` sets its content root with `ProjectFolder.Find(AppContext.BaseDirectory, <the app's assembly name>)`: the nearest `src/<assembly name>` folder above the tests. It replaces a path relative to the solution, which holds in one repo's layout only: the kit's fresh-app jobs (ADR-0095) found that the sample's and the web UI fixture's factories, which named `sample/src` and `fixtures/WebUi/src`, failed every hosted test in an app made from the kit. It assumes ADR-0032's layout, each project in `src/<its assembly name>`; an app that names a project's folder otherwise gets a `DirectoryNotFoundException` naming the project, and passes its own path instead.
 
 ## Pillars affected
 
