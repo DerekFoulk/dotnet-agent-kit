@@ -571,11 +571,7 @@ function Read-BashDollar {
         return
     }
     if ($next -eq '{') {
-        # Bash 5.3's ${ cmd; } and ${| cmd; } run commands in the current shell, as a substitution (its manual, Command
-        # Substitution). The guard doesn't read their commands, so the input can't be resolved and asks.
-        if ($start + 2 -lt $text.Length -and $text[$start + 2] -in ' ', "`t", "`n", '|') {
-            throw "Bash 5.3 runs the commands in `${ cmd; } or `${| cmd; }, which the guard doesn't read."
-        }
+        Assert-NoBashFunctionSubstitution -Text $text -At $start
         Add-BashExpansion -Builder $Builder -Text (Read-BashBracketed -Reader $Reader -Open '{' -Close '}') -Computed
         return
     }
@@ -609,6 +605,16 @@ function Test-BashFixedSubstitution {
     $false
 }
 
+# Throws when the '$' at At starts Bash 5.3's ${ cmd; } or ${| cmd; }, which runs commands in the current shell, as a
+# substitution does (its manual, Command Substitution). The guard doesn't read their commands, so the input asks.
+function Assert-NoBashFunctionSubstitution {
+    param([Parameter(Mandatory)] [string] $Text, [Parameter(Mandatory)] [int] $At)
+
+    if ($At + 2 -lt $Text.Length -and $Text[$At + 1] -eq '{' -and $Text[$At + 2] -in ' ', "`t", "`n", '|') {
+        throw "Bash 5.3 runs the commands in `${ cmd; } or `${| cmd; }, which the guard doesn't read."
+    }
+}
+
 # $((...)) or ${...}, kept as written: from the '$' to the bracket that closes the first one. Bash runs the $( ) and
 # backquote substitutions inside it as it expands it (${X:-$(cmd)}), so their commands are read as commands of their own.
 function Read-BashBracketed {
@@ -619,6 +625,7 @@ function Read-BashBracketed {
     $depth = 0
     for ($i = $start + 1; $i -lt $text.Length; $i++) {
         $substitution = $text[$i] -eq '$' -and $i + 1 -lt $text.Length -and $text[$i + 1] -eq '(' -and -not ($i + 2 -lt $text.Length -and $text[$i + 2] -eq '(')
+        if ($text[$i] -eq '$') { Assert-NoBashFunctionSubstitution -Text $text -At $i }
         if ($substitution) { $Reader.Index = $i; [void] (Read-BashSubstitution -Reader $Reader); $i = $Reader.Index - 1 }
         elseif ($text[$i] -eq '`') { $Reader.Index = $i + 1; [void] (Read-BashBackquote -Reader $Reader); $i = $Reader.Index - 1 }
         elseif ($text[$i] -eq $Open) { $depth++ }
