@@ -571,6 +571,11 @@ function Read-BashDollar {
         return
     }
     if ($next -eq '{') {
+        # Bash 5.3's ${ cmd; } and ${| cmd; } run commands in the current shell, as a substitution (its manual, Command
+        # Substitution). The guard doesn't read their commands, so the input can't be resolved and asks.
+        if ($start + 2 -lt $text.Length -and $text[$start + 2] -in ' ', "`t", "`n", '|') {
+            throw "Bash 5.3 runs the commands in `${ cmd; } or `${| cmd; }, which the guard doesn't read."
+        }
         Add-BashExpansion -Builder $Builder -Text (Read-BashBracketed -Reader $Reader -Open '{' -Close '}') -Computed
         return
     }
