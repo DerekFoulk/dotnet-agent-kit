@@ -14,6 +14,10 @@ internal static partial class AppHost
     /// <summary>The reason the API's own checks give when they skip.</summary>
     public const string NoHttpApi = "The host serves no HTTP API (HostUnderTest.ServesHttpApi), so the API's checks (API-002, API-003, SEC-008, SEC-013) don't apply.";
 
+    /// <summary>The reason the checks that need a signed-in user give when they skip.</summary>
+    public const string NoSignIn =
+        "The host signs nobody in (HostUnderTest.SignsUsersIn), so the checks of a signed-in user's token (SEC-008) don't apply.";
+
     /// <summary>The reason the checks of SEC-017's fallback policy give when they skip.</summary>
     public const string MostEndpointsArePublic =
         "Most of the host's endpoints are public (HostUnderTest.MostEndpointsRequireSignIn), so SEC-017's fallback policy doesn't apply.";
@@ -45,6 +49,12 @@ internal abstract class HostUnderTest
     /// no API of its own.
     /// </summary>
     public abstract bool ServesHttpApi { get; }
+
+    /// <summary>
+    /// Gets whether the host signs users in at all. The checks that need a signed-in user, SEC-008's token checks, skip
+    /// when it doesn't, as in a public website or a public read-only API.
+    /// </summary>
+    public abstract bool SignsUsersIn { get; }
 
     /// <summary>
     /// Gets whether most or all of the host's endpoints require a signed-in user, which is when SEC-017 asks for a
@@ -81,6 +91,9 @@ internal interface IAppUnderTest : IDisposable
     /// <summary>Gets the running host's services.</summary>
     IServiceProvider Services { get; }
 
-    /// <summary>A client of the in-memory host, signed in as a user or anonymous. The caller disposes it.</summary>
+    /// <summary>
+    /// A client of the in-memory host, signed in as a user or anonymous. A host that signs nobody in
+    /// (<see cref="HostUnderTest.SignsUsersIn"/>) gives an anonymous client either way. The caller disposes it.
+    /// </summary>
     HttpClient CreateClient(bool signedIn);
 }

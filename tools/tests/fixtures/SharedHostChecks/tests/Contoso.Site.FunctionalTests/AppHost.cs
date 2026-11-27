@@ -21,6 +21,9 @@ internal static partial class AppHost
 
         public override bool ServesHttpApi => true;
 
+        // Nobody signs in to the site.
+        public override bool SignsUsersIn => false;
+
         public override IReadOnlyCollection<Assembly> ContractAssemblies => [];
 
         // The site's endpoints are public. The Pester test sets KIT_FIXTURE_SIGN_IN to run the same build as an app

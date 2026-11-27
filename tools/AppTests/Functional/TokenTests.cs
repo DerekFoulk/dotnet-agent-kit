@@ -13,7 +13,7 @@ namespace Kit.AppTests.Functional;
 /// changed after it was signed, or one signed with a key the host doesn't trust is a 401 Problem that names the Bearer
 /// scheme. Each is made from the host's own signed-in token, so none needs the app's key, issuer or audience; a token
 /// that's expired, or from another issuer or for another API, needs the app's key to sign, so the app's own tests check
-/// those, as the sample's do.
+/// those, as the sample's do. A host that signs nobody in, such as a public website, has no token to check, so they skip.
 /// </summary>
 public sealed class TokenTests
 {
@@ -29,6 +29,7 @@ public sealed class TokenTests
     {
         HostUnderTest described = AppHost.Named(host);
         Assert.SkipUnless(described.ServesHttpApi, AppHost.NoHttpApi);
+        Assert.SkipUnless(described.SignsUsersIn, AppHost.NoSignIn);
         using IAppUnderTest app = described.Start(Environments.Production);
         using HttpClient client = app.CreateClient(signedIn: true);
         BearerToken(client);
@@ -47,6 +48,7 @@ public sealed class TokenTests
     {
         HostUnderTest described = AppHost.Named(host);
         Assert.SkipUnless(described.ServesHttpApi, AppHost.NoHttpApi);
+        Assert.SkipUnless(described.SignsUsersIn, AppHost.NoSignIn);
         using IAppUnderTest app = described.Start(Environments.Production);
         string token;
         using (HttpClient signedIn = app.CreateClient(signedIn: true))
@@ -67,13 +69,13 @@ public sealed class TokenTests
         (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json", "a 401 is Problem Details too (API-002)");
     }
 
-    // An HTTP API takes JWT bearer tokens (SEC-008), so its signed-in client sends one: header, payload and signature.
+    // An HTTP API that signs users in takes JWT bearer tokens (SEC-008), so its signed-in client sends one: header, payload and signature.
     private static string BearerToken(HttpClient signedIn)
     {
         AuthenticationHeaderValue? authorization = signedIn.DefaultRequestHeaders.Authorization;
         authorization?.Scheme.Should().Be("Bearer");
         string? token = authorization?.Parameter;
-        token.Should().NotBeNull("a host that serves an HTTP API takes JWT bearer tokens (SEC-008), so CreateClient(signedIn: true) sends one in its Authorization header");
+        token.Should().NotBeNull("a host that serves an HTTP API and signs users in takes JWT bearer tokens (SEC-008), so CreateClient(signedIn: true) sends one in its Authorization header");
         token!.Split('.').Should().HaveCount(3, "a signed JWT is a header, a payload and a signature");
         return token;
     }

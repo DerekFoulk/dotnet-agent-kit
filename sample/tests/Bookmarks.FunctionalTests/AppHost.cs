@@ -22,6 +22,9 @@ internal static partial class AppHost
 
         public override bool ServesHttpApi => true;
 
+        // Its users sign in: the API takes their JWT bearer tokens (SEC-008).
+        public override bool SignsUsersIn => true;
+
         // Every bookmarks endpoint needs a signed-in user; only the probes and the Development document are public.
         public override bool MostEndpointsRequireSignIn => true;
 
