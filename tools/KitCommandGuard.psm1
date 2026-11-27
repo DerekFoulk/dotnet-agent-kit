@@ -148,7 +148,8 @@ function Get-PowerShellCommand {
     # would, and a method call ([IO.File]::ReadAllText(...)) can read a file or run a program as a command can,
     # wherever either sits: in an argument, in a pipeline's input, in an assignment a later argument uses, or alone, as
     # the output. Every command the input holds asks for it, and so does an input with no command.
-    $readsItem = $ast.Find({ param($node) (Test-PowerShellProviderRead -Node $node) -or $node -is [Management.Automation.Language.InvokeMemberExpressionAst] }, $true)
+    # So does a switch -File, which reads its file itself, and ForEach-Object given a method's name (% ReadToEnd).
+    $readsItem = $ast.Find({ param($node) (Test-PowerShellProviderRead -Node $node) -or $node -is [Management.Automation.Language.InvokeMemberExpressionAst] -or (Test-PowerShellIndirectCall -Node $node) }, $true)
     $commandAsts = @($ast.FindAll($isCommand, $true))
     if ($readsItem -and -not $commandAsts.Count) {
         return [pscustomobject]@{ Words = @($readsItem.Extent.Text); PlainWords = @($readsItem.Extent.Text); Built = @(, $null); Native = $false; Runs = $readsItem.Extent.Text }
@@ -245,16 +246,6 @@ function Get-PowerShellFilledVariable {
 
     $filled = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $isCommand = { param($node) $node -is [Management.Automation.Language.CommandAst] }
-    $fills = { param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] -or $node -is [Management.Automation.Language.SwitchStatementAst] }
-    foreach ($node in $Ast.FindAll($fills, $true)) {
-        $source = if ($node -is [Management.Automation.Language.AssignmentStatementAst]) { $node.Right } else { $node.Condition }
-        if (-not $source.Find($isCommand, $true)) { continue }
-        if ($node -is [Management.Automation.Language.SwitchStatementAst]) { [void] $filled.Add('_'); [void] $filled.Add('PSItem'); continue }
-        $target = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable } else { $node.Left }
-        foreach ($variable in $target.FindAll({ param($v) $v -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
-            [void] $filled.Add((Get-PowerShellVariableName -Variable $variable))
-        }
-    }
     foreach ($commandAst in $Ast.FindAll($isCommand, $true)) {
         $elements = $commandAst.CommandElements
         $piped = $commandAst.Parent -is [Management.Automation.Language.PipelineAst] -and $commandAst.Parent.PipelineElements.IndexOf($commandAst) -gt 0
@@ -269,6 +260,24 @@ function Get-PowerShellFilledVariable {
             if ($value -is [Management.Automation.Language.StringConstantExpressionAst]) { [void] $filled.Add($value.Value.TrimStart('+')) }
         }
     }
+    # Then each assignment, foreach and switch whose source holds a command or a variable already filled, until none
+    # adds more, so a copy of a filled variable ($c = $b) is filled too. A foreach also fills $foreach, and a switch $_,
+    # $PSItem, $Matches and $switch, from what it walks (about_Automatic_Variables).
+    $fills = { param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] -or $node -is [Management.Automation.Language.SwitchStatementAst] }
+    $fromFilled = { param($n) (& $isCommand $n) -or ($n -is [Management.Automation.Language.VariableExpressionAst] -and $filled.Contains((Get-PowerShellVariableName -Variable $n))) }
+    do {
+        $count = $filled.Count
+        foreach ($node in $Ast.FindAll($fills, $true)) {
+            $source = if ($node -is [Management.Automation.Language.AssignmentStatementAst]) { $node.Right } else { $node.Condition }
+            if (-not $source.Find($fromFilled, $true)) { continue }
+            if ($node -is [Management.Automation.Language.SwitchStatementAst]) { foreach ($name in '_', 'PSItem', 'Matches', 'switch') { [void] $filled.Add($name) }; continue }
+            if ($node -is [Management.Automation.Language.ForEachStatementAst]) { [void] $filled.Add('foreach') }
+            $target = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable } else { $node.Left }
+            foreach ($variable in $target.FindAll({ param($v) $v -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
+                [void] $filled.Add((Get-PowerShellVariableName -Variable $variable))
+            }
+        }
+    } while ($filled.Count -ne $count)
     , $filled
 }
 
@@ -280,6 +289,23 @@ function Test-PowerShellProviderRead {
 
     $Node -is [Management.Automation.Language.VariableExpressionAst] -and $Node.VariablePath.IsDriveQualified -and
     $Node.VariablePath.DriveName -ne 'env'
+}
+
+# Whether a node reads a file or calls a method with no method call or provider path in its syntax: a switch -File,
+# which reads the file it names (about_Switch), or ForEach-Object (% or foreach in a pipeline) given a member's name,
+# by position or -MemberName, which calls that method on each input (ForEach-Object's -MemberName).
+function Test-PowerShellIndirectCall {
+    param([Parameter(Mandatory)] [Management.Automation.Language.Ast] $Node)
+
+    if ($Node -is [Management.Automation.Language.SwitchStatementAst]) {
+        return [bool] ($Node.Flags -band [Management.Automation.Language.SwitchFlags]::File)
+    }
+    if ($Node -isnot [Management.Automation.Language.CommandAst] -or $Node.GetCommandName() -notmatch '^(?i:ForEach-Object|%|foreach)$') { return $false }
+    $arguments = @($Node.CommandElements | Select-Object -Skip 1)
+    [bool] @($arguments | Where-Object {
+            ($_ -is [Management.Automation.Language.CommandParameterAst] -and $_.ParameterName.Length -ge 1 -and 'MemberName'.StartsWith($_.ParameterName, [StringComparison]::OrdinalIgnoreCase)) -or
+            $_ -is [Management.Automation.Language.StringConstantExpressionAst] -or $_ -is [Management.Automation.Language.ExpandableStringExpressionAst]
+        }).Count
 }
 
 # A variable's name without its scope ($script:f is f); a drive-qualified one keeps its drive ($env:F).
