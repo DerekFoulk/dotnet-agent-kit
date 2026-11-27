@@ -533,7 +533,7 @@ rules:
     paths: ["**/*.cs", "BannedSymbols.txt"]
   - id: SEC-025
     statement: "To use padded CBC block ciphers safely, you must combine them with an HMAC or other data integrity check that you validate with a constant time comparison before decrypting. User input should be treated with the same precautions as malicious code calling your code with strange parameters."
-    why: "Unauthenticated CBC leaks plaintext through padding oracles, and user input is a gateway for bad data into other code (Secure Coding Guidelines pass, 2026-11-15). The rule no longer says which algorithms to prefer: dotnet/docs PR 53164 (https://github.com/dotnet/docs/pull/53164, merged 2026-11-24) turned the cryptography-model page's recommended algorithms into a partial list, because the .NET cryptography owner asked the docs to stop naming recommended algorithms, which go stale. The owner ruled on 2026-11-27 that the kit adds no algorithm choice of its own (\"Reword, no picks\")."
+    why: "Unauthenticated CBC leaks plaintext through padding oracles, and user input is a gateway for bad data into other code (Secure Coding Guidelines pass, 2026-11-15). The rule no longer says which algorithms to prefer: dotnet/docs PR 53164 (https://github.com/dotnet/docs/pull/53164, merged 2026-11-24) turned the cryptography-model page's recommended algorithms into a partial list, after bartonjs, reviewing that page, asked the docs to stop recommending algorithms, since each recommendation has to be chased every few years. The owner ruled on 2026-11-27 that the kit adds no algorithm choice of its own to this rule (\"Reword, no picks\"); SEC-015, the owner's own preference, is separate."
     layer: outside
     basis: authority
     status: accepted
