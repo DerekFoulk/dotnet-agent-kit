@@ -103,7 +103,7 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 - **The app's part of `AppHost`:**
   - `Start(environment, settings, services)` starts the app with its own test database and sign-in, with ValidateScopes and ValidateOnBuild on, and returns it as an `IAppUnderTest`: its `Services`, and `CreateClient(signedIn)`.
   - `AnonymousRoutes` lists the routes that may be called anonymously.
-  - `SignedInRoute` names a route a signed-in user may GET. The hosting checks send their requests there, since a route with no endpoint would pass a CORS check whatever the app's endpoints allow.
+  - `SignedInRoute` (`Route` since 2026-11-27) names a route a signed-in user may GET. The hosting checks send their requests there, since a route with no endpoint would pass a CORS check whatever the app's endpoints allow.
   - `ServesHttpApi` says whether the app serves an HTTP API. `ErrorTests` and `OpenApiTests` skip when it doesn't, as in a Blazor web app with no API of its own, since API-002 and API-003 cover HTTP APIs.
   - The sample's `AppHost.cs` starts it through its `ApiHost`.
 - **The checks:**
@@ -152,7 +152,7 @@ The sync PR's CI build fails until then, so the change shows on that PR.
     - **Why a list, not Microsoft's signing keys:** review 1 found that the keys pass Identity's and EF Core's types, which can carry a password hash or an entity.
     - **Why types, not schema names:** ASP.NET Core composes the names of generic schemas (`OkOfArrayOfTodo`), and its customization page says those details may change. A name check would fail an app with a generic page type in its Contracts.
     - **Why ApiExplorer:** it's in the shared framework, so the check compiles in every app without the OpenAPI package. It also covers described endpoints mapped in `Program.cs`, which the architecture tests' EndpointTests don't see.
-- **SEC-008's token checks:** `TokenTests` sends four callers to the host's signed-in route and expects a 401 Problem that names the Bearer scheme:
+- **SEC-008's token checks:** `TokenTests` sends four callers to the host's signed-in route (its `Route`, and only in a host that signs users in, since 2026-11-27) and expects a 401 Problem that names the Bearer scheme:
   - no token;
   - an unsigned token (`alg: none`);
   - the signed-in client's token with a claim added after it was signed;
@@ -190,6 +190,17 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 - `HealthTests` and `OpenApiTests` check the anonymous probes and Development document for OPS-002 and API-003, not for SEC-017.
 - **An app that already has a FunctionalTests project** adds the member to each host at its next sync. Its build fails until it does (an abstract member with no override), so the change shows on the sync PR. It answers `true` when most or all of the host's endpoints require a signed-in user, as the sample's API does, and `false` otherwise.
 - **Proof:** `tools/tests/SharedHostChecks.Tests.ps1` runs these checks against a public fixture site. Its signed-in endpoints are a group mapped without a leading slash, with an any-method endpoint and an anonymous one inside it, and an endpoint protected by requirement metadata alone. There, the fallback checks skip; the document check passes when the signed-in operations require the Bearer scheme, and when the document describes only public operations with no scheme, and fails, naming each, when they don't; declared as signed-in, the fallback check fails, and the document check holds every operation but the anonymous routes, the group's slashless one included. MVC's global `AuthorizeFilter` isn't endpoint metadata, so the check doesn't see it; code review does.
+
+**Update (2026-11-27): a host that signs nobody in.** `TokenTests` (SEC-008) skipped only for a host that serves no HTTP API, and every host had to name a `SignedInRoute`. A host that signs nobody in, such as a public website or a public read-only API, had no way to say so, and failed the token checks, which expect a missing or bad token to get a 401. The owner, 2026-11-27: fix the gap, and keep SEC-008's and SEC-017's shared checks failing while those rules are proposed (ADR-0089).
+
+- **`SignsUsersIn`**, a new member of `HostUnderTest`, says whether the host signs users in at all. It's stated, not inferred from the host's endpoints or settings, as `ServesHttpApi` and `MostEndpointsRequireSignIn` are.
+  - When it's false, both `TokenTests` checks skip, with a reason (`AppHost.NoSignIn`), and `CreateClient` gives an anonymous client whichever it's asked for.
+  - When it's true, they run as before: a host that lets an unsigned, changed or untrusted token through, or answers a missing one with anything but a 401 Problem, fails.
+- **`Route`** replaces `SignedInRoute`: a route of one of the host's own endpoints that its client may GET. The hosting checks (SEC-011) send their requests there, whether or not the host signs anyone in. In a host that signs users in, it must need a signed-in user, since the token checks send their tokens there and expect a 401 without a valid one.
+- **An app that already has a FunctionalTests project** does two things to each host at its next sync. Its build fails until it does (an abstract member with no override, and an override of a member that's gone), so the change shows on the sync PR.
+  - Rename `SignedInRoute` to `Route`.
+  - Add `SignsUsersIn`: `true` when users sign in to the host, as the sample's API does, and `false` otherwise.
+- **Proof:** `tools/tests/SharedHostChecks.Tests.ps1` runs `TokenTests` against the fixture site. Declared as signing nobody in, all five skip. Declared as signing users in, with a sign-in that doesn't check signatures, the checks fail for the unsigned token, the changed one and the one signed with a new key, while the control and the missing token pass.
 
 ## Pillars affected
 
