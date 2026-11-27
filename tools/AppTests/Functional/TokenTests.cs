@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Hosting;
 
 namespace Kit.AppTests.Functional;
@@ -13,7 +14,8 @@ namespace Kit.AppTests.Functional;
 /// changed after it was signed, or one signed with a key the host doesn't trust is a 401 Problem that names the Bearer
 /// scheme. Each is made from the host's own signed-in token, so none needs the app's key, issuer or audience; a token
 /// that's expired, or from another issuer or for another API, needs the app's key to sign, so the app's own tests check
-/// those, as the sample's do. A host that signs nobody in, such as a public website, has no token to check, so they skip.
+/// those, as the sample's do. A host that signs nobody in, such as a public website, has no token to check, so they skip,
+/// and none of its endpoints may require authorization.
 /// </summary>
 public sealed class TokenTests
 {
@@ -21,6 +23,7 @@ public sealed class TokenTests
     private const string Unsigned = "an unsigned token";
     private const string ClaimsChanged = "a token whose claims changed after it was signed";
     private const string OtherKey = "a token signed with a key the host doesn't trust";
+    private const string SignsUsersIn = "The host signs users in (HostUnderTest.SignsUsersIn), so the token checks run.";
 
     // The control: the token every other case is made from gets through, so each 401 comes from the change.
     [Theory]
@@ -67,6 +70,22 @@ public sealed class TokenTests
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized, $"{caller} is no signed-in user");
         response.Headers.WwwAuthenticate.Should().Contain(header => header.Scheme == "Bearer", "a 401 tells the client which scheme to use");
         (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json", "a 401 is Problem Details too (API-002)");
+    }
+
+    // Saying the host signs nobody in skips the checks above, so the statement is checked against the host: none of its
+    // endpoints may require authorization, which only a signed-in user could pass.
+    [Theory]
+    [EachHost]
+    public void AHostThatSignsNobodyInHasNoEndpointThatRequiresAuthorization(string host)
+    {
+        HostUnderTest described = AppHost.Named(host);
+        Assert.SkipWhen(described.SignsUsersIn, SignsUsersIn);
+        using IAppUnderTest app = described.Start(Environments.Development);
+
+        IEnumerable<string> authorized = EndpointAuthorization.Protected(app.Services)
+            .Select(endpoint => $"{string.Join(',', endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? ["*"])} {endpoint.RoutePattern.RawText}");
+
+        authorized.Should().BeEmpty("only a signed-in user passes an endpoint's authorization, so a host with one signs users in (HostUnderTest.SignsUsersIn)");
     }
 
     // An HTTP API that signs users in takes JWT bearer tokens (SEC-008), so its signed-in client sends one: header,
