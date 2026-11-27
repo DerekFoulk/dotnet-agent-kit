@@ -17,7 +17,7 @@ internal static partial class AppHost
         // The admin group's status endpoint allows anonymous callers again. The group is mapped without a leading slash.
         public override IReadOnlyCollection<string> AnonymousRoutes => ["admin/status"];
 
-        public override string SignedInRoute => "/";
+        public override string Route => "/";
 
         public override bool ServesHttpApi => true;
 

@@ -18,7 +18,7 @@ internal static partial class AppHost
         // OpenAPI document before it has one (OPS-002, API-003).
         public override IReadOnlyCollection<string> AnonymousRoutes => ["/health", "/alive", "/openapi/{documentName}.json"];
 
-        public override string SignedInRoute => "/bookmarks";
+        public override string Route => "/bookmarks";
 
         public override bool ServesHttpApi => true;
 

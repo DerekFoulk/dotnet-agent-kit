@@ -34,7 +34,7 @@ public sealed class TokenTests
         using HttpClient client = app.CreateClient(signedIn: true);
         BearerToken(client);
 
-        using HttpResponseMessage response = await client.GetAsync(new Uri(described.SignedInRoute, UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await client.GetAsync(new Uri(described.Route, UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized, "the signed-in client's token is valid");
     }
@@ -62,14 +62,15 @@ public sealed class TokenTests
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sent);
         }
 
-        using HttpResponseMessage response = await client.GetAsync(new Uri(described.SignedInRoute, UriKind.Relative), TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await client.GetAsync(new Uri(described.Route, UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized, $"{caller} is no signed-in user");
         response.Headers.WwwAuthenticate.Should().Contain(header => header.Scheme == "Bearer", "a 401 tells the client which scheme to use");
         (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json", "a 401 is Problem Details too (API-002)");
     }
 
-    // An HTTP API that signs users in takes JWT bearer tokens (SEC-008), so its signed-in client sends one: header, payload and signature.
+    // An HTTP API that signs users in takes JWT bearer tokens (SEC-008), so its signed-in client sends one: header,
+    // payload and signature.
     private static string BearerToken(HttpClient signedIn)
     {
         AuthenticationHeaderValue? authorization = signedIn.DefaultRequestHeaders.Authorization;

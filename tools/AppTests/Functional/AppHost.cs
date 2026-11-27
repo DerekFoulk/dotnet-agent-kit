@@ -39,10 +39,12 @@ internal abstract class HostUnderTest
     public abstract IReadOnlyCollection<string> AnonymousRoutes { get; }
 
     /// <summary>
-    /// Gets a route a signed-in user may GET, such as one of the host's own endpoints, which the hosting checks send
-    /// their requests to (SEC-011): a route with no endpoint would pass a CORS check whatever the host's endpoints allow.
+    /// Gets a route of one of the host's own endpoints that its client may GET, which the hosting checks send their
+    /// requests to (SEC-011): a route with no endpoint would pass a CORS check whatever the host's endpoints allow. In a
+    /// host that signs users in (<see cref="SignsUsersIn"/>), it's one that needs a signed-in user, which the token
+    /// checks send their tokens to (SEC-008).
     /// </summary>
-    public abstract string SignedInRoute { get; }
+    public abstract string Route { get; }
 
     /// <summary>
     /// Gets whether the host serves an HTTP API. The API's own checks skip when it doesn't, as in a Blazor web app with
