@@ -79,6 +79,12 @@ The owner set the goal on 2026-11-25 (quoted in Context) and asked for an existi
 - An app's release PR is its owner's to merge, as the kit's is: AGENTS.md's rule that agents never merge a release PR reaches apps in the kit block.
 - No doc promises a version number for future work any more: each release takes the number its commits earn. ADR-0050, ADR-0078 and ADR-0081 said the kit's move to a .NET tool would be "v0.2.0"; they now say a later release.
 - `tools/tests/ReleaseConfig.Tests.ps1` checks the shared workflow, both callers and the config, including that `bump-patch-for-minor-pre-major` stays unset. `tools/tests/Export-KitApp.Tests.ps1` and `tools/tests/New-KitApp.Tests.ps1` check the export and the new step.
+- **Update (2026-11-27), a push of only `chore:` or `docs:` commits:** release-please opens (or updates) a release PR for the next patch version. Checked in the source of release-please 17.6.0, the version the pinned release-please-action v5.0.0 bundles (its `package-lock.json`):
+  - `buildReleasePullRequest` (`src/strategies/base.ts`) skips a release only when it finds no commits, or when the release notes are a single line (`changelogEmpty`: "No user facing commits found").
+  - With `changelog-type: github`, the notes are GitHub's generated release notes under a `## <version> (<date>)` header (`src/changelog-notes/github.ts`), so they're never a single line and that skip never happens.
+  - The default versioning strategy (`src/versioning-strategies/default.ts`, `determineReleaseType`) bumps the patch for every commit that's neither breaking nor a `feat`, `chore` and `docs` included.
+
+  This is still strict SemVer 2.0.0, so the config stays as it is. SemVer's item 3 says "Any modifications MUST be released as a new version", and a change that adds no feature and breaks nothing earns neither a minor nor a major bump, so the patch is the only number SemVer allows for it. Item 6 requires a patch bump for bug fixes; it doesn't reserve the patch for them. And a release PR is only a proposal: nothing is released until the owner merges it. With only `chore` or `docs` work since the last release, he can leave it open; when a `feat` or a breaking change lands, the same PR moves to the minor. `tools/tests/ReleaseConfig.Tests.ps1` already pins `changelog-type: github` and keeps `bump-patch-for-minor-pre-major` unset.
 - Not verified: that a `Release-As` footer on a PR's own commit is read through a merge commit, as release-please reads the PR's other commits (ADR-0022); and an app's first release end to end (release PR, approved CI runs, tag, MinVer version). The first app release proves it, as the kit's release PR 10 will for the shared workflow in the kit.
 - Protecting the `v*` tags release-please makes is a separate change, a tag ruleset, which waits for the owner's yes.
 
@@ -103,4 +109,6 @@ Operational Excellence: every app releases the same way as the kit, with version
 - owner, 2026-11-27 (keep the setting on, and call it out for those who'd turn it off)
 - https://docs.github.com/en/actions/concepts/security/github_token, retrieved 2026-11-27 (`pull_request` runs started by `GITHUB_TOKEN` wait in an "approval-required" state)
 - https://github.com/googleapis/release-please-action, retrieved 2026-11-27 (the `token` input; a personal access token "if you want GitHub Actions CI checks to run on Release Please PRs")
+- https://github.com/googleapis/release-please-action/blob/45996ed1f6d02564a971a2fa1b5860e934307cf7/package-lock.json, retrieved 2026-11-27 (the pinned v5.0.0 bundles release-please 17.6.0)
+- https://github.com/googleapis/release-please/tree/v17.6.0/src, retrieved 2026-11-27 (`strategies/base.ts`, `changelog-notes/github.ts`, `versioning-strategies/default.ts`: when a release PR is skipped, and the patch bump)
 - https://github.com/actions/create-github-app-token, retrieved 2026-11-27 (an installation token from `client-id` and `private-key`)
