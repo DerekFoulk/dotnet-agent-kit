@@ -485,6 +485,25 @@ Describe 'Get-CommandGuardDecision for Bash' {
         Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*can''t resolve this command*${ cmd; }*'
     }
 
+    # ${x@P} expands x's value as a prompt string, which runs the substitutions in it, and arithmetic evaluates a
+    # variable's value as an expression, whose array index runs them too (Bash's manual, Shell Parameter Expansion and
+    # Shell Arithmetic). So @P asks, and so does command text stored in a variable for either to run (review round 12).
+    It 'asks for <Command>, which can run command text a variable holds' -ForEach @(
+        @{ Command = 'gh pr create --title x --body "${X@P}"' }
+        @{ Command = "x='`$(cat .env)'; gh pr create --title x --body `"`${x}`"" }
+        @{ Command = "i='a[`$(cat .env)]'; gh pr create --title x --body `"`$((i))`"" }
+        @{ Command = "export X='``cat .env``'; gh pr create --title x --body `"`${X@Q}`"" }
+    ) {
+        Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument when it runs, from code inside it*'
+    }
+
+    It 'leaves <Command> to the rules: the variable holds no command text' -ForEach @(
+        @{ Command = "M='docs: fix the guard'; git commit -m `"`$M`"" }
+        @{ Command = 'x=$(git rev-parse HEAD); echo "$x ${x@Q}"' }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
+    }
+
     # Claude Code's permissions page: deny rules apply to a command nested in a command substitution, and Read deny
     # rules to file commands it recognizes, such as cat. So .claude/settings.json's Read(./.env) covers this cat.
     It 'leaves <Command> to Claude Code''s rules: its substitution''s cat is a command they check' -ForEach @(
