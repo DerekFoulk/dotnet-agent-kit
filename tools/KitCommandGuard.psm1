@@ -235,7 +235,8 @@ function Test-PowerShellLiteral {
     $Element -is [Management.Automation.Language.ConstantExpressionAst]
 }
 
-# The variables a PowerShell input fills from a command's output: an assignment or a foreach over one; a common
+# The variables a PowerShell input fills from a command's output: an assignment or a foreach over one, or over a method
+# call, which can read a file or run a program as a command can ([IO.File]::ReadAllText(...)); a common
 # parameter such as -OutVariable that names the variable a command fills; and a pipeline's Tee-Object -Variable, or
 # Set-Variable or New-Variable after a "|", where each name it's given counts (its value comes from the pipe).
 function Get-PowerShellFilledVariable {
@@ -245,7 +246,7 @@ function Get-PowerShellFilledVariable {
     $isCommand = { param($node) $node -is [Management.Automation.Language.CommandAst] }
     foreach ($node in $Ast.FindAll({ param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] }, $true)) {
         $target, $source = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable, $node.Condition } else { $node.Left, $node.Right }
-        if (-not $source.Find($isCommand, $true)) { continue }
+        if (-not $source.Find({ param($n) (& $isCommand $n) -or $n -is [Management.Automation.Language.InvokeMemberExpressionAst] }, $true)) { continue }
         foreach ($variable in $target.FindAll({ param($v) $v -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
             [void] $filled.Add((Get-PowerShellVariableName -Variable $variable))
         }
