@@ -86,13 +86,15 @@ Describe 'the kit''s shared authorization checks' {
     }
 
     # The admin group is mapped without a leading slash, its feed endpoint answers every method, and its status endpoint
-    # allows anonymous callers again, so each is matched to its operation as the document names it.
+    # allows anonymous callers again, so each is matched to its operation as the document names it. The staff endpoint
+    # is protected by its own requirement metadata alone.
     It 'fail the document check in a public site whose signed-in operations don''t require the Bearer scheme' {
         $result = Invoke-SiteCheck -Class OpenApiDocumentTests -MostEndpointsRequireSignIn $false -Document unprotected
 
         $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.OpenApiDocumentTests\.TheDocumentSays'
         $result.Output | Should -Match '"post /admin/notices"'
         $result.Output | Should -Match '"get /admin/feed"'
+        $result.Output | Should -Match '"get /staff"'
         $result.Output | Should -Not -Match '"get /"'
         $result.Output | Should -Not -Match '"get /admin/status"'
     }
