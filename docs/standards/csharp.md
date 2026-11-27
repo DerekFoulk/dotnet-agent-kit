@@ -662,7 +662,7 @@ rules:
     paths: ["**/*.cs"]
   - id: CS-032
     statement: "Prefer RSA over DSA."
-    why: "DSA is not as secure as RSA. The same page finds MD5 and SHA-1 insecure per NIST SP 800-131A; SEC-014's analyzers (CA5350, CA5351) gate them."
+    why: "DSA is not as secure as RSA. The same page finds MD5 and SHA-1 insecure per NIST SP 800-131A; SEC-014's analyzers (CA5350, CA5351) gate them. The page stopped recommending SHA-2 in dotnet/docs PR 53164 (https://github.com/dotnet/docs/pull/53164, merged 2026-11-24), where bartonjs, reviewing the cryptography-model page, asked the docs to stop recommending algorithms, since each recommendation has to be chased every few years; the owner ruled on 2026-11-27 that the kit adds no algorithm choice of its own to this rule (\"Reword, no picks\"), so the rule keeps only the page's own RSA recommendation."
     layer: outside
     basis: authority
     status: proposed
