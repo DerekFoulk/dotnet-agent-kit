@@ -661,19 +661,19 @@ rules:
         how: "code review checks every XML parse of data the app doesn't produce"
     paths: ["**/*.cs"]
   - id: CS-032
-    statement: "Prefer RSA over DSA, and prefer SHA-2 (SHA256, SHA384, SHA512) over MD5 and SHA-1."
+    statement: "Prefer RSA over DSA; MD5 and SHA-1, which .NET provides for standards conformance and backward compatibility with existing data formats and protocols, have been found to be insecure per NIST SP 800-131A."
     why: "DSA is not as secure as RSA, and MD5 and SHA-1 have been found to be insecure."
     layer: outside
     basis: authority
     status: proposed
-    sources: ["https://learn.microsoft.com/dotnet/standard/security/cryptographic-services, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/standard/security/cryptographic-services, retrieved 2026-11-27"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/standard/security/cryptographic-services"
-        retrieved: "2026-11-17"
+        retrieved: "2026-11-27"
         text: "DSA is not as secure as RSA, and we recommend RSA."
       - source: "https://learn.microsoft.com/dotnet/standard/security/cryptographic-services"
-        retrieved: "2026-11-17"
-        text: "But the MD5 and SHA-1 algorithms have been found to be insecure, and SHA-2 is now recommended instead. SHA-2 includes SHA256, SHA384, and SHA512."
+        retrieved: "2026-11-27"
+        text: ".NET also provides MD5 and SHA1 for standards conformance and backward compatibility with existing data formats and protocols. However, the MD5 and SHA-1 algorithms have been found to be insecure per NIST SP 800-131A."
     scope: core
     enforcement:
       - kind: advisory
