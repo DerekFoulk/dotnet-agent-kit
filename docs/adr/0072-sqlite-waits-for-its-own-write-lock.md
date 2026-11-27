@@ -81,6 +81,8 @@ Option 1. It removes the 150 ms pause for every connection and every kind of wri
 
 Option 1, decided in auto mode (ADR-0035) on 2026-11-15, while answering the red load-test runs on the branches of PR 70, PR 73 and the release PR, PR 10.
 
+**Update (2026-11-25):** the sample moved to SQL Server (GAP-025, ADR-0098), so its interceptor and `SqliteBusyTimeoutTests` are gone. The finding still holds for any app on SQLite, a MAUI or desktop app's device database, and `docs/database-guide.md` keeps the call for them.
+
 ## Consequences
 
 - New: `sample/src/Bookmarks.Infrastructure/SqliteBusyTimeoutInterceptor.cs`, registered in `AddBookmarksInfrastructure`.

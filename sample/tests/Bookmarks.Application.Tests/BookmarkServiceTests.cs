@@ -36,10 +36,9 @@ public sealed class BookmarkServiceTests
     [Fact]
     public async Task AddGivesTheBookmarkAVersion7IdThatStartsWithItsCreationTime()
     {
-        // Review 1 of PR 22: lists are ordered by Id (API-004), so a time-ordered Id (UUID version 7) makes that the
-        // creation order, and a new bookmark lands on the last page instead of shifting a random one. The time is the
-        // id's first 12 hex digits, so ordinal string order, how the sample's SQLite compares them, is creation order
-        // (SQL Server orders Guids differently: api-design.md).
+        // Review 1 of PR 22: a time-ordered Id (UUID version 7) sorts in creation order as text or bytes. The time is the
+        // id's first 12 hex digits. SQL Server orders Guids differently, so the repository pages by creation time, with
+        // the id as the tie-breaker (api-design.md, API-004).
         string createdAtInHex = s_now.ToUnixTimeMilliseconds().ToString("x12", CultureInfo.InvariantCulture);
 
         AddBookmarkResult result = await _service.AddAsync(Owner, new CreateBookmarkRequest(new Uri("https://example.com/a"), "A"), TestContext.Current.CancellationToken);

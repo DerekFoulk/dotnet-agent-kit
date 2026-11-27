@@ -211,6 +211,73 @@ Describe 'Performance tests (GAP-012)' {
         }
     }
 
+    # GAP-025, DAT-004, DAT-005: an app on SQL Server is load tested on SQL Server, with its schema applied the way a
+    # deployment would, before the app starts, by dotnet ef: a migration bundle publishes for a runtime identifier,
+    # which the repo's locked restore refuses (ADR-0098). Off unless the caller names a pin.
+    Context 'performance.reusable.yml: the load test''s SQL Server' {
+        BeforeAll {
+            $workflow = Read-Yaml '.github/workflows/performance.reusable.yml'
+            $inputs = if ($workflow.Yaml.ContainsKey('on')) { $workflow.Yaml['on']['workflow_call']['inputs'] } else { @{} }
+            $load = Get-JobStep $workflow.Yaml 'load'
+            $names = @($load | ForEach-Object { "$($_['name'])" })
+        }
+
+        It 'takes the pin, the migrations project and the connection string''s name, all off by default' {
+            foreach ($name in 'load-test-sql-server-pin', 'load-test-migrations-project', 'load-test-connection-string') {
+                $inputs.Keys | Should -Contain $name
+                $inputs[$name]['default'] | Should -Be ''
+            }
+        }
+
+        It 'starts SQL Server and applies the migrations only when given a pin, before the app starts' {
+            $start = Find-Step $load 'Start SQL Server (from the pin)'
+            $migrate = Find-Step $load 'Apply the migrations (dotnet ef)'
+
+            $start | Should -HaveCount 1
+            $migrate | Should -HaveCount 1
+            $start[0]['if'] | Should -Be "inputs.load-test-sql-server-pin != ''"
+            $migrate[0]['if'] | Should -Be "inputs.load-test-sql-server-pin != ''"
+            $names.IndexOf('Start SQL Server (from the pin)') | Should -BeLessThan $names.IndexOf('Apply the migrations (dotnet ef)')
+            $names.IndexOf('Apply the migrations (dotnet ef)') | Should -BeLessThan $names.IndexOf('Start the app (Release, Production)')
+        }
+
+        # SEC-001, SEC-002: the password is made on the runner for this run, masked before anything could print it, and
+        # handed to Docker by name, so it's never on a command line.
+        It 'runs the pin''s image with a password made and masked for this run' {
+            $start = Find-Step $load 'Start SQL Server (from the pin)'
+            $start | Should -HaveCount 1
+            $run = $start[0]['run']
+
+            $start[0]['env']['PIN'] | Should -Be '${{ inputs.load-test-sql-server-pin }}'
+            $run | Should -Match "'\^FROM\\s\+'"
+            $run | Should -Match 'RandomNumberGenerator'
+            $run | Should -Match '-e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD '
+            $run.IndexOf('::add-mask::$password') | Should -BeGreaterThan -1
+            $run.IndexOf('::add-mask::$password') | Should -BeLessThan $run.IndexOf('docker run')
+            $run.IndexOf('::add-mask::$password') | Should -BeLessThan $run.IndexOf('>> $env:GITHUB_ENV')
+            $run | Should -Match 'ConnectionStrings__\$\(\$env:CONNECTION_STRING_NAME\)='
+        }
+
+        # CRF-003: dotnet-ef at the version a tool manifest pins (the caller's, else the kit's), as the mutation job installs
+        # Stryker.
+        It 'applies the migrations with the caller''s pinned dotnet-ef, or the kit''s, to the app''s Release build' {
+            $migrate = Find-Step $load 'Apply the migrations (dotnet ef)'
+            $migrate | Should -HaveCount 1
+            $run = $migrate[0]['run']
+
+            $run | Should -Match '\$tools\.''dotnet-ef''\.version'
+            $run | Should -Match 'dotnet tool install dotnet-ef --version \$version --tool-path'
+            $run | Should -Match 'database update --project \$env:MIGRATIONS --startup-project \$env:PROJECT --configuration Release --no-build'
+            $run | Should -Not -Match 'migrations bundle'
+            # dotnet ef reads the connection string from the job's environment, as the app does, so the password is on
+            # no command line.
+            $run | Should -Not -Match '--connection'
+            # The caller's own dotnet-ef, matching its own EF Core, when its tool manifest has one; else the kit's.
+            $run | Should -Match 'Join-Path \$env:GITHUB_WORKSPACE ''\.config'' ''dotnet-tools\.json'''
+            $migrate[0]['env']['MIGRATIONS'] | Should -Be '${{ inputs.load-test-migrations-project }}'
+        }
+    }
+
     Context 'callers of performance.reusable.yml' {
         It 'runs in the kit nightly, on demand and on every pull request, load testing the sample API with a token' {
             $kit = Read-Yaml '.github/workflows/performance.yml'
@@ -225,6 +292,27 @@ Describe 'Performance tests (GAP-012)' {
             $job['with']['load-test-project'] | Should -Be 'sample/src/Bookmarks.Api/Bookmarks.Api.csproj'
             $job['with']['load-test-path'] | Should -Be 'sample/tests/load'
             $job['with']['load-test-user-jwt'] | Should -BeTrue
+        }
+
+        It 'load tests the sample on SQL Server from its tests'' pin, with its migrations applied' {
+            $kit = Read-Yaml '.github/workflows/performance.yml'
+            $kit.Yaml.Keys | Should -Contain 'jobs'
+            $with = $kit.Yaml['jobs']['performance']['with']
+
+            $with['load-test-sql-server-pin'] | Should -Be 'sample/tests/SqlServer/Dockerfile'
+            $with['load-test-migrations-project'] | Should -Be 'sample/src/Bookmarks.Infrastructure/Bookmarks.Infrastructure.csproj'
+            $with['load-test-connection-string'] | Should -Be 'Bookmarks'
+        }
+
+        # dotnet-ef runs the app's EF Core design-time code, so it moves with the Design package.
+        It 'pins dotnet-ef at the version of the sample''s EF Core Design package' {
+            $tools = Get-Content -Raw (Join-Path $root '.config' 'dotnet-tools.json') | ConvertFrom-Json -AsHashtable
+            [xml] $packages = Get-Content -Raw (Join-Path $root 'Directory.Packages.props')
+            $design = @($packages.Project.ItemGroup.PackageVersion | Where-Object { $_.Include -eq 'Microsoft.EntityFrameworkCore.Design' })
+
+            $design | Should -HaveCount 1
+            $tools['tools'].Keys | Should -Contain 'dotnet-ef'
+            $tools['tools']['dotnet-ef']['version'] | Should -Be $design[0].Version
         }
 
         # The sample's token audience must be one the API trusts in Production: the URL Locust loads.

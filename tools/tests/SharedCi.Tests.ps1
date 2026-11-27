@@ -645,12 +645,14 @@ Describe 'Shared CI for app repos' {
             foreach ($step in $sbomSteps) { $step['if'] | Should -Be "steps.projects.outputs.count != '0' && steps.projects.outputs.ui == '0'" }
         }
 
-        It 'uploads the SBOM it wrote as the "sbom" artifact, failing when it''s missing' {
+        # An artifact name is unique within a run, and the kit's CI runs this workflow once for the kit and once for each
+        # fresh app (ADR-0095), so a fresh app's SBOM is named after its bundle; an app's stays "sbom".
+        It 'uploads the SBOM it wrote as the "sbom" artifact (or "sbom-<bundle>" for a fresh app), failing when it''s missing' {
             $upload = @($steps | Where-Object { "$($_['uses'])" -like 'actions/upload-artifact@*' })
             $output = [regex]::Match($sbomRun, '--output "([^"]+)"').Groups[1].Value -replace '\$env:RUNNER_TEMP', '${{ runner.temp }}'
 
             $upload | Should -HaveCount 1
-            $upload[0]['with']['name'] | Should -Be 'sbom'
+            $upload[0]['with']['name'] | Should -Be "`${{ inputs.app-bundle == '' && 'sbom' || format('sbom-{0}', inputs.app-bundle) }}"
             $upload[0]['with']['if-no-files-found'] | Should -Be 'error'
             $output | Should -Not -BeNullOrEmpty
             $upload[0]['with']['path'] | Should -Be "$output/sbom.cdx.json"
@@ -869,11 +871,13 @@ Describe 'Shared CI for app repos' {
             $steps = @($secrets['steps'])
 
             $secrets['name'] | Should -Be 'Secret scan (gitleaks)'
-            $steps | Should -HaveCount 2
+            # Between them, the two steps that check an exported app's bundle instead, in the kit's CI only (ADR-0095).
+            $steps | Should -HaveCount 4
             $steps[0]['uses'] | Should -Match '^actions/checkout@[0-9a-f]{40}$'
             $steps[0]['with']['fetch-depth'] | Should -Be 0 -Because 'the scan needs all of HEAD''s history'
             $steps[0]['with']['persist-credentials'] | Should -BeFalse
-            $steps[1]['uses'] | Should -Be '$/.github/actions/secret-scan'
+            @($steps[1..2] | ForEach-Object { $_['if'] }) | Should -Be @("inputs.app-bundle != ''", "inputs.app-bundle != ''")
+            $steps[3]['uses'] | Should -Be '$/.github/actions/secret-scan'
         }
     }
 
@@ -995,6 +999,181 @@ Describe 'Shared CI for app repos' {
             $step.Count | Should -Be 1
             $step[0]['run'] | Should -Match 'Test-SafeMigrations\.ps1"? -Path \$env:GITHUB_WORKSPACE'
             $step[0].ContainsKey('if') | Should -BeFalse
+        }
+    }
+
+    # The fresh-app jobs call the shared workflows directly (ADR-0095), so the app's own callers are checked here: a
+    # required input a template left out would fail every app's CI, while the kit's stayed green.
+    It 'passes every required input of each shared workflow an app''s template workflow calls' {
+        $callers = @(Get-ChildItem -LiteralPath (Join-Path $root 'templates' 'app' '.github' 'workflows') -Filter *.yml)
+        $checked = 0
+        foreach ($caller in $callers) {
+            $yaml = ConvertFrom-Yaml ((Get-Content -Raw -LiteralPath $caller.FullName) -replace '\{\{[A-Za-z]+\}\}', 'X')
+            foreach ($job in $yaml['jobs'].GetEnumerator()) {
+                if ("$($job.Value['uses'])" -notmatch '^DerekFoulk/dotnet-agent-kit/\.github/workflows/([^@]+)@') { continue }
+                $sharedFile = $Matches[1]
+                $shared = (Read-Yaml ".github/workflows/$sharedFile").Yaml
+                $on = if ($shared.ContainsKey('on')) { $shared['on'] } else { $shared[$true] }
+                $inputs = if ($on['workflow_call'] -is [Collections.IDictionary] -and $on['workflow_call'].Contains('inputs')) { $on['workflow_call']['inputs'] } else { @{} }
+                $with = if ($job.Value.Contains('with')) { $job.Value['with'] } else { @{} }
+                foreach ($input in $inputs.GetEnumerator() | Where-Object { $_.Value['required'] }) {
+                    $with.Contains($input.Key) | Should -BeTrue -Because "$($caller.Name)'s $($job.Key) job must pass $sharedFile's required '$($input.Key)'"
+                }
+                $with.Contains('app-bundle') | Should -BeFalse -Because 'app-bundle is the kit CI''s alone'
+                $checked++
+            }
+        }
+        $checked | Should -BeGreaterThan 3
+    }
+
+    # ADR-0095: the step is run here as CI runs it, against real bundles, in a workspace that holds another checkout.
+    Context 'the exported-app action' {
+        BeforeAll {
+            $exported = Read-Yaml '.github/actions/exported-app/action.yml'
+            # @() outside the if: assigning an if's output unrolls a one-step list into the step itself.
+            $steps = @(if ($exported.Yaml.ContainsKey('runs')) { $exported.Yaml['runs']['steps'] })
+            # On Windows, Git's own bash: the one on PATH may be WSL's, with no Linux installed.
+            $bash = if ($IsWindows) { Join-Path (Split-Path (Split-Path (Get-Command git).Source)) 'bin' 'bash.exe' } else { 'bash' }
+
+            function Invoke-ExportedApp([string] $Bundle, [switch] $InWorkspace) {
+                $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+                git init -q $workspace
+                git -C $workspace commit -q --allow-empty -m 'chore: the kit'
+                Set-Content -LiteralPath (Join-Path $workspace 'kit-file.txt') -Value 'from the kit'
+                if ($InWorkspace) {
+                    New-Item -ItemType Directory -Path (Join-Path $workspace 'app-bundle') | Out-Null
+                    $Bundle = Copy-Item -LiteralPath $Bundle -Destination (Join-Path $workspace 'app-bundle') -PassThru | ForEach-Object FullName
+                }
+                $script = Join-Path $TestDrive "clone-$(New-Guid).sh"
+                Set-Content -LiteralPath $script -Value ($steps[0]['run'] -replace "`r`n", "`n") -NoNewline
+                try {
+                    $env:GITHUB_WORKSPACE = $workspace -replace '\\', '/'
+                    $env:BUNDLE = $Bundle -replace '\\', '/'
+                    $output = & $bash --noprofile --norc -e -o pipefail $script 2>&1
+                    [pscustomobject]@{ Exit = $LASTEXITCODE; Output = "$output"; Workspace = $workspace }
+                }
+                finally { Remove-Item Env:GITHUB_WORKSPACE, Env:BUNDLE -ErrorAction SilentlyContinue }
+            }
+
+            $app = Join-Path $TestDrive 'app'
+            git init -q -b main $app
+            foreach ($n in 1, 2) { Set-Content -LiteralPath (Join-Path $app 'file.txt') -Value $n; git -C $app add -A; git -C $app commit -q -m "chore: app commit $n" }
+            $bundle = Join-Path $TestDrive 'app.bundle'
+            git -C $app bundle create -q $bundle main
+            git -C $app switch -q -c other
+            $noMain = Join-Path $TestDrive 'no-main.bundle'
+            git -C $app bundle create -q $noMain other
+        }
+
+        It 'is one bash step that uses no other action, reading the bundle''s path from its input' {
+            $exported.Yaml['runs']['using'] | Should -Be 'composite'
+            $steps | Should -HaveCount 1
+            $steps[0]['shell'] | Should -Be 'bash'
+            $steps[0].ContainsKey('uses') | Should -BeFalse
+            $steps[0]['env']['BUNDLE'] | Should -Be '${{ inputs.bundle }}'
+            $exported.Yaml['inputs']['bundle']['required'] | Should -BeTrue
+        }
+
+        It 'replaces the workspace with a clone of the bundle''s main, with its whole history' {
+            $result = Invoke-ExportedApp -Bundle $bundle
+
+            $result.Exit | Should -Be 0 -Because $result.Output
+            Join-Path $result.Workspace 'kit-file.txt' | Should -Not -Exist
+            git -C $result.Workspace rev-parse HEAD | Should -Be (git -C $app rev-parse main)
+            @(git -C $result.Workspace log --format=%s) | Should -Be @('chore: app commit 2', 'chore: app commit 1')
+            git -C $result.Workspace rev-parse --is-shallow-repository | Should -Be 'false'
+        }
+
+        It 'fails, leaving the kit''s checkout alone, when the bundle is missing or has no main' {
+            foreach ($case in @(
+                    @{ Bundle = (Join-Path $TestDrive 'none.bundle'); Error = '::error::No app bundle at' }
+                    @{ Bundle = $noMain; Error = '::error::.*has no main branch' })) {
+                $result = Invoke-ExportedApp -Bundle $case.Bundle
+
+                $result.Exit | Should -Not -Be 0
+                $result.Output | Should -Match $case.Error
+                Join-Path $result.Workspace 'kit-file.txt' | Should -Exist
+            }
+        }
+
+        # Emptying the workspace would delete a bundle downloaded into it, and the clone would fail after the kit's
+        # checkout was gone.
+        It 'refuses a bundle inside the workspace, before emptying it' {
+            $result = Invoke-ExportedApp -Bundle $bundle -InWorkspace
+
+            $result.Exit | Should -Not -Be 0
+            $result.Output | Should -Match '::error::.*outside the workspace'
+            Join-Path $result.Workspace 'kit-file.txt' | Should -Exist
+        }
+    }
+
+    # ADR-0095: with a fresh app's bundle, the pull request steps don't skip: they check the app's own history, which
+    # holds New-KitApp's first commit and the probe's, since the kit's PR range names commits the app doesn't have.
+    Context 'app-checks.reusable.yml with an app bundle' {
+        BeforeAll {
+            $prSteps = @(Get-Steps $app.Yaml | Where-Object { "$($_['run'])" -match 'Test-ConventionalTitle|Test-RedGreenOrder' })
+        }
+
+        It 'runs the title, commit subject and red-to-green checks on the app''s whole history' {
+            $prSteps | Should -HaveCount 3
+            foreach ($step in $prSteps) {
+                $step['if'] | Should -Be "github.event_name == 'pull_request' || inputs.app-bundle != ''"
+            }
+            foreach ($step in @($prSteps | Where-Object { $_['env'].Contains('RANGE') })) {
+                $step['env']['RANGE'] | Should -Be "`${{ inputs.app-bundle != '' && 'HEAD' || format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) }}"
+            }
+            @($prSteps | Where-Object { $_['env'].Contains('RANGE') }) | Should -HaveCount 2
+        }
+
+        It 'checks HEAD''s subject as the title, read from git, never pasted into the script' {
+            $title = @($prSteps | Where-Object { $_['env'].Contains('PR_TITLE') })
+
+            $title | Should -HaveCount 1
+            $title[0]['env']['APP_BUNDLE'] | Should -Be '${{ inputs.app-bundle }}'
+            $title[0]['run'] | Should -Match ([regex]::Escape('if ($env:APP_BUNDLE) { $env:PR_TITLE = git -C $env:GITHUB_WORKSPACE log -1 --format=%s }'))
+            $title[0]['run'] | Should -Not -Match '\$\{\{'
+        }
+    }
+
+    # GAP-049 (ADR-0095): the kit's CI checks a fresh app through these same workflows, which then check the app's git
+    # bundle instead of the kit's checkout. Apps leave the input out, and its steps skip.
+    Context 'app-bundle input of <Name>' -ForEach @(
+        @{ Name = 'dotnet-ci.reusable.yml'; File = '.github/workflows/dotnet-ci.reusable.yml' }
+        @{ Name = 'app-checks.reusable.yml'; File = '.github/workflows/app-checks.reusable.yml' }
+    ) {
+        BeforeAll {
+            $workflow = Read-Yaml $File
+            $on = if ($workflow.Yaml.ContainsKey('on')) { $workflow.Yaml['on'] } elseif ($workflow.Yaml.ContainsKey($true)) { $workflow.Yaml[$true] } else { @{} }
+            $inputs = if ($on['workflow_call'] -is [Collections.IDictionary] -and $on['workflow_call'].Contains('inputs')) { $on['workflow_call']['inputs'] } else { @{} }
+        }
+
+        It 'takes an optional app-bundle, empty unless the kit''s CI names one' {
+            $inputs.Contains('app-bundle') | Should -BeTrue
+            $inputs['app-bundle']['type'] | Should -Be 'string'
+            $inputs['app-bundle']['required'] | Should -BeFalse
+            $inputs['app-bundle']['default'] | Should -Be ''
+            $inputs['app-bundle']['description'] | Should -Match 'ADR-0095'
+        }
+
+        # Right after the checkout, before setup-dotnet reads global.json or any step reads the workspace, and in every
+        # job that checks out, so no job checks the kit while the others check the app.
+        It 'in every job that checks out, downloads the bundle outside the workspace and clones it, right after the checkout' {
+            $jobs = @($workflow.Yaml['jobs'].GetEnumerator() | Where-Object { @($_.Value['steps'] | Where-Object { "$($_['uses'])" -like 'actions/checkout@*' }) })
+            $jobs.Count | Should -BeGreaterThan 0
+            foreach ($job in $jobs) {
+                $steps = @($job.Value['steps'])
+                $at = [array]::FindIndex($steps, [Predicate[object]] { param($s) "$($s['uses'])" -like 'actions/checkout@*' })
+                $download = $steps[$at + 1]
+                $clone = $steps[$at + 2]
+
+                "$($download['uses'])" | Should -Match '^actions/download-artifact@[0-9a-f]{40}$' -Because "$($job.Key) downloads the bundle next"
+                $download['if'] | Should -Be "inputs.app-bundle != ''"
+                $download['with']['name'] | Should -Be '${{ inputs.app-bundle }}'
+                $download['with']['path'] | Should -Be '${{ runner.temp }}/app-bundle' -Because 'the clone empties the workspace'
+                $clone['uses'] | Should -Be '$/.github/actions/exported-app' -Because "$($job.Key) clones it next"
+                $clone['if'] | Should -Be "inputs.app-bundle != ''"
+                $clone['with']['bundle'] | Should -Be '${{ runner.temp }}/app-bundle/app.bundle'
+            }
         }
     }
 }

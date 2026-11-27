@@ -17,11 +17,12 @@ public sealed class ErrorTests
     private const string ProblemJson = "application/problem+json";
     private const string NoSuchRoute = "/kit-no-such-route";
 
-    [Fact]
-    public async Task ARouteThatDoesNotExistIsANotFoundProblem()
+    [Theory]
+    [EachHost]
+    public async Task ARouteThatDoesNotExistIsANotFoundProblem(string host)
     {
-        Assert.SkipUnless(AppHost.ServesHttpApi, AppHost.NoHttpApi);
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        Assert.SkipUnless(AppHost.Named(host).ServesHttpApi, AppHost.NoHttpApi);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
         using HttpClient client = app.CreateClient(signedIn: true);
 
         using HttpResponseMessage response = await client.GetAsync(new Uri(NoSuchRoute, UriKind.Relative), TestContext.Current.CancellationToken);
@@ -30,11 +31,12 @@ public sealed class ErrorTests
         (response.Content.Headers.ContentType?.MediaType).Should().Be(ProblemJson);
     }
 
-    [Fact]
-    public async Task AnUnhandledErrorIsAProblemWithoutItsDetailsInProduction()
+    [Theory]
+    [EachHost]
+    public async Task AnUnhandledErrorIsAProblemWithoutItsDetailsInProduction(string host)
     {
-        Assert.SkipUnless(AppHost.ServesHttpApi, AppHost.NoHttpApi);
-        using IAppUnderTest app = AppHost.Start(Environments.Production, services => services.AddSingleton<IStartupFilter>(new ThrowingRoute()));
+        Assert.SkipUnless(AppHost.Named(host).ServesHttpApi, AppHost.NoHttpApi);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production, services => services.AddSingleton<IStartupFilter>(new ThrowingRoute()));
         using HttpClient client = app.CreateClient(signedIn: true);
 
         using HttpResponseMessage response = await client.GetAsync(new Uri(ThrowingRoute.Path, UriKind.Relative), TestContext.Current.CancellationToken);

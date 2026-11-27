@@ -21,8 +21,7 @@ internal static class TestTokens
 
     /// <summary>A valid token for the given user (the sub claim), or with the given changes.</summary>
     public static string For(
-        string? user = "alice", string issuer = Issuer, string audience = Audience, TimeSpan? expiresIn = null,
-        SecurityKey? key = null, bool isSigned = true)
+        string? user = "alice", string issuer = Issuer, string audience = Audience, TimeSpan? expiresIn = null)
     {
         // The API checks a token's lifetime against the system clock, so the token is issued by it too (ARC-008).
         DateTime now = TimeProvider.System.GetUtcNow().UtcDateTime;
@@ -36,13 +35,12 @@ internal static class TestTokens
             NotBefore = expires < now ? expires.AddMinutes(-5) : now,
             Expires = expires,
             Subject = new ClaimsIdentity(user is null ? [] : [new Claim(JwtRegisteredClaimNames.Sub, user)]),
-            SigningCredentials = isSigned ? new SigningCredentials(key ?? SigningKey, SecurityAlgorithms.RsaSha256) : null,
+            SigningCredentials = new SigningCredentials(SigningKey, SecurityAlgorithms.RsaSha256),
         };
         return new JsonWebTokenHandler().CreateToken(descriptor);
     }
 
-    /// <summary>A key the API doesn't trust.</summary>
-    public static SecurityKey NewKey()
+    private static RsaSecurityKey NewKey()
     {
         // The key keeps the RSA parameters, not the RSA object, so nothing is left to dispose.
         using RSA rsa = RSA.Create(2048);

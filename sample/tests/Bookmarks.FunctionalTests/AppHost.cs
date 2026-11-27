@@ -1,22 +1,33 @@
+using System.Reflection;
+using Bookmarks.Contracts;
 using Bookmarks.FunctionalTests;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kit.AppTests.Functional;
 
-/// <summary>How the kit's host checks (tools/AppTests/Functional) start the sample: through its own ApiHost.</summary>
+/// <summary>The sample's hosts for the kit's host checks (tools/AppTests/Functional): its API, through its own ApiHost.</summary>
 internal static partial class AppHost
 {
-    public static partial IAppUnderTest Start(string environment, IReadOnlyDictionary<string, string> settings, Action<IServiceCollection> services) =>
-        new ApiHost(environment, settings, services);
+    public static partial IReadOnlyList<HostUnderTest> Hosts => [new BookmarksApi()];
 
-    // Probes call the health endpoints without a token, and a developer or client generator reads the Development
-    // OpenAPI document before it has one (OPS-002, API-003).
-    public static partial IReadOnlyCollection<string> AnonymousRoutes => ["/health", "/alive", "/openapi/{documentName}.json"];
+    private sealed class BookmarksApi : HostUnderTest
+    {
+        public override string Name => "Bookmarks.Api";
 
-    public static partial string SignedInRoute => "/bookmarks";
+        // Probes call the health endpoints without a token, and a developer or client generator reads the Development
+        // OpenAPI document before it has one (OPS-002, API-003).
+        public override IReadOnlyCollection<string> AnonymousRoutes => ["/health", "/alive", "/openapi/{documentName}.json"];
 
-    public static partial bool ServesHttpApi => true;
+        public override string SignedInRoute => "/bookmarks";
 
-    // Every bookmarks endpoint needs a signed-in user; only the probes and the Development document are public.
-    public static partial bool MostEndpointsRequireSignIn => true;
+        public override bool ServesHttpApi => true;
+
+        // Every bookmarks endpoint needs a signed-in user; only the probes and the Development document are public.
+        public override bool MostEndpointsRequireSignIn => true;
+
+        public override IReadOnlyCollection<Assembly> ContractAssemblies => [typeof(CreateBookmarkRequest).Assembly];
+
+        public override IAppUnderTest Start(string environment, IReadOnlyDictionary<string, string> settings, Action<IServiceCollection> services) =>
+            new ApiHost(environment, settings, services);
+    }
 }

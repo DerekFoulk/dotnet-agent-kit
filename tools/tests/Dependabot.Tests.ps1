@@ -64,6 +64,30 @@ Describe 'Dependabot configuration' {
         $matching.Count | Should -Be 1 -Because "Dependabot's docker updater must read /.config/playwright"
     }
 
+    # GAP-025: the SQL Server image the sample's tests and load test run, pinned once in sample/tests/SqlServer.
+    It 'watches the sample''s SQL Server image pin, with the docker cooldown' {
+        $matching = @(Get-Update '.github/dependabot.yml' |
+                Where-Object { $_['package-ecosystem'] -eq 'docker' -and $_['directory'] -eq '/sample/tests/SqlServer' })
+
+        $matching.Count | Should -Be 1 -Because "Dependabot's docker updater must read /sample/tests/SqlServer"
+        $matching[0]['cooldown']['default-days'] | Should -Be 7
+    }
+
+    # GAP-025: packages that only work at one another's versions move in one PR: Roslyn's, each of which requires
+    # exactly its own version of the others, and EF Core's with the dotnet-ef tool that runs its design-time code.
+    It 'moves <Group> together, in the kit''s NuGet updates' -ForEach @(
+        # By name: a wildcard would also catch Microsoft.CodeAnalysis.BannedApiAnalyzers, on a version line of its own.
+        @{ Group = 'roslyn'; Patterns = @('Microsoft.CodeAnalysis.Common', 'Microsoft.CodeAnalysis.CSharp', 'Microsoft.CodeAnalysis.CSharp.Workspaces', 'Microsoft.CodeAnalysis.Workspaces.Common', 'Microsoft.CodeAnalysis.Workspaces.MSBuild') }
+        @{ Group = 'ef-core'; Patterns = @('Microsoft.EntityFrameworkCore*', 'dotnet-ef') }
+    ) {
+        $nuget = @(Get-Update '.github/dependabot.yml' | Where-Object { $_['package-ecosystem'] -eq 'nuget' })
+
+        $nuget.Count | Should -Be 1
+        $nuget[0].ContainsKey('groups') | Should -BeTrue
+        $nuget[0]['groups'].Keys | Should -Contain $Group
+        @($nuget[0]['groups'][$Group]['patterns']) | Should -Be $Patterns
+    }
+
     # GAP-022: an app's .kit holds a copy of the kit's Directory.Packages.props and the code shape tool's project, which
     # the kit manages and the sync replaces. A Dependabot PR there would edit a kit-managed file, so the app's NuGet
     # updates leave .kit out; the kit's own release moves those versions.

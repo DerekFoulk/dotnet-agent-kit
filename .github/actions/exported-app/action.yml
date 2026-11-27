@@ -1,0 +1,41 @@
+name: exported app
+description: >-
+  Kit CI only (ADR-0095): replaces the workspace's checkout with a clone of an exported app's git bundle, with its whole
+  history, so a shared workflow's job checks that app instead of the kit. The shared workflows call it as
+  `uses: $/.github/actions/exported-app` right after their checkout, only when their app-bundle input is set.
+inputs:
+  bundle:
+    description: The git bundle's path, outside the workspace, which this empties.
+    required: true
+runs:
+  using: composite
+  steps:
+    # Never falls back to the kit's checkout: a missing bundle, or one without main, fails the job. The clone has the
+    # app's whole history, so MinVer, the secret scan's shallow-history check and gitleaks see what an app's CI sees.
+    # Bash and git only, so it runs on the Windows and macOS runners too. It uses no other action: Dependabot's
+    # github-actions updater reads only .github/workflows.
+    - name: Check the exported app instead of this repo
+      shell: bash
+      env:
+        BUNDLE: ${{ inputs.bundle }}
+      run: |
+        if [ ! -f "$BUNDLE" ]; then
+          echo "::error::No app bundle at $BUNDLE"
+          exit 1
+        fi
+        # Emptying the workspace would delete a bundle inside it, and the clone would then fail with the kit's files gone.
+        workspace="$(cd "$GITHUB_WORKSPACE" && pwd -P)"
+        bundle_dir="$(cd "$(dirname "$BUNDLE")" && pwd -P)"
+        case "$bundle_dir/" in
+          "$workspace"/*)
+            echo "::error::The app bundle $BUNDLE must be outside the workspace, which this empties"
+            exit 1
+            ;;
+        esac
+        if ! git bundle list-heads "$BUNDLE" refs/heads/main | grep -q ' refs/heads/main$'; then
+          echo "::error::The app bundle $BUNDLE has no main branch"
+          exit 1
+        fi
+        find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+        git clone --quiet --branch main "$BUNDLE" "$GITHUB_WORKSPACE"
+        echo "Checking the exported app at $(git -C "$GITHUB_WORKSPACE" rev-parse HEAD), not this repo"

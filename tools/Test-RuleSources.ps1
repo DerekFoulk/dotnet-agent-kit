@@ -165,13 +165,7 @@ function Get-RatifiedProblem {
 }
 
 # ADR-0082: a quote is the page's own words, with the page and the day they were read, so the rule can be compared
-# with them. Returns the date as text, whether YAML read it as a string or a date.
-function ConvertTo-DateText {
-    param($Value)
-    if ($Value -is [datetime]) { return $Value.ToString('yyyy-MM-dd', [cultureinfo]::InvariantCulture) }
-    "$Value"
-}
-
+# with them.
 function Get-QuoteProblem {
     param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
 

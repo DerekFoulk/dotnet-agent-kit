@@ -6,7 +6,8 @@
 .DESCRIPTION
     Exports the app's files with Export-KitApp, commits them, creates the repo on your own GitHub account
     with the kit's merge settings, pushes main, adds the ruleset (review threads resolved before merging),
-    turns on Dependabot alerts and security updates, and requires actions pinned to a full commit SHA. The app
+    turns on Dependabot alerts and security updates, and requires actions pinned to a full commit SHA. Before the
+    push, it lets GitHub Actions open the release PR (ADR-0096). The app
     is public, with secret scanning, push protection and a ruleset requiring CodeQL results to merge, unless
     -Private says otherwise. The settings and both rulesets come from
     templates/github at the same kit commit as the files.
@@ -104,6 +105,19 @@ function Invoke-KitGit {
     if ($LASTEXITCODE -ne 0) { throw "git $($Arguments -join ' ') failed: $($output.Trim())" }
 }
 
+# An exported app's first commit, on main, naming the kit version from its manifest. New-FreshApp makes the same one,
+# through this function, so the kit's CI checks the history an app starts with (ADR-0095).
+function New-KitAppFirstCommit {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $version = (Get-Content -Raw -LiteralPath (Join-Path $Path '.kit/manifest.json') | ConvertFrom-Json).kitVersion
+    Invoke-KitGit -Path $Path -Arguments 'init', '-q', '-b', 'main'
+    Invoke-KitGit -Path $Path -Arguments 'add', '-A'
+    # Windows doesn't record the executable bit, and git on Linux and macOS skips a hook without it.
+    Invoke-KitGit -Path $Path -Arguments 'add', '--chmod=+x', '.githooks/commit-msg'
+    Invoke-KitGit -Path $Path -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
+}
+
 function New-KitApp {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -167,7 +181,7 @@ function New-KitApp {
     if ($existing.Error -notmatch 'HTTP 404') { throw "Couldn't check whether $repo exists: $($existing.Error)" }
     # The settings and ruleset come from the same kit commit as the files.
     $github = @{}
-    foreach ($file in 'repo.json', 'main-protection.json', 'actions.json', 'public.json', 'code-scanning.json') {
+    foreach ($file in 'repo.json', 'main-protection.json', 'actions.json', 'workflow-permissions.json', 'public.json', 'code-scanning.json') {
         $text = git -C $KitRoot show "${commit}:templates/github/$file" 2>$null | Out-String
         if ($LASTEXITCODE -ne 0 -or -not $text.Trim()) {
             throw "The kit at $KitRef has no templates/github/$file, so it's older than this New-KitApp. Pass a newer -KitRef."
@@ -177,6 +191,7 @@ function New-KitApp {
     $settingsText = $github['repo.json']
     $rulesetText = $github['main-protection.json']
     $actionsText = $github['actions.json']
+    $workflowPermissionsText = $github['workflow-permissions.json']
     $publicText = $github['public.json']
     $codeScanningText = $github['code-scanning.json']
 
@@ -191,21 +206,21 @@ function New-KitApp {
                 if ($LASTEXITCODE -ne 0) { throw 'Export-KitApp failed.' }
             }
         }
-        [pscustomobject]@{ Description = 'Make the first commit'; Action = {
-                $version = (Get-Content -Raw -LiteralPath (Join-Path $Destination '.kit/manifest.json') | ConvertFrom-Json).kitVersion
-                Invoke-KitGit -Path $Destination -Arguments 'init', '-q', '-b', 'main'
-                Invoke-KitGit -Path $Destination -Arguments 'add', '-A'
-                # Windows doesn't record the executable bit, and git on Linux and macOS skips a hook without it.
-                Invoke-KitGit -Path $Destination -Arguments 'add', '--chmod=+x', '.githooks/commit-msg'
-                Invoke-KitGit -Path $Destination -Arguments 'commit', '-q', '-m', "chore: start from dotnet-agent-kit $version"
-            }
-        }
+        [pscustomobject]@{ Description = 'Make the first commit'; Action = { New-KitAppFirstCommit -Path $Destination } }
         # Always private at first: a public app is made public only once main is pushed and its ruleset is added, so a
         # failure before then leaves a private repo.
         [pscustomobject]@{ Description = "Create the private repo with the kit's merge settings"; Action = {
                 $request = Get-KitAppRepoRequest -Name $RepoName -SettingsText $settingsText | ConvertTo-Json
                 $createAttempted = $true
                 $created = Invoke-KitGhChecked -Arguments 'api', 'user/repos', '--method', 'POST', '--input', '-' -InputText $request | ConvertFrom-Json
+            }
+        }
+        # Private or public: release-please opens the release PR with the workflow's own token, which GitHub allows only
+        # when GitHub Actions may create pull requests (ADR-0022, ADR-0096). Workflow tokens stay read-only by default;
+        # each workflow asks for what it needs (templates/github/workflow-permissions.json). Before the push, which starts the
+        # first release.yml run: set later, its release-please would be refused (review 1).
+        [pscustomobject]@{ Description = 'Let GitHub Actions open the release PR'; Action = {
+                Invoke-KitGhChecked -Arguments 'api', "repos/$repo/actions/permissions/workflow", '--method', 'PUT', '--input', '-' -InputText $workflowPermissionsText | Out-Null
             }
         }
         [pscustomobject]@{ Description = 'Push main'; Action = {

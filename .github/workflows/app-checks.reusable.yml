@@ -9,6 +9,14 @@ name: App checks (reusable)
 
 on:
   workflow_call:
+    inputs:
+      app-bundle:
+        description: >-
+          Kit CI only (ADR-0095): the name of an artifact in this run holding an exported app's git bundle, which the
+          job then checks instead of this repo, its pull request checks reading the app's own history. Apps leave it out.
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -36,29 +44,46 @@ jobs:
           fetch-depth: 0 # the commit checks read the PR's history
           persist-credentials: false
 
+      # Kit CI only (ADR-0095): with app-bundle set, this job checks that exported app instead of this checkout.
+      - if: inputs.app-bundle != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.app-bundle }}
+          path: ${{ runner.temp }}/app-bundle
+
+      - if: inputs.app-bundle != ''
+        uses: $/.github/actions/exported-app
+        with:
+          bundle: ${{ runner.temp }}/app-bundle/app.bundle
+
       - id: kit
         uses: $/.github/actions/kit-tools
 
       # The title comes in through an environment variable, never inline, so it can't inject commands.
+      # With an app bundle (kit CI only, ADR-0095), these three steps check the exported app's own history instead of
+      # the kit PR's: HEAD's subject as the title, and every commit HEAD reaches.
       - name: PR title is a Conventional Commit
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || inputs.app-bundle != ''
         env:
           KIT: ${{ steps.kit.outputs.path }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: '& "$env:KIT/tools/Test-ConventionalTitle.ps1" -Title $env:PR_TITLE'
+          APP_BUNDLE: ${{ inputs.app-bundle }}
+        run: |
+          if ($env:APP_BUNDLE) { $env:PR_TITLE = git -C $env:GITHUB_WORKSPACE log -1 --format=%s }
+          & "$env:KIT/tools/Test-ConventionalTitle.ps1" -Title $env:PR_TITLE
 
       - name: Commit subjects are Conventional Commits
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || inputs.app-bundle != ''
         env:
           KIT: ${{ steps.kit.outputs.path }}
-          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+          RANGE: ${{ inputs.app-bundle != '' && 'HEAD' || format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) }}
         run: '& "$env:KIT/tools/Test-ConventionalTitle.ps1" -Range $env:RANGE'
 
       - name: Every red commit is made green
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || inputs.app-bundle != ''
         env:
           KIT: ${{ steps.kit.outputs.path }}
-          RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+          RANGE: ${{ inputs.app-bundle != '' && 'HEAD' || format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) }}
         run: '& "$env:KIT/tools/Test-RedGreenOrder.ps1" -Range $env:RANGE'
 
       - name: ADR sections

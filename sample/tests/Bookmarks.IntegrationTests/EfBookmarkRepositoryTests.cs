@@ -1,25 +1,17 @@
 using Bookmarks.Domain;
 using Bookmarks.Infrastructure;
-using Microsoft.Data.Sqlite;
+using Bookmarks.TestDatabase;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bookmarks.IntegrationTests;
 
-/// <summary>The repository against a real SQLite database, held in memory for the test's lifetime.</summary>
-public sealed class EfBookmarkRepositoryTests : IDisposable
+/// <summary>The repository against SQL Server, the engine the app runs on, with a new database for each test (DAT-005).</summary>
+public sealed class EfBookmarkRepositoryTests
 {
     private const string Owner = "alice";
     private static readonly DateTimeOffset s_now = new(2026, 11, 4, 12, 0, 0, TimeSpan.Zero);
-    private readonly SqliteConnection _connection = new("DataSource=:memory:");
-    private readonly DbContextOptions<BookmarksDbContext> _options;
-
-    public EfBookmarkRepositoryTests()
-    {
-        _connection.Open();
-        _options = new DbContextOptionsBuilder<BookmarksDbContext>().UseSqlite(_connection).Options;
-        using BookmarksDbContext db = new(_options);
-        db.Database.EnsureCreated();
-    }
+    private readonly DbContextOptions<BookmarksDbContext> _options =
+        new DbContextOptionsBuilder<BookmarksDbContext>().UseSqlServer(SqlServerTestDatabase.Create()).Options;
 
     [Fact]
     public async Task AddThenFindReturnsTheSameBookmark()
@@ -120,6 +112,49 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task OwnerIdsThatDifferOnlyByCaseAreDifferentOwners()
+    {
+        // SEC-009: a user's id (the token's sub) is compared exactly, so "Alice" never reads alice's bookmarks. SQL
+        // Server's default collation ignores case.
+        Bookmark mine = Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "Mine", s_now);
+        await SaveAsync(mine);
+
+        await using BookmarksDbContext db = new(_options);
+        EfBookmarkRepository repository = new(db);
+
+        (await repository.FindAsync("Alice", mine.Id, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await repository.FindByUrlAsync("Alice", mine.Url, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await repository.ListAsync("Alice", 0, 10, TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UrlsThatDifferOnlyByCaseAreDifferentBookmarks()
+    {
+        // A URL's path and query are case-sensitive, so /A isn't a copy of /a. SQL Server's default collation ignores case.
+        await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "a", s_now));
+
+        await using BookmarksDbContext db = new(_options);
+        Bookmark? found = await new EfBookmarkRepository(db).FindByUrlAsync(Owner, new Uri("https://example.com/A"), TestContext.Current.CancellationToken);
+
+        found.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TheLongestOwnerIdAndUrlSaveAndAreFound()
+    {
+        // SQL Server caps a nonclustered index key at 1,700 bytes, and the longest owner id and URL the domain allows
+        // take 4,606 as nvarchar, so an index on both would refuse this row.
+        const string Site = "https://example.com/";
+        string owner = new('o', Bookmark.MaxOwnerIdLength);
+        Uri url = new(Site + new string('a', Bookmark.MaxUrlLength - Site.Length));
+        Bookmark bookmark = Bookmark.Create(Guid.CreateVersion7(s_now), owner, url, "Long", s_now);
+
+        await FluentActions.Awaiting(() => SaveAsync(bookmark)).Should().NotThrowAsync();
+        await using BookmarksDbContext db = new(_options);
+        (await new EfBookmarkRepository(db).FindByUrlAsync(owner, url, TestContext.Current.CancellationToken))!.Id.Should().Be(bookmark.Id);
+    }
+
+    [Fact]
     public async Task ListReturnsEverySavedBookmark()
     {
         await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now));
@@ -161,52 +196,38 @@ public sealed class EfBookmarkRepositoryTests : IDisposable
         await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now), Owner, new Uri("https://example.com/a"), "A", s_now));
         await SaveAsync(Bookmark.Create(Guid.CreateVersion7(s_now.AddMinutes(1)), Owner, new Uri("https://example.com/b"), "B", s_now.AddMinutes(1)));
 
+        (await TitlesInPagesOfTwoAsync()).Should().Equal("A", "B", "C");
+    }
+
+    [Fact]
+    public async Task PagesComeInCreationOrderWhateverOrderTheKeysSortIn()
+    {
+        // API-004: SQL Server compares a uniqueidentifier by its last six bytes first, which a UUID version 7 fills at
+        // random, so these keys sort there in the opposite order to their creation times (api-design.md).
+        await SaveAsync(CreatedWithLastBytes(s_now, 3, "A"));
+        await SaveAsync(CreatedWithLastBytes(s_now.AddMinutes(1), 2, "B"));
+        await SaveAsync(CreatedWithLastBytes(s_now.AddMinutes(2), 1, "C"));
+
+        (await TitlesInPagesOfTwoAsync()).Should().Equal("A", "B", "C");
+    }
+
+    // The owner's bookmarks' titles, read two to a page, as a client following nextLink reads them.
+    private async Task<IReadOnlyList<string>> TitlesInPagesOfTwoAsync()
+    {
         await using BookmarksDbContext db = new(_options);
         EfBookmarkRepository repository = new(db);
         IReadOnlyList<Bookmark> first = await repository.ListAsync(Owner, 0, 2, TestContext.Current.CancellationToken);
         IReadOnlyList<Bookmark> second = await repository.ListAsync(Owner, 2, 2, TestContext.Current.CancellationToken);
-
-        first.Concat(second).Select(b => b.Title).Should().Equal("A", "B", "C");
+        return [.. first.Concat(second).Select(b => b.Title)];
     }
 
-    [Fact]
-    public void TheModelKeysOnIdRequiresEveryFieldCapsTheTitleAndIndexesEachOwnersUrls()
+    // A bookmark whose UUID version 7 id ends in six copies of the given byte, where its random bits are.
+    private static Bookmark CreatedWithLastBytes(DateTimeOffset createdAt, byte last, string title)
     {
-        // Mutation testing (PR 23): SQLite doesn't enforce a length, and EF finds "Id" as the key by convention, so
-        // no behaviour test noticed when a line of OnModelCreating was removed. These are the schema's promises.
-        // EF caches a built model for the whole process; a fresh service provider builds it again, so a mutated
-        // OnModelCreating is really run (Stryker reuses one test process across mutants).
-        DbContextOptions<BookmarksDbContext> uncached = new DbContextOptionsBuilder<BookmarksDbContext>()
-            .UseSqlite(_connection).EnableServiceProviderCaching(false).Options;
-        using BookmarksDbContext db = new(uncached);
-        Microsoft.EntityFrameworkCore.Metadata.IEntityType bookmark = db.Model.FindEntityType(typeof(Bookmark))!;
-
-        bookmark.FindPrimaryKey()!.Properties.Select(p => p.Name).Should().Equal(nameof(Bookmark.Id));
-        bookmark.FindProperty(nameof(Bookmark.OwnerId))!.IsNullable.Should().BeFalse();
-        bookmark.FindProperty(nameof(Bookmark.OwnerId))!.GetMaxLength().Should().Be(Bookmark.MaxOwnerIdLength);
-        bookmark.FindProperty(nameof(Bookmark.Url))!.IsNullable.Should().BeFalse();
-        bookmark.FindProperty(nameof(Bookmark.Url))!.GetMaxLength().Should().Be(Bookmark.MaxUrlLength);
-        bookmark.FindProperty(nameof(Bookmark.Title))!.IsNullable.Should().BeFalse();
-        bookmark.FindProperty(nameof(Bookmark.Title))!.GetMaxLength().Should().Be(Bookmark.MaxTitleLength);
-        bookmark.FindProperty(nameof(Bookmark.CreatedAt))!.IsNullable.Should().BeFalse();
-        // Every read filters by owner first (SEC-009), so the index leads with it.
-        bookmark.GetIndexes().Should().ContainSingle().Which.Properties.Select(p => p.Name)
-            .Should().Equal(nameof(Bookmark.OwnerId), nameof(Bookmark.Url));
+        byte[] id = Guid.CreateVersion7(createdAt).ToByteArray(bigEndian: true);
+        id.AsSpan(10).Fill(last);
+        return Bookmark.Create(new Guid(id, bigEndian: true), Owner, new Uri($"https://example.com/{title}"), title, createdAt);
     }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void InfrastructureNeedsAConnectionString(string blank)
-    {
-        // Mutation testing (PR 23): without the guard, a blank connection string failed only at the first query.
-        Action add = () => Microsoft.Extensions.DependencyInjection.InfrastructureServiceCollectionExtensions
-            .AddBookmarksInfrastructure(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), blank);
-
-        add.Should().Throw<ArgumentException>().WithParameterName("connectionString");
-    }
-
-    public void Dispose() => _connection.Dispose();
 
     private async Task SaveAsync(Bookmark bookmark)
     {

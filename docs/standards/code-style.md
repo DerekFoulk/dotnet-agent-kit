@@ -405,7 +405,7 @@ rules:
     status: accepted
     strength: should
     ratified: "owner, 2026-11-16"
-    sources: ["https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-return-types, retrieved 2026-11-17", "https://github.com/microsoft/vs-threading/blob/main/docfx/analyzers/VSTHRD107.md, retrieved 2026-11-17", "https://github.com/microsoft/vs-threading/blob/main/docfx/analyzers/VSTHRD110.md, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-return-types, retrieved 2026-11-17", "https://github.com/microsoft/vs-threading/blob/main/docfx/analyzers/VSTHRD107.md, retrieved 2026-11-25", "https://github.com/microsoft/vs-threading/blob/main/docfx/analyzers/VSTHRD110.md, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/async-scenarios"
         retrieved: "2026-11-17"
@@ -447,8 +447,8 @@ rules:
         retrieved: "2026-11-17"
         text: "Tasks returned from async methods should be awaited, or assigned to a variable for observation later."
       - source: "https://github.com/microsoft/vs-threading/blob/main/docfx/analyzers/VSTHRD107.md"
-        retrieved: "2026-11-17"
-        text: "Add the await operator within the using expression."
+        retrieved: "2026-11-25"
+        text: "Add the await operator within the using expression or variable initializer."
     enforcement:
       - kind: advisory
         in: [kit, app]

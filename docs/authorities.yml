@@ -10,7 +10,8 @@
 #   project       a tool's own repo or docs, from the vendor of a tool the kit uses: ADR-0063 counts it as an
 #                 authority, for how to use that tool only, so the page lists it apart.
 # Who counts as an authority is ADR-0063's to say; this file only says who published each cited page.
-# match: URL prefixes; the longest that matches a cited URL wins. An archived copy
+# match: URL prefixes, each a folder ending in '/', which also matches the folder's own page cited without that
+#   slash; the longest that matches a cited URL wins. An archived copy
 #   (https://web.archive.org/web/<timestamp>/<url>) is matched by its original URL.
 sources:
   - name: Microsoft Learn
@@ -111,3 +112,230 @@ sources:
     covers: the Scorecard GitHub Action and its workflow limits
     match:
       - https://github.com/ossf/
+
+# The licenses of the works the rules quote (ADR-0094). Each work below names one by id: an SPDX identifier, or a
+# LicenseRef- one where SPDX has none. 'name' and 'url' are shown in THIRD-PARTY-NOTICES.md; 'note', when there is one,
+# says what the license asks beyond the row. -Check fails on a license no work uses.
+licenses:
+  - id: CC-BY-4.0
+    name: CC BY 4.0
+    url: https://creativecommons.org/licenses/by/4.0/
+  - id: CC-BY-SA-4.0
+    name: CC BY-SA 4.0
+    url: https://creativecommons.org/licenses/by-sa/4.0/
+    note: its ShareAlike term covers adapted material; the quotes are copied unchanged (the kit's ADR-0094).
+  - id: MIT
+    name: MIT License
+    url: https://opensource.org/license/mit
+    note: its text is below; each MIT work's copyright line is in its row.
+  - id: Apache-2.0
+    name: Apache License 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+    note: its text is below.
+  - id: LicenseRef-W3C-Document-License-2023
+    name: W3C Document License (2023)
+    url: https://www.w3.org/copyright/document-license-2023/
+    note: it asks each copy to keep the document's copyright notice and status, given for each W3C work in this list.
+  - id: LicenseRef-Microsoft-Learn-Terms-of-Use
+    name: Microsoft Learn terms of use, no open license
+    url: https://learn.microsoft.com/legal/termsofuse
+    note: >-
+      these pages' source repos aren't public and the pages name no license of their own, so only Microsoft's terms
+      of use apply, which allow copying for personal, non-commercial use. The kit quotes a sentence or two from each,
+      credited and linked, to show what each rule rests on. Whether to keep them as quotes is an open question for
+      the owner, recorded in the kit's ADR-0094.
+
+# Each work the rules' quotes come from (ADR-0082), with what its license asks a copy to name: its title, author and
+# source, with links, and its license (ADR-0094). tools/Build-AuthoritiesPage.ps1 fills the quotes block of
+# THIRD-PARTY-NOTICES.md from these, and apps get that file's text with the standards. -Check fails when a quote's page
+# matches no work, a work matches no quote, a field is missing, or the license isn't listed above.
+#   source     the work's home page.
+#   stated     where its license is stated, read on 'checked'.
+#   copyright  the work's copyright line, when it has one.
+#   notice     any other text its license asks a copy to keep.
+#   match      URL prefixes of its pages; the longest that matches a quote's page wins. Keep each to the folders
+#              its source repo serves: Learn serves other repos' pages under the same top folder.
+# A Microsoft Learn page's license is its source repo's: the page's "original_content_git_url" names the repo, and a
+# private "-pr" repo's public mirror holds the LICENSE.
+works:
+  - title: .NET documentation
+    author: Microsoft and contributors
+    source: https://learn.microsoft.com/dotnet/
+    license: CC-BY-4.0
+    stated: https://github.com/dotnet/docs/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/dotnet/architecture/
+      - https://learn.microsoft.com/dotnet/core/
+      - https://learn.microsoft.com/dotnet/csharp/
+      - https://learn.microsoft.com/dotnet/fundamentals/
+      - https://learn.microsoft.com/dotnet/standard/
+  - title: .NET MAUI documentation
+    author: Microsoft and contributors
+    source: https://learn.microsoft.com/dotnet/maui/
+    license: CC-BY-4.0
+    stated: https://github.com/dotnet/docs-maui/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/dotnet/maui/
+  - title: ASP.NET Core documentation
+    author: Microsoft and contributors
+    source: https://learn.microsoft.com/aspnet/core/
+    license: CC-BY-4.0
+    stated: https://github.com/dotnet/AspNetCore.Docs/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/aspnet/core/
+  - title: Entity Framework Core documentation
+    author: Microsoft and contributors
+    source: https://learn.microsoft.com/ef/core/
+    license: CC-BY-4.0
+    stated: https://github.com/dotnet/EntityFramework.Docs/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/ef/
+  - title: Windows app development documentation
+    author: Microsoft and contributors
+    source: https://learn.microsoft.com/windows/apps/
+    license: CC-BY-4.0
+    stated: https://github.com/MicrosoftDocs/windows-dev-docs/blob/docs/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/windows/apps/
+  - title: Azure SQL documentation
+    author: Microsoft and contributors
+    source: https://learn.microsoft.com/azure/azure-sql/
+    license: CC-BY-4.0
+    stated: https://github.com/MicrosoftDocs/sql-docs/blob/live/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/azure/azure-sql/
+  - title: NuGet documentation
+    author: Microsoft and contributors
+    copyright: Copyright (c) .NET Foundation
+    source: https://learn.microsoft.com/nuget/
+    license: MIT
+    stated: https://github.com/NuGet/docs.microsoft.com-nuget/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/nuget/
+  - title: Microsoft identity platform documentation
+    author: Microsoft and contributors
+    copyright: Copyright (c) Microsoft Corporation
+    source: https://learn.microsoft.com/entra/identity-platform/
+    license: MIT
+    stated: https://github.com/MicrosoftDocs/entra-docs/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/entra/identity-platform/
+  - title: Azure Well-Architected Framework
+    author: Microsoft
+    source: https://learn.microsoft.com/azure/well-architected/
+    license: LicenseRef-Microsoft-Learn-Terms-of-Use
+    stated: https://learn.microsoft.com/legal/termsofuse
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/azure/well-architected/
+  - title: Azure Architecture Center
+    author: Microsoft
+    source: https://learn.microsoft.com/azure/architecture/
+    license: LicenseRef-Microsoft-Learn-Terms-of-Use
+    stated: https://learn.microsoft.com/legal/termsofuse
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/azure/architecture/
+  - title: Azure Kubernetes Service documentation
+    author: Microsoft
+    source: https://learn.microsoft.com/azure/aks/
+    license: LicenseRef-Microsoft-Learn-Terms-of-Use
+    stated: https://learn.microsoft.com/legal/termsofuse
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/azure/aks/
+  - title: Microsoft cloud security benchmark
+    author: Microsoft
+    source: https://learn.microsoft.com/security/benchmark/azure/
+    license: LicenseRef-Microsoft-Learn-Terms-of-Use
+    stated: https://learn.microsoft.com/legal/termsofuse
+    checked: 2026-11-25
+    match:
+      - https://learn.microsoft.com/security/benchmark/
+  - title: Web Content Accessibility Guidelines (WCAG) 2.2
+    author: W3C Accessibility Guidelines Working Group
+    source: https://www.w3.org/TR/WCAG22/
+    license: LicenseRef-W3C-Document-License-2023
+    stated: https://www.w3.org/TR/WCAG22/
+    checked: 2026-11-25
+    notice: Copyright © 2020-2024 World Wide Web Consortium. W3C® liability, trademark and document use rules apply. Status, W3C Recommendation 12 December 2024.
+    match:
+      - https://www.w3.org/TR/WCAG22/
+  - title: Guidance on Applying WCAG 2 to Non-Web Information and Communications Technologies (WCAG2ICT)
+    author: W3C Accessibility Guidelines Working Group
+    source: https://www.w3.org/TR/wcag2ict-22/
+    license: LicenseRef-W3C-Document-License-2023
+    stated: https://www.w3.org/TR/wcag2ict-22/
+    checked: 2026-11-25
+    notice: Copyright © 2022-2025 World Wide Web Consortium. W3C® liability, trademark and document use rules apply. Status, W3C Group Note 11 December 2025.
+    match:
+      - https://www.w3.org/TR/wcag2ict-22/
+  - title: OWASP Application Security Verification Standard 5.0.0
+    author: The OWASP ASVS project leaders and contributors
+    copyright: Copyright © 2008-2025 The OWASP Foundation
+    source: https://github.com/OWASP/ASVS/tree/v5.0.0/5.0
+    license: CC-BY-SA-4.0
+    stated: https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x01-Frontispiece.md
+    checked: 2026-11-25
+    match:
+      - https://github.com/OWASP/ASVS/
+  - title: OWASP API Security Top 10 2023
+    author: The OWASP API Security Project (Erez Yallon, Inon Shkedy, Paulo Silva) and contributors
+    copyright: Copyright © 2003-2023 The OWASP Foundation
+    source: https://api-security.owasp.org/
+    license: CC-BY-SA-4.0
+    stated: https://github.com/OWASP/API-Security/blob/master/editions/2023/en/0x01-about-owasp.md
+    checked: 2026-11-25
+    match:
+      - https://api-security.owasp.org/
+  - title: OWASP Cheat Sheet Series
+    author: The OWASP Cheat Sheet Series contributors
+    source: https://cheatsheetseries.owasp.org/
+    license: CC-BY-SA-4.0
+    stated: https://github.com/OWASP/CheatSheetSeries/blob/master/LICENSE.md
+    checked: 2026-11-25
+    match:
+      - https://cheatsheetseries.owasp.org/
+  - title: GitHub Docs
+    author: GitHub and contributors
+    source: https://docs.github.com/
+    license: CC-BY-4.0
+    stated: https://github.com/github/docs/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://docs.github.com/
+  - title: OpenSSF Scorecard Action README
+    author: Security Scorecard Authors
+    copyright: Copyright 2020 Security Scorecard Authors
+    source: https://github.com/ossf/scorecard-action
+    license: Apache-2.0
+    stated: https://github.com/ossf/scorecard-action/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://github.com/ossf/scorecard-action/
+  - title: Microsoft.VisualStudio.Threading analyzers documentation
+    author: Microsoft and contributors
+    copyright: Copyright (c) Microsoft Corporation
+    source: https://github.com/microsoft/vs-threading/tree/main/docfx/analyzers
+    license: MIT
+    stated: https://github.com/microsoft/vs-threading/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://github.com/microsoft/vs-threading/
+  - title: Aspire documentation
+    author: Microsoft and contributors
+    copyright: Copyright (c) Microsoft Corporation
+    source: https://aspire.dev/
+    license: MIT
+    stated: https://github.com/microsoft/aspire.dev/blob/main/LICENSE
+    checked: 2026-11-25
+    match:
+      - https://aspire.dev/

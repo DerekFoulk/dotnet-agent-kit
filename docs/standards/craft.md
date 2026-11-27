@@ -207,7 +207,7 @@ rules:
         how: "ci: the sample's FunctionalTests host the app with ValidateScopes and ValidateOnBuild on in every environment they run it in (ApiHost)"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): DependencyInjectionTests checks that the host the checks start catches a singleton that captures a scoped service, and a scoped service resolved from the root, in Production; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): DependencyInjectionTests checks that the host the checks start catches a singleton that captures a scoped service, and a scoped service resolved from the root, in Production; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
         how: "that every other host the app's tests start validates too, which code review checks"
