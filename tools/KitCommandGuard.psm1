@@ -759,11 +759,12 @@ function Test-BashExpansionRunsValue {
 }
 
 # Whether Bash arithmetic text names a variable, whose value it evaluates as an expression: a name, or a positional
-# or special parameter that holds any text ($1, $@, $*); not $#, $?, $$ or $!, which are always numbers.
+# or special parameter that holds any text ($1, $@, $*); not $#, $?, $$ or $!, which are always numbers, nor a
+# number's own letters (0xff, 16#ff).
 function Test-BashNamesVariable {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Text)
 
-    $Text -match '[A-Za-z_]|\$[0-9@*]'
+    ($Text -replace '(?<![A-Za-z0-9_])(?:0[xX][0-9A-Fa-f]+|[0-9]+#[0-9A-Za-z@_]+)', '') -match '[A-Za-z_]|\$[0-9@*]'
 }
 
 # An arithmetic command, (( … )), from its first '(' to the ')' that closes it, which ends past it; throws when it
@@ -794,7 +795,8 @@ function Get-BashArithmeticWord {
     if (-not $Words.Count) { return $null }
     $inner = @($Words | Select-Object -Skip (Get-BashInnerStart -Words $Words))
     $comparison = '-eq', '-ne', '-lt', '-le', '-gt', '-ge'
-    $operands = @($Words | Where-Object { $_ -cnotin $comparison -and $_ -cnotin '[[', ']]', '!', '&&', '||' })
+    # The operands past a reserved word (if [[ …), but not a length, ${#a[@]}, which is always a number.
+    $operands = @($inner | Where-Object { $_ -cnotin $comparison -and $_ -cnotin '[[', ']]', '!' -and $_ -notmatch '\A\$\{#[^}]*\}\z' })
     $arithmetic = ($inner.Count -and $inner[0] -ceq 'let') -or
         ($Words -ccontains '[[' -and @($Words | Where-Object { $_ -cin $comparison }).Count -and @($operands | Where-Object { Test-BashNamesVariable -Text $_ }).Count) -or
         ($inner.Count -and $inner[0] -cin 'declare', 'typeset', 'local', 'readonly' -and @($inner | Where-Object { $_ -cmatch '\A-[A-Za-z]*[in]' }).Count)
