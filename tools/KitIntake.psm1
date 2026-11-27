@@ -149,6 +149,8 @@ function Get-KitCondition {
 
     # Into this module's own scope, so ConvertFrom-Yaml resolves whoever calls this.
     Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
+    # git show's exit code for a missing file is read below, so a caller's preference mustn't make it an error first.
+    $PSNativeCommandUseErrorActionPreference = $false
     $text = git -C $KitRoot show "${Commit}:docs/standards/conditions.yml" 2>$null | Out-String
     if ($LASTEXITCODE -ne 0 -or -not $text.Trim()) { return , @() }
     , @((ConvertFrom-Yaml -Yaml $text)['conditions'])
