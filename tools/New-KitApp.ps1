@@ -166,10 +166,8 @@ function New-KitApp {
     catch { throw "The intake answers in $intakePath aren't valid JSON: $($_.Exception.Message)" }
     if ($answers -isnot [Collections.IDictionary]) { throw "The intake answers in $intakePath aren't a JSON object." }
     $resolved = Resolve-KitIntakeAnswer -Intake (Get-KitIntake -Text $intakeText) -Answers $answers
-    # ADR-0090: the conditions a rule's when names, from the same kit commit, so the profile answers each one. A kit
-    # from before conditions.yml has none, and its profile no Conditions line.
-    $conditionsText = git -C $KitRoot show "${commit}:docs/standards/conditions.yml" 2>$null | Out-String
-    $conditions = if ($LASTEXITCODE -eq 0 -and $conditionsText.Trim()) { @((ConvertFrom-Yaml -Yaml $conditionsText)['conditions']) } else { @() }
+    # ADR-0090: the conditions a rule's when names, from the same kit commit, so the profile answers each one.
+    $conditions = Get-KitCondition -KitRoot $KitRoot -Commit $commit
     $signIn = Invoke-KitGh -Arguments 'auth', 'status'
     if ($signIn.ExitCode -ne 0) {
         throw "gh isn't signed in to GitHub: $($signIn.Error)`nSigning in is your step: run 'gh auth login', then run this again."

@@ -184,7 +184,8 @@ function New-FreshApp {
     if ($LASTEXITCODE -ne 0 -or -not $intakeText.Trim()) { throw "The kit at $commit has no templates/app-intake.json." }
     $intake = Get-KitIntake -Text $intakeText
     $resolved = Resolve-KitIntakeAnswer -Intake $intake -Answers (Get-FreshAppAnswer -Intake $intake -Type $Type)
-    $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name $probe.Name -KitCommit $commit
+    # ADR-0090: the profile answers each condition the kit lists, as New-KitApp's does.
+    $profileText = ConvertTo-KitAppProfile -Resolved $resolved -Name $probe.Name -KitCommit $commit -Conditions (Get-KitCondition -KitRoot $KitRoot -Commit $commit)
 
     # Export-KitApp refuses a folder that isn't empty, and removes what it wrote when it fails itself.
     $created = -not (Test-Path -LiteralPath $Destination)

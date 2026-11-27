@@ -138,6 +138,22 @@ function Select-KitPick {
     [pscustomobject]@{ Pick = $Recommendation['agent']['pick']; From = 'agent'; Notes = @($notes) }
 }
 
+# The conditions a rule's when names (ADR-0090), from docs/standards/conditions.yml at the kit commit an app is made
+# from, for ConvertTo-KitAppProfile's -Conditions; New-KitApp and New-FreshApp both read them here. A kit from before
+# conditions.yml has none, and its profile no Conditions line.
+function Get-KitCondition {
+    param(
+        [Parameter(Mandatory)] [string] $KitRoot,
+        [Parameter(Mandatory)] [string] $Commit
+    )
+
+    # Into this module's own scope, so ConvertFrom-Yaml resolves whoever calls this.
+    Import-Module -Name 'powershell-yaml' -MinimumVersion '0.4.12'
+    $text = git -C $KitRoot show "${Commit}:docs/standards/conditions.yml" 2>$null | Out-String
+    if ($LASTEXITCODE -ne 0 -or -not $text.Trim()) { return , @() }
+    , @((ConvertFrom-Yaml -Yaml $text)['conditions'])
+}
+
 # Writes the app's docs/app-profile.md from the resolved answers. -Conditions is the kit's docs/standards/conditions.yml,
 # parsed: with it, the profile answers each condition yes, no or unknown (ADR-0090).
 function ConvertTo-KitAppProfile {
@@ -481,4 +497,4 @@ function Get-KitTestToolAnswer {
     $answer
 }
 
-Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference, Get-KitIntakeDefault, Get-KitTestToolAnswer
+Export-ModuleMember -Function Get-KitIntake, Resolve-KitIntakeAnswer, Get-KitCondition, ConvertTo-KitAppProfile, Test-KitIntakeSource, Get-KitPreferencePath, Read-KitPreference, Get-KitIntakeDefault, Get-KitTestToolAnswer
