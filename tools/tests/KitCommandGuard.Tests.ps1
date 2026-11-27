@@ -437,6 +437,22 @@ Describe 'Get-CommandGuardDecision for Bash' {
         Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules 'Bash(git clean *)' | Should -BeNullOrEmpty
     }
 
+    # Bash passes '\' as written, so it's a folder separator only for a Windows program reading a path; in a pattern
+    # such as a regex it's an escape, and "\.." there leaves no folder.
+    It 'leaves <Command> to the rules: its backslash is in a pattern, not a path' -ForEach @(
+        @{ Command = "grep -nE 'v[0-9]+\..' README.md" }
+        @{ Command = "rg 'a(b|c)\..' tools" }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
+    }
+
+    It 'asks for <Command>, a backslash path a Windows program reads as leaving its folder' -ForEach @(
+        @{ Command = "git.exe show 'zz\..\..\x'" }
+        @{ Command = "cat 'tools\..\..\x'" }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*resolved this command to*the ask rule "Bash(`*/..`*)"*'
+    }
+
     # "$(<file)" is Bash's faster "$(cat file)" (Bash's manual, Command Substitution): it reads the file with no
     # command in it, so no subcommand comes out for Claude Code's rules, or its Read deny rules on cat, to check.
     It 'asks for <Command>, whose substitution reads a file with no command' -ForEach @(
