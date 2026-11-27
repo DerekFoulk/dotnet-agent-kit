@@ -43,18 +43,19 @@ Describe 'the kit''s shared authorization checks' {
         $script:build = dotnet build (Join-Path $site 'Contoso.Site.slnx') -p:MinVerSkip=true -p:RestoreLockedMode=false 2>&1 | Out-String
         $script:buildExit = $LASTEXITCODE
 
-        # Runs one class of shared checks in the built copy, with the fixture's sign-in setting and document, and returns
-        # the exit code and output. --no-ansi: on GitHub's runner the test platform colors "failed", which splits it from
-        # the test's name in the text the assertions read.
-        function Invoke-SiteCheck([string] $Class, [bool] $MostEndpointsRequireSignIn, [string] $Document = 'protected') {
+        # Runs one class of shared checks in the built copy, with the fixture's sign-in settings and document, and
+        # returns the exit code and output. --no-ansi: on GitHub's runner the test platform colors "failed", which splits
+        # it from the test's name in the text the assertions read.
+        function Invoke-SiteCheck([string] $Class, [bool] $MostEndpointsRequireSignIn, [string] $Document = 'protected', [bool] $SignsUsersIn = $false) {
             $env:KIT_FIXTURE_SIGN_IN = "$MostEndpointsRequireSignIn".ToLowerInvariant()
+            $env:KIT_FIXTURE_SIGNS_USERS_IN = "$SignsUsersIn".ToLowerInvariant()
             $env:KIT_FIXTURE_DOCUMENT = $Document
             try {
                 $output = dotnet test --project (Join-Path $site 'tests' 'Contoso.Site.FunctionalTests') --no-build `
                     --no-ansi --filter-class "Kit.AppTests.Functional.$Class" 2>&1 | Out-String
                 [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
             }
-            finally { Remove-Item Env:KIT_FIXTURE_SIGN_IN, Env:KIT_FIXTURE_DOCUMENT -ErrorAction Ignore }
+            finally { Remove-Item Env:KIT_FIXTURE_SIGN_IN, Env:KIT_FIXTURE_SIGNS_USERS_IN, Env:KIT_FIXTURE_DOCUMENT -ErrorAction Ignore }
         }
     }
 
@@ -123,5 +124,16 @@ Describe 'the kit''s shared authorization checks' {
 
         $result.Output | Should -Match 'skipped: 5\b'
         $result.ExitCode | Should -Be 0 -Because $result.Output
+    }
+
+    # Declared as signing users in, with a sign-in that takes any bearer token without checking its signature, the
+    # token checks run as before and fail the host for each token it lets through. The control and the missing token,
+    # which the host answers with a 401 Problem, pass.
+    It 'fail a host that signs users in but lets an unsigned token through' {
+        $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false -SignsUsersIn $true
+
+        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.ACallerWithoutAValidTokenIsA401Problem\(host: "Contoso\.Site", caller: "an unsigned token"\)'
+        $result.Output | Should -Match 'failed: 3\b'
+        $result.Output | Should -Match 'succeeded: 2\b'
     }
 }
