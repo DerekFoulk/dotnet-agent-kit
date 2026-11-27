@@ -26,6 +26,7 @@ jobs:
     # run, which reads every commit since the last release, so nothing is lost. A dropped run shows as cancelled, not failed.
     concurrency:
       group: release-please-${{ github.repository }}
+      cancel-in-progress: false
     # release-please needs contents, pull-requests and issues (labels); the approval step needs actions. The caller's
     # job must grant each of them.
     permissions:
