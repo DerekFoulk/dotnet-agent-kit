@@ -74,7 +74,7 @@ rules:
     enforcement:
       - kind: gate
         in: [app]
-        how: "ci: Test-Runbook.ps1 in app-checks.reusable.yml fails on a missing runbook, status or review date, a missing or empty section, and a placeholder left once In use"
+        how: "ci: Test-Runbook.ps1 in app-checks.reusable.yml fails on a missing runbook, status or review date, a missing or empty section, and a placeholder left once In use; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
       - kind: advisory
         in: [app]
         how: "that the status turns In use before the first production deployment, until the production workflow (GAP-015) refuses a Draft, and whether the steps are right, which code review and a practised restore check"

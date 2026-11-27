@@ -3,7 +3,7 @@
 Each simulated user saves bookmarks, reads them back and lists a page, as a person using a bookmarks app would. The
 shared performance workflow runs it headless against the API it started, from this folder, so locust.conf sets the
 load and load-budget.json the limits that tools/Test-LoadBudget.ps1 checks. Every endpoint needs a bearer token
-(SEC-007); the workflow issues one for this run only and hands it over as LOAD_TEST_TOKEN.
+(SEC-017); the workflow issues one for this run only and hands it over as LOAD_TEST_TOKEN.
 """
 
 import os

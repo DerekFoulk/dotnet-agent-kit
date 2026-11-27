@@ -21,8 +21,12 @@ jobs:
     uses: ./.github/workflows/performance.reusable.yml
     with:
       solution: dotnet-agent-kit.slnx
-      # The sample API needs a bearer token (SEC-007); the URL is its launch profile's, which its token's audience uses.
+      # The sample API needs a bearer token (SEC-008, SEC-017); the URL is its launch profile's, which its token's audience uses.
       load-test-project: sample/src/Bookmarks.Api/Bookmarks.Api.csproj
       load-test-path: sample/tests/load
       load-test-url: http://localhost:5191
       load-test-user-jwt: true
+      # GAP-025: on SQL Server, from the image the sample's tests pin, with its migrations applied first.
+      load-test-sql-server-pin: sample/tests/SqlServer/Dockerfile
+      load-test-migrations-project: sample/src/Bookmarks.Infrastructure/Bookmarks.Infrastructure.csproj
+      load-test-connection-string: Bookmarks

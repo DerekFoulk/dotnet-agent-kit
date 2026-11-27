@@ -72,6 +72,26 @@ public sealed class CliTests : IDisposable
         output.ToString().Should().Be($"{tidy}{Environment.NewLine}");
     }
 
+    // GAP-025: the sample compiles one test source file into two test projects. Listed twice, the duplicate finder
+    // would read it twice and report the file as a copy of itself.
+    [Fact]
+    public void WithFilesItListsAFileTwoProjectsCompileOnce()
+    {
+        string shared = Write("Shared.cs", "class Shared { }");
+        string manifest = Path.Join(_folder.FullName, "manifest.json");
+        File.WriteAllText(manifest, JsonSerializer.Serialize(new[]
+        {
+            new { name = "A.csproj", defines = Array.Empty<string>(), files = new[] { shared } },
+            new { name = "B.csproj", defines = Array.Empty<string>(), files = new[] { shared } },
+        }));
+        using StringWriter output = new();
+
+        int exitCode = Cli.Run(["--files", manifest], output);
+
+        exitCode.Should().Be(0);
+        output.ToString().Should().Be($"{shared}{Environment.NewLine}");
+    }
+
     [Fact]
     public void WithoutAManifestItSaysHowToRunIt()
     {

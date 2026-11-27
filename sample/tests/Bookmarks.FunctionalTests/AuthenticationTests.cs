@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Bookmarks.FunctionalTests;
 
 /// <summary>
-/// Who may call the API: only a caller with a valid access token (SEC-007, SEC-008, ADR-0048). The kit's shared
+/// Who may call the API: only a caller with a valid access token (SEC-008, SEC-017, ADR-0048). The kit's shared
 /// TokenTests send an unsigned token, a changed one and one signed with another key; these send no token, and the tokens
 /// only the sample's key can sign, to every bookmarks endpoint.
 /// </summary>

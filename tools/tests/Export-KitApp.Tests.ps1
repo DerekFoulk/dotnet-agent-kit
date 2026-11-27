@@ -338,10 +338,13 @@ Describe 'Export-KitApp' {
             [IO.File]::WriteAllText((Join-Path $script:withCode 'Contoso.Orders.slnx'), "<Solution>`n  <Project Path=""src/Deep.csproj"" />`n</Solution>`n")
         }
 
+        # The rule's status comes from a fixture, so the test doesn't hang on whether CRF-011 is accepted yet (ADR-0089).
         It 'fails a breach of a code shape limit, building the kit''s tool from .kit' {
+            $statuses = Join-Path $TestDrive 'crf-011-accepted.json'
+            Set-Content -LiteralPath $statuses -Value '{ "CRF-011": "accepted", "STY-005": "accepted" }'
             Push-Location -LiteralPath $script:withCode
             try {
-                $output = & pwsh -NoProfile -File (Join-Path $script:withCode '.kit/tools/Test-CodeShape.ps1') -Solution 'Contoso.Orders.slnx' 2>&1 | Out-String
+                $output = & pwsh -NoProfile -File (Join-Path $script:withCode '.kit/tools/Test-CodeShape.ps1') -Solution 'Contoso.Orders.slnx' -RuleStatusPath $statuses 2>&1 | Out-String
                 $exit = $LASTEXITCODE
             }
             finally { Pop-Location }
@@ -450,6 +453,13 @@ Describe 'Export-KitApp' {
 
     It "gets the kit's license policy beside the license check" {
         Test-Path -LiteralPath (Join-Path $app '.kit/tools/package-licenses.json') | Should -BeTrue
+    }
+
+    # ADR-0089: the checks read whether their rule is in force from the file beside them, which the app's own rule
+    # build writes the same as the kit's.
+    It "gets the kit's rule statuses beside the checks" {
+        Test-Path -LiteralPath (Join-Path $app '.kit/tools/rule-status.json') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $app 'tools/rule-status.json') | Should -BeFalse
     }
 
     It 'gets the database guide that DAT-001 and the plan checklist point to' {

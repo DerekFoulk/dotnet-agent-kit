@@ -12,7 +12,7 @@ namespace Kit.AppTests.Functional;
 
 /// <summary>
 /// The health endpoints every ASP.NET Core app maps (OPS-002): /health for readiness and /alive for liveness, in every
-/// environment, answering an anonymous probe (SEC-007) with the status word only, cached briefly and time-boxed.
+/// environment, answering an anonymous probe (OPS-002) with the status word only, cached briefly and time-boxed.
 /// </summary>
 public sealed class HealthTests
 {

@@ -364,6 +364,39 @@ types:
             Join-Path $root '.github' 'copilot-instructions.md' | Should -Exist
         }
 
+        # ADR-0089: a check reads whether its rule is in force from tools/rule-status.json, since the shared CI has no
+        # YAML module; the file is generated from the standards, so it can't drift from them (CRF-003).
+        It 'writes every rule''s status to tools/rule-status.json, sorted by id, and -Check finds it stale' {
+            $root = New-Repo
+            New-StandardsFile -Topic 'git' -Title 'Git' -Rules @(
+                (New-Rule -Id 'GIT-002' -Statement 'Later.' -Status 'proposed')
+                (New-Rule -Id 'GIT-001' -Statement 'Merge.')
+                (New-Rule -Id 'GIT-003' -Statement 'Gone.' -Status 'retired')
+            )
+            New-StandardsFile -Topic 'architecture' -Title 'Architecture' -Rules @((New-Rule -Id 'ARC-009' -Statement 'No empty projects.' -Status 'proposed'))
+            $path = Join-Path $root 'tools' 'rule-status.json'
+
+            Invoke-AgentRuleBuild -RepoRoot $root | Should -Be 0
+
+            $path | Should -Exist
+            $text = Get-Content -Raw -LiteralPath $path
+            $text | Should -Match '(?s)^\{\s*"ARC-009": "proposed",\s*"GIT-001": "accepted",\s*"GIT-002": "proposed",\s*"GIT-003": "retired"\s*\}\s*$'
+            Set-Content -LiteralPath $path -Value ($text -replace '"ARC-009": "proposed"', '"ARC-009": "accepted"') -NoNewline
+            Invoke-AgentRuleBuild -RepoRoot $root -Check | Should -Be 1
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match 'out of date: tools/rule-status\.json' }
+        }
+
+        # An app keeps the kit's scripts in .kit/tools, so the file sits beside them there (ADR-0032).
+        It 'writes the rule statuses to .kit/tools in an app' {
+            $root = New-Repo
+            New-Item -ItemType Directory -Path (Join-Path $root '.kit' 'tools') | Out-Null
+
+            Invoke-AgentRuleBuild -RepoRoot $root | Should -Be 0
+
+            Join-Path $root '.kit' 'tools' 'rule-status.json' | Should -Exist
+            Join-Path $root 'tools' 'rule-status.json' | Should -Not -Exist
+        }
+
         It 'writes the code-review instructions when docs/code-review.md exists, and none when it doesn''t' {
             $root = New-Repo
             Invoke-AgentRuleBuild -RepoRoot $root | Out-Null
