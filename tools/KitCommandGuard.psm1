@@ -408,7 +408,7 @@ function New-BashBuilder {
     [pscustomobject]@{
         Words = [Collections.Generic.List[string]]::new(); PlainWords = [Collections.Generic.List[string]]::new(); Built = [Collections.Generic.List[string]]::new()
        Word = [Text.StringBuilder]::new(); PlainWord = [Text.StringBuilder]::new(); Unquoted = [Text.StringBuilder]::new()
-        InWord = $false; Quoted = $false; WordComputed = $null; Redirect = $null; Depth = 0; CaseDepth = 0; InPattern = $false; Added = $false
+        InWord = $false; Quoted = $false; WordComputed = $null; Redirect = $null; Depth = 0; CaseDepth = 0; InPattern = $false; Added = $false; Runs = $null
     }
 }
 
@@ -444,7 +444,14 @@ function Add-BashWord {
     if ($Builder.Redirect -like 'heredoc*') {
         $Reader.Heredocs.Add([pscustomobject]@{ Delimiter = $word; Quoted = $Builder.Quoted; StripTabs = $Builder.Redirect -eq 'heredoc-strip' })
     }
-    elseif (-not $Builder.Redirect) { Add-BashCommandWord -Reader $Reader -Builder $Builder -Word $word -PlainWord $Builder.PlainWord.ToString() }
+    elseif (-not $Builder.Redirect) {
+        # An assignment (x=..., in a command or as export's or declare's argument) of text that holds a substitution
+        # Bash didn't run, quoted or escaped: ${x@P} or arithmetic on x ($((x)), with an index, a[$(cmd)]) runs it later
+        # (Bash's manual, Shell Arithmetic), out of the guard's sight.
+        $plainWord = $Builder.PlainWord.ToString()
+        if ($plainWord -match '\A[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?\+?=.*(?:\$\(|`)' -and -not $Builder.Runs) { $Builder.Runs = $word }
+        Add-BashCommandWord -Reader $Reader -Builder $Builder -Word $word -PlainWord $plainWord
+    }
     $Builder.Redirect = $null
     foreach ($part in $Builder.Word, $Builder.PlainWord, $Builder.Unquoted) { [void] $part.Clear() }
     $Builder.InWord = $false
@@ -492,9 +499,10 @@ function Add-BashCommand {
     if ($Builder.Words.Count) {
         $Reader.Commands.Add([pscustomobject]@{
                 Words = $Builder.Words.ToArray(); PlainWords = $Builder.PlainWords.ToArray(); Native = $true
-                Built = $Builder.Built.ToArray()
+                Built = $Builder.Built.ToArray(); Runs = $Builder.Runs
             })
         $Builder.Added = $true
+        $Builder.Runs = $null
         $Builder.Words.Clear()
         $Builder.PlainWords.Clear()
        $Builder.Built.Clear()
@@ -572,7 +580,11 @@ function Read-BashDollar {
     }
     if ($next -eq '{') {
         Assert-NoBashFunctionSubstitution -Text $text -At $start
-        Add-BashExpansion -Builder $Builder -Text (Read-BashBracketed -Reader $Reader -Open '{' -Close '}') -Computed
+        $expansion = Read-BashBracketed -Reader $Reader -Open '{' -Close '}'
+        # ${x@P} expands x's value as a prompt string, which runs the substitutions in it (Bash's manual, Shell
+        # Parameter Expansion): code the guard can't see, wherever the value came from.
+        if ($expansion -cmatch '@P\}' -and -not $Builder.Runs) { $Builder.Runs = $expansion }
+        Add-BashExpansion -Builder $Builder -Text $expansion -Computed
         return
     }
     $name = [regex]::Match($text.Substring($start + 1), '^(?:[A-Za-z_][A-Za-z0-9_]*|[0-9#?@*!$-])')
