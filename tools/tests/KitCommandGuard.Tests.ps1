@@ -10,6 +10,8 @@ BeforeAll {
     $settingsPath = Join-Path $PSScriptRoot '..' '..' '.claude' 'settings.json'
     $script:KitAskRules = @((Get-Content -Path $settingsPath -Raw | ConvertFrom-Json -AsHashtable)['permissions']['ask'])
     $script:KitRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+    # An ask for a reason the guard found, not its fallback when it can't resolve or check a command, which asks too.
+    $script:AskedForAReason = '\AThe command guard \(ADR-0077\) (resolved this command to "|asks because this command)'
     # A file's 8.3 short name, from cmd's %~snx, or nothing where Windows made none.
     function Get-ShortName([string] $Path) {
         if (-not $IsWindows) { return }
@@ -50,7 +52,7 @@ Describe 'Invoke-CommandGuard' {
 
     It 'reads the ask rules of .claude/settings.local.json too, where review mode adds its asks' {
         Set-Content -Path (Join-Path $project '.claude' 'settings.local.json') -Value '{"permissions":{"ask":["PowerShell(gh pr merge *)"]}}'
-        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "gh pr mer'ge' 5") -ProjectDir $project | Should -BeLike '*"ask"*'
+        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "gh pr mer'ge' 5") -ProjectDir $project | Should -BeLike '*resolved this command to*'
     }
 
     It 'expands a glob against the input''s cwd, where the shell runs the command' {
@@ -58,11 +60,11 @@ Describe 'Invoke-CommandGuard' {
         New-Item -ItemType Directory -Path $tools -Force | Out-Null
         Set-Content -Path (Join-Path $tools 'New-KitApp.ps1') -Value '#'
         Set-Content -Path (Join-Path $project '.claude' 'settings.json') -Value '{"permissions":{"ask":["PowerShell(./tools/New-KitApp*)"]}}'
-        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' './tools/New-K*.ps1') -ProjectDir $project | Should -BeLike '*"ask"*'
+        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' './tools/New-K*.ps1') -ProjectDir $project | Should -BeLike '*resolved this command to*'
     }
 
     It 'takes the project from the input''s cwd when it isn''t given one' {
-        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "git push --for'ce'") -ProjectDir '' | Should -BeLike '*"ask"*'
+        Invoke-CommandGuard -InputJson (New-HookInput 'PowerShell' "git push --for'ce'") -ProjectDir '' | Should -BeLike '*resolved this command to*'
     }
 
     It 'asks when <Case>, rather than let the call through unchecked' -ForEach @(
@@ -211,7 +213,7 @@ Describe 'Get-CommandGuardDecision for a path, a program''s name or a glob' {
         @{ Tool = 'Bash'; Command = 'pwsh -NoProfile -File ./tools/New-K*.ps1 -Name x' }
         @{ Tool = 'PowerShell'; Command = './tools/New-K*.ps1 -Name x' }
     ) {
-        Get-KitDecision -Tool $Tool -Command $Command | Should -Not -BeNullOrEmpty
+        Get-KitDecision -Tool $Tool -Command $Command | Should -Match $script:AskedForAReason
     }
 
     # Review of the rebased branch: Windows opens a file by its 8.3 short name too (NEW-KI~1.PS1), where the volume
@@ -313,7 +315,7 @@ Describe 'Get-CommandGuardDecision for Bash' {
         # Claude Code checks the commands inside a substitution against its rules; the guard resolves them first.
         @{ Command = "echo ""`$(git push --for'ce')""" }
     ) {
-        Get-KitDecision -Tool 'Bash' -Command $Command | Should -Not -BeNullOrEmpty
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -Match $script:AskedForAReason
     }
 
     It 'leaves <Command> to the rules, since it resolves to nothing they ask for' -ForEach @(
@@ -401,7 +403,7 @@ Describe 'Get-CommandGuardDecision for Bash' {
         @{ Command = 'git push --for${X}ce' }
         @{ Command = 'git push "--for$X"ce' }
     ) {
-        Get-KitDecision -Tool 'Bash' -Command $Command | Should -Not -BeNullOrEmpty
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -Match $script:AskedForAReason
     }
 
     It 'asks for a command Bash can''t read, since nothing in it can be resolved' {
@@ -424,7 +426,7 @@ Describe 'Get-CommandGuardDecision for Bash' {
         @{ Command = "! git cl'ean' -fd" }
         @{ Command = "while false; do :; done; until true; do git reset --ha'rd' x; done" }
     ) {
-        Get-KitDecision -Tool 'Bash' -Command $Command | Should -Not -BeNullOrEmpty
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -Match $script:AskedForAReason
     }
 
     It 'doesn''t strip a wrapper Claude Code keeps: <Command>' -ForEach @(
@@ -477,7 +479,7 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         # An expansion in a string that's empty when it runs (review round 1).
         @{ Command = 'git push "--for${null}ce"' }
     ) {
-        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -Not -BeNullOrEmpty
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -Match $script:AskedForAReason
     }
 
     It 'asks for <Command>, whose joined short options git or gh reads one by one' -ForEach @(
@@ -488,13 +490,13 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         @{ Command = 'git push origin -qd x' }
         @{ Command = 'gh api -iXPUT repos/a/b' }
     ) {
-        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -Not -BeNullOrEmpty
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -Match $script:AskedForAReason
     }
 
     It 'splits joined short options for a native command, not for a cmdlet, function or script' {
         # PowerShell binds "-fd" to one parameter of a cmdlet, function or script, so it isn't "-f -d" there.
         $rules = 'PowerShell(* -f *)'
-        Get-CommandGuardDecision -Tool 'PowerShell' -Command 'tool -fd x' -AskRules $rules | Should -Not -BeNullOrEmpty
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command 'tool -fd x' -AskRules $rules | Should -Match $script:AskedForAReason
         Get-CommandGuardDecision -Tool 'PowerShell' -Command 'Set-Thing -fd x' -AskRules $rules | Should -BeNullOrEmpty
         Get-CommandGuardDecision -Tool 'PowerShell' -Command './tools/Thing.ps1 -fd x' -AskRules $rules | Should -BeNullOrEmpty
     }
@@ -643,7 +645,7 @@ Describe 'Get-CommandGuardDecision for a kit script that runs a command' {
         @{ Tool = 'Bash'; Command = 'pwsh ./tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- git clean -fdx' }
         @{ Tool = 'PowerShell'; Command = 'pwsh -NoProfile ./tools/Invoke-WithPlaywrightImage.ps1 -Solution x.slnx -- git clean -fdx' }
     ) {
-        Get-KitDecision -Tool $Tool -Command $Command | Should -Not -BeNullOrEmpty
+        Get-KitDecision -Tool $Tool -Command $Command | Should -Match $script:AskedForAReason
     }
 
     It 'asks for <Command>, whose command the script runs takes a value built as it runs' -ForEach @(
