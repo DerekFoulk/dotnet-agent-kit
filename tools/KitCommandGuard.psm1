@@ -145,9 +145,10 @@ function Get-PowerShellCommand {
     $fromCommand = Get-PowerShellFilledVariable -Ast $ast
     $isCommand = { param($node) $node -is [Management.Automation.Language.CommandAst] }
     # A variable that names a provider path, such as ${C:\repo\.env}, reads that item as the input runs, as Get-Content
-    # would, wherever it sits: in an argument, in an assignment a later argument uses, or alone, as the output. Every
-    # command the input holds asks for it, and so does an input with no command.
-    $readsItem = $ast.Find({ param($node) Test-PowerShellProviderRead -Node $node }, $true)
+    # would, and a method call ([IO.File]::ReadAllText(...)) can read a file or run a program as a command can,
+    # wherever either sits: in an argument, in a pipeline's input, in an assignment a later argument uses, or alone, as
+    # the output. Every command the input holds asks for it, and so does an input with no command.
+    $readsItem = $ast.Find({ param($node) (Test-PowerShellProviderRead -Node $node) -or $node -is [Management.Automation.Language.InvokeMemberExpressionAst] }, $true)
     $commandAsts = @($ast.FindAll($isCommand, $true))
     if ($readsItem -and -not $commandAsts.Count) {
         return [pscustomobject]@{ Words = @($readsItem.Extent.Text); PlainWords = @($readsItem.Extent.Text); Built = @(, $null); Native = $false; Runs = $readsItem.Extent.Text }
@@ -235,18 +236,21 @@ function Test-PowerShellLiteral {
     $Element -is [Management.Automation.Language.ConstantExpressionAst]
 }
 
-# The variables a PowerShell input fills from a command's output: an assignment or a foreach over one, or over a method
-# call, which can read a file or run a program as a command can ([IO.File]::ReadAllText(...)); a common
-# parameter such as -OutVariable that names the variable a command fills; and a pipeline's Tee-Object -Variable, or
-# Set-Variable or New-Variable after a "|", where each name it's given counts (its value comes from the pipe).
+# The variables a PowerShell input fills from a command's output: an assignment or a foreach over one, and $_ in a
+# switch over one, which walks its output as foreach does; a common parameter such as -OutVariable that names the
+# variable a command fills; and a pipeline's Tee-Object -Variable, or Set-Variable or New-Variable after a "|", where
+# each name it's given counts (its value comes from the pipe). A method call needs none of these: it asks wherever it is.
 function Get-PowerShellFilledVariable {
     param([Parameter(Mandatory)] [Management.Automation.Language.Ast] $Ast)
 
     $filled = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $isCommand = { param($node) $node -is [Management.Automation.Language.CommandAst] }
-    foreach ($node in $Ast.FindAll({ param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] }, $true)) {
-        $target, $source = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable, $node.Condition } else { $node.Left, $node.Right }
-        if (-not $source.Find({ param($n) (& $isCommand $n) -or $n -is [Management.Automation.Language.InvokeMemberExpressionAst] }, $true)) { continue }
+    $fills = { param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -or $node -is [Management.Automation.Language.ForEachStatementAst] -or $node -is [Management.Automation.Language.SwitchStatementAst] }
+    foreach ($node in $Ast.FindAll($fills, $true)) {
+        $source = if ($node -is [Management.Automation.Language.AssignmentStatementAst]) { $node.Right } else { $node.Condition }
+        if (-not $source.Find($isCommand, $true)) { continue }
+        if ($node -is [Management.Automation.Language.SwitchStatementAst]) { [void] $filled.Add('_'); [void] $filled.Add('PSItem'); continue }
+        $target = if ($node -is [Management.Automation.Language.ForEachStatementAst]) { $node.Variable } else { $node.Left }
         foreach ($variable in $target.FindAll({ param($v) $v -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
             [void] $filled.Add((Get-PowerShellVariableName -Variable $variable))
         }
