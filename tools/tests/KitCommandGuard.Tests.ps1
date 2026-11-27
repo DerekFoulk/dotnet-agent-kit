@@ -540,6 +540,10 @@ Describe 'Get-CommandGuardDecision for Bash' {
         @{ Command = '[[ $# -eq 0 ]] && echo none' }
         # ${!a[@]} and ${!pre*} list keys or names, reading no value (review round 15).
         @{ Command = 'a=(p q); for k in "${!a[@]}"; do echo "$k"; done; echo "${!pre*}"' }
+        # A reserved word before [[ isn't an operand, and a hex literal or a length reads no variable (review round 16).
+        @{ Command = 'git status; if [[ $? -ne 0 ]]; then echo failed; fi' }
+        @{ Command = 'printf ''%d\n'' $((0xff)) $((16#ff))' }
+        @{ Command = 'a=(p q); [[ ${#a[@]} -gt 0 ]] && echo some' }
         @{ Command = "git commit -m `"`$(cat <<'EOF'`nlet me fix [[ x -eq y ]] and `$((i))`nEOF`n)`"" }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
