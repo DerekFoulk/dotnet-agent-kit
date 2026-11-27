@@ -18,7 +18,8 @@ namespace Kit.AppTests.Functional;
 /// scheme. Each is made from the host's own signed-in token, so none needs the app's key, issuer or audience; a token
 /// that's expired, or from another issuer or for another API, needs the app's key to sign, so the app's own tests check
 /// those, as the sample's do. A host that signs nobody in, such as a public website, has no token to check, so they skip,
-/// and none of its endpoints may require authorization.
+/// and the host is checked instead: it has no authentication scheme and no endpoint that requires authorization, and
+/// doesn't say most of its endpoints require sign-in.
 /// </summary>
 public sealed class TokenTests
 {
