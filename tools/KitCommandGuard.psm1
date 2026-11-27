@@ -759,12 +759,12 @@ function Test-BashExpansionRunsValue {
 }
 
 # Whether Bash arithmetic text names a variable, whose value it evaluates as an expression: a name, or a positional
-# or special parameter that holds any text ($1, $@, $*); not $#, $?, $$ or $!, which are always numbers, nor a
-# number's own letters (0xff, 16#ff).
+# or special parameter that holds any text ($1, $@, $*, $-); not $#, $?, $$ or $!, which are always numbers, nor a
+# number's own letters (0xff, 16#ff), unless a parameter comes right before it ($0x1 reads a name Bash builds).
 function Test-BashNamesVariable {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Text)
 
-    ($Text -replace '(?<![A-Za-z0-9_])(?:0[xX][0-9A-Fa-f]+|[0-9]+#[0-9A-Za-z@_]+)', '') -match '[A-Za-z_]|\$[0-9@*]'
+    ($Text -replace '(?<![A-Za-z0-9_$])(?:0[xX][0-9A-Fa-f]+|[0-9]+#[0-9A-Za-z@_]+)', '') -match '[A-Za-z_]|\$[0-9@*-]'
 }
 
 # An arithmetic command, (( … )), from its first '(' to the ')' that closes it, which ends past it; throws when it
