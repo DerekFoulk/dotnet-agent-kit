@@ -624,9 +624,25 @@ function Read-BashSubstitution {
     param([Parameter(Mandatory)] [pscustomobject] $Reader)
 
     $start = $Reader.Index
+    $before = $Reader.Commands.Count
     $Reader.Index += 2
     Read-BashList -Reader $Reader -Close ')'
-    $Reader.Text.Substring($start, $Reader.Index - $start)
+    $text = $Reader.Text.Substring($start, $Reader.Index - $start)
+    Add-BashRedirectOnly -Commands $Reader.Commands -Before $before -Text $text
+    $text
+}
+
+# A substitution that holds a redirection but no command, such as "$(<.env)", Bash's faster "$(cat .env)" (its
+# manual, Command Substitution): it reads or writes a file with no subcommand for Claude Code's rules, or its Read
+# deny rules on cat, to check. It's added as a command of its own that runs code, so the guard asks.
+function Add-BashRedirectOnly {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [Collections.Generic.List[object]] $Commands,
+        [Parameter(Mandatory)] [int] $Before, [Parameter(Mandatory)] [string] $Text
+    )
+
+    if ($Commands.Count -ne $Before -or $Text -notmatch '[<>]') { return }
+    $Commands.Add([pscustomobject]@{ Words = @($Text); PlainWords = @($Text); Built = @(, $null); Native = $true; Runs = $Text })
 }
 
 # A backquoted substitution, after its opening backquote: inside it, '\' escapes only '`', '\' and '$'; its commands
@@ -645,8 +661,11 @@ function Read-BashBackquote {
         else { [void] $inner.Append($c); $Reader.Index++ }
     }
     $sub = New-BashReader -Text $inner.ToString() -Commands $Reader.Commands
+    $before = $Reader.Commands.Count
     Read-BashList -Reader $sub -Close ''
-    '`' + $inner.ToString() + '`'
+    $text = '`' + $inner.ToString() + '`'
+    Add-BashRedirectOnly -Commands $Reader.Commands -Before $before -Text $text
+    $text
 }
 
 # A $'...' string, after its opening quote, with Bash's backslash escapes resolved.
