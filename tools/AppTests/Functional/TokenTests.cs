@@ -26,7 +26,6 @@ public sealed class TokenTests
     private const string Unsigned = "an unsigned token";
     private const string ClaimsChanged = "a token whose claims changed after it was signed";
     private const string OtherKey = "a token signed with a key the host doesn't trust";
-    private const string SignsUsersIn = "The host signs users in (HostUnderTest.SignsUsersIn), so the token checks run.";
 
     // The control: the token every other case is made from gets through, so each 401 comes from the change.
     [Theory]
@@ -81,10 +80,10 @@ public sealed class TokenTests
     // MVC's global filter either, and neither shows in an endpoint's metadata.
     [Theory]
     [EachHost]
-    public void AHostThatSignsNobodyInHasNoEndpointThatRequiresAuthorization(string host)
+    public void AHostThatSignsNobodyInHasNoAuthenticationOrProtectedEndpoint(string host)
     {
         HostUnderTest described = AppHost.Named(host);
-        Assert.SkipWhen(described.SignsUsersIn, SignsUsersIn);
+        Assert.SkipWhen(described.SignsUsersIn, AppHost.UsersSignIn);
         using IAppUnderTest app = described.Start(Environments.Production);
 
         described.MostEndpointsRequireSignIn.Should().BeFalse("most endpoints can't require sign-in in a host that signs nobody in");

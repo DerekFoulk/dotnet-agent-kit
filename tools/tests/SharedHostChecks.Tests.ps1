@@ -137,7 +137,7 @@ Describe 'the kit''s shared authorization checks' {
     It 'fail a host that says it signs nobody in but has endpoints that require authorization' {
         $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false -SignsUsersIn $false
 
-        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.AHostThatSignsNobodyInHasNoEndpointThatRequiresAuthorization'
+        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.AHostThatSignsNobodyInHasNoAuthenticationOrProtectedEndpoint'
         $result.Output | Should -Match '"POST admin/notices"'
         $result.Output | Should -Match '"\* admin/feed"'
         $result.Output | Should -Match '"GET /staff"'
@@ -148,7 +148,7 @@ Describe 'the kit''s shared authorization checks' {
     It 'fail a host that says it signs nobody in and that most of its endpoints require sign-in' {
         $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $true -SignsUsersIn $false -PublicOnly
 
-        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.AHostThatSignsNobodyInHasNoEndpointThatRequiresAuthorization'
+        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.AHostThatSignsNobodyInHasNoAuthenticationOrProtectedEndpoint'
         $result.Output | Should -Match 'Expected described\.MostEndpointsRequireSignIn to be False'
     }
 

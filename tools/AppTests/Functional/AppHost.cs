@@ -18,6 +18,9 @@ internal static partial class AppHost
     public const string NoSignIn =
         "The host signs nobody in (HostUnderTest.SignsUsersIn), so the checks of a signed-in user's token (SEC-008) don't apply.";
 
+    /// <summary>The reason the check that a host signs nobody in gives when it skips.</summary>
+    public const string UsersSignIn = "The host signs users in (HostUnderTest.SignsUsersIn), so the token checks run instead.";
+
     /// <summary>The reason the checks of SEC-017's fallback policy give when they skip.</summary>
     public const string MostEndpointsArePublic =
         "Most of the host's endpoints are public (HostUnderTest.MostEndpointsRequireSignIn), so SEC-017's fallback policy doesn't apply.";
