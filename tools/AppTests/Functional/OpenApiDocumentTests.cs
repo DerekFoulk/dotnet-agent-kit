@@ -1,12 +1,17 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Kit.AppTests.Functional;
 
 /// <summary>
 /// What the OpenAPI document tells a client generated from it: every error it declares is Problem Details (API-002),
-/// and every operation, unless the host lists its route as anonymous, needs a bearer token and may answer 401 or 403
-/// (SEC-007, SEC-008).
+/// and every protected operation needs a bearer token and may answer 401 or 403 (SEC-008). Which operations are
+/// protected follows SEC-017: in a host whose endpoints mostly require sign-in, every operation the host doesn't list
+/// as anonymous; in a mostly public host, the operations whose endpoints require authorization.
 /// </summary>
 public sealed partial class OpenApiDocumentTests
 {
@@ -30,22 +35,54 @@ public sealed partial class OpenApiDocumentTests
 
     [Theory]
     [EachHost]
-    public async Task TheDocumentSaysEveryOperationNeedsABearerTokenAndMayAnswer401Or403(string host)
+    public async Task TheDocumentSaysEveryProtectedOperationNeedsABearerTokenAndMayAnswer401Or403(string host)
     {
         HostUnderTest described = AppHost.Named(host);
         Assert.SkipUnless(described.ServesHttpApi, AppHost.NoHttpApi);
         JsonNode document = await OpenApiDocument.ReadAsync(described);
-        HashSet<string> anonymous = [.. described.AnonymousRoutes.Select(Template)];
+        Func<string, string, bool> mustBeProtected = ProtectedOperations(described);
 
+        List<(string Method, string Path, JsonNode Operation)> required = [.. OpenApiDocument.Operations(document)
+            .Where(operation => mustBeProtected(operation.Method, operation.Path))];
         JsonNode? scheme = document["components"]?["securitySchemes"]?["Bearer"];
-        (scheme?["type"]?.GetValue<string>()).Should().Be("http", "the document declares the bearer scheme (SEC-008)");
-        (scheme?["scheme"]?.GetValue<string>()).Should().Be("bearer", "the document declares the bearer scheme (SEC-008)");
-        IEnumerable<string> unprotected = OpenApiDocument.Operations(document)
-            .Where(operation => !anonymous.Contains(Template(operation.Path)) && !IsProtected(operation.Operation))
+        bool declaresBearer = scheme?["type"]?.GetValue<string>() == "http" && scheme["scheme"]?.GetValue<string>() == "bearer";
+        IEnumerable<string> unprotected = required
+            .Where(operation => !IsProtected(operation.Operation))
             .Select(operation => $"{operation.Method} {operation.Path}");
 
-        unprotected.Should().BeEmpty("every operation needs a bearer token, and says it may answer 401 or 403 (SEC-007, SEC-008)");
+        // A mostly public host with no protected operation needn't declare the scheme at all.
+        (declaresBearer || (required.Count == 0 && !described.MostEndpointsRequireSignIn)).Should().BeTrue("the document declares the bearer scheme (SEC-008)");
+        unprotected.Should().BeEmpty("every protected operation needs a bearer token, and says it may answer 401 or 403 (SEC-008, SEC-017)");
     }
+
+    // Whether an operation (its method and the document's path) must be protected. SEC-017's fallback policy protects
+    // every endpoint without authorization metadata, so in a host whose endpoints mostly require sign-in it's every
+    // operation not on an anonymous route. In a mostly public host only an endpoint's own authorization metadata
+    // protects it, so it's the operations whose endpoints carry it and don't allow anonymous callers.
+    private static Func<string, string, bool> ProtectedOperations(HostUnderTest host)
+    {
+        if (host.MostEndpointsRequireSignIn)
+        {
+            HashSet<string> anonymous = [.. host.AnonymousRoutes.Select(Template)];
+            return (_, path) => !anonymous.Contains(Template(path));
+        }
+
+        using IAppUnderTest app = host.Start(Environments.Development);
+        List<RouteEndpoint> authorized = [.. app.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .OfType<RouteEndpoint>()
+            .Where(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null
+                && (endpoint.Metadata.GetMetadata<IAuthorizeData>() is not null || endpoint.Metadata.GetMetadata<AuthorizationPolicy>() is not null))];
+
+        // An endpoint without HTTP method metadata answers every method.
+        HashSet<string> keys = [.. authorized.SelectMany(endpoint =>
+            (endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? ["*"])
+                .Select(method => Key(method, endpoint.RoutePattern.RawText ?? string.Empty)))];
+        return (method, path) => keys.Contains(Key(method, path)) || keys.Contains(Key("*", path));
+    }
+
+    // An operation's method and path, as both the document and an endpoint can name it.
+    private static string Key(string method, string route) =>
+        $"{method.ToUpperInvariant()} {Template("/" + route.TrimStart('/'))}";
 
     private static bool IsProtected(JsonNode operation) =>
         (operation["security"]?.AsArray().Any(requirement => requirement?.AsObject().ContainsKey("Bearer") ?? false) ?? false)
