@@ -4,8 +4,11 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace Kit.AppTests.Functional;
 
@@ -72,21 +75,25 @@ public sealed class TokenTests
         (response.Content.Headers.ContentType?.MediaType).Should().Be("application/problem+json", "a 401 is Problem Details too (API-002)");
     }
 
-    // Saying the host signs nobody in skips the checks above, so the statement is checked against the host: none of its
-    // endpoints may require authorization, which only a signed-in user could pass, and it can't also say that most do.
+    // Saying the host signs nobody in skips the checks above, so the statement is checked against the host, started as
+    // they start it: none of its endpoints may require authorization, which only a signed-in user could pass, it can't
+    // also say that most do, and it has no authentication scheme. Without one, nobody could pass a fallback policy or
+    // MVC's global filter either, and neither shows in an endpoint's metadata.
     [Theory]
     [EachHost]
     public void AHostThatSignsNobodyInHasNoEndpointThatRequiresAuthorization(string host)
     {
         HostUnderTest described = AppHost.Named(host);
         Assert.SkipWhen(described.SignsUsersIn, SignsUsersIn);
-        using IAppUnderTest app = described.Start(Environments.Development);
+        using IAppUnderTest app = described.Start(Environments.Production);
 
         described.MostEndpointsRequireSignIn.Should().BeFalse("most endpoints can't require sign-in in a host that signs nobody in");
         IEnumerable<string> authorized = EndpointAuthorization.Protected(app.Services)
             .Select(endpoint => $"{string.Join(',', endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? ["*"])} {endpoint.RoutePattern.RawText}");
 
         authorized.Should().BeEmpty("only a signed-in user passes an endpoint's authorization, so a host with one signs users in (HostUnderTest.SignsUsersIn)");
+        app.Services.GetRequiredService<IOptions<AuthenticationOptions>>().Value.Schemes.Select(scheme => scheme.Name)
+            .Should().BeEmpty("an authentication scheme signs users in (HostUnderTest.SignsUsersIn)");
     }
 
     // An HTTP API that signs users in takes JWT bearer tokens (SEC-008), so its signed-in client sends one: header,
