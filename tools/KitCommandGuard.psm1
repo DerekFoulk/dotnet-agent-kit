@@ -541,6 +541,11 @@ function Add-BashCommand {
         $Builder.PlainWords.Clear()
        $Builder.Built.Clear()
     }
+    elseif ($Builder.Runs) {
+        # Code with no word to carry it, such as a lone ((i)), is a command of its own.
+        Add-BashRunsCommand -Commands $Reader.Commands -Text $Builder.Runs
+        $Builder.Runs = $null
+    }
 }
 
 # A redirection operator ("2>&1", ">>", "<<-"): a file descriptor's digits before it aren't a word, and the word after
@@ -618,10 +623,7 @@ function Read-BashDollar {
     if ($next -eq '{') {
         Assert-NoBashFunctionSubstitution -Text $text -At $start
         $expansion = Read-BashBracketed -Reader $Reader -Open '{' -Close '}'
-        # ${x@P} expands x's value as a prompt string, which runs the substitutions in it (Bash's manual, Shell
-        # Parameter Expansion), and an array index with a name in it (${a[i]}), or $((…)) or $[…] inside, is
-        # arithmetic on a variable.
-        Set-BashRuns -Builder $Builder -Text $expansion -When ($expansion -cmatch '@P\}' -or $expansion -match '\[[^\]]*[A-Za-z_]|\$\(\(|\$\[')
+        Set-BashRuns -Builder $Builder -Text $expansion -When (Test-BashExpansionRunsValue -Expansion $expansion)
         Add-BashExpansion -Builder $Builder -Text $expansion -Computed
         return
     }
@@ -731,6 +733,18 @@ function Set-BashRuns {
     if ($When -and -not $Builder.Runs) { $Builder.Runs = $Text }
 }
 
+# Whether a ${…} expansion runs a variable's value (Bash's manual, Shell Parameter Expansion and Shell Arithmetic):
+# ${x@P} expands it as a prompt string, which runs its substitutions; ${!x} expands the variable it names, index and
+# all; and arithmetic reads one, in an array index with a name in it (${a[i]}), a substring's offset or length with a
+# name in it (${s:i}, ${s:0:i}), or a $((…)) or $[…] inside. A pattern's bracket (${f//[^a-z]/_}) is no index.
+function Test-BashExpansionRunsValue {
+    param([Parameter(Mandatory)] [string] $Expansion)
+
+    $Expansion -cmatch '@P\}' -or $Expansion -match '\A\$\{!|\$\(\(|\$\[' -or
+    $Expansion -match '\A\$\{#?[A-Za-z_][A-Za-z0-9_]*\[[^\]]*[A-Za-z_]' -or
+    $Expansion -match '\A\$\{[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?:(?![-=?+])[^}]*[A-Za-z_]'
+}
+
 # An arithmetic command, (( … )), from its first '(' to the ')' that closes it, which ends past it; throws when it
 # isn't closed, since Bash won't run that either.
 function Read-BashArithmeticCommand {
@@ -749,15 +763,20 @@ function Read-BashArithmeticCommand {
     throw "Bash can't read it: a (( isn't closed."
 }
 
-# The text of a Bash command whose words do arithmetic: let, [[ with -eq, -ne, -lt, -le, -gt or -ge, or declare,
-# typeset, local or readonly with -i (Bash's manual, Shell Arithmetic); or $null.
+# The text of a Bash command whose words evaluate a variable's value (Bash's manual, Shell Arithmetic and Bash
+# Builtins), past the reserved words and wrappers Get-BashInnerStart skips: let; [[ with -eq, -ne, -lt, -le, -gt or
+# -ge and an operand with a name in it; or declare, typeset, local or readonly with -i, or -n, whose nameref expands
+# the variable it names, index and all; or $null.
 function Get-BashArithmeticWord {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words)
 
     if (-not $Words.Count) { return $null }
-    $arithmetic = $Words[0] -ceq 'let' -or
-        ($Words -ccontains '[[' -and @($Words | Where-Object { $_ -cin '-eq', '-ne', '-lt', '-le', '-gt', '-ge' }).Count) -or
-        ($Words[0] -cin 'declare', 'typeset', 'local', 'readonly' -and @($Words | Where-Object { $_ -cmatch '\A-[A-Za-z]*i' }).Count)
+    $inner = @($Words | Select-Object -Skip (Get-BashInnerStart -Words $Words))
+    $comparison = '-eq', '-ne', '-lt', '-le', '-gt', '-ge'
+    $operands = @($Words | Where-Object { $_ -cnotin $comparison -and $_ -cnotin '[[', ']]', '!', '&&', '||' })
+    $arithmetic = ($inner.Count -and $inner[0] -ceq 'let') -or
+        ($Words -ccontains '[[' -and @($Words | Where-Object { $_ -cin $comparison }).Count -and @($operands | Where-Object { $_ -match '[A-Za-z_]' }).Count) -or
+        ($inner.Count -and $inner[0] -cin 'declare', 'typeset', 'local', 'readonly' -and @($inner | Where-Object { $_ -cmatch '\A-[A-Za-z]*[in]' }).Count)
     if ($arithmetic) { $Words -join ' ' } else { $null }
 }
 
