@@ -99,6 +99,16 @@ Describe 'the kit''s shared authorization checks' {
         $result.Output | Should -Not -Match '"get /admin/status"'
     }
 
+    # Declared as signed-in, every operation not on an anonymous route must be protected. The fixture lists its group's
+    # anonymous route as AuthorizationTests reads it, RawText without the leading slash, which the document writes.
+    It 'hold every operation but the anonymous routes, slash or not, in a host whose endpoints mostly require sign-in' {
+        $result = Invoke-SiteCheck -Class OpenApiDocumentTests -MostEndpointsRequireSignIn $true
+
+        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.OpenApiDocumentTests\.TheDocumentSays'
+        $result.Output | Should -Match '"get /"'
+        $result.Output | Should -Not -Match '"get /admin/status"'
+    }
+
     It 'pass the document check in a public site whose document describes only its public operations, with no Bearer scheme' {
         $result = Invoke-SiteCheck -Class OpenApiDocumentTests -MostEndpointsRequireSignIn $false -Document public
 
