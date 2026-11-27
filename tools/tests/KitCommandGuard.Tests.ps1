@@ -516,6 +516,14 @@ Describe 'Get-CommandGuardDecision for Bash' {
         @{ Command = '((i))' }
         @{ Command = 'gh pr create --title x --body y; ((i))' }
         @{ Command = 'echo "$( ((i)) )"' }
+        # Nested in another expansion, and positional parameters, which hold any text (review round 15).
+        @{ Command = 'gh pr create --title x --body "${x:-${a[i]}}"' }
+        @{ Command = 'gh pr create --title x --body "${x:-${s:i}}"' }
+        @{ Command = 'gh pr create --title x --body "${x:-${!y}}"' }
+        @{ Command = 'gh pr create --title x --body "$(( $1 + 0 ))"' }
+        @{ Command = '(( $1 ))' }
+        @{ Command = '[[ $1 -eq 0 ]]' }
+        @{ Command = 'gh pr create --title x --body "${@:i}"' }
     ) {
         Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument when it runs, from code inside it*'
     }
@@ -530,6 +538,8 @@ Describe 'Get-CommandGuardDecision for Bash' {
         # none (review round 14).
         @{ Command = 'f=a.txt; echo "${f//[^a-z]/_}" "${f#[a-z]}" "${f:0:2}" "${f:-x}"' }
         @{ Command = '[[ $# -eq 0 ]] && echo none' }
+        # ${!a[@]} and ${!pre*} list keys or names, reading no value (review round 15).
+        @{ Command = 'a=(p q); for k in "${!a[@]}"; do echo "$k"; done; echo "${!pre*}"' }
         @{ Command = "git commit -m `"`$(cat <<'EOF'`nlet me fix [[ x -eq y ]] and `$((i))`nEOF`n)`"" }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
