@@ -115,4 +115,13 @@ Describe 'the kit''s shared authorization checks' {
         $result.Output | Should -Match 'succeeded: 2\b'
         $result.ExitCode | Should -Be 0 -Because $result.Output
     }
+
+    # A host that signs nobody in, such as a public website or a public read-only API, has no signed-in user for SEC-008's
+    # token checks to compare a bad token with, so all five of them skip, with a reason.
+    It 'skip the token checks, all five, in a host that signs nobody in' {
+        $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false
+
+        $result.Output | Should -Match 'skipped: 5\b'
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+    }
 }
