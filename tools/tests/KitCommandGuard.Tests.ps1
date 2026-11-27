@@ -593,6 +593,21 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @() | Should -BeLike '*builds an argument when it runs, from code inside it*${C:\repo\.env}*'
     }
 
+    # A method can read a file or run a program as a command can, so a variable it fills is one a command fills
+    # (review round 11).
+    It 'asks for <Command>, whose variable a method call fills' -ForEach @(
+        @{ Command = "`$b = [IO.File]::ReadAllText('C:\repo\.env'); Add-ReviewReply -Body `$b" }
+        @{ Command = "foreach (`$b in [IO.File]::ReadAllLines('.env')) { Add-ReviewReply -Body `$b }" }
+    ) {
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @() | Should -BeLike '*builds an argument when it runs, from code inside it: $b'
+    }
+
+    It 'leaves <Command> to the rules: a variable set to text is no command''s output' -ForEach @(
+        @{ Command = "`$r = 'a/b'; gh pr view 8 --repo `$r --json state" }
+    ) {
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @() | Should -BeNullOrEmpty
+    }
+
     It 'leaves <Command> to the rules: an environment variable or a scoped one is no provider read' -ForEach @(
         @{ Command = 'Write-Output $env:USERPROFILE "${env:HOME}" $global:x ${variable:y}' }
     ) {
