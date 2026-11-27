@@ -22,7 +22,7 @@ public sealed class HostingSecurityTests
     {
         using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
         using HttpClient client = app.CreateClient(signedIn: true);
-        using HttpRequestMessage request = new(HttpMethod.Get, AppHost.Named(host).SignedInRoute);
+        using HttpRequestMessage request = new(HttpMethod.Get, AppHost.Named(host).Route);
         request.Headers.Host = OtherHost;
 
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -37,7 +37,7 @@ public sealed class HostingSecurityTests
     {
         using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production, new Dictionary<string, string> { ["AllowedHosts"] = AllowedHost });
         using HttpClient client = app.CreateClient(signedIn: true);
-        using HttpRequestMessage request = new(HttpMethod.Get, new Uri($"https://{AllowedHost}{AppHost.Named(host).SignedInRoute}"));
+        using HttpRequestMessage request = new(HttpMethod.Get, new Uri($"https://{AllowedHost}{AppHost.Named(host).Route}"));
 
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
@@ -50,7 +50,7 @@ public sealed class HostingSecurityTests
     {
         using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
         using HttpClient client = app.CreateClient(signedIn: true);
-        using HttpRequestMessage preflight = new(HttpMethod.Options, AppHost.Named(host).SignedInRoute);
+        using HttpRequestMessage preflight = new(HttpMethod.Options, AppHost.Named(host).Route);
         preflight.Headers.Add("Origin", $"https://{OtherHost}");
         preflight.Headers.Add("Access-Control-Request-Method", "POST");
 

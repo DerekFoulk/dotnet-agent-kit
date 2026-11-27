@@ -4,7 +4,7 @@ A public website whose one host is a small HTTP API: anyone may read it, so it s
 Its `admin` group requires authorization (mapped without a leading slash, with an any-method `feed` endpoint and a
 `status` endpoint that allows anonymous callers again), and `/staff` requires it through requirement metadata alone.
 Its FunctionalTests project compiles the kit's shared host checks (`tools/AppTests/Functional`) the way an app's does
-(ADR-0081). `tools/tests/SharedHostChecks.Tests.ps1` copies it, with the kit's build files, into a scratch folder and runs its `AuthorizationTests` and `OpenApiDocumentTests`.
+(ADR-0081). `tools/tests/SharedHostChecks.Tests.ps1` copies it, with the kit's build files, into a scratch folder and runs its `AuthorizationTests`, `OpenApiDocumentTests` and `TokenTests`.
 
 - As it is, most of its endpoints are public, so SEC-017's fallback policy doesn't apply: the authorization checks
   skip, and the document check looks only at the signed-in operations, which its document says require the Bearer
@@ -15,5 +15,13 @@ Its FunctionalTests project compiles the kit's shared host checks (`tools/AppTes
   declares no Bearer scheme, and the document check passes.
 - With `KIT_FIXTURE_SIGN_IN=true`, its `AppHost` part says most endpoints require sign-in, and the fallback check fails,
   because the site sets no fallback policy.
+- As it is, it signs in the caller of any bearer token without checking the token, and its `AppHost` part says it signs
+  users in and names `/staff` as its route. The token checks fail it for the unsigned token, the changed one and the
+  one signed with a new key.
+- With `KIT_FIXTURE_PUBLIC_ONLY=true` and `KIT_FIXTURE_SIGNS_USERS_IN=false`, it's a public website that signs nobody
+  in, with only its home page and its document, and its `AppHost` part says so and names `/` as its route. The token
+  checks skip.
+- With `KIT_FIXTURE_FALLBACK_ONLY=true` as well, it signs users in again, and a fallback policy protects those pages,
+  which no endpoint's metadata shows. Said to sign nobody in, it fails the check of that statement.
 
 The document is a fixed file rather than the built-in generator's, so a test can change what it says.
