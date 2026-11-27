@@ -524,6 +524,12 @@ Describe 'Get-CommandGuardDecision for Bash' {
         @{ Command = '(( $1 ))' }
         @{ Command = '[[ $1 -eq 0 ]]' }
         @{ Command = 'gh pr create --title x --body "${@:i}"' }
+        # A name next to a number, after a reserved word, or in a length's index still asks; so does a number right
+        # after $0 or $-, whose value Bash joins to it as a name ($0x1 reads the variable bashx1) (review round 17).
+        @{ Command = 'if [[ $i -eq 0 ]]; then echo z; fi' }
+        @{ Command = 'echo $((0x1+i)) $((16#ff+i))' }
+        @{ Command = '[[ ${#a[i]} -gt 0 ]]' }
+        @{ Command = 'echo $(( $0x1 ))' }
     ) {
         Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument when it runs, from code inside it*'
     }
