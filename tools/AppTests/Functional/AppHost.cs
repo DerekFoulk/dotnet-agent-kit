@@ -14,6 +14,10 @@ internal static partial class AppHost
     /// <summary>The reason the API's own checks give when they skip.</summary>
     public const string NoHttpApi = "The host serves no HTTP API (HostUnderTest.ServesHttpApi), so the API's checks (API-002, API-003, SEC-008, SEC-013) don't apply.";
 
+    /// <summary>The reason the checks of SEC-017's fallback policy give when they skip.</summary>
+    public const string MostEndpointsArePublic =
+        "Most of the host's endpoints are public (HostUnderTest.MostEndpointsRequireSignIn), so SEC-017's fallback policy doesn't apply.";
+
     /// <summary>Gets the app's hosts, such as its API and a web UI beside it, each with a name of its own.</summary>
     public static partial IReadOnlyList<HostUnderTest> Hosts { get; }
 
@@ -27,7 +31,7 @@ internal abstract class HostUnderTest
     /// <summary>Gets the host's name, such as its project's, which each test's row shows.</summary>
     public abstract string Name { get; }
 
-    /// <summary>Gets the route patterns that allow anonymous callers (SEC-007), as each endpoint's RoutePattern.RawText.</summary>
+    /// <summary>Gets the route patterns that allow anonymous callers (SEC-017), as each endpoint's RoutePattern.RawText.</summary>
     public abstract IReadOnlyCollection<string> AnonymousRoutes { get; }
 
     /// <summary>
@@ -41,6 +45,12 @@ internal abstract class HostUnderTest
     /// no API of its own.
     /// </summary>
     public abstract bool ServesHttpApi { get; }
+
+    /// <summary>
+    /// Gets whether most or all of the host's endpoints require a signed-in user, which is when SEC-017 asks for a
+    /// fallback authorization policy. The checks of it skip when it's false, as in a public website.
+    /// </summary>
+    public abstract bool MostEndpointsRequireSignIn { get; }
 
     /// <summary>
     /// Gets the assemblies of the types the host's endpoints may accept and return (SEC-013), such as its Contracts

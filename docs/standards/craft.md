@@ -153,7 +153,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml and fails on a breach outside generated code and outside a reasoned exception; tools/CodeShape/src/Kit.CodeShape/Limits.cs is the one source of the numbers, and tools/tests/Test-CodeShape.Tests.ps1 checks this statement against it"
+        how: "ci: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml and fails on a breach outside generated code and outside a reasoned exception; tools/CodeShape/src/Kit.CodeShape/Limits.cs is the one source of the numbers, and tools/tests/Test-CodeShape.Tests.ps1 checks this statement against it; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-012

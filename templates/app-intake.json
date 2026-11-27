@@ -193,7 +193,7 @@
         {
           "id": "none",
           "label": "No sign-in",
-          "description": "Everyone sees the same thing and nobody signs in. Every endpoint then has to be public on purpose (SEC-007).",
+          "description": "Everyone sees the same thing and nobody signs in. Every endpoint is then public on purpose (SEC-017 applies to an app where most or all endpoints require sign-in).",
           "cost": { "label": "Free" }
         }
       ]

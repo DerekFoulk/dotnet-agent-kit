@@ -140,7 +140,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: dotnet-ci.reusable.yml runs tools/Test-EmptyProjects.ps1, which fails on a C# project in the solution with no source of its own (C#, Razor or .proto files) or with the class library template's empty Class1 left in it"
+        how: "ci: dotnet-ci.reusable.yml runs tools/Test-EmptyProjects.ps1, which fails on a C# project in the solution with no source of its own (C#, Razor or .proto files) or with the class library template's empty Class1 left in it; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
       - kind: advisory
         in: [kit, app]
         how: "the number of modules and the patterns inside them: the plan-checklist skill asks, and code review checks"
@@ -156,7 +156,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects"
+        how: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
       - kind: advisory
         in: [kit, app]
         how: "that a UI project holds no logic, checked by code review"
@@ -367,7 +367,7 @@ ARC-001 sets the shape of a web app; ARC-009 sets how much of it to build, in fo
 
 1. **Modules.** A web app starts with one ARC-001 module. It gets a second only for a second distinct business area, one with its own language, data and rules (a bounded context, in domain-driven design's terms), never one per entity or feature.
 2. **Projects outside ARC-001.** A console tool, a standalone worker or a library is one project and its tests (TST-003), with its concerns kept apart by namespace. It gets a second project only for code another app must share, or a boundary the compiler must enforce.
-3. **No empty projects.** A project is created with its first real type, and that includes each of ARC-001's five module projects: ARC-009 reads them as a module's full shape, reached as each one's first type arrives, not a set to scaffold on day one. A one-module app with no other module to call it has no Contracts project yet (ARC-002). `tools/Test-EmptyProjects.ps1` fails CI on a C# project with no source of its own (C#, Razor or `.proto` files), and on one that keeps `dotnet new classlib`'s empty `Class1`.
+3. **No empty projects.** A project is created with its first real type, and that includes each of ARC-001's five module projects: ARC-009 reads them as a module's full shape, reached as each one's first type arrives, not a set to scaffold on day one. A one-module app with no other module to call it has no Contracts project yet (ARC-002). `tools/Test-EmptyProjects.ps1` reports a C# project with no source of its own (C#, Razor or `.proto` files), and one that keeps `dotnet new classlib`'s empty `Class1`: it warns while ARC-009 is proposed, and fails CI once it's accepted (ADR-0089).
 4. **Patterns.** Inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository, or an interface that inverts no dependency (speculation, by CRF-004: see craft.md's SOLID notes) come only with the requirement the plan names for each. An interface that lets a test replace infrastructure does invert a dependency. A CRUD feature stays a simple endpoint, handler and data model.
 
 MAUI and desktop apps keep ADR-0008's MVVM defaults, with the project structure below (ARC-010).

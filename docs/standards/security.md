@@ -99,22 +99,16 @@ rules:
     paths: [".github/workflows/**", "**/*.cs"]
   - id: SEC-007
     statement: "Every ASP.NET Core app sets a fallback authorization policy that requires a signed-in user, so an endpoint needs one unless it opts out with AllowAnonymous; only endpoints that must be public opt out (health probes, the Development OpenAPI document), each with a comment saying why, and a test pins that list."
-    why: "Authorization added endpoint by endpoint leaves public any endpoint that forgets it; the kit applies Microsoft's secure-by-default fallback policy (SEC-017) to every ASP.NET Core app, not only those where most endpoints need a sign-in, and keeps the list of public endpoints short, commented and tested (GAP-006)."
+    why: "Authorization added endpoint by endpoint leaves public any endpoint that forgets it; the kit applies Microsoft's secure-by-default fallback policy (SEC-017) to every ASP.NET Core app, not only those where most endpoints need a sign-in, and keeps the list of public endpoints short, commented and tested (GAP-006). Retired 2026-11-18 (owner): Microsoft asks for the fallback policy only in a server-side app where most or all endpoints require authentication, and SEC-017 keeps that condition; its gates moved to SEC-017, and they skip in an app whose endpoints are mostly public."
     layer: owner
     basis: preference
-    status: proposed
-    sources: ["ADR-0048"]
+    status: retired
+    sources: ["ADR-0048", "owner, 2026-11-18"]
     scope: [web-api, blazor]
     enforcement:
-      - kind: gate
-        in: [kit]
-        how: "ci: the sample's FunctionalTests check that every bookmarks endpoint answers 401 without a valid token"
-      - kind: gate
-        in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): AuthorizationTests checks that the fallback policy requires a signed-in user, and that only the routes the app lists in AppHost allow anonymous callers; HealthTests and OpenApiTests check that the probes and the Development document answer without a token; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
-        in: [app]
-        how: "each opt-out's comment saying why, which code review checks"
+        in: [kit, app]
+        how: "none: retired; SEC-017's gates check the fallback policy where SEC-017 applies"
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*ServiceDefaults*/**", "**/*Security*.cs"]
   - id: SEC-008
     statement: "An app never stores passwords or issues its own access tokens: users sign in with an OpenID Connect provider (Microsoft Entra ID or Entra External ID unless an ADR picks another), and an HTTP API accepts its access tokens with AddJwtBearer, which checks their signature, issuer, audience and lifetime, set under Authentication:Schemes:Bearer; development uses dotnet user-jwts, whose key stays in user secrets; ASP.NET Core Identity or any other scheme needs an ADR."
@@ -130,7 +124,7 @@ rules:
         how: "ci: the sample's FunctionalTests send no token, and an expired, wrong-issuer and wrong-audience one, which only its key can sign, to every bookmarks endpoint and expect a 401 Problem"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): for each host that serves an HTTP API, TokenTests sends the host's signed-in route no token, an unsigned token, the signed-in client's token with a claim added and one signed with a new key, each made from that client's own token so none needs the app's key, and expects a 401 Problem naming the Bearer scheme, while the untouched token gets through; OpenApiDocumentTests checks that the OpenAPI document declares the Bearer scheme and that every operation not on an anonymous route requires it and declares 401 and 403; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): for each host that serves an HTTP API, TokenTests sends the host's signed-in route no token, an unsigned token, the signed-in client's token with a claim added and one signed with a new key, each made from that client's own token so none needs the app's key, and expects a 401 Problem naming the Bearer scheme, while the untouched token gets through; OpenApiDocumentTests checks that every protected operation in the OpenAPI document requires the Bearer scheme and declares 401 and 403, and that the document declares the scheme: in a host whose endpoints mostly require sign-in (AppHost's MostEndpointsRequireSignIn) every operation not on an anonymous route is protected, and in a mostly public host the operations whose endpoints require authorization; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
         how: "an expired, wrong-issuer or wrong-audience token, which need the app's key to sign, until the app's own FunctionalTests send them, as the sample's do; the OpenID Connect provider, AddJwtBearer's settings under Authentication:Schemes:Bearer and dotnet user-jwts, which code review checks"
@@ -200,7 +194,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "the plan-checklist skill's security heading and the reviewer's plan review check that the threat model names the ASVS level and chapters; SEC-007 to SEC-011 gate the parts the sample proves"
+        how: "the plan-checklist skill's security heading and the reviewer's plan review check that the threat model names the ASVS level and chapters; SEC-008 to SEC-011 and SEC-017 gate the parts the sample proves"
     paths: ["**"]
   - id: SEC-013
     statement: "An HTTP endpoint accepts and returns only Contracts types, never a domain entity, so a field added to the domain never reaches a client by accident."
@@ -296,9 +290,15 @@ rules:
         text: "Verify that the application ensures that function-level access is restricted to consumers with explicit permissions."
     scope: [web-api, blazor]
     enforcement:
+      - kind: gate
+        in: [kit]
+        how: "ci: the sample's FunctionalTests check that every bookmarks endpoint answers 401 without a valid token"
+      - kind: gate
+        in: [kit, app]
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): AuthorizationTests checks that the fallback policy requires a signed-in user, and that only the routes the app lists in AppHost allow anonymous callers; both skip, with a reason, for a host whose AppHost part says most of its endpoints are public (MostEndpointsRequireSignIn is false); an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
-        how: "code review checks that the app sets a fallback policy; SEC-007's gates check it in the sample and in an app's shared host checks"
+        how: "code review checks that an app's MostEndpointsRequireSignIn answer matches its endpoints, and that each AllowAnonymous endpoint is intentionally public"
     paths: ["**/Program.cs", "**/*Endpoints*.cs", "**/*ServiceDefaults*/**", "**/*Security*.cs"]
   - id: SEC-018
     statement: "Don't generate your own access tokens or ID tokens, except for testing purposes; use OpenID Connect or an OAuth standard to create access tokens for API access, and you should not create an access token from a username and password request. JWT bearer tokens should be fully validated in an API (signature, issuer, audience and expiration), and the API should return 401 when any of them is incorrect. ASVS 9.1.1, 9.2.1 and 9.2.3 ask for the signature or MAC, validity time span and audience checks."
@@ -576,13 +576,13 @@ rules:
 
 Floor rules (security, privacy, license compliance) are never overridden (brief §4). GitHub secret scanning isn't available on private repos owned by a personal account, so CI's gitleaks scan is the protection on every repo: every commit HEAD reaches, on every pull request and on every push to any branch or tag (ADR-0024, ADR-0027). It finds a secret after it's pushed, so a finding means rotating the secret. The kit itself is public (ADR-0031), where GitHub's secret scanning also runs for free.
 
-## Sign-in, access and input (SEC-007 to SEC-010, SEC-017 to SEC-020)
+## Sign-in, access and input (SEC-008 to SEC-010, SEC-017 to SEC-020)
 
 Every app gets these defaults (GAP-006, ADR-0048). The reference is the sample's API, `sample/src/Bookmarks.Api`.
 
 - **Sign-in (SEC-008):** `builder.Services.AddAuthentication().AddJwtBearer(options => options.MapInboundClaims = false)`, with its settings under `Authentication:Schemes:Bearer` in configuration: `Authority` and `ValidAudiences` for the app's Entra ID tenant in production, `ValidIssuer` and `ValidAudiences` for `dotnet user-jwts` in `appsettings.Development.json`. Turning off `MapInboundClaims` keeps the token's own claim names, so `sub` stays `sub`. Setting up the Entra tenant and app registration is the owner's step, and the only one with an account behind it.
 - **Locally:** `dotnet user-jwts create --project <the Api project>` prints a token for you; send it as `Authorization: Bearer <token>`. The tool keeps its signing key in your user secrets, never in the repo (SEC-001).
-- **Everything needs a signed-in user (SEC-007):** `AddAuthorizationBuilder().SetFallbackPolicy(...)` with `RequireAuthenticatedUser()` and a `RequireAssertion` that `sub` is neither blank nor longer than an owner id may be (`RequireClaim` only checks that it's there). Call `UseAuthentication()` and `UseAuthorization()` before `MapDefaultEndpoints()`, whose output cache must come after them. The health endpoints and the Development OpenAPI document call `AllowAnonymous()`; nothing else does, and a test pins that list.
+- **Everything needs a signed-in user (SEC-017), in an app where most or all endpoints do, as the sample's:** `AddAuthorizationBuilder().SetFallbackPolicy(...)` with `RequireAuthenticatedUser()` and a `RequireAssertion` that `sub` is neither blank nor longer than an owner id may be (`RequireClaim` only checks that it's there). Call `UseAuthentication()` and `UseAuthorization()` before `MapDefaultEndpoints()`, whose output cache must come after them. The health endpoints and the Development OpenAPI document call `AllowAnonymous()`; nothing else does, and a test pins that list. The app says which kind it is in its part of the shared host checks' `AppHost` (`MostEndpointsRequireSignIn`); in an app whose endpoints are mostly public, such as a public website, the authorization checks skip.
 - **Each user's own data (SEC-009):** an endpoint reads the caller's id from `sub` and passes it down; the repository filters every query by it. Another user's item is a 404. An app with shared data (teams, sharing) writes its own policy in an ADR, with resource-based authorization (`IAuthorizationService`).
 - **Bounded input (SEC-010):** every request type has `[Required]`, `[MaxLength]`, `[Range]` or a custom `ValidationAttribute` on each property; API-006 has the details. The limits live in the domain (the sample's `Bookmark.MaxTitleLength`), the EF model uses them, and the tests check the contract against them at both edges.
 - **Tests:** the sample's FunctionalTests issue real RS256 tokens with a key made in memory per run (`TestTokens`), and the app's own JWT bearer handler checks them, trusting only that key. Microsoft's integration-testing guide also shows a mocked handler (`TestAuthHandler`); the kit doesn't use it, because it can't show that the issuer, audience or lifetime are checked.
@@ -600,4 +600,4 @@ The sample applies Microsoft's [Kestrel production security checklist](https://l
 
 ## Pending ratification
 
-SEC-007 to SEC-010 were added in auto mode (ADR-0035), and so were SEC-017 to SEC-020, the parts of them that Microsoft, OWASP and ASVS pages state; all stay `proposed` until you accept them. Each of SEC-001 and SEC-007 to SEC-015 is the kit's own wording (a preference), and the new rule beside it says only what the cited pages say, with the quotes.
+SEC-007 to SEC-010 were added in auto mode (ADR-0035), and so were SEC-017 to SEC-020, the parts of them that Microsoft, OWASP and ASVS pages state; all stay `proposed` until you accept them, except SEC-007, which the owner retired on 2026-11-18: it asked for a fallback policy in every ASP.NET Core app, where Microsoft asks for one only where most or all endpoints require authentication (SEC-017). Each of SEC-001 and SEC-007 to SEC-015 is the kit's own wording (a preference), and the new rule beside it says only what the cited pages say, with the quotes.

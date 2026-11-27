@@ -15,12 +15,15 @@ internal static partial class AppHost
         public override string Name => "Bookmarks.Api";
 
         // Probes call the health endpoints without a token, and a developer or client generator reads the Development
-        // OpenAPI document before it has one (SEC-007).
+        // OpenAPI document before it has one (OPS-002, API-003).
         public override IReadOnlyCollection<string> AnonymousRoutes => ["/health", "/alive", "/openapi/{documentName}.json"];
 
         public override string SignedInRoute => "/bookmarks";
 
         public override bool ServesHttpApi => true;
+
+        // Every bookmarks endpoint needs a signed-in user; only the probes and the Development document are public.
+        public override bool MostEndpointsRequireSignIn => true;
 
         public override IReadOnlyCollection<Assembly> ContractAssemblies => [typeof(CreateBookmarkRequest).Assembly];
 
