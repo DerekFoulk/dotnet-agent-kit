@@ -95,7 +95,7 @@ function Get-AreaGap {
     @($(if ($Area.Contains('gaps')) { $Area['gaps'] }) | Where-Object { $_ -is [Collections.IDictionary] })
 }
 
-# Every rule in docs/standards, keyed by id: its status and whether a tool enforces it.
+# Every rule in docs/standards, keyed by id: its status, its strength and whether a tool enforces it.
 function Get-KitRule {
     param([Parameter(Mandatory)] [string] $StandardsPath)
 
@@ -108,6 +108,7 @@ function Get-KitRule {
             $rules["$($rule['id'])"] = [pscustomobject]@{
                 Id       = "$($rule['id'])"
                 Status   = "$($rule['status'])"
+                Strength = "$($rule['strength'])"
                 Advisory = -not @(@($rule['enforcement']) | Where-Object { $_ -is [System.Collections.IDictionary] -and "$($_['kind'])" -eq 'gate' })
                 Types    = $(if ($types) { $types } else { @('core') })
             }
@@ -119,7 +120,7 @@ function Get-KitRule {
 # One row per area, counted from the standards, so the scores can't drift from the rules. A rule with any gate
 # part counts as checked by a tool, even when another part is advisory, so it's an upper bound; a rule whose
 # parts are all advisory is advisory (ADR-0063).
-# Proposed rules aren't in force, so they're counted apart. Unknown rule ids are skipped here;
+# Each area counts its rules in force by strength (ADR-0090). Unknown rule ids are skipped here;
 # Get-ScorecardProblem reports them.
 function Get-ScorecardRow {
     param(
@@ -136,9 +137,11 @@ function Get-ScorecardRow {
         [pscustomobject]@{
             Area          = "$($area['name'])"
             InForce       = $inForce.Count
+            Must          = @($inForce | Where-Object Strength -EQ 'must').Count
+            Should        = @($inForce | Where-Object Strength -EQ 'should').Count
+            Consider      = @($inForce | Where-Object Strength -EQ 'consider').Count
             CheckedByTool = @($inForce | Where-Object { -not $_.Advisory }).Count
             Advisory      = @($inForce | Where-Object Advisory).Count
-            Proposed      = @($areaRules | Where-Object Status -EQ 'proposed').Count
             OpenGaps      = @($gaps | Where-Object { "$($_['status'])" -ne 'closed' }).Count
         }
     }
@@ -152,17 +155,18 @@ function Format-ScorecardTable {
     )
 
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add('| Area | Rules in force | Checked by a tool | Advisory | Proposed rules | Open gaps |')
-    $lines.Add('|---|---|---|---|---|---|')
+    $lines.Add('| Area | Rules in force | Must | Should | Consider | Checked by a tool | Advisory | Open gaps |')
+    $lines.Add('|---|---|---|---|---|---|---|---|')
     foreach ($row in Get-ScorecardRow -ScorecardPath $ScorecardPath -StandardsPath $StandardsPath) {
-        $lines.Add("| $($row.Area) | $($row.InForce) | $($row.CheckedByTool) | $($row.Advisory) | $($row.Proposed) | $($row.OpenGaps) |")
+        $lines.Add("| $($row.Area) | $($row.InForce) | $($row.Must) | $($row.Should) | $($row.Consider) | $($row.CheckedByTool) | $($row.Advisory) | $($row.OpenGaps) |")
     }
 
     # The summary counts each rule once, however many areas name it.
     $rules = @((Get-KitRule -StandardsPath $StandardsPath).Values)
     $inForce = @($rules | Where-Object Status -EQ 'accepted')
     $advisory = @($inForce | Where-Object Advisory).Count
-    $proposed = @($rules | Where-Object Status -EQ 'proposed').Count
+    $byStrength = { param([object[]] $Of) foreach ($strength in 'must', 'should', 'consider') { @($Of | Where-Object Strength -EQ $strength).Count } }
+    $must, $should, $consider = & $byStrength $inForce
     # Each open gap, so a reader sees what's missing without reading the YAML.
     $gapLines = [Collections.Generic.List[string]]::new()
     foreach ($area in Get-ScorecardArea -ScorecardPath $ScorecardPath) {
@@ -176,18 +180,21 @@ function Format-ScorecardTable {
     $ruleNoun = if ($inForce.Count -eq 1) { 'rule' } else { 'rules' }
     $gapNoun = if ($openGaps -eq 1) { 'gap' } else { 'gaps' }
     $lines.Add('')
-    $lines.Add("**Overall:** $($inForce.Count) $ruleNoun in force, $($inForce.Count - $advisory) checked by a tool and $advisory advisory; $proposed proposed; $openGaps open $gapNoun.")
+    $lines.Add("**Overall:** $($inForce.Count) $ruleNoun in force ($must must, $should should, $consider consider), $($inForce.Count - $advisory) checked by a tool and $advisory advisory; $openGaps open $gapNoun.")
     # ADR-0084: what an app of each app type gets, the core ruleset included.
     $typesPath = Join-Path $StandardsPath 'app-types.yml'
     if (Test-Path -LiteralPath $typesPath) {
         $lines.Add('')
-        $lines.Add('| Ruleset | Rules in force | Proposed rules |')
-        $lines.Add('|---|---|---|')
+        $lines.Add('| Ruleset | Rules in force | Must | Should | Consider |')
+        $lines.Add('|---|---|---|---|---|')
+        $rulesetRow = { param([string] $Name, [object[]] $Of)
+            $active = @($Of | Where-Object Status -EQ 'accepted')
+            "| $Name | $($active.Count) | $((& $byStrength $active) -join ' | ') |" }
         $common = @($rules | Where-Object { 'core' -in $_.Types })
-        $lines.Add("| Core (every app type) | $(@($common | Where-Object Status -EQ 'accepted').Count) | $(@($common | Where-Object Status -EQ 'proposed').Count) |")
+        $lines.Add((& $rulesetRow 'Core (every app type)' $common))
         foreach ($type in @((ConvertFrom-Yaml -Yaml (Get-Content -Raw -LiteralPath $typesPath))['types'])) {
             $applies = @($rules | Where-Object { 'core' -in $_.Types -or "$($type['id'])" -in $_.Types })
-            $lines.Add("| $($type['name']) | $(@($applies | Where-Object Status -EQ 'accepted').Count) | $(@($applies | Where-Object Status -EQ 'proposed').Count) |")
+            $lines.Add((& $rulesetRow "$($type['name'])" $applies))
         }
     }
     if ($gapLines.Count) {

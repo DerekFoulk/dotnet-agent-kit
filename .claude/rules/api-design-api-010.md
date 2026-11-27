@@ -7,4 +7,4 @@ paths:
 
 # API design
 
-- API-010: In non-development environments, use the exception handler middleware to produce an error payload. Don't enable the Developer Exception Page unless the app is running in the Development environment, and don't share detailed exception information publicly when the app runs in production.
+- API-010 (must): In non-development environments, use the exception handler middleware to produce an error payload. Don't enable the Developer Exception Page unless the app is running in the Development environment, and don't share detailed exception information publicly when the app runs in production.

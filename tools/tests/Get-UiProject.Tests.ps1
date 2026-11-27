@@ -107,13 +107,13 @@ Describe 'Get-UiProject.ps1' {
 
     # ARC-010: logic lives outside UI projects, so nothing needs to reference one. A test project that did would
     # fail on Linux with a confusing workload error; this says what's wrong instead.
-    # ADR-0089: while ARC-010 is proposed, a reference is a warning; once it's accepted, it stops the script. The status
+    # ADR-0089: while ARC-010 is a should rule, a reference is a warning; at must, it stops the script. The status
     # comes from a fixture, not the real rule's.
     Context 'a reference to a UI project' {
         BeforeAll {
-            function New-StatusFile([string] $Status) {
-                $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""ARC-010"": ""$Status"" }"
+            function New-StrengthFile([string] $Status) {
+                $path = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+                Set-Content -LiteralPath $path -Value "{ ""ARC-010"": { ""strength"": ""$Status"", ""scope"": [""maui""], ""when"": [] } }"
                 $path
             }
             function New-ReferencingSolution {
@@ -126,28 +126,44 @@ Describe 'Get-UiProject.ps1' {
 
         BeforeEach {
             Mock Write-Host {}
-            Mock Write-Host {} -ModuleName KitRuleStatus
+            Mock Write-Host {} -ModuleName KitRuleStrength
         }
 
-        It 'fails once ARC-010 is accepted' {
+        It 'fails while ARC-010 is a must rule' {
             $solution = New-ReferencingSolution
 
-            { Get-UiProject -Solution $solution -RuleStatusPath (New-StatusFile 'accepted') } |
+            { Get-UiProject -Solution $solution -RuleStrengthPath (New-StrengthFile 'must') } |
                 Should -Throw '*tests/App.Maui.Tests/App.Maui.Tests.csproj references the UI project src/App.Maui/App.Maui.csproj*ARC-010*'
         }
 
-        It 'warns while ARC-010 is proposed, and still lists the UI projects and writes the filter' {
+        # ADR-0090: where the app's profile rules the rule out, the check says so, and calls nothing a warning.
+        It 'lists the UI projects and says ARC-010 doesn''t apply, in an app its scope leaves out' {
+            $solution = New-ReferencingSolution
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'App types: web-api'
+            $strengths = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+            Set-Content -LiteralPath $strengths -Value '{ "ARC-010": { "strength": "must", "scope": ["maui"], "when": [] } }'
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $found = @(Get-UiProject -Solution $solution -RuleStrengthPath $strengths); $result = 0 }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+            $found.Name | Should -Be @('App.Maui')
+            $result | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 reference.*UI project.*not judged.*ARC-010 doesn't apply to this app" }
+            Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }
+        }
+        It 'warns while ARC-010 is a should rule, and still lists the UI projects and writes the filter' {
             $solution = New-ReferencingSolution
             $filter = Join-Path $TestDrive "filter-$(New-Guid).slnf"
 
-            { $script:found = @(Get-UiProject -Solution $solution -FilterPath $filter -RuleStatusPath (New-StatusFile 'proposed')) } | Should -Not -Throw
+            { $script:found = @(Get-UiProject -Solution $solution -FilterPath $filter -RuleStrengthPath (New-StrengthFile 'should')) } | Should -Not -Throw
 
             $script:found.Name | Should -Be @('App.Maui')
             (Get-Content -Raw -LiteralPath $filter | ConvertFrom-Json).solution.projects | Should -Be @('tests/App.Maui.Tests/App.Maui.Tests.csproj')
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter {
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter {
                 "$Object" -like '::warning::ARC-010: tests/App.Maui.Tests/App.Maui.Tests.csproj references the UI project src/App.Maui/App.Maui.csproj*'
             }
-            Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 reference.*UI project.*warning.*ARC-010 is proposed' }
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 reference.*UI project.*warning.*ARC-010 is a should rule' }
         }
     }
 

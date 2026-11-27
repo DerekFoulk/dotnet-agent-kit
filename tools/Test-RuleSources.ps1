@@ -10,9 +10,11 @@
     owner or ADR source. Enforcement is a list of parts, each with kind (gate or advisory), in (kit, app or
     both) and how (ADR-0063). Ids are unique.
     ADR-0082: an authority rule cites pages only (URLs), has layer outside or floor, and stores quotes: for each
-    cited page, the page's own words with that source's URL and retrieval date, one contiguous passage each. An
-    accepted authority rule names who accepted it in ratified. A preference has layer owner or floor. Every rule in
-    force names its scope: core, or app types from app-types.yml in the same folder (never every one; ADR-0084).
+    cited page, the page's own words with that source's URL and retrieval date, one contiguous passage each. A
+    preference has layer owner or floor. Every rule in force names its scope: core, or app types from app-types.yml in
+    the same folder (never every one; ADR-0084).
+    ADR-0090: every rule in force has a strength, must, should or consider. An authority must needs a must-word in a
+    quote, and a kit (preference) must needs ratified, the owner's move to must.
     Exit code: 0 when every rule is traceable, otherwise 1.
 
 .EXAMPLE
@@ -36,7 +38,8 @@ $script:RequiredFields = 'id', 'statement', 'layer', 'basis', 'status', 'sources
 $script:AllowedValues = [ordered]@{
     layer  = 'floor', 'owner', 'outside'
     basis  = 'authority', 'preference'
-    status = 'proposed', 'accepted', 'retired'
+    # ADR-0090: strength replaces 'proposed'; a rule is in force (accepted) or retired.
+    status = 'accepted', 'retired'
 }
 # ADR-0063: each enforcement part is a gate (a tool fails the change) or advisory (a person or code review
 # checks it), and says where it applies: in the kit, in apps, or both.
@@ -103,6 +106,40 @@ function Get-BasisProblem {
     }
 }
 
+# ADR-0090: how strongly a rule applies, from its source's words. A gate on a must rule fails, on a should rule warns,
+# and a consider rule is advice only.
+$script:Strengths = 'must', 'should', 'consider'
+# The words that let an authority rule be a must: the one list of them (ADR-0090's table, with the build's additions
+# SHALL, REQUIRED, "required" and an instruction's "always", the opposite of "never"). The capitals of RFC 2119 and the
+# Framework Design Guidelines count only in capitals, so a plain "do" doesn't. A must-word in a descriptive clause
+# still passes: this check only stops a must that no quote supports, and code review judges the rest.
+$script:MustWords = '(?-i:\bDO\b|\bMUST\b|\bSHALL\b|\bREQUIRED\b)|(?i:\bmust(n''t)?\b|\bshall\b|\brequired\b|\bnever\b|\bdo not\b|\bdon''t\b|\bverify that\b|\balways\b)'
+
+function Get-StrengthProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule)
+
+    if ("$($Rule['status'])" -eq 'retired') { return }
+    if (-not $Rule.Contains('strength') -or -not (Test-Present $Rule['strength'])) {
+        return "is missing 'strength': must, should or consider, from its source's words (ADR-0090)"
+    }
+    $strength = "$($Rule['strength'])"
+    if ($strength -cnotin $script:Strengths) {
+        return "strength '$strength' must be one of: $($script:Strengths -join ', ') (ADR-0090)"
+    }
+    if ($strength -ceq 'consider') {
+        $gates = @(@($(if ($Rule.Contains('enforcement')) { $Rule['enforcement'] })) | Where-Object { $_ -is [System.Collections.IDictionary] -and "$($_['kind'])" -eq 'gate' })
+        if ($gates) {
+            "strength 'consider' is advice, so it can't have a gate: make the part advisory, or the rule should or must if its source's words say so (ADR-0090)"
+        }
+    }
+    if ($strength -ceq 'must' -and "$($Rule['basis'])" -eq 'authority') {
+        $texts = @(@($(if ($Rule.Contains('quotes')) { $Rule['quotes'] })) | Where-Object { $_ -is [System.Collections.IDictionary] } | ForEach-Object { "$($_['text'])" })
+        if (-not @($texts | Where-Object { $_ -match $script:MustWords }).Count) {
+            "strength 'must', but no quote holds a must-word (DO, DO NOT, MUST, SHALL, REQUIRED, must, never, don't, Verify that, always): the page's own strength stands, should or consider, and a kit rule says what the kit adds (ADR-0090)"
+        }
+    }
+}
+
 # ADR-0082: layer says whose rule it is. An authority's rule is the outside layer and a preference is the owner's;
 # a floor rule (law, safety, security, privacy, licenses) can be either.
 $script:LayersForBasis = @{ authority = @('outside', 'floor'); preference = @('owner', 'floor') }
@@ -111,13 +148,10 @@ function Get-RatifiedProblem {
     param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [Parameter(Mandatory)] [string] $AdrPath)
 
     $hasRatified = $Rule.Contains('ratified') -and "$($Rule['ratified'])" -match '\S'
-    if ("$($Rule['basis'])" -ne 'authority') {
-        if ($hasRatified) { "ratified is for an authority rule; a preference's sources already name the owner or the ADR" }
-        return
-    }
     if (-not $hasRatified) {
-        if ("$($Rule['status'])" -eq 'accepted') {
-            "an accepted authority rule needs ratified: 'owner, YYYY-MM-DD' or 'ADR-NNNN', who accepted it"
+        # ADR-0090: an agent can add a kit rule at should, and only the owner moves one to must.
+        if ("$($Rule['basis'])" -eq 'preference' -and "$($Rule['strength'])" -ceq 'must' -and "$($Rule['status'])" -ne 'retired') {
+            "a kit rule at strength must needs ratified: 'owner, YYYY-MM-DD' or 'ADR-NNNN', the owner's move to must (ADR-0090)"
         }
         return
     }
@@ -246,6 +280,89 @@ function Get-ScopeProblem {
     }
 }
 
+# ADR-0090: the conditions a rule's when can name, from docs/standards/conditions.yml, the one list of them. Each has an
+# id, a meaning, and either intake (the intake card whose answer settles it, with the options that make it hold and not
+# hold) or recordedBy (where else it's recorded). Returns the ids, and the file's problems as messages.
+function Read-Condition {
+    param([Parameter(Mandatory)] [string] $StandardsPath)
+
+    $path = Join-Path $StandardsPath 'conditions.yml'
+    $result = [pscustomobject]@{ Ids = [System.Collections.Generic.List[string]]::new(); Problems = [System.Collections.Generic.List[string]]::new() }
+    if (-not (Test-Path -LiteralPath $path)) {
+        $result.Problems.Add("conditions.yml is missing from $StandardsPath; it lists the conditions a rule's when names (ADR-0090)")
+        return $result
+    }
+    $yaml = ConvertFrom-Yaml -Yaml (Get-Content -LiteralPath $path -Raw)
+    $conditions = $null
+    if ($yaml -is [System.Collections.IDictionary] -and $yaml.Contains('conditions')) { $conditions = $yaml['conditions'] }
+    foreach ($condition in @($conditions | Where-Object { $null -ne $_ })) {
+        if ($condition -isnot [System.Collections.IDictionary] -or "$($condition['id'])" -cnotmatch '^[a-z0-9]+(-[a-z0-9]+)*$') {
+            $id = if ($condition -is [System.Collections.IDictionary]) { $condition['id'] } else { $condition }
+            $result.Problems.Add("conditions.yml has an entry whose id '$id' isn't in lower-case-with-dashes")
+            continue
+        }
+        $id = "$($condition['id'])"
+        if ($result.Ids.Contains($id)) { $result.Problems.Add("conditions.yml lists '$id' more than once") }
+        else { $result.Ids.Add($id) }
+        if ("$($condition['meaning'])" -notmatch '\S') { $result.Problems.Add("conditions.yml condition '$id' has no meaning") }
+        $hasIntake = $condition.Contains('intake') -and $null -ne $condition['intake']
+        $hasRecordedBy = $condition.Contains('recordedBy') -and "$($condition['recordedBy'])" -match '\S'
+        if ($hasIntake -eq $hasRecordedBy) {
+            $result.Problems.Add("conditions.yml condition '$id' needs either intake (the card that settles it) or recordedBy (where else it's recorded), not both or neither")
+            continue
+        }
+        if ($hasIntake) {
+            $intake = $condition['intake']
+            if ($intake -isnot [System.Collections.IDictionary] -or "$($intake['card'])" -notmatch '\S') {
+                $result.Problems.Add("conditions.yml condition '$id' has an intake with no card")
+                continue
+            }
+            $yes = @(@($intake['yes']) | Where-Object { $_ } | ForEach-Object { "$_" })
+            $no = @(@($intake['no']) | Where-Object { $_ } | ForEach-Object { "$_" })
+            foreach ($option in @($yes | Where-Object { $_ -in $no })) {
+                $result.Problems.Add("conditions.yml condition '$id' lists the option '$option' as both yes and no")
+            }
+        }
+    }
+    if ($result.Ids.Count -eq 0 -and $result.Problems.Count -eq 0) { $result.Problems.Add("conditions.yml lists no conditions") }
+    $result
+}
+
+# ADR-0090 decision 8's two forms of a condition about the app, "for a server-side app where..." and "if the app...",
+# and "apps that...".
+$script:AppCondition = '(?i)\bfor (a|an) ([\w-]+ ){0,3}(app|application)s?\b|\b(if|when|unless|where) (the|your|an?) ([\w-]+ ){0,2}(app|application|site)s?\b|\b(apps?|applications?) that\b'
+
+# ADR-0090: when is a list of the conditions in conditions.yml, all of which must hold for the rule to apply.
+function Get-WhenProblem {
+    param([Parameter(Mandatory)] [System.Collections.IDictionary] $Rule, [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $Known)
+
+    $hasUnconditional = $Rule.Contains('unconditional') -and "$($Rule['unconditional'])" -match '\S'
+    if ($hasUnconditional -and $Rule.Contains('when')) {
+        "unconditional and when say opposite things: a rule has a when, or a reason it holds for every app, not both"
+    }
+    if (-not $Rule.Contains('when')) {
+        # Decision 8: a rule carries its source's conditions. The pattern is narrow and still finds descriptions ("when
+        # the app starts"), so a rule whose phrase isn't a condition on which apps it holds for says why in unconditional.
+        if ("$($Rule['basis'])" -eq 'authority' -and "$($Rule['status'])" -ne 'retired' -and -not $hasUnconditional) {
+            $texts = @(@($(if ($Rule.Contains('quotes')) { $Rule['quotes'] })) | Where-Object { $_ -is [System.Collections.IDictionary] } | ForEach-Object { "$($_['text'])" })
+            $phrases = @($texts | ForEach-Object { [regex]::Matches($_, $script:AppCondition) | ForEach-Object Value } | Select-Object -Unique)
+            if ($phrases) {
+                "a quote names a condition about the app ('$($phrases -join "', '")'), and the rule has no when: add the conditions from conditions.yml, or unconditional with the reason the phrase isn't one (ADR-0090)"
+            }
+        }
+        return
+    }
+    $when = $Rule['when']
+    if ($when -is [string] -or $when -is [System.Collections.IDictionary]) {
+        return "when must be a list of conditions, such as [has-sign-in]"
+    }
+    $ids = @(@($when) | Where-Object { "$_" -match '\S' } | ForEach-Object { "$_" })
+    if (-not $ids) { return "when is empty: leave it out for a rule that holds for every app" }
+    foreach ($id in $ids) {
+        if ($id -cnotin $Known) { "condition '$id' isn't one of conditions.yml's: $($Known -join ', ')" }
+    }
+}
+
 function New-Problem {
     param([string] $File, [string] $RuleId, [string] $Message)
     [pscustomobject]@{ File = $File; RuleId = $RuleId; Message = $Message }
@@ -259,6 +376,8 @@ function Get-RuleSourceProblem {
 
     $appTypes = Read-AppType -StandardsPath $StandardsPath
     foreach ($message in $appTypes.Problems) { New-Problem -File 'app-types.yml' -Message $message }
+    $conditions = Read-Condition -StandardsPath $StandardsPath
+    foreach ($message in $conditions.Problems) { New-Problem -File 'conditions.yml' -Message $message }
     $seen = @{}
     foreach ($file in Get-ChildItem -Path $StandardsPath -Filter '*.md' -File | Sort-Object Name) {
         $frontMatter = Read-FrontMatter -Path $file.FullName
@@ -288,7 +407,8 @@ function Get-RuleSourceProblem {
             }
             foreach ($field in $script:AllowedValues.Keys) {
                 if ($rule.Contains($field) -and (Test-Present $rule[$field]) -and "$($rule[$field])" -notin $script:AllowedValues[$field]) {
-                    New-Problem -File $file.Name -RuleId $ruleId -Message "$field '$($rule[$field])' must be one of: $($script:AllowedValues[$field] -join ', ')"
+                    $replaced = if ($field -eq 'status' -and "$($rule[$field])" -eq 'proposed') { ": strength replaced it, so a rule in force is accepted, at the strength its source's words give (ADR-0090)" } else { '' }
+                    New-Problem -File $file.Name -RuleId $ruleId -Message "$field '$($rule[$field])' must be one of: $($script:AllowedValues[$field] -join ', ')$replaced"
                 }
             }
             if ($rule.Contains('enforcement') -and (Test-Present $rule['enforcement'])) {
@@ -311,6 +431,12 @@ function Get-RuleSourceProblem {
                 New-Problem -File $file.Name -RuleId $ruleId -Message "basis '$basis' can't have layer '$($rule['layer'])': use $($script:LayersForBasis[$basis] -join ' or ') (ADR-0082)"
             }
             foreach ($message in @(Get-ScopeProblem -Rule $rule -Known $appTypes.Ids)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
+            }
+            foreach ($message in @(Get-WhenProblem -Rule $rule -Known $conditions.Ids)) {
+                New-Problem -File $file.Name -RuleId $ruleId -Message $message
+            }
+            foreach ($message in @(Get-StrengthProblem -Rule $rule)) {
                 New-Problem -File $file.Name -RuleId $ruleId -Message $message
             }
             foreach ($message in @(Get-RatifiedProblem -Rule $rule -AdrPath $AdrPath)) {

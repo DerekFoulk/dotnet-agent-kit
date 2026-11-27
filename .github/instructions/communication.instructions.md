@@ -5,10 +5,10 @@ applyTo: '**'
 
 # Communication
 
-- COM-001: Lead every question or proposal with one recommendation and a one-line reason; list options only when the answer depends on the owner's personal preference.
-- COM-002: On first use, explain any term, tool or document the owner hasn't used himself, in plain words with an example; refer to documents by path, never by a nickname.
-- COM-003: When the owner answers a batch of questions, restate them with his answers as a table.
-- COM-004: Say in one line what a command or script does before running it, and run it yourself whenever you can instead of handing it to the owner.
-- COM-005: Point to a button, setting or screen only after confirming it exists (current docs or a screenshot); otherwise say you're not sure, do the step yourself, or say how to check.
-- COM-006: Make an improvement now when it is cheap, instead of deferring it.
-- COM-007: Ask the owner every question that needs his answer in the chat where he works, never only in a pull request or another document; never merge past an unanswered question the pull request depends on.
+- COM-001 (must): Lead every question or proposal with one recommendation and a one-line reason; list options only when the answer depends on the owner's personal preference.
+- COM-002 (must): On first use, explain any term, tool or document the owner hasn't used himself, in plain words with an example; refer to documents by path, never by a nickname.
+- COM-003 (must): When the owner answers a batch of questions, restate them with his answers as a table.
+- COM-004 (must): Say in one line what a command or script does before running it, and run it yourself whenever you can instead of handing it to the owner.
+- COM-005 (must): Point to a button, setting or screen only after confirming it exists (current docs or a screenshot); otherwise say you're not sure, do the step yourself, or say how to check.
+- COM-006 (must): Make an improvement now when it is cheap, instead of deferring it.
+- COM-007 (must): Ask the owner every question that needs his answer in the chat where he works, never only in a pull request or another document; never merge past an unanswered question the pull request depends on.

@@ -7,6 +7,8 @@ rules:
     layer: floor
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0024"]
     scope: core
     enforcement:
@@ -23,6 +25,8 @@ rules:
     layer: floor
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01"]
     scope: core
     enforcement:
@@ -39,6 +43,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-07", "owner, 2026-11-09", "ADR-0032", "ADR-0035"]
     scope: core
     enforcement:
@@ -55,6 +61,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0017"]
     scope: core
     enforcement:
@@ -71,6 +79,9 @@ rules:
     layer: floor
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
+    when: [is-commercial]
     sources: ["ADR-0004", "ADR-0079"]
     scope: core
     enforcement:
@@ -87,6 +98,9 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
+    when: [is-public-repo]
     sources: ["ADR-0036", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -115,7 +129,9 @@ rules:
     why: "Password storage and token issuing are where home-made sign-in goes wrong; the kit settles on one provider type and one JWT bearer setup (ADR-0048), on top of what Microsoft and ASVS say about creating and validating tokens (SEC-018) (GAP-006)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
+    when: [has-sign-in]
     sources: ["ADR-0048"]
     scope: [web-api, blazor]
     enforcement:
@@ -134,7 +150,9 @@ rules:
     why: "An id in a URL is easy to change, and a filter in the query is a check no endpoint can skip; a 404 doesn't even confirm that someone else's id exists; the kit's design on top of what OWASP, ASVS and Microsoft say (SEC-019) (GAP-006)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
+    when: [has-sign-in]
     sources: ["ADR-0048"]
     scope: [web-api, blazor]
     enforcement:
@@ -150,7 +168,8 @@ rules:
     why: "Unbounded input fills the database and memory, an easy denial of service, and an error that repeats input invites reflected injection; the kit's exact bounds and error shape on top of what OWASP says (SEC-020) (GAP-006)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["ADR-0048"]
     scope: [web-api, blazor]
     enforcement:
@@ -167,6 +186,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: [web-api, blazor]
     enforcement:
@@ -189,6 +210,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: core
     enforcement:
@@ -202,6 +225,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: [web-api]
     enforcement:
@@ -221,6 +246,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: core
     enforcement:
@@ -237,6 +264,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     scope: core
     enforcement:
@@ -250,6 +279,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "ADR-0024"
     sources: ["https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html, retrieved 2026-11-17", "https://docs.github.com/en/code-security/concepts/secret-security/secret-scanning, retrieved 2026-11-17"]
     quotes:
@@ -276,7 +306,9 @@ rules:
     why: "The fallback policy applies to endpoints that carry no authorization metadata, so a new endpoint that forgets it isn't public by accident (GAP-006)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
+    when: [has-sign-in]
     sources: ["https://learn.microsoft.com/aspnet/core/security/authorization/policies?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/authorization/secure-data?view=aspnetcore-10.0, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x17-V8-Authorization.md, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/authorization/policies?view=aspnetcore-10.0"
@@ -305,7 +337,9 @@ rules:
     why: "Self-made tokens that don't follow established standards can lead to security vulnerabilities; the API is where a token's signature, issuer, audience and lifetime are checked (GAP-006)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
+    when: [has-sign-in]
     sources: ["https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x18-V9-Self-contained-Tokens.md, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0"
@@ -355,7 +389,9 @@ rules:
     why: "Broken object-level authorization is OWASP's top API risk, and an id in a URL is easy to change (GAP-006)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
+    when: [has-sign-in]
     sources: ["https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x17-V8-Authorization.md, retrieved 2026-11-17", "https://learn.microsoft.com/entra/identity-platform/id-token-claims-reference, retrieved 2026-11-17"]
     quotes:
       - source: "https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization"
@@ -387,7 +423,8 @@ rules:
     why: "Unbounded input is an easy denial of service (OWASP API4), and a check that only runs in the client isn't one (GAP-006)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption, retrieved 2026-11-17", "https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x11-V2-Validation-and-Business-Logic.md, retrieved 2026-11-17"]
     quotes:
       - source: "https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption"
@@ -414,6 +451,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel/security-considerations?view=aspnetcore-10.0, retrieved 2026-11-17", "https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption, retrieved 2026-11-17"]
     quotes:
@@ -462,6 +500,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-12"
     sources: ["https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x03-What-is-the-ASVS.md, retrieved 2026-11-17"]
     quotes:
@@ -483,6 +522,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://api-security.owasp.org/editions/2023/en/0xa3-broken-object-property-level-authorization, retrieved 2026-11-17"]
     quotes:
@@ -513,6 +553,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/standard/security/secure-coding-guidelines, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/security-warnings, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/serialization/binaryformatter-security-guide, retrieved 2026-11-17"]
     quotes:
@@ -537,6 +578,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/security/security-and-user-input, retrieved 2026-11-17"]
     quotes:
@@ -582,4 +624,4 @@ The sample applies Microsoft's [Kestrel production security checklist](https://l
 
 ## Pending ratification
 
-SEC-007 to SEC-010 were added in auto mode (ADR-0035), and so were SEC-017 to SEC-020, the parts of them that Microsoft, OWASP and ASVS pages state; all stay `proposed` until you accept them, except SEC-007, which the owner retired on 2026-11-18: it asked for a fallback policy in every ASP.NET Core app, where Microsoft asks for one only where most or all endpoints require authentication (SEC-017). Each of SEC-001 and SEC-007 to SEC-015 is the kit's own wording (a preference), and the new rule beside it says only what the cited pages say, with the quotes.
+SEC-007 to SEC-010 were added in auto mode (ADR-0035), and so were SEC-017 to SEC-020, the parts of them that Microsoft, OWASP and ASVS pages state; the kit's are `should` until you make one a `must`, and the pages' have their strength (ADR-0090), except SEC-007, which the owner retired on 2026-11-18: it asked for a fallback policy in every ASP.NET Core app, where Microsoft asks for one only where most or all endpoints require authentication (SEC-017). Each of SEC-001 and SEC-007 to SEC-015 is the kit's own wording (a preference), and the new rule beside it says only what the cited pages say, with the quotes.

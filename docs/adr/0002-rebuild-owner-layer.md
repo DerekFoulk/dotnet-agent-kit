@@ -34,6 +34,7 @@ Accepted as recommended (owner, 2026-11-01).
 - Each rule's `layer` and `status` fields say whose rule it is and whether it is in force (`docs/standards/`).
 - Agent-added items are marked `status: proposed` until the owner accepts them, usually by reviewing the PR that adds them.
 - The account level keeps only the owner's profile and a pointer to the kit (brief §5).
+- **Amended by ADR-0090 (2026-11-25):** `status: proposed` gives way to a strength. An authority rule is in force at its quotes' strength once they're on their pages; what an agent adds is a kit rule at `should`, which warns but can't fail an app's CI, and only the owner makes one a `must`, recorded in `ratified`. So no agent can still put a rule into force that fails a change. Rules accepted before then carried over at `must` (ADR-0090, decision 9).
 
 ## Pillars affected
 

@@ -7,6 +7,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08"]
     enforcement:
       - kind: advisory
@@ -20,6 +22,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08"]
     enforcement:
       - kind: advisory
@@ -33,6 +37,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08", "https://pragprog.com/tips/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -44,11 +50,13 @@ rules:
     scope: core
     paths: ["**"]
   - id: CRF-004
-    statement: "Build the simplest design that is fully correct for today's requirements (KISS, YAGNI): no speculative layer, option or abstraction and no big design up front, and never a simpler design that's less correct; how much structure an app gets is ARC-009's (proposed) to settle."
+    statement: "Build the simplest design that is fully correct for today's requirements (KISS, YAGNI): no speculative layer, option or abstraction and no big design up front, and never a simpler design that's less correct; how much structure an app gets is ARC-009's to settle."
     why: "Speculative design costs now and is usually wrong later; design that grows test by test fits the requirements it meets. Simple never means cutting a corner."
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08", "ADR-0018", "https://martinfowler.com/bliki/Yagni.html, retrieved 2026-11-10", "https://martinfowler.com/articles/designDead.html, retrieved 2026-11-10"]
     enforcement:
       - kind: advisory
@@ -62,6 +70,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17", "https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod, retrieved 2026-11-17", "https://en.wikipedia.org/wiki/SOLID, retrieved 2026-11-17", "https://en.wikipedia.org/wiki/Liskov_substitution_principle, retrieved 2026-11-17"]
     enforcement:
       - kind: advisory
@@ -70,11 +80,13 @@ rules:
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-006
-    statement: "Keep concerns apart: business rules know nothing of UI, persistence or transport, and input is validated where it enters the system (a request, a message, a file, configuration), so the code inside can trust it; SEC-010 (proposed) says how an API validates a request."
+    statement: "Keep concerns apart: business rules know nothing of UI, persistence or transport, and input is validated where it enters the system (a request, a message, a file, configuration), so the code inside can trust it; SEC-010 says how an API validates a request."
     why: "Business logic that doesn't depend on details is easy to test and change; validating at the boundary stops bad input before it spreads (garbage in, garbage out). CRF-017 and CRF-018 hold what Microsoft and OWASP say; the kit adds that input is validated where it enters, so the code inside can trust it."
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17", "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -82,7 +94,7 @@ rules:
         how: "ci: the kit's shared architecture tests (tools/AppTests/Architecture), which tests/Directory.Build.props compiles into every *.Architecture.Tests project, the sample's and an app's, which names its assemblies by layer in its own part of AppLayers (ADR-0081): LayerTests and SharedLibraryTests fail when business code depends on infrastructure, UI or the API (ARC-001, ARC-003); an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [kit, app]
-        how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests once it's accepted"
+        how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-007
@@ -91,6 +103,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08", "ADR-0043", "https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod, retrieved 2026-11-17", "https://en.wikipedia.org/wiki/Acyclic_dependencies_principle, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -107,6 +121,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08", "ADR-0043", "https://learn.microsoft.com/visualstudio/code-quality/code-metrics-cyclomatic-complexity, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1506, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -120,6 +136,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08", "ADR-0008", "https://williamdurand.fr/2013/07/30/from-stupid-to-solid-code/, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines, retrieved 2026-11-17"]
     enforcement:
       - kind: advisory
@@ -133,6 +151,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-08", "ADR-0043", "https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -148,20 +168,23 @@ rules:
     why: "Deep nesting, long members and files, types with many members, files that hold several public types, and classes whose members don't work together are where code gets hard to read and change (CRF-008's metrics don't measure them); a tool that enforces them keeps them from drifting, and an exception that carries its reason keeps a rare real case possible without hiding it (CRF-001)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["owner, 2026-11-11", "owner, 2026-11-12", "ADR-0050", "ADR-0071"]
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml and fails on a breach outside generated code and outside a reasoned exception; tools/CodeShape/src/Kit.CodeShape/Limits.cs is the one source of the numbers, and tools/tests/Test-CodeShape.Tests.ps1 checks this statement against it; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
+        how: "ci: tools/Test-CodeShape.ps1 runs the kit's Kit.CodeShape tool in dotnet-ci.reusable.yml and fails on a breach outside generated code and outside a reasoned exception; tools/CodeShape/src/Kit.CodeShape/Limits.cs is the one source of the numbers, and tools/tests/Test-CodeShape.Tests.ps1 checks this statement against it; while this rule is a should, each finding is a warning on the pull request instead of a failure (ADR-0089, ADR-0090)"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-012
     statement: "Aim for at most ten subfolders per folder, files per folder, types per file, members per type and lines per method (the rule of ten); more is a reason to look for a split, not a defect."
-    why: "Small units are easier to read, name and change; the owner chose ten as the number to aim for (owner, 2026-11-12, the rule-of-ten discussion). It isn't a named standard: the closest are Jeff Bay's Object Calisthenics (rule 6, keep all entities small), Rhyous's 10/100 principle and the c2 wiki's discussions of short methods. None of the five has a ceiling a tool enforces; CRF-011 (proposed) caps the statements in a member, the members in a type and the lines in a file, above ten."
+    why: "Small units are easier to read, name and change; the owner chose ten as the number to aim for (owner, 2026-11-12, the rule-of-ten discussion). It isn't a named standard: the closest are Jeff Bay's Object Calisthenics (rule 6, keep all entities small), Rhyous's 10/100 principle and the c2 wiki's discussions of short methods. None of the five has a ceiling a tool enforces; CRF-011 (a should) caps the statements in a member, the members in a type and the lines in a file, above ten."
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     enforcement:
       - kind: advisory
@@ -175,6 +198,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-10.0#validatescopes-and-validateonbuild, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -194,6 +219,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
@@ -218,6 +244,8 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
+    unconditional: "'any other part of the application that requires this behavior' is about the code, not which apps the rule holds for"
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
@@ -245,6 +273,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
@@ -269,6 +298,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
@@ -289,10 +319,11 @@ rules:
     paths: ["**/*.cs"]
   - id: CRF-018
     statement: "Use a maintained parser for the expected format, handle parsing failures, and validate the resulting values before business processing or storage; validate data from internal APIs, partner feeds, queues and stored records when it crosses a trust boundary."
-    why: "An internal transport doesn't establish that a value meets the receiving component's rules. CRF-006 is the kit's form: validate where input enters, so the code inside can trust it; SEC-010 (proposed) says how an API validates a request."
+    why: "An internal transport doesn't establish that a value meets the receiving component's rules. CRF-006 is the kit's form: validate where input enters, so the code inside can trust it; SEC-010 says how an API validates a request."
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-08"
     sources: ["https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html, retrieved 2026-11-17"]
     quotes:
@@ -305,7 +336,7 @@ rules:
     enforcement:
       - kind: advisory
         in: [kit, app]
-        how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests once it's accepted"
+        how: "validation at the boundary, checked by code review; for an API request, SEC-010's tests"
     scope: core
     paths: ["**/*.cs"]
   - id: CRF-019
@@ -314,6 +345,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-08"
     sources: ["https://learn.microsoft.com/dotnet/standard/unsafe-code/best-practices, retrieved 2026-11-17"]
     quotes:
@@ -338,6 +370,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines, retrieved 2026-11-17"]
     quotes:
@@ -398,6 +431,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles"
@@ -451,13 +486,13 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 
 - **Root causes (CRF-001, CRF-002).** A fix removes the cause; a workaround makes the symptom go away and leaves the cause in place. A safety net that stays, such as a retry around a call that shouldn't fail, is labelled as a safety net in the code, with the reason, so nobody mistakes it for the fix. An argument check on a public method (CA1062 asks for one) isn't a safety net either: it's part of the method's contract. A better design that has to wait is named and planned in the same PR, never left as "good enough".
 - **DRY (CRF-003).** From *The Pragmatic Programmer* (Hunt and Thomas, tip 15): each piece of knowledge has one unambiguous, authoritative representation in the system. It's about knowledge, not text. Two constants with the same value but different meanings stay two constants; Microsoft's page puts it as "duplication is always preferable to coupling to the wrong abstraction".
-- **KISS, YAGNI, no big design up front (CRF-004).** YAGNI ("you aren't gonna need it") comes from Extreme Programming. The simplest design means the simplest one that's fully correct, never the quickest one. How much structure a small app gets (modules, projects, patterns) is ARC-009's (proposed) to settle, in `docs/standards/architecture.md`.
+- **KISS, YAGNI, no big design up front (CRF-004).** YAGNI ("you aren't gonna need it") comes from Extreme Programming. The simplest design means the simplest one that's fully correct, never the quickest one. How much structure a small app gets (modules, projects, patterns) is ARC-009's to settle, in `docs/standards/architecture.md`.
 - **SOLID (CRF-005).** Robert C. Martin set out the principles around 2000 ("Design Principles and Design Patterns"); Michael Feathers coined the acronym later. Dependencies are explicit: a class asks for what it needs through its constructor, and a Minimal API handler through its parameters, as the sample's endpoints do. They point toward abstractions where the direction matters, from business code toward its own interfaces, never toward infrastructure; an interface with one implementation and no such reason is speculation (CRF-004). Martin's own page lists the principles: [Principles of OOD](https://web.archive.org/web/20220121055640/http://butunclebob.com/ArticleS.UncleBob.PrinciplesOfOod) (archived copy). The Liskov substitution principle is Barbara Liskov's (1987; with Jeannette Wing, "A behavioral notion of subtyping", 1994).
 - **Separation of concerns and validation at the boundary (CRF-006).** Business rules sit in projects that depend on no infrastructure (ARC-001). Input is checked where it enters, once; code inside trusts its types.
 - **Dependencies and cohesion (CRF-007).** Martin's package principles (*Agile Software Development, Principles, Patterns, and Practices*, 2002): the acyclic dependencies, stable dependencies and stable abstractions principles for how components depend on each other, and the reuse/release equivalence, common closure and common reuse principles (REP, CCP, CRP) for what goes in a component. The same page of Martin's lists all six. Martin states them for packages, meaning deployable binaries such as a .dll, not namespaces. In .NET the build already rejects a cycle between projects: restore fails with [MSB4006](https://learn.microsoft.com/en-us/visualstudio/msbuild/errors/msb4006), a circular dependency in its target graph (measured with SDK 10.0.404). So the kit applies the acyclic dependencies principle to namespaces, where cycles can still form unnoticed.
-- **Metric limits (CRF-008), and the limits no analyzer checks (CRF-011, proposed).** See below.
+- **Metric limits (CRF-008), and the limits no analyzer checks (CRF-011, a should).** See below.
 - **STUPID (CRF-009).** William Durand's name (2013) for six habits that make code hard to change: Singleton, Tight coupling, Untestability, Premature optimization, Indescriptive naming, Duplication. Testability and deployability are design drivers: if a part can't be tested in isolation, the design changes, not the test.
-- **The rule of ten (CRF-012).** A target, not a ceiling: ten subfolders, files, types, members or lines is where to start asking whether a unit does one thing. No tool enforces it; CRF-011 (proposed) caps statements per member (30), members per type (20) and lines per file (400) above ten.
+- **The rule of ten (CRF-012).** A target, not a ceiling: ten subfolders, files, types, members or lines is where to start asking whether a unit does one thing. No tool enforces it; CRF-011 (a should) caps statements per member (30), members per type (20) and lines per file (400) above ten.
 - **Dependency injection (CRF-020, CRF-013).** Microsoft's [guidelines](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/guidelines) in short (CRF-020 has their wording): avoid resolving dependencies yourself, from `IServiceProvider`, a factory or a static; keep singletons for state that's shared or costly to create; and enable scope validation. The kit asks for dependencies in the constructor (CRF-005). ASP.NET Core checks them only in Development, so the sample's test host turns the checks on in every environment it runs the app in, and the app keeps Microsoft's setting.
 - **Encapsulation and persistence ignorance (CRF-014, CRF-021).** From Microsoft's [architectural principles](https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/architectural-principles). The sample's `Bookmark` sets its state only through `Create`, which checks every part, and the domain project references no persistence library; Infrastructure maps it to the database.
 - **Documented use (CRF-010, CRF-019).** Use each library, tool and service the way its documentation describes for the version in use. Where there's no documented way to do something, ask its authors for one; don't reach into its internals. The ban covers an app's own code too, since the analyzer can't tell whose type a call reaches. In an app's own code the way forward is to register each type explicitly, as the built-in container requires: Microsoft's dependency injection guidance registers each service by its type, and its [guidelines](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection/guidelines) list convention-based (scanning) registration among the features the built-in container doesn't have. Making a type public is the way forward only when it belongs to a library's public API; in an executable project (the API, a worker), CA1515 keeps types internal. Against a library, a banned member has a public alternative, which its message names: for example, a dynamic `OrderBy` over an `IQueryable` builds its expression from `type.GetProperty(name)` and a `MethodInfo` taken from `typeof(Queryable).GetMethods()`, not from the by-name `Expression` factories.
@@ -474,7 +509,7 @@ Where Microsoft's [Architectural principles](https://learn.microsoft.com/en-us/d
 | The other rules `latest-all` leaves off | `.globalconfig` (which lists them), and `Directory.Build.props` for CA1017's `ComVisible(false)` and CA1014's `CLSCompliant(false)` | code that breaks one of them (STY-003) |
 | RS0030, banned APIs | `BannedSymbols.txt`, read by `Microsoft.CodeAnalysis.BannedApiAnalyzers`, and `BannedSymbols.Pure.txt` too in a project that sets `PureAssembly` (ARC-008, ADR-0080) | `BindingFlags.NonPublic`, `[UnsafeAccessor]`, and the other routes into non-public members found so far; the file's other sections ban APIs for other rules, each naming its own (SEC-014, ARC-008, OPS-003, STY-011, STY-009); the pure file bans randomness, file, network, environment and process access |
 | Duplicate code (CRF-003) | `tools/Test-Duplication.ps1`, which runs PMD's copy-paste detector (CPD) in `dotnet-ci.reusable.yml` | a run of tokens repeated in hand-written C#, ignoring using directives, attributes and runs of literals; ADR-0051 sets the length |
-| Nesting, statements per member, file length, members per type, public types per file and LCOM4 (CRF-011, proposed) | `tools/Test-CodeShape.ps1`, which runs the kit's Kit.CodeShape tool in `dotnet-ci.reusable.yml` | a member nested too deep or with too many statements, a file too long or with more than one public type, a type with too many members, or a type whose methods form more than one group that shares no state; it also reports STY-005's nullable rules (a `#nullable` directive, an unlabelled `!` outside a test project, a file marked generated outside `Migrations` that isn't a `.resx` file's designer) as `STY005` |
+| Nesting, statements per member, file length, members per type, public types per file and LCOM4 (CRF-011, a should) | `tools/Test-CodeShape.ps1`, which runs the kit's Kit.CodeShape tool in `dotnet-ci.reusable.yml` | a member nested too deep or with too many statements, a file too long or with more than one public type, a type with too many members, or a type whose methods form more than one group that shares no state; it also reports STY-005's nullable rules (a `#nullable` directive, an unlabelled `!` outside a test project, a file marked generated outside `Migrations` that isn't a `.resx` file's designer) as `STY005` |
 | Namespace cycles | the kit's shared `NamespaceCycleTests` (ArchUnitNET, tools/AppTests), compiled into the sample's and every app's Architecture.Tests (ADR-0081) | a cycle among each root namespace the app's assemblies share and the namespaces under it |
 | Dependency injection validation (CRF-013) | the sample's FunctionalTests: `ApiHost` turns on ValidateScopes and ValidateOnBuild, and the kit's shared `DependencyInjectionTests` (tools/AppTests/Functional), compiled into the sample's and every app's FunctionalTests, proves they're on (ADR-0081) | a singleton that captures a scoped service, or a scoped service resolved from the root, in any environment the tests run the app in |
 | ASP0000 (CRF-013) | ASP.NET Core's analyzers, at warning, in ASP.NET Core projects | a call to `BuildServiceProvider` while services are being registered |

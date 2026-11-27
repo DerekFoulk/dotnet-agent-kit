@@ -15,6 +15,7 @@ Describe 'Test-RuleSources.ps1' {
                 layer       = 'owner'
                 basis       = 'preference'
                 status      = 'accepted'
+                strength    = 'should'
                 sources     = @('owner, 2026-10-26', 'ADR-0007')
                 enforcement = @(
                     [ordered]@{ kind = 'gate'; in = @('kit', 'app'); how = 'ruleset: merge-method rule (merge commit only)' }
@@ -63,6 +64,16 @@ types:
   - id: maui
     name: .NET MAUI
     docs: https://learn.microsoft.com/dotnet/maui/
+'@
+        # ADR-0090: the conditions a rule's when can name, kept beside the standards.
+        Set-Content -Path (Join-Path $script:standards 'conditions.yml') -Value @'
+conditions:
+  - id: has-sign-in
+    meaning: The app signs users in.
+    intake: { card: signIn, yes: [entra-id], no: [none] }
+  - id: holds-personal-data
+    meaning: The app holds personal data.
+    recordedBy: Not asked by the intake yet.
 '@
     }
 
@@ -113,7 +124,7 @@ types:
         ) {
             $layer = if ($Basis -eq 'authority') { 'outside' } else { 'owner' }
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    sources = @($Source); basis = $Basis; layer = $layer; status = 'proposed'; quotes = New-QuotesFor $Source
+                    sources = @($Source); basis = $Basis; layer = $layer; status = 'accepted'; quotes = New-QuotesFor $Source
                 })
 
             Get-Problem | Should -BeNullOrEmpty
@@ -141,7 +152,7 @@ types:
 
     Context 'values' {
         It 'accepts layer <Layer> and status <Status>' -ForEach @(
-            @{ Layer = 'floor'; Status = 'proposed'; Basis = 'preference' }
+            @{ Layer = 'floor'; Status = 'accepted'; Basis = 'preference' }
             @{ Layer = 'owner'; Status = 'accepted'; Basis = 'preference' }
             @{ Layer = 'outside'; Status = 'retired'; Basis = 'authority' }
         ) {
@@ -156,10 +167,107 @@ types:
             @{ Field = 'layer'; Value = 'team' }
             @{ Field = 'basis'; Value = 'taste' }
             @{ Field = 'status'; Value = 'draft' }
+            @{ Field = 'status'; Value = 'proposed' }
         ) {
             New-StandardsFile -Rules @(New-Rule -Override @{ $Field = $Value })
 
             (Get-Problem | ForEach-Object Message) | Should -BeLike "*$Field*$Value*"
+        }
+    }
+
+    # ADR-0090: a strength says how strongly a rule applies, from its source's words: must, should or consider.
+    Context 'strength' {
+        It 'accepts strength <Strength>' -ForEach @(
+            @{ Strength = 'should' }
+            @{ Strength = 'consider' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = $Strength; enforcement = @([ordered]@{ kind = 'advisory'; in = @('kit'); how = 'code review' }) })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports a rule in force with no strength' {
+            New-StandardsFile -Rules @(New-Rule -Remove 'strength')
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*missing 'strength'*must, should or consider*ADR-0090*"
+        }
+
+        It 'reports strength <Strength>' -ForEach @(
+            @{ Strength = 'may' }
+            @{ Strength = 'MUST' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = $Strength })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*strength '$Strength'*must, should, consider*"
+        }
+
+        # An agent can't make a source sound stricter than it is: an authority must needs a must-word in a quote.
+        It 'accepts an authority must whose quote says <Text>' -ForEach @(
+            @{ Text = 'Apps must validate tokens.' }
+            @{ Text = 'DO name it in PascalCase.' }
+            @{ Text = 'DO NOT expose it.' }
+            @{ Text = 'Do not store secrets in code.' }
+            @{ Text = 'Don''t block on async code.' }
+            @{ Text = 'Never grant execute permission.' }
+            @{ Text = 'Verify that the application uses TLS.' }
+            @{ Text = 'Always dispose the call.' }
+            @{ Text = 'A key is required for this call.' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; strength = 'must'; ratified = 'ADR-0007'; sources = @($url)
+                    quotes = @([ordered]@{ source = 'https://example.com/guide'; retrieved = '2026-11-01'; text = $Text })
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports an authority must whose quotes say only <Text>' -ForEach @(
+            @{ Text = 'You should validate tokens.' }
+            @{ Text = 'Consider a fallback policy; you can opt out.' }
+            @{ Text = 'Do this when it fits.' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; strength = 'must'; ratified = 'ADR-0007'; sources = @($url)
+                    quotes = @([ordered]@{ source = 'https://example.com/guide'; retrieved = '2026-11-01'; text = $Text })
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*strength 'must'*no quote*must-word*should*ADR-0090*"
+        }
+
+        # A consider rule is advice: no gate runs on it, so a gate part on one would fail a change for advice.
+        It 'reports a consider rule with a gate' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = 'consider' })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*strength 'consider'*gate*advisory*should*ADR-0090*"
+        }
+
+        It 'reports status proposed, saying strength replaced it' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ status = 'proposed' })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*status 'proposed'*strength*accepted*ADR-0090*"
+        }
+
+        It 'needs no strength on a retired rule' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ status = 'retired' } -Remove 'strength')
+
+            Get-Problem | Should -BeNullOrEmpty
         }
     }
 
@@ -168,7 +276,7 @@ types:
     Context 'basis' {
         It 'accepts an authority rule that cites a URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; layer = 'outside'; status = 'proposed'
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'
                     sources = @('https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01')
                     quotes = New-QuotesFor 'https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview, retrieved 2026-11-01'
                 })
@@ -178,7 +286,7 @@ types:
 
         It 'accepts an authority rule that cites an http URL' {
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; layer = 'outside'; status = 'proposed'; sources = @('http://example.com/guide, retrieved 2026-11-01')
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'; sources = @('http://example.com/guide, retrieved 2026-11-01')
                     quotes = New-QuotesFor 'http://example.com/guide, retrieved 2026-11-01'
                 })
 
@@ -193,7 +301,7 @@ types:
         ) {
             $url = 'https://example.com/guide, retrieved 2026-11-01'
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = 'authority'; layer = 'outside'; status = 'proposed'; sources = @($url, $Source); quotes = New-QuotesFor $url
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'; sources = @($url, $Source); quotes = New-QuotesFor $url
                 })
 
             $problems = @(Get-Problem)
@@ -208,7 +316,7 @@ types:
         ) {
             $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = $Basis; layer = $Layer; status = 'proposed'; sources = $sources; quotes = New-QuotesFor $sources
+                    basis = $Basis; layer = $Layer; status = 'accepted'; sources = $sources; quotes = New-QuotesFor $sources
                 })
 
             $problems = @(Get-Problem)
@@ -223,7 +331,7 @@ types:
         ) {
             $sources = if ($Basis -eq 'authority') { @('https://example.com/guide, retrieved 2026-11-01') } else { @('owner, 2026-10-26') }
             New-StandardsFile -Rules @(New-Rule -Override @{
-                    basis = $Basis; layer = 'floor'; status = 'proposed'; sources = $sources; quotes = New-QuotesFor $sources
+                    basis = $Basis; layer = 'floor'; status = 'accepted'; sources = $sources; quotes = New-QuotesFor $sources
                 })
 
             Get-Problem | Should -BeNullOrEmpty
@@ -242,8 +350,15 @@ types:
             Get-Problem | Should -BeNullOrEmpty
         }
 
+        # ADR-0090: an authority rule is in force once its quotes are on its pages; ratified, where present, is history.
+        It 'accepts an accepted authority rule with no ratified' {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{ basis = 'authority'; layer = 'outside'; status = 'accepted'; sources = @($url); quotes = New-QuotesFor $url })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
         It 'reports an accepted authority rule with ratified <Case>' -ForEach @(
-            @{ Case = 'missing'; Ratified = $null; Expected = "*accepted*authority*ratified*" }
             @{ Case = 'not an owner date or an ADR'; Ratified = 'the owner'; Expected = "*ratified 'the owner'*owner, YYYY-MM-DD*ADR*" }
             @{ Case = 'an owner with no real date'; Ratified = 'owner, 2026-13-45'; Expected = "*ratified*owner, YYYY-MM-DD*" }
             @{ Case = 'an ADR that doesn''t exist'; Ratified = 'ADR-9999'; Expected = "*ratified*ADR-9999*not found*" }
@@ -259,13 +374,35 @@ types:
             $problems[0].Message | Should -BeLike $Expected
         }
 
-        It 'reports ratified on a preference rule, whose sources already name the owner' {
-            New-StandardsFile -Rules @(New-Rule -Override @{ ratified = 'owner, 2026-11-12' })
+        # ADR-0090: the kit's own rules start at should, and only the owner moves one to must, recorded in ratified.
+        It 'accepts a kit must ratified by <Ratified>' -ForEach @(
+            @{ Ratified = 'owner, 2026-11-25' }
+            @{ Ratified = 'ADR-0007' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = 'must'; ratified = $Ratified })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports a kit must with no ratified' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = 'must' })
 
             $problems = @(Get-Problem)
 
             $problems.Count | Should -Be 1
-            $problems[0].Message | Should -BeLike "*ratified*authority*"
+            $problems[0].Message | Should -BeLike "*kit rule*must*ratified*owner*ADR-0090*"
+        }
+
+        It 'reports a kit must ratified by <Ratified>' -ForEach @(
+            @{ Ratified = 'the owner' }
+            @{ Ratified = 'ADR-9999' }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ strength = 'must'; ratified = $Ratified })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*ratified*$Ratified*"
         }
 
         It 'reports an authority rule that cites no URL' {
@@ -302,7 +439,7 @@ types:
             function New-AuthorityRule {
                 param([hashtable] $Override = @{}, [string[]] $Remove = @())
                 $rule = New-Rule -Override @{
-                    basis = 'authority'; layer = 'outside'; status = 'proposed'
+                    basis = 'authority'; layer = 'outside'; status = 'accepted'
                     sources = @('https://learn.microsoft.com/ef/core/testing/, retrieved 2026-11-17'); quotes = @(New-Quote)
                 }
                 foreach ($key in $Override.Keys) { $rule[$key] = $Override[$key] }
@@ -473,6 +610,87 @@ types:
             @{ Case = 'names a type core'; Yaml = "types:`n  - { id: core, name: A, docs: 'https://learn.microsoft.com/a' }"; Expected = "*app-types.yml*'core'*reserved*" }
         ) {
             $path = Join-Path $script:standards 'app-types.yml'
+            if ($null -eq $Yaml) { Remove-Item -LiteralPath $path } else { Set-Content -LiteralPath $path -Value $Yaml }
+            New-StandardsFile
+
+            (Get-Problem | ForEach-Object Message) -join "`n" | Should -BeLike $Expected
+        }
+    }
+
+    # ADR-0090: a rule that holds only for some apps says so in when, a list of the conditions in conditions.yml.
+    Context 'when' {
+        It 'accepts a rule whose when names <Case>' -ForEach @(
+            @{ Case = 'one condition'; When = @('has-sign-in') }
+            @{ Case = 'two conditions'; When = @('has-sign-in', 'holds-personal-data') }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ when = $When })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports when <Case>' -ForEach @(
+            @{ Case = 'written as one string'; When = 'has-sign-in'; Expected = "*when*list*" }
+            @{ Case = 'empty'; When = @(); Expected = "*when*empty*leave it out*" }
+            @{ Case = 'naming an unknown condition'; When = @('has-cats'); Expected = "*condition 'has-cats'*conditions.yml*has-sign-in*" }
+        ) {
+            New-StandardsFile -Rules @(New-Rule -Override @{ when = $When })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike $Expected
+        }
+
+        # Decision 8: a rule carries its source's conditions. A quote that limits itself to some apps needs a when, or a
+        # reason the phrase isn't a condition on which apps the rule holds for (a code condition, a description).
+        It 'reports an authority rule whose quote says <Text>, with no when' -ForEach @(
+            @{ Text = 'For a server-side app where most endpoints require authentication, set a fallback policy.' }
+            @{ Text = 'If your app requires cookies, avoid IHttpClientFactory.' }
+            @{ Text = 'Applications that connect to your database should expect transient errors.' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; sources = @($url)
+                    quotes = @([ordered]@{ source = 'https://example.com/guide'; retrieved = '2026-11-01'; text = $Text })
+                })
+
+            $problems = @(Get-Problem)
+
+            $problems.Count | Should -Be 1
+            $problems[0].Message | Should -BeLike "*quote*condition about the app*when*unconditional*ADR-0090*"
+        }
+
+        It 'accepts an authority rule whose quote names a condition, with <Case>' -ForEach @(
+            @{ Case = 'a when'; Field = 'when'; Value = @('has-sign-in') }
+            @{ Case = 'a reason it holds for every app'; Field = 'unconditional'; Value = '"the app" is described, not a condition' }
+        ) {
+            $url = 'https://example.com/guide, retrieved 2026-11-01'
+            New-StandardsFile -Rules @(New-Rule -Override @{
+                    basis = 'authority'; layer = 'outside'; sources = @($url); $Field = $Value
+                    quotes = @([ordered]@{ source = 'https://example.com/guide'; retrieved = '2026-11-01'; text = 'If your app requires cookies, avoid IHttpClientFactory.' })
+                })
+
+            Get-Problem | Should -BeNullOrEmpty
+        }
+
+        It 'reports unconditional on a rule that also has a when' {
+            New-StandardsFile -Rules @(New-Rule -Override @{ when = @('has-sign-in'); unconditional = 'no condition' })
+
+            (Get-Problem | ForEach-Object Message) | Should -BeLike '*unconditional*when*both*'
+        }
+
+        It 'reports a conditions file that <Case>' -ForEach @(
+            @{ Case = 'is missing'; Yaml = $null; Expected = '*conditions.yml*missing*' }
+            @{ Case = 'lists no conditions'; Yaml = 'conditions: []'; Expected = '*conditions.yml*no conditions*' }
+            @{ Case = 'has an id not in lower-case-with-dashes'; Yaml = "conditions:`n  - { id: HasSignIn, meaning: A, recordedBy: B }"; Expected = "*conditions.yml*HasSignIn*lower-case*" }
+            @{ Case = 'repeats an id'; Yaml = "conditions:`n  - { id: a, meaning: A, recordedBy: B }`n  - { id: a, meaning: A, recordedBy: B }"; Expected = "*conditions.yml*'a'*more than once*" }
+            @{ Case = 'has a condition with no meaning'; Yaml = "conditions:`n  - { id: a, recordedBy: B }"; Expected = "*conditions.yml*'a'*meaning*" }
+            @{ Case = 'says neither how the intake records a condition nor where else'; Yaml = "conditions:`n  - { id: a, meaning: A }"; Expected = "*conditions.yml*'a'*intake*recordedBy*" }
+            @{ Case = 'says both'; Yaml = "conditions:`n  - { id: a, meaning: A, recordedBy: B, intake: { card: signIn, yes: [x], no: [none] } }"; Expected = "*conditions.yml*'a'*intake*recordedBy*" }
+            @{ Case = 'has an intake with no card'; Yaml = "conditions:`n  - { id: a, meaning: A, intake: { yes: [x], no: [none] } }"; Expected = "*conditions.yml*'a'*card*" }
+            @{ Case = 'has an intake option both yes and no'; Yaml = "conditions:`n  - { id: a, meaning: A, intake: { card: signIn, yes: [x], no: [x] } }"; Expected = "*conditions.yml*'a'*'x'*yes and no*" }
+        ) {
+            $path = Join-Path $script:standards 'conditions.yml'
             if ($null -eq $Yaml) { Remove-Item -LiteralPath $path } else { Set-Content -LiteralPath $path -Value $Yaml }
             New-StandardsFile
 

@@ -6,7 +6,8 @@ rules:
     why: "Constructor parameters show what a class needs and make it easier to test, and the container already disposes the IDisposable services it creates, so disposing one by hand breaks the container's ownership of its lifetime."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-10.0"
@@ -27,7 +28,8 @@ rules:
     why: "A secret in a configuration file, in code or shipped with the app can be read by anyone who gets those files. OPS-006 and SEC-001 cover validating options and keeping secrets out of the repo."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/configuration?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/app-secrets?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/configuration?view=aspnetcore-10.0"
@@ -57,7 +59,8 @@ rules:
     why: "Levels in configuration can change without a rebuild, and a synchronous Log method that waits on a slow store slows every caller."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/logging?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/logging?view=aspnetcore-10.0"
@@ -87,7 +90,8 @@ rules:
     why: "Session data is a cache that can be lost, and the client can read a query string and change a hidden field."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0"
@@ -120,7 +124,8 @@ rules:
     why: "Another site can make a browser send a GET, and a cookie-authenticated endpoint without antiforgery validation accepts a forged request as the signed-in user's."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0"
@@ -144,7 +149,8 @@ rules:
     why: "An upload can overwrite files, carry code to run or exhaust the server; each of these closes one of those paths."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/mvc/models/file-uploads?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/mvc/models/file-uploads?view=aspnetcore-10.0"
@@ -174,7 +180,8 @@ rules:
     why: "The static file and directory browsing middleware can serve files that weren't meant to be public, so a private file's protection shouldn't rest on where it sits under wwwroot or on its extension."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/static-files?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/static-files?view=aspnetcore-10.0"
@@ -198,7 +205,8 @@ rules:
     why: "A cache entry can be missing or evicted at any time, and an entry or key built from untrusted input can grow without bound or reach another user."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/performance/caching/memory?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/performance/caching/hybrid?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/fundamentals/app-state?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/performance/caching/memory?view=aspnetcore-10.0"
@@ -228,7 +236,8 @@ rules:
     why: "A cached per-user response can be served to a different user."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/performance/caching/response?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/performance/caching/middleware?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/performance/caching/response?view=aspnetcore-10.0"
@@ -249,7 +258,8 @@ rules:
     why: "Authorization, exception handling and logging each already have a place in the framework's pipeline; a filter that repeats one adds a second place to look."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/mvc/controllers/filters?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/mvc/controllers/filters?view=aspnetcore-10.0"
@@ -276,7 +286,8 @@ rules:
     why: "Binding client input straight onto a type lets the client set any property it can name. SEC-013 already keeps domain entities out of endpoints."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/mvc/models/model-binding?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/razor-pages?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/mvc/advanced/custom-model-binding?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/mvc/models/model-binding?view=aspnetcore-10.0"
@@ -303,7 +314,8 @@ rules:
     why: "Controller adds view support that a web API doesn't use, and a %2f in a route value isn't unescaped to a slash."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/web-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/web-api?view=aspnetcore-10.0"
@@ -330,7 +342,8 @@ rules:
     why: "Route constraints are for telling similar routes apart, not for checking a route's input."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/routing?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/routing?view=aspnetcore-10.0"
@@ -357,7 +370,8 @@ rules:
     why: "Each of these analyzers flags code that doesn't behave the way it reads, and the RenderTree types are part of Blazor's implementation detail and subject to breaking changes."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/diagnostics/asp0003?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0004?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0006?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0008?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0009?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/asp0010?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/bl0005?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/diagnostics/bl0006?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/diagnostics/asp0003?view=aspnetcore-10.0"
@@ -399,7 +413,9 @@ rules:
     why: "A new channel per call means new connections and round trips, a streaming call left running holds resources on both ends, and a deadline caps how long a call can run."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
+    when: [uses-grpc]
     sources: ["https://learn.microsoft.com/aspnet/core/grpc/performance?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/grpc/client?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/grpc/performance?view=aspnetcore-10.0"
@@ -429,7 +445,9 @@ rules:
     why: "Exception messages are generally sensitive, and an unsecured port sends messages in the clear."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
+    when: [uses-grpc]
     sources: ["https://learn.microsoft.com/aspnet/core/grpc/security?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/grpc/security?view=aspnetcore-10.0"
@@ -453,7 +471,9 @@ rules:
     why: "State kept on a hub instance is gone at the next call, and two operations at once on one DbContext fail."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
+    when: [uses-signalr]
     sources: ["https://learn.microsoft.com/aspnet/core/signalr/hubs?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/signalr/hubs?view=aspnetcore-10.0"
@@ -477,7 +497,9 @@ rules:
     why: "A SignalR connection's state lives on one server, and the origins it accepts, its transport and the errors it returns are what a client can reach."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
+    when: [uses-signalr]
     sources: ["https://learn.microsoft.com/aspnet/core/signalr/scale?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/signalr/security?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/signalr/scale?view=aspnetcore-10.0"
@@ -510,7 +532,9 @@ rules:
     why: "A confidential client keeps its credential on the server, where the browser can't read it, and ShowPII writes personal data to logs. SEC-008 already picks the OIDC provider."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
+    when: [has-sign-in]
     sources: ["https://learn.microsoft.com/aspnet/core/security/authentication/configure-oidc-web-authentication?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/authentication/configure-oidc-web-authentication?view=aspnetcore-10.0"
@@ -543,7 +567,8 @@ rules:
     why: "Whoever can read or write the key ring can read or forge the data it protects. SEC-015 already makes Data Protection the way to protect data."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/overview?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/data-protection/implementation/key-storage-providers?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/anti-request-forgery?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/security/data-protection/consumer-apis/purpose-strings?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/security/data-protection/configuration/overview?view=aspnetcore-10.0"
@@ -576,7 +601,8 @@ rules:
     why: "A delegating handler can't be reused across HTTP client pipelines, so a singleton one throws when it's reused. OPS-003 already requires IHttpClientFactory."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/http-requests?view=aspnetcore-10.0"
@@ -597,4 +623,4 @@ rules:
 
 What Microsoft's ASP.NET Core documentation says an app should do, beyond what the kit's API (API-), security (SEC-), operations (OPS-), data (DAT-) and craft (CRF-) rules already state. Each rule says only what its cited page says, at that page's strength, and stores the sentence that says it.
 
-Every rule here is proposed until the owner accepts it. Pages whose guidance an existing rule already carries are not repeated: the best practices page (OPS-007), the Kestrel and HTTPS pages (SEC-011), JWT bearer tokens (SEC-008), error handling (API-002), the options and HttpClient pages (OPS-006, OPS-003) and the general dependency injection guidelines (CRF-020). The Identity UI rule for Blazor apps is BLZ-015.
+Every rule here has its page's strength (ADR-0090). Pages whose guidance an existing rule already carries are not repeated: the best practices page (OPS-007), the Kestrel and HTTPS pages (SEC-011), JWT bearer tokens (SEC-008), error handling (API-002), the options and HttpClient pages (OPS-006, OPS-003) and the general dependency injection guidelines (CRF-020). The Identity UI rule for Blazor apps is BLZ-015.

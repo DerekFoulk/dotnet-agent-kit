@@ -9,4 +9,4 @@ paths:
 
 # Supply chain
 
-- SUP-006: Builds take their version only from git tags through MinVer; the only version records outside tags are the ones release-please writes, .release-please-manifest.json and CHANGELOG.md, and no build reads them.
+- SUP-006 (must): Builds take their version only from git tags through MinVer; the only version records outside tags are the ones release-please writes, .release-please-manifest.json and CHANGELOG.md, and no build reads them.

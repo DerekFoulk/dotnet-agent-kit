@@ -6,4 +6,4 @@ paths:
 
 # Architecture
 
-- ARC-018: You should use TimeProvider or a similar type when retrieving the time.
+- ARC-018 (should): You should use TimeProvider or a similar type when retrieving the time.

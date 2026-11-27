@@ -6,4 +6,4 @@ paths:
 
 # Architecture
 
-- ARC-007: Proofs of concept live in spikes/ and are never merged into production code as-is.
+- ARC-007 (must): Proofs of concept live in spikes/ and are never merged into production code as-is.

@@ -1,0 +1,62 @@
+# The conditions a rule's `when:` names (ADR-0090, decision 8): yes/no facts about an app under which a rule's source
+# says it holds. One list, read by Test-RuleSources.ps1, Build-AgentRules.ps1 and the new-app intake. A rule applies
+# only where every condition in its `when` holds.
+#
+# Each condition has an id, its meaning, and how an app records it: `intake` names the new-app intake card whose answer
+# settles it (templates/app-intake.json), with the options that make it hold (`yes`) and those that make it not hold
+# (`no`); any other answer leaves it unknown. `recordedBy` says where a condition the intake doesn't ask is recorded
+# instead. New-KitApp writes each condition's answer, yes, no or unknown, on the "Conditions:" line of the app's
+# docs/app-profile.md. A condition that line doesn't answer, or answers unknown, counts as holding, so no rule is
+# dropped by omission; a gate skips a rule only where the line says no.
+conditions:
+  - id: has-sign-in
+    meaning: The app signs users in.
+    intake: { card: signIn, yes: [entra-external-id, entra-id], no: [none] }
+  - id: has-database
+    meaning: The app keeps its data in a database.
+    intake: { card: database, yes: [azure-sql-free, postgresql, cosmos-free, sqlite], no: [none] }
+  - id: has-server-database
+    meaning: The app's database is a server or cloud database that more than one version of the app can reach, not one on the user's device.
+    intake: { card: database, yes: [azure-sql-free, postgresql, cosmos-free], no: [sqlite, none] }
+  - id: has-relational-database
+    meaning: The app's database is relational (SQL Server, Azure SQL, PostgreSQL, SQLite).
+    intake: { card: database, yes: [azure-sql-free, postgresql, sqlite], no: [cosmos-free, none] }
+  - id: has-cloud-database
+    meaning: The app's database is a hosted cloud service, such as Azure SQL Database or Azure Cosmos DB.
+    intake: { card: database, yes: [azure-sql-free, cosmos-free], no: [sqlite, none] }
+  - id: holds-personal-data
+    meaning: The app holds personal data.
+    recordedBy: Not asked by the intake yet, so it's unknown and counts as holding; the plan's threat model says whether the app holds personal data (SEC-012).
+  - id: is-commercial
+    meaning: The repo is marked commercial.
+    recordedBy: The repo's .config/package-licenses.json, whose commercial setting Test-PackageLicenses.ps1 reads (SEC-005, ADR-0079).
+  - id: is-public-repo
+    meaning: The app's repo is public on GitHub.
+    recordedBy: The repo's visibility on GitHub, which the reusable workflows read when they run.
+  - id: uses-grpc
+    meaning: The app serves or calls gRPC services.
+    recordedBy: The app's code; not asked by the intake, so unknown.
+  - id: uses-signalr
+    meaning: The app hosts SignalR hubs of its own.
+    recordedBy: The app's code; not asked by the intake, so unknown.
+  - id: has-server-interactivity
+    meaning: The Blazor app renders interactively on the server, over a SignalR circuit.
+    recordedBy: The app's render modes; not asked by the intake, so unknown.
+  - id: uses-aspnet-core-identity
+    meaning: The app manages its users with ASP.NET Core Identity (which SEC-008 allows only through an ADR).
+    recordedBy: An ADR of the app's; not asked by the intake, so unknown.
+  - id: localizes-by-user-culture
+    meaning: The app localizes by a culture setting it stores for each user.
+    recordedBy: The app's code; not asked by the intake, so unknown.
+  - id: publishes-native-aot
+    meaning: The app is published with Native AOT.
+    recordedBy: The app's PublishAot property; not asked by the intake, so unknown.
+  - id: publishes-trimmed
+    meaning: The app is published trimmed (Native AOT trims too).
+    recordedBy: The app's PublishTrimmed or PublishAot property; not asked by the intake, so unknown.
+  - id: ships-nuget-package
+    meaning: The repo publishes a library as a NuGet package.
+    recordedBy: The repo's packable projects; not asked by the intake, so unknown.
+  - id: has-long-running-operations
+    meaning: The app runs operations that must finish gracefully when it shuts down.
+    recordedBy: The app's code; not asked by the intake, so unknown.

@@ -6,4 +6,4 @@ paths:
 
 # Code style
 
-- STY-004: Zero warnings: warnings are errors in every build.
+- STY-004 (must): Zero warnings: warnings are errors in every build.

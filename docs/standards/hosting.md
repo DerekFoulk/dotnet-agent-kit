@@ -6,7 +6,8 @@ rules:
     why: "Microsoft's auto-activation page gives these as best practices for services the host creates at startup."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/dependency-injection/auto-activation"
@@ -29,7 +30,8 @@ rules:
     why: "Microsoft's IHttpClientFactory troubleshooting page lists these as DO NOT and CONSIDER items: a client captured for longer than its handler's lifetime misses DNS changes, scope data in a handler can leak sensitive information, and a second registration of a typed client overwrites the one the factory added. OPS-003 covers using the factory at all, and its cookie exception."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/httpclient-factory-troubleshooting"
@@ -61,7 +63,8 @@ rules:
     why: "Microsoft's logging page recommends the category name so logs relate back to the code that produced them, and says string interpolation can cause performance issues. OPS-007 covers the generated, high-performance logger."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/logging/overview, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/logging/overview"
@@ -87,7 +90,8 @@ rules:
     why: "Microsoft's caching page says so in a caution. It is an in-process cache that doesn't share entries across servers."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/caching, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/caching"
@@ -104,7 +108,8 @@ rules:
     why: "Microsoft's options guidance for library authors gives both as DO NOT items, so a library's extensions don't collide with or pose as Microsoft's."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/options-library-authors, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/options-library-authors"
@@ -125,6 +130,6 @@ rules:
 
 Rules for apps built on the .NET generic host and the Microsoft.Extensions libraries: dependency injection, logging, caching, the HTTP client factory, and options for libraries. The generic host runs web apps (and Worker Services and console apps, which aren't supported app types yet), so a rule about hosting is scoped to `web-api` and `blazor`, and one about a library MAUI's builder offers too (`AddHttpClient`, `builder.Logging`) is `core`.
 
-Every rule here is proposed, and stays proposed until the owner accepts it. Each states only what its cited Microsoft page says, at the page's own strength.
+Each rule here states only what its cited Microsoft page says, at the page's own strength (ADR-0090).
 
 Other pages on this topic already have a rule: the DI guidelines are CRF-013 and CRF-009, options validation is OPS-006, HttpClient through the factory and its resilience defaults are OPS-003, and the generated logger is OPS-007.

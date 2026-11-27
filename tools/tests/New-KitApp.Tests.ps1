@@ -295,6 +295,7 @@ Describe 'New-KitApp run' {
             $profileText | Should -Match '\| Which database should it use\? \| Azure SQL Database, free offer \|'
             $profileText | Should -Match "Apache JMeter \(Apache-2\.0, Free\)" -Because 'the answers chose JMeter for load tests'
             $profileText | Should -Match ([regex]::Escape($commit)) -Because 'it names the kit commit the cards came from'
+            $profileText | Should -Match '(?m)^Conditions: (.+, )?has-database=yes(,|$)' -Because 'it answers the conditions from the kit''s conditions.yml at that commit (ADR-0090)'
         }
 
         It 'turns the commit hook on in the local copy' {

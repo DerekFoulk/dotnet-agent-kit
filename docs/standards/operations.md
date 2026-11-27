@@ -7,6 +7,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0037", "https://learn.microsoft.com/dotnet/core/diagnostics/observability-with-otel, retrieved 2026-11-17", "owner, 2026-11-09"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/diagnostics/observability-with-otel"
@@ -27,6 +29,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0037", "https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0, retrieved 2026-11-17", "https://aspire.dev/fundamentals/health-checks/, retrieved 2026-11-17", "owner, 2026-11-09"]
     scope: [web-api, blazor]
     enforcement:
@@ -46,6 +50,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0037", "owner, 2026-11-09", "owner, 2026-11-16", "https://learn.microsoft.com/dotnet/core/resilience/http-resilience, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/resilience/http-resilience"
@@ -68,13 +74,15 @@ rules:
     why: "Under pressure, whoever is on call follows written, tested steps instead of improvising (GAP-017). The kit's layout is the owner's choice; OPS-012 holds what the Well-Architected Framework says about documenting operations."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: must
+    ratified: "owner, 2026-11-25"
     sources: ["ADR-0047", "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/manage/ready-cloud-operations, retrieved 2026-11-11", "https://diataxis.fr/how-to-guides/, retrieved 2026-11-11"]
     scope: [web-api, blazor]
     enforcement:
       - kind: gate
         in: [app]
-        how: "ci: Test-Runbook.ps1 in app-checks.reusable.yml fails on a missing runbook, status or review date, a missing or empty section, and a placeholder left once In use; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
+        how: "ci: Test-Runbook.ps1 in app-checks.reusable.yml fails on a missing runbook, status or review date, a missing or empty section, and a placeholder left once In use; it's a must (owner, 2026-11-25), so each finding fails the check, and an app whose profile rules the rule out skips it (ADR-0089, ADR-0090)"
       - kind: advisory
         in: [app]
         how: "that the status turns In use before the first production deployment, until the production workflow (GAP-015) refuses a Draft, and whether the steps are right, which code review and a practised restore check"
@@ -88,6 +96,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown, retrieved 2026-11-17"]
     scope: [web-api, blazor]
     enforcement:
@@ -107,6 +117,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/options#options-validation, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/options#options-validation"
@@ -130,6 +142,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/best-practices?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging, retrieved 2026-11-17"]
     quotes:
@@ -178,6 +191,8 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
+    unconditional: "'If your app requires cookies' limits one clause, which the statement carries ('If an app requires cookies'); the rest holds for every app"
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/dotnet/fundamentals/networking/http/httpclient-guidelines, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/resilience/http-resilience, retrieved 2026-11-17"]
     quotes:
@@ -208,6 +223,8 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
+    when: [has-long-running-operations]
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/generic-host#host-shutdown, retrieved 2026-11-17"]
     quotes:
@@ -235,6 +252,8 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
+    unconditional: "'if the app is running normally' and 'if an app has crashed' describe the two health states; the statement carries its condition, 'In some hosting scenarios'"
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -271,6 +290,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging, retrieved 2026-11-17"]
     scope: core
     enforcement:
@@ -283,7 +304,8 @@ rules:
     why: "Under pressure, whoever is on call follows written steps instead of improvising (GAP-017); the page on safe deployments notes that rolling back changes, especially database, schema or other stateful component changes, can be complex. These fit an app the team hosts and deploys, so the rule is scoped to the web app types. OPS-004 is the kit's own runbook layout."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks, retrieved 2026-11-17", "https://learn.microsoft.com/azure/well-architected/operational-excellence/incident-response, retrieved 2026-11-17", "https://learn.microsoft.com/azure/well-architected/operational-excellence/safe-deployments, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks"
@@ -327,7 +349,9 @@ rules:
     why: "If data protection isn't configured, the keys are held in memory and discarded when the app restarts; users then have to sign in again, and data protected with the old keys, which can include anti-forgery tokens, can no longer be decrypted."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
+    unconditional: "'when the app restarts' describes what happens to keys held in memory, not which apps the rule holds for"
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0"
@@ -350,7 +374,9 @@ rules:
     why: "The trimmer works on compiled assemblies, so a compiler-only suppression is invisible to it; an unfixed trim warning can change behavior or crash the app after trimming."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
+    when: [publishes-trimmed]
     sources: ["https://learn.microsoft.com/dotnet/core/deploying/trimming/fixing-warnings, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/core/deploying/native-aot/diagnostics, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/deploying/trimming/fixing-warnings"
@@ -382,7 +408,8 @@ rules:
     why: "Other signals might result in abrupt termination, which cuts off in-flight work (OPS-005, OPS-009)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-10.0"
@@ -399,7 +426,8 @@ rules:
     why: "Aspire's service defaults disable the two endpoints in non-development environments by default, and this is what its page recommends if you enable them. The kit's OPS-002 maps them anonymously in every environment, with the status word only, and the owner's decision there goes further than this page."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://aspire.dev/fundamentals/health-checks/, retrieved 2026-11-17"]
     quotes:
       - source: "https://aspire.dev/fundamentals/health-checks/"
@@ -442,4 +470,4 @@ An `authority` rule here says only what its cited page says, at the page's stren
 
 ## Pending ratification
 
-OPS-004 and OPS-012 were added in auto mode (ADR-0035), and OPS-013 to OPS-017 come from the 2026-11-17 review of Microsoft's deployment pages, so they stay `proposed` until you accept them. OPS-017 conflicts with how OPS-002 maps the health endpoints today; settle that when you accept it.
+OPS-004 was added in auto mode (ADR-0035), and you made it a `must` on 2026-11-25; OPS-012 to OPS-017 come from Microsoft's pages and have their strength (ADR-0090). OPS-017 conflicts with how OPS-002 maps the health endpoints today; settle that when you accept it.

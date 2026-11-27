@@ -180,6 +180,20 @@ Describe 'New-FreshApp' {
             Should -Invoke Read-KitPreference -Times 0 -Exactly
         }
 
+        # ADR-0090: the checks skip a rule only where the profile answers its condition no, so the fresh app's profile
+        # answers every condition the kit lists, as New-KitApp's does, and the checks' own reader accepts it.
+        It 'answers each condition the kit lists on its Conditions line, as New-KitApp''s profile does' {
+            Import-Module powershell-yaml
+            Import-Module (Join-Path $root 'tools' 'KitRuleStrength.psm1') -Force
+            $listed = @((ConvertFrom-Yaml (Get-Content -Raw -LiteralPath (Join-Path $kit 'docs' 'standards' 'conditions.yml')))['conditions'] |
+                    ForEach-Object { $_['id'] } | Sort-Object)
+
+            $answers = (Read-AppProfile -Path $profilePath).Conditions
+
+            @($answers.Keys | Sort-Object) | Should -Be $listed
+            $answers['has-sign-in'] | Should -Be 'yes' -Because 'the intake''s default sign-in is customers or the public'
+        }
+
         # The app's history is what its secret scan and commit checks read, so it starts as New-KitApp's does.
         It 'starts its history with New-KitApp''s first commit, on main, with the commit-msg hook executable' {
             Test-Path -LiteralPath (Join-Path $app '.git') | Should -BeTrue

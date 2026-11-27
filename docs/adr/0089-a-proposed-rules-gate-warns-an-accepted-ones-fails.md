@@ -84,6 +84,7 @@ Option 1, as the owner set out on 2026-11-18 (accepted on his ruling of that dat
 - Known limits (CRF-002):
   - `Get-UiProject.ps1` runs in several CI steps, so a proposed ARC-010 warning can show once per step. No follow-up: GitHub shows each annotation with its step, a repeat doesn't fail anything, and it ends when ARC-010 is accepted or the reference goes.
   - The warnings of Test-EmptyProjects, Test-SafeMigrations, Test-Runbook and Get-UiProject don't name a file and line yet, since their findings carry only a message; each knows the file (a project, a migration with its line, the runbook). Follow-up: a small follow-up pull request passes `-File` and `-Line` from each, after the code shape check's inline warnings have been seen on a real pull request, so the path form is proven first.
+- **Amended by ADR-0090 (2026-11-25):** a gate reads a rule's strength, not its status: `Get-RuleStatus` is `Get-RuleStrength` in `KitRuleStrength.psm1`, `rule-status.json` is `rule-strength.json`, a `must` rule's finding fails, a `should` rule's warns, a `consider` rule has no gate, and a rule an app's profile rules out (by its scope, or a `when` condition answered no) is skipped with a notice. What this ADR says of a proposed rule's other gates now holds for a `should` rule's.
 
 ## Pillars affected
 

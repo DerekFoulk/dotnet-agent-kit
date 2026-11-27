@@ -7,6 +7,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-10-26", "ADR-0018"]
     enforcement:
       - kind: gate
@@ -26,6 +28,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0018"]
     enforcement:
       - kind: advisory
@@ -39,6 +43,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-10-25", "owner, 2026-10-26", "owner, 2026-11-11", "ADR-0058"]
     enforcement:
       - kind: gate
@@ -58,6 +64,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-04", "ADR-0039", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices"
@@ -78,6 +86,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0003", "ADR-0057", "ADR-0058"]
     enforcement:
       - kind: advisory
@@ -91,6 +101,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "ADR-0011"]
     enforcement:
       - kind: advisory
@@ -103,7 +115,8 @@ rules:
     why: "One source for the tools the new-app intake offers and the standard names (CRF-003); the owner wants paid options listed with their price beside a free default."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["owner, 2026-11-11", "ADR-0058"]
     enforcement:
       - kind: gate
@@ -129,7 +142,8 @@ rules:
     why: "A budget is a requirement only when something checks it; shared runners vary, so the check runs off the required path, with exact allocation budgets and time budgets that leave room for the runner (ADR-0062)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["owner, 2026-11-11", "ADR-0057", "ADR-0062"]
     enforcement:
       - kind: advisory
@@ -146,6 +160,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/core/testing/unit-testing-best-practices, retrieved 2026-11-17"]
     quotes:
@@ -215,6 +230,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-09", "owner, 2026-11-12"]
     enforcement:
       - kind: advisory
@@ -227,7 +244,8 @@ rules:
     why: "Tests that depend on each other fail for reasons the failing test doesn't show, and can't run alone or in parallel."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/core/testing/order-unit-tests, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/testing/order-unit-tests"

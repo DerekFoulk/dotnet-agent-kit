@@ -35,12 +35,16 @@ A rule labeled `basis: authority` states only what its page says (ADR-0082). The
 
    Check the `why` and the standard's Markdown body too. Any "Microsoft recommends" there must match a quote.
 
+   Then set `strength` from the same words (ADR-0090): `must` for DO, DO NOT, MUST, never, always or ASVS's "Verify that"; `should` for SHOULD, AVOID, CONSIDER, prefer, "recommended", or a plain imperative among recommendations; `consider` for MAY, can or a tip. A rule whose clauses differ takes the strongest clause's. Test-RuleSources fails an authority `must` whose quotes hold no must-word, and a `consider` rule with a gate.
+
+   **Carry the page's conditions** (ADR-0090, decision 8). A quote that limits itself to some apps ("for a server-side app where...", "if your app...", "apps that...") needs a `when` with ids from `docs/standards/conditions.yml` (add one there if none fits: a yes/no fact about the app, with the intake card that answers it or where else it's recorded). A phrase that only describes ("when the app starts") gets `unconditional` with the reason instead. A condition about the code goes in the statement.
+
 4. **Split what the page doesn't say.** A kit tightening or an owner decision is its own rule:
    - **The split-off rule:** `basis: preference` and `layer: owner`. It cites the owner's words and date (`owner, YYYY-MM-DD`) or the ADR, and takes the next free id in the file's prefix.
    - **Ids:** the original id stays with the half that existing references and gates mean. Grep the repo for the id.
    - **Enforcement:** the parts move with the wording they check.
-   - **Status:** both halves keep the original's status. Never change proposed to accepted; that's the owner's call.
-   - **Acceptance:** an authority rule cites pages only. The owner's acceptance of it goes in `ratified`, not `sources`.
+   - **Strength:** the authority half keeps its page's strength. The kit half starts at `should`, and only the owner makes it `must`, with `ratified: "owner, YYYY-MM-DD"`. Never set `ratified` yourself without his words.
+   - **Acceptance:** an authority rule cites pages only. Any record of the owner's acceptance goes in `ratified`, not `sources`.
    - **No page:** if no page supports the rule, make it a preference citing the owner or ADR that's already on it, or retire it. Never stretch a quote.
 
 5. **Name the scope and the enforcement.**

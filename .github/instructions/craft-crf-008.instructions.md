@@ -5,4 +5,4 @@ applyTo: '**/*.cs,.globalconfig,CodeMetricsConfig.txt'
 
 # Craft
 
-- CRF-008: Stay within the metric limits: cyclomatic complexity 15 per method, class coupling 40 types per member and 95 per type, inheritance 5 levels deep, and a maintainability index of at least 10; raising a limit, or suppressing a metric rule for a whole project, needs an ADR.
+- CRF-008 (must): Stay within the metric limits: cyclomatic complexity 15 per method, class coupling 40 types per member and 95 per type, inheritance 5 levels deep, and a maintainability index of at least 10; raising a limit, or suppressing a metric rule for a whole project, needs an ADR.

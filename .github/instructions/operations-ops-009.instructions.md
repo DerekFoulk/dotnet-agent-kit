@@ -5,4 +5,4 @@ applyTo: '**/*ServiceDefaults*/**,**/Program.cs,**/*.cs'
 
 # Operations
 
-- OPS-009: When the host receives a shutdown signal (for example, Ctrl+C or StopAsync), it notifies the app by signaling ApplicationStopping; an app with long-running operations that need to finish gracefully should subscribe to that event.
+- OPS-009 (should): When the host receives a shutdown signal (for example, Ctrl+C or StopAsync), it notifies the app by signaling ApplicationStopping; an app with long-running operations that need to finish gracefully should subscribe to that event.

@@ -64,13 +64,13 @@ Describe 'Test-CodeShape.ps1' {
         }
     }
 
-    # ADR-0089: a proposed rule's findings are warnings that don't fail the check; an accepted rule's fail it. Each
+    # ADR-0089, ADR-0090: a should rule's findings are warnings that don't fail the check; a must rule's fail it. Each
     # finding's rule is its error code (CRF011 is CRF-011). The statuses come from a fixture, not the real rules.
-    Context 'a finding of a proposed rule' {
+    Context 'a finding of a should rule' {
         BeforeAll {
-            function New-StatusFile([string] $Crf011) {
-                $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""CRF-011"": ""$Crf011"", ""STY-005"": ""accepted"" }"
+            function New-StrengthFile([string] $Crf011) {
+                $path = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+                Set-Content -LiteralPath $path -Value "{ ""CRF-011"": { ""strength"": ""$Crf011"", ""scope"": [""core""], ""when"": [] }, ""STY-005"": { ""strength"": ""must"", ""scope"": [""core""], ""when"": [] } }"
                 $path
             }
             $script:shapeLine = 'C:\app\Deep.cs(7,74): error CRF011: Run nests 5 levels deep; the limit is 3 (CRF-011). [C:\app\Deep.csproj]'
@@ -79,27 +79,58 @@ Describe 'Test-CodeShape.ps1' {
 
         BeforeEach {
             Mock Write-Host {}
-            Mock Write-Host {} -ModuleName KitRuleStatus
+            Mock Write-Host {} -ModuleName KitRuleStrength
         }
 
-        It 'warns, and passes, on a CRF-011 breach while CRF-011 is proposed' {
-            Write-CodeShapeResult -ExitCode 1 -Output $script:shapeLine -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 0
+        It 'warns, and passes, on a CRF-011 breach while CRF-011 is a should rule' {
+            Write-CodeShapeResult -ExitCode 1 -Output $script:shapeLine -RuleStrengthPath (New-StrengthFile 'should') | Should -Be 0
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning file=C%3A/app/Deep.cs,line=7,col=74::CRF-011: $script:shapeLine" }
-            Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 code shape finding.*warning.*proposed' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning file=C%3A/app/Deep.cs,line=7,col=74::CRF-011: $script:shapeLine" }
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 code shape finding.*warning.*should rule' }
         }
 
-        It 'fails on the same breach once CRF-011 is accepted' {
-            Write-CodeShapeResult -ExitCode 1 -Output $script:shapeLine -RuleStatusPath (New-StatusFile 'accepted') | Should -Be 1
+        # ADR-0090: where the app's profile rules the rule out, the check says so, and calls nothing a warning.
+        It 'passes, and says CRF-011 doesn''t apply, in an app its scope leaves out' {
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq $script:shapeLine -and $ForegroundColor -eq 'Red' }
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'App types: maui'
+            $strengths = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+            Set-Content -LiteralPath $strengths -Value '{ "CRF-011": { "strength": "must", "scope": ["web-api"], "when": [] }, "STY-005": { "strength": "must", "scope": ["core"], "when": [] } }'
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $result = Write-CodeShapeResult -ExitCode 1 -Output $script:shapeLine -RuleStrengthPath $strengths }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+            $result | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 code shape finding.*not judged.*rule doesn't apply to this app" }
+            Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }
+        }
+        It 'names the not-judged findings beside <Case>' -ForEach @(
+            @{ Case = 'a failing one'; Sty005 = 'must'; Exit = 1; Expected = "1 code shape finding\(s\) fail the check; 1 more not judged, because their rule doesn't apply to this app" }
+            @{ Case = 'a warning'; Sty005 = 'should'; Exit = 0; Expected = "1 code shape finding\(s\), shown as warnings.*; 1 more not judged, because their rule doesn't apply to this app" }
+        ) {
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'App types: maui'
+            $strengths = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+            Set-Content -LiteralPath $strengths -Value "{ ""CRF-011"": { ""strength"": ""must"", ""scope"": [""web-api""], ""when"": [] }, ""STY-005"": { ""strength"": ""$Sty005"", ""scope"": [""core""], ""when"": [] } }"
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $result = Write-CodeShapeResult -ExitCode 1 -Output "$script:shapeLine`n$script:nullableLine" -RuleStrengthPath $strengths }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+
+            $result | Should -Be $Exit
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match $Expected }
+        }
+        It 'fails on the same breach while CRF-011 is a must rule' {
+            Write-CodeShapeResult -ExitCode 1 -Output $script:shapeLine -RuleStrengthPath (New-StrengthFile 'must') | Should -Be 1
+
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq $script:shapeLine -and $ForegroundColor -eq 'Red' }
         }
 
-        It 'still fails on a STY-005 breach, whose rule is accepted, beside a CRF-011 warning' {
-            Write-CodeShapeResult -ExitCode 1 -Output "$script:shapeLine`n$script:nullableLine" -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 1
+        It 'still fails on a STY-005 breach, whose rule is a must, beside a CRF-011 warning' {
+            Write-CodeShapeResult -ExitCode 1 -Output "$script:shapeLine`n$script:nullableLine" -RuleStrengthPath (New-StrengthFile 'should') | Should -Be 1
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq $script:nullableLine -and $ForegroundColor -eq 'Red' }
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning file=C%3A/app/Deep.cs,line=7,col=74::CRF-011: $script:shapeLine" }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq $script:nullableLine -and $ForegroundColor -eq 'Red' }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning file=C%3A/app/Deep.cs,line=7,col=74::CRF-011: $script:shapeLine" }
             Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 code shape finding.*fail.*1 more.*warning' }
         }
 
@@ -110,29 +141,29 @@ Describe 'Test-CodeShape.ps1' {
             $line = (Join-Path $TestDrive 'src' 'Deep.cs') + '(7,74): error CRF011: Run nests 5 levels deep; the limit is 3 (CRF-011). [x.csproj]'
             Push-Location -LiteralPath $TestDrive
             try {
-                Write-CodeShapeResult -ExitCode 1 -Output $line -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 0
+                Write-CodeShapeResult -ExitCode 1 -Output $line -RuleStrengthPath (New-StrengthFile 'should') | Should -Be 0
             }
             finally { Pop-Location }
 
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning file=src/Deep.cs,line=7,col=74::CRF-011: $line" }
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -Times 1 -Exactly -ParameterFilter { "$Object" -ceq "::warning file=src/Deep.cs,line=7,col=74::CRF-011: $line" }
         }
 
         It 'throws for a finding whose rule the statuses don''t list, so a new code can''t pass unseen' {
             $unknown = 'C:\app\Deep.cs(1,1): error XYZ001: Something new. [C:\app\Deep.csproj]'
 
-            { Write-CodeShapeResult -ExitCode 1 -Output $unknown -RuleStatusPath (New-StatusFile 'proposed') } | Should -Throw '*XYZ-001*'
+            { Write-CodeShapeResult -ExitCode 1 -Output $unknown -RuleStrengthPath (New-StrengthFile 'should') } | Should -Throw '*XYZ-001*'
         }
 
         It 'passes through a clean run, and keeps any other exit code the tool gives' {
-            Write-CodeShapeResult -ExitCode 0 -Output 'Code shape (CRF-011, STY-005): 1 project, 1 file, no findings.' -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 0
+            Write-CodeShapeResult -ExitCode 0 -Output 'Code shape (CRF-011, STY-005): 1 project, 1 file, no findings.' -RuleStrengthPath (New-StrengthFile 'should') | Should -Be 0
             Should -Invoke Write-Host -ParameterFilter { "$Object" -ceq 'Code shape (CRF-011, STY-005): 1 project, 1 file, no findings.' }
 
-            Write-CodeShapeResult -ExitCode 2 -Output 'Usage: Kit.CodeShape [--files] <manifest.json>' -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 2
+            Write-CodeShapeResult -ExitCode 2 -Output 'Usage: Kit.CodeShape [--files] <manifest.json>' -RuleStrengthPath (New-StrengthFile 'should') | Should -Be 2
         }
 
         # Errs toward failing: a run that failed with no finding to judge is a broken check.
         It 'fails a run that exited 1 with no finding it can read' {
-            Write-CodeShapeResult -ExitCode 1 -Output 'Unhandled exception.' -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 1
+            Write-CodeShapeResult -ExitCode 1 -Output 'Unhandled exception.' -RuleStrengthPath (New-StrengthFile 'should') | Should -Be 1
         }
 
         It 'reads a finding''s rule from its error code: <Code> is <Rule>' -ForEach @(
@@ -144,10 +175,10 @@ Describe 'Test-CodeShape.ps1' {
         }
 
         # Review of the branch: a new error code in Kit.CodeShape needs a rule the statuses list, or the check throws.
-        It 'maps every error code Kit.CodeShape prints to a rule in the kit''s rule-status.json' {
+        It 'maps every error code Kit.CodeShape prints to a rule in the kit''s rule-strength.json' {
             $codes = Get-Content -Raw -LiteralPath (Join-Path $script:kitRoot 'tools/CodeShape/src/Kit.CodeShape/RuleCodes.cs')
             $listed = @([regex]::Matches($codes, 'const string \w+ = "(?<code>[A-Z]+\d+)";') | ForEach-Object { $_.Groups['code'].Value })
-            $statuses = Get-Content -Raw -LiteralPath (Join-Path $script:kitRoot 'tools/rule-status.json') | ConvertFrom-Json
+            $statuses = Get-Content -Raw -LiteralPath (Join-Path $script:kitRoot 'tools/rule-strength.json') | ConvertFrom-Json
 
             $listed.Count | Should -BeGreaterThan 1
             foreach ($code in $listed) {
@@ -156,24 +187,24 @@ Describe 'Test-CodeShape.ps1' {
         }
 
         # Review of the branch: a mutant that always exits 0 survived this file. The script's exit code is the gate.
-        It 'exits 1 as a script on a CRF-011 breach once CRF-011 is accepted' {
+        It 'exits 1 as a script on a CRF-011 breach while CRF-011 is a must rule' {
             $script = Join-Path $PSScriptRoot '..' 'Test-CodeShape.ps1'
 
-            $output = pwsh -NoProfile -File $script -Solution (Join-Path $script:fixtures 'Deep.slnx') -RuleStatusPath (New-StatusFile 'accepted') 2>&1 | Out-String
+            $output = pwsh -NoProfile -File $script -Solution (Join-Path $script:fixtures 'Deep.slnx') -RuleStrengthPath (New-StrengthFile 'must') 2>&1 | Out-String
 
             $LASTEXITCODE | Should -Be 1 -Because $output
             $output | Should -Match '(?m)^.*Deep\.cs\(7,74\): error CRF011: Run nests 5 levels deep'
             $output | Should -Not -Match '::warning'
         }
 
-        It 'exits 0 as a script, with the warning annotation, on a CRF-011 breach while CRF-011 is proposed' {
+        It 'exits 0 as a script, with the warning annotation, on a CRF-011 breach while CRF-011 is a should rule' {
             $script = Join-Path $PSScriptRoot '..' 'Test-CodeShape.ps1'
-            $statuses = New-StatusFile 'proposed'
+            $statuses = New-StrengthFile 'should'
 
             # The check runs from the repo root, as CI runs it, whatever folder the tests were started from.
             Push-Location -LiteralPath (Resolve-Path -LiteralPath $script:kitRoot).ProviderPath
             try {
-                $output = pwsh -NoProfile -File $script -Solution (Join-Path $script:fixtures 'Deep.slnx') -RuleStatusPath $statuses 2>&1 | Out-String
+                $output = pwsh -NoProfile -File $script -Solution (Join-Path $script:fixtures 'Deep.slnx') -RuleStrengthPath $statuses 2>&1 | Out-String
                 $exit = $LASTEXITCODE
             }
             finally { Pop-Location }

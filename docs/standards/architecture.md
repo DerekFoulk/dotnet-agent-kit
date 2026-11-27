@@ -7,6 +7,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0008", "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures"
@@ -27,6 +29,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0008", "owner, 2026-11-12", "https://learn.microsoft.com/dotnet/architecture/microservices/architect-microservice-container-applications/data-sovereignty-per-microservice, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/microservices/architect-microservice-container-applications/data-sovereignty-per-microservice"
@@ -44,6 +48,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0008"]
     enforcement:
       - kind: gate
@@ -57,6 +63,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0005", "ADR-0008", "https://learn.microsoft.com/azure/well-architected/reliability/simplify, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/reliability/simplify"
@@ -74,6 +82,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0016"]
     enforcement:
       - kind: gate
@@ -90,6 +100,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0016"]
     enforcement:
       - kind: advisory
@@ -103,6 +115,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0016"]
     enforcement:
       - kind: advisory
@@ -116,6 +130,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-16", "ADR-0080", "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/datetime/choosing-between-datetime, retrieved 2026-11-15", "https://learn.microsoft.com/visualstudio/msbuild/build-process-overview#evaluation-phase, retrieved 2026-11-16"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps"
@@ -135,12 +151,14 @@ rules:
     why: "Microsoft's pages say not to use CQRS and DDD patterns everywhere and to justify every design decision with a business requirement (ARC-019); the sizes the kit gives, down to when a module or a project may exist, are its own (ADR-0052). An agent following ARC-001 to the letter can still build every layer and pattern for a tiny app (GAP-002)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: must
+    ratified: "owner, 2026-11-25"
     sources: ["ADR-0052", "ADR-0008"]
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: dotnet-ci.reusable.yml runs tools/Test-EmptyProjects.ps1, which fails on a C# project in the solution with no source of its own (C#, Razor or .proto files) or with the class library template's empty Class1 left in it; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
+        how: "ci: dotnet-ci.reusable.yml runs tools/Test-EmptyProjects.ps1, which fails on a C# project in the solution with no source of its own (C#, Razor or .proto files) or with the class library template's empty Class1 left in it; it's a must (owner, 2026-11-25), so each finding fails the check, and an app whose profile rules the rule out skips it (ADR-0089, ADR-0090)"
       - kind: advisory
         in: [kit, app]
         how: "the number of modules and the patterns inside them: the plan-checklist skill asks, and code review checks"
@@ -151,12 +169,13 @@ rules:
     why: "No plain test project can load a UI project, and Linux CI can't build one; with the logic in libraries it's tested and covered like any other code, and the UI project has nothing left to cover."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["ADR-0008", "ADR-0059", "https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects; while this rule is proposed, each finding is a warning on the pull request instead of a failure (ADR-0089)"
+        how: "ci: tools/Get-UiProject.ps1 fails when a project references a UI project (tools/tests/Get-UiProject.Tests.ps1), dotnet-ci.reusable.yml builds and tests every other project on Linux, and tools/Test-CoverageGate.ps1 exempts UI projects; while this rule is a should, each finding is a warning on the pull request instead of a failure (ADR-0089, ADR-0090)"
       - kind: advisory
         in: [kit, app]
         how: "that a UI project holds no logic, checked by code review"
@@ -167,7 +186,8 @@ rules:
     why: "One UI stack across phone and desktop shares the most code and the kit's CI and rules. The kit supports three app types, web-api, blazor and maui (docs/standards/app-types.yml, ADR-0084); WinUI 3, WPF and Windows Forms aren't among them yet. ARC-014 holds what Microsoft recommends for a new Windows desktop app. The kit says \"WinUI 3\", never just \"WinUI\" (owner, 2026-11-17), because WinUI 2 is a different library, for UWP apps."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["ADR-0008", "ADR-0059", "owner, 2026-11-17"]
     enforcement:
       - kind: advisory
@@ -180,7 +200,9 @@ rules:
     why: "The UI framework is the hardest choice to undo in a desktop app: asked whether a WinUI 3 app can later integrate .NET MAUI for cross-platform scenarios, Microsoft's FAQ answers \"Not at this time.\" ARC-011 holds the kit's own rule, which keeps desktop apps on .NET MAUI while WinUI 3 isn't a supported app type."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
+    unconditional: "'native apps that target the Windows desktop' describes what WinUI 3 builds; the statement carries its own condition, a new general-purpose Windows desktop app"
     sources: ["https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/maui/what-is-maui?view=net-maui-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/windows/apps/get-started/windows-developer-faq"
@@ -210,6 +232,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-11", "owner, 2026-11-12", "ADR-0058", "https://learn.microsoft.com/azure/well-architected/cost-optimization/principles, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/cost-optimization/principles"
@@ -230,6 +254,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "ADR-0016", "https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals"
@@ -250,6 +276,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "ADR-0016"
     sources: ["https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals, retrieved 2026-11-17"]
     quotes:
@@ -267,7 +294,8 @@ rules:
     why: "Microsoft's modern web apps guide says so, for monolithic applications built on ASP.NET Core's dependency injection. ARC-001 is the kit's own shape for it."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures"
@@ -293,7 +321,8 @@ rules:
     why: "Microsoft's MVVM page gives these as tips, so view models are tested in isolation."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/dotnet/architecture/maui/mvvm, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/dotnet/architecture/maui/mvvm"
@@ -320,6 +349,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-16"
     sources: ["https://learn.microsoft.com/dotnet/core/extensions/best-practices-for-developing-world-ready-apps, retrieved 2026-11-17"]
     quotes:
@@ -337,7 +367,8 @@ rules:
     why: "Microsoft's Well-Architected simplicity page and its microservices guide say so; the guide adds that many subsystems are simpler and can be implemented more easily using simple CRUD services or another approach. Split from ARC-009, which gives the kit's own sizes (modules, projects, patterns) and gates empty projects."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: must
     sources: ["https://learn.microsoft.com/azure/well-architected/reliability/simplify, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/eshoponcontainers-cqrs-ddd-microservice, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/well-architected/reliability/simplify"
@@ -367,7 +398,7 @@ ARC-001 sets the shape of a web app; ARC-009 sets how much of it to build, in fo
 
 1. **Modules.** A web app starts with one ARC-001 module. It gets a second only for a second distinct business area, one with its own language, data and rules (a bounded context, in domain-driven design's terms), never one per entity or feature.
 2. **Projects outside ARC-001.** A console tool, a standalone worker or a library is one project and its tests (TST-003), with its concerns kept apart by namespace. It gets a second project only for code another app must share, or a boundary the compiler must enforce.
-3. **No empty projects.** A project is created with its first real type, and that includes each of ARC-001's five module projects: ARC-009 reads them as a module's full shape, reached as each one's first type arrives, not a set to scaffold on day one. A one-module app with no other module to call it has no Contracts project yet (ARC-002). `tools/Test-EmptyProjects.ps1` reports a C# project with no source of its own (C#, Razor or `.proto` files), and one that keeps `dotnet new classlib`'s empty `Class1`: it warns while ARC-009 is proposed, and fails CI once it's accepted (ADR-0089).
+3. **No empty projects.** A project is created with its first real type, and that includes each of ARC-001's five module projects: ARC-009 reads them as a module's full shape, reached as each one's first type arrives, not a set to scaffold on day one. A one-module app with no other module to call it has no Contracts project yet (ARC-002). `tools/Test-EmptyProjects.ps1` reports a C# project with no source of its own (C#, Razor or `.proto` files), and one that keeps `dotnet new classlib`'s empty `Class1`: it fails CI, since ARC-009 is a must (owner, 2026-11-25; ADR-0090).
 4. **Patterns.** Inside a module, aggregates, value objects, domain events, CQRS, a mediator, a generic repository, or an interface that inverts no dependency (speculation, by CRF-004: see craft.md's SOLID notes) come only with the requirement the plan names for each. An interface that lets a test replace infrastructure does invert a dependency. A CRUD feature stays a simple endpoint, handler and data model.
 
 MAUI and desktop apps keep ADR-0008's MVVM defaults, with the project structure below (ARC-010).
@@ -387,4 +418,4 @@ A rule with `basis: authority` says only what its cited page says, at the page's
 
 ## Pending ratification
 
-ARC-010 and ARC-011 were added in auto mode (ADR-0035), and ARC-014, ARC-016, ARC-017 and ARC-019 are new authority rules from 2026-11-17, so they stay `proposed` until you accept them. On 2026-11-17 ARC-011 went back to sending every desktop app to .NET MAUI, because WinUI 3, WPF and Windows Forms aren't supported app types yet; ARC-014 holds Microsoft's recommendation of WinUI 3. The coverage gate's exemption is in force once this change merges, which needs your yes, since it changes a CI check (AGENTS.md, "Working modes").
+ARC-010 and ARC-011 were added in auto mode (ADR-0035), so they're `should` until you make one a `must`, and ARC-014, ARC-016, ARC-017 and ARC-019, new authority rules from 2026-11-17, have their pages' strength (ADR-0090). You made ARC-009 a `must` on 2026-11-25. On 2026-11-17 ARC-011 went back to sending every desktop app to .NET MAUI, because WinUI 3, WPF and Windows Forms aren't supported app types yet; ARC-014 holds Microsoft's recommendation of WinUI 3. The coverage gate's exemption is in force once this change merges, which needs your yes, since it changes a CI check (AGENTS.md, "Working modes").

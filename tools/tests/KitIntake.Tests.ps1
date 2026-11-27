@@ -8,7 +8,11 @@ BeforeAll {
     $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
     $intakePath = Join-Path $root 'templates' 'app-intake.json'
     $intake = if (Test-Path -LiteralPath $intakePath) { Get-Content -Raw -LiteralPath $intakePath | ConvertFrom-Json -AsHashtable }
+    # Get-KitCondition's tests make a git repo, so every commit runs with the test settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
 }
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 
 Describe 'the intake data' {
     BeforeAll { Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force }
@@ -356,6 +360,54 @@ Describe 'Get-KitIntake' {
     }
 }
 
+# ADR-0090: the conditions New-KitApp and New-FreshApp write on the profile's Conditions line, from conditions.yml at
+# the kit commit an app is made from.
+Describe 'Get-KitCondition' {
+    BeforeAll {
+        Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
+        $kit = Join-Path $TestDrive 'conditions-kit'
+        New-Item -ItemType Directory -Force -Path (Join-Path $kit 'docs' 'standards') | Out-Null
+        git -C $kit init -q -b main
+        Set-Content -LiteralPath (Join-Path $kit 'README.md') -Value 'A kit from before conditions.yml.'
+        git -C $kit add -A
+        git -C $kit commit -q -m 'chore: before conditions'
+        $before = (git -C $kit rev-parse HEAD).Trim()
+        Set-Content -LiteralPath (Join-Path $kit 'docs' 'standards' 'conditions.yml') -Value @'
+conditions:
+  - id: has-sign-in
+    question: Do users sign in?
+  - id: uses-grpc
+    question: Does it serve gRPC?
+'@
+        git -C $kit add -A
+        git -C $kit commit -q -m 'chore: conditions'
+        $after = (git -C $kit rev-parse HEAD).Trim()
+    }
+
+    It 'reads each condition conditions.yml lists at the commit' {
+        $conditions = Get-KitCondition -KitRoot $kit -Commit $after
+
+        @($conditions | ForEach-Object { $_['id'] }) | Should -Be @('has-sign-in', 'uses-grpc')
+    }
+
+    It 'gives none for a kit commit from before conditions.yml, so the profile has no Conditions line' {
+        $conditions = Get-KitCondition -KitRoot $kit -Commit $before
+
+        $conditions.Count | Should -Be 0
+    }
+
+    # git show's exit code for a missing file is an answer read here, so a caller's native-command preference mustn't
+    # turn it into an error first (as TestGit.psm1's helpers guard against).
+    It 'gives none for an older kit even where the caller turns a native command''s failure into an error' {
+        $saved = $global:PSNativeCommandUseErrorActionPreference, $global:ErrorActionPreference
+        $global:PSNativeCommandUseErrorActionPreference = $true
+        $global:ErrorActionPreference = 'Stop'
+        try { { $script:underStop = Get-KitCondition -KitRoot $kit -Commit $before } | Should -Not -Throw }
+        finally { $global:PSNativeCommandUseErrorActionPreference, $global:ErrorActionPreference = $saved }
+        $script:underStop.Count | Should -Be 0
+    }
+}
+
 Describe 'ConvertTo-KitAppProfile' {
     BeforeAll {
         Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
@@ -381,6 +433,52 @@ Describe 'ConvertTo-KitAppProfile' {
     # the core ruleset and those types' rulesets.
     It 'names the app''s app types on the line Build-AgentRules reads' {
         $profileText | Should -Match '(?m)^App types: web-api, blazor$'
+    }
+
+    # ADR-0090 decision 8: the profile answers each condition a rule's when can name, yes, no or unknown, from the cards
+    # conditions.yml maps; KitRuleStrength's Write-RuleFinding and Build-AgentRules skip a rule only where it says no.
+    It 'answers every condition on the Conditions line, from the cards that settle it' {
+        Import-Module powershell-yaml
+        $conditions = @((ConvertFrom-Yaml (Get-Content -Raw (Join-Path $root 'docs' 'standards' 'conditions.yml')))['conditions'])
+        $noSignIn = [ordered]@{} + $answers
+        $noSignIn['signIn'] = 'none'
+        $noSignIn['data'] = 'device'
+        $noSignIn['database'] = 'sqlite'
+
+        $line = @((ConvertTo-KitAppProfile -Resolved (Resolve-KitIntakeAnswer -Intake $intake -Answers $noSignIn) -Name 'Contoso.Orders' -KitCommit 'abc1234' -Conditions $conditions) -split "`n" | Where-Object { $_ -like 'Conditions:*' })
+
+        $line.Count | Should -Be 1
+        $line[0] | Should -Match '(^Conditions: |, )has-sign-in=no(,|$)'
+        $line[0] | Should -Match '(^Conditions: |, )has-database=yes(,|$)'
+        $line[0] | Should -Match '(^Conditions: |, )has-server-database=no(,|$)'
+        $line[0] | Should -Match '(^Conditions: |, )holds-personal-data=unknown(,|$)'
+        @($line[0] -replace '^Conditions: ' -split ', ').Count | Should -Be $conditions.Count
+    }
+
+    It 'answers a condition unknown when its card''s answer is Other' {
+        Import-Module powershell-yaml
+        $conditions = @((ConvertFrom-Yaml (Get-Content -Raw (Join-Path $root 'docs' 'standards' 'conditions.yml')))['conditions'])
+        $other = [ordered]@{} + $answers
+        $other['signIn'] = 'Other: our own SAML provider'
+
+        $text = ConvertTo-KitAppProfile -Resolved (Resolve-KitIntakeAnswer -Intake $intake -Answers $other) -Name 'Contoso.Orders' -KitCommit 'abc1234' -Conditions $conditions
+
+        $text | Should -Match '(?m)^Conditions: .*\bhas-sign-in=unknown\b'
+    }
+
+    # One source per fact (CRF-003): conditions.yml maps each condition to the intake's own cards and options.
+    It 'maps each condition only to cards and options the intake has' {
+        Import-Module powershell-yaml
+        $conditions = @((ConvertFrom-Yaml (Get-Content -Raw (Join-Path $root 'docs' 'standards' 'conditions.yml')))['conditions'])
+
+        foreach ($condition in @($conditions | Where-Object { $_.Contains('intake') })) {
+            $card = @($intake['cards'] | Where-Object { $_['id'] -eq $condition['intake']['card'] })
+            $card.Count | Should -Be 1 -Because "$($condition['id']) names the card $($condition['intake']['card'])"
+            $options = @($card[0]['options'] | ForEach-Object { $_['id'] })
+            foreach ($option in @($condition['intake']['yes']) + @($condition['intake']['no'])) {
+                $options | Should -Contain $option -Because "$($condition['id']) names $option"
+            }
+        }
     }
 
     It 'names no app types for an Other app type, so the app gets every rule until an ADR sets them' {

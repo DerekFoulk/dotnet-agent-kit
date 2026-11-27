@@ -7,6 +7,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0020"]
     scope: core
     enforcement:
@@ -26,6 +28,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0020", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -39,6 +43,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -52,6 +58,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     scope: core
     enforcement:
@@ -65,6 +73,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0025"]
     scope: core
     enforcement:
@@ -81,6 +91,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0019", "ADR-0022", "owner, 2026-11-04"]
     scope: core
     enforcement:
@@ -94,6 +106,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0016"]
     scope: core
     enforcement:
@@ -110,6 +124,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09", "owner, 2026-11-11", "ADR-0041", "ADR-0060"]
     scope: core
     enforcement:
@@ -125,7 +141,8 @@ rules:
     why: "When a package is found vulnerable, the SBOM answers which builds ship it; the kit's way of keeping the SBOM the Microsoft cloud security benchmark guidance asks for (SUP-016) (GAP-013)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["ADR-0055"]
     scope: core
     enforcement:
@@ -138,7 +155,9 @@ rules:
     why: "Scorecard checks the supply-chain practices from outside, with a public score that shows drift (GAP-014); publishing needs the action's workflow restrictions (SUP-017)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
+    when: [is-public-repo]
     sources: ["ADR-0056"]
     scope: core
     enforcement:
@@ -154,7 +173,8 @@ rules:
     why: "Unpinned workloads change under a build without any commit; a workload set ships with each SDK release and moves with the SDK pin. sdk.workloadVersion in global.json would pin it too, but every build then fails on a machine without that set (ADR-0059)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["ADR-0059"]
     scope: [maui]
     enforcement:
@@ -168,6 +188,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12", "ADR-0066"]
     scope: core
     enforcement:
@@ -187,6 +209,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/nuget/concepts/security-best-practices, retrieved 2026-11-17"]
     quotes:
@@ -211,6 +234,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/nuget/concepts/security-best-practices, retrieved 2026-11-17"]
     quotes:
@@ -232,6 +256,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "ADR-0016"
     sources: ["https://learn.microsoft.com/azure/well-architected/architect-role/fundamentals, retrieved 2026-11-17"]
     quotes:
@@ -249,7 +274,8 @@ rules:
     why: "When a package is found vulnerable, the SBOM answers which builds ship it (GAP-013)."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://learn.microsoft.com/security/benchmark/azure/mcsb-v2-devops-security, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/security/benchmark/azure/mcsb-v2-devops-security"
@@ -266,7 +292,8 @@ rules:
     why: "Scorecard's API checks the producing workflow against these rules and may reject the results otherwise."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://github.com/ossf/scorecard-action, retrieved 2026-11-17"]
     quotes:
       - source: "https://github.com/ossf/scorecard-action"
@@ -293,6 +320,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/dotnet/core/tools/nuget-signed-package-verification, retrieved 2026-11-17"]
     quotes:
@@ -312,4 +340,4 @@ rules:
 
 # Supply chain
 
-Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project and accepted its items for all repos on 2026-11-09. SUP-009 and SUP-010 came later, and stay proposed until he accepts them. SUP-013 to SUP-018 each say only what the cited pages say, with the quotes, beside the kit's own rule they came from (SUP-003, SUP-004, SUP-007, SUP-009, SUP-010, SUP-012); SUP-016 and SUP-017 are proposed.
+Dependencies and build tools can be trusted (brief §7, backed by OpenSSF guidance). The owner agreed to this checklist in one project and accepted its items for all repos on 2026-11-09. SUP-009 and SUP-010 came later, so they're `should` until he makes one a `must` (ADR-0090). SUP-013 to SUP-018 each say only what the cited pages say, with the quotes, beside the kit's own rule they came from (SUP-003, SUP-004, SUP-007, SUP-009, SUP-010, SUP-012); each has its page's strength.

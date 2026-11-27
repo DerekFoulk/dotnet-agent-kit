@@ -2,8 +2,8 @@
 <#
 .SYNOPSIS
     Fails when a C# project in the solution holds no code of its own, or keeps the class library template's empty
-    Class1 (ARC-009, ADR-0052). While ARC-009 is proposed, each problem is a GitHub warning annotation and the check
-    passes; once it's accepted, the same problems fail it (ADR-0089). -RuleStatusPath names another rule-status.json
+    Class1 (ARC-009, ADR-0052). While ARC-009 is a should rule, each problem is a GitHub warning annotation and the check
+    passes; at must, as it is now, the same problems fail it (ADR-0089, ADR-0090). -RuleStrengthPath names another rule-strength.json
     than the one beside this script.
 
 .EXAMPLE
@@ -12,13 +12,13 @@
 [CmdletBinding()]
 param(
     [string] $Solution,
-    [string] $RuleStatusPath
+    [string] $RuleStrengthPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
-Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStrength.psm1') -Force
 
 # Where the build writes output and generated C# by default (BaseOutputPath and BaseIntermediateOutputPath): not the
 # project's own source.
@@ -31,7 +31,7 @@ $script:ProjectExtension = '.csproj'
 # and .proto files, which Grpc.Tools turns into C# at build time.
 $script:SourceExtensions = '.cs', '.razor', '.cshtml', '.proto'
 
-# Rule is the rule a problem breaks, whose status decides whether it fails the check (ADR-0089); a broken solution
+# Rule is the rule a problem breaks, whose strength decides whether it fails the check (ADR-0090); a broken solution
 # breaks none and always fails.
 function New-Problem {
     param([string] $Message, [string] $Rule = 'ARC-009')
@@ -93,14 +93,14 @@ function Get-EmptyProjectProblem {
 }
 
 # Prints every problem and returns 0 when every project holds code of its own, otherwise 1. While ARC-009 is
-# proposed, each of its problems is a warning and doesn't fail the check (ADR-0089); a project the solution lists but
-# that isn't there is a broken solution, and fails it whatever ARC-009's status.
+# a should rule, each of its problems is a warning and doesn't fail the check (ADR-0089); a project the solution lists
+# but that isn't there is a broken solution, and fails it whatever ARC-009's strength.
 function Invoke-EmptyProjectsCheck {
-    param([Parameter(Mandatory)] [string] $Solution, [string] $RuleStatusPath)
+    param([Parameter(Mandatory)] [string] $Solution, [string] $RuleStrengthPath)
 
     $problems = @(Get-EmptyProjectProblem -Solution $Solution)
     $counted = @($problems | Where-Object {
-            if ($_.Rule) { Write-RuleFinding -Id $_.Rule -Message $_.Message -Path $RuleStatusPath }
+            if ($_.Rule) { Write-RuleFinding -Id $_.Rule -Message $_.Message -Path $RuleStrengthPath }
             else { Write-Host $_.Message -ForegroundColor Red; $true }
         }).Count
 
@@ -112,11 +112,16 @@ function Invoke-EmptyProjectsCheck {
         if ($broken -eq 1) { Write-Host "`n1 project the solution lists isn't there, in $Solution; fix the solution file." -ForegroundColor Red }
         elseif ($broken) { Write-Host "`n$broken projects the solution lists aren't there, in $Solution; fix the solution file." -ForegroundColor Red }
         if ($empty) { Write-Host "`n$empty empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red }
-        if ($warned) { Write-Host "$warned more empty-project problem(s) were warnings, because ARC-009 is proposed." -ForegroundColor Yellow }
+        if ($warned) { Write-Host "$warned more empty-project problem(s) weren't counted: ARC-009 is a should rule, or doesn't apply to this app." -ForegroundColor Yellow }
         return 1
     }
+    $skip = if ($problems) { Get-RuleSkip -Id 'ARC-009' -Path $RuleStrengthPath }
+    if ($skip) {
+        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution not judged: ARC-009 doesn't apply to this app ($skip)." -ForegroundColor Yellow
+        return 0
+    }
     if ($problems) {
-        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution, shown as warnings because ARC-009 is proposed; they'll fail the check once it's accepted." -ForegroundColor Yellow
+        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution, shown as warnings because ARC-009 is a should rule; they'd fail the check at must." -ForegroundColor Yellow
         return 0
     }
 
@@ -126,5 +131,5 @@ function Invoke-EmptyProjectsCheck {
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
-    exit (Invoke-EmptyProjectsCheck -Solution $Solution -RuleStatusPath $RuleStatusPath)
+    exit (Invoke-EmptyProjectsCheck -Solution $Solution -RuleStrengthPath $RuleStrengthPath)
 }

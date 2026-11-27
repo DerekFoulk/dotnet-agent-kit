@@ -6,7 +6,8 @@ rules:
     why: "Each style fits different callers, and switching later rewrites every client (GAP-010). The owner, 2026-11-17: gRPC, SignalR, controllers or GraphQL only \"if recommended or asked for specifically\"."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["owner, 2026-11-17", "ADR-0038"]
     enforcement:
       - kind: advisory
@@ -19,7 +20,8 @@ rules:
     why: "Each style fits different callers; Microsoft's pages name the scenarios each one suits, and the kit's choice among them (API-001) starts from these."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/grpc/comparison?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/apis?view=aspnetcore-10.0"
@@ -85,6 +87,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0038", "owner, 2026-11-09", "https://www.rfc-editor.org/rfc/rfc9457, retrieved 2026-11-07", "https://learn.microsoft.com/aspnet/core/fundamentals/error-handling-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -104,6 +108,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0038", "owner, 2026-11-09", "https://learn.microsoft.com/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-10.0"
@@ -124,6 +130,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0038", "owner, 2026-11-09", "https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-data-pagination-and-filtering, retrieved 2026-11-17", "https://learn.microsoft.com/azure/architecture/best-practices/api-implementation#handling-large-requests-and-responses, retrieved 2026-11-17", "https://learn.microsoft.com/sql/connect/ado-net/sql/compare-guid-uniqueidentifier-values, retrieved 2026-11-08"]
     enforcement:
       - kind: gate
@@ -139,7 +147,8 @@ rules:
     why: "Versioning from day one adds a package and routes nobody uses yet, but a breaking change without a new version breaks every existing client; Azure's guidance says that no versioning can work for some internal APIs, and to introduce a new version on a breaking change (API-012, GAP-011)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["ADR-0038", "https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-versioning, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-versioning"
@@ -156,7 +165,8 @@ rules:
     why: "Validation in one place, from attributes the OpenAPI document also shows, instead of checks scattered through handlers; it is built into .NET 10, so it needs no package (GAP-011). Microsoft's pages describe what the built-in validation does and allows; they don't recommend it over other validation, so this is the kit's choice (ADR-0038)."
     layer: owner
     basis: preference
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["ADR-0038", "https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-10.0#validation-support-in-minimal-apis, retrieved 2026-11-17", "https://learn.microsoft.com/aspnet/core/fundamentals/validation?view=aspnetcore-10.0, retrieved 2026-11-17"]
     enforcement:
       - kind: gate
@@ -173,6 +183,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
     ratified: "owner, 2026-11-12"
     sources: ["https://learn.microsoft.com/azure/architecture/best-practices/api-design, retrieved 2026-11-17", "https://learn.microsoft.com/azure/architecture/best-practices/api-implementation, retrieved 2026-11-17"]
     quotes:
@@ -215,6 +226,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/openapi/using-openapi-documents?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -233,6 +245,8 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: must
+    unconditional: "'unless the app is running in the Development environment' and 'when the app runs in production' name environments every app has; the statement carries them"
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/aspnet/core/fundamentals/error-handling-api?view=aspnetcore-10.0, retrieved 2026-11-17"]
     quotes:
@@ -254,6 +268,7 @@ rules:
     layer: outside
     basis: authority
     status: accepted
+    strength: should
     ratified: "owner, 2026-11-09"
     sources: ["https://learn.microsoft.com/azure/architecture/best-practices/api-design#implement-data-pagination-and-filtering, retrieved 2026-11-17", "https://learn.microsoft.com/azure/architecture/best-practices/api-implementation#handling-large-requests-and-responses, retrieved 2026-11-17"]
     quotes:
@@ -283,7 +298,8 @@ rules:
     why: "Microsoft's microservices API design page says so. API-005, the kit's rule, decides when versioning starts and who picks the scheme."
     layer: outside
     basis: authority
-    status: proposed
+    status: accepted
+    strength: should
     sources: ["https://learn.microsoft.com/azure/architecture/microservices/design/api-design#api-versioning, retrieved 2026-11-17"]
     quotes:
       - source: "https://learn.microsoft.com/azure/architecture/microservices/design/api-design#api-versioning"
@@ -304,6 +320,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-12"]
     enforcement:
       - kind: advisory
@@ -344,6 +362,6 @@ An app can mix styles, for example an HTTP API for its UI and SignalR for live u
 
 ## Pending ratification
 
-API-001, API-005, API-006 and API-008 were added in auto mode (ADR-0035), so they stay `proposed` until you accept them, as does API-012, the Microsoft half of API-005. You accepted API-002 to API-004 on 2026-11-09, and chose to wait on API-001, API-005 and API-006 until the first real app uses them. API-009, API-010 and API-011 are the Microsoft halves split from API-003, API-002 and API-004, and carry your acceptance of them. API-007 and API-013 came from the rules audit, which you accepted on 2026-11-12.
+API-001, API-005, API-006 and API-008 were added in auto mode (ADR-0035), so they're `should` until you make one a `must` (ADR-0090), and API-012, the Microsoft half of API-005, has its page's strength. You accepted API-002 to API-004 on 2026-11-09, and chose to wait on API-001, API-005 and API-006 until the first real app uses them. API-009, API-010 and API-011 are the Microsoft halves split from API-003, API-002 and API-004, and carry your acceptance of them. API-007 and API-013 came from the rules audit, which you accepted on 2026-11-12.
 
 A rule with `basis: authority` says only what its cited page says, at the page's strength, and stores the sentence; the kit's own numbers and tightenings are preferences beside it (API-002 and API-010, API-003 and API-009, API-004 and API-011, API-005 and API-012, API-007 and API-013).

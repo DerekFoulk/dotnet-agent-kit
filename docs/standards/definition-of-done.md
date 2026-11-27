@@ -7,6 +7,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     enforcement:
       - kind: gate
@@ -23,6 +25,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01"]
     enforcement:
       - kind: advisory
@@ -36,6 +40,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["ADR-0010", "owner, 2026-11-09", "owner, 2026-11-14", "ADR-0067"]
     enforcement:
       - kind: advisory
@@ -49,6 +55,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-09"]
     enforcement:
       - kind: advisory
@@ -62,6 +70,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-03", "ADR-0028", "owner, 2026-11-07", "ADR-0035"]
     enforcement:
       - kind: gate
@@ -81,6 +91,8 @@ rules:
     layer: owner
     basis: preference
     status: accepted
+    strength: must
+    ratified: ADR-0090
     sources: ["owner, 2026-11-01", "owner, 2026-11-07", "ADR-0035", "owner, 2026-11-09", "ADR-0041"]
     enforcement:
       - kind: advisory

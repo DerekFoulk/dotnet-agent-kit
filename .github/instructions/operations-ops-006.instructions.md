@@ -5,4 +5,4 @@ applyTo: '**/Program.cs,**/*Extensions*.cs,**/appsettings*.json'
 
 # Operations
 
-- OPS-006: An app's settings are options validated when it starts (ValidateDataAnnotations or a validator, and ValidateOnStart), so bad configuration stops it at startup instead of failing requests later.
+- OPS-006 (must): An app's settings are options validated when it starts (ValidateDataAnnotations or a validator, and ValidateOnStart), so bad configuration stops it at startup instead of failing requests later.

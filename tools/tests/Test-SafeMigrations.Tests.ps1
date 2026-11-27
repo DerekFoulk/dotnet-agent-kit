@@ -229,45 +229,58 @@ Describe 'Test-SafeMigrations.ps1' {
     # ADR-0089: whether DAT-003 is in force comes from a fixture, not the real rule's status.
     Context 'the result' {
         BeforeAll {
-            function New-StatusFile([string] $Status) {
-                $path = Join-Path $TestDrive "rule-status-$(New-Guid).json"
-                Set-Content -LiteralPath $path -Value "{ ""DAT-003"": ""$Status"" }"
+            function New-StrengthFile([string] $Status) {
+                $path = Join-Path $TestDrive "rule-strength-$(New-Guid).json"
+                Set-Content -LiteralPath $path -Value "{ ""DAT-003"": { ""strength"": ""$Status"", ""scope"": [""web-api"", ""blazor""], ""when"": [""has-server-database""] } }"
                 $path
             }
         }
 
         BeforeEach {
             Mock Write-Host { }
-            Mock Write-Host { } -ModuleName KitRuleStatus
+            Mock Write-Host { } -ModuleName KitRuleStrength
         }
 
         It 'returns 0 and says so when every migration is safe' {
             New-Migration -Up 'migrationBuilder.AddColumn<string>(name: "Notes", table: "Orders", nullable: true);'
 
-            Invoke-SafeMigrationsCheck -Path $script:repo -RuleStatusPath (New-StatusFile 'accepted') | Should -Be 0
+            Invoke-SafeMigrationsCheck -Path $script:repo -RuleStrengthPath (New-StrengthFile 'must') | Should -Be 0
             Should -Invoke Write-Host -ParameterFilter { "$Object" -like '*migration*safe*' }
         }
 
-        It 'returns 1 and prints each problem once DAT-003 is accepted' {
+        It 'returns 1 and prints each problem while DAT-003 is a must rule' {
             New-Migration -Up 'migrationBuilder.DropTable(name: "Orders");'
 
-            Invoke-SafeMigrationsCheck -Path $script:repo -RuleStatusPath (New-StatusFile 'accepted') | Should -Be 1
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -ParameterFilter { "$Object" -like '*Up calls DropTable*' -and "$Object" -notlike '::warning::*' }
+            Invoke-SafeMigrationsCheck -Path $script:repo -RuleStrengthPath (New-StrengthFile 'must') | Should -Be 1
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -ParameterFilter { "$Object" -like '*Up calls DropTable*' -and "$Object" -notlike '::warning::*' }
         }
 
-        It 'returns 0 and prints each problem as a warning while DAT-003 is proposed' {
+        # ADR-0090: where the app's profile rules the rule out, the check says so, and calls nothing a warning.
+        It 'returns 0 and says DAT-003 doesn''t apply, in an app whose profile answers its condition no' {
+            New-Migration -Up 'migrationBuilder.DropTable(name: "Orders");'
+            $workspace = Join-Path $TestDrive "workspace-$(New-Guid)"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'docs') | Out-Null
+            Set-Content -LiteralPath (Join-Path $workspace 'docs' 'app-profile.md') -Value 'Conditions: has-server-database=no'
+            $saved = $env:GITHUB_WORKSPACE
+            try { $env:GITHUB_WORKSPACE = $workspace; $result = Invoke-SafeMigrationsCheck -Path $script:repo -RuleStrengthPath (New-StrengthFile 'must') }
+            finally { $env:GITHUB_WORKSPACE = $saved }
+            $result | Should -Be 0
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match "1 migration problem.*not judged.*DAT-003 doesn't apply to this app" }
+            Should -Invoke Write-Host -Times 0 -ParameterFilter { "$Object" -match 'should rule' }
+        }
+        It 'returns 0 and prints each problem as a warning while DAT-003 is a should rule' {
             New-Migration -Up 'migrationBuilder.DropTable(name: "Orders");'
 
-            Invoke-SafeMigrationsCheck -Path $script:repo -RuleStatusPath (New-StatusFile 'proposed') | Should -Be 0
-            Should -Invoke Write-Host -ModuleName KitRuleStatus -ParameterFilter { "$Object" -like '::warning::DAT-003: *Up calls DropTable*' }
-            Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 migration problem.*warning.*DAT-003 is proposed' }
+            Invoke-SafeMigrationsCheck -Path $script:repo -RuleStrengthPath (New-StrengthFile 'should') | Should -Be 0
+            Should -Invoke Write-Host -ModuleName KitRuleStrength -ParameterFilter { "$Object" -like '::warning::DAT-003: *Up calls DropTable*' }
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -match '1 migration problem.*warning.*DAT-003 is a should rule' }
         }
 
-        It 'exits 1 when run as a script against an unsafe migration once DAT-003 is accepted' {
+        It 'exits 1 when run as a script against an unsafe migration while DAT-003 is a must rule' {
             New-Migration -Up 'migrationBuilder.RenameColumn(name: "Notes", table: "Orders", newName: "Remarks");'
             $script = Join-Path $PSScriptRoot '..' 'Test-SafeMigrations.ps1'
 
-            $output = pwsh -NoProfile -File $script -Path $script:repo -RuleStatusPath (New-StatusFile 'accepted') 2>&1 | Out-String
+            $output = pwsh -NoProfile -File $script -Path $script:repo -RuleStrengthPath (New-StrengthFile 'must') 2>&1 | Out-String
 
             $LASTEXITCODE | Should -Be 1 -Because $output
             $output | Should -Match 'Up calls RenameColumn'

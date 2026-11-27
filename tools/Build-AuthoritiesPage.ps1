@@ -339,13 +339,12 @@ function ConvertTo-NoticesBlock {
     ($lines -join "`n") + "`n"
 }
 
-# Each citing rule once, sorted, linked to its standard, with a proposed rule marked: it isn't in force yet.
+# Each citing rule once, sorted, linked to its standard. Every rule here is in force at its strength (ADR-0090).
 function ConvertTo-RuleLinks {
     param([AllowEmptyCollection()] [object[]] $Citations)
 
     $rules = @($Citations | Sort-Object RuleId -Unique | ForEach-Object {
-            $mark = if ($_.Status -eq 'proposed') { ' (proposed)' } else { '' }
-            "[$($_.RuleId)](standards/$($_.File))$mark"
+            "[$($_.RuleId)](standards/$($_.File))"
         })
     $rules -join ', '
 }

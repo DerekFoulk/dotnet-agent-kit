@@ -5,4 +5,4 @@ applyTo: '**/Program.cs,**/*Endpoints*.cs,**/*Error*.cs'
 
 # API design
 
-- API-002: Every HTTP API error response is Problem Details (RFC 9457): AddProblemDetails, UseExceptionHandler and UseStatusCodePages; a client error such as malformed input stays a 400 in every environment, and outside Development a 500 never carries the exception's message or stack.
+- API-002 (must): Every HTTP API error response is Problem Details (RFC 9457): AddProblemDetails, UseExceptionHandler and UseStatusCodePages; a client error such as malformed input stays a 400 in every environment, and outside Development a 500 never carries the exception's message or stack.
