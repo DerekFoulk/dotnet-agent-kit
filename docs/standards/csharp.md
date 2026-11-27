@@ -661,8 +661,8 @@ rules:
         how: "code review checks every XML parse of data the app doesn't produce"
     paths: ["**/*.cs"]
   - id: CS-032
-    statement: "Prefer RSA over DSA; MD5 and SHA-1, which .NET provides for standards conformance and backward compatibility with existing data formats and protocols, have been found to be insecure per NIST SP 800-131A."
-    why: "DSA is not as secure as RSA, and MD5 and SHA-1 have been found to be insecure."
+    statement: "Prefer RSA over DSA."
+    why: "DSA is not as secure as RSA. The same page finds MD5 and SHA-1 insecure per NIST SP 800-131A; SEC-014's analyzers (CA5350, CA5351) gate them."
     layer: outside
     basis: authority
     status: proposed
