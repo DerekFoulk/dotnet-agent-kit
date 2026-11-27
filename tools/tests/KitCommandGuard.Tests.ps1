@@ -504,6 +504,18 @@ Describe 'Get-CommandGuardDecision for Bash' {
         @{ Command = 'declare -i x=i' }
         @{ Command = 'a[i]=1' }
         @{ Command = "gh pr create --title x --body-file - <<EOF`n`$((i))`nEOF" }
+        # A substring's offset and length, an indirect expansion and a nameref also evaluate a value; let and declare
+        # past a reserved word or wrapper; and an arithmetic command with no command after it (review round 14).
+        @{ Command = 'gh pr create --title x --body "${s:i}"' }
+        @{ Command = 'gh pr create --title x --body "${s:0:i}"' }
+        @{ Command = 'gh pr create --title x --body "${!x}"' }
+        @{ Command = 'declare -n r=x; gh pr create --title x --body "$r"' }
+        @{ Command = 'if true; then let x=i; fi' }
+        @{ Command = 'time let x=i' }
+        @{ Command = '{ declare -i x=i; }' }
+        @{ Command = '((i))' }
+        @{ Command = 'gh pr create --title x --body y; ((i))' }
+        @{ Command = 'echo "$( ((i)) )"' }
     ) {
         Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument when it runs, from code inside it*'
     }
@@ -514,6 +526,10 @@ Describe 'Get-CommandGuardDecision for Bash' {
         # Stored command text that only expands is text: nothing runs it.
         @{ Command = "x='`$(cat .env)'; gh pr create --title x --body `"`${x}`"" }
         @{ Command = 'echo $((1 + 2)) "${a[0]}" "$[3]"' }
+        # A pattern's bracket isn't an index, a comparison of no variable reads none, and a numeric substring reads
+        # none (review round 14).
+        @{ Command = 'f=a.txt; echo "${f//[^a-z]/_}" "${f#[a-z]}" "${f:0:2}" "${f:-x}"' }
+        @{ Command = '[[ $# -eq 0 ]] && echo none' }
         @{ Command = "git commit -m `"`$(cat <<'EOF'`nlet me fix [[ x -eq y ]] and `$((i))`nEOF`n)`"" }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
