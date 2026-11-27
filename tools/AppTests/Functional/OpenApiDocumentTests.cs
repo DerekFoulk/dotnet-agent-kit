@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -70,8 +71,7 @@ public sealed partial class OpenApiDocumentTests
         using IAppUnderTest app = host.Start(Environments.Development);
         List<RouteEndpoint> authorized = [.. app.Services.GetRequiredService<EndpointDataSource>().Endpoints
             .OfType<RouteEndpoint>()
-            .Where(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null
-                && (endpoint.Metadata.GetMetadata<IAuthorizeData>() is not null || endpoint.Metadata.GetMetadata<AuthorizationPolicy>() is not null))];
+            .Where(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null && RequiresAuthorization(endpoint.Metadata))];
 
         // An endpoint without HTTP method metadata answers every method.
         HashSet<string> keys = [.. authorized.SelectMany(endpoint =>
@@ -79,6 +79,14 @@ public sealed partial class OpenApiDocumentTests
                 .Select(method => Key(method, endpoint.RoutePattern.RawText ?? string.Empty)))];
         return (method, path) => keys.Contains(Key(method, path)) || keys.Contains(Key("*", path));
     }
+
+    // The endpoint metadata the authorization middleware builds a policy from: [Authorize] or RequireAuthorization, a
+    // policy, or requirements of their own (IAuthorizationRequirementData, such as an app's own attribute). MVC's
+    // global AuthorizeFilter isn't endpoint metadata, so this doesn't see it; code review does.
+    private static bool RequiresAuthorization(EndpointMetadataCollection metadata) =>
+        metadata.GetMetadata<IAuthorizeData>() is not null
+        || metadata.GetMetadata<AuthorizationPolicy>() is not null
+        || metadata.GetMetadata<IAuthorizationRequirementData>() is not null;
 
     // An operation's method and path, as both the document and an endpoint can name it.
     private static string Key(string method, string route) =>
