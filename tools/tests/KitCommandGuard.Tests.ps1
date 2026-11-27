@@ -519,6 +519,26 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*builds an argument*'
     }
 
+    # After the stop-parsing token, PowerShell passes the rest to a native program as written, but for each %NAME%,
+    # which it expands to an environment variable's value (about_Parsing).
+    It 'asks for <Command>, whose %NAME% after --% is a value known only as it runs' -ForEach @(
+        @{ Command = "`$env:F = '--force'; git push --% origin main %F%" }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*builds an argument*: %F%'
+    }
+
+    It 'asks for <Command>, which resolves past --% to a form an ask rule covers' -ForEach @(
+        @{ Command = 'git push --% origin --force' }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*resolved this command to "git push origin --force"*'
+    }
+
+    It 'leaves <Command> to the rules: nothing after --% expands' -ForEach @(
+        @{ Command = 'git push --% -u origin feat/x' }
+    ) {
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeNullOrEmpty
+    }
+
     It 'asks for <Command>, which passes a command''s output through a variable, whatever the command it reaches' -ForEach @(
         # Review round 1: the nested-command ask, moved one statement earlier.
         @{ Command = "`$b = Get-Content ./.env -Raw; Add-ReviewReply -Body `$b" }
