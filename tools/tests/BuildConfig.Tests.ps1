@@ -492,6 +492,15 @@ Describe 'Repo build configuration' -Tag 'Build' {
 
             $build.ExitCode | Should -Be 0 -Because $build.Output
         }
+
+        # Only the files dotnet ef writes are generated: a file of the app's own in a Migrations folder is checked like
+        # any other (here, var fails IDE0008, as in the UsesVar fixture).
+        It 'still checks a hand-written file in a Migrations folder' {
+            $build = Invoke-FixtureBuild -Workspace (New-FixtureWorkspace -Fixture 'HandWrittenInMigrations')
+
+            $build.ExitCode | Should -Not -Be 0 -Because $build.Output
+            $build.Output | Should -Match 'Migrations[\\/]Counter\.cs\(\d+,\d+\): error IDE0008'
+        }
     }
 
     # C# guidance pass (owner 2026-11-16): CA1064 asks for public exceptions, and CA1515 asks an Exe's types to be
