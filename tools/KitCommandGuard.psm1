@@ -332,7 +332,7 @@ function Get-BashCommand {
 function New-BashReader {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Text, [Parameter(Mandatory)] [AllowEmptyCollection()] [Collections.Generic.List[object]] $Commands)
 
-    [pscustomobject]@{ Text = $Text; Index = 0; Commands = $Commands; Heredocs = [Collections.Generic.List[object]]::new() }
+    [pscustomobject]@{ Text = $Text; Index = 0; Commands = $Commands; Heredocs = [Collections.Generic.List[object]]::new(); ListAdded = $false }
 }
 
 # Reads commands up to the end of the text or, when Close is ')', up to the unquoted ')' that ends a $( ) or <( ).
@@ -388,13 +388,15 @@ function Read-BashList {
             Complete-BashCommand -Reader $Reader -Builder $builder
             $Reader.Index++
             if ($builder.Depth -gt 0) { $builder.Depth-- }
-            elseif ($Close -eq ')') { return }
+            elseif ($Close -eq ')') { $Reader.ListAdded = $builder.Added; return }
             else { throw "Bash can't read it: a ')' at character $($Reader.Index) closes nothing." }
         }
         else { Add-BashText -Builder $builder -Text $c; $Reader.Index++ }
     }
     if ($Close) { throw "Bash can't read it: a `$( ), <( ) or >( ) isn't closed." }
     Complete-BashCommand -Reader $Reader -Builder $builder
+    # Whether this list, not one nested in it, held a command: a substitution with none only redirects.
+    $Reader.ListAdded = $builder.Added
 }
 
 # What one list of commands is reading: the current word (as Bash resolves it, with its expansions taken out, and its
@@ -403,7 +405,7 @@ function New-BashBuilder {
     [pscustomobject]@{
         Words = [Collections.Generic.List[string]]::new(); PlainWords = [Collections.Generic.List[string]]::new(); Built = [Collections.Generic.List[string]]::new()
        Word = [Text.StringBuilder]::new(); PlainWord = [Text.StringBuilder]::new(); Unquoted = [Text.StringBuilder]::new()
-        InWord = $false; Quoted = $false; WordComputed = $null; Redirect = $null; Depth = 0; CaseDepth = 0; InPattern = $false
+        InWord = $false; Quoted = $false; WordComputed = $null; Redirect = $null; Depth = 0; CaseDepth = 0; InPattern = $false; Added = $false
     }
 }
 
@@ -489,6 +491,7 @@ function Add-BashCommand {
                 Words = $Builder.Words.ToArray(); PlainWords = $Builder.PlainWords.ToArray(); Native = $true
                 Built = $Builder.Built.ToArray()
             })
+        $Builder.Added = $true
         $Builder.Words.Clear()
         $Builder.PlainWords.Clear()
        $Builder.Built.Clear()
@@ -624,11 +627,10 @@ function Read-BashSubstitution {
     param([Parameter(Mandatory)] [pscustomobject] $Reader)
 
     $start = $Reader.Index
-    $before = $Reader.Commands.Count
     $Reader.Index += 2
     Read-BashList -Reader $Reader -Close ')'
     $text = $Reader.Text.Substring($start, $Reader.Index - $start)
-    Add-BashRedirectOnly -Commands $Reader.Commands -Before $before -Text $text
+    Add-BashRedirectOnly -Commands $Reader.Commands -HeldCommand $Reader.ListAdded -Text $text
     $text
 }
 
@@ -638,10 +640,12 @@ function Read-BashSubstitution {
 function Add-BashRedirectOnly {
     param(
         [Parameter(Mandatory)] [AllowEmptyCollection()] [Collections.Generic.List[object]] $Commands,
-        [Parameter(Mandatory)] [int] $Before, [Parameter(Mandatory)] [string] $Text
+        [Parameter(Mandatory)] [bool] $HeldCommand, [Parameter(Mandatory)] [string] $Text
     )
 
-    if ($Commands.Count -ne $Before -or $Text -notmatch '[<>]') { return }
+    # HeldCommand is the substitution's own list's, so a command in the file's name ($(<"$(git rev-parse …)/.env"))
+    # doesn't count.
+    if ($HeldCommand -or $Text -notmatch '[<>]') { return }
     $Commands.Add([pscustomobject]@{ Words = @($Text); PlainWords = @($Text); Built = @(, $null); Native = $true; Runs = $Text })
 }
 
@@ -661,10 +665,9 @@ function Read-BashBackquote {
         else { [void] $inner.Append($c); $Reader.Index++ }
     }
     $sub = New-BashReader -Text $inner.ToString() -Commands $Reader.Commands
-    $before = $Reader.Commands.Count
     Read-BashList -Reader $sub -Close ''
     $text = '`' + $inner.ToString() + '`'
-    Add-BashRedirectOnly -Commands $Reader.Commands -Before $before -Text $text
+    Add-BashRedirectOnly -Commands $Reader.Commands -HeldCommand $sub.ListAdded -Text $text
     $text
 }
 
