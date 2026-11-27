@@ -202,7 +202,8 @@ function Get-PowerShellCommand {
 
 # The words a native program receives from the text after PowerShell's stop-parsing token (--%), which PowerShell
 # passes as written but for each %NAME%, expanded to an environment variable's value (about_Parsing): split at white
-# space with its double quotes taken out, as the program's own argument parser reads it. A word with a %NAME% is a
+# space outside double quotes, with the quotes taken out, as the program's own argument parser reads it (its "\""
+# escapes aren't read: no ask rule names a word with a quote in it). A word with a %NAME% is a
 # value known only as the command runs.
 function Add-PowerShellStopParsedWord {
     param(
@@ -211,8 +212,9 @@ function Add-PowerShellStopParsedWord {
         [Collections.Generic.List[string]] $Words, [Collections.Generic.List[string]] $PlainWords, [Collections.Generic.List[string]] $Built
     )
 
-    foreach ($word in $Text -split '\s+') {
-        if (-not $word) { continue }
+    # A word is a run of characters other than white space, where a double-quoted run, white space and all, counts
+    # as one character (an unclosed quote runs to the end), as a Windows program's argument parser reads it.
+    foreach ($word in [regex]::Matches($Text, '(?:"[^"]*(?:"|$)|[^\s"])+').Value) {
         $Words.Add($word.Replace('"', ''))
         $PlainWords.Add($word.Replace('"', ''))
         $variable = [regex]::Match($word, '%[^%\s]+%')
