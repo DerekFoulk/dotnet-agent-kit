@@ -25,9 +25,9 @@ internal static partial class AppHost
 
         public override bool ServesHttpApi => true;
 
-        // Nobody signs in to the site. The Pester test sets KIT_FIXTURE_SIGNS_USERS_IN to run the same build as a host
-        // that signs users in, with a sign-in that takes any bearer token (Program.cs).
-        public override bool SignsUsersIn => Environment.GetEnvironmentVariable("KIT_FIXTURE_SIGNS_USERS_IN") == "true";
+        // The site signs users in (Program.cs). The Pester test sets KIT_FIXTURE_SIGNS_USERS_IN to false to run the
+        // same build as a host that says it signs nobody in.
+        public override bool SignsUsersIn => Environment.GetEnvironmentVariable("KIT_FIXTURE_SIGNS_USERS_IN") != "false";
 
         public override IReadOnlyCollection<Assembly> ContractAssemblies => [];
 

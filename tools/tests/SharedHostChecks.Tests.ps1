@@ -46,16 +46,18 @@ Describe 'the kit''s shared authorization checks' {
         # Runs one class of shared checks in the built copy, with the fixture's sign-in settings and document, and
         # returns the exit code and output. --no-ansi: on GitHub's runner the test platform colors "failed", which splits
         # it from the test's name in the text the assertions read.
-        function Invoke-SiteCheck([string] $Class, [bool] $MostEndpointsRequireSignIn, [string] $Document = 'protected', [bool] $SignsUsersIn = $false) {
+        function Invoke-SiteCheck([string] $Class, [bool] $MostEndpointsRequireSignIn, [string] $Document = 'protected',
+            [bool] $SignsUsersIn = $true, [switch] $PublicOnly) {
             $env:KIT_FIXTURE_SIGN_IN = "$MostEndpointsRequireSignIn".ToLowerInvariant()
             $env:KIT_FIXTURE_SIGNS_USERS_IN = "$SignsUsersIn".ToLowerInvariant()
+            $env:KIT_FIXTURE_PUBLIC_ONLY = "$PublicOnly".ToLowerInvariant()
             $env:KIT_FIXTURE_DOCUMENT = $Document
             try {
                 $output = dotnet test --project (Join-Path $site 'tests' 'Contoso.Site.FunctionalTests') --no-build `
                     --no-ansi --filter-class "Kit.AppTests.Functional.$Class" 2>&1 | Out-String
                 [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
             }
-            finally { Remove-Item Env:KIT_FIXTURE_SIGN_IN, Env:KIT_FIXTURE_SIGNS_USERS_IN, Env:KIT_FIXTURE_DOCUMENT -ErrorAction Ignore }
+            finally { Remove-Item Env:KIT_FIXTURE_SIGN_IN, Env:KIT_FIXTURE_SIGNS_USERS_IN, Env:KIT_FIXTURE_PUBLIC_ONLY, Env:KIT_FIXTURE_DOCUMENT -ErrorAction Ignore }
         }
     }
 
@@ -120,19 +122,26 @@ Describe 'the kit''s shared authorization checks' {
     # A host that signs nobody in, such as a public website or a public read-only API, has no signed-in user for SEC-008's
     # token checks to compare a bad token with, so all five of them skip, with a reason.
     It 'skip the token checks, all five, in a host that signs nobody in' {
-        $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false
+        $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false -SignsUsersIn $false -PublicOnly
 
         $result.Output | Should -Match 'skipped: 5\b'
+        $result.Output | Should -Match 'The host signs nobody in \(HostUnderTest\.SignsUsersIn\)'
         $result.ExitCode | Should -Be 0 -Because $result.Output
     }
 
-    # Declared as signing users in, with a sign-in that takes any bearer token without checking its signature, the
-    # token checks run as before and fail the host for each token it lets through. The control and the missing token,
+    # A host that signs users in, with a sign-in that takes any bearer token without checking its signature: the token
+    # checks run as before and fail it for each token it lets through, with a 200. The control and the missing token,
     # which the host answers with a 401 Problem, pass.
     It 'fail a host that signs users in but lets an unsigned token through' {
-        $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false -SignsUsersIn $true
+        $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false
+        $row = 'failed Kit\.AppTests\.Functional\.TokenTests\.ACallerWithoutAValidTokenIsA401Problem\(host: "Contoso\.Site", caller: "{0}"\)'
 
-        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.ACallerWithoutAValidTokenIsA401Problem\(host: "Contoso\.Site", caller: "an unsigned token"\)'
+        $result.Output | Should -Match ($row -f 'an unsigned token')
+        $result.Output | Should -Match ($row -f 'a token whose claims changed after it was signed')
+        $result.Output | Should -Match ($row -f "a token signed with a key the host doesn't trust")
+        $result.Output | Should -Match 'to be HttpStatusCode\.Unauthorized \{value: 401\} because an unsigned token is no signed-in user, but found HttpStatusCode\.OK'
+        $result.Output | Should -Not -Match ($row -f 'no token')
+        $result.Output | Should -Not -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.TheSignedInClientsBearerTokenGetsThrough'
         $result.Output | Should -Match 'failed: 3\b'
         $result.Output | Should -Match 'succeeded: 2\b'
     }

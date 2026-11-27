@@ -193,14 +193,14 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 
 **Update (2026-11-27): a host that signs nobody in.** `TokenTests` (SEC-008) skipped only for a host that serves no HTTP API, and every host had to name a `SignedInRoute`. A host that signs nobody in, such as a public website or a public read-only API, had no way to say so, and failed the token checks, which expect a missing or bad token to get a 401. The owner, 2026-11-27: fix the gap, and keep SEC-008's and SEC-017's shared checks failing while those rules are proposed (ADR-0089).
 
-- **`SignsUsersIn`**, a new member of `HostUnderTest`, says whether the host signs users in at all. It's stated, not inferred from the host's endpoints or settings, as `ServesHttpApi` and `MostEndpointsRequireSignIn` are.
+- **`SignsUsersIn`**, a new member of `HostUnderTest`, says whether the host signs users in at all. It's stated, not inferred from the host's endpoints or settings, like `ServesHttpApi` and `MostEndpointsRequireSignIn`.
   - When it's false, both `TokenTests` checks skip, with a reason (`AppHost.NoSignIn`), and `CreateClient` gives an anonymous client whichever it's asked for.
   - When it's true, they run as before: a host that lets an unsigned, changed or untrusted token through, or answers a missing one with anything but a 401 Problem, fails.
-- **`Route`** replaces `SignedInRoute`: a route of one of the host's own endpoints that its client may GET. The hosting checks (SEC-011) send their requests there, whether or not the host signs anyone in. In a host that signs users in, it must need a signed-in user, since the token checks send their tokens there and expect a 401 without a valid one.
+- **`Route`** replaces `SignedInRoute`: a route of one of the host's own endpoints that its client may GET. The hosting checks (SEC-011) send their requests there, whether or not the host signs anyone in. In a host that serves an HTTP API and signs users in, it must need a signed-in user, since the token checks send their tokens there and expect a 401 without a valid one.
 - **An app that already has a FunctionalTests project** does two things to each host at its next sync. Its build fails until it does (an abstract member with no override, and an override of a member that's gone), so the change shows on the sync PR.
   - Rename `SignedInRoute` to `Route`.
   - Add `SignsUsersIn`: `true` when users sign in to the host, as the sample's API does, and `false` otherwise.
-- **Proof:** `tools/tests/SharedHostChecks.Tests.ps1` runs `TokenTests` against the fixture site. Declared as signing nobody in, all five skip. Declared as signing users in, with a sign-in that doesn't check signatures, the checks fail for the unsigned token, the changed one and the one signed with a new key, while the control and the missing token pass.
+- **Proof:** `tools/tests/SharedHostChecks.Tests.ps1` runs `TokenTests` against the fixture site. As a public website that signs nobody in, all five skip, with the reason. As a site that signs users in, with a sign-in that doesn't check signatures, the checks fail for the unsigned token, the changed one and the one signed with a new key, each answered with a 200, while the control and the missing token pass.
 
 ## Pillars affected
 

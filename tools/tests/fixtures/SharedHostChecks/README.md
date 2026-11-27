@@ -15,9 +15,11 @@ Its FunctionalTests project compiles the kit's shared host checks (`tools/AppTes
   declares no Bearer scheme, and the document check passes.
 - With `KIT_FIXTURE_SIGN_IN=true`, its `AppHost` part says most endpoints require sign-in, and the fallback check fails,
   because the site sets no fallback policy.
-- As it is, nobody signs in to it, so the token checks skip.
-- With `KIT_FIXTURE_SIGNS_USERS_IN=true`, it signs in the caller of any bearer token without checking the token, and its
-  `AppHost` part says it signs users in and names `/staff` as its route. The token checks fail it for the unsigned
-  token, the changed one and the one signed with a new key.
+- As it is, it signs in the caller of any bearer token without checking the token, and its `AppHost` part says it signs
+  users in and names `/staff` as its route. The token checks fail it for the unsigned token, the changed one and the
+  one signed with a new key.
+- With `KIT_FIXTURE_PUBLIC_ONLY=true` and `KIT_FIXTURE_SIGNS_USERS_IN=false`, it's a public website that signs nobody
+  in, with only its home page and its document, and its `AppHost` part says so and names `/` as its route. The token
+  checks skip.
 
 The document is a fixed file rather than the built-in generator's, so a test can change what it says.

@@ -41,8 +41,8 @@ internal abstract class HostUnderTest
     /// <summary>
     /// Gets a route of one of the host's own endpoints that its client may GET, which the hosting checks send their
     /// requests to (SEC-011): a route with no endpoint would pass a CORS check whatever the host's endpoints allow. In a
-    /// host that signs users in (<see cref="SignsUsersIn"/>), it's one that needs a signed-in user, which the token
-    /// checks send their tokens to (SEC-008).
+    /// host that serves an HTTP API and signs users in (<see cref="SignsUsersIn"/>), it's one that needs a signed-in
+    /// user, which the token checks send their tokens to (SEC-008).
     /// </summary>
     public abstract string Route { get; }
 
