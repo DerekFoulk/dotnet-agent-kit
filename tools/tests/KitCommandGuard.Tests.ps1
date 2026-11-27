@@ -571,7 +571,7 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*resolved this command to "git push origin --force"*'
     }
 
-    # ${C:\...} reads a file's content through the FileSystem provider, as Get-Content does (about_Providers); it
+    # ${C:\...} reads a file's content through the FileSystem provider, as Get-Content does (about_Variables, "Variable syntax with provider paths"); it
     # runs in any command, as code inside ( ) does.
     It 'asks for <Command>, which reads an item a provider path names' -ForEach @(
         @{ Command = 'git commit -m ${C:\repo\.env}' }

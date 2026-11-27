@@ -265,7 +265,7 @@ function Get-PowerShellFilledVariable {
     , $filled
 }
 
-# Whether a node is a variable that names a provider path and so reads an item when it runs (about_Providers):
+# Whether a node is a variable that names a provider path and so reads an item when it runs (about_Variables, "Variable syntax with provider paths"):
 # a drive-qualified name other than env:, such as ${C:\repo\.env} or ${function:x}. A scope ($global:x) or the
 # variable: drive names an ordinary variable, and env: an environment variable, which are values, not reads.
 function Test-PowerShellProviderRead {
