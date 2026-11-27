@@ -8,7 +8,11 @@ BeforeAll {
     $root = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
     $intakePath = Join-Path $root 'templates' 'app-intake.json'
     $intake = if (Test-Path -LiteralPath $intakePath) { Get-Content -Raw -LiteralPath $intakePath | ConvertFrom-Json -AsHashtable }
+    # Get-KitCondition's tests make a git repo, so every commit runs with the test settings (TestGit.psm1).
+    Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
+    $savedGit = Set-TestGitEnvironment
 }
+AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 
 Describe 'the intake data' {
     BeforeAll { Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force }
@@ -361,8 +365,6 @@ Describe 'Get-KitIntake' {
 Describe 'Get-KitCondition' {
     BeforeAll {
         Import-Module (Join-Path $root 'tools' 'KitIntake.psm1') -Force
-        Import-Module (Join-Path $PSScriptRoot 'TestGit.psm1') -Force
-        $savedGit = Set-TestGitEnvironment
         $kit = Join-Path $TestDrive 'conditions-kit'
         New-Item -ItemType Directory -Force -Path (Join-Path $kit 'docs' 'standards') | Out-Null
         git -C $kit init -q -b main
@@ -381,7 +383,6 @@ conditions:
         git -C $kit commit -q -m 'chore: conditions'
         $after = (git -C $kit rev-parse HEAD).Trim()
     }
-    AfterAll { Restore-TestGitEnvironment -Saved $savedGit }
 
     It 'reads each condition conditions.yml lists at the commit' {
         $conditions = Get-KitCondition -KitRoot $kit -Commit $after
