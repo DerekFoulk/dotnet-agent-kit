@@ -10,7 +10,7 @@ This repo is **dotnet-agent-kit**, a versioned engineering method for .NET repos
 2. **Owner:** what the owner (Derek) stated or ratified, including accepted ADRs.
 3. **Outside authorities:** Microsoft Learn, the Azure Well-Architected Framework, OWASP and similar. The more specific source wins; a real conflict goes to an ADR.
 
-Every rule in `docs/standards/` has a **strength** (ADR-0090): `must`, `should` or `consider`. An authority rule takes its strength from its own quotes' words (MUST, DO and "Verify that" give must; SHOULD, AVOID and CONSIDER give should; MAY and "can" give consider), so it's in force once its quotes are on their pages. A rule the kit or an agent adds starts at `should`, and only the owner makes one a `must`, which `ratified` records. A check fails on a `must` rule's finding, warns on a `should` rule's, and never runs on a `consider` rule, which is advice. Anything else an agent suggests is **proposed** until the owner accepts it.
+Every rule in `docs/standards/` has a **strength** (ADR-0090): `must`, `should` or `consider`. An authority rule takes its strength from its own quotes' words (MUST, DO and "Verify that" give must; SHOULD, AVOID and CONSIDER give should; MAY and "can" give consider), so it's in force once its quotes are on their pages. A rule the kit or an agent adds starts at `should`, and only the owner makes one a `must`, which `ratified` records. A check script fails on a `must` rule's finding and warns on a `should` rule's, while a build or test gate fails whatever its rule's strength (ADR-0089); nothing gates a `consider` rule, which is advice. Anything else an agent suggests is **proposed** until the owner accepts it.
 
 ## Working modes
 
