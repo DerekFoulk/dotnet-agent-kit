@@ -18,7 +18,7 @@ internal static partial class AppHost
 
         public override string SignedInRoute => "/";
 
-        public override bool ServesHttpApi => false;
+        public override bool ServesHttpApi => true;
 
         public override IReadOnlyCollection<Assembly> ContractAssemblies => [];
 
