@@ -486,24 +486,38 @@ Describe 'Get-CommandGuardDecision for Bash' {
     }
 
     # ${x@P} expands x's value as a prompt string, which runs the substitutions in it, and arithmetic evaluates a
-    # variable's value as an expression, whose array index runs them too (Bash's manual, Shell Parameter Expansion and
-    # Shell Arithmetic). So @P asks, and so does command text stored in a variable for either to run (review round 12).
-    It 'asks for <Command>, which can run command text a variable holds' -ForEach @(
+    # variable's value as an expression, whose array index runs them too, however the value was set (Bash's manual,
+    # Shell Parameter Expansion and Shell Arithmetic). So @P asks anywhere, and so does arithmetic that reads a variable,
+    # in each place Bash does arithmetic (review rounds 12 and 13).
+    It 'asks for <Command>, whose @P or arithmetic can run command text a variable holds' -ForEach @(
         @{ Command = 'gh pr create --title x --body "${X@P}"' }
-        @{ Command = "x='`$(cat .env)'; gh pr create --title x --body `"`${x}`"" }
-        @{ Command = "i='a[`$(cat .env)]'; gh pr create --title x --body `"`$((i))`"" }
-        @{ Command = "export X='``cat .env``'; gh pr create --title x --body `"`${X@Q}`"" }
+        @{ Command = "gh pr create --title x --body-file - <<EOF`n`${X@P}`nEOF" }
+        @{ Command = 'gh pr create --title x --body "$(( ${X@P} ))"' }
+        @{ Command = 'gh pr create --title x --body "$((i))"' }
+        @{ Command = 'gh pr create --title x --body "$[i]"' }
+        @{ Command = 'gh pr create --title x --body "${a[i]}"' }
+        @{ Command = 'gh pr create --title x --body "${B:-$((i))}"' }
+        @{ Command = '((i)); gh pr create --title x --body y' }
+        @{ Command = 'for ((j = i; j < 1; j++)); do :; done' }
+        @{ Command = 'let x=i' }
+        @{ Command = '[[ $i -eq 0 ]]' }
+        @{ Command = 'declare -i x=i' }
+        @{ Command = 'a[i]=1' }
+        @{ Command = "gh pr create --title x --body-file - <<EOF`n`$((i))`nEOF" }
     ) {
         Get-CommandGuardDecision -Tool 'Bash' -Command $Command -AskRules @() | Should -BeLike '*builds an argument when it runs, from code inside it*'
     }
 
-    It 'leaves <Command> to the rules: the variable holds no command text' -ForEach @(
+    It 'leaves <Command> to the rules: no @P, and no arithmetic reads a variable' -ForEach @(
         @{ Command = "M='docs: fix the guard'; git commit -m `"`$M`"" }
         @{ Command = 'x=$(git rev-parse HEAD); echo "$x ${x@Q}"' }
+        # Stored command text that only expands is text: nothing runs it.
+        @{ Command = "x='`$(cat .env)'; gh pr create --title x --body `"`${x}`"" }
+        @{ Command = 'echo $((1 + 2)) "${a[0]}" "$[3]"' }
+        @{ Command = "git commit -m `"`$(cat <<'EOF'`nlet me fix [[ x -eq y ]] and `$((i))`nEOF`n)`"" }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
     }
-
     # Claude Code's permissions page: deny rules apply to a command nested in a command substitution, and Read deny
     # rules to file commands it recognizes, such as cat. So .claude/settings.json's Read(./.env) covers this cat.
     It 'leaves <Command> to Claude Code''s rules: its substitution''s cat is a command they check' -ForEach @(
