@@ -64,8 +64,8 @@ public sealed partial class OpenApiDocumentTests
     {
         if (host.MostEndpointsRequireSignIn)
         {
-            HashSet<string> anonymous = [.. host.AnonymousRoutes.Select(Template)];
-            return (_, path) => !anonymous.Contains(Template(path));
+            HashSet<string> anonymous = [.. host.AnonymousRoutes.Select(Route)];
+            return (_, path) => !anonymous.Contains(Route(path));
         }
 
         using IAppUnderTest app = host.Start(Environments.Development);
@@ -89,8 +89,11 @@ public sealed partial class OpenApiDocumentTests
         || metadata.GetMetadata<IAuthorizationRequirementData>() is not null;
 
     // An operation's method and path, as both the document and an endpoint can name it.
-    private static string Key(string method, string route) =>
-        $"{method.ToUpperInvariant()} {Template("/" + route.TrimStart('/'))}";
+    private static string Key(string method, string route) => $"{method.ToUpperInvariant()} {Route(route)}";
+
+    // A route as the document writes its path: with a leading slash, which an endpoint's RawText (and so an entry in
+    // AnonymousRoutes) lacks when its group is mapped without one, and with its parameters as Template writes them.
+    private static string Route(string route) => Template("/" + route.TrimStart('/'));
 
     private static bool IsProtected(JsonNode operation) =>
         (operation["security"]?.AsArray().Any(requirement => requirement?.AsObject().ContainsKey("Bearer") ?? false) ?? false)
