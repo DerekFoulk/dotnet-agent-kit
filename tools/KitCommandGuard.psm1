@@ -83,7 +83,7 @@ function Test-AskedCommand {
     $start = Get-InnerStart -Words $words -Tool $Tool
     if ($start -ge $words.Count) { return $false }
     if ($Resolved.Built[$start]) { return $true }
-    $names = @($words[$start]) + @(Get-PlainPathWord -Words @($words[$start]) -WorkingDirectory $WorkingDirectory)
+    $names = @($words[$start]) + @(Get-PlainPathWord -Tool $Tool -Words @($words[$start]) -WorkingDirectory $WorkingDirectory)
     $rest = @($words | Select-Object -Skip ($start + 1))
     $places = @(Get-SubcommandPlace -Words $words -Start ($start + 1))
     $builtSubcommand = [bool] @($places | Where-Object { $Resolved.Built[$_] }).Count
@@ -767,7 +767,7 @@ function Get-RunnerCommand {
     if ($start -ge $words.Count) { return }
     # pwsh runs as its script the word after -File, or its first argument that isn't an option: any later word may be it.
     $places = if ((& $leaf $words[$start]) -match '^(?i:pwsh(\.exe)?)$') { @(($start + 1)..($words.Count - 1)) } else { @($start) }
-    $isRunner = { param($word) @(Get-PlainPathWord -Words @('-', $word) -WorkingDirectory $WorkingDirectory | Select-Object -Skip 1 | Where-Object { (& $leaf $_) -in $script:CommandRunnerScript }).Count }
+    $isRunner = { param($word) @(Get-PlainPathWord -Tool $Tool -Words @('-', $word) -WorkingDirectory $WorkingDirectory | Select-Object -Skip 1 | Where-Object { (& $leaf $_) -in $script:CommandRunnerScript }).Count }
     $i = @($places | Where-Object { $_ -lt $words.Count -and (& $isRunner $words[$_]) } | Select-Object -First 1)
     if (-not $i.Count) { return }
     $i = $i[0]
@@ -842,8 +842,8 @@ function Get-CommandWordForm {
             , $form
             # Each word's plain spelling, once: the program as Get-PlainPathWord names it, the rest as arguments.
             $plainOf = @(for ($i = 0; $i -lt $form.Count; $i++) {
-                    $one = if ($i -eq 0) { @(Get-PlainPathWord -Words @($form[0]) -WorkingDirectory $WorkingDirectory) }
-                    else { @(Get-PlainPathWord -Words @('-', $form[$i]) -WorkingDirectory $WorkingDirectory | Select-Object -Skip 1) }
+                    $one = if ($i -eq 0) { @(Get-PlainPathWord -Tool $Tool -Words @($form[0]) -WorkingDirectory $WorkingDirectory) }
+                    else { @(Get-PlainPathWord -Tool $Tool -Words @('-', $form[$i]) -WorkingDirectory $WorkingDirectory | Select-Object -Skip 1) }
                     , [string[]] $one
                 })
             # A bracket glob that matches several files is also tried with each one alone in its place, as the shell
@@ -873,12 +873,19 @@ function Get-CommandWordForm {
 # against the working directory, as the shell expands it, and left as it is when nothing matches. A program named by
 # its path or with ".exe" (C:\Git\cmd\git.exe, /usr/bin/git) is also named by its bare name, as the rules name it.
 function Get-PlainPathWord {
-    param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words, [string] $WorkingDirectory)
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words,
+        [Parameter(Mandatory)] [ValidateSet('Bash', 'PowerShell')] [string] $Tool, [string] $WorkingDirectory
+    )
 
     for ($i = 0; $i -lt $Words.Count; $i++) {
         $word = $Words[$i]
         if ($word -match '[/\\]') {
-            $word = $word.Replace('\', '/')
+            # Bash passes a '\' as written: only a Windows program reading a path takes it as a folder separator. So in
+            # Bash it's one only where no part before the last '\' holds a pattern's character, as a regex does
+            # (v[0-9]+\..), whose '\' is an escape.
+            $before = $word.Substring(0, [Math]::Max(0, $word.LastIndexOf('\')))
+            if ($Tool -eq 'PowerShell' -or $before -notmatch '[\[\]*?+^$|(){}]') { $word = $word.Replace('\', '/') }
             while ($word.Contains('/./')) { $word = $word.Replace('/./', '/') }
             $word = [regex]::Replace($word, '(?<=.)/{2,}', '/')
         }
