@@ -153,7 +153,18 @@ function Get-PowerShellCommand {
             'Dot' { $words.Add('.'); $built.Add($null) }
         }
         $plainWords = [Collections.Generic.List[string]]::new($words)
+        $nameAt = $words.Count
+        $stopped = $false
         foreach ($element in $commandAst.CommandElements) {
+            if ($stopped) {
+                Add-PowerShellStopParsedWord -Text $element.Value -Words $words -PlainWords $plainWords -Built $built
+                break
+            }
+            # The stop-parsing token itself doesn't reach the program; the parser holds the rest of the line in the
+            # next element.
+            $stopped = $element -is [Management.Automation.Language.StringConstantExpressionAst] -and
+                $element.StringConstantType -eq 'BareWord' -and $element.Value -ceq '--%'
+            if ($stopped) { continue }
             $words.Add((ConvertTo-PowerShellWord -Element $element))
             $plain = ConvertTo-PowerShellPlainWord -Element $element
             if ($null -ne $plain) { $plainWords.Add($plain) }
@@ -165,7 +176,7 @@ function Get-PowerShellCommand {
             $builtBy = if ($variable) { $variable.Extent.Text } elseif (-not (Test-PowerShellLiteral -Element $element)) { $element.Extent.Text } else { $null }
             $built.Add($builtBy)
         }
-        $name = $words[$words.Count - $commandAst.CommandElements.Count]
+        $name = $words[$nameAt]
         $runs = $commandAst.Find({ param($node) $node.GetType() -in $script:ComputedArgumentAst }, $true)
         if (-not $runs) {
             $runs = $commandAst.Find({ param($node) $node -is [Management.Automation.Language.VariableExpressionAst] -and $fromCommand.Contains((Get-PowerShellVariableName -Variable $node)) }, $true)
@@ -177,6 +188,26 @@ function Get-PowerShellCommand {
             Native     = -not (Test-PowerShellCommandName -Name $name)
             Runs       = if ($runs) { $runs.Extent.Text } else { $null }
         }
+    }
+}
+
+# The words a native program receives from the text after PowerShell's stop-parsing token (--%), which PowerShell
+# passes as written but for each %NAME%, expanded to an environment variable's value (about_Parsing): split at white
+# space with its double quotes taken out, as the program's own argument parser reads it. A word with a %NAME% is a
+# value known only as the command runs.
+function Add-PowerShellStopParsedWord {
+    param(
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text,
+        # Not mandatory: Built holds $null beside each word that isn't built, which a mandatory list refuses.
+        [Collections.Generic.List[string]] $Words, [Collections.Generic.List[string]] $PlainWords, [Collections.Generic.List[string]] $Built
+    )
+
+    foreach ($word in $Text -split '\s+') {
+        if (-not $word) { continue }
+        $Words.Add($word.Replace('"', ''))
+        $PlainWords.Add($word.Replace('"', ''))
+        $variable = [regex]::Match($word, '%[^%\s]+%')
+        if ($variable.Success) { $Built.Add($variable.Value) } else { $Built.Add($null) }
     }
 }
 
