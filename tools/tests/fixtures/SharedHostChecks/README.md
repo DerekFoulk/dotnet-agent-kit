@@ -21,5 +21,7 @@ Its FunctionalTests project compiles the kit's shared host checks (`tools/AppTes
 - With `KIT_FIXTURE_PUBLIC_ONLY=true` and `KIT_FIXTURE_SIGNS_USERS_IN=false`, it's a public website that signs nobody
   in, with only its home page and its document, and its `AppHost` part says so and names `/` as its route. The token
   checks skip.
+- With `KIT_FIXTURE_FALLBACK_ONLY=true` as well, it signs users in again, and a fallback policy protects those pages,
+  which no endpoint's metadata shows. Said to sign nobody in, it fails the check of that statement.
 
 The document is a fixed file rather than the built-in generator's, so a test can change what it says.

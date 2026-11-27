@@ -13,10 +13,18 @@ using Microsoft.Extensions.Options;
 // through its own requirement metadata alone (IAuthorizationRequirementData). The OpenAPI document is a fixed file, so
 // the Pester test can serve one where the signed-in operations require the Bearer scheme, one where they don't, and
 // one that describes only the public operations (KIT_FIXTURE_DOCUMENT). With KIT_FIXTURE_PUBLIC_ONLY, it's a public
-// website that signs nobody in: only its home page and its document.
-bool signsUsersIn = Environment.GetEnvironmentVariable("KIT_FIXTURE_PUBLIC_ONLY") != "true";
+// website that signs nobody in: only its home page and its document. With KIT_FIXTURE_FALLBACK_ONLY as well, it signs
+// users in again, and a fallback policy, which no endpoint's metadata shows, protects those pages, as SEC-017 sets one.
+bool publicOnly = Environment.GetEnvironmentVariable("KIT_FIXTURE_PUBLIC_ONLY") == "true";
+bool fallbackOnly = Environment.GetEnvironmentVariable("KIT_FIXTURE_FALLBACK_ONLY") == "true";
+bool signsUsersIn = !publicOnly || fallbackOnly;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-builder.Services.AddAuthorization();
+AuthorizationBuilder authorization = builder.Services.AddAuthorizationBuilder();
+if (fallbackOnly)
+{
+    authorization.SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+}
+
 if (signsUsersIn)
 {
     builder.Services.AddProblemDetails();
@@ -33,7 +41,7 @@ if (signsUsersIn)
 
 app.UseAuthorization();
 app.MapGet("/", () => "Welcome");
-if (signsUsersIn)
+if (!publicOnly)
 {
     RouteGroupBuilder admin = app.MapGroup("admin").RequireAuthorization();
     admin.MapPost("notices", () => Results.NoContent());

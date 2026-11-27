@@ -47,17 +47,18 @@ Describe 'the kit''s shared authorization checks' {
         # returns the exit code and output. --no-ansi: on GitHub's runner the test platform colors "failed", which splits
         # it from the test's name in the text the assertions read.
         function Invoke-SiteCheck([string] $Class, [bool] $MostEndpointsRequireSignIn, [string] $Document = 'protected',
-            [bool] $SignsUsersIn = $true, [switch] $PublicOnly) {
+            [bool] $SignsUsersIn = $true, [switch] $PublicOnly, [switch] $FallbackOnly) {
             $env:KIT_FIXTURE_SIGN_IN = "$MostEndpointsRequireSignIn".ToLowerInvariant()
             $env:KIT_FIXTURE_SIGNS_USERS_IN = "$SignsUsersIn".ToLowerInvariant()
             $env:KIT_FIXTURE_PUBLIC_ONLY = "$PublicOnly".ToLowerInvariant()
+            $env:KIT_FIXTURE_FALLBACK_ONLY = "$FallbackOnly".ToLowerInvariant()
             $env:KIT_FIXTURE_DOCUMENT = $Document
             try {
                 $output = dotnet test --project (Join-Path $site 'tests' 'Contoso.Site.FunctionalTests') --no-build `
                     --no-ansi --filter-class "Kit.AppTests.Functional.$Class" 2>&1 | Out-String
                 [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
             }
-            finally { Remove-Item Env:KIT_FIXTURE_SIGN_IN, Env:KIT_FIXTURE_SIGNS_USERS_IN, Env:KIT_FIXTURE_PUBLIC_ONLY, Env:KIT_FIXTURE_DOCUMENT -ErrorAction Ignore }
+            finally { Remove-Item Env:KIT_FIXTURE_SIGN_IN, Env:KIT_FIXTURE_SIGNS_USERS_IN, Env:KIT_FIXTURE_PUBLIC_ONLY, Env:KIT_FIXTURE_FALLBACK_ONLY, Env:KIT_FIXTURE_DOCUMENT -ErrorAction Ignore }
         }
     }
 
@@ -166,5 +167,15 @@ Describe 'the kit''s shared authorization checks' {
         $result.Output | Should -Not -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.TheSignedInClientsBearerTokenGetsThrough'
         $result.Output | Should -Match 'failed: 3\b'
         $result.Output | Should -Match 'succeeded: 2\b'
+    }
+
+    # A fallback policy protects every endpoint without any metadata showing it, as SEC-017 sets one, so the statement is
+    # checked against the host's sign-in too: a host that signs nobody in has no authentication scheme. The check names
+    # each scheme it finds.
+    It 'fail a host that says it signs nobody in but has an authentication scheme' {
+        $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false -SignsUsersIn $false -PublicOnly -FallbackOnly
+
+        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.AHostThatSignsNobodyIn'
+        $result.Output | Should -Match 'because an authentication scheme signs users in \(HostUnderTest\.SignsUsersIn\), but found .*\{"Bearer"\}'
     }
 }
