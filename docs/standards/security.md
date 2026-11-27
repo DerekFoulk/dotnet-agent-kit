@@ -532,32 +532,14 @@ rules:
         how: "code review checks for binary formatters and that a suppressed security rule names its reason; SEC-014's analyzers and bans gate what a tool can see"
     paths: ["**/*.cs", "BannedSymbols.txt"]
   - id: SEC-025
-    statement: "Prefer these algorithms by application: Aes for data privacy; HMACSHA256 or HMACSHA512 for data integrity; ECDsa or RSA for digital signatures; RandomNumberGenerator.GetBytes or RandomNumberGenerator.Fill for random number generation; and Rfc2898DeriveBytes.Pbkdf2 for generating a key from a password. To use padded CBC block ciphers safely, you must combine them with an HMAC or other data integrity check that you validate with a constant time comparison before decrypting. User input should be treated with the same precautions as malicious code calling your code with strange parameters."
+    statement: "To use padded CBC block ciphers safely, you must combine them with an HMAC or other data integrity check that you validate with a constant time comparison before decrypting. User input should be treated with the same precautions as malicious code calling your code with strange parameters."
     why: "Unauthenticated CBC leaks plaintext through padding oracles, and user input is a gateway for bad data into other code (Secure Coding Guidelines pass, 2026-11-15)."
     layer: outside
     basis: authority
     status: accepted
     ratified: "owner, 2026-11-12"
-    sources: ["https://learn.microsoft.com/dotnet/standard/security/cryptography-model, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/security/security-and-user-input, retrieved 2026-11-17"]
+    sources: ["https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode, retrieved 2026-11-17", "https://learn.microsoft.com/dotnet/standard/security/security-and-user-input, retrieved 2026-11-17"]
     quotes:
-      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
-        retrieved: "2026-11-17"
-        text: "Here is a list of recommended algorithms by application:"
-      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
-        retrieved: "2026-11-17"
-        text: "Data privacy: Aes"
-      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
-        retrieved: "2026-11-17"
-        text: "Data integrity: HMACSHA256 HMACSHA512"
-      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
-        retrieved: "2026-11-17"
-        text: "Digital signature: ECDsa RSA"
-      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
-        retrieved: "2026-11-17"
-        text: "Random number generation: RandomNumberGenerator.GetBytes RandomNumberGenerator.Fill"
-      - source: "https://learn.microsoft.com/dotnet/standard/security/cryptography-model"
-        retrieved: "2026-11-17"
-        text: "Generating a key from a password: Rfc2898DeriveBytes.Pbkdf2" # gitleaks:allow (a method name, not a key; apps get this file, ADR-0024)
       - source: "https://learn.microsoft.com/dotnet/standard/security/vulnerabilities-cbc-mode"
         retrieved: "2026-11-17"
         text: "to use padded CBC block ciphers safely, you must combine them with an HMAC (or another data integrity check) that you validate using a constant time comparison before trying to decrypt the data."
