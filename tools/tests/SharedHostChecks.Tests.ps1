@@ -143,6 +143,14 @@ Describe 'the kit''s shared authorization checks' {
         $result.Output | Should -Not -Match '"GET admin/status"'
     }
 
+    # Most endpoints can't require sign-in in a host that signs nobody in, so the two statements are checked together.
+    It 'fail a host that says it signs nobody in and that most of its endpoints require sign-in' {
+        $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $true -SignsUsersIn $false -PublicOnly
+
+        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.AHostThatSignsNobodyInHasNoEndpointThatRequiresAuthorization'
+        $result.Output | Should -Match 'Expected described\.MostEndpointsRequireSignIn to be False'
+    }
+
     # A host that signs users in, with a sign-in that takes any bearer token without checking its signature: the token
     # checks run as before and fail it for each token it lets through, with a 200. The control and the missing token,
     # which the host answers with a 401 Problem, pass.
