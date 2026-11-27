@@ -144,8 +144,16 @@ function Get-PowerShellCommand {
 
     $fromCommand = Get-PowerShellFilledVariable -Ast $ast
     $isCommand = { param($node) $node -is [Management.Automation.Language.CommandAst] }
+    # A variable that names a provider path, such as ${C:\repo\.env}, reads that item as the input runs, as Get-Content
+    # would, wherever it sits: in an argument, in an assignment a later argument uses, or alone, as the output. Every
+    # command the input holds asks for it, and so does an input with no command.
+    $readsItem = $ast.Find({ param($node) Test-PowerShellProviderRead -Node $node }, $true)
+    $commandAsts = @($ast.FindAll($isCommand, $true))
+    if ($readsItem -and -not $commandAsts.Count) {
+        return [pscustomobject]@{ Words = @($readsItem.Extent.Text); PlainWords = @($readsItem.Extent.Text); Built = @(, $null); Native = $false; Runs = $readsItem.Extent.Text }
+    }
 
-    foreach ($commandAst in $ast.FindAll($isCommand, $true)) {
+    foreach ($commandAst in $commandAsts) {
         $words = [Collections.Generic.List[string]]::new()
         $built = [Collections.Generic.List[string]]::new()
         switch ($commandAst.InvocationOperator) {
@@ -178,6 +186,7 @@ function Get-PowerShellCommand {
         }
         $name = $words[$nameAt]
         $runs = $commandAst.Find({ param($node) $node.GetType() -in $script:ComputedArgumentAst }, $true)
+        if (-not $runs) { $runs = $readsItem }
         if (-not $runs) {
             $runs = $commandAst.Find({ param($node) $node -is [Management.Automation.Language.VariableExpressionAst] -and $fromCommand.Contains((Get-PowerShellVariableName -Variable $node)) }, $true)
         }
@@ -254,6 +263,16 @@ function Get-PowerShellFilledVariable {
         }
     }
     , $filled
+}
+
+# Whether a node is a variable that names a provider path and so reads an item when it runs (about_Providers):
+# a drive-qualified name other than env:, such as ${C:\repo\.env} or ${function:x}. A scope ($global:x) or the
+# variable: drive names an ordinary variable, and env: an environment variable, which are values, not reads.
+function Test-PowerShellProviderRead {
+    param([Parameter(Mandatory)] [Management.Automation.Language.Ast] $Node)
+
+    $Node -is [Management.Automation.Language.VariableExpressionAst] -and $Node.VariablePath.IsDriveQualified -and
+    $Node.VariablePath.DriveName -ne 'env'
 }
 
 # A variable's name without its scope ($script:f is f); a drive-qualified one keeps its drive ($env:F).
