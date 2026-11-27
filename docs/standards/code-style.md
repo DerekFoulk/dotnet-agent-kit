@@ -66,7 +66,7 @@ rules:
         how: "build: Nullable enable; tools/tests/BuildConfig.Tests.ps1 (NullableViolation fixture)"
       - kind: gate
         in: [kit, app]
-        how: "ci: tools/Test-CodeShape.ps1, in dotnet-ci.reusable.yml's code shape step, reports a #nullable directive outside a Migrations folder, an unlabelled null-forgiving operator outside a test project, and a file marked generated outside a Migrations folder that isn't a .resx file's designer, as error STY005; Kit.CodeShape.Tests covers each rule"
+        how: "ci: tools/Test-CodeShape.ps1, in dotnet-ci.reusable.yml's code shape step, reports a #nullable directive in any file but EF Core's own migration files (<timestamp>_<Name>.cs, its Designer file and the model snapshot, in a Migrations folder), an unlabelled null-forgiving operator outside a test project, and a file marked generated that is neither one of those migration files nor a .resx file's designer, as error STY005; Kit.CodeShape.Tests covers each rule"
     scope: core
     paths: ["**/*.cs", "Directory.Build.props"]
   - id: STY-006
