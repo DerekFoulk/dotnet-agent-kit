@@ -108,6 +108,9 @@ Describe 'Release configuration' {
 
             $concurrency | Should -Not -BeNullOrEmpty
             $concurrency['group'] | Should -Match '\$\{\{ github\.repository \}\}'
+            # Written out, not left to GitHub's default: -BeFalse alone also passes for a missing key ($null).
+            $concurrency.ContainsKey('cancel-in-progress') | Should -BeTrue -Because 'the job says it never cancels a run in progress'
+            $concurrency['cancel-in-progress'] | Should -BeOfType [bool]
             $concurrency['cancel-in-progress'] | Should -BeFalse
         }
 
