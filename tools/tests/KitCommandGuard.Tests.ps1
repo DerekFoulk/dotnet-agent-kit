@@ -574,9 +574,11 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
     }
 
     It 'asks for <Command>, which resolves past --% to a form an ask rule covers' -ForEach @(
-        @{ Command = 'git push --% origin --force' }
+        @{ Command = 'git push --% origin --force'; Resolved = 'git push origin --force' }
+        # A double-quoted run is one word, white space and all, as the program's own parser reads it (review round 11).
+        @{ Command = 'pwsh --% -NoProfile -Command "Install-PSResource Pester"'; Resolved = 'pwsh -NoProfile -Command "Install-PSResource Pester"' }
     ) {
-        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*resolved this command to "git push origin --force"*'
+        Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike "*resolved this command to ""$Resolved""*"
     }
 
     # ${C:\...} reads a file's content through the FileSystem provider, as Get-Content does (about_Variables, "Variable syntax with provider paths"); it
