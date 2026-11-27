@@ -533,6 +533,24 @@ Describe 'Get-CommandGuardDecision for PowerShell' {
         Get-KitDecision -Tool 'PowerShell' -Command $Command | Should -BeLike '*resolved this command to "git push origin --force"*'
     }
 
+    # ${C:\...} reads a file's content through the FileSystem provider, as Get-Content does (about_Providers); it
+    # runs in any command, as code inside ( ) does.
+    It 'asks for <Command>, which reads an item a provider path names' -ForEach @(
+        @{ Command = 'git commit -m ${C:\repo\.env}' }
+        @{ Command = 'Add-ReviewReply -Body "${C:\repo\.env}"' }
+        @{ Command = '$b = ${C:\repo\.env}; Add-ReviewReply -Body $b' }
+        # With no command at all, its value is the output.
+        @{ Command = '${C:\repo\.env}' }
+    ) {
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @() | Should -BeLike '*builds an argument when it runs, from code inside it*${C:\repo\.env}*'
+    }
+
+    It 'leaves <Command> to the rules: an environment variable or a scoped one is no provider read' -ForEach @(
+        @{ Command = 'Write-Output $env:USERPROFILE "${env:HOME}" $global:x ${variable:y}' }
+    ) {
+        Get-CommandGuardDecision -Tool 'PowerShell' -Command $Command -AskRules @() | Should -BeNullOrEmpty
+    }
+
     It 'leaves <Command> to the rules: nothing after --% expands' -ForEach @(
         @{ Command = 'git push --% -u origin feat/x' }
     ) {
