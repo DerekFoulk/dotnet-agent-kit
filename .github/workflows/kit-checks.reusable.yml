@@ -55,6 +55,10 @@ jobs:
       - name: Architecture diagram
         run: ./tools/Test-ArchitectureDiagram.ps1
 
+      # The sample's migrations, checked as every app's are (DAT-003, app-checks.reusable.yml).
+      - name: Safe migrations (the sample's)
+        run: ./tools/Test-SafeMigrations.ps1 -Path sample
+
       - name: Generated agent files are current
         run: ./tools/Build-AgentRules.ps1 -Check
 

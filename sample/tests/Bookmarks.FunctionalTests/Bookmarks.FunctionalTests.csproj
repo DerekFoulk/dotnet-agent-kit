@@ -9,4 +9,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
 
+  <Import Project="../SqlServer/SqlServerTests.props" />
+
 </Project>

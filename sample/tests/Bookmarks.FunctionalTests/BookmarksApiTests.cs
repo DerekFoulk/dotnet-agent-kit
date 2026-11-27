@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Bookmarks.FunctionalTests;
 
-/// <summary>The API through its real HTTP pipeline, with an in-memory SQLite database per test.</summary>
+/// <summary>The API through its real HTTP pipeline, with a SQL Server database per test.</summary>
 public sealed class BookmarksApiTests : IDisposable
 {
     private readonly ApiHost _host = new();

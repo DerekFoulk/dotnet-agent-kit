@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Required: PowerShell 7.6 or later (the current LTS), Pester 6 (runs the kit's script tests) with its signed files unchanged (on Windows; ADR-0092), powershell-yaml (reads rule metadata), Git, GitHub CLI (signed in), the .NET SDK pinned in global.json, Claude Code.
-    Later in the build: VS Code with the PowerShell extension, Docker.
+    Later in the build: VS Code with the PowerShell extension, Docker, and Docker running for the sample's database tests.
 
     Nothing is installed unless you pass -Install; each install command is shown first, and -WhatIf
     shows them without running them. GitHub sign-in is always yours to do (gh auth login): this script
@@ -107,6 +107,11 @@ function Invoke-Native {
 
 function Test-GitHubSignIn {
     (Test-CommandAvailable -Name 'gh') -and (Invoke-Native -FilePath 'gh' -Arguments 'auth', 'status').ExitCode -eq 0
+}
+
+# docker info reaches the engine, so it fails while Docker Desktop is installed but stopped.
+function Test-DockerRunning {
+    (Test-CommandAvailable -Name 'docker') -and (Invoke-Native -FilePath 'docker' -Arguments 'info', '--format', '{{.ServerVersion}}').ExitCode -eq 0
 }
 
 function Test-DotNetSdk {
@@ -312,6 +317,11 @@ function Get-DevMachineCheck {
         -InstallCommand 'code --install-extension ms-vscode.powershell'
     New-DevMachineCheck -Name 'Docker' -Required $false -Test { Test-CommandAvailable -Name 'docker' } `
         -InstallCommand 'winget install --id Docker.DockerDesktop --exact'
+    # The sample's database tests start SQL Server in Docker (Testcontainers, GAP-025), so a local run needs the engine
+    # running, not only installed; without it they're skipped there, and CI still runs them.
+    New-DevMachineCheck -Name 'Docker running' -Required $false -Test { Test-DockerRunning } `
+        -ManualAction 'Start Docker Desktop: the sample''s database tests run SQL Server in Docker, and skip without it.' `
+        -Skip { if (-not (Test-CommandAvailable -Name 'docker')) { 'Docker isn''t installed (the Docker check above).' } }
 }
 
 function Invoke-DevMachineCheck {
