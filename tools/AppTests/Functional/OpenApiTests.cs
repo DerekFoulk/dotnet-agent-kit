@@ -7,7 +7,7 @@ namespace Kit.AppTests.Functional;
 
 /// <summary>
 /// The built-in OpenAPI document (API-003) is mapped in Development only: it maps the whole API, so outside Development
-/// it isn't published. In Development it answers an anonymous caller, such as a client generator (SEC-007). A contract
+/// it isn't published. In Development it answers an anonymous caller, such as a client generator (API-003). A contract
 /// test snapshots it, so every change to the API shows in review.
 /// </summary>
 public sealed class OpenApiTests

@@ -17,20 +17,24 @@
     Kit.CodeShape tool over the files, built from the kit's own source with the safety nets Invoke-KitCodeShape lists.
     Run it from the repo root, so the repo's global.json picks the SDK. Each finding prints in MSBuild's error format,
     which setup-dotnet's problem matcher turns into an annotation on the PR. A "// CRF-011 exception: <reason>"
-    comment exempts one member, type or file (craft.md, "Exceptions"). Exit code: 0 when every limit holds, otherwise
-    1; a tool that doesn't build stops the check with its errors.
+    comment exempts one member, type or file (craft.md, "Exceptions"). A finding of a rule that's still proposed,
+    such as CRF-011, is a GitHub warning annotation instead, and doesn't fail the check until the rule is accepted
+    (ADR-0089); -RuleStatusPath names another rule-status.json than the one beside this script. Exit code: 0 when no
+    finding of an accepted rule is left, otherwise 1; a tool that doesn't build stops the check with its errors.
 
 .EXAMPLE
     ./tools/Test-CodeShape.ps1 -Solution dotnet-agent-kit.slnx
 #>
 [CmdletBinding()]
 param(
-    [string] $Solution
+    [string] $Solution,
+    [string] $RuleStatusPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
 
 # The C# projects in a solution, each with its preprocessor symbols and source files, as Kit.CodeShape's manifest
 # lists them.
@@ -101,10 +105,65 @@ function Invoke-CodeShapeCheck {
     }
 }
 
+# The rule a Kit.CodeShape error code names: CRF011 is CRF-011 (tools/CodeShape/src/Kit.CodeShape/RuleCodes.cs).
+function ConvertTo-CodeShapeRuleId {
+    param([Parameter(Mandatory)] [string] $Code)
+
+    if ($Code -cnotmatch '^(?<letters>[A-Z]+)(?<number>\d+)$') { throw "'$Code' isn't a Kit.CodeShape error code, such as CRF011." }
+    "$($Matches['letters'])-$($Matches['number'])"
+}
+
+# A finding's file as a warning names it: relative to the folder the check runs in, which is the repo root (GitHub's
+# own example names a file in the repo, file=app.js), with / between folders. A path outside that folder, or one that
+# isn't a full path on this system, is kept as the tool printed it, with / between folders.
+function Get-CodeShapeFindingFile {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $root = (Get-Location).ProviderPath.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    if ([IO.Path]::IsPathRooted($Path) -and $Path.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
+        $Path = $Path.Substring($root.Length)
+    }
+    $Path.Replace('\', '/')
+}
+
+# Prints Kit.CodeShape's output and returns the check's exit code (ADR-0089). Each finding names its rule in its error
+# code, CRF011 for CRF-011: a proposed rule's finding is a warning that doesn't fail the check, an accepted rule's is
+# printed as it is, in MSBuild's error format, and fails it (KitRuleStatus.psm1). Any other exit code than 1 is the
+# tool's own, kept; a run that exited 1 with no finding to read fails, since the check is broken.
+function Write-CodeShapeResult {
+    param([int] $ExitCode, [AllowEmptyString()] [string] $Output, [string] $RuleStatusPath)
+
+    $counted = 0
+    $warned = 0
+    foreach ($line in $Output -split '\r?\n' | Where-Object { $_ }) {
+        $finding = [regex]::Match($line, '^(?<file>.+)\((?<line>\d+),(?<column>\d+)\): error (?<code>[A-Z]+\d+): ')
+        if (-not $finding.Success) {
+            Write-Host $line
+            continue
+        }
+        $rule = ConvertTo-CodeShapeRuleId -Code $finding.Groups['code'].Value
+        $place = @{
+            File   = Get-CodeShapeFindingFile -Path $finding.Groups['file'].Value
+            Line   = [int] $finding.Groups['line'].Value
+            Column = [int] $finding.Groups['column'].Value
+        }
+        if (Write-RuleFinding -Id $rule -Message $line -Path $RuleStatusPath @place) { $counted++ } else { $warned++ }
+    }
+
+    if ($ExitCode -ne 1) { return $ExitCode }
+    if ($counted + $warned -eq 0) { return 1 }
+    if ($counted) {
+        $more = if ($warned) { "; $warned more were warnings, because their rule is proposed" } else { '' }
+        Write-Host "`n$counted code shape finding(s) fail the check$more." -ForegroundColor Red
+        return 1
+    }
+    Write-Host "`n$warned code shape finding(s), shown as warnings because their rule is proposed; they'll fail the check once it's accepted." -ForegroundColor Yellow
+    0
+}
+
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
     if (-not $Solution) { throw 'Give the solution to check, with -Solution.' }
     $result = Invoke-CodeShapeCheck -Solution $Solution -KitRoot (Join-Path $PSScriptRoot '..')
-    $result.Output
-    exit $result.ExitCode
+    exit (Write-CodeShapeResult -ExitCode $result.ExitCode -Output $result.Output -RuleStatusPath $RuleStatusPath)
 }

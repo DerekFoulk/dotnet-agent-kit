@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Contoso.Site/Contoso.Site.csproj" />
+  <Project Path="tests/Contoso.Site.FunctionalTests/Contoso.Site.FunctionalTests.csproj" />
+</Solution>

@@ -2,19 +2,23 @@
 <#
 .SYNOPSIS
     Fails when a C# project in the solution holds no code of its own, or keeps the class library template's empty
-    Class1 (ARC-009, ADR-0052).
+    Class1 (ARC-009, ADR-0052). While ARC-009 is proposed, each problem is a GitHub warning annotation and the check
+    passes; once it's accepted, the same problems fail it (ADR-0089). -RuleStatusPath names another rule-status.json
+    than the one beside this script.
 
 .EXAMPLE
     ./tools/Test-EmptyProjects.ps1 -Solution dotnet-agent-kit.slnx
 #>
 [CmdletBinding()]
 param(
-    [string] $Solution
+    [string] $Solution,
+    [string] $RuleStatusPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module -Name (Join-Path $PSScriptRoot 'KitSolution.psm1') -Force
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
 
 # Where the build writes output and generated C# by default (BaseOutputPath and BaseIntermediateOutputPath): not the
 # project's own source.
@@ -27,9 +31,11 @@ $script:ProjectExtension = '.csproj'
 # and .proto files, which Grpc.Tools turns into C# at build time.
 $script:SourceExtensions = '.cs', '.razor', '.cshtml', '.proto'
 
+# Rule is the rule a problem breaks, whose status decides whether it fails the check (ADR-0089); a broken solution
+# breaks none and always fails.
 function New-Problem {
-    param([string] $Message)
-    [pscustomobject]@{ Message = $Message }
+    param([string] $Message, [string] $Rule = 'ARC-009')
+    [pscustomobject]@{ Message = $Message; Rule = $Rule }
 }
 
 # True for the file `dotnet new classlib` writes, Class1.cs with an empty class Class1, in either namespace style.
@@ -69,7 +75,7 @@ function Get-EmptyProjectProblem {
             continue
         }
         if (-not (Test-Path -LiteralPath $project.FullPath -PathType Leaf)) {
-            New-Problem -Message "$relative is in the solution but isn't there"
+            New-Problem -Message "$relative is in the solution but isn't there" -Rule ''
             continue
         }
         $projectFolder = Split-Path -Parent $project.FullPath
@@ -86,18 +92,32 @@ function Get-EmptyProjectProblem {
     }
 }
 
-# Prints every problem and returns 0 when every project holds code of its own, otherwise 1.
+# Prints every problem and returns 0 when every project holds code of its own, otherwise 1. While ARC-009 is
+# proposed, each of its problems is a warning and doesn't fail the check (ADR-0089); a project the solution lists but
+# that isn't there is a broken solution, and fails it whatever ARC-009's status.
 function Invoke-EmptyProjectsCheck {
-    param([Parameter(Mandatory)] [string] $Solution)
+    param([Parameter(Mandatory)] [string] $Solution, [string] $RuleStatusPath)
 
     $problems = @(Get-EmptyProjectProblem -Solution $Solution)
-    foreach ($problem in $problems) {
-        Write-Host "  $($problem.Message)" -ForegroundColor Red
-    }
+    $counted = @($problems | Where-Object {
+            if ($_.Rule) { Write-RuleFinding -Id $_.Rule -Message $_.Message -Path $RuleStatusPath }
+            else { Write-Host $_.Message -ForegroundColor Red; $true }
+        }).Count
 
-    if ($problems) {
-        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red
+    if ($counted) {
+        # A missing project is a broken solution, summed up apart, so the summary blames ARC-009 only for its own.
+        $broken = @($problems | Where-Object { -not $_.Rule }).Count
+        $empty = $counted - $broken
+        $warned = $problems.Count - $counted
+        if ($broken -eq 1) { Write-Host "`n1 project the solution lists isn't there, in $Solution; fix the solution file." -ForegroundColor Red }
+        elseif ($broken) { Write-Host "`n$broken projects the solution lists aren't there, in $Solution; fix the solution file." -ForegroundColor Red }
+        if ($empty) { Write-Host "`n$empty empty-project problem(s) in $Solution. Remove a project until its first real type needs it (ARC-009)." -ForegroundColor Red }
+        if ($warned) { Write-Host "$warned more empty-project problem(s) were warnings, because ARC-009 is proposed." -ForegroundColor Yellow }
         return 1
+    }
+    if ($problems) {
+        Write-Host "`n$($problems.Count) empty-project problem(s) in $Solution, shown as warnings because ARC-009 is proposed; they'll fail the check once it's accepted." -ForegroundColor Yellow
+        return 0
     }
 
     Write-Host "Every project in $Solution holds code of its own." -ForegroundColor Green
@@ -106,5 +126,5 @@ function Invoke-EmptyProjectsCheck {
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
-    exit (Invoke-EmptyProjectsCheck -Solution $Solution)
+    exit (Invoke-EmptyProjectsCheck -Solution $Solution -RuleStatusPath $RuleStatusPath)
 }

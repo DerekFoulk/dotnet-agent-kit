@@ -6,19 +6,23 @@
 
 .DESCRIPTION
     Reads every C# file under -Path (bin, obj and .git left out) that overrides Up(MigrationBuilder), as an EF Core
-    migration does, and reports each call in Up to an operation in $UnsafeOperations. Exit code: 0 when every
-    migration passes, otherwise 1.
+    migration does, and reports each call in Up to an operation in $UnsafeOperations. While DAT-003 is proposed,
+    each problem is a GitHub warning annotation and the check passes; once it's accepted, the same problems fail it
+    (ADR-0089). -RuleStatusPath names another rule-status.json than the one beside this script. Exit code: 0 when every
+    migration passes or DAT-003 is proposed, otherwise 1.
 
 .EXAMPLE
     ./.kit/tools/Test-SafeMigrations.ps1 -Path .
 #>
 [CmdletBinding()]
 param(
-    [string] $Path = '.'
+    [string] $Path = '.',
+    [string] $RuleStatusPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module -Name (Join-Path $PSScriptRoot 'KitRuleStatus.psm1') -Force
 
 # MigrationBuilder operations that remove or change what the running version reads or writes.
 $script:UnsafeOperations = @(
@@ -118,15 +122,17 @@ function Get-LineNumber {
 
 # Prints every problem and returns 0 when every migration passes, otherwise 1.
 function Invoke-SafeMigrationsCheck {
-    param([Parameter(Mandatory)] [string] $Path)
+    param([Parameter(Mandatory)] [string] $Path, [string] $RuleStatusPath)
 
     $problems = @(Get-MigrationProblem -Path $Path)
-    foreach ($problem in $problems) {
-        Write-Host "  $($problem.Message)" -ForegroundColor Red
-    }
+    $counted = @($problems | Where-Object { Write-RuleFinding -Id 'DAT-003' -Message $_.Message -Path $RuleStatusPath }).Count
 
-    if ($problems) {
-        Write-Host "`n$($problems.Count) migration problem(s) under $Path. Leave drops and renames to a later release (expand, then contract), and put a '// DAT-003: <reason>' comment directly above each call that's safe, saying why the version still running works (docs/standards/data.md)." -ForegroundColor Red
+    if ($problems -and -not $counted) {
+        Write-Host "`n$($problems.Count) migration problem(s) under $Path, shown as warnings because DAT-003 is proposed; they'll fail the check once it's accepted." -ForegroundColor Yellow
+        return 0
+    }
+    if ($counted) {
+        Write-Host "`n$counted migration problem(s) under $Path. Leave drops and renames to a later release (expand, then contract), and put a '// DAT-003: <reason>' comment directly above each call that's safe, saying why the version still running works (docs/standards/data.md)." -ForegroundColor Red
         return 1
     }
 
@@ -136,5 +142,5 @@ function Invoke-SafeMigrationsCheck {
 
 # Run when invoked as a script; stay quiet when dot-sourced (the tests do that).
 if ($MyInvocation.InvocationName -ne '.') {
-    exit (Invoke-SafeMigrationsCheck -Path $Path)
+    exit (Invoke-SafeMigrationsCheck -Path $Path -RuleStatusPath $RuleStatusPath)
 }
