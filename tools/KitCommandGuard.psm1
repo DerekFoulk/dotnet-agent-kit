@@ -390,6 +390,11 @@ function Read-BashList {
             # ";;", ";&" and ";;&" end a case item; the next pattern list follows.
             if ($operator -like ';[;&]*' -and $builder.CaseDepth -gt 0) { $builder.InPattern = $true }
         }
+        elseif ($c -eq '(' -and $next -eq '(' -and -not $builder.InWord) {
+            # An arithmetic command, (( … )) or for (( … )), read whole, as Bash reads it.
+            $arithmetic = Read-BashArithmeticCommand -Reader $Reader
+            Set-BashRuns -Builder $builder -Text $arithmetic -When ($arithmetic -match '[A-Za-z_]')
+        }
         elseif ($c -eq '(') { Complete-BashCommand -Reader $Reader -Builder $builder; $builder.Depth++; $Reader.Index++ }
         elseif ($c -eq ')') {
             Complete-BashCommand -Reader $Reader -Builder $builder
@@ -449,12 +454,9 @@ function Add-BashWord {
         $Reader.Heredocs.Add([pscustomobject]@{ Delimiter = $word; Quoted = $Builder.Quoted; StripTabs = $Builder.Redirect -eq 'heredoc-strip' })
     }
     elseif (-not $Builder.Redirect) {
-        # An assignment (x=..., in a command or as export's or declare's argument) of text that holds a substitution
-        # Bash didn't run, quoted or escaped: ${x@P} or arithmetic on x ($((x)), with an index, a[$(cmd)]) runs it later
-        # (Bash's manual, Shell Arithmetic), out of the guard's sight.
-        $plainWord = $Builder.PlainWord.ToString()
-        if ($plainWord -match '\A[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?\+?=.*(?:\$\(|`)' -and -not $Builder.Runs) { $Builder.Runs = $word }
-        Add-BashCommandWord -Reader $Reader -Builder $Builder -Word $word -PlainWord $plainWord
+        # An array element's assignment, a[i]=…, evaluates its index as arithmetic.
+        Set-BashRuns -Builder $Builder -Text $word -When ($word -match '\A[A-Za-z_][A-Za-z0-9_]*\[[^\]]*[A-Za-z_][^\]]*\]\+?=')
+        Add-BashCommandWord -Reader $Reader -Builder $Builder -Word $word -PlainWord $Builder.PlainWord.ToString()
     }
     $Builder.Redirect = $null
     foreach ($part in $Builder.Word, $Builder.PlainWord, $Builder.Unquoted) { [void] $part.Clear() }
@@ -501,6 +503,8 @@ function Add-BashCommand {
     param([Parameter(Mandatory)] [pscustomobject] $Reader, [Parameter(Mandatory)] [pscustomobject] $Builder)
 
     if ($Builder.Words.Count) {
+        $arithmetic = Get-BashArithmeticWord -Words $Builder.Words.ToArray()
+        Set-BashRuns -Builder $Builder -Text "$arithmetic" -When ([bool] $arithmetic)
         $Reader.Commands.Add([pscustomobject]@{
                 Words = $Builder.Words.ToArray(); PlainWords = $Builder.PlainWords.ToArray(); Native = $true
                 Built = $Builder.Built.ToArray(); Runs = $Builder.Runs
@@ -573,8 +577,11 @@ function Read-BashDollar {
     $next = if ($start + 1 -lt $text.Length) { $text[$start + 1] } else { [char] 0 }
     if ($next -eq "'" -and -not $Quoted) { $Reader.Index += 2; Add-BashText -Builder $Builder -Text (Read-BashAnsiC -Reader $Reader) -Quoted; return }
     if ($next -eq '"' -and -not $Quoted) { $Reader.Index += 2; Read-BashDoubleQuoted -Reader $Reader -Builder $Builder; return }
-    if ($next -eq '(' -and $start + 2 -lt $text.Length -and $text[$start + 2] -eq '(') {
-        Add-BashExpansion -Builder $Builder -Text (Read-BashBracketed -Reader $Reader -Open '(' -Close ')') -Computed
+    if (($next -eq '(' -and $start + 2 -lt $text.Length -and $text[$start + 2] -eq '(') -or $next -eq '[') {
+        # $((…)), or the older $[…]: arithmetic, which reads a variable's value as an expression.
+        $arithmetic = if ($next -eq '[') { Read-BashBracketed -Reader $Reader -Open '[' -Close ']' } else { Read-BashBracketed -Reader $Reader -Open '(' -Close ')' }
+        Set-BashRuns -Builder $Builder -Text $arithmetic -When ($arithmetic.Substring(1) -match '[A-Za-z_]')
+        Add-BashExpansion -Builder $Builder -Text $arithmetic -Computed
         return
     }
     if ($next -eq '(') {
@@ -586,8 +593,9 @@ function Read-BashDollar {
         Assert-NoBashFunctionSubstitution -Text $text -At $start
         $expansion = Read-BashBracketed -Reader $Reader -Open '{' -Close '}'
         # ${x@P} expands x's value as a prompt string, which runs the substitutions in it (Bash's manual, Shell
-        # Parameter Expansion): code the guard can't see, wherever the value came from.
-        if ($expansion -cmatch '@P\}' -and -not $Builder.Runs) { $Builder.Runs = $expansion }
+        # Parameter Expansion), and an array index with a name in it (${a[i]}), or $((…)) or $[…] inside, is
+        # arithmetic on a variable.
+        Set-BashRuns -Builder $Builder -Text $expansion -When ($expansion -cmatch '@P\}' -or $expansion -match '\[[^\]]*[A-Za-z_]|\$\(\(|\$\[')
         Add-BashExpansion -Builder $Builder -Text $expansion -Computed
         return
     }
@@ -677,7 +685,54 @@ function Add-BashRedirectOnly {
     # HeldCommand is the substitution's own list's, so a command in the file's name ($(<"$(git rev-parse …)/.env"))
     # doesn't count.
     if ($HeldCommand -or $Text -notmatch '[<>]') { return }
+    Add-BashRunsCommand -Commands $Commands -Text $Text
+}
+
+# Adds a command of its own that runs code the guard can't see, Text, so the guard asks for it.
+function Add-BashRunsCommand {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [Collections.Generic.List[object]] $Commands, [Parameter(Mandatory)] [string] $Text)
+
     $Commands.Add([pscustomobject]@{ Words = @($Text); PlainWords = @($Text); Built = @(, $null); Native = $true; Runs = $Text })
+}
+
+# Marks the command being read as one that runs code the guard can't see, Text, When it holds (the first such text
+# stays). Here that's Bash running a variable's value: arithmetic reads one as an expression, and an array index in
+# it, a[$(cmd)], runs the substitution (Bash's manual, Shell Arithmetic), and ${x@P} expands one as a prompt string,
+# which runs its substitutions; whatever set the value, the input, the environment or a read.
+function Set-BashRuns {
+    param([Parameter(Mandatory)] [pscustomobject] $Builder, [Parameter(Mandatory)] [AllowEmptyString()] [string] $Text, [Parameter(Mandatory)] [bool] $When)
+
+    if ($When -and -not $Builder.Runs) { $Builder.Runs = $Text }
+}
+
+# An arithmetic command, (( … )), from its first '(' to the ')' that closes it, which ends past it; throws when it
+# isn't closed, since Bash won't run that either.
+function Read-BashArithmeticCommand {
+    param([Parameter(Mandatory)] [pscustomobject] $Reader)
+
+    $text = $Reader.Text
+    $start = $Reader.Index
+    $depth = 0
+    for ($i = $start; $i -lt $text.Length; $i++) {
+        if ($text[$i] -eq '(') { $depth++ }
+        elseif ($text[$i] -eq ')' -and --$depth -eq 0) {
+            $Reader.Index = $i + 1
+            return $text.Substring($start, $Reader.Index - $start)
+        }
+    }
+    throw "Bash can't read it: a (( isn't closed."
+}
+
+# The text of a Bash command whose words do arithmetic: let, [[ with -eq, -ne, -lt, -le, -gt or -ge, or declare,
+# typeset, local or readonly with -i (Bash's manual, Shell Arithmetic); or $null.
+function Get-BashArithmeticWord {
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [AllowEmptyString()] [string[]] $Words)
+
+    if (-not $Words.Count) { return $null }
+    $arithmetic = $Words[0] -ceq 'let' -or
+        ($Words -ccontains '[[' -and @($Words | Where-Object { $_ -cin '-eq', '-ne', '-lt', '-le', '-gt', '-ge' }).Count) -or
+        ($Words[0] -cin 'declare', 'typeset', 'local', 'readonly' -and @($Words | Where-Object { $_ -cmatch '\A-[A-Za-z]*i' }).Count)
+    if ($arithmetic) { $Words -join ' ' } else { $null }
 }
 
 # A backquoted substitution, after its opening backquote: inside it, '\' escapes only '`', '\' and '$'; its commands
@@ -766,7 +821,10 @@ function Read-BashHeredocBody {
         if (-not $heredoc.Quoted) {
             # The body is the command's input, not a word, so only the commands its substitutions run matter.
             $bodyReader = New-BashReader -Text $body.ToString() -Commands $Reader.Commands
-            Read-BashDoubleQuoted -Reader $bodyReader -Builder (New-BashBuilder) -Heredoc
+            $bodyBuilder = New-BashBuilder
+            Read-BashDoubleQuoted -Reader $bodyReader -Builder $bodyBuilder -Heredoc
+            # Its @P or arithmetic on a variable runs too, as the body expands.
+            if ($bodyBuilder.Runs) { Add-BashRunsCommand -Commands $Reader.Commands -Text $bodyBuilder.Runs }
         }
     }
     $Reader.Heredocs.Clear()
