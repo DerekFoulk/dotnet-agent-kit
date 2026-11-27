@@ -120,13 +120,27 @@ Describe 'the kit''s shared authorization checks' {
     }
 
     # A host that signs nobody in, such as a public website or a public read-only API, has no signed-in user for SEC-008's
-    # token checks to compare a bad token with, so all five of them skip, with a reason.
+    # token checks to compare a bad token with, so all five of them skip, with a reason. The check of that statement
+    # passes: none of its endpoints requires authorization.
     It 'skip the token checks, all five, in a host that signs nobody in' {
         $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false -SignsUsersIn $false -PublicOnly
 
         $result.Output | Should -Match 'skipped: 5\b'
         $result.Output | Should -Match 'The host signs nobody in \(HostUnderTest\.SignsUsersIn\)'
+        $result.Output | Should -Match 'succeeded: 1\b'
         $result.ExitCode | Should -Be 0 -Because $result.Output
+    }
+
+    # Saying it signs nobody in would skip the token checks of a host that does, so the statement is checked against the
+    # host's endpoints: one that requires authorization needs a signed-in user. The check names each such endpoint.
+    It 'fail a host that says it signs nobody in but has endpoints that require authorization' {
+        $result = Invoke-SiteCheck -Class TokenTests -MostEndpointsRequireSignIn $false -SignsUsersIn $false
+
+        $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.TokenTests\.AHostThatSignsNobodyInHasNoEndpointThatRequiresAuthorization'
+        $result.Output | Should -Match '"POST admin/notices"'
+        $result.Output | Should -Match '"\* admin/feed"'
+        $result.Output | Should -Match '"GET /staff"'
+        $result.Output | Should -Not -Match '"GET admin/status"'
     }
 
     # A host that signs users in, with a sign-in that takes any bearer token without checking its signature: the token
