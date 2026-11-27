@@ -23,9 +23,10 @@ Describe 'the kit''s shared host checks' {
 }
 
 # SEC-017 asks for a fallback authorization policy only in "a server-side app where most or all endpoints require
-# authentication". The app says which it is in its part of AppHost (MostEndpointsRequireSignIn), and the authorization
-# checks skip, with a reason, when most endpoints are public. A copy of a public fixture site, built with the kit's
-# build files and its shared checks as an app's tests/Directory.Build.props compiles them, runs only those checks.
+# authentication". Each host says which it is in the app's part of AppHost (MostEndpointsRequireSignIn): the
+# authorization checks skip, with a reason, when most endpoints are public, and the document check looks only at the
+# operations whose endpoints require authorization. A copy of a public fixture site, built with the kit's build files
+# and its shared checks as an app's tests/Directory.Build.props compiles them, runs those two classes of checks.
 Describe 'the kit''s shared authorization checks' {
     BeforeAll {
         $script:site = Join-Path $TestDrive 'site'
@@ -77,18 +78,29 @@ Describe 'the kit''s shared authorization checks' {
 
     # Skipping it would drop SEC-008's document check from a public API that has signed-in endpoints: only "every
     # operation not listed as anonymous is protected" rests on SEC-017's condition.
-    It 'pass the document check in a public site whose one signed-in operation requires the Bearer scheme' {
+    It 'pass the document check in a public site whose signed-in operations require the Bearer scheme' {
         $result = Invoke-SiteCheck -Class OpenApiDocumentTests -MostEndpointsRequireSignIn $false
 
         $result.Output | Should -Match 'succeeded: 2\b'
         $result.ExitCode | Should -Be 0 -Because $result.Output
     }
 
-    It 'fail the document check in a public site whose signed-in operation doesn''t require the Bearer scheme' {
+    # The admin group is mapped without a leading slash, its feed endpoint answers every method, and its status endpoint
+    # allows anonymous callers again, so each is matched to its operation as the document names it.
+    It 'fail the document check in a public site whose signed-in operations don''t require the Bearer scheme' {
         $result = Invoke-SiteCheck -Class OpenApiDocumentTests -MostEndpointsRequireSignIn $false -Document unprotected
 
         $result.Output | Should -Match 'failed Kit\.AppTests\.Functional\.OpenApiDocumentTests\.TheDocumentSays'
-        $result.Output | Should -Match 'POST /admin/notices'
-        $result.Output | Should -Not -Match '"GET /"'
+        $result.Output | Should -Match '"post /admin/notices"'
+        $result.Output | Should -Match '"get /admin/feed"'
+        $result.Output | Should -Not -Match '"get /"'
+        $result.Output | Should -Not -Match '"get /admin/status"'
+    }
+
+    It 'pass the document check in a public site whose document describes only its public operations, with no Bearer scheme' {
+        $result = Invoke-SiteCheck -Class OpenApiDocumentTests -MostEndpointsRequireSignIn $false -Document public
+
+        $result.Output | Should -Match 'succeeded: 2\b'
+        $result.ExitCode | Should -Be 0 -Because $result.Output
     }
 }

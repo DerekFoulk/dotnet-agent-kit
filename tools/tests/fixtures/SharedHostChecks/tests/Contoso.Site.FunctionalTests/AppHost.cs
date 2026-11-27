@@ -14,7 +14,8 @@ internal static partial class AppHost
     {
         public override string Name => "Contoso.Site";
 
-        public override IReadOnlyCollection<string> AnonymousRoutes => [];
+        // The admin group's status endpoint allows anonymous callers again. The group is mapped without a leading slash.
+        public override IReadOnlyCollection<string> AnonymousRoutes => ["admin/status"];
 
         public override string SignedInRoute => "/";
 
