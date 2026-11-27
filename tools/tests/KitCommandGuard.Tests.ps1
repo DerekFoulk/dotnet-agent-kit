@@ -439,18 +439,22 @@ Describe 'Get-CommandGuardDecision for Bash' {
 
     # Bash passes '\' as written, so it's a folder separator only for a Windows program reading a path; in a pattern
     # such as a regex it's an escape, and "\.." there leaves no folder.
-    It 'leaves <Command> to the rules: its backslash is in a pattern, not a path' -ForEach @(
-        @{ Command = "grep -nE 'v[0-9]+\..' README.md" }
-        @{ Command = "rg 'a(b|c)\..' tools" }
-    ) {
-        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeNullOrEmpty
-    }
-
+    # Bash passes a '\' as written, and a Windows program reads it as a folder separator, in any name: Windows allows
+    # +, (, ), {, } and $ in one, and resolves ".." from the text, whether the folder before it exists or not. A
+    # regex's '\' (grep -nE 'v[0-9]+\..') reads the same, so it asks too: a known limit in ADR-0077 (review round 11).
     It 'asks for <Command>, a backslash path a Windows program reads as leaving its folder' -ForEach @(
         @{ Command = "git.exe show 'zz\..\..\x'" }
         @{ Command = "cat 'tools\..\..\x'" }
+        @{ Command = 'pwsh -NoProfile -File ./tools/+\\..\\..\\x.ps1' }
+        @{ Command = "cat 'tools(\..\..\x'" }
     ) {
         Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*resolved this command to*the ask rule "Bash(`*/..`*)"*'
+    }
+
+    It 'asks for <Command>, a program named by a Windows path with a pattern character in it' -ForEach @(
+        @{ Command = '"C:\Program Files (x86)\Git\cmd\git.exe" clean -fdx' }
+    ) {
+        Get-KitDecision -Tool 'Bash' -Command $Command | Should -BeLike '*resolved this command to "git clean -fdx"*'
     }
 
     # "$(<file)" is Bash's faster "$(cat file)" (Bash's manual, Command Substitution): it reads the file with no
