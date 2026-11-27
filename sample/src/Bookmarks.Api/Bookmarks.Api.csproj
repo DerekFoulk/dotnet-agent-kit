@@ -13,6 +13,10 @@
     <ProjectReference Include="..\Bookmarks.ServiceDefaults\Bookmarks.ServiceDefaults.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <!-- Only for dotnet ef, which needs it in the startup project (EF Core's migration docs). PrivateAssets keeps it from
+         projects that reference the API, but its assemblies, Roslyn's among them, still land in the API's own output
+         (ADR-0098 says what would keep them out). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

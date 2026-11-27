@@ -40,11 +40,23 @@ function New-ShippedSolutionFilter {
         if ([IO.Path]::GetExtension($relative) -notin '.csproj', '.fsproj', '.vbproj', '.xsproj') { continue }
         # A benchmarks project measures what ships and ships nothing; it's known by its name (ADR-0062).
         if (Test-BenchmarksProject -Name ([IO.Path]::GetFileNameWithoutExtension($relative))) { continue }
-        $output = @(& dotnet msbuild $project.FullPath -nologo -getProperty:IsTestProject 2>&1)
-        if ($LASTEXITCODE -ne 0) { throw "MSBuild couldn't read $relative, so it's unknown whether it ships:`n$($output -join "`n")" }
-        # The value is MSBuild's last line; an evaluation warning comes before it. Anything else is a surprise.
-        $value = if ($output.Count) { "$($output[-1])".Trim() } else { '' }
-        if ($value -notin 'true', 'false', '') { throw "MSBuild gave '$value' as $relative's IsTestProject:`n$($output -join "`n")" }
+        # MSBuild writes the value alone to the result file (-getResultOutputFile: "Redirect output from get* into a
+        # file", dotnet msbuild -help), so warnings printed before or after the value, which differ by SDK, can't change
+        # it. While it writes that file it prints nothing, errors included, so a failure asks again without the file, for
+        # MSBuild's reason.
+        $resultFile = New-TemporaryFile
+        try {
+            & dotnet msbuild $project.FullPath -nologo -getProperty:IsTestProject "-getResultOutputFile:$($resultFile.FullName)" *> $null
+            if ($LASTEXITCODE -ne 0) {
+                $reason = @(& dotnet msbuild $project.FullPath -nologo -getProperty:IsTestProject 2>&1) -join "`n"
+                throw "MSBuild couldn't read $relative, so it's unknown whether it ships:`n$reason"
+            }
+            $value = "$(Get-Content -Raw -LiteralPath $resultFile.FullName)".Trim()
+        }
+        finally {
+            Remove-Item -LiteralPath $resultFile.FullName -ErrorAction Ignore
+        }
+        if ($value -notin 'true', 'false', '') { throw "MSBuild gave '$value' as $relative's IsTestProject." }
         if ($value -ne 'true') { $relative }
     }
 

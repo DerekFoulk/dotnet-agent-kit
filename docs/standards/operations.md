@@ -16,7 +16,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): TelemetryTests checks that OpenTelemetry collects traces, metrics and logs, keeps each log's message and scopes, leaves the health probes out of traces, and exports a trace over OTLP only when an endpoint is set; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): TelemetryTests checks that OpenTelemetry collects traces, metrics and logs, keeps each log's message and scopes, leaves the health probes out of traces, and exports a trace over OTLP only when an endpoint is set; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
         how: "that the setup lives in one ServiceDefaults project, which code review checks"
@@ -35,7 +35,7 @@ rules:
         how: "ci: the sample's FunctionalTests check its database check, its live check and its 5-second timeout"
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): HealthTests checks that /health and /alive answer an anonymous probe with the status only in Production, that a second probe is served from the cache, that both are time-boxed and a slow check is cut off with a 504, and that /alive stays healthy while a readiness check fails; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): HealthTests checks that /health and /alive answer an anonymous probe with the status only in Production, that a second probe is served from the cache, that both are time-boxed and a slow check is cut off with a 504, and that /alive stays healthy while a readiness check fails; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: advisory
         in: [app]
         how: "that /health includes the app's database, until its own FunctionalTests check it, as the sample's do"
@@ -55,7 +55,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): ResilienceTests checks that a client from IHttpClientFactory has the resilience handler and doesn't retry a failed POST; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): ResilienceTests checks that a client from IHttpClientFactory has the resilience handler and doesn't retry a failed POST; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: gate
         in: [kit, app]
         how: "build: BannedSymbols.txt bans HttpClient's constructors (RS0030), so a client comes from the factory or, for the cookie case, from the ADR that lifts the ban at that client (CRF-010); tools/tests/BuildConfig.Tests.ps1 has a failing fixture"
@@ -93,7 +93,7 @@ rules:
     enforcement:
       - kind: gate
         in: [kit, app]
-        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which starts the app in its own part of AppHost (ADR-0081): ShutdownTests checks that the shutdown timeout is positive and ends before 30 seconds, in Production; an app without that project isn't checked until TST-003's check (GAP-027)"
+        how: "ci: the kit's shared host checks (tools/AppTests/Functional), which tests/Directory.Build.props compiles into every *.FunctionalTests project, the sample's and an app's, which lists the app's hosts and starts each in its own part of AppHost, and each check runs once for each host (ADR-0081): ShutdownTests checks that the shutdown timeout is positive and ends before 30 seconds, in Production; an app without that project isn't checked until TST-003's check (GAP-027)"
       - kind: gate
         in: [kit, app]
         how: "build: CA2016 makes every call pass on the cancellation token it has"

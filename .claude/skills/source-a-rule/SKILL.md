@@ -58,7 +58,7 @@ A rule labeled `basis: authority` states only what its page says (ADR-0082). The
    ./tools/Test-Scorecard.ps1 -Update
    ```
 
-   - `Build-AuthoritiesPage.ps1`: a new site needs an entry in `docs/authorities.yml` first.
+   - `Build-AuthoritiesPage.ps1`: a new site needs an entry in `docs/authorities.yml`'s `sources` first, and a quote from a new work needs one in its `works`: the work's title, author, source and license, read from its repo's LICENSE or the site's terms (ADR-0094). A work with no open license gets the terms-of-use license entry and goes to the owner.
    - Then `./tools/Build-AgentRules.ps1 -Check`, and `./tools/Invoke-KitTests.ps1` in a fresh clone (ADR-0092).
 
 7. **Have the reviewer compare.** The reviewer compares every new or changed rule with its quotes and refuses one worded more strongly (`docs/code-review.md`). Report the before and after of each changed rule in the PR.

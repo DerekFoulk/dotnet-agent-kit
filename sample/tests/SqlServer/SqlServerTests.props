@@ -1,0 +1,12 @@
+<Project>
+
+  <!-- The sample's tests that reach SQL Server, the engine it runs on (DAT-005, ADR-0098): the integration and functional
+       test projects import this file. It compiles SqlServerTestDatabase.cs into each, and tells it where the image pin
+       is: a full path, since CI builds map source paths to /_/. -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)SqlServerTestDatabase.cs" Link="SqlServer/SqlServerTestDatabase.cs" />
+    <AssemblyMetadata Include="SqlServerImagePin" Value="$(MSBuildThisFileDirectory)Dockerfile" />
+    <PackageReference Include="Testcontainers.MsSql" />
+  </ItemGroup>
+
+</Project>

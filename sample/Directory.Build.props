@@ -35,6 +35,15 @@
 
   <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.FunctionalTests'))">
     <Compile Include="$(KitAppTests)Functional/**/*.cs" Link="Kit/Functional/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- The contract snapshot test finds Contract/<host>/openapi-v1.json here. [CallerFilePath] won't do: CI builds map
+         source paths to /_/. -->
+    <AssemblyMetadata Include="ProjectDirectory" Value="$(MSBuildProjectDirectory)" />
+  </ItemGroup>
+
+  <!-- A test host's content root, found from the test's own folder in any repo's layout (ADR-0095): every project that
+       hosts the app, FunctionalTests and E2E.Tests. -->
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.FunctionalTests')) Or $(MSBuildProjectName.EndsWith('.E2E.Tests'))">
+    <Compile Include="$(KitAppTests)Hosting/**/*.cs" Link="Kit/Hosting/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Benchmarks projects: BenchmarkDotNet console apps, each with a benchmark-budget.json beside it (ADR-0062). Not

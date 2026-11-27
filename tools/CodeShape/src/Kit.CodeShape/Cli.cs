@@ -24,9 +24,10 @@ internal static class Cli
         ProjectFiles[] projects = JsonSerializer.Deserialize<ProjectFiles[]>(File.ReadAllText(args[^1]), s_json) ?? [];
         if (listFiles)
         {
-            foreach (SourceFile file in projects.SelectMany(ProjectCheck.HandWritten))
+            // Once each: a file linked into two projects would otherwise look to the duplicate finder like a copy.
+            foreach (string path in projects.SelectMany(ProjectCheck.HandWritten).Select(file => file.Path).Distinct(StringComparer.Ordinal))
             {
-                output.WriteLine(file.Path);
+                output.WriteLine(path);
             }
 
             return 0;

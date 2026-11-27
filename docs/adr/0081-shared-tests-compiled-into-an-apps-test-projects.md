@@ -10,7 +10,7 @@ GAP-037 lists 24 rules whose only gate is a test in the kit's sample app or web 
 The 24 rules fall into four groups:
 
 - **The same in every app, from its compiled code** (6): ARC-001, ARC-003, CRF-006, CRF-007, CRF-014 and the endpoint part of SEC-013. They check which layers an assembly references and which namespaces depend on each other. The sample's Architecture.Tests check them with ArchUnitNET (ADR-0003).
-- **The same in every app, from its running host** (10): parts of API-002 and API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007, SEC-008 and SEC-011. These are health endpoints, Problem Details for an unknown route, the OpenAPI document hidden in Production, container validation, shutdown timeout, telemetry, the resilience handler, sign-in required by default, and host filtering and HSTS. Checking them means starting the app, which needs its own test database and sign-in. The sample's FunctionalTests start it through their `ApiHost`.
+- **The same in every app, from its running host** (10): parts of API-002 and API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 (SEC-017's since 2026-11-27), SEC-008 and SEC-011. These are health endpoints, Problem Details for an unknown route, the OpenAPI document hidden in Production, container validation, shutdown timeout, telemetry, the resilience handler, sign-in required by default, and host filtering and HSTS. Checking them means starting the app, which needs its own test database and sign-in. The sample's FunctionalTests start it through their `ApiHost`.
 - **Each app's own behavior** (6): API-004 (paging), API-006 and SEC-010 (validation of each field), API-007 (201 with a Location), SEC-009 (each user sees only their data) and OPS-006 (each settings section validated). A test needs the app's own endpoints and data.
 - **Others' gaps** (2): TST-003, whose missing-project check is GAP-027, and UI-001, which an app's own axe tests gate once it writes them (UI-002).
 
@@ -56,7 +56,7 @@ A kit tool, like Kit.CodeShape, reads the app's built assemblies after the build
 
 ### Option 4: Publish the shared tests as a NuGet test library
 
-- **Trade-offs:** The usual way to share test code. But it means publishing a package, which is the owner's call, and a release pipeline before the kit's v0.2.0 move to a .NET tool (ADR-0078, Option 2).
+- **Trade-offs:** The usual way to share test code. But it means publishing a package, which is the owner's call, and a release pipeline before the kit's move to a .NET tool (ADR-0078, Option 2).
 - **Reversibility:** Medium.
 - **Risk:** Medium.
 
@@ -113,10 +113,10 @@ The sync PR's CI build fails until then, so the change shows on that PR.
   - `DependencyInjectionTests` (CRF-013), with probe services of its own.
   - `TelemetryTests` (OPS-001) and `ResilienceTests` (OPS-003).
   - `ShutdownTests` (OPS-005).
-  - `AuthorizationTests` (SEC-007): the fallback policy, and the anonymous routes against the app's list.
+  - `AuthorizationTests` (SEC-007, SEC-017's since 2026-11-27): the fallback policy, and the anonymous routes against the app's list.
   - `HostingSecurityTests` (SEC-011): host filtering, HSTS, CORS, the Server header and the body cap.
   - The sample's copies of these went (CRF-003). It keeps its own: its database and live checks, its health timeout, its rate limit, its errors and its tokens.
-- **Rules:** nine rules gain a gate in apps (`in: [kit, app]`), each for the parts above: API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 and SEC-011.
+- **Rules:** nine rules gain a gate in apps (`in: [kit, app]`), each for the parts above: API-002, API-003, CRF-013, OPS-001, OPS-002, OPS-003, OPS-005, SEC-007 (SEC-017's since 2026-11-27) and SEC-011.
 - **What stays advisory, and why:**
   - **The app's own behavior** (API-004, API-006, API-007, SEC-009, SEC-010, OPS-006), SEC-011's rate limit and `/health`'s database check need the app's own endpoints, data or settings. They're its own tests' to check, as the sample's do, and code review's. GAP-027's check will require the projects.
   - **TST-003 and UI-001:** TST-003 is GAP-027's, and UI-001 is UI-002's.
@@ -139,18 +139,70 @@ The sync PR's CI build fails until then, so the change shows on that PR.
 
 **Update (2026-11-18): CRF-014 split.** ADR-0082 split CRF-014: it keeps Microsoft's encapsulation, gated by the analyzers, and the owner's tightening (state kept valid, a persistence-ignorant domain) is CRF-021. The domain's persistence check named above as CRF-014's now gates CRF-021.
 
-**Update (2026-11-25): SEC-007 retired, the authorization checks are SEC-017's.** The owner retired SEC-007, which asked for a fallback policy in every app; SEC-017 asks for one only in a server-side app where most or all endpoints require authentication. So the app's part of `AppHost` gains a fifth member, `MostEndpointsRequireSignIn`, and `AuthorizationTests` (SEC-017 now, where the list above says SEC-007) skip, with a reason, when it's false, as in a public website. `HealthTests` and `OpenApiTests` check the anonymous probes and Development document for OPS-002 and API-003, not for SEC-017. **An app that already has a FunctionalTests project** adds the member at its next sync: its build fails until it does (a partial property with no implementation), so the change shows on the sync PR. It answers `true` when most or all of its endpoints require a signed-in user, as the sample's do, and `false` otherwise. `tools/tests/SharedHostChecks.Tests.ps1` runs the checks against a public fixture site, where they skip, and against the same site declared as signed-in, where the fallback check fails.
+**Update (2026-11-25): the rest of GAP-037.** The owner chose on 2026-11-25 to land it before v0.1.0, as an approved exception to the coming freeze on new checks.
+
+- **Every host:** the app's part of `AppHost` now lists its hosts (`Hosts`), such as an API and a web UI beside it, since TST-003 gives an app one FunctionalTests project, which must start each.
+  - Each host is a `HostUnderTest`, with the members the single host had (`Start`, `AnonymousRoutes`, `SignedInRoute`, `ServesHttpApi`), a `Name`, and `ContractAssemblies`, the assemblies its endpoints' types may come from (SEC-013).
+  - `EachHost`, an xUnit v3 data attribute, gives every check one row per host, with the host's name first, listed before the run. Each check starts the host its row names. No check can start "the" app, because nothing in the shared source starts one any other way.
+  - `EachHostTests` checks that every shared check takes its rows from `EachHost`, and the rows for two hosts. It also refuses an empty list, a repeated name, and a name that can't name a folder, since the name also names the host's snapshot folder.
+- **The OpenAPI document's checks**, for each host that serves an HTTP API:
+  - `OpenApiTests` (API-003) compares the Development document with `Contract/<host name>/openapi-v1.json` in the FunctionalTests project. On a mismatch it writes `openapi-v1.received.json` beside it, which git ignores. `tests/Directory.Build.props` records the project's folder as `ProjectDirectory` assembly metadata for every `*.FunctionalTests` project; the sample's project file did that before. The sample's snapshot moved to `Contract/Bookmarks.Api/`.
+  - `OpenApiDocumentTests` checks that every error the document declares is Problem Details (API-002): a 4xx, a 5xx, a range, and the default response. It also checks the Bearer scheme, and that every operation not on one of the host's anonymous routes requires it and declares 401 and 403 (SEC-007, SEC-008; see the 2026-11-27 update). Route constraints are stripped before the two are compared.
+  - `ContractTypeTests` (SEC-013) reads the types from ApiExplorer, which the document is made from. Every type an endpoint takes as a body or form, or answers with, must come from the host's `ContractAssemblies` or be a plain .NET type, and so must its generic arguments and array elements. The plain types are a named list: primitives, .NET's own enums, string, decimal, Guid, dates and times, Uri, Nullable, the BCL's collections, ProblemDetails, HttpValidationProblemDetails, form files and collections, and Stream. object, a JSON document and any other framework or library type, such as Identity's IdentityUser, fail: a Contracts type wraps what the endpoint needs. Every described endpoint must declare what it answers on success, a typed 2xx or a 2xx or 3xx in its metadata (typed results or Produces, API-003; an MVC action's [ProducesResponseType]). ApiExplorer gives an endpoint with no response metadata a default 200 without a type, which doesn't count (review 2), and neither does MVC's `[Produces]`, whose 200 only names a content type, or an API convention, which isn't endpoint metadata (review 3). So an untyped IResult can't hide its type. An endpoint that declares a 2xx without a type and still answers with a body is code review's, and an API host must describe at least one endpoint. An endpoint left out of the document (`ExcludeFromDescription`) isn't described, so code review checks it.
+    - **Why a list, not Microsoft's signing keys:** review 1 found that the keys pass Identity's and EF Core's types, which can carry a password hash or an entity.
+    - **Why types, not schema names:** ASP.NET Core composes the names of generic schemas (`OkOfArrayOfTodo`), and its customization page says those details may change. A name check would fail an app with a generic page type in its Contracts.
+    - **Why ApiExplorer:** it's in the shared framework, so the check compiles in every app without the OpenAPI package. It also covers described endpoints mapped in `Program.cs`, which the architecture tests' EndpointTests don't see.
+- **SEC-008's token checks:** `TokenTests` sends four callers to the host's signed-in route and expects a 401 Problem that names the Bearer scheme:
+  - no token;
+  - an unsigned token (`alg: none`);
+  - the signed-in client's token with a claim added after it was signed;
+  - an RS256 token signed with a new key, with a key id of its own.
+
+  Each is made with the BCL only, from the token the host's signed-in client sends, so none needs the app's key, issuer or audience. The untouched token getting through is the control. A host that serves an HTTP API must send a JWT bearer token from `CreateClient(signedIn: true)`: SEC-008 says an HTTP API takes them. Without one, the check fails rather than skips.
+- **The sample** keeps only its own:
+  - the create request's limits in the document (SEC-010);
+  - no token, an expired token, another issuer and another audience on every bookmarks endpoint, which need its key.
+
+  Its copies of the moved checks went (CRF-003).
+- **Rules:** SEC-008 and SEC-013's document part gain a gate in apps. API-002 and API-003 now gate the document's errors and its snapshot in apps too.
+- **Proof:** the sample runs every check in the kit's CI. Locally, on 2026-11-25, a broken sample failed the check meant for each break:
+  - dropping the bearer document transformer;
+  - declaring a bare 404;
+  - answering with a list of domain `Bookmark`s;
+  - accepting any signature;
+  - an endpoint answering with an untyped `IResult`, in the bookmarks group and outside it, with no response metadata at all.
+- **Not verified:**
+  - a real second host. The sample has one, so only `EachHostTests` shows the rows for two.
+  - an exported app's FunctionalTests, for the reason the first host-checks update gives.
+- **GAP-037 closed.** What stays with an app's own tests is there by design: its own endpoints, data and settings, and tokens only its key can sign.
+
+**An app that already has a FunctionalTests project** has to do these at its next sync. Its build fails until it does the first two.
+- Turn its `AppHost.cs` into a `Hosts` list of `HostUnderTest`s, as the sample's.
+- Name each host's `ContractAssemblies`.
+- Move its snapshot, if it kept one, to `Contract/<host name>/openapi-v1.json`, and drop its own `ProjectDirectory` metadata item, which `tests/Directory.Build.props` now adds.
+
+**Update (2026-11-25): the hosting part.** `tools/AppTests/Hosting` holds `ProjectFolder`, which `tests/Directory.Build.props` compiles into every `*.FunctionalTests` and `*.E2E.Tests` project, the ones that host the app. A `WebApplicationFactory` sets its content root with `ProjectFolder.Find(AppContext.BaseDirectory, <the app's assembly name>)`: the nearest `src/<assembly name>` folder above the tests. It replaces a path relative to the solution, which holds in one repo's layout only: the kit's fresh-app jobs (ADR-0095) found that the sample's and the web UI fixture's factories, which named `sample/src` and `fixtures/WebUi/src`, failed every hosted test in an app made from the kit. It assumes ADR-0032's layout, each project in `src/<its assembly name>`; an app that names a project's folder otherwise gets a `DirectoryNotFoundException` naming the project, and passes its own path instead.
+
+**Update (2026-11-27): SEC-007 retired; its checks are SEC-017's, where SEC-017 applies.** The owner retired SEC-007, which asked for a fallback policy in every app. SEC-017 asks for one only "for a server-side app where most or all endpoints require authentication". So each `HostUnderTest` gains `MostEndpointsRequireSignIn`, and the lists above that name SEC-007 for `AuthorizationTests` now mean SEC-017.
+
+- `AuthorizationTests` skip, with a reason (`AppHost.MostEndpointsArePublic`), for a host whose endpoints are mostly public, such as a public website.
+- `OpenApiDocumentTests`' bearer check keeps SEC-008's part either way. For a host whose endpoints mostly require sign-in, every operation not on its anonymous routes must require the Bearer scheme and declare 401 and 403, as before. For a mostly public host, only the operations whose endpoints require authorization (authorization metadata, no AllowAnonymous) must, and the Bearer scheme must be declared only when there is one. Skipping it would drop SEC-008's document check from a public API with a few signed-in endpoints, which SEC-017's condition doesn't touch.
+- `HealthTests` and `OpenApiTests` check the anonymous probes and Development document for OPS-002 and API-003, not for SEC-017.
+- **An app that already has a FunctionalTests project** adds the member to each host at its next sync. Its build fails until it does (an abstract member with no override), so the change shows on the sync PR. It answers `true` when most or all of the host's endpoints require a signed-in user, as the sample's API does, and `false` otherwise.
+- **Proof:** `tools/tests/SharedHostChecks.Tests.ps1` runs these checks against a public fixture site. There, the fallback checks skip, the document check passes with its one protected operation described, and fails when that operation's Bearer requirement is missing; declared as signed-in, the fallback check fails.
 
 ## Pillars affected
 
 - **Reliability and Operational Excellence:** an app gets the kit's architecture gates from its first Architecture.Tests project, in its own `dotnet test`, and keeps them current through the sync.
-- **Security:** SEC-013's endpoint check now runs in every app, so a domain type can't leak through an endpoint class unseen; endpoints mapped elsewhere stay code review's.
+- **Security:** SEC-013's endpoint check now runs in every app, so a domain type can't leak through an endpoint class unseen; since the 2026-11-25 update, ContractTypeTests checks every endpoint's types, wherever it's mapped, and TokenTests that an HTTP API refuses an unsigned, changed or untrusted token.
 - **Cost Optimization:** free; the tests take about a second.
 - **Performance Efficiency:** not affected.
 
 ## Sources
 
 - owner, 2026-11-16 ("Finish the free gaps")
+- owner, 2026-11-25 (GAP-037 before v0.1.0, an exception to the freeze on new checks)
+- https://learn.microsoft.com/aspnet/core/fundamentals/openapi/customize-openapi#customize-schema-reuse, retrieved 2026-11-25
 - https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory, retrieved 2026-11-16
 - https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/partial-member, retrieved 2026-11-16
 - https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures, retrieved 2026-11-07

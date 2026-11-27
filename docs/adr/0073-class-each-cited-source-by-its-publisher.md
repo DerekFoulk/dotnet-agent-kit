@@ -43,6 +43,8 @@ Option 1: it names every publisher once, applies ADR-0063's test for an authorit
 
 Option 1, decided in auto mode (ADR-0035) on 2026-11-15, for the owner's request of the same day.
 
+**Amended by ADR-0094 (2026-11-25):** `docs/authorities.yml` also lists each work the rules quote and its license, and `Build-AuthoritiesPage.ps1` also fills the quotes block of `THIRD-PARTY-NOTICES.md`; its `-Check` covers both blocks.
+
 ## Consequences
 
 - New: `docs/authorities.yml`, `docs/authorities.md` (prose by hand, the block between `<!-- sources from docs/standards` and `<!-- end sources -->` generated), `tools/Build-AuthoritiesPage.ps1` and its tests, an "Authorities page is current" step in `kit-checks.reusable.yml`, and a row in AGENTS.md's Commands table.

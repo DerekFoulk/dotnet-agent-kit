@@ -1,20 +1,59 @@
 # Third-party notices
 
-The kit itself isn't licensed for reuse (ADR-0031). These files are based on other projects' work and carry those projects' licenses. Keep this file with them wherever they're copied, including into app repos.
+The kit itself isn't licensed for reuse (the kit's ADR-0031). These files are based on other projects' work and carry those projects' licenses. Keep this file with them wherever they're copied, including into app repos.
 
 | File | Based on | License |
 |---|---|---|
 | `.editorconfig` | [dotnet/runtime `.editorconfig`](https://github.com/dotnet/runtime/blob/860eddba936f4a7e8a04cb12ee3bc54385216cab/.editorconfig) at commit `860eddb` | MIT, Copyright (c) .NET Foundation and Contributors |
 | `.editorconfig` (lines marked "(docs)") | [dotnet/docs `.editorconfig`](https://github.com/dotnet/docs/blob/a9d609595f9b72ac1acd8c60170b92ae3c0644bf/.editorconfig) at commit `a9d6095` | MIT, Copyright (c) Microsoft Corporation. dotnet/docs licenses its documentation under CC-BY-4.0 (`LICENSE`) and its code under MIT (`LICENSE-CODE`); a config file is treated as code |
-| `sample/src/Bookmarks.ServiceDefaults/ServiceDefaultsExtensions.cs` (the kit's sample, which apps don't get) | The `aspire-servicedefaults` template's [`Extensions.cs`](https://github.com/microsoft/aspire/blob/569ddf47bac85516bef73fa838d4558fe08f3f0c/src/Aspire.ProjectTemplates/templates/aspire-servicedefaults/Extensions.cs) in microsoft/aspire at commit `569ddf4` (2026-04-23), adapted (ADR-0037) | MIT, Copyright (c) .NET Foundation and Contributors (the text below) |
-| `sample/src/Bookmarks.ServiceDefaults/ServiceDefaultsExtensions.cs` (the health endpoints' cache and timeout settings) | The example on [aspire.dev's health-check page](https://aspire.dev/fundamentals/health-checks/), from microsoft/aspire.dev, retrieved 2026-11-08 (ADR-0037) | MIT, Copyright (c) Microsoft Corporation (the dotnet/docs code text below) |
-| `sample/src/Bookmarks.Api/BearerSecuritySchemeTransformer.cs` (the kit's sample, which apps don't get) | The `BearerSecuritySchemeTransformer` example on [Microsoft Learn's "Customize OpenAPI documents" page](https://learn.microsoft.com/aspnet/core/fundamentals/openapi/customize-openapi#use-document-transformers), from dotnet/AspNetCore.Docs, retrieved 2026-11-11, adapted (ADR-0048) | MIT, Copyright (c) Microsoft Corporation (the dotnet/docs code text below; dotnet/AspNetCore.Docs licenses its code under the same terms in `LICENSE-CODE`) |
-| `fixtures/WebUi/src/Kit.WebUi/Components/App.razor`, `Routes.razor` and `Program.cs` (the kit's web UI fixture, which apps don't get) | The `dotnet new blazor --empty --interactivity None` template, [`src/ProjectTemplates/Web.ProjectTemplates/content/BlazorWeb-CSharp/BlazorWebCSharp.1/`](https://github.com/dotnet/aspnetcore/tree/547fc16b976e18911f9df7630f1f75758ab248f2/src/ProjectTemplates/Web.ProjectTemplates/content/BlazorWeb-CSharp/BlazorWebCSharp.1) (`Program.cs` and `Components/`) in dotnet/aspnetcore at tag `v10.0.15`, commit `547fc16` (2026-10-21), cut down (ADR-0061) | MIT, Copyright (c) .NET Foundation and Contributors (the text below) |
+| `sample/src/Bookmarks.ServiceDefaults/ServiceDefaultsExtensions.cs` (the kit's sample, which apps don't get) | The `aspire-servicedefaults` template's [`Extensions.cs`](https://github.com/microsoft/aspire/blob/569ddf47bac85516bef73fa838d4558fe08f3f0c/src/Aspire.ProjectTemplates/templates/aspire-servicedefaults/Extensions.cs) in microsoft/aspire at commit `569ddf4` (2026-04-23), adapted (the kit's ADR-0037) | MIT, Copyright (c) .NET Foundation and Contributors (the text below) |
+| `sample/src/Bookmarks.ServiceDefaults/ServiceDefaultsExtensions.cs` (the health endpoints' cache and timeout settings) | The example on [aspire.dev's health-check page](https://aspire.dev/fundamentals/health-checks/), from microsoft/aspire.dev, retrieved 2026-11-08 (the kit's ADR-0037) | MIT, Copyright (c) Microsoft Corporation (the dotnet/docs code text below) |
+| `sample/src/Bookmarks.Api/BearerSecuritySchemeTransformer.cs` (the kit's sample, which apps don't get) | The `BearerSecuritySchemeTransformer` example on [Microsoft Learn's "Customize OpenAPI documents" page](https://learn.microsoft.com/aspnet/core/fundamentals/openapi/customize-openapi#use-document-transformers), from dotnet/AspNetCore.Docs, retrieved 2026-11-11, adapted (the kit's ADR-0048) | MIT, Copyright (c) Microsoft Corporation (the dotnet/docs code text below; dotnet/AspNetCore.Docs licenses its code under the same terms in `LICENSE-CODE`) |
+| `fixtures/WebUi/src/Kit.WebUi/Components/App.razor`, `Routes.razor` and `Program.cs` (the kit's web UI fixture, which apps don't get) | The `dotnet new blazor --empty --interactivity None` template, [`src/ProjectTemplates/Web.ProjectTemplates/content/BlazorWeb-CSharp/BlazorWebCSharp.1/`](https://github.com/dotnet/aspnetcore/tree/547fc16b976e18911f9df7630f1f75758ab248f2/src/ProjectTemplates/Web.ProjectTemplates/content/BlazorWeb-CSharp/BlazorWebCSharp.1) (`Program.cs` and `Components/`) in dotnet/aspnetcore at tag `v10.0.15`, commit `547fc16` (2026-10-21), cut down (the kit's ADR-0061) | MIT, Copyright (c) .NET Foundation and Contributors (the text below) |
 | `.gitignore` | The `dotnet new gitignore` template, [`template_feed/Microsoft.DotNet.Common.ItemTemplates/content/Gitignore/.gitignore`](https://github.com/dotnet/sdk/blob/dc1869b/template_feed/Microsoft.DotNet.Common.ItemTemplates/content/Gitignore/.gitignore) in dotnet/sdk at commit `dc1869b` (2025-03-27), plus the kit's own lines | MIT, Copyright (c) .NET Foundation and Contributors. Parts of the template come from [github/gitignore](https://github.com/github/gitignore), which is CC0 and needs no notice |
-| `.claude/skills/dotnet-webapi/`, `.claude/skills/optimizing-ef-core-queries/`, `.claude/skills/analyzing-dotnet-performance/`, `.claude/skills/run-tests/`, `.claude/skills/filter-syntax/`, `.claude/skills/migrate-xunit-to-xunit-v3/`, `.claude/skills/migrate-vstest-to-mtp/`, `.claude/skills/convert-to-cpm/`, `.claude/skills/author-component/`, `.claude/skills/msbuild/` (the curated .NET skills; ADR-0042, `docs/dotnet-skills.md` in the kit) | Copied unchanged from [dotnet/skills](https://github.com/dotnet/skills/tree/96c3d68dad2855e3ab5178aa1a262789d86a1466) at commit `96c3d68` (2026-11-06), retrieved 2026-11-10 | MIT, Copyright (c) .NET Foundation and Contributors (the text below) |
-| The `quotes` of each rule in `docs/standards/` (ADR-0082) | Short passages quoted word for word, unchanged, from each cited page, each with its URL and the date read | Each page's own license, as its source repo states it, checked 2026-11-17: CC-BY-4.0 for the Microsoft Learn docs from dotnet/docs, dotnet/AspNetCore.Docs, dotnet/EntityFramework.Docs, dotnet/docs-maui, MicrosoftDocs/windows-dev-docs, MicrosoftDocs/azure-docs, MicrosoftDocs/sql-docs, MicrosoftDocs/azure-aks-docs and MicrosoftDocs/SecurityBenchmarks; MIT for the NuGet docs (NuGet/docs.microsoft.com-nuget, Copyright (c) .NET Foundation) and the Microsoft Entra docs (MicrosoftDocs/entra-docs, Copyright (c) Microsoft Corporation), the text below; not verified for the Azure Well-Architected Framework and Azure Architecture Center pages, whose source repos aren't public; GitHub Docs, CC-BY-4.0; OWASP's Cheat Sheet Series, ASVS and API Security Top 10, CC-BY-SA-4.0; microsoft/vs-threading's analyzer pages and aspire.dev, MIT, Copyright (c) Microsoft Corporation (the text below); ossf/scorecard-action, Apache-2.0. The W3C pages are under the [W3C Document License](https://www.w3.org/copyright/document-license-2023/), whose notices are: [WCAG 2.2](https://www.w3.org/TR/WCAG22/), "Copyright © 2020-2024 World Wide Web Consortium. W3C® liability, trademark and document use rules apply.", W3C Recommendation 12 December 2024; [WCAG2ICT for WCAG 2.2](https://www.w3.org/TR/wcag2ict-22/), "Copyright © 2022-2025 World Wide Web Consortium. W3C® liability, trademark and document use rules apply.", W3C Group Note 11 December 2025 |
+| `.claude/skills/dotnet-webapi/`, `.claude/skills/optimizing-ef-core-queries/`, `.claude/skills/analyzing-dotnet-performance/`, `.claude/skills/run-tests/`, `.claude/skills/filter-syntax/`, `.claude/skills/migrate-xunit-to-xunit-v3/`, `.claude/skills/migrate-vstest-to-mtp/`, `.claude/skills/convert-to-cpm/`, `.claude/skills/author-component/`, `.claude/skills/msbuild/` (the curated .NET skills; the kit's ADR-0042, `docs/dotnet-skills.md` in the kit) | Copied unchanged from [dotnet/skills](https://github.com/dotnet/skills/tree/96c3d68dad2855e3ab5178aa1a262789d86a1466) at commit `96c3d68` (2026-11-06), retrieved 2026-11-10 | MIT, Copyright (c) .NET Foundation and Contributors (the text below) |
 
-## dotnet/runtime, dotnet/sdk, dotnet/aspnetcore, dotnet/skills and microsoft/aspire, and the NuGet docs' quotes (whose notice reads "Copyright (c) .NET Foundation")
+## Quoted passages in `docs/standards/`
+
+The `quotes` of the rules in `docs/standards/` (the kit's ADR-0082) are short passages from the works below, each with its page's URL and the date it was read. They're copied word for word: no word is changed, though formatting is left out (links, emphasis, code marks, curly quotes and spacing), and some are one sentence of a longer passage. Each rule's `statement` beside them restates its quotes; whether a close restatement of a ShareAlike work's text counts as adapted material is an open question for the owner, in the kit's ADR-0094. The quotes stay under their own licenses: the kit having no license of its own (the kit's ADR-0031) doesn't restrict them. The table names each work's title, author, source and license, with links, as Creative Commons recommends, and where the license is stated (the kit's ADR-0094). This records what each source states; it isn't legal advice.
+
+<!-- quotes from docs/standards: generated by Build-AuthoritiesPage.ps1 from docs/authorities.yml; edit those, not this block (ADR-0094) -->
+The rules quote 743 passages from 21 works.
+
+| Work | Author | License | License stated in | Quotes | Quoted in |
+|---|---|---|---|---|---|
+| [.NET documentation](https://learn.microsoft.com/dotnet/) | Microsoft and contributors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://github.com/dotnet/docs/blob/main/LICENSE>, checked 2026-11-25 | 273 | [architecture.md](docs/standards/architecture.md), [code-style.md](docs/standards/code-style.md), [craft.md](docs/standards/craft.md), [csharp.md](docs/standards/csharp.md), [dotnet.md](docs/standards/dotnet.md), [hosting.md](docs/standards/hosting.md), [operations.md](docs/standards/operations.md), [security.md](docs/standards/security.md), [supply-chain.md](docs/standards/supply-chain.md), [testing.md](docs/standards/testing.md) |
+| [.NET MAUI documentation](https://learn.microsoft.com/dotnet/maui/) | Microsoft and contributors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://github.com/dotnet/docs-maui/blob/main/LICENSE>, checked 2026-11-25 | 67 | [architecture.md](docs/standards/architecture.md), [maui.md](docs/standards/maui.md), [ui.md](docs/standards/ui.md) |
+| [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/) | Microsoft and contributors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://github.com/dotnet/AspNetCore.Docs/blob/main/LICENSE>, checked 2026-11-25 | 232 | [api-design.md](docs/standards/api-design.md), [aspnetcore.md](docs/standards/aspnetcore.md), [blazor.md](docs/standards/blazor.md), [data.md](docs/standards/data.md), [operations.md](docs/standards/operations.md), [security.md](docs/standards/security.md) |
+| [Aspire documentation](https://aspire.dev/) | Microsoft and contributors; Copyright (c) Microsoft Corporation | [MIT License](https://opensource.org/license/mit) | <https://github.com/microsoft/aspire.dev/blob/main/LICENSE>, checked 2026-11-25 | 1 | [operations.md](docs/standards/operations.md) |
+| [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/) | Microsoft | [Microsoft Learn terms of use, no open license](https://learn.microsoft.com/legal/termsofuse) | <https://learn.microsoft.com/legal/termsofuse>, checked 2026-11-25 | 15 | [api-design.md](docs/standards/api-design.md) |
+| [Azure Kubernetes Service documentation](https://learn.microsoft.com/azure/aks/) | Microsoft | [Microsoft Learn terms of use, no open license](https://learn.microsoft.com/legal/termsofuse) | <https://learn.microsoft.com/legal/termsofuse>, checked 2026-11-25 | 1 | [data.md](docs/standards/data.md) |
+| [Azure SQL documentation](https://learn.microsoft.com/azure/azure-sql/) | Microsoft and contributors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://github.com/MicrosoftDocs/sql-docs/blob/live/LICENSE>, checked 2026-11-25 | 1 | [data.md](docs/standards/data.md) |
+| [Azure Well-Architected Framework](https://learn.microsoft.com/azure/well-architected/) | Microsoft | [Microsoft Learn terms of use, no open license](https://learn.microsoft.com/legal/termsofuse) | <https://learn.microsoft.com/legal/termsofuse>, checked 2026-11-25 | 17 | [architecture.md](docs/standards/architecture.md), [operations.md](docs/standards/operations.md), [supply-chain.md](docs/standards/supply-chain.md) |
+| [Entity Framework Core documentation](https://learn.microsoft.com/ef/core/) | Microsoft and contributors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://github.com/dotnet/EntityFramework.Docs/blob/main/LICENSE>, checked 2026-11-25 | 64 | [data.md](docs/standards/data.md) |
+| [GitHub Docs](https://docs.github.com/) | GitHub and contributors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://github.com/github/docs/blob/main/LICENSE>, checked 2026-11-25 | 2 | [security.md](docs/standards/security.md) |
+| [Guidance on Applying WCAG 2 to Non-Web Information and Communications Technologies (WCAG2ICT)](https://www.w3.org/TR/wcag2ict-22/) | W3C Accessibility Guidelines Working Group | [W3C Document License (2023)](https://www.w3.org/copyright/document-license-2023/) | <https://www.w3.org/TR/wcag2ict-22/>, checked 2026-11-25 | 2 | [ui.md](docs/standards/ui.md) |
+| [Microsoft cloud security benchmark](https://learn.microsoft.com/security/benchmark/azure/) | Microsoft | [Microsoft Learn terms of use, no open license](https://learn.microsoft.com/legal/termsofuse) | <https://learn.microsoft.com/legal/termsofuse>, checked 2026-11-25 | 1 | [supply-chain.md](docs/standards/supply-chain.md) |
+| [Microsoft identity platform documentation](https://learn.microsoft.com/entra/identity-platform/) | Microsoft and contributors; Copyright (c) Microsoft Corporation | [MIT License](https://opensource.org/license/mit) | <https://github.com/MicrosoftDocs/entra-docs/blob/main/LICENSE>, checked 2026-11-25 | 2 | [security.md](docs/standards/security.md) |
+| [Microsoft.VisualStudio.Threading analyzers documentation](https://github.com/microsoft/vs-threading/tree/main/docfx/analyzers) | Microsoft and contributors; Copyright (c) Microsoft Corporation | [MIT License](https://opensource.org/license/mit) | <https://github.com/microsoft/vs-threading/blob/main/LICENSE>, checked 2026-11-25 | 2 | [code-style.md](docs/standards/code-style.md) |
+| [NuGet documentation](https://learn.microsoft.com/nuget/) | Microsoft and contributors; Copyright (c) .NET Foundation | [MIT License](https://opensource.org/license/mit) | <https://github.com/NuGet/docs.microsoft.com-nuget/blob/main/LICENSE>, checked 2026-11-25 | 5 | [supply-chain.md](docs/standards/supply-chain.md) |
+| [OpenSSF Scorecard Action README](https://github.com/ossf/scorecard-action) | Security Scorecard Authors; Copyright 2020 Security Scorecard Authors | [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) | <https://github.com/ossf/scorecard-action/blob/main/LICENSE>, checked 2026-11-25 | 4 | [supply-chain.md](docs/standards/supply-chain.md) |
+| [OWASP API Security Top 10 2023](https://api-security.owasp.org/) | The OWASP API Security Project (Erez Yallon, Inon Shkedy, Paulo Silva) and contributors; Copyright © 2003-2023 The OWASP Foundation | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | <https://github.com/OWASP/API-Security/blob/master/editions/2023/en/0x01-about-owasp.md>, checked 2026-11-25 | 10 | [security.md](docs/standards/security.md) |
+| [OWASP Application Security Verification Standard 5.0.0](https://github.com/OWASP/ASVS/tree/v5.0.0/5.0) | The OWASP ASVS project leaders and contributors; Copyright © 2008-2025 The OWASP Foundation | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | <https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x01-Frontispiece.md>, checked 2026-11-25 | 10 | [security.md](docs/standards/security.md) |
+| [OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/) | The OWASP Cheat Sheet Series contributors | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | <https://github.com/OWASP/CheatSheetSeries/blob/master/LICENSE.md>, checked 2026-11-25 | 8 | [craft.md](docs/standards/craft.md), [data.md](docs/standards/data.md), [security.md](docs/standards/security.md) |
+| [Web Content Accessibility Guidelines (WCAG) 2.2](https://www.w3.org/TR/WCAG22/) | W3C Accessibility Guidelines Working Group | [W3C Document License (2023)](https://www.w3.org/copyright/document-license-2023/) | <https://www.w3.org/TR/WCAG22/>, checked 2026-11-25 | 22 | [ui.md](docs/standards/ui.md) |
+| [Windows app development documentation](https://learn.microsoft.com/windows/apps/) | Microsoft and contributors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://github.com/MicrosoftDocs/windows-dev-docs/blob/docs/LICENSE>, checked 2026-11-25 | 4 | [architecture.md](docs/standards/architecture.md) |
+
+- [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/): its ShareAlike term covers adapted material; the quotes are copied unchanged (the kit's ADR-0094).
+- [MIT License](https://opensource.org/license/mit): its text is below; each MIT work's copyright line is in its row.
+- [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0): its text is below.
+- [W3C Document License (2023)](https://www.w3.org/copyright/document-license-2023/): it asks each copy to keep the document's copyright notice and status, given for each W3C work in this list.
+- [Microsoft Learn terms of use, no open license](https://learn.microsoft.com/legal/termsofuse): these pages' source repos aren't public and the pages name no license of their own, so only Microsoft's terms of use apply, which allow copying for personal, non-commercial use. The kit quotes a sentence or two from each, credited and linked, to show what each rule rests on. Whether to keep them as quotes is an open question for the owner, recorded in the kit's ADR-0094.
+- [Guidance on Applying WCAG 2 to Non-Web Information and Communications Technologies (WCAG2ICT)](https://www.w3.org/TR/wcag2ict-22/): Copyright © 2022-2025 World Wide Web Consortium. W3C® liability, trademark and document use rules apply. Status, W3C Group Note 11 December 2025.
+- [Web Content Accessibility Guidelines (WCAG) 2.2](https://www.w3.org/TR/WCAG22/): Copyright © 2020-2024 World Wide Web Consortium. W3C® liability, trademark and document use rules apply. Status, W3C Recommendation 12 December 2024.
+<!-- end quotes -->
+
+## dotnet/runtime, dotnet/sdk, dotnet/aspnetcore, dotnet/skills and microsoft/aspire
 
 ```text
 The MIT License (MIT)
@@ -42,7 +81,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## dotnet/docs (code), dotnet/AspNetCore.Docs (code) and microsoft/aspire.dev, and the quotes from MicrosoftDocs/entra-docs and microsoft/vs-threading
+## dotnet/docs (code), dotnet/AspNetCore.Docs (code) and microsoft/aspire.dev
 
 ```text
 The MIT License (MIT)
@@ -62,4 +101,212 @@ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPO
 IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+## Apache License 2.0
+
+The license's text as the Apache Software Foundation publishes it at <https://www.apache.org/licenses/LICENSE-2.0.txt>, retrieved 2026-11-25.
+
+```text
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 ```

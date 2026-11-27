@@ -1,24 +1,34 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kit.AppTests.Functional;
 
-/// <summary>How the kit's host checks start the fixture site: in memory, through WebApplicationFactory.</summary>
+/// <summary>The fixture's one host for the kit's host checks: the site, in memory, through WebApplicationFactory.</summary>
 internal static partial class AppHost
 {
-    public static partial IAppUnderTest Start(string environment, IReadOnlyDictionary<string, string> settings, Action<IServiceCollection> services) =>
-        new SiteHost(environment, settings, services);
+    public static partial IReadOnlyList<HostUnderTest> Hosts => [new Site()];
 
-    public static partial IReadOnlyCollection<string> AnonymousRoutes => [];
+    private sealed class Site : HostUnderTest
+    {
+        public override string Name => "Contoso.Site";
 
-    public static partial string SignedInRoute => "/";
+        public override IReadOnlyCollection<string> AnonymousRoutes => [];
 
-    public static partial bool ServesHttpApi => false;
+        public override string SignedInRoute => "/";
 
-    // The site's endpoints are public. The Pester test sets KIT_FIXTURE_SIGN_IN to run the same build as an app whose
-    // endpoints mostly require sign-in.
-    public static partial bool MostEndpointsRequireSignIn => Environment.GetEnvironmentVariable("KIT_FIXTURE_SIGN_IN") == "true";
+        public override bool ServesHttpApi => false;
+
+        public override IReadOnlyCollection<Assembly> ContractAssemblies => [];
+
+        // The site's endpoints are public. The Pester test sets KIT_FIXTURE_SIGN_IN to run the same build as an app
+        // whose endpoints mostly require sign-in.
+        public override bool MostEndpointsRequireSignIn => Environment.GetEnvironmentVariable("KIT_FIXTURE_SIGN_IN") == "true";
+
+        public override IAppUnderTest Start(string environment, IReadOnlyDictionary<string, string> settings, Action<IServiceCollection> services) =>
+            new SiteHost(environment, settings, services);
+    }
 }
 
 /// <summary>The fixture site, in memory. Nobody signs in, so every client is anonymous.</summary>

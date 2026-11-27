@@ -45,6 +45,7 @@ Accepted as recommended (owner, 2026-11-01).
   - `initial-version: 0.1.0`, since the first release otherwise defaults to 1.0.0.
   - release-please keeps the current version in `.release-please-manifest.json` and writes each release's notes, headed by its version, to `CHANGELOG.md`. SUP-006 is reworded to allow those two records, which no build reads.
 - `tools/tests/ReleaseConfig.Tests.ps1` checks `release.yml` and the config.
+- **Update (2026-11-25):** the release job moved into `.github/workflows/release-please.reusable.yml`, which the kit's `release.yml` calls and every app's `release.yml` calls pinned to a kit release, so apps release the same way (ADR-0096). The config is unchanged. Each release takes the Semantic Versioning number its commits earn; ADR-0096 says how release-please maps Conventional Commits to versions before and after 1.0.0.
 
 ## Pillars affected
 

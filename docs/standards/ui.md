@@ -189,6 +189,8 @@ rules:
 
 # UI and accessibility
 
+The quotes from WCAG 2.2 and WCAG2ICT in this file are W3C documents' text: their copyright notices and status are in the "Quoted passages" section of `THIRD-PARTY-NOTICES.md`, at the root of this repo.
+
 Every UI an app ships meets WCAG 2.2 level AA (UI-001, ADR-0046). WCAG, the Web Content Accessibility Guidelines, is W3C's standard for making UI usable by people with disabilities: for example, someone who uses a screen reader, or moves through a page with the Tab key because they can't use a mouse. Level AA means every level A and level AA success criterion.
 
 WCAG is written for web content. For a MAUI or desktop app, W3C's WCAG2ICT note says how each level A and AA criterion applies to software that isn't web: for example, read "CSS pixels" as the platform's density-independent unit (dp on Android, pt on iOS and macOS, epx on Windows; MAUI's own units are already device-independent).

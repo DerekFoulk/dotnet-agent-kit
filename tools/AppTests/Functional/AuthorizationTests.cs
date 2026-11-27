@@ -11,16 +11,16 @@ namespace Kit.AppTests.Functional;
 /// Sign-in is required by default (SEC-017): a fallback authorization policy that requires a signed-in user, and only
 /// the endpoints the app lists in its part of <see cref="AppHost"/> opt out with AllowAnonymous. SEC-017 asks for this
 /// only where most or all endpoints require authentication, so both checks skip in an app whose endpoints are mostly
-/// public (<see cref="AppHost.MostEndpointsRequireSignIn"/>).
+/// public (<see cref="HostUnderTest.MostEndpointsRequireSignIn"/>).
 /// </summary>
 public sealed class AuthorizationTests
 {
-    [Fact]
-    public void TheFallbackPolicyRequiresASignedInUser()
+    [Theory]
+    [EachHost]
+    public void TheFallbackPolicyRequiresASignedInUser(string host)
     {
-        Assert.SkipUnless(AppHost.MostEndpointsRequireSignIn, AppHost.MostEndpointsArePublic);
-
-        using IAppUnderTest app = AppHost.Start(Environments.Production);
+        Assert.SkipUnless(AppHost.Named(host).MostEndpointsRequireSignIn, AppHost.MostEndpointsArePublic);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Production);
 
         AuthorizationPolicy? fallback = app.Services.GetRequiredService<IOptions<AuthorizationOptions>>().Value.FallbackPolicy;
 
@@ -29,18 +29,18 @@ public sealed class AuthorizationTests
     }
 
     // An endpoint added to the app's list is a decision, made in review, that the whole internet may call it.
-    [Fact]
-    public void OnlyTheEndpointsTheAppListsAllowAnonymousCallers()
+    [Theory]
+    [EachHost]
+    public void OnlyTheEndpointsTheAppListsAllowAnonymousCallers(string host)
     {
-        Assert.SkipUnless(AppHost.MostEndpointsRequireSignIn, AppHost.MostEndpointsArePublic);
-
-        using IAppUnderTest app = AppHost.Start(Environments.Development);
+        Assert.SkipUnless(AppHost.Named(host).MostEndpointsRequireSignIn, AppHost.MostEndpointsArePublic);
+        using IAppUnderTest app = AppHost.Named(host).Start(Environments.Development);
 
         IEnumerable<string?> anonymous = app.Services.GetRequiredService<EndpointDataSource>().Endpoints
             .OfType<RouteEndpoint>()
             .Where(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null)
             .Select(endpoint => endpoint.RoutePattern.RawText);
 
-        anonymous.Should().BeEquivalentTo(AppHost.AnonymousRoutes);
+        anonymous.Should().BeEquivalentTo(AppHost.Named(host).AnonymousRoutes);
     }
 }

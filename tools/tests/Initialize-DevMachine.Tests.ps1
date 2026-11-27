@@ -61,9 +61,47 @@ Describe 'Get-DevMachineCheck' {
 
         $checks.Name | Should -Be @(
             'PowerShell 7.6+', 'Pester 6', 'Pester files signed', 'powershell-yaml', 'Git', 'GitHub CLI', 'GitHub CLI signed in',
-            '.NET SDK 10.0.403', 'Claude Code', 'Git commit-msg hook', 'VS Code', 'VS Code PowerShell extension', 'Docker'
+            '.NET SDK 10.0.403', 'Claude Code', 'Git commit-msg hook', 'VS Code', 'VS Code PowerShell extension', 'Docker', 'Docker running'
         )
         @($checks | Where-Object Required).Count | Should -Be 10
+    }
+
+    # GAP-025: the sample's database tests start SQL Server in Docker (Testcontainers), so a local run needs it running;
+    # without it they're skipped there. It's optional: nothing else needs it.
+    It 'reports whether Docker is running, as an optional check' {
+        (Get-Check 'Docker running').Required | Should -BeFalse
+    }
+
+    It 'Docker running is <Expected> when docker info exits <ExitCode>' -ForEach @(
+        @{ ExitCode = 0; Expected = $true }
+        @{ ExitCode = 1; Expected = $false }
+    ) {
+        Mock Test-CommandAvailable { $true }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = $ExitCode; Output = @() } } -ParameterFilter { $FilePath -eq 'docker' -and $Arguments[0] -eq 'info' }
+
+        & (Get-Check 'Docker running').Test | Should -Be $Expected
+    }
+
+    It 'says to start Docker when it isn''t running' {
+        Mock Test-CommandAvailable { $true }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
+
+        $result = Invoke-DevMachineCheck -Check (Get-Check 'Docker running')
+
+        $result.Status | Should -Be 'action'
+        $result.ManualAction | Should -BeLike '*Start Docker*database tests*'
+    }
+
+    It 'skips the Docker running check when Docker isn''t installed' {
+        Mock Test-CommandAvailable { $false }
+        Mock Invoke-Native { [pscustomobject]@{ ExitCode = 1; Output = @() } }
+
+        $result = Invoke-DevMachineCheck -Check (Get-Check 'Docker running')
+
+        $result.Status | Should -Be 'skipped'
+        $result.ManualAction | Should -BeLike '*Docker isn''t installed*'
+        Should -Invoke Invoke-Native -Times 0
     }
 
     It 'turns the commit-msg hook on for this clone only' {

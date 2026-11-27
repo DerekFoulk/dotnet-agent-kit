@@ -4,7 +4,7 @@ A versioned engineering method for .NET apps built with coding agents. It gives 
 
 Work in progress (v0.1, not yet released).
 
-This repo is public so its CI, and the CI of any public app that uses it, runs free (ADR-0031). It isn't licensed for reuse: all rights reserved. A few files are based on the .NET projects' MIT-licensed work; their notices are in `THIRD-PARTY-NOTICES.md`.
+This repo is public so its CI, and the CI of any public app that uses it, runs free (ADR-0031). It isn't licensed for reuse: all rights reserved. A few files are based on the .NET projects' MIT-licensed work, and the rules quote short passages from Microsoft Learn, the W3C, OWASP and others; their notices, with each quoted work's title, author, source and license, are in `THIRD-PARTY-NOTICES.md` (ADR-0094).
 
 **On this page:** [What it is](#what-it-is) · [Who it's for](#who-its-for) · [Why use it](#why-use-it) · [How a task flows](#how-a-task-flows) · [Where mistakes are caught](#where-mistakes-are-caught) · [Whose rules win](#whose-rules-win) · [Three sources of a recommendation](#three-sources-of-a-recommendation) · [Learn more](#learn-more) · then the reference, from [Set up a machine](#set-up-a-machine) on.
 
@@ -149,7 +149,7 @@ A rule's `basis` says why it exists, which is a separate question from its layer
 Who counts as an authority is ADR-0063's call: Microsoft, standards bodies (the W3C, OWASP, OpenSSF, the IETF) and the vendors of the tools the kit uses. A person's book or blog (Martin Fowler, Robert C. Martin) can back the owner's choice, but a rule resting on one alone is a preference. Two checks hold the form of this in CI:
 
 - `tools/Test-RuleSources.ps1` fails a rule with no source, an `authority` rule that cites no URL, and a `preference` rule that cites neither the owner nor an ADR (ADR-0063).
-- `tools/Build-AuthoritiesPage.ps1 -Check` fails a cited page whose publisher isn't classed, an `authority` rule that cites no page from an authority or a tool's own vendor (ADR-0073), and a stale [`docs/authorities.md`](docs/authorities.md), the generated list of every source the rules cite, by publisher.
+- `tools/Build-AuthoritiesPage.ps1 -Check` fails a cited page whose publisher isn't classed, an `authority` rule that cites no page from an authority or a tool's own vendor (ADR-0073), and a stale [`docs/authorities.md`](docs/authorities.md), the generated list of every source the rules cite, by publisher. It also fails a stored quote whose work has no license in `docs/authorities.yml`, and a stale quotes block in `THIRD-PARTY-NOTICES.md`, which credits each quoted work (ADR-0094).
 
 Whether a rule says only what its source says is still a reviewer's question: no tool reads the pages.
 
@@ -255,7 +255,7 @@ Four checks keep these honest. Each exits 0 when clean and 1 otherwise:
 
 ```powershell
 ./tools/Test-RuleSources.ps1          # every rule has a valid source (owner + date, ADR, or URL + retrieval date) and an enforcement
-./tools/Build-AuthoritiesPage.ps1 -Check  # every cited page's publisher is classed, and docs/authorities.md is current (ADR-0073)
+./tools/Build-AuthoritiesPage.ps1 -Check  # every cited page's publisher is classed, every quoted work has its license, and both generated blocks are current (ADR-0073, ADR-0094)
 ./tools/Test-Scorecard.ps1            # every rule in force has a quality area, and the scorecard's table matches the rules
 ./tools/Test-AdrSections.ps1          # every ADR has its required sections and at least two options with trade-offs
 ```
@@ -337,7 +337,7 @@ Three more workflows act rather than check:
 
 | Workflow | What it does |
 |---|---|
-| `release.yml` | On every push to `main`, release-please keeps a release PR open with the next version and its notes; merging that PR tags `vX.Y.Z` (ADR-0022) |
+| `release.yml` | On every push to `main`, release-please, through `release-please.reusable.yml`, keeps a release PR open with the next version and its notes; merging that PR tags `vX.Y.Z` (ADR-0022). Each release takes the Semantic Versioning number its Conventional Commits earn: before 1.0.0, a `fix` bumps the patch, and a `feat` or a breaking change the minor; from 1.0.0 on, a breaking change bumps the major. 1.0.0 itself is the owner's call: a commit with a `Release-As: 1.0.0` footer, never `release-as` in the config, which every app shares (ADR-0096). Every app runs the same job |
 | `dependabot-lockfiles.yml` | On Dependabot's NuGet PRs, refreshes every lock file (Dependabot misses the ones that get a package through a project reference) and pushes them as a `chore(deps)` commit. On its PMD PRs, downloads the new release zip and its signature, checks the signature with gpg against PMD's release key pinned in `.config/pmd`, and pins the zip's SHA-256, which must equal GitHub's digest for it, the same way (ADR-0060) |
 | `nuget-trust.yml` | Daily, compares the nuget.org certificates `nuget.config` trusts with the ones nuget.org's service index announces (`tools/Test-NuGetTrustedSigners.ps1`), and opens an issue when they differ, so the kit runs `dotnet nuget trust sync nuget.org` before a restore fails (SUP-012, ADR-0066). On a pull request that changes it or `nuget.config` it only runs the check |
 
@@ -406,7 +406,10 @@ jobs:
 | `secret-scan.reusable.yml` | Not a required check: from the app's `secret-scan.yml`, the gitleaks scan of every push to a branch other than `main` and every tag push (ADR-0024). On a private app each run uses about a minute of the account's Actions allowance ($0.006 a minute beyond it, ADR-0024). An app made before `secret-scan.yml` joined the template adds it by hand ("WorkflowByHand") |
 | `scorecard.reusable.yml` | Not a pull request check: OpenSSF Scorecard on `main` and weekly, from the app's `scorecard.yml`, publishing the score. Skipped on a private app, where the action publishes nothing and code scanning needs a paid licence. An app made before `scorecard.yml` joined the template adds it by hand ("WorkflowByHand") |
 | `app-checks.reusable.yml` | On pull requests: the PR title, the commit subjects and red→green order. Always: ADR sections, when the app has `docs/adr`, the runbook, `docs/runbook.md` (OPS-004), which fails when it's missing, the architecture diagram, `docs/architecture/modules.md` (ARC-013), which fails when it's missing or empty, and every EF Core migration's `Up`, which mustn't drop or rename what the running version uses without a reason (DAT-003). Called from any other event, it fails rather than pass having checked nothing |
+| `release-please.reusable.yml` | Not a check: from the app's `release.yml`, on every push to `main`, release-please keeps the app's release PR open, with the next version its Conventional Commits earn and its notes, and approves that PR's waiting CI runs; merging it tags `vX.Y.Z`, which MinVer builds take their version from. It reads the app's `release-please-config.json` (the kit's, which the sync keeps current) and `.release-please-manifest.json` (the app's own, from `0.0.0`, so the first release is `0.1.0`). An app made before `release.yml` joined the template adds it by hand ("WorkflowByHand"), and turns on "Allow GitHub Actions to create and approve pull requests" in its repo settings (Actions › General › Workflow permissions), which `New-KitApp` sets for new apps; without it, release-please can't open the release PR. On a private app, each push to `main` uses about two minutes of the account's Actions allowance ($0.006 a minute beyond it, ADR-0031) (ADR-0096) |
 | `kit-sync.reusable.yml` | Not a check: on Dependabot's kit-pin PR, brings the release's other kit-managed files into it (see "Keep an app current"). Called from anything but Dependabot's own GitHub Actions PR, it fails |
+
+`dotnet-ci.reusable.yml` and `app-checks.reusable.yml` also take an `app-bundle` input, which only the kit's own CI passes: its fresh-app jobs run these workflows on a freshly exported web-api app and blazor app, so a kit change that would break an app's required checks fails the kit first (ADR-0095). An app leaves it out.
 
 The gates assume the app has the kit's build files: `global.json` (SDK pin and the Microsoft Testing Platform runner), `Directory.Build.props` (warnings as errors, analyzers, lock files, NuGet audit), `Directory.Packages.props`, `.editorconfig` (with `THIRD-PARTY-NOTICES.md`, which carries its MIT notices), `.globalconfig`, `CodeMetricsConfig.txt` and `BannedSymbols.txt` (the craft checks, ADR-0043; without them the metric limits and bans do nothing), and a committed `packages.lock.json` per project. Without them, "locked restore" has no lock files to enforce. `New-KitApp` (PR D2) creates them, and the kit sync keeps them current (see "Keep an app current" below).
 
@@ -419,7 +422,7 @@ The gates assume the app has the kit's build files: `global.json` (SDK pin and t
 ```
 
 - The files come from a clean checkout of `-KitRef` (a temporary git worktree), never from your working tree, so an uncommitted edit can't reach an app.
-- The app gets the kit's build files, agent files, skills (except the kit-only `new-app` skill), code-review instructions, standards and commit hook unchanged, except that its `.claude/settings.json` leaves out the rules for kit scripts it doesn't get (such as `New-KitApp`); the checking scripts in `.kit/tools/`; the database guide, `docs/database-guide.md`; and its own `AGENTS.md`, `THIRD-PARTY-NOTICES.md`, `README.md`, `<Name>.slnx` (no projects yet), CI callers pinned to the kit commit, a Draft runbook (`docs/runbook.md`) to fill in before its first deployment, and a `.github/dependabot.yml` for its NuGet packages and the kit pin, rendered from `templates/app/`. Its agent rule files are generated during the export.
+- The app gets the kit's build files, agent files, skills (except the kit-only `new-app` skill), code-review instructions, standards and commit hook unchanged, except that its `.claude/settings.json` leaves out the rules for kit scripts it doesn't get (such as `New-KitApp`); the checking scripts in `.kit/tools/`; the database guide, `docs/database-guide.md`; and its own `AGENTS.md`, `THIRD-PARTY-NOTICES.md`, `README.md`, `<Name>.slnx` (no projects yet), CI and release callers pinned to the kit commit, the kit's `release-please-config.json` and a `.release-please-manifest.json` of its own at `0.0.0` (ADR-0096), a Draft runbook (`docs/runbook.md`) to fill in before its first deployment, and a `.github/dependabot.yml` for its NuGet packages and the kit pin, rendered from `templates/app/`. Its agent rule files are generated during the export.
 - `Directory.Packages.props` keeps the kit's build and test packages and drops the ones in the `ItemGroup` labelled `Sample app`.
 - `.kit/manifest.json` records the kit version (the release tag on the commit, or `unreleased`) and commit, and the SHA-256 of every file the kit manages, taken over the text with LF line endings so it's the same on every checkout. The kit sync uses it to know what it may replace, and `appName` to export the app again. In `AGENTS.md` and `THIRD-PARTY-NOTICES.md`, only the block between `kit:begin` and `kit:end` is the kit's.
 - It refuses a folder that isn't empty, a name that isn't a dotted .NET name (or contains a Windows device name such as `Con`), and a ref that isn't a commit or tag, before writing anything. If it fails partway, it removes what it wrote.
@@ -451,12 +454,13 @@ It checks first, before changing anything: the app and repo names, an empty fold
 2. Writes the intake answers to `docs/app-profile.md`, which the app owns: the kit sync never changes it.
 3. Makes the first commit, `chore: start from dotnet-agent-kit <version>`, with the commit hook stored as executable for Linux and macOS.
 4. Creates the repo, private for now, with the kit's merge settings (`templates/github/repo.json`): merge commits only, titled with the PR title and an empty body, branches deleted after merging, no wiki.
-5. Pushes `main`.
-6. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved. It doesn't request Copilot code review: the reviewer agent reviews instead (ADR-0067).
-7. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
-8. Requires every GitHub Action in a workflow to be pinned to a full commit SHA (`templates/github/actions.json`, SUP-008).
-9. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, requires approval before any fork's PR runs (`templates/github/public.json`), and adds a "code scanning" ruleset that blocks a merge on a CodeQL error or a high security alert (`templates/github/code-scanning.json`, SEC-006). A private app doesn't run CodeQL, and a rule requiring it would block every merge, so it doesn't get that ruleset. Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
-10. Turns the commit hook on in the local copy.
+5. Lets GitHub Actions create and approve pull requests, so release-please can open the app's release PR with the workflow's own token, and keeps workflow tokens read-only by default (`templates/github/workflow-permissions.json`, ADR-0096). It comes before the push, which starts the first `release.yml` run.
+6. Pushes `main`.
+7. Adds the "main protection" ruleset (`templates/github/main-protection.json`), after the push so it doesn't reject it. It requires `dotnet / Build, test and package checks`, `dotnet / Secret scan (gitleaks)` and `app / App checks`, and every review thread resolved. It doesn't request Copilot code review: the reviewer agent reviews instead (ADR-0067).
+8. Turns on Dependabot alerts and security updates, so a known vulnerability gets its fix PR without waiting for the cooldown (ADR-0041). Turning alerts on also turns on the dependency graph, private repos included.
+9. Requires every GitHub Action in a workflow to be pinned to a full commit SHA (`templates/github/actions.json`, SUP-008).
+10. Unless `-Private` is set: makes it public only now, so a failure before this leaves a private repo, then turns on secret scanning and push protection, requires approval before any fork's PR runs (`templates/github/public.json`), and adds a "code scanning" ruleset that blocks a merge on a CodeQL error or a high security alert (`templates/github/code-scanning.json`, SEC-006). A private app doesn't run CodeQL, and a rule requiring it would block every merge, so it doesn't get that ruleset. Set "only collaborators can open issues" yourself in the repo's settings; GitHub has no API for it.
+11. Turns the commit hook on in the local copy.
 
 If a step fails, it stops and says what's done and what's left, and whether the repo or the folder is kept. It never deletes a repo. Claude Code asks before running it.
 

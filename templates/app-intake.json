@@ -528,7 +528,7 @@
         }
       ],
       "tools": [
-        { "id": "openapi-snapshot", "role": "api-snapshot", "name": "OpenAPI snapshot test", "package": "Microsoft.AspNetCore.OpenApi", "license": "MIT", "cost": { "label": "Free" }, "note": "The API's OpenAPI document must match a committed snapshot, as in the kit's sample (ContractTests.cs)" },
+        { "id": "openapi-snapshot", "role": "api-snapshot", "name": "OpenAPI snapshot test", "package": "Microsoft.AspNetCore.OpenApi", "license": "MIT", "cost": { "label": "Free" }, "note": "The API's OpenAPI document must match a committed snapshot, which the kit's shared OpenApiTests check in the FunctionalTests project, at Contract/<host name>/openapi-v1.json" },
         { "id": "package-validation", "role": "package-api", "name": ".NET package validation", "license": "MIT", "cost": { "label": "Free" }, "note": "Part of the .NET SDK; for apps that publish NuGet packages" }
       ]
     },

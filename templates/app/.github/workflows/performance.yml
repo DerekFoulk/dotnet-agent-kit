@@ -4,6 +4,12 @@
 # here (the kit's docs/standards/testing.md, "Performance and load tests"):
 #       load-test-project: src/{{Name}}.Api/{{Name}}.Api.csproj
 #       load-test-user-jwt: true
+# and, on SQL Server, the image its tests pin and its migrations, which dotnet ef applies before the app starts (the
+# kit's ADR-0098; its tool manifest pins dotnet-ef). Add a docker entry for the pin's folder to .github/dependabot.yml,
+# as the kit's own dependabot.yml has for its sample, so the image stays current:
+#       load-test-sql-server-pin: tests/SqlServer/Dockerfile
+#       load-test-migrations-project: src/{{Name}}.Infrastructure/{{Name}}.Infrastructure.csproj
+#       load-test-connection-string: Default
 # This file is the app's: the kit's sync never changes it. The kit is pinned to the commit its release tag points to
 # (ADR-0031); Dependabot moves the pin (kit ADR-0045).
 name: Performance

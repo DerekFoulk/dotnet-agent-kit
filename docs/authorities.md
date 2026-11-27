@@ -26,6 +26,8 @@ flowchart TB
 
 A source is classed by its publisher, not by the site it's on: github.com hosts Microsoft's `dotnet/runtime`, OWASP's ASVS and Deque's axe-core alike, and an archived copy on web.archive.org is classed as the page it archives. Some pages are cited two ways (a Microsoft Learn page with and without `/en-us/`, or with a `#fragment`); each is listed once.
 
+The rules' stored quotes (ADR-0082) are credited separately, work by work, with each work's title, author, source and license, in the "Quoted passages" section of [`THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md), generated from the `works` and `licenses` lists in [`docs/authorities.yml`](authorities.yml) (ADR-0094).
+
 This page isn't [`docs/sources.md`](sources.md). That one is a reading list: the books and blogs read when a standard was written, whether or not a rule cites them.
 
 ## What the check enforces
@@ -35,7 +37,9 @@ This page isn't [`docs/sources.md`](sources.md). That one is a reading list: the
 - a rule cites a page whose publisher `docs/authorities.yml` doesn't list;
 - an entry in `docs/authorities.yml` matches no page the rules cite, or is missing a field;
 - a rule with `basis: authority` cites no page from an authority or a tool or project page (ADR-0063);
-- the block below is out of date.
+- the block below is out of date;
+- a stored quote's page matches no work in `docs/authorities.yml`'s `works`, a work matches no quote, a work or license is incomplete, or a work names a license the list doesn't have;
+- the quotes block of `THIRD-PARTY-NOTICES.md` is out of date (ADR-0094).
 
 When a rule cites a new publisher, add an entry to [`docs/authorities.yml`](authorities.yml), with its name, publisher, kind, what it covers and the URL prefixes of its pages; then run `./tools/Build-AuthoritiesPage.ps1` and commit this page. Rules that are `proposed` aren't in force yet: they're listed, marked "(proposed)". Retired rules are left out.
 
