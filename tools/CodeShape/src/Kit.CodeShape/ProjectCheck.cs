@@ -2,7 +2,8 @@ namespace Kit.CodeShape;
 
 /// <summary>Runs every CRF-011 limit and STY-005's nullable rules over one project's hand-written files. Generated
 /// files are read too, for the state a partial type declares in them, and reported on only when no tool wrote them
-/// into source: outside the project's EF Core Migrations folder, and not a .resx file's designer (STY-005).</summary>
+/// into source: not one of EF Core's migration files in the project's Migrations folder, and not a .resx file's designer
+/// (STY-005).</summary>
 internal static class ProjectCheck
 {
     public static IEnumerable<Finding> Check(ProjectFiles project)

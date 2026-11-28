@@ -50,8 +50,12 @@ Describe 'Release configuration' {
 
             @($permissions.Keys | Sort-Object) | Should -Be @('actions', 'contents', 'issues', 'pull-requests')
             @($permissions.Values | Select-Object -Unique) | Should -Be @('write')
-            # A called workflow's top-level permissions would apply to every job it ever gets.
-            $shared.Yaml.ContainsKey('permissions') | Should -BeFalse
+        }
+
+        It 'grants nothing at its top level, so a job added later gets no write it does not ask for' {
+            # OpenSSF Scorecard's Token-Permissions check flags a workflow with no top-level permissions.
+            $shared.Yaml.ContainsKey('permissions') | Should -BeTrue -Because 'the top level states its permissions'
+            @($shared.Yaml['permissions'].Keys) | Should -HaveCount 0
         }
 
         It 'uses no stored secret: the built-in GITHUB_TOKEN only' {
@@ -104,6 +108,9 @@ Describe 'Release configuration' {
 
             $concurrency | Should -Not -BeNullOrEmpty
             $concurrency['group'] | Should -Match '\$\{\{ github\.repository \}\}'
+            # Written out, not left to GitHub's default: -BeFalse alone also passes for a missing key ($null).
+            $concurrency.ContainsKey('cancel-in-progress') | Should -BeTrue -Because 'the job says it never cancels a run in progress'
+            $concurrency['cancel-in-progress'] | Should -BeOfType [bool]
             $concurrency['cancel-in-progress'] | Should -BeFalse
         }
 

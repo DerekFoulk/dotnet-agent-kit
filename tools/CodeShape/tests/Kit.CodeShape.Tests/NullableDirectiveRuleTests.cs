@@ -27,6 +27,11 @@ public sealed class NullableDirectiveRuleTests
             .Should().BeEmpty();
 
     [Fact]
+    public void AHandWrittenFileInMigrationsMayNotDisableNullable() =>
+        NullableDirectiveRule.Check(new SourceFile(Path.Join("src", "App", "Migrations", "Seeding.cs"), "#nullable disable\nclass Seeding { }\n"))
+            .Should().ContainSingle();
+
+    [Fact]
     public void AFileWithNoDirectiveHasNoFinding() =>
         NullableDirectiveRule.Check(new SourceFile("Tidy.cs", "// #nullable disable, in a comment\nclass Tidy { }\n")).Should().BeEmpty();
 }

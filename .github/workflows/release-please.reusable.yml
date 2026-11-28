@@ -13,6 +13,10 @@ name: release-please
 on:
   workflow_call:
 
+# Nothing at the top level, so a job added here later gets no write it doesn't ask for (OpenSSF Scorecard's
+# Token-Permissions check). The job below asks for its own.
+permissions: {}
+
 jobs:
   release-please:
     name: release-please
