@@ -74,7 +74,7 @@ How:
   Co-Authored-By: ...
   ```
 
-- Never skip hooks. GitHub's "main protection" ruleset rejects direct pushes, force-pushes and deletion of `main`, and allows merge commits only.
+- Never skip hooks. GitHub's "main protection" ruleset rejects direct pushes, force-pushes and deletion of `main`, and allows merge commits only. Where the "release tags" ruleset is on, it rejects moving or deleting a `v*` tag (ADR-0097): a wrong release is fixed forward, with the next version.
 - Before pushing to a PR's branch or reporting on a PR, check that it's still open (`gh pr view <n> --json state`). The owner may merge on his own schedule. If it's merged, put new commits on a fresh branch and open a new PR.
 
 ## Always ask
