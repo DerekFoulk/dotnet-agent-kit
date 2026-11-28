@@ -37,7 +37,7 @@ The kit hasn't released v0.1.0, and no app depends on a rule ID yet. Changing th
 
   | Strength | Taken from the source's wording | A gate on it | The reviewer |
   |---|---|---|---|
-  | `must` | DO, DO NOT, MUST, MUST NOT, never, required; OWASP ASVS's "Verify that"; added at the build, for the owner's yes on its pull request: SHALL, and "always" as an instruction ("Always dispose..."), the opposite of "never" | fails the PR | ranks a breach Blocking |
+  | `must` | DO, DO NOT, MUST, MUST NOT, never, required; OWASP ASVS's "Verify that"; "always" as an instruction ("Always dispose..."), the opposite of "never" (the owner, 2026-11-27: decision 10); added at the build, for the owner's yes on its pull request: SHALL | fails the PR | ranks a breach Blocking |
   | `should` | CONSIDER, AVOID, SHOULD, SHOULD NOT, recommended, prefer; added at the build: a plain imperative ("Use X") on a page of recommendations | warns on the PR | ranks a breach Should fix |
   | `consider` | MAY, can, optionally, and tips | none: the rule is advice in the agent's instructions | ranks it Consider |
 
@@ -82,7 +82,7 @@ Option 1. It's the only one that gives "general C# rules" a home of their own, k
 
 ## Decision
 
-Approved by the owner: Option 1, with all eight recommendations below (decision 8: "Yes to both") ("Approve all six" for 1 to 6, "Yes, add them" for 7). Each question, with the recommended answer he approved:
+Approved by the owner: Option 1, with recommendations 1 to 8 below (decision 8: "Yes to both") ("Approve all six" for 1 to 6, "Yes, add them" for 7). Decision 9 is the build's proposal, which the owner's yes on the strengths pull request accepts, and decision 10 is his ruling of 2026-11-27. Each question, with the recommended answer he approved:
 
 1. **Layers and their names.** Take the list above: csharp, dotnet, aspnetcore, efcore, blazor, web-api, maui, web, ui, github, plus `method` for the kit's own rules. Recommended: yes, since each is a technology a developer already knows by that name.
 2. **IDs stay as they are.** Approved on 2026-11-18 as "renumber by layer, with a rename map", then reversed by the owner on 2026-11-25 ("Keep the IDs") on the agent's revised recommendation. The reasons: stable IDs are the convention (Microsoft's analyzer IDs such as CA1822, OWASP ASVS requirement numbers and CWE numbers never change when their categories move); the topic prefix and the layer folder are two separate groupings, and both survive; and renumbering would have touched every ADR, the scorecard, skills, tests, code comments, BannedSymbols messages and the inventory, with a rename map and a grace period, for a benefit only in how an ID reads.
@@ -106,7 +106,7 @@ Approved by the owner: Option 1, with all eight recommendations below (decision 
       - CS-022 also says "transfer ownership explicitly", a plain imperative, which counts as should;
       - SEC-023 also says "Avoid using generic methods..." and "Allow changes only to the object's properties that should be updated".
 
-      BLZ-005 and CS-038 are the only rules whose every quote is an "always" instruction.
+      BLZ-005 and CS-038 are the only `must` rules whose every quote is an "always" instruction.
     - Beyond those, the build found more mixed rules with a mechanical test. 62 authority `must` rules have a quote with a softer word (should, recommend, prefer, avoid, consider, best practice, important, ideally) and no must-word, SEC-023 and the seven included:
       - API-007, ARC-017, ARC-019;
       - ASP-002 to ASP-012, ASP-015, ASP-016, ASP-017, ASP-020, ASP-021, ASP-023;
