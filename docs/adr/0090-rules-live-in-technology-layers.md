@@ -98,6 +98,29 @@ Approved by the owner: Option 1, with all eight recommendations below (decision 
    - SEC-007 was the case in point. It dropped SEC-017's condition, "most or all endpoints require authentication", so a public site would have had to fake a sign-in policy. It's retired.
    - PR 2 touches every rule anyway, so the move is where each rule gets its `when`, once. That isn't a re-review of the rules' content.
 9. **Rules accepted before strengths carry over at `must`** (proposed by the build, 2026-11-25; the owner's yes on the pull request that adds strengths accepts it). Every kit rule the owner had accepted (`status: accepted`, `basis: preference`) is in force and gated today, so it starts at `must`, with `ratified: ADR-0090` recording that his acceptance carried over. Starting it at `should` would turn its gates into warnings. A kit rule that was only proposed starts at `should`, as decision 7 says, and the owner promoted OPS-004 and ARC-009 to `must` on 2026-11-25. An authority rule takes its quotes' strength whatever its old status.
+10. **"Always" is a must-word, and every rule has one strength** (the owner, 2026-11-27, answering decision 7's addition: "Must, split the mixed 7").
+    - "Always" given as an instruction ("Always dispose...") makes a rule a must, as the table above says.
+    - A rule whose quotes mix a must instruction with softer ones is split in the second pull request, the move into layers. The must sentences keep the rule's ID. The softer sentences become a new `should` rule with a new ID. No retired ID is ever reused.
+    - Until that split, a mixed rule stays a `must`, its strongest clause's strength.
+    - The owner named seven mixed "always" rules: ASP-017, BLZ-016, BLZ-021, DAT-019, DAT-023, MAU-011 and MAU-014. Two he took for single instructions are mixed too:
+      - CS-022 also says "transfer ownership explicitly", a plain imperative, which counts as should;
+      - SEC-023 also says "Avoid using generic methods..." and "Allow changes only to the object's properties that should be updated".
+
+      BLZ-005 and CS-038 are the only rules whose every quote is an "always" instruction.
+    - Beyond those, the build found more mixed rules with a mechanical test. 62 authority `must` rules have a quote with a softer word (should, recommend, prefer, avoid, consider, best practice, important, ideally) and no must-word, SEC-023 and the seven included:
+      - API-007, ARC-017, ARC-019;
+      - ASP-002 to ASP-012, ASP-015, ASP-016, ASP-017, ASP-020, ASP-021, ASP-023;
+      - BLZ-002, BLZ-009, BLZ-010, BLZ-012, BLZ-016, BLZ-019 to BLZ-022, BLZ-024, BLZ-026;
+      - CRF-020;
+      - CS-011, CS-026, CS-030, CS-034, CS-035, CS-039;
+      - DAT-010, DAT-014, DAT-018 to DAT-020, DAT-023, DAT-024;
+      - HST-002, HST-003;
+      - MAU-011 to MAU-014, MAU-016;
+      - OPS-007, OPS-012, OPS-015;
+      - SEC-018, SEC-019, SEC-023, SEC-024, SEC-025;
+      - SUP-014, UI-004.
+
+      With CS-022, that's 63 candidates, all left at `must` until the second pull request splits them. That pull request confirms each one by reading it, because the test misses a plain imperative (CS-022's) and can count a "should" that describes rather than instructs.
 
 The build lands in two pull requests: strengths and `when` first, with the rules still in `docs/standards/` and `scope` unchanged, then the move into layers, which replaces `scope: core`.
 
