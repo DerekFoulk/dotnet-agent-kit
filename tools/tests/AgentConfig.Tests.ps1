@@ -20,27 +20,17 @@ Describe 'Agent configuration' {
             if ($permissions.ContainsKey($Kind)) { @($permissions[$Kind]) } else { @() }
         }
 
-        # Whether a rule of the given kind (ask by default) catches a command. A rule's '*' matches any text, as in
-        # Claude Code's patterns; [, ] and ? are taken literally. A trailing ' *' that is the rule's only wildcard
-        # also matches the bare command ('git log *' matches 'git log'), as Claude Code's permissions page says. By
-        # default the match is case-sensitive, the stricter reading for a test that a rule asks. -IgnoreCase is the
-        # stricter reading for a test that a rule doesn't ask, and the real one for PowerShell, whose matching the
-        # permissions page calls case-insensitive (on 2026-11-11 a scan of the session transcripts found 38 prompts for
-        # PowerShell commands that matched '*git *push* -f*' only through a later '-Force' or '-F').
-        # A rule ending in ":*" is Claude Code's older prefix syntax: the text before it is a literal prefix and any
-        # '*' in it isn't expanded (review 4 of PR 19, from Claude Code's own rule parser).
+        # Whether a rule of the given kind (ask by default) catches a command, matched as Claude Code's permissions
+        # page describes, by the command guard's own matcher (KitCommandGuard.psm1, ADR-0077). By default the match is
+        # case-sensitive, the stricter reading for a test that a rule asks. -IgnoreCase is the stricter reading for a
+        # test that a rule doesn't ask, and the real one for PowerShell, whose matching the permissions page calls
+        # case-insensitive (on 2026-11-11 a scan of the session transcripts found 38 prompts for PowerShell commands
+        # that matched '*git *push* -f*' only through a later '-Force' or '-F').
         # Claude Code also splits compound commands and canonicalizes PowerShell aliases (ls, cat, gc) before
         # matching; these helpers don't, so each test names one command by its cmdlet name.
+        Import-Module -Name (Join-Path $repoRoot 'tools' 'KitCommandGuard.psm1') -Force
         function Test-RuleMatch([string] $Kind, [string] $Tool, [string] $Command, [switch] $IgnoreCase) {
-            $comparison = if ($IgnoreCase) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
-            [bool] @(Get-RuleList $Kind | Where-Object {
-                    if ($_ -notmatch "^$Tool\((.*)\)$") { return $false }
-                    $pattern = $Matches[1]
-                    if ($pattern -match '^(.+):\*$') { return [string]::Equals($Command, $Matches[1], $comparison) -or $Command.StartsWith("$($Matches[1]) ", $comparison) }
-                    if ($pattern -match '^([^*]+) \*$' -and [string]::Equals($Command, $Matches[1], $comparison)) { return $true }
-                    $wildcard = $pattern -replace '[\[\]?]', '`$0'
-                    if ($IgnoreCase) { $Command -ilike $wildcard } else { $Command -clike $wildcard }
-                }).Count
+            [bool] @(Get-RuleList $Kind | Where-Object { Test-PermissionRuleMatch -Rule $_ -Tool $Tool -Command $Command -IgnoreCase:$IgnoreCase }).Count
         }
         function Test-AskRuleMatch([string] $Tool, [string] $Command, [switch] $IgnoreCase) {
             Test-RuleMatch -Kind 'ask' -Tool $Tool -Command $Command -IgnoreCase:$IgnoreCase
@@ -112,8 +102,27 @@ Describe 'Agent configuration' {
             @{ Path = './.mcp.json' }, @{ Path = './.vscode/mcp.json' },
             # An app's kit-managed scripts and manifest (ADR-0032): the sync job changes them, not a hand edit.
             @{ Path = './.kit/**' }
+            # The command guard (ADR-0077), which an edit could turn off as surely as one to the settings.
+            @{ Path = './tools/KitCommandGuard.psm1' }, @{ Path = './tools/Invoke-CommandGuard.ps1' }
         ) {
             (Get-RuleList 'ask') -ccontains "Edit($Path)" | Should -BeTrue
+        }
+
+        # ADR-0077: before every Bash or PowerShell call, the command guard applies the ask rules to the command as the
+        # shell resolves it. Exec form (args), so the project path needs no quoting; pwsh, the kit's PowerShell 7.
+        It 'runs the command guard before every Bash or PowerShell call' {
+            $groups = @(if ($settings.ContainsKey('hooks') -and $settings['hooks'].ContainsKey('PreToolUse')) { $settings['hooks']['PreToolUse'] })
+            $guard = @($groups | Where-Object { $_['matcher'] -ceq 'Bash|PowerShell' } | ForEach-Object { $_['hooks'] } |
+                    Where-Object { $_['type'] -ceq 'command' -and $_['command'] -ceq 'pwsh' })
+            $guard.Count | Should -Be 1
+            $guard[0]['args'] | Should -Be @('-NoProfile', '-NonInteractive', '-File', '${CLAUDE_PROJECT_DIR}/tools/Invoke-CommandGuard.ps1')
+            Join-Path $repoRoot 'tools' 'Invoke-CommandGuard.ps1' | Should -Exist
+        }
+
+        # Claude Code's hooks page: a project's "disableAllHooks": false overrides a true in the user's own settings,
+        # which no rule here could ask about (review round 1).
+        It 'keeps hooks on whatever the user''s own settings say' {
+            $settings.ContainsKey('disableAllHooks') -and $settings['disableAllHooks'] -eq $false | Should -BeTrue
         }
 
         # Auto mode is the default (ADR-0035): the rules review mode adds can't also be in the shared file, or
